@@ -1,0 +1,61 @@
+name: powershell-scripts-lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/**/*.ps1'
+      - 'scripts/**/*.psm1'
+      - 'scripts/**/*.psd1'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/**/*.ps1'
+      - 'scripts/**/*.psm1'
+      - 'scripts/**/*.psd1'
+
+jobs:
+  parse:
+    name: parse powershell scripts
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse PowerShell files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $files = Get-ChildItem -Path '.\scripts' -Recurse -File |
+            Where-Object { $_.Extension -in '.ps1', '.psm1', '.psd1' }
+
+          if (-not $files) {
+            Write-Host 'No PowerShell files found under scripts/.'
+            exit 0
+          }
+
+          $failed = $false
+
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              foreach ($error in $errors) {
+                $line = $error.Extent.StartLineNumber
+                $column = $error.Extent.StartColumnNumber
+                Write-Host "::error file=$($file.FullName),line=$line,column=$column::$($error.Message)"
+              }
+            }
+          }
+
+          if ($failed) {
+            throw 'PowerShell parser found syntax errors.'
+          }
+
+          Write-Host "PowerShell parser checks passed for $($files.Count) files."

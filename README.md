@@ -1,5 +1,7 @@
 # TrackMeUp
 
+[![Build](https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml)
+
 TrackMeUp is a Windows WinUI 3 desktop application with a repository utility script layer for local workflows.
 
 ## Repository structure
