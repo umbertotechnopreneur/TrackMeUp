@@ -1,0 +1,74 @@
+<Window
+    x:Class="TrackMeUp.AboutWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="About TrackMeUp">
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Padding="28" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="0,0,8,0" Spacing="14">
+                <Image
+                    Width="88"
+                    Height="88"
+                    HorizontalAlignment="Center"
+                    AutomationProperties.Name="Icona dell'app TrackMeUp"
+                    Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
+                <StackPanel Spacing="4">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        CharacterSpacing="110"
+                        FontSize="25"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource FlyoutTextBrush}"
+                        Text="TRACK ME UP"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        Foreground="{ThemeResource FlyoutMutedBrush}"
+                        Text="Personal activity player"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <Rectangle Height="1" Fill="{ThemeResource FlyoutSoftBrush}" />
+                <TextBlock
+                    Foreground="{ThemeResource FlyoutTextBrush}"
+                    Text="Un piccolo player locale per comprendere tempo, applicazioni e ritmo di lavoro. Nessun tasto digitato viene registrato; screenshot e OpenAI sono sempre opt-in."
+                    TextWrapping="Wrap" />
+                <StackPanel Spacing="2">
+                    <HyperlinkButton
+                        HorizontalAlignment="Left"
+                        Content="Contact us"
+                        NavigateUri="https://umbertogiacobbi.biz/contacts" />
+                    <HyperlinkButton
+                        HorizontalAlignment="Left"
+                        Content="GitHub repository"
+                        NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp" />
+                    <HyperlinkButton
+                        HorizontalAlignment="Left"
+                        Content="Autore: Umberto Giacobbi"
+                        Foreground="#FF80B9AA"
+                        NavigateUri="https://umbertogiacobbi.biz/" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button
+            Grid.Row="1"
+            Margin="0,22,0,0"
+            HorizontalAlignment="Stretch"
+            Click="CloseButton_Click"
+            Content="Close"
+            Style="{StaticResource AccentButtonStyle}" />
+    </Grid>
+</Window>

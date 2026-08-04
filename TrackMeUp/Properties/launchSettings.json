@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "TrackMeUp (Package)": {
+    "TrackMeUp (MSIX)": {
       "commandName": "MsixPackage"
     },
     "TrackMeUp (Unpackaged)": {

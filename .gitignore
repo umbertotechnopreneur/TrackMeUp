@@ -5,6 +5,13 @@ artifacts/
 .vs/
 out/
 
+# Local activity data, screenshots, and developer configuration
+data/
+screenshots/
+.env
+.env.*
+appsettings.local.json
+
 # Logs and generated files
 *.log
 *.user

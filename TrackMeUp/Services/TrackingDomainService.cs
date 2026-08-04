@@ -1,0 +1,180 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+
+namespace TrackMeUp.Services;
+
+/// <summary>
+/// Coordinates monitoring sessions and translates sample events into UI/dashboard state.
+/// </summary>
+public sealed class TrackingDomainService : IDisposable
+{
+    private readonly LocalStore _store;
+    private readonly InputHookService _inputHooks = new();
+    private readonly ActivityMonitorService _monitor;
+    private ActivitySample? _latestSample;
+    private DateTimeOffset? _trackingStartedAt;
+
+    /// <summary>
+    /// Initializes a new tracking domain service.
+    /// </summary>
+    /// <param name="store">Persistent store used for summaries and settings.</param>
+    /// <param name="utilities">Shared utility service (required for compatibility with future persistence strategies).</param>
+    public TrackingDomainService(LocalStore store, UtilityService utilities)
+    {
+        _store = store;
+        _monitor = new ActivityMonitorService(_store, _inputHooks);
+        _monitor.SampleRecorded += HandleSampleRecorded;
+    }
+
+    public event Action<DashboardState>? DashboardStateChanged;
+
+    /// <summary>
+    /// Raised after tracking starts or stops. The value is true when tracking is active.
+    /// </summary>
+    public event Action<bool>? TrackingStateChanged;
+
+    public bool IsTracking => _trackingStartedAt is not null;
+    public DateTimeOffset? TrackingStartedAt => _trackingStartedAt;
+    public AnalysisContextSnapshot? LatestAnalysisContext => _latestSample is null
+        ? null
+        : ToAnalysisContext(_latestSample);
+
+    /// <summary>
+    /// Starts the input hooks and periodic sample collection when not already running.
+    /// </summary>
+    public void Start()
+    {
+        if (IsTracking)
+        {
+            // Keep start idempotent: callers may trigger Start multiple times without side effects.
+            return;
+        }
+
+        _trackingStartedAt = DateTimeOffset.Now;
+        _inputHooks.Start();
+        _monitor.Start();
+        TrackingStateChanged?.Invoke(true);
+        DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
+    }
+
+    /// <summary>
+    /// Stops input hooks and sample collection safely.
+    /// </summary>
+    public void Stop()
+    {
+        if (!IsTracking)
+        {
+            return;
+        }
+
+        // Stop all collectors before clearing the session marker, so stale UI updates are avoided.
+        _monitor.Stop();
+        _inputHooks.Stop();
+        _trackingStartedAt = null;
+        TrackingStateChanged?.Invoke(false);
+        DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
+    }
+
+    /// <summary>
+    /// Reads current values used by the main UI panel.
+    /// </summary>
+    public DashboardState LoadCurrentDashboardState()
+    {
+        var summary = _store.GetTodaySummary();
+        var sample = _latestSample;
+        var status = IsTracking && sample?.State == "active" ? "RUNNING" : "PAUSED";
+        var context = sample is null ? "STATE_READY" : sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
+        var intensity = sample?.State == "active"
+            ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2)
+            : IsTracking ? 5 : 5;
+
+        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, IsTracking, sample?.Timestamp);
+    }
+
+    /// <summary>
+    /// Loads the latest completed sample and its latest screenshot path from local history.
+    /// </summary>
+    public LastSessionState? LoadLastSessionState()
+    {
+        var sample = _store.LoadLatestSample();
+        if (sample is null)
+        {
+            return null;
+        }
+
+        return new LastSessionState(sample.Timestamp, sample.Application, sample.Context, sample.InstallationId, sample.Attributes, _store.LoadLatestPrimaryScreenshot());
+    }
+
+    /// <summary>
+    /// Returns a compact elapsed timer label for the running tracking session.
+    /// </summary>
+    public string GetElapsedLabel()
+    {
+        if (_trackingStartedAt is null)
+        {
+            return "00:00";
+        }
+
+        var elapsed = DateTimeOffset.Now - _trackingStartedAt.Value;
+        return $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+    }
+
+    /// <summary>
+    /// Loads application settings from local storage.
+    /// </summary>
+    public AppSettings LoadSettings() => _store.LoadSettings();
+
+    /// <summary>
+    /// Persists provided application settings to local storage.
+    /// </summary>
+    /// <param name="settings">Settings instance to persist.</param>
+    public void SaveSettings(AppSettings settings) => _store.SaveSettings(settings);
+
+    /// <summary>
+    /// Handles each new sample and publishes updated UI state.
+    /// </summary>
+    /// <param name="sample">New sample to publish.</param>
+    private void HandleSampleRecorded(ActivitySample sample)
+    {
+        _latestSample = sample;
+        DashboardStateChanged?.Invoke(BuildDashboardState(sample));
+    }
+
+    /// <summary>
+    /// Builds dashboard state from the latest sample and today's counters.
+    /// </summary>
+    /// <param name="sample">Sample currently in focus.</param>
+    /// <returns>Computed dashboard representation.</returns>
+    private DashboardState BuildDashboardState(ActivitySample sample)
+    {
+        var summary = _store.GetTodaySummary();
+        var status = sample.State == "active" ? "RUNNING" : "PAUSED";
+        var context = sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
+        var intensity = sample.State == "active" ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2) : 5;
+
+        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, true, sample.Timestamp);
+    }
+
+    /// <summary>
+    /// Converts the activity sample into a context object used by AI analysis.
+    /// </summary>
+    /// <param name="sample">Source sample.</param>
+    /// <returns>Normalized AI input context.</returns>
+    private static AnalysisContextSnapshot ToAnalysisContext(ActivitySample sample) => new(
+        sample.Application,
+        sample.Context,
+        sample.WindowTitle,
+        sample.State,
+        sample.Attributes);
+
+    /// <summary>
+    /// Disposes active hooks and unsubscribes events.
+    /// </summary>
+    public void Dispose()
+    {
+        _monitor.Stop();
+        _inputHooks.Stop();
+        _monitor.SampleRecorded -= HandleSampleRecorded;
+    }
+}

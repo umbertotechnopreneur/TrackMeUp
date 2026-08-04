@@ -1,0 +1,163 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using TrackMeUp.Application;
+
+namespace TrackMeUp.Presentation;
+
+/// <summary>Provides minimal observable state without depending on XAML or Spectre.Console.</summary>
+public abstract class ViewModelBase : INotifyPropertyChanged
+{
+    /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Updates an observable backing field.</summary>
+    protected bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
+}
+
+/// <summary>Provides player state and actions to the WinUI player view.</summary>
+public sealed class MainViewModel : ViewModelBase
+{
+    private readonly ITrackMeUpApplication _application;
+    private DashboardState? _dashboard;
+    private LastSessionState? _lastSession;
+
+    /// <summary>Initializes the view model with the shared application facade.</summary>
+    public MainViewModel(ITrackMeUpApplication application)
+    {
+        _application = application;
+        _application.RuntimeStateChanged += OnRuntimeStateChanged;
+    }
+
+    /// <summary>Gets the last dashboard state received from the application.</summary>
+    public DashboardState? Dashboard { get => _dashboard; private set => Set(ref _dashboard, value); }
+
+    /// <summary>Gets the latest recorded session.</summary>
+    public LastSessionState? LastSession { get => _lastSession; private set => Set(ref _lastSession, value); }
+
+    /// <summary>Loads player data.</summary>
+    public async Task<OperationResult<DashboardState>> RefreshAsync(CancellationToken cancellationToken)
+    {
+        var result = await _application.GetDashboardAsync(cancellationToken);
+        if (result.Succeeded) Dashboard = result.Value;
+        return result;
+    }
+
+    /// <summary>Toggles tracking through the application facade.</summary>
+    public async Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken)
+    {
+        var result = await _application.ToggleTrackingAsync(cancellationToken);
+        if (result.Succeeded) Dashboard = result.Value;
+        return result;
+    }
+
+    /// <summary>Loads the latest session card.</summary>
+    public async Task<OperationResult<LastSessionState?>> RefreshLastSessionAsync(CancellationToken cancellationToken)
+    {
+        var result = await _application.GetLastSessionAsync(cancellationToken);
+        if (result.Succeeded) LastSession = result.Value;
+        return result;
+    }
+
+    private void OnRuntimeStateChanged(object? sender, RuntimeStateChangedEventArgs eventArgs) => Dashboard = eventArgs.Dashboard;
+}
+
+/// <summary>Provides typed editable settings to a view without persistence dependencies.</summary>
+public sealed class OptionsViewModel : ViewModelBase
+{
+    private readonly ITrackMeUpApplication _application;
+    private AppSettings? _settings;
+
+    /// <summary>Initializes the options view model.</summary>
+    public OptionsViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Gets the current editable settings snapshot.</summary>
+    public AppSettings? Settings { get => _settings; private set => Set(ref _settings, value); }
+
+    /// <summary>Loads settings into the presentation snapshot.</summary>
+    public async Task<OperationResult<AppSettings>> LoadAsync(CancellationToken cancellationToken)
+    {
+        var result = await _application.GetSettingsAsync(cancellationToken);
+        if (result.Succeeded) Settings = result.Value;
+        return result;
+    }
+
+    /// <summary>Validates and saves an allowed patch.</summary>
+    public async Task<OperationResult<AppSettings>> SaveAsync(SettingsPatch patch, CancellationToken cancellationToken)
+    {
+        var result = await _application.PatchSettingsAsync(patch, cancellationToken);
+        if (result.Succeeded) Settings = result.Value;
+        return result;
+    }
+}
+
+/// <summary>Provides safe AI configuration state and commands.</summary>
+public sealed class AiConfigurationViewModel
+{
+    private readonly ITrackMeUpApplication _application;
+
+    /// <summary>Initializes the AI configuration view model.</summary>
+    public AiConfigurationViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Loads non-secret AI status.</summary>
+    public Task<OperationResult<AiStatus>> LoadAsync(CancellationToken cancellationToken) => _application.GetAiStatusAsync(cancellationToken);
+
+    /// <summary>Stores a secret only through the application boundary.</summary>
+    public Task<OperationResult<string>> SetSecretAsync(string variable, string secret, CancellationToken cancellationToken) => _application.SetAiKeyAsync(variable, secret, cancellationToken);
+}
+
+/// <summary>Provides immutable product metadata to an About view.</summary>
+public sealed class AboutViewModel
+{
+    private readonly ITrackMeUpApplication _application;
+
+    /// <summary>Initializes the About view model.</summary>
+    public AboutViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Loads product details and safe links.</summary>
+    public Task<OperationResult<ProductInformation>> LoadAsync(CancellationToken cancellationToken) => _application.GetProductInformationAsync(cancellationToken);
+}
+
+/// <summary>Provides focus-session actions.</summary>
+public sealed class FocusSessionViewModel
+{
+    private readonly ITrackMeUpApplication _application;
+
+    /// <summary>Initializes the focus-session view model.</summary>
+    public FocusSessionViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Starts a focus session.</summary>
+    public Task<OperationResult<FocusSessionState>> StartAsync(string objective, CancellationToken cancellationToken) => _application.StartFocusSessionAsync(new StartFocusSessionRequest(objective), cancellationToken);
+
+    /// <summary>Stops a focus session.</summary>
+    public Task<OperationResult<FocusSessionSummary?>> StopAsync(bool summarize, CancellationToken cancellationToken) => _application.StopFocusSessionAsync(summarize, cancellationToken);
+}
+
+/// <summary>Provides privacy-rule operations.</summary>
+public sealed class PrivacyViewModel
+{
+    private readonly ITrackMeUpApplication _application;
+
+    /// <summary>Initializes the privacy view model.</summary>
+    public PrivacyViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Loads privacy rules.</summary>
+    public Task<OperationResult<IReadOnlyList<PrivacyRule>>> LoadAsync(CancellationToken cancellationToken) => _application.GetPrivacyRulesAsync(cancellationToken);
+}
+
+/// <summary>Provides report-generation actions and progress ownership to a presentation view.</summary>
+public sealed class ReportViewModel
+{
+    private readonly ITrackMeUpApplication _application;
+
+    /// <summary>Initializes the report view model.</summary>
+    public ReportViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Generates today's report.</summary>
+    public Task<OperationResult<string>> GenerateTodayAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => _application.GenerateTodayReportAsync(outputDirectory, open, cancellationToken);
+}

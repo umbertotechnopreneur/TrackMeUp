@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>TrackMeUp</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\TrackMeUpIcon.ico</ApplicationIcon>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
@@ -12,6 +13,17 @@
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      The same sources ship in two distinct deployment modes. The unpackaged
+      configurations compile the bootstrapper path before WinUI is activated;
+      MSIX configurations retain package-identity deployment initialization.
+    -->
+    <Configurations>Debug;Release;Debug-Unpackaged;Release-Unpackaged</Configurations>
+    <TrackMeUpDistributionMode Condition="'$(TrackMeUpDistributionMode)' == '' and ('$(Configuration)' == 'Debug-Unpackaged' or '$(Configuration)' == 'Release-Unpackaged')">Unpackaged</TrackMeUpDistributionMode>
+    <TrackMeUpDistributionMode Condition="'$(TrackMeUpDistributionMode)' == ''">MSIX</TrackMeUpDistributionMode>
+    <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'Unpackaged'">None</WindowsPackageType>
+    <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'MSIX'">MSIX</WindowsPackageType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +34,8 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\TrackMeUp*.png" />
+    <Content Include="Assets\TrackMeUpIcon.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +51,18 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.10" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Sentry.Extensions.Logging" Version="6.7.0" />
+    <PackageReference Include="SkiaSharp" Version="4.151.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.151.0" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.10" />
+    <PackageReference Include="System.Management" Version="10.0.10" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.10" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
   </ItemGroup>
@@ -52,9 +78,20 @@
 
   <!-- Publish Properties -->
   <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Debug-Unpackaged'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Debug-Unpackaged'">True</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Debug-Unpackaged'">False</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Debug-Unpackaged'">True</PublishTrimmed>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TrackMeUp.Core\TrackMeUp.Core.csproj" />
+    <ProjectReference Include="..\TrackMeUp.Cli\TrackMeUp.Cli.csproj" />
+    <ProjectReference Include="..\TrackMeUp.Presentation\TrackMeUp.Presentation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Models\**\*.cs" />
+    <Compile Remove="Providers\**\*.cs" />
+    <Compile Remove="Services\**\*.cs" />
+  </ItemGroup>
 </Project>

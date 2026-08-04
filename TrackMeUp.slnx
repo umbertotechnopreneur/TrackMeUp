@@ -1,5 +1,7 @@
 <Solution>
   <Configurations>
+    <BuildType Name="Debug-Unpackaged" />
+    <BuildType Name="Release-Unpackaged" />
     <Platform Name="ARM64" />
     <Platform Name="x64" />
     <Platform Name="x86" />
@@ -9,5 +11,29 @@
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
     <Deploy />
+  </Project>
+  <Project Path="TrackMeUp.Core/TrackMeUp.Core.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Cli/TrackMeUp.Cli.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Presentation/TrackMeUp.Presentation.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Core.Tests/TrackMeUp.Core.Tests.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Presentation.Tests/TrackMeUp.Presentation.Tests.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Cli.Tests/TrackMeUp.Cli.Tests.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
   </Project>
 </Solution>

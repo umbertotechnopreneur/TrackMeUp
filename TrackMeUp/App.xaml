@@ -10,6 +10,24 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="FlyoutSurfaceBrush" Color="#DCF8F3EA" />
+                    <SolidColorBrush x:Key="FlyoutBorderBrush" Color="#88FFFFFF" />
+                    <SolidColorBrush x:Key="FlyoutSoftBrush" Color="#33708D8B" />
+                    <SolidColorBrush x:Key="FlyoutTextBrush" Color="#FF173B3F" />
+                    <SolidColorBrush x:Key="FlyoutMutedBrush" Color="#FF56706F" />
+                    <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="FlyoutSurfaceBrush" Color="#E021292D" />
+                    <SolidColorBrush x:Key="FlyoutBorderBrush" Color="#336D7B82" />
+                    <SolidColorBrush x:Key="FlyoutSoftBrush" Color="#335E7980" />
+                    <SolidColorBrush x:Key="FlyoutTextBrush" Color="#FFF4F5F1" />
+                    <SolidColorBrush x:Key="FlyoutMutedBrush" Color="#FFB7C8C6" />
+                    <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
             <!-- Other app resources here -->
         </ResourceDictionary>
     </Application.Resources>

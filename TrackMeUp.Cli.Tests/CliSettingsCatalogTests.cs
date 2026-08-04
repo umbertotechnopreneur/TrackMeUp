@@ -1,0 +1,73 @@
+using System;
+using System.Linq;
+using Spectre.Console;
+using Spectre.Console.Testing;
+using TrackMeUp.Application;
+using TrackMeUp.Cli;
+using Xunit;
+
+namespace TrackMeUp.Cli.Tests;
+
+public sealed class CliSettingsCatalogTests
+{
+    [Fact]
+    public void PublicSettings_ExposeUiKeysWithoutInternalFields()
+    {
+        var keys = CliSettingsCatalog.Settings.Select(setting => setting.Key).ToArray();
+
+        Assert.Contains("screenshots.enabled", keys);
+        Assert.Contains("ai.provider", keys);
+        Assert.Contains("ai.key_variable", keys);
+        Assert.Contains("ai.output_detail", keys);
+        Assert.Contains("ai.reasoning_effort", keys);
+        Assert.Contains("taskbar.widget.position", keys);
+        Assert.DoesNotContain(keys, key => key.Contains("installation", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(keys, key => key.Contains("privacy", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ReadAll_UsesStablePublicKeysInsteadOfPropertyNames()
+    {
+        var values = CliSettingsCatalog.ReadAll(new AppSettings(Theme: "dark", ScreenshotsEnabled: true));
+
+        Assert.Equal("dark", Assert.Single(values, value => value.Key == "theme").Value);
+        Assert.Equal(true, Assert.Single(values, value => value.Key == "screenshots.enabled").Value);
+        Assert.DoesNotContain(values, value => value.Key == nameof(AppSettings.InstallationId));
+    }
+
+    [Fact]
+    public void RichSettingsRenderer_ShowsKeyAndCurrentValue()
+    {
+        var values = CliSettingsCatalog.ReadAll(new AppSettings(Theme: "dark"))
+            .Where(value => value.Key == "theme")
+            .ToArray();
+        var options = new CliOptions(CliFormat.Rich, "en", false, false, true, false, false, 5, false, []);
+        var console = new TestConsole();
+
+        console.Write(new CliOutput(options).RenderSettings(values));
+
+        Assert.Contains("theme", console.Output);
+        Assert.Contains("dark", console.Output);
+        Assert.Contains("system | light | dark", console.Output);
+    }
+
+    [Fact]
+    public void HelpSummary_UsesCoreAiQualityDefinitions()
+    {
+        Assert.Contains("ai.output_detail <compact|balanced|detailed>", CliSettingsCatalog.HelpSummary);
+        Assert.Contains("ai.reasoning_effort <auto|none|low|medium|high|xhigh|max>", CliSettingsCatalog.HelpSummary);
+    }
+
+    [Fact]
+    public void GenericRichResult_RendersFacadeValueAndEscapesMarkup()
+    {
+        var options = new CliOptions(CliFormat.Rich, "en", false, false, true, false, false, 5, false, []);
+        var result = OperationResult<object>.Success("test.loaded", "TestLoaded", new { state = "[ready]" });
+        var console = new TestConsole();
+
+        console.Write(new CliOutput(options).RenderResult(result));
+
+        Assert.Contains("test.loaded", console.Output);
+        Assert.Contains("[ready]", console.Output);
+    }
+}

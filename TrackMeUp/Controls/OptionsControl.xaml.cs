@@ -1,0 +1,155 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using TrackMeUp.Application;
+
+namespace TrackMeUp.Controls;
+
+/// <summary>Displays option controls and forwards typed requests to the shared application facade.</summary>
+public sealed partial class OptionsControl : UserControl
+{
+    private ITrackMeUpApplication? _application;
+
+    /// <summary>Initializes the options control.</summary>
+    public OptionsControl() => InitializeComponent();
+
+    /// <summary>Occurs when the host should restore the player panel.</summary>
+    public event EventHandler? BackRequested;
+
+    /// <summary>Occurs after a successfully persisted application settings snapshot is returned.</summary>
+    public event Action<AppSettings>? SettingsSaved;
+
+    /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
+    public async void Initialize(ITrackMeUpApplication application)
+    {
+        _application = application;
+        var result = await application.GetSettingsAsync(CancellationToken.None);
+        if (result.Succeeded && result.Value is not null)
+        {
+            ApplySettings(result.Value);
+        }
+    }
+
+    /// <summary>Forwards navigation intent to the host view.</summary>
+    private void BackButton_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Forwards a secret to the application facade without placing it in settings or UI state.</summary>
+    private async void SetApiKeyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_application is null || string.IsNullOrWhiteSpace(ApiKeyBox.Password))
+        {
+            StatusText.Text = "Inserisci prima una API key.";
+            return;
+        }
+
+        var provider = SelectedTag(AiProviderBox, "openai");
+        var keyName = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(provider) : AiApiKeyNameBox.Text.Trim();
+        var secret = ApiKeyBox.Password;
+        ApiKeyBox.Password = string.Empty;
+        var result = await _application.SetAiKeyAsync(keyName, secret, CancellationToken.None);
+        secret = string.Empty;
+        StatusText.Text = result.Succeeded ? $"{keyName} impostata per l'utente Windows." : "Impossibile impostare la API key.";
+    }
+
+    /// <summary>Builds a typed, whitelisted patch and forwards persistence to the application facade.</summary>
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_application is null)
+        {
+            return;
+        }
+
+        var patch = new SettingsPatch(new Dictionary<string, string?>
+        {
+            ["ai.model"] = string.IsNullOrWhiteSpace(ModelBox.Text) ? "gpt-5.6" : ModelBox.Text.Trim(),
+            ["screenshots.directory"] = ScreenshotFolderBox.Text,
+            ["screenshots.keep"] = KeepScreenshotsSwitch.IsOn.ToString(),
+            ["ai.enabled"] = OpenAiEnabledSwitch.IsOn.ToString(),
+            ["ai.automatic"] = AutomaticAnalysisSwitch.IsOn.ToString(),
+            ["screenshots.enabled"] = ScreenshotsEnabledSwitch.IsOn.ToString(),
+            ["startup.enabled"] = StartWithWindowsSwitch.IsOn.ToString(),
+            ["tracking.start_on_launch"] = StartTrackingOnLaunchSwitch.IsOn.ToString(),
+            ["screenshots.watermark"] = WatermarkSwitch.IsOn.ToString(),
+            ["ai.provider"] = SelectedTag(AiProviderBox, "openai"),
+            ["ai.endpoint"] = string.IsNullOrWhiteSpace(AiEndpointBox.Text) ? DefaultEndpoint(SelectedTag(AiProviderBox, "openai")) : AiEndpointBox.Text.Trim(),
+            ["ai.key_variable"] = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(SelectedTag(AiProviderBox, "openai")) : AiApiKeyNameBox.Text.Trim(),
+            ["ai.output_detail"] = SelectedTag(AiOutputDetailBox, "balanced"),
+            ["ai.reasoning_effort"] = SelectedTag(AiReasoningEffortBox, "auto"),
+            ["screenshots.mode"] = SelectedTag(ScreenshotModeBox, "all-screens"),
+            ["language"] = SelectedTag(LanguageBox, "en"),
+            ["theme"] = SelectedTag(ThemeBox, "system"),
+            ["position"] = SelectedTag(PositionBox, "bottom-center"),
+            ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left")
+        });
+        var result = await _application.PatchSettingsAsync(patch, CancellationToken.None);
+        if (result.Succeeded && result.Value is not null)
+        {
+            SettingsSaved?.Invoke(result.Value);
+            StatusText.Text = "Opzioni salvate.";
+        }
+        else
+        {
+            StatusText.Text = "Correggi le opzioni indicate e riprova.";
+        }
+    }
+
+    /// <summary>Forwards report generation to the application facade.</summary>
+    private async void ExportReportButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_application is null) return;
+        var result = await _application.GenerateTodayReportAsync(null, false, CancellationToken.None);
+        StatusText.Text = result.Succeeded ? $"Report creato: {result.Value}" : "Impossibile creare il report.";
+    }
+
+    /// <summary>Applies provider defaults as presentation convenience only.</summary>
+    private void AiProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var provider = SelectedTag(AiProviderBox, "openai");
+        if (IsDefaultOrKnownEndpoint(AiEndpointBox.Text)) AiEndpointBox.Text = DefaultEndpoint(provider);
+        if (IsDefaultOrKnownApiKeyName(AiApiKeyNameBox.Text)) AiApiKeyNameBox.Text = DefaultApiKeyName(provider);
+    }
+
+    /// <summary>Updates the local capture-mode hint.</summary>
+    private void ScreenshotModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateScreenshotModeHint();
+
+    private void ApplySettings(AppSettings settings)
+    {
+        ModelBox.Text = settings.Model;
+        ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
+        KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
+        AutomaticAnalysisSwitch.IsOn = settings.AutomaticAnalysis;
+        OpenAiEnabledSwitch.IsOn = settings.OpenAiEnabled;
+        ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
+        StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
+        StartTrackingOnLaunchSwitch.IsOn = settings.StartTrackingOnLaunch;
+        WatermarkSwitch.IsOn = settings.WatermarkScreenshots;
+        SelectTag(AiProviderBox, settings.AiProvider, "openai");
+        AiEndpointBox.Text = string.IsNullOrWhiteSpace(settings.AiEndpoint) ? DefaultEndpoint(settings.AiProvider) : settings.AiEndpoint;
+        AiApiKeyNameBox.Text = string.IsNullOrWhiteSpace(settings.AiApiKeyName) ? DefaultApiKeyName(settings.AiProvider) : settings.AiApiKeyName;
+        SelectTag(AiOutputDetailBox, settings.AiOutputDetail, "balanced");
+        SelectTag(AiReasoningEffortBox, settings.AiReasoningEffort, "auto");
+        SelectTag(ScreenshotModeBox, settings.ScreenshotCaptureMode, "all-screens");
+        SelectTag(LanguageBox, settings.UiLanguage, "en");
+        SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
+        SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
+        SelectTag(ThemeBox, settings.Theme, "system");
+        UpdateScreenshotModeHint();
+    }
+
+    private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? "Finestra attiva in focus -> 1 WEBP" : "Tutti gli schermi -> 1 WEBP per monitor";
+
+    private static string SelectedTag(ComboBox comboBox, string fallback) => (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? fallback;
+
+    private static void SelectTag(ComboBox comboBox, string value, string fallback) => comboBox.SelectedItem = comboBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, value)) ?? comboBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, fallback));
+
+    private static string DefaultEndpoint(string provider) => SettingsCatalog.GetDefaultEndpoint(provider);
+
+    private static string DefaultApiKeyName(string provider) => SettingsCatalog.GetDefaultApiKeyVariable(provider);
+
+    private static bool IsDefaultOrKnownEndpoint(string? endpoint) => string.IsNullOrWhiteSpace(endpoint) || endpoint is "https://api.openai.com/v1/responses" or "https://openrouter.ai/api/v1/chat/completions" or "https://api.anthropic.com/v1/messages";
+
+    private static bool IsDefaultOrKnownApiKeyName(string? keyName) => string.IsNullOrWhiteSpace(keyName) || keyName.Trim() is "TRACKMEUP_OPENAI_APIKEY" or "OPENAI_API_KEY" or "OPENROUTER_API_KEY" or "ANTHROPIC_API_KEY";
+}

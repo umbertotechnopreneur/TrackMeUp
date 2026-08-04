@@ -1,0 +1,284 @@
+<UserControl
+    x:Class="TrackMeUp.Controls.OptionsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="WidthStates">
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="720" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="GeneralPositionColumn.Width" Value="*" />
+                        <Setter Target="GeneralTaskbarColumn.Width" Value="*" />
+                        <Setter Target="PositionBox.(Grid.Row)" Value="0" />
+                        <Setter Target="PositionBox.(Grid.Column)" Value="1" />
+                        <Setter Target="TaskbarWidgetPositionBox.(Grid.Row)" Value="0" />
+                        <Setter Target="TaskbarWidgetPositionBox.(Grid.Column)" Value="2" />
+
+                        <Setter Target="ScreenshotHintColumn.Width" Value="*" />
+                        <Setter Target="ScreenshotModeHintBox.(Grid.Row)" Value="0" />
+                        <Setter Target="ScreenshotModeHintBox.(Grid.Column)" Value="1" />
+
+                        <Setter Target="AiEndpointColumn.Width" Value="*" />
+                        <Setter Target="AiKeyNameColumn.Width" Value="*" />
+                        <Setter Target="AiEndpointBox.(Grid.Row)" Value="0" />
+                        <Setter Target="AiEndpointBox.(Grid.Column)" Value="1" />
+                        <Setter Target="AiApiKeyNameBox.(Grid.Row)" Value="0" />
+                        <Setter Target="AiApiKeyNameBox.(Grid.Column)" Value="2" />
+
+                        <Setter Target="SecondaryActionColumn.Width" Value="*" />
+                        <Setter Target="SaveOptionsButton.(Grid.Row)" Value="0" />
+                        <Setter Target="SaveOptionsButton.(Grid.Column)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <ScrollViewer
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Auto">
+            <StackPanel Padding="0,0,8,0" Spacing="12">
+                <Grid MinHeight="44">
+                    <Button
+                        Click="BackButton_Click"
+                        MinWidth="44"
+                        MinHeight="44"
+                        Padding="9"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Torna al player"
+                        Background="{ThemeResource FlyoutSoftBrush}"
+                        BorderBrush="Transparent"
+                        CornerRadius="16">
+                        <FontIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            Foreground="#FF80B9AA"
+                            Glyph="&#xE72B;" />
+                    </Button>
+                    <StackPanel Margin="52,0" HorizontalAlignment="Center">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            CharacterSpacing="120"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource FlyoutTextBrush}"
+                            Text="OPZIONI APP"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            Foreground="{ThemeResource FlyoutMutedBrush}"
+                            Text="Tutto resta sul tuo PC"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid x:Name="GeneralSettingsGrid" ColumnSpacing="8" RowSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="GeneralPositionColumn" Width="0" />
+                        <ColumnDefinition x:Name="GeneralTaskbarColumn" Width="0" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ComboBox
+                        x:Name="ThemeBox"
+                        Header="Tema"
+                        AutomationProperties.Name="Tema dell'app">
+                        <ComboBoxItem Content="Sistema" Tag="system" />
+                        <ComboBoxItem Content="Chiaro" Tag="light" />
+                        <ComboBoxItem Content="Scuro" Tag="dark" />
+                    </ComboBox>
+                    <ComboBox
+                        x:Name="PositionBox"
+                        Grid.Row="1"
+                        Header="Posizione player"
+                        AutomationProperties.Name="Posizione del player">
+                        <ComboBoxItem Content="Basso centro" Tag="bottom-center" />
+                        <ComboBoxItem Content="Basso sinistra" Tag="bottom-left" />
+                        <ComboBoxItem Content="Basso destra" Tag="bottom-right" />
+                        <ComboBoxItem Content="Alto sinistra" Tag="top-left" />
+                        <ComboBoxItem Content="Alto destra" Tag="top-right" />
+                    </ComboBox>
+                    <ComboBox
+                        x:Name="TaskbarWidgetPositionBox"
+                        Grid.Row="2"
+                        Header="Posizione controllo taskbar"
+                        AutomationProperties.Name="Posizione del controllo nella taskbar">
+                        <ComboBoxItem Content="Sinistra" Tag="left" />
+                        <ComboBoxItem Content="Centro" Tag="center" />
+                        <ComboBoxItem Content="Destra" Tag="right" />
+                    </ComboBox>
+                </Grid>
+
+                <ComboBox
+                    x:Name="LanguageBox"
+                    Header="Lingua interfaccia"
+                    AutomationProperties.Name="Lingua dell'interfaccia">
+                    <ComboBoxItem Content="English" Tag="en" />
+                    <ComboBoxItem Content="Italiano" Tag="it" />
+                    <ComboBoxItem Content="Français" Tag="fr" />
+                    <ComboBoxItem Content="Deutsch" Tag="de" />
+                    <ComboBoxItem Content="Español" Tag="es" />
+                    <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
+                </ComboBox>
+
+                <Border Padding="12" Background="{ThemeResource FlyoutSoftBrush}" CornerRadius="14">
+                    <StackPanel Spacing="7">
+                        <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="AUTOSTART WINDOWS" />
+                        <ToggleSwitch x:Name="StartWithWindowsSwitch" Header="Avviare a apertura sistema" OffContent="Disattivato" OnContent="Attivo" />
+                        <TextBlock FontSize="10" Foreground="{ThemeResource FlyoutMutedBrush}" Text="L'app partirà con Windows dopo il login." TextWrapping="Wrap" />
+                        <ToggleSwitch x:Name="StartTrackingOnLaunchSwitch" Header="Avvia tracking all'apertura" OffContent="Attendi Play" OnContent="Avvia subito" />
+                        <TextBlock FontSize="10" Foreground="{ThemeResource FlyoutMutedBrush}" Text="Quando disattivato, TrackMeUp aspetta un avvio esplicito dal player." TextWrapping="Wrap" />
+
+                        <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="SCREENSHOT" />
+                        <ToggleSwitch x:Name="ScreenshotsEnabledSwitch" Header="Take screenshot" OffContent="Disattivato" OnContent="Attivo" />
+                        <TextBox
+                            x:Name="ScreenshotFolderBox"
+                            Header="Cartella screenshot"
+                            AutomationProperties.Name="Cartella screenshot WebP"
+                            PlaceholderText="Cartella WebP" />
+                        <Grid x:Name="ScreenshotModeGrid" ColumnSpacing="8" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="ScreenshotHintColumn" Width="0" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <ComboBox
+                                x:Name="ScreenshotModeBox"
+                                Header="Modalità screenshot"
+                                AutomationProperties.Name="Modalità screenshot"
+                                PlaceholderText="Modalità screenshot"
+                                SelectionChanged="ScreenshotModeBox_SelectionChanged">
+                                <ComboBoxItem Content="Tutti gli schermi" Tag="all-screens" />
+                                <ComboBoxItem Content="Finestra attiva" Tag="active-window" />
+                            </ComboBox>
+                            <TextBox
+                                x:Name="ScreenshotModeHintBox"
+                                Grid.Row="1"
+                                Header="Risultato"
+                                AutomationProperties.Name="Descrizione della modalità screenshot"
+                                IsReadOnly="True"
+                                IsTabStop="False"
+                                Text="Ogni schermo -> un WEBP. Modalità finestra attiva -> 1 WEBP."
+                                TextWrapping="Wrap" />
+                        </Grid>
+                        <ToggleSwitch x:Name="KeepScreenshotsSwitch" Header="Conserva gli screenshot" OffContent="Elimina dopo analisi" OnContent="Archivia localmente" />
+                        <ToggleSwitch x:Name="WatermarkSwitch" Header="Filigrana watermark" OffContent="Nessuna" OnContent="Aggiungi nome host/data/id/ora" />
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="12" Background="{ThemeResource FlyoutSoftBrush}" CornerRadius="14">
+                    <StackPanel Spacing="7">
+                        <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="AI" />
+                        <ToggleSwitch x:Name="OpenAiEnabledSwitch" Header="AI integration" OffContent="Disattivata" OnContent="Attiva" />
+                        <Grid x:Name="AiFieldsGrid" ColumnSpacing="8" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="AiEndpointColumn" Width="0" />
+                                <ColumnDefinition x:Name="AiKeyNameColumn" Width="0" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <ComboBox
+                                x:Name="AiProviderBox"
+                                Header="Provider AI"
+                                AutomationProperties.Name="Provider AI"
+                                SelectionChanged="AiProviderBox_SelectionChanged">
+                                <ComboBoxItem Content="openai" Tag="openai" />
+                                <ComboBoxItem Content="openrouter" Tag="openrouter" />
+                                <ComboBoxItem Content="anthropic" Tag="anthropic" />
+                            </ComboBox>
+                            <TextBox
+                                x:Name="AiEndpointBox"
+                                Grid.Row="1"
+                                Header="Endpoint"
+                                AutomationProperties.Name="Endpoint AI" />
+                            <TextBox
+                                x:Name="AiApiKeyNameBox"
+                                Grid.Row="2"
+                                Header="Nome variabile API key"
+                                AutomationProperties.Name="Nome della variabile ambiente API key" />
+                        </Grid>
+                        <PasswordBox
+                            x:Name="ApiKeyBox"
+                            Header="API key temporanea"
+                            AutomationProperties.HelpText="La chiave viene salvata tramite il flusso sicuro dell'app e non nelle impostazioni."
+                            AutomationProperties.Name="API key"
+                            PlaceholderText="API key (non viene salvata)" />
+                        <TextBox x:Name="ModelBox" Header="Modello" AutomationProperties.Name="Modello AI" />
+                        <ComboBox
+                            x:Name="AiOutputDetailBox"
+                            Header="Dettaglio analisi screenshot"
+                            AutomationProperties.HelpText="Controlla dettaglio dell'immagine, verbosità e budget massimo di output."
+                            AutomationProperties.Name="Livello di dettaglio analisi screenshot">
+                            <ComboBoxItem Content="Compatto · consumo minimo" Tag="compact" />
+                            <ComboBoxItem Content="Bilanciato" Tag="balanced" />
+                            <ComboBoxItem Content="Dettagliato · budget maggiore" Tag="detailed" />
+                        </ComboBox>
+                        <ComboBox
+                            x:Name="AiReasoningEffortBox"
+                            Header="Livello di ragionamento"
+                            AutomationProperties.HelpText="Auto lascia scegliere al modello; gli altri valori vengono inviati ai modelli OpenAI compatibili."
+                            AutomationProperties.Name="Livello di ragionamento del modello">
+                            <ComboBoxItem Content="Automatico" Tag="auto" />
+                            <ComboBoxItem Content="Nessuno" Tag="none" />
+                            <ComboBoxItem Content="Basso" Tag="low" />
+                            <ComboBoxItem Content="Medio" Tag="medium" />
+                            <ComboBoxItem Content="Alto" Tag="high" />
+                            <ComboBoxItem Content="Molto alto" Tag="xhigh" />
+                            <ComboBoxItem Content="Massimo" Tag="max" />
+                        </ComboBox>
+                        <ToggleSwitch x:Name="AutomaticAnalysisSwitch" Header="Analisi automatica" OffContent="Solo su richiesta" OnContent="Ogni 15 minuti" />
+                        <Button Click="SetApiKeyButton_Click" Content="Salva chiave API" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Border>
+
+                <Grid x:Name="ActionsGrid" ColumnSpacing="8" RowSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="SecondaryActionColumn" Width="0" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Button Click="ExportReportButton_Click" Content="Esporta report HTML" HorizontalAlignment="Stretch" />
+                    <Button
+                        x:Name="SaveOptionsButton"
+                        Grid.Row="1"
+                        Click="SaveButton_Click"
+                        Content="Salva opzioni"
+                        HorizontalAlignment="Stretch"
+                        Style="{StaticResource AccentButtonStyle}" />
+                </Grid>
+                <TextBlock
+                    x:Name="StatusText"
+                    AutomationProperties.LiveSetting="Polite"
+                    FontSize="11"
+                    Foreground="{ThemeResource FlyoutMutedBrush}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
