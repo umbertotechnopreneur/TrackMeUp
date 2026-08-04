@@ -1,0 +1,16 @@
+# Build and IDE folders
+bin/
+obj/
+artifacts/
+.vs/
+out/
+
+# Logs and generated files
+*.log
+*.user
+*.suo
+*.cache
+
+# OS and editor noise
+Thumbs.db
+.DS_Store

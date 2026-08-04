@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TrackMeUp (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "TrackMeUp (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
