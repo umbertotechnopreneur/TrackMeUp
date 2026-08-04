@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="TrackMeUp/Assets/TrackMeUpSquare150Logo.png" alt="TrackMeUp app icon" width="150" />
+</p>
+
 # TrackMeUp
 
 [![Build](https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml)
