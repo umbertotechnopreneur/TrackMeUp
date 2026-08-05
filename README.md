@@ -17,14 +17,18 @@ TrackMeUp is a privacy-first Windows activity monitor presented as a compact, po
 - Five flyout positions: bottom-center (default), bottom corners, and top corners.
 - A discreet taskbar control: app icon to open the flyout, play/pause for tracking, and a camera-style status LED that is grey when paused and gently red-pulsing while recording.
 - Light, dark, and system-following theme support.
-- Three-dot menu for App Options, OpenAI integration, screenshot capture, and About.
+- Three-dot menu for App Options, Reports, OpenAI integration, screenshot capture, and About.
+- A dedicated Mica Reports window renders bundled Vue, Vuetify, and ECharts views for calendar days, weekday/hour patterns, trends, and applications without a local HTTP server or network dependency.
+- Reports supports system, light, and dark themes through the same validated application setting used by the native shell, preserves the selection between launches, and exposes searchable tabular data alongside each chart.
 - Options rendered inside the same flyout, including flyout/taskbar-control position, screenshot archive folder, reporting, and OpenAI configuration.
 - A scrollable Tools and Diagnostics surface exposes runtime health, system snapshots, capture and AI actions, focus sessions, reports, privacy rules, confirmed retention cleanup, and context plugins through the same application facade used by the CLI.
 - Expandable latest-session details with an optional primary-monitor screenshot preview and local-folder shortcut.
-- Optional screenshot analysis through the OpenAI Responses API, with one compressed WebP capture per monitor and compact, balanced, or detailed output profiles.
+- Optional screenshot analysis through OpenAI Responses, Anthropic Messages, or OpenRouter, with one compressed WebP capture per monitor and compact, balanced, or detailed output profiles.
 - Configurable OpenAI model and reasoning effort (`auto`, `none`, `low`, `medium`, `high`, `xhigh`, or `max`) with provider-safe fallbacks.
+- Local AI-usage telemetry links each provider request to its snapshot with a correlation ID and records sanitized request metadata, token usage, latency, response IDs, and provider-reported cost when available. Prompts, images, headers, and keys are never copied to this telemetry store.
+- Optional additional AI instructions, weekly active-hours/break notes, and device context (time zone, Windows/UI and input languages, plus opt-in Windows Location coordinates with provenance) are included only in the analysis snapshot context.
 - Screenshots are retained only when explicitly enabled; otherwise temporary WebP images are deleted after analysis.
-- Activity history and AI summaries are stored under the current user's local application data directory.
+- Activity history and AI analyses are stored only in the current versioned SQLite database under the current user's local application data directory. A legacy `activity.jsonl` or `analyses.jsonl` file, malformed settings, or incompatible schema fails immediately; TrackMeUp does not migrate, recover, or fall back.
 - The OpenAI key is set as the Windows user environment variable `OPENAI_API_KEY`; TrackMeUp does not store it in files, the database, or Credential Locker.
 - A daily HTML report can be generated locally from the options flyout.
 
@@ -40,6 +44,8 @@ The supported shell is PowerShell 7 (`pwsh`) only. The packaged MSIX app exposes
 
 ```powershell
 trackmeup.exe -cli
+trackmeup.exe reports
+trackmeup.exe reports --theme dark
 trackmeup.exe -cli status
 trackmeup.exe -cli tracking start
 trackmeup.exe -cli status --json
@@ -71,7 +77,9 @@ CLI verification checklist:
 
 Screenshot analysis instructions are maintained as individual English `*.prompt.md` files under `prompts/`. `compact` uses low image detail and a 512-token ceiling, `balanced` uses automatic image detail and a 1024-token ceiling, and `detailed` uses high image detail and a 2048-token ceiling. The selected profile also controls OpenAI text verbosity. For OpenAI Responses requests, a non-`auto` reasoning effort is sent explicitly; compatible third-party providers receive only fields supported by their payload format.
 
-The prompt assets are copied with published builds and embedded as a fallback. They treat screenshot text and local context as untrusted data, prohibit secret/private-data transcription, and instruct the model to distinguish observations from inference.
+The prompt assets are required files copied with published builds. Missing or empty prompt files fail analysis immediately; there is no compiled fallback. They treat screenshot text and local context as untrusted data, prohibit secret/private-data transcription, and instruct the model to distinguish observations from inference.
+
+An optional custom instruction is appended after the built-in profile prompt only when it is non-empty. Active hours and breaks can be configured per weekday using `HH:mm-HH:mm`; they are informational context, never tracking controls. Device location is disabled by default and, when enabled, comes only from the Windows location service with source/status recorded alongside the coordinates—TrackMeUp never uses IP geolocation.
 
 ## Repository structure
 
@@ -79,6 +87,7 @@ The prompt assets are copied with published builds and embedded as a fallback. T
 - `TrackMeUp.Core/` — domain/application contracts, infrastructure services, and runtime IPC host.
 - `TrackMeUp.Presentation/` — UI-neutral view models.
 - `TrackMeUp.Cli/` — Spectre.Console CLI frontend and console bootstrap.
+- `TrackMeUp.Reports.Web/` — offline Vue, Vuetify, and ECharts report application plus its packaged production bundle.
 - `TrackMeUp.*.Tests/` — core, presentation, and CLI tests.
 - `scripts/` — PowerShell utility scripts and shared modules.
 - `.github/` — governance files, Copilot instructions, and task notes.
@@ -90,8 +99,10 @@ Prerequisites:
 
 - Windows 10+ with Visual Studio 2022 or compatible .NET 10 toolchain.
 - `dotnet` CLI available.
+- Node.js 20.19.0 or newer and `npm` when rebuilding the Reports web bundle.
 
 ```powershell
+pwsh -NoProfile -File .\scripts\build-reports-web.ps1
 pwsh -NoProfile -Command "dotnet restore .\TrackMeUp.slnx"
 pwsh -NoProfile -Command "dotnet build .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
 pwsh -NoProfile -Command "dotnet test .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
@@ -115,6 +126,14 @@ Verification checklist:
 - [ ] In Visual Studio, launch `TrackMeUp (MSIX)` with `Debug` and confirm the main window opens.
 - [ ] In Visual Studio, launch `TrackMeUp (Unpackaged)` with `Debug-Unpackaged` and confirm the main window opens without `REGDB_E_CLASSNOTREG`.
 - [ ] Open Tools and Diagnostics at narrow width, exercise each read-only action, and verify retention cleanup requires the explicit delete confirmation before any file is removed.
+- [ ] Open Reports from the three-dot menu and with `trackmeup.exe reports`; verify both use the same running tracker and never create a second runtime.
+- [ ] Exercise every report range and view, use Aggiorna to bypass the short-lived range cache, search the accessible table, switch among system/light/dark themes, restart Reports, and confirm the selection persisted through application settings. Simulate a settings-write failure and confirm Vue reports the failure while retaining the previous theme.
+- [ ] Configure a blank and a non-empty custom AI instruction; confirm the blank case sends only the built-in prompt and the non-empty case appends exactly one additional-instruction section.
+- [ ] Configure weekday active hours with lunch/dinner breaks; confirm an invalid or out-of-window break is rejected and a valid period appears only as informational AI context.
+- [ ] Run one successful request through each configured provider and one failed request; confirm the SQLite telemetry row has the snapshot correlation ID, nullable absent fields, and no prompt, image, authorization header, or key.
+- [ ] Confirm the report separates provider-reported actual cost from unavailable/partial cost, and that each snapshot's token usage is attributable by provider and origin.
+- [ ] With Windows Location disabled, confirm the snapshot contains no coordinates and status `disabled_by_setting`; after explicit Windows permission and opt-in, confirm latitude/longitude include `windows-geolocator` provenance.
+- [ ] Place a legacy `activity.jsonl` or `analyses.jsonl` beside local data, or corrupt `appsettings.json`; verify startup fails with a clear unsupported-storage/configuration error instead of importing, recovering, or ignoring it.
 
 ## Diagnostics logging
 

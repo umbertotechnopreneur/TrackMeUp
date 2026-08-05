@@ -28,7 +28,7 @@ public sealed record StartTrackingRequest(bool SafeMode = false, string? Source 
 public sealed record CaptureScreenshotRequest(string Mode, bool Keep, bool Watermark);
 
 /// <summary>Requests analysis of the latest activity context.</summary>
-public sealed record AnalyzeCurrentActivityRequest(bool AllowCapture = true);
+public sealed record AnalyzeCurrentActivityRequest(bool AllowCapture = true, string? Origin = null);
 
 /// <summary>Contains a whitelist-bound settings patch.</summary>
 public sealed record SettingsPatch(IReadOnlyDictionary<string, string?> Values);
@@ -105,6 +105,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets today's activity summary.</summary>
     Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets a privacy-safe aggregate report for an inclusive local-date range.</summary>
+    Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken);
 
     /// <summary>Starts a focus session.</summary>
     Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken);

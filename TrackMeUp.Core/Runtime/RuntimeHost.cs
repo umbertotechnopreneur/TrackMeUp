@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Pipes;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -14,9 +15,11 @@ public sealed class RuntimeHost : IAsyncDisposable
     private readonly RuntimeEndpoint _endpoint;
     private readonly ILogger<RuntimeHost> _logger;
     private readonly CancellationTokenSource _shutdown = new();
-    private Mutex? _mutex;
+    private readonly ConcurrentDictionary<int, Task> _activeRequests = new();
+    private RuntimeMutexLease? _mutexLease;
     private Task? _serverTask;
     private bool _disposed;
+    private int _requestSequence;
 
     /// <summary>Initializes a runtime host for a single application installation.</summary>
     public RuntimeHost(ITrackMeUpApplication application, string installationId, ILogger<RuntimeHost>? logger = null)
@@ -33,12 +36,12 @@ public sealed class RuntimeHost : IAsyncDisposable
     public bool TryStart()
     {
         ThrowIfDisposed();
-        _mutex = new Mutex(true, _endpoint.MutexName, out var createdNew);
-        if (!createdNew)
+        _mutexLease = new RuntimeMutexLease(_endpoint.MutexName);
+        if (!_mutexLease.Acquired)
         {
             _logger.LogDebug("Runtime mutex is already owned by another process.");
-            _mutex.Dispose();
-            _mutex = null;
+            _mutexLease.Dispose();
+            _mutexLease = null;
             return false;
         }
 
@@ -70,11 +73,14 @@ public sealed class RuntimeHost : IAsyncDisposable
             }
         }
 
-        if (_mutex is not null)
+        var activeRequests = _activeRequests.Values.ToArray();
+        if (activeRequests.Length > 0)
         {
-            _mutex.ReleaseMutex();
-            _mutex.Dispose();
+            await Task.WhenAll(activeRequests);
         }
+
+        _mutexLease?.Dispose();
+        _mutexLease = null;
 
         _shutdown.Dispose();
     }
@@ -83,7 +89,7 @@ public sealed class RuntimeHost : IAsyncDisposable
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            await using var pipe = new NamedPipeServerStream(
+            var pipe = new NamedPipeServerStream(
                 _endpoint.PipeName,
                 PipeDirection.InOut,
                 NamedPipeServerStream.MaxAllowedServerInstances,
@@ -92,19 +98,88 @@ public sealed class RuntimeHost : IAsyncDisposable
             try
             {
                 await pipe.WaitForConnectionAsync(cancellationToken);
-                var request = await RuntimeProtocol.ReadAsync<RuntimeRequestEnvelope>(pipe, cancellationToken);
-                var response = await DispatchAsync(request, cancellationToken);
-                await RuntimeProtocol.WriteAsync(pipe, response, cancellationToken);
+                TrackRequest(HandleConnectionAsync(pipe, cancellationToken));
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                await pipe.DisposeAsync();
                 throw;
+            }
+            catch (Exception exception)
+            {
+                await pipe.DisposeAsync();
+                _logger.LogWarning("Runtime pipe acceptance failed; continuing to serve requests. ExceptionType={ExceptionType}", exception.GetType().Name);
+            }
+        }
+    }
+
+    private void TrackRequest(Task requestTask)
+    {
+        var requestId = Interlocked.Increment(ref _requestSequence);
+        _activeRequests[requestId] = requestTask;
+        _ = requestTask.ContinueWith(
+            completedTask =>
+            {
+                _activeRequests.TryRemove(requestId, out _);
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private async Task HandleConnectionAsync(NamedPipeServerStream pipe, CancellationToken shutdownToken)
+    {
+        await using (pipe)
+        {
+            try
+            {
+                var request = await RuntimeProtocol.ReadAsync<RuntimeRequestEnvelope>(pipe, shutdownToken);
+                using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
+                var disconnectMonitor = MonitorDisconnectAsync(pipe, requestCancellation);
+                RuntimeResponseEnvelope response;
+                try
+                {
+                    response = await DispatchAsync(request, requestCancellation.Token);
+                }
+                finally
+                {
+                    requestCancellation.Cancel();
+                    await disconnectMonitor;
+                }
+
+                await RuntimeProtocol.WriteAsync(pipe, response, shutdownToken);
+            }
+            catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
+            {
+                // Host shutdown cancels every active request before releasing runtime ownership.
+            }
+            catch (OperationCanceledException)
+            {
+                // Client disconnect/timeout cancellation stops long-running reads without affecting the host.
             }
             catch (Exception exception)
             {
                 // Invalid/disconnected clients are isolated so the long-lived local runtime remains available.
                 _logger.LogWarning("Runtime pipe request failed; continuing to serve requests. ExceptionType={ExceptionType}", exception.GetType().Name);
             }
+        }
+    }
+
+    private static async Task MonitorDisconnectAsync(NamedPipeServerStream pipe, CancellationTokenSource requestCancellation)
+    {
+        var probe = new byte[1];
+        try
+        {
+            _ = await pipe.ReadAsync(probe, requestCancellation.Token);
+            requestCancellation.Cancel();
+        }
+        catch (OperationCanceledException) when (requestCancellation.IsCancellationRequested)
+        {
+            // Normal completion cancels the pending disconnect read before the response is written.
+        }
+        catch (IOException)
+        {
+            requestCancellation.Cancel();
         }
     }
 
@@ -139,6 +214,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "ai.configure" => ToResponse(request, await _application.ConfigureAiAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
                 "ai.key.set" => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
                 "ai.analyze" => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
+                "report.query.v1" => await DispatchReportQueryAsync(request, cancellationToken),
                 "report.today" => ToResponse(request, await _application.GenerateTodayReportAsync(ReadStringOrNull(request.Payload, "outputDirectory"), ReadBool(request.Payload, "open"), cancellationToken)),
                 "report.digest" => await DispatchDailyDigestAsync(request, cancellationToken),
                 "report.open_folder" => ToResponse(request, await _application.OpenReportsFolderAsync(cancellationToken)),
@@ -188,6 +264,17 @@ public sealed class RuntimeHost : IAsyncDisposable
         return ToResponse(request, await _application.GenerateDailyDigestAsync(digest.Date, digest.Open, cancellationToken));
     }
 
+    private async Task<RuntimeResponseEnvelope> DispatchReportQueryAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var query = Read<ReportQuery>(request.Payload);
+        if (query is null)
+        {
+            return Failure(request, "command.arguments.invalid", "InvalidReportQuery");
+        }
+
+        return ToResponse(request, await _application.GetReportAsync(query, cancellationToken));
+    }
+
     private static RuntimeResponseEnvelope Failure(RuntimeRequestEnvelope request, string code, string messageKey) => new(RuntimeProtocol.ProtocolVersion, request.RequestId, false, code, messageKey, null, Array.Empty<ValidationIssue>());
 
     private static T? Read<T>(JsonElement value) => value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ? default : value.Deserialize<T>(RuntimeProtocol.SerializerOptions);
@@ -205,11 +292,86 @@ public sealed class RuntimeHost : IAsyncDisposable
             throw new ObjectDisposedException(nameof(RuntimeHost));
         }
     }
+
+    /// <summary>
+    /// Keeps named-mutex acquisition and release on one dedicated thread because Windows mutex ownership is thread-affine.
+    /// </summary>
+    private sealed class RuntimeMutexLease : IDisposable
+    {
+        private readonly ManualResetEventSlim _ready = new(false);
+        private readonly ManualResetEventSlim _release = new(false);
+        private readonly Thread _ownerThread;
+        private Exception? _failure;
+        private bool _disposed;
+
+        internal RuntimeMutexLease(string mutexName)
+        {
+            _ownerThread = new Thread(() => Own(mutexName))
+            {
+                IsBackground = true,
+                Name = "TrackMeUp runtime mutex"
+            };
+            _ownerThread.Start();
+            _ready.Wait();
+            if (_failure is not null)
+            {
+                Dispose();
+                throw new InvalidOperationException("Unable to acquire the TrackMeUp runtime mutex.", _failure);
+            }
+        }
+
+        internal bool Acquired { get; private set; }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _release.Set();
+            _ownerThread.Join();
+            _release.Dispose();
+            _ready.Dispose();
+        }
+
+        private void Own(string mutexName)
+        {
+            try
+            {
+                using var mutex = new Mutex(false, mutexName);
+                try
+                {
+                    Acquired = mutex.WaitOne(0);
+                }
+                catch (AbandonedMutexException)
+                {
+                    Acquired = true;
+                }
+
+                _ready.Set();
+                if (!Acquired)
+                {
+                    return;
+                }
+
+                _release.Wait();
+                mutex.ReleaseMutex();
+            }
+            catch (Exception exception)
+            {
+                _failure = exception;
+                _ready.Set();
+            }
+        }
+    }
 }
 
 /// <summary>Provides a typed application facade backed by the local runtime pipe.</summary>
 public sealed class RuntimeClient : ITrackMeUpApplication
 {
+    private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RuntimeClient> _logger;
@@ -243,6 +405,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>("session.last", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => SendAsync<DailySummary>("session.today", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
+        SendAsync<ReportSnapshot>("report.query.v1", query, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
     public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => SendAsync<FocusSessionState>("focus.start", request, cancellationToken);
     /// <inheritdoc />
@@ -308,10 +473,14 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-    private async Task<OperationResult<T>> SendAsync<T>(string operation, object? payload, CancellationToken cancellationToken)
+    private async Task<OperationResult<T>> SendAsync<T>(
+        string operation,
+        object? payload,
+        CancellationToken cancellationToken,
+        TimeSpan? requestTimeout = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_timeout);
+        timeout.CancelAfter(requestTimeout ?? _timeout);
         try
         {
             await using var pipe = new NamedPipeClientStream(".", _endpoint.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);

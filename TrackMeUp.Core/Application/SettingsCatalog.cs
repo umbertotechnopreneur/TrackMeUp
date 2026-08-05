@@ -1,4 +1,5 @@
 using System.Globalization;
+using TrackMeUp.Services;
 
 namespace TrackMeUp.Application;
 
@@ -40,6 +41,8 @@ public static class SettingsCatalog
         Choice("ai.key_variable", "User environment variable that contains the API key.", ApiKeyVariables),
         Choice("ai.output_detail", "Screenshot analysis output and token-budget profile.", OutputDetails),
         Choice("ai.reasoning_effort", "OpenAI Responses reasoning effort; auto omits the field.", ReasoningEfforts),
+        Text("ai.custom_prompt", "Optional user instruction appended after the built-in screenshot prompt; empty keeps only the built-in prompt.", "multiline"),
+        Boolean("ai.include_device_location", "Include Windows-provided latitude and longitude in AI snapshots only when location access is available."),
         Integer("ai.daily_limit", "Maximum AI analyses per local day."),
         Integer("ai.automatic_interval_minutes", "Minutes between automatic analyses."),
         Decimal("ai.estimated_cost_per_analysis_usd", "Estimated cost used by the local guardrail."),
@@ -49,6 +52,20 @@ public static class SettingsCatalog
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
         Choice("taskbar.widget.position", "Taskbar control anchor.", TaskbarAnchors),
+        Text("active_hours.monday.active", "Informational Monday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.monday.breaks", "Informational Monday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
+        Text("active_hours.tuesday.active", "Informational Tuesday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.tuesday.breaks", "Informational Tuesday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
+        Text("active_hours.wednesday.active", "Informational Wednesday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.wednesday.breaks", "Informational Wednesday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
+        Text("active_hours.thursday.active", "Informational Thursday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.thursday.breaks", "Informational Thursday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
+        Text("active_hours.friday.active", "Informational Friday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.friday.breaks", "Informational Friday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
+        Text("active_hours.saturday.active", "Informational Saturday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.saturday.breaks", "Informational Saturday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
+        Text("active_hours.sunday.active", "Informational Sunday active period in HH:mm-HH:mm format.", "time_range"),
+        Text("active_hours.sunday.breaks", "Informational Sunday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
         Boolean("startup.enabled", "Start TrackMeUp after Windows sign-in."),
         Boolean("tracking.start_on_launch", "Start tracking on the next application launch.", requiresRestart: true),
         Integer("retention.screenshots_days", "Days to retain TrackMeUp-owned screenshot artifacts."),
@@ -65,7 +82,13 @@ public static class SettingsCatalog
     /// <summary>Gets a safe setting value by its public key without using reflection.</summary>
     public static bool TryGetValue(AppSettings settings, string key, out object? value)
     {
-        value = key.Trim().ToLowerInvariant() switch
+        var normalizedKey = key.Trim().ToLowerInvariant();
+        if (TryGetActiveHoursValue(settings, normalizedKey, out value))
+        {
+            return true;
+        }
+
+        value = normalizedKey switch
         {
             "screenshots.enabled" => settings.ScreenshotsEnabled,
             "screenshots.keep" => settings.KeepScreenshots,
@@ -80,6 +103,8 @@ public static class SettingsCatalog
             "ai.key_variable" => settings.AiApiKeyName,
             "ai.output_detail" => settings.AiOutputDetail,
             "ai.reasoning_effort" => settings.AiReasoningEffort,
+            "ai.custom_prompt" => settings.AiCustomPrompt,
+            "ai.include_device_location" => settings.IncludeDeviceLocation,
             "ai.daily_limit" => settings.OpenAiDailyLimit,
             "ai.automatic_interval_minutes" => settings.AutomaticAnalysisIntervalMinutes,
             "ai.estimated_cost_per_analysis_usd" => settings.EstimatedCostPerAnalysisUsd,
@@ -152,6 +177,23 @@ public static class SettingsCatalog
             }
 
             var value = rawValue?.Trim();
+            if (TryParseActiveHoursKey(key, out var day, out var isBreaks))
+            {
+                var valid = isBreaks
+                    ? ActiveHoursSchedule.TryNormalizeBreakPeriods(value, out var normalizedPeriods)
+                    : ActiveHoursSchedule.TryNormalizeActivePeriod(value, out normalizedPeriods);
+                if (valid)
+                {
+                    current = current with { ActiveHours = ActiveHoursSchedule.Update(current.ActiveHours, day, isBreaks, normalizedPeriods) };
+                }
+                else
+                {
+                    issues.Add(Invalid(rawKey));
+                }
+
+                continue;
+            }
+
             switch (key)
             {
                 case "screenshots.enabled" when TryBoolean(value, out var screenshots): current = current with { ScreenshotsEnabled = screenshots }; break;
@@ -166,6 +208,8 @@ public static class SettingsCatalog
                 case "ai.key_variable" when Canonical(ApiKeyVariables, value) is { } keyVariable: current = current with { AiApiKeyName = keyVariable }; break;
                 case "ai.output_detail" when Contains(OutputDetails, value): current = current with { AiOutputDetail = value!.ToLowerInvariant() }; break;
                 case "ai.reasoning_effort" when Contains(ReasoningEfforts, value): current = current with { AiReasoningEffort = value!.ToLowerInvariant() }; break;
+                case "ai.custom_prompt" when TryNormalizeCustomPrompt(rawValue, out var customPrompt): current = current with { AiCustomPrompt = customPrompt }; break;
+                case "ai.include_device_location" when TryBoolean(value, out var includeDeviceLocation): current = current with { IncludeDeviceLocation = includeDeviceLocation }; break;
                 case "ai.daily_limit" when TryInteger(value, 0, 10_000, out var dailyLimit): current = current with { OpenAiDailyLimit = dailyLimit }; break;
                 case "ai.automatic_interval_minutes" when TryInteger(value, 1, 240, out var interval): current = current with { AutomaticAnalysisIntervalMinutes = interval }; break;
                 case "ai.estimated_cost_per_analysis_usd" when TryDecimal(value, 0m, 1_000m, out var analysisCost): current = current with { EstimatedCostPerAnalysisUsd = analysisCost }; break;
@@ -188,6 +232,15 @@ public static class SettingsCatalog
                 case "plugins.browser.enabled" when TryBoolean(value, out var browser): current = current with { EnableBrowserDetailPlugin = browser }; break;
                 default: issues.Add(Invalid(rawKey)); break;
             }
+        }
+
+        if (!ActiveHoursSchedule.IsValid(current.ActiveHours))
+        {
+            issues.Add(Invalid("active_hours"));
+        }
+        else
+        {
+            current = current with { ActiveHours = ActiveHoursSchedule.Normalize(current.ActiveHours) };
         }
 
         return issues.Count == 0
@@ -218,6 +271,7 @@ public static class SettingsCatalog
             AiApiKeyName = keyVariable,
             AiOutputDetail = Canonical(OutputDetails, settings.AiOutputDetail) ?? "balanced",
             AiReasoningEffort = Canonical(ReasoningEfforts, settings.AiReasoningEffort) ?? "auto",
+            AiCustomPrompt = TryNormalizeCustomPrompt(settings.AiCustomPrompt, out var customPrompt) ? customPrompt : string.Empty,
             FlyoutPosition = Canonical(FlyoutAnchors, settings.FlyoutPosition) ?? FlyoutPositions.BottomCenter,
             UiLanguage = Canonical(Languages, settings.UiLanguage) ?? "en",
             Theme = Canonical(Themes, settings.Theme) ?? "system",
@@ -229,7 +283,8 @@ public static class SettingsCatalog
             AutomaticAnalysisIntervalMinutes = Math.Clamp(settings.AutomaticAnalysisIntervalMinutes, 1, 240),
             OpenAiDailyCostUsd = Math.Max(0m, settings.OpenAiDailyCostUsd),
             EstimatedCostPerAnalysisUsd = Math.Clamp(settings.EstimatedCostPerAnalysisUsd, 0m, 1_000m),
-            EstimatedCostPerScreenshotUsd = Math.Clamp(settings.EstimatedCostPerScreenshotUsd, 0m, 1_000m)
+            EstimatedCostPerScreenshotUsd = Math.Clamp(settings.EstimatedCostPerScreenshotUsd, 0m, 1_000m),
+            ActiveHours = ActiveHoursSchedule.Normalize(settings.ActiveHours)
         };
     }
 
@@ -308,6 +363,50 @@ public static class SettingsCatalog
         {
             return false;
         }
+    }
+
+    private static bool TryGetActiveHoursValue(AppSettings settings, string key, out object? value)
+    {
+        value = null;
+        if (!TryParseActiveHoursKey(key, out var day, out var isBreaks))
+        {
+            return false;
+        }
+
+        var entry = ActiveHoursSchedule.Normalize(settings.ActiveHours)
+            .Single(candidate => string.Equals(candidate.Day, day, StringComparison.Ordinal));
+        value = isBreaks ? entry.BreakPeriods : entry.ActivePeriod;
+        return true;
+    }
+
+    private static bool TryParseActiveHoursKey(string key, out string day, out bool isBreaks)
+    {
+        foreach (var candidate in ActiveHoursSchedule.Days)
+        {
+            if (key.Equals($"active_hours.{candidate}.active", StringComparison.OrdinalIgnoreCase))
+            {
+                day = candidate;
+                isBreaks = false;
+                return true;
+            }
+
+            if (key.Equals($"active_hours.{candidate}.breaks", StringComparison.OrdinalIgnoreCase))
+            {
+                day = candidate;
+                isBreaks = true;
+                return true;
+            }
+        }
+
+        day = string.Empty;
+        isBreaks = false;
+        return false;
+    }
+
+    private static bool TryNormalizeCustomPrompt(string? value, out string normalized)
+    {
+        normalized = value?.Trim() ?? string.Empty;
+        return normalized.Length <= 6_000 && normalized.IndexOf('\0') < 0;
     }
 
     private static bool IsAllowedEndpoint(string? value)

@@ -249,8 +249,81 @@
                             <ComboBoxItem Content="Molto alto" Tag="xhigh" />
                             <ComboBoxItem Content="Massimo" Tag="max" />
                         </ComboBox>
+                        <TextBox
+                            x:Name="AiCustomPromptBox"
+                            AcceptsReturn="True"
+                            Header="Additional AI instruction (optional)"
+                            AutomationProperties.HelpText="Appended after the built-in prompt. Leave empty to use only the TrackMeUp prompt."
+                            AutomationProperties.Name="Additional AI instruction"
+                            MinHeight="80"
+                            PlaceholderText="Example: Prioritize concise, factual descriptions."
+                            TextWrapping="Wrap" />
+                        <ToggleSwitch
+                            x:Name="IncludeDeviceLocationSwitch"
+                            Header="Include device location in AI snapshots"
+                            AutomationProperties.HelpText="Uses only Windows Location when access is available. Time zone and languages are included separately; no IP lookup is used."
+                            OffContent="Off"
+                            OnContent="Windows Location" />
                         <ToggleSwitch x:Name="AutomaticAnalysisSwitch" Header="Analisi automatica" OffContent="Solo su richiesta" OnContent="Ogni 15 minuti" />
                         <Button Click="SetApiKeyButton_Click" Content="Salva chiave API" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="12" Background="{ThemeResource FlyoutSoftBrush}" CornerRadius="14">
+                    <StackPanel Spacing="7">
+                        <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="ACTIVE HOURS (INFORMATIONAL)" />
+                        <TextBlock FontSize="10" Foreground="{ThemeResource FlyoutMutedBrush}" Text="These periods are added to AI snapshots as context only; they never start, stop, or alter tracking. Use HH:mm-HH:mm and separate multiple breaks with commas." TextWrapping="Wrap" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="92" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource FlyoutMutedBrush}" Text="Active hours" />
+                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource FlyoutMutedBrush}" Text="Breaks" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Monday" />
+                            <TextBox x:Name="MondayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Monday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="MondayBreaksBox" Grid.Column="2" AutomationProperties.Name="Monday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Tuesday" />
+                            <TextBox x:Name="TuesdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Tuesday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="TuesdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Tuesday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Wednesday" />
+                            <TextBox x:Name="WednesdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Wednesday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="WednesdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Wednesday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Thursday" />
+                            <TextBox x:Name="ThursdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Thursday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="ThursdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Thursday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Friday" />
+                            <TextBox x:Name="FridayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Friday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="FridayBreaksBox" Grid.Column="2" AutomationProperties.Name="Friday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Saturday" />
+                            <TextBox x:Name="SaturdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Saturday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="SaturdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Saturday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Text="Sunday" />
+                            <TextBox x:Name="SundayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Sunday active hours" PlaceholderText="09:00-18:00" />
+                            <TextBox x:Name="SundayBreaksBox" Grid.Column="2" AutomationProperties.Name="Sunday breaks" PlaceholderText="13:00-14:00" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

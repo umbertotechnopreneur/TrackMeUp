@@ -28,8 +28,14 @@ public sealed class OpenAiDecoder : IAIDecoder
     /// <param name="screenshotPaths">Optional screenshot paths.</param>
     /// <param name="settings">Current settings.</param>
     /// <param name="apiKey">Resolved API key.</param>
-    /// <returns>Model output text.</returns>
-    public async Task<string> DecodeAsync(string prompt, IReadOnlyList<string> screenshotPaths, AppSettings settings, string apiKey)
+    /// <param name="correlationId">Business identifier echoed to OpenAI through the documented client-request header.</param>
+    /// <returns>Model output plus nullable provider telemetry.</returns>
+    public async Task<AiProviderResult> DecodeAsync(
+        string prompt,
+        IReadOnlyList<string> screenshotPaths,
+        AppSettings settings,
+        string apiKey,
+        string correlationId)
     {
         var imageDataUrls = new List<string>();
         foreach (var screenshot in screenshotPaths)
@@ -42,16 +48,72 @@ public sealed class OpenAiDecoder : IAIDecoder
 
         // Keep auth/configuration in request headers so body remains deterministic for snapshots.
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        request.Headers.TryAddWithoutValidation("X-Client-Request-Id", correlationId);
         request.Content = new StringContent(SerializePayload(prompt, imageDataUrls, settings), Encoding.UTF8, "application/json");
 
-        using var response = await Http.SendAsync(request);
-        var responseBody = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
+        var timer = AiProviderTelemetry.StartTimer();
+        try
         {
-            throw new InvalidOperationException(ReadApiError(responseBody) ?? $"Provider OpenAI ha restituito {(int)response.StatusCode}.");
-        }
+            using var response = await Http.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+            timer.Stop();
+            var providerRequestId = AiProviderTelemetry.Header(response, "x-request-id");
+            var providerProcessingMilliseconds = AiProviderTelemetry.HeaderMilliseconds(response, "openai-processing-ms");
+            var providerResponseId = ReadResponseId(responseBody);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new AiProviderRequestException(
+                    ReadApiError(responseBody) ?? $"OpenAI returned {(int)response.StatusCode}.",
+                    new AiProviderFailure(
+                        AiProviderTelemetry.FailureCode(response.StatusCode),
+                        (int)response.StatusCode,
+                        timer.ElapsedMilliseconds,
+                        providerResponseId,
+                        providerRequestId,
+                        providerProcessingMilliseconds));
+            }
 
-        return ReadOutputText(responseBody) ?? "Il modello non ha restituito testo.";
+            using var document = JsonDocument.Parse(responseBody);
+            var root = document.RootElement;
+            return new AiProviderResult(
+                ReadOutputText(root) ?? "The model did not return text.",
+                ReadUsage(root),
+                AiProviderTelemetry.ReadString(root, "id"),
+                providerRequestId,
+                AiProviderTelemetry.ReadString(root, "model"),
+                AiProviderTelemetry.ReadString(root, "status"),
+                (int)response.StatusCode,
+                timer.ElapsedMilliseconds,
+                providerProcessingMilliseconds);
+        }
+        catch (AiProviderRequestException)
+        {
+            throw;
+        }
+        catch (TaskCanceledException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "OpenAI request timed out.",
+                new AiProviderFailure("timeout", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "OpenAI request could not reach the provider.",
+                new AiProviderFailure("network", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+        catch (JsonException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "OpenAI returned an invalid response.",
+                new AiProviderFailure("invalid_response", null, timer.ElapsedMilliseconds),
+                exception);
+        }
     }
 
     internal static string SerializePayload(string prompt, IReadOnlyList<string> imageDataUrls, AppSettings settings)
@@ -109,10 +171,31 @@ public sealed class OpenAiDecoder : IAIDecoder
     /// <summary>
     /// Parses the textual output from OpenAI structured responses.
     /// </summary>
-    private static string? ReadOutputText(string json)
+    internal static AiUsageMetrics ReadUsage(JsonElement root)
     {
-        using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("output", out var output))
+        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+        {
+            return new AiUsageMetrics();
+        }
+
+        var inputDetails = usage.TryGetProperty("input_tokens_details", out var input) && input.ValueKind == JsonValueKind.Object
+            ? input
+            : default;
+        var outputDetails = usage.TryGetProperty("output_tokens_details", out var output) && output.ValueKind == JsonValueKind.Object
+            ? output
+            : default;
+        return new AiUsageMetrics(
+            AiProviderTelemetry.ReadLong(usage, "input_tokens"),
+            AiProviderTelemetry.ReadLong(usage, "output_tokens"),
+            AiProviderTelemetry.ReadLong(usage, "total_tokens"),
+            inputDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(inputDetails, "cached_tokens") : null,
+            inputDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(inputDetails, "cache_write_tokens") : null,
+            ReasoningTokens: outputDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(outputDetails, "reasoning_tokens") : null);
+    }
+
+    private static string? ReadOutputText(JsonElement root)
+    {
+        if (!root.TryGetProperty("output", out var output))
         {
             return null;
         }
@@ -139,6 +222,19 @@ public sealed class OpenAiDecoder : IAIDecoder
         }
 
         return null;
+    }
+
+    private static string? ReadResponseId(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return AiProviderTelemetry.ReadString(document.RootElement, "id");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

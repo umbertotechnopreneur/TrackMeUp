@@ -17,6 +17,8 @@
                     <SolidColorBrush x:Key="FlyoutSoftBrush" Color="#33708D8B" />
                     <SolidColorBrush x:Key="FlyoutTextBrush" Color="#FF173B3F" />
                     <SolidColorBrush x:Key="FlyoutMutedBrush" Color="#FF56706F" />
+                    <SolidColorBrush x:Key="ReportSurfaceBrush" Color="#FFF5F7FA" />
+                    <SolidColorBrush x:Key="ReportErrorBrush" Color="#FFB42318" />
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
@@ -25,6 +27,8 @@
                     <SolidColorBrush x:Key="FlyoutSoftBrush" Color="#335E7980" />
                     <SolidColorBrush x:Key="FlyoutTextBrush" Color="#FFF4F5F1" />
                     <SolidColorBrush x:Key="FlyoutMutedBrush" Color="#FFB7C8C6" />
+                    <SolidColorBrush x:Key="ReportSurfaceBrush" Color="#FF14181D" />
+                    <SolidColorBrush x:Key="ReportErrorBrush" Color="#FFFFB4AB" />
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>

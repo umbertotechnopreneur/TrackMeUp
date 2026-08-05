@@ -55,6 +55,7 @@
   </Applications>
 
   <Capabilities>
+    <DeviceCapability Name="location" />
     <rescap:Capability Name="runFullTrust" />
     <systemai:Capability Name="systemAIModels"/>
   </Capabilities>

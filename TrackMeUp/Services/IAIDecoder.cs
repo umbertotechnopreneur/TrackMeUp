@@ -14,7 +14,18 @@ public interface IAIDecoder
     string Provider { get; }
 
     /// <summary>
-    /// Runs provider request and returns a short text output.
+    /// Runs a provider request and returns text plus allowlisted usage and transport metadata.
     /// </summary>
-    Task<string> DecodeAsync(string prompt, IReadOnlyList<string> screenshotPaths, AppSettings settings, string apiKey);
+    /// <param name="prompt">Fully rendered prompt to send.</param>
+    /// <param name="screenshotPaths">Local image paths selected for the request.</param>
+    /// <param name="settings">Current normalized AI settings.</param>
+    /// <param name="apiKey">Resolved secret, used only for the outgoing request.</param>
+    /// <param name="correlationId">Business correlation identifier for this snapshot.</param>
+    /// <returns>Provider text and nullable usage metadata.</returns>
+    Task<AiProviderResult> DecodeAsync(
+        string prompt,
+        IReadOnlyList<string> screenshotPaths,
+        AppSettings settings,
+        string apiKey,
+        string correlationId);
 }

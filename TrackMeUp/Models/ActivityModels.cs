@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
@@ -37,6 +38,15 @@ public static class TaskbarWidgetPositions
     /// <summary>Places the control before the notification area.</summary>
     public const string Right = "right";
 }
+
+/// <summary>Contains the informational working-time configuration for one day of the week.</summary>
+/// <param name="Day">Lowercase English weekday identifier, for example <c>monday</c>.</param>
+/// <param name="ActivePeriod">Optional active period in <c>HH:mm-HH:mm</c> format.</param>
+/// <param name="BreakPeriods">Optional comma-separated breaks, each in <c>HH:mm-HH:mm</c> format.</param>
+public sealed record ActiveHoursDay(
+    string Day,
+    string ActivePeriod = "",
+    string BreakPeriods = "");
 
 public sealed record AppSettings(
     string InstallationId = "",
@@ -77,7 +87,10 @@ public sealed record AppSettings(
     string LastDailyDigestDate = "",
     bool FocusSessionSummaryEnabled = true,
     bool StartTrackingOnLaunch = false,
-    string TaskbarWidgetPosition = TaskbarWidgetPositions.Left);
+    string TaskbarWidgetPosition = TaskbarWidgetPositions.Left,
+    string AiCustomPrompt = "",
+    IReadOnlyList<ActiveHoursDay>? ActiveHours = null,
+    bool IncludeDeviceLocation = false);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,
@@ -86,7 +99,10 @@ public sealed record AiAnalysis(
     string Summary,
     string InstallationId,
     string? ScreenshotPaths,
-    SystemSnapshot? Snapshot = null);
+    SystemSnapshot? Snapshot = null,
+    string? CorrelationId = null,
+    string? Origin = null,
+    string? InformationalSchedule = null);
 
 public sealed record ApplicationSummary(string Application, long ActiveSeconds);
 
@@ -158,7 +174,9 @@ public sealed record SystemSnapshot(
     long MemoryTotalMb,
     int? GpuMemoryUsedMb,
     NetworkSnapshotState Network,
-    IReadOnlyList<DiskSnapshotState> Disks);
+    IReadOnlyList<DiskSnapshotState> Disks,
+    DeviceContextSnapshot? DeviceContext = null,
+    string? InformationalSchedule = null);
 
 public sealed record AnalysisContextSnapshot(
     string Application,
@@ -166,4 +184,5 @@ public sealed record AnalysisContextSnapshot(
     string WindowTitle,
     string State,
     IReadOnlyDictionary<string, string>? Attributes,
-    SystemSnapshot? Snapshot = null);
+    SystemSnapshot? Snapshot = null,
+    string? InformationalSchedule = null);

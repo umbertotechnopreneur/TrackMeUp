@@ -20,10 +20,14 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly ServiceProvider _services;
     private readonly ILogger<App> _logger;
     private MainWindow? _window;
+    private ReportsWindow? _reportsWindow;
     private TaskbarWidgetWindow? _taskbarWidgetWindow;
     private TaskbarWidgetHost? _taskbarWidgetHost;
     private RuntimeHost? _runtimeHost;
     private ITrackMeUpApplication? _runtimeApplication;
+    private ITrackMeUpApplication? _applicationFacade;
+    private bool _reportsOnly;
+    private int _shutdownStarted;
 
     /// <summary>Initializes the WinUI application object and its logging composition root.</summary>
     public App()
@@ -35,7 +39,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _logger.LogInformation("TrackMeUp process started. Architecture={Architecture}", RuntimeInformation.ProcessArchitecture);
     }
 
-    /// <summary>Routes launch modes to the CLI, background runtime, or WinUI player.</summary>
+    /// <summary>Routes launch modes to the CLI, background runtime, reports, or WinUI player.</summary>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
@@ -56,6 +60,9 @@ public partial class App : Microsoft.UI.Xaml.Application
                 case LaunchMode.Background:
                     StartBackgroundRuntime(options);
                     return;
+                case LaunchMode.Reports:
+                    StartReports(options);
+                    return;
                 default:
                     StartUi(options);
                     return;
@@ -70,10 +77,12 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void StartUi(LaunchOptions options)
     {
+        _reportsOnly = false;
         var application = StartOrConnectRuntime();
         _window = new MainWindow(application, options);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
-        _window.Closed += (_, _) => DisposeTaskbarWidget();
+        _window.ReportsRequested += MainWindow_ReportsRequested;
+        _window.Closed += MainWindow_Closed;
         _taskbarWidgetWindow = new TaskbarWidgetWindow(application);
         _taskbarWidgetWindow.FlyoutRequested += (_, _) => _window?.ShowFlyout();
         _window.Activate();
@@ -101,6 +110,64 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
+    private void StartReports(LaunchOptions options)
+    {
+        _reportsOnly = true;
+        ShowReportsWindow(StartOrConnectRuntime(), options.Theme);
+    }
+
+    private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
+
+    private void ShowReportsWindow(ITrackMeUpApplication application, string? launchTheme)
+    {
+        if (_reportsWindow is not null)
+        {
+            _reportsWindow.Activate();
+            return;
+        }
+
+        _reportsWindow = new ReportsWindow(application, launchTheme);
+        _reportsWindow.Closed += ReportsWindow_Closed;
+        _reportsWindow.Activate();
+    }
+
+    private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_reportsWindow is not null)
+        {
+            _reportsWindow.Closed -= ReportsWindow_Closed;
+            _reportsWindow = null;
+        }
+
+        if (_reportsOnly && _window is null)
+        {
+            await ShutdownRuntimeAsync();
+            Exit();
+        }
+    }
+
+    private async void MainWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_window is not null)
+        {
+            _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
+            _window.ReportsRequested -= MainWindow_ReportsRequested;
+            _window.Closed -= MainWindow_Closed;
+            _window = null;
+        }
+
+        if (_reportsWindow is not null)
+        {
+            _reportsWindow.Closed -= ReportsWindow_Closed;
+            _reportsWindow.Close();
+            _reportsWindow = null;
+        }
+
+        DisposeTaskbarWidget();
+        await ShutdownRuntimeAsync();
+        Exit();
+    }
+
     private void ApplyTaskbarWidgetSettings(AppSettings settings)
     {
         _taskbarWidgetWindow?.ApplySettings(settings);
@@ -126,6 +193,11 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private ITrackMeUpApplication StartOrConnectRuntime()
     {
+        if (_applicationFacade is not null)
+        {
+            return _applicationFacade;
+        }
+
         var loggerFactory = _services.GetRequiredService<ILoggerFactory>();
         var observability = _services.GetRequiredService<ObservabilityHealth>();
         var localApplication = TrackMeUpApplicationFactory.Create(loggerFactory, observability);
@@ -136,14 +208,39 @@ public partial class App : Microsoft.UI.Xaml.Application
             _logger.LogInformation("Runtime ownership acquired for this installation.");
             _runtimeHost = host;
             _runtimeApplication = localApplication;
-            return localApplication;
+            _applicationFacade = localApplication;
+            return _applicationFacade;
         }
 
         // A separate process owns hooks and persistence; this frontend uses the same facade through its pipe.
         _ = localApplication.DisposeAsync();
         _ = host.DisposeAsync();
         _logger.LogInformation("Runtime ownership is held by another process; connecting through the named pipe.");
-        return new RuntimeClient(settings.InstallationId, TimeSpan.FromSeconds(5), loggerFactory.CreateLogger<RuntimeClient>());
+        _applicationFacade = new RuntimeClient(settings.InstallationId, TimeSpan.FromSeconds(5), loggerFactory.CreateLogger<RuntimeClient>());
+        return _applicationFacade;
+    }
+
+    private async Task ShutdownRuntimeAsync()
+    {
+        if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0)
+        {
+            return;
+        }
+
+        // Stop accepting IPC before disposing the one facade that owns tracking and persistence.
+        if (_runtimeHost is not null)
+        {
+            await _runtimeHost.DisposeAsync();
+            _runtimeHost = null;
+        }
+
+        if (_applicationFacade is not null)
+        {
+            await _applicationFacade.DisposeAsync();
+            _applicationFacade = null;
+        }
+
+        _runtimeApplication = null;
     }
 
     private async Task RunCliAndExitAsync(string[] arguments)

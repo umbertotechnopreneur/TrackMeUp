@@ -51,23 +51,38 @@ public sealed class ActivityMonitorService : IDisposable
     /// </summary>
     private void Sample()
     {
+        ActivitySample sample;
         try
         {
-            // Combine window metadata, provider-specific context, and input counters into one durable sample.
+            // Capture failures from protected/transient OS state skip only this observation.
             var window = ReadForegroundWindow();
             var context = _providers.Resolve(window);
             var counts = _inputHooks.TakeCounts();
             var state = GetIdleSeconds() >= IdleThresholdSeconds ? "idle" : "active";
-            var sample = new ActivitySample(DateTimeOffset.Now, SampleSeconds, state, window.ProcessName,
+            sample = new ActivitySample(DateTimeOffset.Now, SampleSeconds, state, window.ProcessName,
                 context.Application, context.Context, window.WindowTitle, _installationId, counts.Keys, counts.Clicks, context.Attributes);
+        }
+        catch
+        {
+            return;
+        }
 
-            _store.AppendSample(sample);
-            CurrentSample = sample;
+        PersistSample(sample);
+    }
+
+    /// <summary>Persists a captured sample; storage failures propagate because tracking has no secondary store.</summary>
+    internal void PersistSample(ActivitySample sample)
+    {
+        ArgumentNullException.ThrowIfNull(sample);
+        _store.AppendSample(sample);
+        CurrentSample = sample;
+        try
+        {
             SampleRecorded?.Invoke(sample);
         }
         catch
         {
-            // Sampling is best-effort. A protected process must not stop monitoring.
+            // A presentation subscriber cannot invalidate an already durable activity sample.
         }
     }
 
@@ -88,7 +103,7 @@ public sealed class ActivityMonitorService : IDisposable
         }
         catch
         {
-            return new ForegroundWindowInfo("Sistema", title.ToString());
+            return new ForegroundWindowInfo("System", title.ToString());
         }
     }
 

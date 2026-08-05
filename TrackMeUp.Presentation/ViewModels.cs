@@ -150,13 +150,59 @@ public sealed class PrivacyViewModel
     public Task<OperationResult<IReadOnlyList<PrivacyRule>>> LoadAsync(CancellationToken cancellationToken) => _application.GetPrivacyRulesAsync(cancellationToken);
 }
 
-/// <summary>Provides report-generation actions and progress ownership to a presentation view.</summary>
-public sealed class ReportViewModel
+/// <summary>Provides typed report queries and progress ownership to a presentation view.</summary>
+public sealed class ReportViewModel : ViewModelBase
 {
     private readonly ITrackMeUpApplication _application;
+    private ReportQuery? _query;
+    private ReportSnapshot? _snapshot;
+    private bool _isLoading;
+    private string? _errorCode;
 
     /// <summary>Initializes the report view model.</summary>
     public ReportViewModel(ITrackMeUpApplication application) => _application = application;
+
+    /// <summary>Gets the most recently requested report query.</summary>
+    public ReportQuery? Query { get => _query; private set => Set(ref _query, value); }
+
+    /// <summary>Gets the most recent complete report snapshot.</summary>
+    public ReportSnapshot? Snapshot { get => _snapshot; private set => Set(ref _snapshot, value); }
+
+    /// <summary>Gets whether a report query is in progress.</summary>
+    public bool IsLoading { get => _isLoading; private set => Set(ref _isLoading, value); }
+
+    /// <summary>Gets the stable error code returned by the latest failed query.</summary>
+    public string? ErrorCode { get => _errorCode; private set => Set(ref _errorCode, value); }
+
+    /// <summary>Loads one aggregate report snapshot through the shared application facade.</summary>
+    public async Task<OperationResult<ReportSnapshot>> LoadAsync(ReportQuery query, CancellationToken cancellationToken)
+    {
+        Query = query;
+        ErrorCode = null;
+        IsLoading = true;
+        try
+        {
+            var result = await _application.GetReportAsync(query, cancellationToken);
+            if (!result.Succeeded)
+            {
+                ErrorCode = result.Code;
+                return result;
+            }
+
+            if (result.Value is null)
+            {
+                ErrorCode = "report.snapshot.missing";
+                return OperationResult<ReportSnapshot>.Failure("report.snapshot.missing", "ReportSnapshotMissing");
+            }
+
+            Snapshot = result.Value;
+            return result;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
 
     /// <summary>Generates today's report.</summary>
     public Task<OperationResult<string>> GenerateTodayAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => _application.GenerateTodayReportAsync(outputDirectory, open, cancellationToken);

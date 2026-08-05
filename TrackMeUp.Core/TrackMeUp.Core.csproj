@@ -17,11 +17,12 @@
 
   <ItemGroup>
     <Content Include="..\prompts\*.prompt.md" Link="prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <EmbeddedResource Include="..\prompts\*.prompt.md" Link="prompts\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
     <PackageReference Include="SkiaSharp" Version="4.151.0" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.151.0" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.10" />

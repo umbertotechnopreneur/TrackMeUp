@@ -202,6 +202,7 @@ public sealed class CliRouterTests
         public Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken) => Unsupported<DashboardState>();
         public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => Unsupported<LastSessionState?>();
         public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => Unsupported<DailySummary>();
+        public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();
         public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => Unsupported<FocusSessionState>();
         public Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken) => Unsupported<FocusSessionState>();
         public Task<OperationResult<FocusSessionSummary?>> StopFocusSessionAsync(bool summarize, CancellationToken cancellationToken) => Unsupported<FocusSessionSummary?>();

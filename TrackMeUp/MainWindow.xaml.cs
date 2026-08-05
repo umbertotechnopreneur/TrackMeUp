@@ -40,6 +40,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when a fully persisted settings snapshot has been applied to the player surface.</summary>
     public event Action<AppSettings>? SettingsApplied;
 
+    /// <summary>Occurs when the user requests the dedicated reports surface.</summary>
+    public event EventHandler? ReportsRequested;
+
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
     public MainWindow(ITrackMeUpApplication application, LaunchOptions options)
     {
@@ -59,7 +62,7 @@ public sealed partial class MainWindow : Window
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
         _refreshTimer.Start();
         _ = InitializeAsync(options);
-        Closed += async (_, _) =>
+        Closed += (_, _) =>
         {
             if (_xamlRoot is not null)
             {
@@ -67,7 +70,6 @@ public sealed partial class MainWindow : Window
             }
 
             _refreshTimer.Stop();
-            await _application.DisposeAsync();
         };
     }
 
@@ -126,6 +128,9 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Shows the options view.</summary>
     private void OptionsMenuItem_Click(object sender, RoutedEventArgs e) => ShowPanel(OptionsPanel, OptionsHeight);
+
+    /// <summary>Forwards report-window activation to the application composition root.</summary>
+    private void ReportsMenuItem_Click(object sender, RoutedEventArgs e) => ReportsRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Shows the operational and diagnostic facade surface.</summary>
     private void OperationsMenuItem_Click(object sender, RoutedEventArgs e) => ShowPanel(OperationsPanel, OperationsHeight);

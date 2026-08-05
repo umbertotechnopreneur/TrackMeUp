@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
 
@@ -37,15 +38,39 @@ public sealed class HtmlReportService
 
     private string ExportForDate(DateOnly date, bool isDigest)
     {
-        var summary = _store.GetSummary(date);
-        // Only basic app-level totals are included in MVP; richer sections are added in the report roadmap.
-        var rows = string.Join(Environment.NewLine, summary.Applications.Select(x => $"<tr><td>{WebUtility.HtmlEncode(x.Application)}</td><td>{WebUtility.HtmlEncode(_utilities.FormatDuration(x.ActiveSeconds))}</td></tr>"));
+        var result = new ReportAggregationService(_store).Build(
+            new ReportQuery(date, date, TimeZoneInfo.Local.Id),
+            CancellationToken.None,
+            applicationLimit: int.MaxValue);
+        if (!result.Succeeded || result.Value is null)
+        {
+            throw new InvalidOperationException("The local daily report could not be aggregated.");
+        }
+
+        var report = result.Value;
+        var rows = string.Join(Environment.NewLine, report.Applications.Select(x => $"<tr><td>{WebUtility.HtmlEncode(x.Application)}</td><td>{WebUtility.HtmlEncode(_utilities.FormatDuration(x.ActiveSeconds))}</td></tr>"));
+        var aiUsage = RenderAiUsage(report.AiUsage);
         var dateTime = date.ToDateTime(TimeOnly.MinValue);
         var title = isDigest ? "Daily digest" : "Daily report";
-        var html = $"<!doctype html><html lang=\"it\"><head><meta charset=\"utf-8\"><title>TrackMeUp {title} {date:yyyy-MM-dd}</title><style>body{{font:16px Segoe UI,sans-serif;background:#f8f3ea;color:#173b3f;max-width:720px;margin:40px auto}}section,table{{background:white;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 8px 24px #173b3f12}}table{{width:100%;border-collapse:collapse}}td{{padding:10px;border-bottom:1px solid #eee}}h1{{letter-spacing:.08em}}</style></head><body><h1>TRACK ME UP</h1><p>{dateTime:dddd d MMMM yyyy}</p><section>Tempo attivo: <strong>{_utilities.FormatDuration(summary.ActiveSeconds)}</strong><br>Tempo inattivo: <strong>{_utilities.FormatDuration(summary.IdleSeconds)}</strong><br>Tasti: <strong>{summary.KeyPresses:N0}</strong> · Click: <strong>{summary.MouseClicks:N0}</strong></section><table><tr><th>Applicazione</th><th>Tempo attivo</th></tr>{rows}</table></body></html>";
+        var html = $"<!doctype html><html lang=\"it\"><head><meta charset=\"utf-8\"><title>TrackMeUp {title} {date:yyyy-MM-dd}</title><style>body{{font:16px Segoe UI,sans-serif;background:#f8f3ea;color:#173b3f;max-width:720px;margin:40px auto}}section,table{{background:white;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 8px 24px #173b3f12}}table{{width:100%;border-collapse:collapse}}td,th{{padding:10px;border-bottom:1px solid #eee;text-align:left}}h1{{letter-spacing:.08em}}h2{{margin-top:0}}</style></head><body><h1>TRACK ME UP</h1><p>{dateTime:dddd d MMMM yyyy}</p><section>Tempo attivo: <strong>{_utilities.FormatDuration(report.Totals.ActiveSeconds)}</strong><br>Tempo inattivo: <strong>{_utilities.FormatDuration(report.Totals.IdleSeconds)}</strong><br>Tasti: <strong>{report.Totals.KeyPresses:N0}</strong> · Click: <strong>{report.Totals.MouseClicks:N0}</strong></section>{aiUsage}<table><tr><th>Applicazione</th><th>Tempo attivo</th></tr>{rows}</table></body></html>";
         var name = isDigest ? $"trackmeup-digest-{date:yyyy-MM-dd}.html" : $"trackmeup-{date:yyyy-MM-dd}.html";
         var path = Path.Combine(_utilities.ReportsDirectory, name);
         File.WriteAllText(path, html, Encoding.UTF8);
         return path;
+    }
+
+    private static string RenderAiUsage(AiUsageSummary usage)
+    {
+        if (usage.RequestCount == 0)
+        {
+            return "<section><h2>Utilizzo AI</h2><p>Nessuna richiesta AI nel periodo.</p></section>";
+        }
+
+        var cost = usage.ActualCostUsd.HasValue
+            ? $"${usage.ActualCostUsd.Value:0.######} ({usage.ActualCostRequestCount} richieste con costo restituito dal provider)"
+            : "non restituito dal provider";
+        var providers = string.Join(Environment.NewLine, usage.ByProvider.Select(provider =>
+            $"<tr><td>{WebUtility.HtmlEncode(provider.Label)}</td><td>{provider.RequestCount:N0}</td><td>{provider.TotalTokens:N0}</td><td>{(provider.ActualCostUsd.HasValue ? "$" + provider.ActualCostUsd.Value.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) : "n/d")}</td></tr>"));
+        return $"<section><h2>Utilizzo AI</h2>Richieste: <strong>{usage.RequestCount:N0}</strong> ({usage.SuccessfulRequestCount:N0} riuscite, {usage.FailedRequestCount:N0} non riuscite)<br>Token: <strong>{usage.TotalTokens:N0}</strong> (input {usage.InputTokens:N0}, output {usage.OutputTokens:N0})<br>Costo effettivo: <strong>{cost}</strong><table><tr><th>Provider</th><th>Richieste</th><th>Token</th><th>Costo effettivo</th></tr>{providers}</table></section>";
     }
 }

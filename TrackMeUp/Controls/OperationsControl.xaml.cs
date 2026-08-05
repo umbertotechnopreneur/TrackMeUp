@@ -91,7 +91,7 @@ public sealed partial class OperationsControl : UserControl
 
     private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
     {
-        var request = new AnalyzeCurrentActivityRequest(AllowAiCaptureBox.IsChecked == true);
+        var request = new AnalyzeCurrentActivityRequest(AllowAiCaptureBox.IsChecked == true, "winui.operations");
         var result = await ExecuteAsync((application, token) => application.AnalyzeCurrentActivityAsync(request, token));
         if (result is { Succeeded: true, Value: { } analysis })
         {

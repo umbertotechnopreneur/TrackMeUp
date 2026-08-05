@@ -5,6 +5,8 @@ public enum LaunchMode
 {
     /// <summary>Starts the standard WinUI player.</summary>
     Ui,
+    /// <summary>Starts the dedicated WinUI reports surface.</summary>
+    Reports,
     /// <summary>Starts the Spectre.Console CLI frontend.</summary>
     Cli,
     /// <summary>Starts the invisible local runtime host.</summary>
@@ -31,6 +33,7 @@ public sealed record LaunchOptions(
     public static LaunchOptions Parse(IReadOnlyList<string> arguments)
     {
         var mode = LaunchMode.Ui;
+        var cliRequested = arguments.Any(argument => argument is "-cli" or "--cli");
         var startTracking = false;
         var paused = false;
         string? language = null;
@@ -46,6 +49,7 @@ public sealed record LaunchOptions(
             {
                 case "-cli":
                 case "--cli": mode = LaunchMode.Cli; break;
+                case "reports" when !cliRequested && mode == LaunchMode.Ui: mode = LaunchMode.Reports; break;
                 case "--background": mode = LaunchMode.Background; break;
                 case "--ui": mode = LaunchMode.Ui; break;
                 case "-h":
@@ -60,6 +64,12 @@ public sealed record LaunchOptions(
                 case "--position" when index + 1 < arguments.Count: position = arguments[++index]; break;
                 default: remaining.Add(value); break;
             }
+        }
+
+        // The explicit CLI frontend always wins, regardless of argument order; its command tokens remain untouched.
+        if (cliRequested)
+        {
+            mode = LaunchMode.Cli;
         }
 
         return new LaunchOptions(mode, startTracking, paused, language, theme, position, safeMode, noSplash, remaining);

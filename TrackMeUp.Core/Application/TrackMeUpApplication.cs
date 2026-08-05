@@ -19,8 +19,9 @@ public static class TrackMeUpApplicationFactory
         var tracking = new TrackingDomainService(store, utilities);
         var capture = new ScreenCaptureService(utilities.GetAppVersion());
         var snapshot = new SystemSnapshotService();
-        var analysis = new OpenAiAnalysisService(store, capture, snapshot);
-        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), logger, observability);
+        var deviceContext = new DeviceContextService();
+        var analysis = new OpenAiAnalysisService(store, capture, snapshot, deviceContext: deviceContext);
+        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), logger, observability, deviceContext);
     }
 }
 
@@ -32,8 +33,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly TrackingDomainService _tracking;
     private readonly ScreenCaptureService _capture;
     private readonly SystemSnapshotService _snapshot;
+    private readonly DeviceContextService _deviceContext;
     private readonly OpenAiAnalysisService _analysis;
     private readonly StartupService _startup;
+    private readonly ReportAggregationService _reports;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -51,15 +54,18 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         OpenAiAnalysisService analysis,
         StartupService startup,
         ILogger<TrackMeUpApplication>? logger = null,
-        ObservabilityHealth? observability = null)
+        ObservabilityHealth? observability = null,
+        DeviceContextService? deviceContext = null)
     {
         _store = store;
         _utilities = utilities;
         _tracking = tracking;
         _capture = capture;
         _snapshot = snapshot;
+        _deviceContext = deviceContext ?? new DeviceContextService();
         _analysis = analysis;
         _startup = startup;
+        _reports = new ReportAggregationService(store);
         _logger = logger ?? NullLogger<TrackMeUpApplication>.Instance;
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
@@ -81,7 +87,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "ai", "reports", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "ai", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -138,6 +144,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public async Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        // Large SQLite scans run off the presentation/pipe thread and observe cancellation once per row.
+        return await Task.Run(() => _reports.Build(query, cancellationToken), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var objective = request.Objective?.Trim();
@@ -179,18 +193,25 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken)
+    public async Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            return Task.FromResult(OperationResult<SystemSnapshot>.Success("system.snapshot.captured", "SystemSnapshotCaptured", _snapshot.Capture()));
+            var settings = _store.LoadSettings();
+            var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
+            var snapshot = _snapshot.Capture();
+            var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, snapshot.Timestamp);
+            return OperationResult<SystemSnapshot>.Success(
+                "system.snapshot.captured",
+                "SystemSnapshotCaptured",
+                snapshot with { DeviceContext = deviceContext, InformationalSchedule = scheduleNote });
         }
         catch (Exception exception)
         {
             // OS telemetry can be unavailable; surface a stable failure without leaking host details.
             _logger.LogWarning("System snapshot capture failed. ExceptionType={ExceptionType}", exception.GetType().Name);
-            return Task.FromResult(OperationResult<SystemSnapshot>.Failure("system.snapshot.failed", "SystemSnapshotFailed"));
+            return OperationResult<SystemSnapshot>.Failure("system.snapshot.failed", "SystemSnapshotFailed");
         }
     }
 
@@ -302,7 +323,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         try
         {
-            var result = await _analysis.AnalyzeCurrentScreenAsync(_tracking.LatestAnalysisContext, request.AllowCapture).WaitAsync(cancellationToken);
+            var origin = NormalizeAnalysisOrigin(request.Origin);
+            var result = await _analysis.AnalyzeCurrentScreenAsync(_tracking.LatestAnalysisContext, request.AllowCapture, origin).WaitAsync(cancellationToken);
             return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
         }
         catch (OperationCanceledException)
@@ -651,7 +673,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private AnalysisCostGate BuildCostGate(AppSettings settings)
     {
-        var count = _store.GetTodayAnalyses().Count;
+        var count = _store.GetTodayAnalysisCount();
         var projected = settings.OpenAiDailyCostUsd + settings.EstimatedCostPerAnalysisUsd;
         var allowed = count < settings.OpenAiDailyLimit;
         return new AnalysisCostGate(allowed, allowed ? null : "daily_limit", settings.EstimatedCostPerAnalysisUsd, count, projected);
@@ -755,7 +777,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         // The timer invokes the same policy-enforced operation used by both frontends; failures are non-fatal.
         _automaticAnalysisTimer = new Timer(async _ =>
         {
-            try { await AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(), CancellationToken.None); }
+            try { await AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(Origin: "automatic.timer"), CancellationToken.None); }
             catch { /* Background analysis is best effort and leaves tracking operational on provider failures. */ }
         }, null, interval, interval);
     }
@@ -767,4 +789,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         ConfigureAutomaticAnalysis(_store.LoadSettings());
         RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(_tracking.LoadCurrentDashboardState(), isTracking ? "tracking.started" : "tracking.paused"));
     }
+
+    private static string NormalizeAnalysisOrigin(string? origin) => origin?.Trim().ToLowerInvariant() switch
+    {
+        "winui.operations" => "winui.operations",
+        "cli.ai" => "cli.ai",
+        "automatic.timer" => "automatic.timer",
+        "runtime.ai" => "runtime.ai",
+        _ => "manual"
+    };
 }

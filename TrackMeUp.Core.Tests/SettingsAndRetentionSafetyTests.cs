@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -51,6 +52,55 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Null(result.Value);
         Assert.Equal("system", original.Theme);
         Assert.Contains(result.Issues, issue => issue.Field == "ai.endpoint");
+    }
+
+    [Fact]
+    public void Apply_PersistsCustomPromptAndInformationalWeeklyHours()
+    {
+        var result = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.custom_prompt"] = "Prioritize short summaries.",
+                ["active_hours.monday.active"] = "09:00-18:00",
+                ["active_hours.monday.breaks"] = "13:00-14:00, 16:30-16:45",
+                ["ai.include_device_location"] = "true"
+            }));
+
+        Assert.True(result.Succeeded);
+        var settings = Assert.IsType<AppSettings>(result.Value);
+        Assert.Equal("Prioritize short summaries.", settings.AiCustomPrompt);
+        Assert.True(settings.IncludeDeviceLocation);
+        var monday = Assert.Single(settings.ActiveHours!, day => day.Day == "monday");
+        Assert.Equal("09:00-18:00", monday.ActivePeriod);
+        Assert.Equal("13:00-14:00, 16:30-16:45", monday.BreakPeriods);
+    }
+
+    [Fact]
+    public void Apply_RejectsBreakOutsideItsInformationalActivePeriod()
+    {
+        var result = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["active_hours.monday.active"] = "09:00-18:00",
+                ["active_hours.monday.breaks"] = "19:00-19:30"
+            }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Issues, issue => issue.Field == "active_hours");
+    }
+
+    [Fact]
+    public void InformationalSchedule_UsesTheDeviceLocalWeekdayForUtcSnapshots()
+    {
+        var deviceTimeZone = TimeZoneInfo.CreateCustomTimeZone("test-device", TimeSpan.FromHours(7), "Test", "Test");
+        var note = ActiveHoursSchedule.BuildInformationalNote(
+            [new ActiveHoursDay("monday", "09:00-18:00", "13:00-14:00")],
+            new DateTimeOffset(2026, 1, 4, 18, 0, 0, TimeSpan.Zero),
+            deviceTimeZone);
+
+        Assert.Equal("Monday: planned active hours 09:00-18:00; planned breaks 13:00-14:00. This is informational only.", note);
     }
 
     [Fact]
@@ -118,7 +168,28 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
-    public void DataRetention_RemovesOnlyExpiredRecordsAndPreservesUnknownLines()
+    public void Settings_FailFastWhenPersistedJsonIsMalformed()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dataDirectory);
+            File.WriteAllText(Path.Combine(dataDirectory, "appsettings.json"), "{ invalid json");
+
+            Assert.Throws<JsonException>(() => new LocalStore(dataDirectory).LoadSettings());
+            Assert.True(File.Exists(Path.Combine(dataDirectory, "appsettings.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void DataRetention_RemovesOnlyExpiredActivityRowsFromSQLite()
     {
         var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
         try
@@ -126,21 +197,21 @@ public sealed class SettingsAndRetentionSafetyTests
             var store = new LocalStore(dataDirectory);
             store.AppendSample(Sample(DateTimeOffset.UtcNow.AddDays(-10), "expired"));
             store.AppendSample(Sample(DateTimeOffset.UtcNow, "current"));
-            File.AppendAllText(Path.Combine(dataDirectory, "activity.jsonl"), "{malformed-but-preserved}" + Environment.NewLine);
 
             var cutoff = DateTimeOffset.UtcNow.AddDays(-1);
-            Assert.Contains(Path.Combine(dataDirectory, "activity.jsonl"), store.GetRetentionCandidates(cutoff));
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            Assert.Contains(databasePath, store.GetRetentionCandidates(cutoff));
             var preview = store.GetRetentionPreview(cutoff);
             Assert.Equal(1, preview.RecordCount);
             Assert.True(preview.TotalBytes > 0);
 
             var removed = store.ApplyRetention(cutoff);
-            var remaining = File.ReadAllText(Path.Combine(dataDirectory, "activity.jsonl"));
 
             Assert.Equal(1, removed);
-            Assert.DoesNotContain("expired", remaining, StringComparison.Ordinal);
-            Assert.Contains("current", remaining, StringComparison.Ordinal);
-            Assert.Contains("{malformed-but-preserved}", remaining, StringComparison.Ordinal);
+            Assert.True(File.Exists(databasePath));
+            Assert.False(File.Exists(Path.Combine(dataDirectory, "activity.jsonl")));
+            Assert.Equal("current", store.LoadLatestSample()?.Context);
+            Assert.Empty(store.GetRetentionCandidates(cutoff));
         }
         finally
         {
@@ -161,5 +232,46 @@ public sealed class SettingsAndRetentionSafetyTests
             "test-installation",
             0,
             0);
+    }
+
+    [Fact]
+    public void ActivityMonitor_PropagatesPersistenceFailures()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            using var hooks = new InputHookService();
+            using var monitor = new ActivityMonitorService(store, hooks);
+            using (var connection = new SqliteConnection($"Data Source={Path.Combine(dataDirectory, "activity.sqlite3")};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DROP TABLE activity_samples;";
+                command.ExecuteNonQuery();
+            }
+
+            var sample = new ActivitySample(
+                DateTimeOffset.UtcNow,
+                5,
+                "active",
+                "test",
+                "Test",
+                "context",
+                "window",
+                "test-installation",
+                0,
+                0);
+
+            Assert.Throws<SqliteException>(() => monitor.PersistSample(sample));
+            Assert.Null(monitor.CurrentSample);
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
     }
 }

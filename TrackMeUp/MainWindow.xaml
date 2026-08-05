@@ -74,6 +74,11 @@
                                             <FontIcon FontFamily="Segoe Fluent Icons" Foreground="#FF8FC4ED" Glyph="&#xE713;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
+                                    <MenuFlyoutItem Click="ReportsMenuItem_Click" Text="Reports">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon FontFamily="Segoe Fluent Icons" Foreground="#FF80B9AA" Glyph="&#xE9D2;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
                                     <MenuFlyoutItem Click="OperationsMenuItem_Click" Text="Strumenti e diagnostica">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon FontFamily="Segoe Fluent Icons" Foreground="#FFFFB37D" Glyph="&#xE9D9;" />

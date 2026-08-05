@@ -21,3 +21,6 @@ appsettings.local.json
 # OS and editor noise
 Thumbs.db
 .DS_Store
+
+# Local JavaScript dependencies
+node_modules/

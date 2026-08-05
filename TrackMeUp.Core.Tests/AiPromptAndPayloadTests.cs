@@ -43,17 +43,64 @@ public sealed class AiPromptAndPayloadTests
     }
 
     [Fact]
-    public void PromptRenderer_UsesCompiledFallbackWhenLoaderFails()
+    public void PromptRenderer_FailsWhenRequiredAssetCannotBeLoaded()
+    {
+        Assert.Throws<InvalidOperationException>(() => AiPromptCatalog.RenderScreenshotAnalysis(
+            "compact",
+            new AnalysisContextSnapshot("App", "Task", "Window", "active", null),
+            _ => throw new InvalidOperationException("simulated loader failure")));
+    }
+
+    [Fact]
+    public void PromptRenderer_AppendsConfiguredCustomInstructionAfterBuiltInPrompt()
     {
         var prompt = AiPromptCatalog.RenderScreenshotAnalysis(
             "compact",
-            new AnalysisContextSnapshot("App {{SYSTEM_TELEMETRY}}", "Task", "Window", "active", null),
-            _ => throw new InvalidOperationException("simulated loader failure"));
+            new AnalysisContextSnapshot("App", "Task", "Window", "active", null, InformationalSchedule: "Monday: planned active hours 09:00-18:00."),
+            customPrompt: "Prefer concise findings.");
 
-        Assert.Contains("Return four short Markdown bullets", prompt, StringComparison.Ordinal);
-        Assert.Contains("App { {SYSTEM_TELEMETRY} }", prompt, StringComparison.Ordinal);
-        Assert.Contains("512", prompt, StringComparison.Ordinal);
-        Assert.DoesNotContain("{{MAX_OUTPUT_TOKENS}}", prompt, StringComparison.Ordinal);
+        Assert.Contains("informational_schedule=Monday: planned active hours 09:00-18:00.", prompt, StringComparison.Ordinal);
+        Assert.Contains("## Additional user instruction", prompt, StringComparison.Ordinal);
+        Assert.EndsWith("Prefer concise findings.", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProviderUsageReaders_PreserveNullableAndProviderSpecificFields()
+    {
+        using var openAi = JsonDocument.Parse("""
+            {"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15,"input_tokens_details":{"cached_tokens":3,"cache_write_tokens":2},"output_tokens_details":{"reasoning_tokens":4}}}
+            """);
+        using var anthropic = JsonDocument.Parse("""
+            {"usage":{"input_tokens":10,"output_tokens":5,"cache_read_input_tokens":3,"cache_creation_input_tokens":2,"output_tokens_details":{"thinking_tokens":4}}}
+            """);
+        using var openRouter = JsonDocument.Parse("""
+            {"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_tokens_details":{"cached_tokens":3,"cache_write_tokens":2},"completion_tokens_details":{"reasoning_tokens":4},"cost":0.0125,"cost_details":{"upstream_inference_cost":0.01}}}
+            """);
+
+        var openAiUsage = OpenAiDecoder.ReadUsage(openAi.RootElement);
+        var anthropicUsage = AnthropicDecoder.ReadUsage(anthropic.RootElement);
+        var openRouterUsage = OpenRouterDecoder.ReadUsage(openRouter.RootElement);
+
+        Assert.Equal(3, openAiUsage.CachedInputTokens);
+        Assert.Equal(2, openAiUsage.CacheWriteTokens);
+        Assert.Equal(4, openAiUsage.ReasoningTokens);
+        Assert.Equal(15, anthropicUsage.InputTokens);
+        Assert.Equal(20, anthropicUsage.TotalTokens);
+        Assert.Equal(4, anthropicUsage.ThinkingTokens);
+        Assert.Equal(0.0125m, openRouterUsage.ReportedCostUsd);
+        Assert.Equal(0.01m, openRouterUsage.ReportedUpstreamCostUsd);
+    }
+
+    [Fact]
+    public void AnthropicHeaders_UseProviderRequiredApiKeyHeader()
+    {
+        using var request = new System.Net.Http.HttpRequestMessage();
+
+        AnthropicDecoder.ApplyRequiredHeaders(request, "test-key");
+
+        Assert.Null(request.Headers.Authorization);
+        Assert.Equal("test-key", Assert.Single(request.Headers.GetValues("x-api-key")));
+        Assert.Equal("2023-06-01", Assert.Single(request.Headers.GetValues("anthropic-version")));
     }
 
     [Fact]

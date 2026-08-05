@@ -153,7 +153,7 @@ public sealed class CliRouter
         switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
         {
             case "status": return await WriteAsync(_application.GetAiStatusAsync(cancellationToken));
-            case "analyze": return await WriteAsync(_application.AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(!arguments.Contains("--no-capture", StringComparer.OrdinalIgnoreCase)), cancellationToken));
+            case "analyze": return await WriteAsync(_application.AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(!arguments.Contains("--no-capture", StringComparer.OrdinalIgnoreCase), "cli.ai"), cancellationToken));
             case "enable": return await WriteAsync(_application.SetAiEnabledAsync(true, cancellationToken));
             case "disable": return await WriteAsync(_application.SetAiEnabledAsync(false, cancellationToken));
             case "configure":

@@ -77,8 +77,8 @@ public sealed class MicrosoftOfficeContextProvider : IActivityContextProvider
             }
         }
 
-        return new ActivityContext(application, string.IsNullOrWhiteSpace(context) ? "Documento senza titolo" : context,
-            new Dictionary<string, string> { ["Tipo"] = isWord ? "Documento" : "Cartella di lavoro", ["Processo"] = window.ProcessName });
+        return new ActivityContext(application, string.IsNullOrWhiteSpace(context) ? "Untitled document" : context,
+            new Dictionary<string, string> { ["Type"] = isWord ? "Document" : "Workbook", ["Process"] = window.ProcessName });
     }
 }
 
@@ -147,8 +147,8 @@ public sealed class AdobeCreativeContextProvider : IActivityContextProvider
             }
         }
 
-        return new ActivityContext(application, string.IsNullOrWhiteSpace(context) ? "Document / Progetto senza titolo" : context,
-            new Dictionary<string, string> { ["Suite"] = "Adobe Creative Suite", ["Processo"] = window.ProcessName });
+        return new ActivityContext(application, string.IsNullOrWhiteSpace(context) ? "Untitled document / project" : context,
+            new Dictionary<string, string> { ["Suite"] = "Adobe Creative Suite", ["Process"] = window.ProcessName });
     }
 }
 
@@ -207,8 +207,8 @@ public sealed class KnownApplicationContextProvider : IActivityContextProvider
     /// Resolves known process names to readable application labels.
     /// </summary>
     public ActivityContext Resolve(ForegroundWindowInfo window) =>
-        new(Applications[window.ProcessName], string.IsNullOrWhiteSpace(window.WindowTitle) ? "Nessun dettaglio" : window.WindowTitle,
-            new Dictionary<string, string> { ["Processo"] = window.ProcessName, ["Titolo"] = window.WindowTitle });
+        new(Applications[window.ProcessName], string.IsNullOrWhiteSpace(window.WindowTitle) ? "No details" : window.WindowTitle,
+            new Dictionary<string, string> { ["Process"] = window.ProcessName, ["Title"] = window.WindowTitle });
 }
 
 public sealed class GenericContextProvider : IActivityContextProvider
@@ -222,7 +222,7 @@ public sealed class GenericContextProvider : IActivityContextProvider
     /// Returns raw process/window values when no richer provider matches.
     /// </summary>
     public ActivityContext Resolve(ForegroundWindowInfo window) =>
-        new(string.IsNullOrWhiteSpace(window.ProcessName) ? "Sistema" : window.ProcessName,
-            string.IsNullOrWhiteSpace(window.WindowTitle) ? "Nessun dettaglio" : window.WindowTitle,
-            new Dictionary<string, string> { ["Processo"] = window.ProcessName, ["Titolo"] = window.WindowTitle });
+        new(string.IsNullOrWhiteSpace(window.ProcessName) ? "System" : window.ProcessName,
+            string.IsNullOrWhiteSpace(window.WindowTitle) ? "No details" : window.WindowTitle,
+            new Dictionary<string, string> { ["Process"] = window.ProcessName, ["Title"] = window.WindowTitle });
 }

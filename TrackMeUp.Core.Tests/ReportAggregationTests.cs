@@ -1,0 +1,645 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Threading;
+using Microsoft.Data.Sqlite;
+using TrackMeUp.Application;
+using TrackMeUp.Runtime;
+using TrackMeUp.Services;
+using Xunit;
+
+namespace TrackMeUp.Core.Tests;
+
+public sealed class ReportAggregationTests
+{
+    [Fact]
+    public void Build_RejectsInvalidAndOversizedRanges()
+    {
+        WithStore((_, reports) =>
+        {
+            var reversed = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 2), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None);
+            var oversized = reports.Build(
+                new ReportQuery(new DateOnly(2025, 1, 1), new DateOnly(2026, 1, 2), "UTC"),
+                CancellationToken.None);
+            var unknownTimeZone = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "Not/A-Time-Zone"),
+                CancellationToken.None);
+
+            Assert.False(reversed.Succeeded);
+            Assert.Equal("report.range.invalid", reversed.Code);
+            Assert.False(oversized.Succeeded);
+            Assert.Equal("report.range.too_large", oversized.Code);
+            Assert.False(unknownTimeZone.Succeeded);
+            Assert.Equal("report.time_zone.invalid", unknownTimeZone.Code);
+        });
+    }
+
+    [Fact]
+    public void Build_RepresentsNoDataSeparatelyFromZeroActivity()
+    {
+        WithStore((_, reports) =>
+        {
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.False(snapshot.Quality.HasData);
+            Assert.Equal(0, snapshot.Quality.SampleCount);
+            Assert.Equal(86_400, snapshot.Quality.RequestedSeconds);
+            Assert.Equal(0, snapshot.Quality.CoveredSeconds);
+            Assert.Equal(0d, snapshot.Quality.CoverageRatio);
+            Assert.Single(snapshot.Calendar);
+            Assert.False(snapshot.Calendar[0].HasData);
+            Assert.Equal(168, snapshot.HourOfWeek.Count);
+            Assert.All(snapshot.HourOfWeek, cell => Assert.False(cell.HasData));
+            Assert.Empty(snapshot.Applications);
+        });
+    }
+
+    [Fact]
+    public void Build_AggregatesAiUsageByProviderAndOrigin_WithoutEstimatingMissingCosts()
+    {
+        WithStore((store, reports) =>
+        {
+            var occurredAt = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero);
+            var firstRequest = AiUsage(
+                occurredAt,
+                "openrouter",
+                "automatic.timer",
+                success: true,
+                usage: new AiUsageMetrics(
+                    InputTokens: 100,
+                    OutputTokens: 20,
+                    TotalTokens: 120,
+                    CachedInputTokens: 30,
+                    ReasoningTokens: 2,
+                    ReportedCostUsd: 0.015m));
+            store.AppendAiAnalysisAndUsage(firstRequest, AnalysisFor(firstRequest));
+
+            var secondRequest = AiUsage(
+                occurredAt.AddMinutes(1),
+                "anthropic",
+                "cli.ai",
+                success: true,
+                usage: new AiUsageMetrics(
+                    InputTokens: 50,
+                    OutputTokens: 10,
+                    TotalTokens: 60,
+                    CacheReadInputTokens: 10,
+                    ThinkingTokens: 4));
+            store.AppendAiAnalysisAndUsage(secondRequest, AnalysisFor(secondRequest));
+
+            store.AppendAiUsage(AiUsage(
+                occurredAt.AddMinutes(2),
+                "openrouter",
+                "automatic.timer",
+                success: false,
+                usage: new AiUsageMetrics()));
+            var outOfRangeRequest = AiUsage(
+                occurredAt.AddDays(-1),
+                "openrouter",
+                "automatic.timer",
+                success: true,
+                usage: new AiUsageMetrics(InputTokens: 999, ReportedCostUsd: 9.99m));
+            store.AppendAiAnalysisAndUsage(outOfRangeRequest, AnalysisFor(outOfRangeRequest));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(2, snapshot.ContractVersion);
+            var usage = snapshot.AiUsage;
+            Assert.Equal(3, usage.RequestCount);
+            Assert.Equal(2, usage.SuccessfulRequestCount);
+            Assert.Equal(1, usage.FailedRequestCount);
+            Assert.Equal(150, usage.InputTokens);
+            Assert.Equal(30, usage.OutputTokens);
+            Assert.Equal(180, usage.TotalTokens);
+            Assert.Equal(40, usage.CachedInputTokens);
+            Assert.Equal(2, usage.ReasoningTokens);
+            Assert.Equal(4, usage.ThinkingTokens);
+            Assert.Equal(0.015m, usage.ActualCostUsd);
+            Assert.Equal(1, usage.ActualCostRequestCount);
+
+            Assert.Collection(
+                usage.ByProvider,
+                openRouter =>
+                {
+                    Assert.Equal("openrouter", openRouter.Label);
+                    Assert.Equal(2, openRouter.RequestCount);
+                    Assert.Equal(120, openRouter.TotalTokens);
+                    Assert.Equal(0.015m, openRouter.ActualCostUsd);
+                },
+                anthropic =>
+                {
+                    Assert.Equal("anthropic", anthropic.Label);
+                    Assert.Equal(1, anthropic.RequestCount);
+                    Assert.Equal(60, anthropic.TotalTokens);
+                    Assert.Null(anthropic.ActualCostUsd);
+                });
+            Assert.Collection(
+                usage.ByOrigin,
+                automatic =>
+                {
+                    Assert.Equal("automatic.timer", automatic.Label);
+                    Assert.Equal(2, automatic.RequestCount);
+                    Assert.Equal(0.015m, automatic.ActualCostUsd);
+                },
+                cli =>
+                {
+                    Assert.Equal("cli.ai", cli.Label);
+                    Assert.Equal(1, cli.RequestCount);
+                    Assert.Null(cli.ActualCostUsd);
+                });
+        });
+    }
+
+    [Fact]
+    public void Retention_PreservesCurrentAnalysisLinkedToAnOlderRequest()
+    {
+        WithStore((store, reports) =>
+        {
+            var now = DateTimeOffset.UtcNow;
+            var request = AiUsage(
+                now.AddDays(-10),
+                "openrouter",
+                "automatic.timer",
+                success: true,
+                usage: new AiUsageMetrics(InputTokens: 10, OutputTokens: 2, TotalTokens: 12));
+            var analysis = AnalysisFor(request) with { Timestamp = now };
+            store.AppendAiAnalysisAndUsage(request, analysis);
+            var cutoff = now.AddDays(-1);
+
+            var preview = store.GetRetentionPreview(cutoff);
+            var removed = store.ApplyRetention(cutoff);
+
+            Assert.Equal(0, preview.RecordCount);
+            Assert.Equal(0, removed);
+            var report = reports.Build(
+                new ReportQuery(
+                    DateOnly.FromDateTime(request.OccurredAt.UtcDateTime),
+                    DateOnly.FromDateTime(request.OccurredAt.UtcDateTime),
+                    "UTC"),
+                CancellationToken.None);
+            Assert.True(report.Succeeded);
+            Assert.Equal(1, report.Value?.AiUsage.RequestCount);
+            Assert.Equal(request.CorrelationId, store.LoadLatestAnalysis()?.CorrelationId);
+        });
+    }
+
+    [Fact]
+    public void Build_MaximumRangeSnapshotFitsTheIpcEnvelopeLimit()
+    {
+        WithStore((_, reports) =>
+        {
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 1, 1), new DateOnly(2027, 1, 1), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var response = new RuntimeResponseEnvelope(
+                RuntimeProtocol.ProtocolVersion,
+                Guid.NewGuid(),
+                true,
+                result.Code,
+                result.MessageKey,
+                result.Value,
+                result.Issues);
+            var payload = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(response, RuntimeProtocol.SerializerOptions);
+
+            Assert.True(payload.Length < RuntimeProtocol.MaximumMessageBytes);
+        });
+    }
+
+    [Fact]
+    public void Build_SplitsOneSampleAcrossLocalMidnightAndHour()
+    {
+        WithStore((store, reports) =>
+        {
+            store.AppendSample(Sample(
+                new DateTimeOffset(2026, 2, 2, 0, 0, 5, TimeSpan.Zero),
+                durationSeconds: 10,
+                application: "Editor",
+                keyPresses: 10,
+                mouseClicks: 2));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 2), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(5, snapshot.Calendar[0].TrackedSeconds);
+            Assert.Equal(5, snapshot.Calendar[1].TrackedSeconds);
+            Assert.Equal(5, snapshot.Calendar[0].KeyPresses);
+            Assert.Equal(5, snapshot.Calendar[1].KeyPresses);
+            Assert.Equal(1, snapshot.Calendar[0].MouseClicks);
+            Assert.Equal(1, snapshot.Calendar[1].MouseClicks);
+            Assert.Equal(1, snapshot.Calendar[0].SampleCount);
+            Assert.Equal(1, snapshot.Calendar[1].SampleCount);
+
+            var beforeMidnight = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 23);
+            var afterMidnight = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 1 && cell.Hour == 0);
+            Assert.Equal(5, beforeMidnight.ActiveSeconds);
+            Assert.Equal(5, afterMidnight.ActiveSeconds);
+            Assert.Equal(10, snapshot.Totals.ActiveSeconds);
+            Assert.Equal(10, snapshot.Quality.CoveredSeconds);
+        });
+    }
+
+    [Fact]
+    public void Build_SplitsAcrossDaylightSavingGapAndUsesActualDayLength()
+    {
+        WithStore((store, reports) =>
+        {
+            store.AppendSample(Sample(
+                new DateTimeOffset(2026, 3, 8, 7, 0, 5, TimeSpan.Zero),
+                durationSeconds: 10,
+                application: "Editor"));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 3, 8), new DateOnly(2026, 3, 8), "Eastern Standard Time"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(82_800, snapshot.Quality.RequestedSeconds);
+            Assert.Equal(5, Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 1).ActiveSeconds);
+            Assert.Equal(0, Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 2).ActiveSeconds);
+            Assert.Equal(5, Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 3).ActiveSeconds);
+            Assert.Equal(10, snapshot.Totals.ActiveSeconds);
+        });
+    }
+
+    [Fact]
+    public void Build_ReturnsTopTwelveApplicationsAndOther()
+    {
+        WithStore((store, reports) =>
+        {
+            for (var index = 1; index <= 14; index++)
+            {
+                store.AppendSample(Sample(
+                    new DateTimeOffset(2026, 2, 1, 12, index, 0, TimeSpan.Zero),
+                    durationSeconds: index,
+                    application: $"App{index:00}"));
+            }
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var applications = Assert.IsType<ReportSnapshot>(result.Value).Applications;
+            Assert.Equal(13, applications.Count);
+            Assert.Equal("App14", applications[0].Application);
+            Assert.Equal(14, applications[0].ActiveSeconds);
+            Assert.Equal("Other", applications[^1].Application);
+            Assert.Equal(3, applications[^1].ActiveSeconds);
+            Assert.DoesNotContain(applications, item => item.Application is "App01" or "App02");
+        });
+    }
+
+    [Fact]
+    public void Build_HourOfWeekUsesTheMeanAcrossObservedDates()
+    {
+        WithStore((store, reports) =>
+        {
+            store.AppendSample(Sample(
+                new DateTimeOffset(2026, 2, 1, 12, 0, 10, TimeSpan.Zero),
+                durationSeconds: 10,
+                application: "Editor"));
+            store.AppendSample(Sample(
+                new DateTimeOffset(2026, 2, 8, 12, 0, 21, TimeSpan.Zero),
+                durationSeconds: 21,
+                application: "Editor"));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 8), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            var sundayNoon = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 12);
+            Assert.Equal(2, sundayNoon.ObservationDays);
+            Assert.Equal(16, sundayNoon.ActiveSeconds);
+            Assert.Equal(16, sundayNoon.TrackedSeconds);
+            Assert.Equal(31, snapshot.Totals.ActiveSeconds);
+        });
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsWhenLegacyJsonlExists()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(dataDirectory, "activity.jsonl"),
+                "{\"timestamp\":\"2026-02-01T12:00:00Z\",\"durationSeconds\":5,\"state\":\"active\"}");
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("Legacy storage", exception.Message, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(dataDirectory, "activity.sqlite3")));
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsWhenLegacyAnalysisJsonlExists()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            File.WriteAllText(Path.Combine(dataDirectory, "analyses.jsonl"), "{}");
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+
+            Assert.Contains("analyses.jsonl", exception.Message, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(dataDirectory, "activity.sqlite3")));
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsOnSchemaVersionMismatch()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            _ = new LocalStore(dataDirectory);
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "PRAGMA user_version = 99;";
+                command.ExecuteNonQuery();
+            }
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("schema version", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsWhenAnUnversionedDatabaseIsNotEmpty()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "CREATE TABLE unrelated_data (id INTEGER PRIMARY KEY);";
+                command.ExecuteNonQuery();
+            }
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("unversioned activity database", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsWhenVersionMatchesButSchemaDoesNot()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "CREATE TABLE activity_samples (id INTEGER PRIMARY KEY); PRAGMA user_version = 3;";
+                command.ExecuteNonQuery();
+            }
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("schema does not match", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_RejectsVersionOneWithoutMutatingIt()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            _ = new LocalStore(dataDirectory);
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    DROP TABLE ai_analysis_search;
+                    DROP TABLE ai_analysis_results;
+                    DROP TABLE ai_request_usage;
+                    PRAGMA user_version = 1;
+                    PRAGMA journal_mode = DELETE;
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            var before = SHA256.HashData(File.ReadAllBytes(databasePath));
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            var after = SHA256.HashData(File.ReadAllBytes(databasePath));
+
+            Assert.Contains("schema version 1", exception.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(before, after);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_RejectsAnExistingEmptyDatabaseWithoutInitializingIt()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            File.WriteAllBytes(databasePath, []);
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+
+            Assert.Contains("unversioned activity database", exception.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, new FileInfo(databasePath).Length);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsWhenVersionedSchemaContainsUnsupportedObjects()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            _ = new LocalStore(dataDirectory);
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "CREATE TABLE unsupported_data (id INTEGER PRIMARY KEY);";
+                command.ExecuteNonQuery();
+            }
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("unsupported schema objects", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ActivityHistory_FailsWhenAiSchemaKeepsNamesButChangesAConstraint()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            _ = new LocalStore(dataDirectory);
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    PRAGMA writable_schema = ON;
+                    UPDATE sqlite_schema
+                    SET sql = replace(sql, 'CHECK (success IN (0, 1))', 'CHECK (success IN (0, 1, 2))')
+                    WHERE name = 'ai_request_usage';
+                    PRAGMA writable_schema = OFF;
+                    PRAGMA schema_version = 999;
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("ai_request_usage schema does not match", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    private static ActivitySample Sample(
+        DateTimeOffset timestamp,
+        int durationSeconds,
+        string application,
+        long keyPresses = 0,
+        long mouseClicks = 0) => new(
+            timestamp,
+            durationSeconds,
+            "active",
+            "test-process",
+            application,
+            "private context",
+            "private window title",
+            "test-installation",
+            keyPresses,
+        mouseClicks);
+
+    private static AiRequestUsageRecord AiUsage(
+        DateTimeOffset occurredAt,
+        string provider,
+        string origin,
+        bool success,
+        AiUsageMetrics usage) => new(
+            Guid.NewGuid().ToString("N"),
+            Guid.NewGuid().ToString("N"),
+            occurredAt,
+            occurredAt.AddSeconds(1),
+            origin,
+            "screen_analysis",
+            provider,
+            "api.example.test",
+            "test-model",
+            null,
+            null,
+            null,
+            success ? 200 : 503,
+            100,
+            null,
+            1,
+            100,
+            256,
+            usage,
+            null,
+            success,
+            success ? null : "http_503");
+
+    private static AiAnalysis AnalysisFor(AiRequestUsageRecord usage) => new(
+        usage.OccurredAt,
+        "test application",
+        "test context",
+        "test summary",
+        "test-installation",
+        null,
+        null,
+        usage.CorrelationId,
+        usage.Origin);
+
+    private static void WithStore(Action<LocalStore, ReportAggregationService> action)
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            action(store, new ReportAggregationService(store));
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    private static string CreateDataDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    private static void DeleteDataDirectory(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Directory.Delete(path, recursive: true);
+        }
+    }
+}

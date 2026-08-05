@@ -24,8 +24,14 @@ public sealed class OpenRouterDecoder : IAIDecoder
     /// <summary>
     /// Sends one request to OpenRouter endpoint.
     /// </summary>
-    public async Task<string> DecodeAsync(string prompt, IReadOnlyList<string> screenshotPaths, AppSettings settings, string apiKey)
+    public async Task<AiProviderResult> DecodeAsync(
+        string prompt,
+        IReadOnlyList<string> screenshotPaths,
+        AppSettings settings,
+        string apiKey,
+        string correlationId)
     {
+        _ = correlationId; // Correlation remains local because this endpoint documents no generic client-request header.
         var imageDataUrls = new List<string>();
         foreach (var screenshot in screenshotPaths)
         {
@@ -40,15 +46,68 @@ public sealed class OpenRouterDecoder : IAIDecoder
         request.Headers.Add("X-Title", "TrackMeUp");
         request.Content = new StringContent(SerializePayload(prompt, imageDataUrls, settings), Encoding.UTF8, "application/json");
 
-        using var response = await Http.SendAsync(request);
-        var responseBody = await response.Content.ReadAsStringAsync();
-        // Keep failures explicit: return provider message first, then fallback generic status.
-        if (!response.IsSuccessStatusCode)
+        var timer = AiProviderTelemetry.StartTimer();
+        try
         {
-            throw new InvalidOperationException(ReadApiError(responseBody) ?? $"OpenRouter ha restituito {(int)response.StatusCode}.");
-        }
+            using var response = await Http.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+            timer.Stop();
+            var providerRequestId = AiProviderTelemetry.Header(response, "x-request-id");
+            var providerResponseId = ReadResponseId(responseBody);
+            // Keep failures explicit: return provider message first, then fallback generic status.
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new AiProviderRequestException(
+                    ReadApiError(responseBody) ?? $"OpenRouter returned {(int)response.StatusCode}.",
+                    new AiProviderFailure(
+                        AiProviderTelemetry.FailureCode(response.StatusCode),
+                        (int)response.StatusCode,
+                        timer.ElapsedMilliseconds,
+                        providerResponseId,
+                        providerRequestId));
+            }
 
-        return ReadOutputText(responseBody) ?? "Il modello non ha restituito testo.";
+            using var document = JsonDocument.Parse(responseBody);
+            var root = document.RootElement;
+            return new AiProviderResult(
+                ReadOutputText(root) ?? "The model did not return text.",
+                ReadUsage(root),
+                AiProviderTelemetry.ReadString(root, "id"),
+                providerRequestId,
+                AiProviderTelemetry.ReadString(root, "model"),
+                ReadFinishReason(root),
+                (int)response.StatusCode,
+                timer.ElapsedMilliseconds,
+                null);
+        }
+        catch (AiProviderRequestException)
+        {
+            throw;
+        }
+        catch (TaskCanceledException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "OpenRouter request timed out.",
+                new AiProviderFailure("timeout", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "OpenRouter request could not reach the provider.",
+                new AiProviderFailure("network", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+        catch (JsonException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "OpenRouter returned an invalid response.",
+                new AiProviderFailure("invalid_response", null, timer.ElapsedMilliseconds),
+                exception);
+        }
     }
 
     internal static string SerializePayload(string prompt, IReadOnlyList<string> imageDataUrls, AppSettings settings)
@@ -96,11 +155,36 @@ public sealed class OpenRouterDecoder : IAIDecoder
     /// <summary>
     /// Parses text from OpenRouter-style responses.
     /// </summary>
-    private static string? ReadOutputText(string json)
+    internal static AiUsageMetrics ReadUsage(JsonElement root)
     {
-        using var document = JsonDocument.Parse(json);
+        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+        {
+            return new AiUsageMetrics();
+        }
 
-        if (document.RootElement.TryGetProperty("choices", out var choices))
+        var promptDetails = usage.TryGetProperty("prompt_tokens_details", out var inputDetails) && inputDetails.ValueKind == JsonValueKind.Object
+            ? inputDetails
+            : default;
+        var completionDetails = usage.TryGetProperty("completion_tokens_details", out var outputDetails) && outputDetails.ValueKind == JsonValueKind.Object
+            ? outputDetails
+            : default;
+        var costDetails = usage.TryGetProperty("cost_details", out var details) && details.ValueKind == JsonValueKind.Object
+            ? details
+            : default;
+        return new AiUsageMetrics(
+            AiProviderTelemetry.ReadLong(usage, "prompt_tokens"),
+            AiProviderTelemetry.ReadLong(usage, "completion_tokens"),
+            AiProviderTelemetry.ReadLong(usage, "total_tokens"),
+            promptDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(promptDetails, "cached_tokens") : null,
+            promptDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(promptDetails, "cache_write_tokens") : null,
+            ReasoningTokens: completionDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(completionDetails, "reasoning_tokens") : null,
+            ReportedCostUsd: AiProviderTelemetry.ReadDecimal(usage, "cost"),
+            ReportedUpstreamCostUsd: costDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadDecimal(costDetails, "upstream_inference_cost") : null);
+    }
+
+    private static string? ReadOutputText(JsonElement root)
+    {
+        if (root.TryGetProperty("choices", out var choices))
         {
             foreach (var item in choices.EnumerateArray())
             {
@@ -112,7 +196,7 @@ public sealed class OpenRouterDecoder : IAIDecoder
             }
         }
 
-        if (document.RootElement.TryGetProperty("output", out var output))
+        if (root.TryGetProperty("output", out var output))
         {
             foreach (var item in output.EnumerateArray())
             {
@@ -128,6 +212,38 @@ public sealed class OpenRouterDecoder : IAIDecoder
         }
 
         return null;
+    }
+
+    private static string? ReadFinishReason(JsonElement root)
+    {
+        if (!root.TryGetProperty("choices", out var choices))
+        {
+            return null;
+        }
+
+        foreach (var choice in choices.EnumerateArray())
+        {
+            var reason = AiProviderTelemetry.ReadString(choice, "finish_reason");
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                return reason;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ReadResponseId(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return AiProviderTelemetry.ReadString(document.RootElement, "id");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? ReadFirstTextFromArray(JsonElement content)

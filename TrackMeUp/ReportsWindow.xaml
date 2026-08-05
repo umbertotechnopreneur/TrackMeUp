@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="TrackMeUp.ReportsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="TrackMeUp Reports">
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="Base" />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            x:Name="TitleBarDragRegion"
+            Height="48"
+            Padding="16,0,180,0"
+            Background="Transparent">
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Spacing="10">
+                <Image
+                    Width="22"
+                    Height="22"
+                    AutomationProperties.Name="Icona TrackMeUp"
+                    IsHitTestVisible="False"
+                    Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource FlyoutTextBrush}"
+                    IsHitTestVisible="False"
+                    Text="TrackMeUp Reports" />
+            </StackPanel>
+        </Grid>
+
+        <Border
+            Grid.Row="1"
+            Margin="24,18,24,12"
+            Padding="22"
+            Background="{ThemeResource FlyoutSurfaceBrush}"
+            BorderBrush="{ThemeResource FlyoutBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="20">
+            <Grid RowSpacing="18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Image
+                        Width="56"
+                        Height="56"
+                        AutomationProperties.Name="Icona TrackMeUp Reports"
+                        Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                        <TextBlock
+                            CharacterSpacing="130"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource FlyoutTextBrush}"
+                            Text="REPORTS" />
+                        <TextBlock
+                            FontSize="24"
+                            FontWeight="SemiBold"
+                            Foreground="{ThemeResource FlyoutTextBrush}"
+                            Text="Dai dati al ritmo." />
+                        <TextBlock
+                            Foreground="{ThemeResource FlyoutMutedBrush}"
+                            Text="Scopri quando lavori, su cosa e con quale continuità."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1" ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="190" />
+                        <ColumnDefinition Width="190" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Intervallo" />
+                        <ComboBox
+                            x:Name="RangeComboBox"
+                            MinWidth="180"
+                            AutomationProperties.Name="Intervallo del report"
+                            SelectionChanged="ReportSelection_Changed">
+                            <ComboBoxItem Content="Oggi" Tag="today" />
+                            <ComboBoxItem Content="7 giorni" Tag="7" />
+                            <ComboBoxItem Content="30 giorni" Tag="30" />
+                            <ComboBoxItem Content="90 giorni" Tag="90" />
+                            <ComboBoxItem Content="Questo mese" Tag="thisMonth" />
+                            <ComboBoxItem Content="Mese scorso" Tag="lastMonth" />
+                            <ComboBoxItem Content="Personalizzato" Tag="custom" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="5">
+                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Vista" />
+                        <ComboBox
+                            x:Name="ViewComboBox"
+                            MinWidth="180"
+                            AutomationProperties.Name="Vista del report"
+                            SelectionChanged="ReportSelection_Changed">
+                            <ComboBoxItem Content="Calendario" Tag="calendar" />
+                            <ComboBoxItem Content="Fasce orarie" Tag="hourOfWeek" />
+                            <ComboBoxItem Content="Andamento" Tag="trend" />
+                            <ComboBoxItem Content="Applicazioni" Tag="applications" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel x:Name="CustomFromPanel" Grid.Column="2" Spacing="5" Visibility="Collapsed">
+                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Dal" />
+                        <DatePicker
+                            x:Name="CustomFromPicker"
+                            AutomationProperties.Name="Data iniziale del report"
+                            DateChanged="CustomDatePicker_DateChanged" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="CustomToPanel" Grid.Column="3" Spacing="5" Visibility="Collapsed">
+                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Al" />
+                        <DatePicker
+                            x:Name="CustomToPicker"
+                            AutomationProperties.Name="Data finale del report"
+                            DateChanged="CustomDatePicker_DateChanged" />
+                    </StackPanel>
+
+                    <Button
+                        x:Name="RefreshReportButton"
+                        Grid.Column="4"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        AutomationProperties.Name="Aggiorna il report ignorando la cache"
+                        Click="RefreshReportButton_Click"
+                        ToolTipService.ToolTip="Aggiorna report">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" />
+                            <TextBlock Text="Aggiorna" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Row="2"
+            Margin="24,0,24,24"
+            Background="{ThemeResource ReportSurfaceBrush}"
+            BorderBrush="{ThemeResource FlyoutBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="20">
+            <Grid>
+                <WebView2
+                    x:Name="ReportsWebView"
+                    AutomationProperties.Name="Visualizzazione interattiva del report"
+                    Visibility="Collapsed" />
+
+                <Grid
+                    x:Name="ReportStatusPanel"
+                    Padding="32"
+                    Background="{ThemeResource ReportSurfaceBrush}">
+                    <StackPanel
+                        MaxWidth="620"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="14">
+                        <ProgressRing
+                            x:Name="ReportProgressRing"
+                            Width="36"
+                            Height="36"
+                            HorizontalAlignment="Center"
+                            AutomationProperties.Name="Caricamento report"
+                            IsActive="True" />
+                        <FontIcon
+                            x:Name="ReportErrorIcon"
+                            HorizontalAlignment="Center"
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="32"
+                            Foreground="{ThemeResource ReportErrorBrush}"
+                            Glyph="&#xEA39;"
+                            Visibility="Collapsed" />
+                        <TextBlock
+                            x:Name="ReportStatusText"
+                            AutomationProperties.LiveSetting="Assertive"
+                            FontSize="15"
+                            Foreground="{ThemeResource FlyoutTextBrush}"
+                            Text="Avvio del motore dei report…"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

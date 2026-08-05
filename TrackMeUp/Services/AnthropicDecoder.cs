@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -24,8 +23,14 @@ public sealed class AnthropicDecoder : IAIDecoder
     /// <summary>
     /// Sends one request to Anthropic endpoint.
     /// </summary>
-    public async Task<string> DecodeAsync(string prompt, IReadOnlyList<string> screenshotPaths, AppSettings settings, string apiKey)
+    public async Task<AiProviderResult> DecodeAsync(
+        string prompt,
+        IReadOnlyList<string> screenshotPaths,
+        AppSettings settings,
+        string apiKey,
+        string correlationId)
     {
+        _ = correlationId; // Anthropic has no documented generic client-correlation header for this endpoint.
         var base64Images = new List<string>();
         foreach (var screenshot in screenshotPaths)
         {
@@ -35,18 +40,76 @@ public sealed class AnthropicDecoder : IAIDecoder
 
         using var request = new HttpRequestMessage(HttpMethod.Post, settings.AiEndpoint);
         // Keep auth + protocol version explicit for stable response behavior.
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        request.Headers.Add("anthropic-version", "2023-06-01");
+        ApplyRequiredHeaders(request, apiKey);
         request.Content = new StringContent(SerializePayload(prompt, base64Images, settings), Encoding.UTF8, "application/json");
 
-        using var response = await Http.SendAsync(request);
-        var responseBody = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
+        var timer = AiProviderTelemetry.StartTimer();
+        try
         {
-            throw new InvalidOperationException(ReadApiError(responseBody) ?? $"Anthropic ha restituito {(int)response.StatusCode}.");
-        }
+            using var response = await Http.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+            timer.Stop();
+            var providerRequestId = AiProviderTelemetry.Header(response, "request-id");
+            var providerResponseId = ReadResponseId(responseBody);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new AiProviderRequestException(
+                    ReadApiError(responseBody) ?? $"Anthropic returned {(int)response.StatusCode}.",
+                    new AiProviderFailure(
+                        AiProviderTelemetry.FailureCode(response.StatusCode),
+                        (int)response.StatusCode,
+                        timer.ElapsedMilliseconds,
+                        providerResponseId,
+                        providerRequestId));
+            }
 
-        return ReadOutputText(responseBody) ?? "Il modello non ha restituito testo.";
+            using var document = JsonDocument.Parse(responseBody);
+            var root = document.RootElement;
+            return new AiProviderResult(
+                ReadOutputText(root) ?? "The model did not return text.",
+                ReadUsage(root),
+                AiProviderTelemetry.ReadString(root, "id"),
+                providerRequestId,
+                AiProviderTelemetry.ReadString(root, "model"),
+                AiProviderTelemetry.ReadString(root, "stop_reason"),
+                (int)response.StatusCode,
+                timer.ElapsedMilliseconds,
+                null);
+        }
+        catch (AiProviderRequestException)
+        {
+            throw;
+        }
+        catch (TaskCanceledException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "Anthropic request timed out.",
+                new AiProviderFailure("timeout", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "Anthropic request could not reach the provider.",
+                new AiProviderFailure("network", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+        catch (JsonException exception)
+        {
+            timer.Stop();
+            throw new AiProviderRequestException(
+                "Anthropic returned an invalid response.",
+                new AiProviderFailure("invalid_response", null, timer.ElapsedMilliseconds),
+                exception);
+        }
+    }
+
+    internal static void ApplyRequiredHeaders(HttpRequestMessage request, string apiKey)
+    {
+        request.Headers.Add("x-api-key", apiKey);
+        request.Headers.Add("anthropic-version", "2023-06-01");
     }
 
     internal static string SerializePayload(string prompt, IReadOnlyList<string> base64Images, AppSettings settings)
@@ -92,10 +155,43 @@ public sealed class AnthropicDecoder : IAIDecoder
         return JsonSerializer.Serialize(payload);
     }
 
-    private static string? ReadOutputText(string json)
+    internal static AiUsageMetrics ReadUsage(JsonElement root)
     {
-        using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("content", out var content))
+        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+        {
+            return new AiUsageMetrics();
+        }
+
+        var baseInput = AiProviderTelemetry.ReadLong(usage, "input_tokens");
+        var cacheRead = AiProviderTelemetry.ReadLong(usage, "cache_read_input_tokens");
+        var cacheCreation = AiProviderTelemetry.ReadLong(usage, "cache_creation_input_tokens");
+        if (!cacheCreation.HasValue
+            && usage.TryGetProperty("cache_creation", out var cacheCreationDetails)
+            && cacheCreationDetails.ValueKind == JsonValueKind.Object)
+        {
+            cacheCreation = SumTokens(
+                cacheCreation,
+                AiProviderTelemetry.ReadLong(cacheCreationDetails, "ephemeral_5m_input_tokens"),
+                AiProviderTelemetry.ReadLong(cacheCreationDetails, "ephemeral_1h_input_tokens"));
+        }
+
+        var output = AiProviderTelemetry.ReadLong(usage, "output_tokens");
+        var effectiveInput = SumTokens(baseInput, cacheRead, cacheCreation);
+        var outputDetails = usage.TryGetProperty("output_tokens_details", out var details) && details.ValueKind == JsonValueKind.Object
+            ? details
+            : default;
+        return new AiUsageMetrics(
+            effectiveInput,
+            output,
+            SumTokens(effectiveInput, output),
+            CacheCreationInputTokens: cacheCreation,
+            CacheReadInputTokens: cacheRead,
+            ThinkingTokens: outputDetails.ValueKind == JsonValueKind.Object ? AiProviderTelemetry.ReadLong(outputDetails, "thinking_tokens") : null);
+    }
+
+    private static string? ReadOutputText(JsonElement root)
+    {
+        if (!root.TryGetProperty("content", out var content))
         {
             return null;
         }
@@ -108,6 +204,25 @@ public sealed class AnthropicDecoder : IAIDecoder
             }
         }
         return null;
+    }
+
+    private static string? ReadResponseId(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return AiProviderTelemetry.ReadString(document.RootElement, "id");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static long? SumTokens(params long?[] values)
+    {
+        var known = values.Where(value => value.HasValue).Select(value => value!.Value).ToArray();
+        return known.Length == 0 ? null : known.Aggregate(0L, (current, value) => checked(current + value));
     }
 
     /// <summary>
