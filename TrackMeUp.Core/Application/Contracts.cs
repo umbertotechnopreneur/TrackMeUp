@@ -29,7 +29,14 @@ public sealed record CaptureScreenshotRequest(
     string Mode,
     bool Keep,
     bool Watermark,
-    string CaptureOrigin);
+    string CaptureOrigin,
+    bool DeferAiAnalysis = false);
+
+/// <summary>Requests AI analysis for an already captured screenshot without taking a second capture.</summary>
+public sealed record AnalyzeCapturedScreenshotRequest(
+    ScreenshotCaptureResult Capture,
+    bool KeepCapture,
+    string Origin = "snapshot.manual");
 
 /// <summary>Requests retained screenshots for one inclusive local calendar date.</summary>
 public sealed record ScreenshotGalleryRequest(DateOnly Date);
@@ -208,6 +215,15 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Captures screenshots after privacy checks.</summary>
     Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Analyzes an existing screenshot capture after its temporary deletion window has elapsed.</summary>
+    Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Deletes all local image artifacts belonging to one retained screenshot capture.</summary>
+    Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken);
+
+    /// <summary>Deletes local snapshot-analysis records associated with one retained screenshot capture.</summary>
+    Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken);
 
     /// <summary>Gets the most recent retained screenshot.</summary>
     Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken);

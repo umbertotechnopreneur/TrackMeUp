@@ -100,7 +100,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -242,7 +242,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<ScreenshotCaptureResult>.Failure("privacy.blocked", "PrivacyBlocked");
         }
 
-        if (settings.OpenAiEnabled)
+        if (settings.OpenAiEnabled && !request.DeferAiAnalysis)
         {
             if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
             {
@@ -277,7 +277,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             request.Watermark && settings.WatermarkScreenshots,
             request.CaptureOrigin);
 
-        if (settings.OpenAiEnabled)
+        if (settings.OpenAiEnabled && !request.DeferAiAnalysis)
         {
             try
             {
@@ -318,11 +318,129 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
+    public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        if (request.Capture is null)
+        {
+            return OperationResult<AiAnalysis>.Failure("ai.capture.invalid", "AiConfigurationInvalid");
+        }
+
+        var settings = _store.LoadSettings();
+        if (!settings.OpenAiEnabled)
+        {
+            return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
+        }
+
+        if (IsCurrentContextPrivate(settings))
+        {
+            return OperationResult<AiAnalysis>.Failure("privacy.blocked", "PrivacyBlocked");
+        }
+
+        if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
+        {
+            return OperationResult<AiAnalysis>.Failure(
+                "ai.configuration.invalid",
+                "AiConfigurationInvalid",
+                validationIssue!);
+        }
+
+        if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
+        {
+            _store.SaveSettings(validatedSettings);
+        }
+
+        settings = validatedSettings;
+        var gate = BuildCostGate(settings);
+        if (!gate.Allowed)
+        {
+            return OperationResult<AiAnalysis>.Failure("ai.cost_guardrail", "AiCostGuardrail");
+        }
+
+        try
+        {
+            var origin = NormalizeAnalysisOrigin(request.Origin);
+            var result = await _analysis.AnalyzeCapturedScreenAsync(
+                _tracking.LatestAnalysisContext,
+                request.Capture,
+                request.KeepCapture,
+                origin,
+                cancellationToken);
+            return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
+        }
+        catch (OperationCanceledException)
+        {
+            return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
+        }
+        catch (InvalidOperationException)
+        {
+            return OperationResult<AiAnalysis>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
+        }
+        catch (Exception exception)
+        {
+            // Provider/network errors remain stable to callers; the capture service owns cleanup behavior.
+            _logger.LogWarning("Deferred snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
+        }
+    }, cancellationToken);
+
+    /// <inheritdoc />
     public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(OperationResult<string?>.Success("screenshot.latest.loaded", "LatestScreenshotLoaded", _store.LoadLatestPrimaryScreenshot()));
     }
+
+    /// <inheritdoc />
+    public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var artifacts = _store.FindScreenshotArtifacts(screenshotPath);
+        if (artifacts.Count == 0)
+        {
+            return OperationResult<string>.Failure("screenshot.not_found", "ScreenshotNotFound", new ValidationIssue("screenshotPath", "not_found", "ScreenshotNotFound"));
+        }
+
+        try
+        {
+            foreach (var artifact in artifacts)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                File.Delete(artifact);
+            }
+        }
+        catch (IOException)
+        {
+            // A locked or unavailable artifact is reported without hiding a partial deletion from the caller.
+            return OperationResult<string>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Permission failures remain explicit so the user can retry after the file becomes writable.
+            return OperationResult<string>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
+        }
+
+        await Task.CompletedTask;
+        return OperationResult<string>.Success("screenshot.deleted", "ScreenshotDeleted", screenshotPath);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!ScreenCaptureService.IsOwnedArtifact(screenshotPath) || !Path.IsPathFullyQualified(screenshotPath))
+        {
+            return OperationResult<string>.Failure("snapshot.invalid", "SnapshotInvalid", new ValidationIssue("screenshotPath", "invalid", "SnapshotInvalid"));
+        }
+
+        var deletedCount = _store.DeleteAiAnalysesReferencingScreenshot(screenshotPath);
+        if (deletedCount == 0)
+        {
+            return OperationResult<string>.Failure("snapshot.not_found", "SnapshotNotFound", new ValidationIssue("screenshotPath", "not_found", "SnapshotNotFound"));
+        }
+
+        await Task.CompletedTask;
+        return OperationResult<string>.Success("snapshot.deleted", "SnapshotDeleted", screenshotPath);
+    }, cancellationToken);
 
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken)

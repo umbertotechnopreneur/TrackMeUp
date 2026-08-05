@@ -206,8 +206,11 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "focus.stop" => ToResponse(request, await _application.StopFocusSessionAsync(ReadBool(request.Payload, "summarize"), cancellationToken)),
                 "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
                 "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
+                "screenshot.analyze" => await DispatchScreenshotAnalysisAsync(request, cancellationToken),
                 "screenshot.latest" => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
                 "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
+                "screenshot.delete" => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
+                "snapshot.delete" => ToResponse(request, await _application.DeleteSnapshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
                 "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
@@ -273,6 +276,14 @@ public sealed class RuntimeHost : IAsyncDisposable
         return captureRequest is null
             ? Failure(request, "screenshot.capture.invalid", "ScreenshotCaptureRequestInvalid")
             : ToResponse(request, await _application.CaptureScreenshotAsync(captureRequest, cancellationToken));
+    }
+
+    private async Task<RuntimeResponseEnvelope> DispatchScreenshotAnalysisAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var analysisRequest = Read<AnalyzeCapturedScreenshotRequest>(request.Payload);
+        return analysisRequest is null
+            ? Failure(request, "screenshot.analysis.invalid", "AiConfigurationInvalid")
+            : ToResponse(request, await _application.AnalyzeCapturedScreenshotAsync(analysisRequest, cancellationToken));
     }
 
     private async Task<RuntimeResponseEnvelope> DispatchDailyDigestAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
@@ -401,6 +412,7 @@ public sealed class RuntimeHost : IAsyncDisposable
 public sealed class RuntimeClient : ITrackMeUpApplication
 {
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RuntimeClient> _logger;
@@ -448,9 +460,15 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<ScreenshotCaptureResult>("screenshot.capture", request, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>("screenshot.analyze", request, cancellationToken, ScreenshotAnalysisTimeout);
+    /// <inheritdoc />
     public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => SendAsync<string?>("screenshot.latest", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery", new ScreenshotGalleryRequest(date), cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.delete", new { screenshotPath }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("snapshot.delete", new { screenshotPath }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.save", new { screenshotPath, destinationPath }, cancellationToken);
     /// <inheritdoc />

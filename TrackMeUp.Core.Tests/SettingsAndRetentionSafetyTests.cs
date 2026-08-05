@@ -126,6 +126,28 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Equal(3650, normalized.ScreenshotRetentionDays);
     }
 
+    [Fact]
+    public void NormalizePersisted_UsesDefaultWorkingHoursOnFirstRun()
+    {
+        var normalized = SettingsCatalog.NormalizePersisted(
+            new AppSettings(),
+            Path.Combine(Path.GetTempPath(), "TrackMeUp", "screenshots"));
+
+        var monday = Assert.Single(normalized.ActiveHours!, day => day.Day == "monday");
+        Assert.Equal("09:00-18:00", monday.ActivePeriod);
+        Assert.Equal("13:00-14:00", monday.BreakPeriods);
+        Assert.All(normalized.ActiveHours!.Where(day => day.Day is "tuesday" or "wednesday" or "thursday" or "friday"), day =>
+        {
+            Assert.Equal("09:00-18:00", day.ActivePeriod);
+            Assert.Equal("13:00-14:00", day.BreakPeriods);
+        });
+        Assert.All(normalized.ActiveHours!.Where(day => day.Day is "saturday" or "sunday"), day =>
+        {
+            Assert.Empty(day.ActivePeriod);
+            Assert.Empty(day.BreakPeriods);
+        });
+    }
+
     [Theory]
     [InlineData("0123456789abcdef0123456789abcdef_1.2.3_manual_monitor-1.webp", true)]
     [InlineData("0123456789abcdef0123456789abcdef_1.2.3_scheduled_active-window-raw.webp", true)]

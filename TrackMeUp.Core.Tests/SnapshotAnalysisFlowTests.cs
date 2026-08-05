@@ -54,6 +54,53 @@ public sealed class SnapshotAnalysisFlowTests
     }
 
     [Fact]
+    public async Task DeferredCapture_AnalyzesTheSameSnapshotOnlyAfterExplicitRequest_WhenOpenAiIsEnabled()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+
+            var capture = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(store, capture, analysis);
+
+            var captureResult = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual, DeferAiAnalysis: true),
+                CancellationToken.None);
+
+            Assert.True(captureResult.Succeeded);
+            Assert.Equal(1, capture.CallCount);
+            Assert.Equal(0, analysis.CallCount);
+
+            var analysisResult = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(capture.Result, KeepCapture: true),
+                CancellationToken.None);
+
+            Assert.True(analysisResult.Succeeded);
+            Assert.Equal(1, analysis.CallCount);
+            Assert.Same(capture.Result, analysis.Capture);
+            Assert.Equal("snapshot.manual", analysis.Origin);
+            Assert.True(analysis.KeepCapture);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CaptureScreenshot_DoesNotAnalyze_WhenOpenAiIsDisabled()
     {
         var dataDirectory = CreateTemporaryDirectory();

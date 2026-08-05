@@ -93,10 +93,14 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void MainMenu_ExposesExactlyFourActionsFromAlwaysVisibleEllipsis()
+    public void MainMenu_ExposesActionsFromAlwaysVisibleEllipsis()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var captureActions = player.Descendants().Single(element => HasName(element, "CaptureActionsPanel"));
+        var takeScreenshotButton = player.Descendants().Single(element => HasName(element, "TakeScreenshotButton"));
+        var pendingSnapshotPanel = player.Descendants().Single(element => HasName(element, "PendingSnapshotPanel"));
+        var deleteSnapshotButton = player.Descendants().Single(element => HasName(element, "DeleteSnapshotButton"));
         var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
         var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
@@ -110,17 +114,45 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
         Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
-        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
+        Assert.Equal("36", takeScreenshotButton.Attribute("Width")?.Value);
+        Assert.Equal("{ThemeResource SnapshotCaptureBrush}", takeScreenshotButton.Attribute("Background")?.Value);
+        Assert.Equal("Collapsed", pendingSnapshotPanel.Attribute("Visibility")?.Value);
+        Assert.Equal("36", deleteSnapshotButton.Attribute("Width")?.Value);
+        Assert.Equal("{ThemeResource SnapshotDeleteBrush}", deleteSnapshotButton.Attribute("Background")?.Value);
+        Assert.Equal(5, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
         Assert.Equal(
-            ["MenuTitleOptions", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
+            ["Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
+        Assert.Contains("DeferAiAnalysis: true", mainSource, StringComparison.Ordinal);
+        Assert.Contains("AnalyzeCapturedScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain(player.Descendants(), element => element.Name.LocalName == "ToggleMenuFlyoutItem");
+    }
+
+    [Fact]
+    public void ScreenshotWindow_ExposesDeletionActionsFromEllipsis()
+    {
+        var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var moreButton = screenshotWindow.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
+        var menu = screenshotWindow.Descendants().Single(element => element.Name.LocalName == "Flyout" && element.Attribute("Opened")?.Value == "MoreMenu_Opened");
+        var menuTags = menu
+            .Descendants()
+            .Where(element => element.Name.LocalName == "TextBlock" && element.Attribute("Tag") is not null)
+            .Select(element => element.Attribute("Tag")!.Value)
+            .ToArray();
+
+        Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Equal(["Screenshots.Menu.DeleteScreenshot", "Screenshots.Menu.DeleteSnapshot"], menuTags);
+        Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
+        Assert.Contains("DeleteSnapshotAsync", source, StringComparison.Ordinal);
     }
 
     [Fact]

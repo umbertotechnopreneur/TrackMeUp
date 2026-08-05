@@ -1,4 +1,5 @@
 using Microsoft.UI;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -9,6 +10,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using System.Globalization;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
+using Windows.Foundation;
 using Windows.Storage.Pickers;
 using Windows.Graphics;
 
@@ -69,6 +71,7 @@ public sealed partial class ScreenshotWindow : Window
         SetSelectedDate(_selectedDate);
         ApplyTheme(_theme);
         ResizeForLogicalContent();
+        UpdateTitleBarLayout();
         Closed += ScreenshotWindow_Closed;
     }
 
@@ -85,6 +88,18 @@ public sealed partial class ScreenshotWindow : Window
         }
     }
 
+    /// <summary>Reselects the gallery to the current day when the menu reopens an existing window.</summary>
+    public async Task FocusTodayAsync()
+    {
+        _requestedScreenshotPath = null;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        SetSelectedDate(today);
+        if (_initialized)
+        {
+            await LoadGalleryAsync(today);
+        }
+    }
+
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
@@ -94,6 +109,7 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         ResizeForLogicalContent();
+        UpdateTitleBarLayout();
         if (!_windowStateRestored)
         {
             _windowStateRestored = true;
@@ -284,21 +300,74 @@ public sealed partial class ScreenshotWindow : Window
         SetNavigationOpacity(1);
     }
 
-    private void ScreenshotMenu_Opening(object sender, object e)
+    private void MoreMenu_Opened(object sender, object e)
     {
-        SaveScreenshotMenuItem.Text = _strings.Translate("Screenshots.Menu.Save");
-        OpenScreenshotFolderMenuItem.Text = _strings.Translate("Screenshots.Menu.OpenFolder");
-        ShareScreenshotMenuItem.Text = _strings.Translate("Screenshots.Menu.Share");
+        if (TitleBarMoreButton.Flyout is Flyout flyout && flyout.Content is DependencyObject content)
+        {
+            UiLocalization.Apply(content, _strings);
+        }
+
         var hasSelection = _items.Count > 0;
-        SaveScreenshotMenuItem.IsEnabled = hasSelection;
-        OpenScreenshotFolderMenuItem.IsEnabled = hasSelection;
-        ShareScreenshotMenuItem.IsEnabled = hasSelection;
+        DeleteScreenshotMenuItem.IsEnabled = hasSelection;
+        DeleteSnapshotMenuItem.IsEnabled = hasSelection;
+    }
+
+    private void TitleBarMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (TitleBarMoreButton.Flyout is Flyout flyout)
+        {
+            flyout.ShowAt(TitleBarMoreButton);
+        }
+    }
+
+    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarLayout();
+
+    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarLayout();
+
+    private void UpdateTitleBarLayout()
+    {
+        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
+        {
+            return;
+        }
+
+        var scale = xamlRoot.RasterizationScale;
+        InputNonClientPointerSource
+            .GetForWindowId(_appWindow.Id)
+            .SetRegionRects(NonClientRegionKind.Passthrough, [ElementRect(TitleBarMoreButton, scale)]);
+    }
+
+    private static RectInt32 ElementRect(FrameworkElement element, double scale)
+    {
+        var transform = element.TransformToVisual(null);
+        var bounds = transform.TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+        return new RectInt32(
+            (int)Math.Round(bounds.X * scale),
+            (int)Math.Round(bounds.Y * scale),
+            (int)Math.Round(bounds.Width * scale),
+            (int)Math.Round(bounds.Height * scale));
+    }
+
+    private async void DeleteScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = GetSelectedItem();
+        var result = await _application.DeleteScreenshotAsync(selected.Path, _lifetimeCancellation.Token);
+        if (result.Succeeded)
+        {
+            await LoadGalleryAsync(_selectedDate);
+        }
+    }
+
+    private async void DeleteSnapshotMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = GetSelectedItem();
+        await _application.DeleteSnapshotAsync(selected.Path, _lifetimeCancellation.Token);
     }
 
     private async void SaveScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var selected = GetSelectedItem();
-        var extension = Path.GetExtension(selected.Path);
+        var extension = Path.GetExtension(selected.Path) ?? string.Empty;
         if (string.IsNullOrWhiteSpace(extension))
         {
             throw new InvalidDataException($"Screenshot has no file extension: {selected.Path}");
@@ -496,6 +565,8 @@ public sealed partial class ScreenshotWindow : Window
         {
             ResizeForLogicalContent();
         }
+
+        UpdateTitleBarLayout();
     }
 
     private void ResizeForLogicalContent()

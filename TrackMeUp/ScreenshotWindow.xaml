@@ -40,38 +40,145 @@
             x:Name="TitleBarDragRegion"
             Height="48"
             Padding="24,0,180,0"
-            Background="Transparent">
+            Background="Transparent"
+            Loaded="TitleBarDragRegion_Loaded"
+            SizeChanged="TitleBarDragRegion_SizeChanged">
             <TextBlock
                 VerticalAlignment="Center"
                 Tag="Screenshots.Caption"
                 Text="Captured moments" />
 
             <Button
-                x:Name="ScreenshotMenuButton"
-                Width="36"
-                Height="36"
-                Padding="0"
+                x:Name="TitleBarMoreButton"
+                Width="46"
+                Height="40"
+                Margin="0,0,8,0"
+                Padding="6,0,6,7"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
-                Visibility="Collapsed"
-                AutomationProperties.Name="Screenshot actions"
+                AutomationProperties.Name="Screenshot actions menu"
                 Background="Transparent"
                 BorderBrush="Transparent"
-                ToolTipService.ToolTip="Actions">
-                <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE712;" />
+                Click="TitleBarMoreButton_Click"
+                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                ToolTipService.ToolTip="Menu">
+                <TextBlock
+                    AutomationProperties.AccessibilityView="Raw"
+                    CharacterSpacing="80"
+                    FontSize="19"
+                    FontWeight="Bold"
+                    Text="•••"/>
                 <Button.Flyout>
-                    <MenuFlyout Opening="ScreenshotMenu_Opening">
-                        <MenuFlyoutItem x:Name="SaveScreenshotMenuItem" Tag="Screenshots.Menu.Save" Text="Save selected image" Click="SaveScreenshotMenuItem_Click">
-                            <MenuFlyoutItem.Icon><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE74E;" /></MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem x:Name="OpenScreenshotFolderMenuItem" Tag="Screenshots.Menu.OpenFolder" Text="Open containing folder" Click="OpenScreenshotFolderMenuItem_Click">
-                            <MenuFlyoutItem.Icon><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8B7;" /></MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutSeparator />
-                        <MenuFlyoutItem x:Name="ShareScreenshotMenuItem" Tag="Screenshots.Menu.Share" Text="Share with another app" Click="ShareScreenshotMenuItem_Click">
-                            <MenuFlyoutItem.Icon><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72D;" /></MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                    </MenuFlyout>
+                    <Flyout Opened="MoreMenu_Opened"
+                            Placement="BottomEdgeAlignedRight">
+                        <Flyout.SystemBackdrop>
+                            <DesktopAcrylicBackdrop/>
+                        </Flyout.SystemBackdrop>
+                        <Flyout.FlyoutPresenterStyle>
+                            <Style TargetType="FlyoutPresenter">
+                                <Setter Property="Padding"
+                                        Value="10"/>
+                                <Setter Property="CornerRadius"
+                                        Value="12"/>
+                            </Style>
+                        </Flyout.FlyoutPresenterStyle>
+                        <StackPanel Width="252"
+                                    Spacing="2">
+                            <StackPanel.Resources>
+                                <Style x:Key="ScreenshotOverflowMenuButtonStyle"
+                                       TargetType="Button">
+                                    <Setter Property="MinHeight"
+                                            Value="42"/>
+                                    <Setter Property="Padding"
+                                            Value="12,7"/>
+                                    <Setter Property="HorizontalAlignment"
+                                            Value="Stretch"/>
+                                    <Setter Property="HorizontalContentAlignment"
+                                            Value="Left"/>
+                                    <Setter Property="Background"
+                                            Value="Transparent"/>
+                                    <Setter Property="BorderBrush"
+                                            Value="Transparent"/>
+                                    <Setter Property="CornerRadius"
+                                            Value="6"/>
+                                </Style>
+                                <Style x:Key="ScreenshotOverflowIconChipStyle"
+                                       TargetType="Border">
+                                    <Setter Property="Width"
+                                            Value="30"/>
+                                    <Setter Property="Height"
+                                            Value="30"/>
+                                    <Setter Property="CornerRadius"
+                                            Value="10"/>
+                                    <Setter Property="Padding"
+                                            Value="0"/>
+                                </Style>
+                                <Style x:Key="ScreenshotOverflowIconStyle"
+                                       TargetType="FontIcon">
+                                    <Setter Property="FontFamily"
+                                            Value="Segoe Fluent Icons"/>
+                                    <Setter Property="FontSize"
+                                            Value="15"/>
+                                    <Setter Property="HorizontalAlignment"
+                                            Value="Center"/>
+                                    <Setter Property="VerticalAlignment"
+                                            Value="Center"/>
+                                    <Setter Property="AutomationProperties.AccessibilityView"
+                                            Value="Raw"/>
+                                </Style>
+                            </StackPanel.Resources>
+                            <Button
+                                x:Name="DeleteScreenshotMenuItem"
+                                AutomationProperties.Name="Delete screenshot"
+                                Click="DeleteScreenshotMenuItem_Click"
+                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Style="{StaticResource ScreenshotOverflowIconChipStyle}"
+                                        Background="#1AF6A56E">
+                                        <FontIcon
+                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
+                                            Foreground="#FFE98A5B"
+                                            Glyph="&#xE74D;"/>
+                                    </Border>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Tag="Screenshots.Menu.DeleteScreenshot"
+                                        VerticalAlignment="Center"
+                                        Text="Delete screenshot"/>
+                                </Grid>
+                            </Button>
+                            <Button
+                                x:Name="DeleteSnapshotMenuItem"
+                                AutomationProperties.Name="Delete snapshot"
+                                Click="DeleteSnapshotMenuItem_Click"
+                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Style="{StaticResource ScreenshotOverflowIconChipStyle}"
+                                        Background="#1A9B6FBF">
+                                        <FontIcon
+                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
+                                            Foreground="#FF7FA8D9"
+                                            Glyph="&#xE823;"/>
+                                    </Border>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Tag="Screenshots.Menu.DeleteSnapshot"
+                                        VerticalAlignment="Center"
+                                        Text="Delete snapshot"/>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </Flyout>
                 </Button.Flyout>
             </Button>
         </Grid>
@@ -107,7 +214,7 @@
                     x:Name="SelectedDatePicker"
                     Width="270"
                     AutomationProperties.Name="Screenshot date"
-                    DateFormat="{}{dayofweek}, {day.integer} {month.full} {year.full}"
+                    DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
                     DateChanged="SelectedDatePicker_DateChanged"
                     PlaceholderText="Select a day"
                     Tag="Screenshots.Date" />

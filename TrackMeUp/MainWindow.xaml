@@ -67,6 +67,7 @@
                 BorderBrush="Transparent"
                 Click="TitleBarMoreButton_Click"
                 IsTabStop="False"
+                Style="{StaticResource TitleBarOverflowButtonStyle}"
                 ToolTipService.ToolTip="Menu">
                 <Button.KeyboardAccelerators>
                     <KeyboardAccelerator Key="M" Modifiers="Menu" />
@@ -93,6 +94,73 @@
                         <GradientStop Color="#FFF16F4E" Offset="1" />
                     </LinearGradientBrush>
                     <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFF16F4E" />
+                    <SolidColorBrush x:Key="SnapshotCaptureBrush"
+                                     Color="#FF2D8BA8"/>
+                    <SolidColorBrush x:Key="SnapshotDeleteBrush"
+                                     Color="#FFC8544D"/>
+                    <Style x:Key="CircularActionButtonStyle"
+                           TargetType="Button">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Grid>
+                                        <Border x:Name="ActionSurface"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="{TemplateBinding CornerRadius}"/>
+                                        <Border x:Name="ActionHoverOverlay"
+                                                Background="Black"
+                                                CornerRadius="{TemplateBinding CornerRadius}"
+                                                IsHitTestVisible="False"
+                                                Opacity="0"/>
+                                        <ContentPresenter Content="{TemplateBinding Content}"
+                                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                          ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                          Padding="{TemplateBinding Padding}"/>
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroup x:Name="CommonStates">
+                                                <VisualState x:Name="Normal">
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionHoverOverlay"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="0"
+                                                                         Duration="0:0:0.5"/>
+                                                    </Storyboard>
+                                                </VisualState>
+                                                <VisualState x:Name="PointerOver">
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionHoverOverlay"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="0.12"
+                                                                         Duration="0:0:0.5"/>
+                                                    </Storyboard>
+                                                </VisualState>
+                                                <VisualState x:Name="Pressed">
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionHoverOverlay"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="0.22"
+                                                                         Duration="0:0:0.5"/>
+                                                    </Storyboard>
+                                                </VisualState>
+                                                <VisualState x:Name="Disabled">
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionSurface"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="0.45"
+                                                                         Duration="0"/>
+                                                    </Storyboard>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateManager.VisualStateGroups>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
                     <ResourceDictionary.ThemeDictionaries>
                         <ResourceDictionary x:Key="Light">
                             <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
@@ -100,6 +168,10 @@
                                 <GradientStop Color="#FFF16F4E" Offset="1" />
                             </LinearGradientBrush>
                             <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFF16F4E" />
+                            <SolidColorBrush x:Key="SnapshotCaptureBrush"
+                                             Color="#FF2D8BA8"/>
+                            <SolidColorBrush x:Key="SnapshotDeleteBrush"
+                                             Color="#FFC8544D"/>
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="Dark">
                             <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
@@ -107,6 +179,10 @@
                                 <GradientStop Color="#FF55B9A7" Offset="1" />
                             </LinearGradientBrush>
                             <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FF68C9B7" />
+                            <SolidColorBrush x:Key="SnapshotCaptureBrush"
+                                             Color="#FF55B9A7"/>
+                            <SolidColorBrush x:Key="SnapshotDeleteBrush"
+                                             Color="#FFE3746A"/>
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
@@ -146,85 +222,369 @@
                                             <Setter Property="CornerRadius" Value="12" />
                                         </Style>
                                     </Flyout.FlyoutPresenterStyle>
-                                    <StackPanel Width="224" Spacing="2">
-                                        <StackPanel.Resources>
-                                            <Style x:Key="OverflowMenuButtonStyle" TargetType="Button">
-                                                <Setter Property="MinHeight" Value="42" />
-                                                <Setter Property="Padding" Value="12,7" />
-                                                <Setter Property="HorizontalAlignment" Value="Stretch" />
-                                                <Setter Property="HorizontalContentAlignment" Value="Left" />
-                                                <Setter Property="Background" Value="Transparent" />
-                                                <Setter Property="BorderBrush" Value="Transparent" />
-                                                <Setter Property="CornerRadius" Value="6" />
-                                            </Style>
-                                        </StackPanel.Resources>
-                                        <Button
-                                            AutomationProperties.Name="App options"
-                                            Click="OptionsMenuItem_Click"
-                                            Style="{StaticResource OverflowMenuButtonStyle}">
-                                            <TextBlock Tag="MenuTitleOptions" VerticalAlignment="Center" Text="App options" />
-                                        </Button>
-                                        <Border MinHeight="44" Padding="10,4" CornerRadius="6">
-                                            <Grid ColumnSpacing="12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Tag="MenuToggleOpenAi" VerticalAlignment="Center" Text="OpenAI integration" />
-                                                <ToggleSwitch x:Name="OpenAiMenuToggle" Grid.Column="1" MinWidth="0" OffContent="" OnContent="" Toggled="OpenAiMenuToggle_Toggled" />
-                                            </Grid>
-                                        </Border>
-                                        <Border MinHeight="44" Padding="10,4" CornerRadius="6">
-                                            <Grid ColumnSpacing="12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Tag="MenuToggleScreenshot" VerticalAlignment="Center" Text="Screenshot" />
-                                                <ToggleSwitch x:Name="ScreenshotsMenuToggle" Grid.Column="1" MinWidth="0" OffContent="" OnContent="" Toggled="ScreenshotsMenuToggle_Toggled" />
-                                            </Grid>
-                                        </Border>
-                                        <Border Height="1" Margin="0,5" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                        <Button
-                                            AutomationProperties.Name="About"
-                                            Click="AboutMenuItem_Click"
-                                            Style="{StaticResource OverflowMenuButtonStyle}">
-                                            <TextBlock Tag="MenuTitleAbout" VerticalAlignment="Center" Text="About" />
-                                        </Button>
-                                    </StackPanel>
-                                </Flyout>
-                            </Button.Flyout>
+                                <StackPanel Width="252"
+                                            Spacing="2">
+                                    <StackPanel.Resources>
+                                        <Style x:Key="OverflowMenuButtonStyle"
+                                               TargetType="Button">
+                                            <Setter Property="MinHeight"
+                                                    Value="40"/>
+                                            <Setter Property="Padding"
+                                                    Value="10,6"/>
+                                            <Setter Property="HorizontalAlignment"
+                                                    Value="Stretch"/>
+                                            <Setter Property="HorizontalContentAlignment"
+                                                    Value="Left"/>
+                                            <Setter Property="Background"
+                                                    Value="Transparent"/>
+                                            <Setter Property="BorderBrush"
+                                                    Value="Transparent"/>
+                                            <Setter Property="BorderThickness"
+                                                    Value="0"/>
+                                            <Setter Property="CornerRadius"
+                                                    Value="10"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="MenuItemSurface"
+                                                                Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                CornerRadius="{TemplateBinding CornerRadius}">
+                                                            <VisualStateManager.VisualStateGroups>
+                                                                <VisualStateGroup x:Name="CommonStates">
+                                                                    <VisualState x:Name="Normal"/>
+                                                                    <VisualState x:Name="PointerOver">
+                                                                        <Storyboard>
+                                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="MenuItemSurface"
+                                                                                                           Storyboard.TargetProperty="Background">
+                                                                                <DiscreteObjectKeyFrame KeyTime="0"
+                                                                                                        Value="#0DFFFFFF"/>
+                                                                            </ObjectAnimationUsingKeyFrames>
+                                                                        </Storyboard>
+                                                                    </VisualState>
+                                                                    <VisualState x:Name="Pressed">
+                                                                        <Storyboard>
+                                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="MenuItemSurface"
+                                                                                                           Storyboard.TargetProperty="Background">
+                                                                                <DiscreteObjectKeyFrame KeyTime="0"
+                                                                                                        Value="#18FFFFFF"/>
+                                                                            </ObjectAnimationUsingKeyFrames>
+                                                                        </Storyboard>
+                                                                    </VisualState>
+                                                                    <VisualState x:Name="Disabled">
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation Storyboard.TargetName="MenuItemSurface"
+                                                                                             Storyboard.TargetProperty="Opacity"
+                                                                                             To="0.45"
+                                                                                             Duration="0"/>
+                                                                        </Storyboard>
+                                                                    </VisualState>
+                                                                </VisualStateGroup>
+                                                            </VisualStateManager.VisualStateGroups>
+                                                            <ContentPresenter Content="{TemplateBinding Content}"
+                                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                              ContentTransitions="{TemplateBinding ContentTransitions}"
+                                                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                              Padding="{TemplateBinding Padding}"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                        <Style x:Key="OverflowMenuIconChipStyle"
+                                               TargetType="Border">
+                                            <Setter Property="Width"
+                                                    Value="22"/>
+                                            <Setter Property="Height"
+                                                    Value="22"/>
+                                            <Setter Property="CornerRadius"
+                                                    Value="0"/>
+                                            <Setter Property="Padding"
+                                                    Value="0"/>
+                                            <Setter Property="Background"
+                                                    Value="Transparent"/>
+                                            <Setter Property="BorderBrush"
+                                                    Value="Transparent"/>
+                                            <Setter Property="BorderThickness"
+                                                    Value="0"/>
+                                        </Style>
+                                        <Style x:Key="OverflowMenuIconStyle"
+                                               TargetType="FontIcon">
+                                            <Setter Property="FontFamily"
+                                                    Value="Segoe Fluent Icons"/>
+                                            <Setter Property="FontSize"
+                                                    Value="15"/>
+                                            <Setter Property="HorizontalAlignment"
+                                                    Value="Center"/>
+                                            <Setter Property="VerticalAlignment"
+                                                    Value="Center"/>
+                                            <Setter Property="AutomationProperties.AccessibilityView"
+                                                    Value="Raw"/>
+                                        </Style>
+                                    </StackPanel.Resources>
+                                    <Button
+                                        AutomationProperties.Name="Open reports"
+                                        Click="ReportsMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FF7D9FF8"
+                                                          Glyph="&#xE787;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="Reports.Title"
+                                                       VerticalAlignment="Center"
+                                                       Text="Reports"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Open captured moments"
+                                        Click="ScreenshotsMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FF71CBB7"
+                                                          Glyph="&#xE722;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="Screenshots.Caption"
+                                                       VerticalAlignment="Center"
+                                                       Text="Captured moments"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="Open snapshot schedule"
+                                        Click="ScheduleScreenshotMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FF85A8DB"
+                                                          Glyph="&#xE823;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="Schedule.Snapshots"
+                                                       VerticalAlignment="Center"
+                                                       Text="Snapshot schedule"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button
+                                        AutomationProperties.Name="App options"
+                                        Click="OptionsMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FFE5B06A"
+                                                          Glyph="&#xE713;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="MenuTitleOptions"
+                                                       VerticalAlignment="Center"
+                                                       Text="App options"/>
+                                        </Grid>
+                                    </Button>
+                                    <Border MinHeight="44"
+                                            Padding="10,4"
+                                            CornerRadius="6">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FFA97BEA"
+                                                          Glyph="&#xE945;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="MenuToggleOpenAi"
+                                                       VerticalAlignment="Center"
+                                                       Text="OpenAI integration"/>
+                                            <ToggleSwitch x:Name="OpenAiMenuToggle"
+                                                          Grid.Column="2"
+                                                          MinWidth="0"
+                                                          OffContent=""
+                                                          OnContent=""
+                                                          Toggled="OpenAiMenuToggle_Toggled"/>
+                                        </Grid>
+                                    </Border>
+                                    <Border MinHeight="44"
+                                            Padding="10,4"
+                                            CornerRadius="6">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FFE88F6B"
+                                                          Glyph="&#xE7ED;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="MenuToggleScreenshot"
+                                                       VerticalAlignment="Center"
+                                                       Text="Screenshot"/>
+                                            <ToggleSwitch x:Name="ScreenshotsMenuToggle"
+                                                          Grid.Column="2"
+                                                          MinWidth="0"
+                                                          OffContent=""
+                                                          OnContent=""
+                                                          Toggled="ScreenshotsMenuToggle_Toggled"/>
+                                        </Grid>
+                                    </Border>
+                                    <Border Height="1"
+                                            Margin="0,5"
+                                            Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                                    <Button
+                                        AutomationProperties.Name="About"
+                                        Click="AboutMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FF85A8DB"
+                                                          Glyph="&#xE946;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="MenuTitleAbout"
+                                                       VerticalAlignment="Center"
+                                                       Text="About"/>
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
                     </Button>
 
                     <Grid Grid.Row="0" ColumnSpacing="18">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button
-                            x:Name="TrackingButton"
-                            Width="84"
-                            Height="84"
-                            Padding="0"
-                            VerticalAlignment="Center"
-                            AutomationProperties.Name="Avvia il monitoraggio"
-                            Background="{ThemeResource PlayerAccentBrush}"
-                            BorderBrush="#D9FFFFFF"
-                            BorderThickness="2"
-                            Click="TrackingButton_Click"
-                            CornerRadius="42"
-                            Translation="0,0,16">
-                            <Button.Shadow>
-                                <ThemeShadow />
-                            </Button.Shadow>
-                            <FontIcon
-                                x:Name="PlayPauseIcon"
-                                AutomationProperties.AccessibilityView="Raw"
-                                FontFamily="Segoe Fluent Icons"
-                                FontSize="30"
-                                Foreground="White"
-                                Glyph="&#xE768;" />
-                        </Button>
+                        <StackPanel x:Name="CaptureActionsPanel"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Bottom"
+                                    Spacing="6">
+                            <Button
+                                x:Name="TrackingButton"
+                                Width="84"
+                                Height="84"
+                                Padding="0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
+                                AutomationProperties.Name="Avvia il monitoraggio"
+                                Background="{ThemeResource PlayerAccentBrush}"
+                                BorderBrush="#D9FFFFFF"
+                                BorderThickness="2"
+                                Click="TrackingButton_Click"
+                                CornerRadius="42"
+                                Style="{StaticResource CircularActionButtonStyle}"
+                                Translation="0,0,6">
+                                <Button.Shadow>
+                                    <ThemeShadow/>
+                                </Button.Shadow>
+                                <FontIcon
+                                    x:Name="PlayPauseIcon"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontFamily="Segoe Fluent Icons"
+                                    FontSize="30"
+                                    Foreground="White"
+                                    Glyph="&#xE768;"/>
+                            </Button>
+                            <Button
+                                x:Name="TakeScreenshotButton"
+                                Width="36"
+                                Height="36"
+                                Padding="0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
+                                AutomationProperties.Name="Scatta uno snapshot"
+                                Background="{ThemeResource SnapshotCaptureBrush}"
+                                BorderBrush="#D9FFFFFF"
+                                BorderThickness="2"
+                                Click="TakeScreenshotButton_Click"
+                                CornerRadius="18"
+                                Style="{StaticResource CircularActionButtonStyle}"
+                                ToolTipService.ToolTip="Take snapshot">
+                                <FontIcon
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontFamily="Segoe Fluent Icons"
+                                    FontSize="16"
+                                    Foreground="White"
+                                    Glyph="&#xE722;"/>
+                            </Button>
+                            <StackPanel
+                                x:Name="PendingSnapshotPanel"
+                                Width="42"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
+                                Spacing="2"
+                                Visibility="Collapsed">
+                                <Button
+                                    x:Name="DeleteSnapshotButton"
+                                    Width="36"
+                                    Height="36"
+                                    Padding="0"
+                                    VerticalAlignment="Bottom"
+                                    AutomationProperties.Name="Delete snapshot"
+                                    Background="{ThemeResource SnapshotDeleteBrush}"
+                                    BorderBrush="#D9FFFFFF"
+                                    BorderThickness="2"
+                                    Click="DeleteSnapshotButton_Click"
+                                    CornerRadius="18"
+                                    Style="{StaticResource CircularActionButtonStyle}"
+                                    ToolTipService.ToolTip="Delete snapshot">
+                                    <FontIcon
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="15"
+                                        Foreground="White"
+                                        Glyph="&#xE74D;"/>
+                                </Button>
+                                <ProgressBar
+                                    x:Name="SnapshotDeleteCountdownProgress"
+                                    Width="36"
+                                    Height="3"
+                                    Foreground="{ThemeResource SnapshotDeleteBrush}"
+                                    IsHitTestVisible="False"
+                                    Maximum="30"
+                                    Value="30"/>
+                                <TextBlock
+                                    x:Name="SnapshotDeleteCountdownText"
+                                    HorizontalAlignment="Center"
+                                    FontSize="9"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="00:30"/>
+                            </StackPanel>
+                        </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                             <TextBlock
                                 x:Name="TrackingStateText"
@@ -252,24 +612,17 @@
                     </Grid>
 
                     <StackPanel Grid.Row="1" Spacing="8">
-                        <Grid Height="26">
+                        <Grid x:Name="ActivityTrendChart"
+                                Height="26"
+                                Visibility="Collapsed">
                             <Path
+                                x:Name="ActivityTrendPath"
                                 Margin="0,3,0,4"
-                                AutomationProperties.AccessibilityView="Raw"
-                                Data="M 0,15 C 12,15 12,9 24,10 S 42,19 56,14 S 74,5 90,13 S 108,18 122,12 S 142,6 158,14 S 180,19 196,11 S 218,8 234,14 S 256,18 272,10 S 294,6 310,14 S 330,12 344,13"
+                                AutomationProperties.Name="Attività delle ultime 24 ore"
                                 Stretch="Fill"
                                 Stroke="{ThemeResource PlayerAccentTextBrush}"
                                 StrokeLineJoin="Round"
-                                StrokeThickness="1.5" />
-                            <ProgressBar
-                                x:Name="ActivityLine"
-                                Height="2"
-                                VerticalAlignment="Bottom"
-                                AutomationProperties.Name="Intensità attività corrente"
-                                Background="Transparent"
-                                Foreground="{ThemeResource PlayerAccentBrush}"
-                                Maximum="100"
-                                Value="0" />
+                                StrokeThickness="1.5"/>
                         </Grid>
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                         <Grid Margin="0,2,0,0" ColumnSpacing="8">

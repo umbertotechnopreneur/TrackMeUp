@@ -237,6 +237,60 @@ internal sealed class SqliteActivityStore
             InformationalSchedule: ReadNullableString(reader, 8));
     }
 
+    /// <summary>Deletes snapshot-analysis records that reference one retained screenshot capture.</summary>
+    internal int DeleteAiAnalysesReferencingScreenshot(string screenshotPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(screenshotPath);
+        var normalizedPath = Path.GetFullPath(screenshotPath);
+        var correlationIds = new List<string>();
+
+        using var connection = OpenConnection();
+        using (var select = connection.CreateCommand())
+        {
+            select.CommandText = "SELECT correlation_id, screenshot_paths FROM ai_analysis_results WHERE screenshot_paths IS NOT NULL;";
+            using var reader = select.ExecuteReader();
+            while (reader.Read())
+            {
+                var paths = reader.IsDBNull(1) ? null : reader.GetString(1);
+                if (ContainsScreenshotPath(paths, normalizedPath))
+                {
+                    correlationIds.Add(reader.GetString(0));
+                }
+            }
+        }
+
+        if (correlationIds.Count == 0)
+        {
+            return 0;
+        }
+
+        using var transaction = connection.BeginTransaction();
+        using var deleteSearch = connection.CreateCommand();
+        deleteSearch.Transaction = transaction;
+        deleteSearch.CommandText = "DELETE FROM ai_analysis_search WHERE correlation_id = $correlationId;";
+        using var deleteResults = connection.CreateCommand();
+        deleteResults.Transaction = transaction;
+        deleteResults.CommandText = "DELETE FROM ai_analysis_results WHERE correlation_id = $correlationId;";
+        foreach (var correlationId in correlationIds)
+        {
+            deleteSearch.Parameters.Clear();
+            deleteSearch.Parameters.AddWithValue("$correlationId", correlationId);
+            deleteSearch.ExecuteNonQuery();
+            deleteResults.Parameters.Clear();
+            deleteResults.Parameters.AddWithValue("$correlationId", correlationId);
+            deleteResults.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return correlationIds.Count;
+    }
+
+    private static bool ContainsScreenshotPath(string? screenshotPaths, string normalizedPath)
+    {
+        return screenshotPaths?.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Any(path => string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase)) == true;
+    }
+
     /// <summary>Streams activity and AI usage from one SQLite read transaction and therefore one database snapshot.</summary>
     internal void VisitReportData(
         DateTimeOffset fromUtc,

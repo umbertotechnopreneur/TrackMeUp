@@ -59,12 +59,19 @@ public sealed partial class ReportsWindow : Window
         ApplyReportTheme(_reportTheme);
 
         var today = DateTimeOffset.Now.Date;
-        CustomFromPicker.Date = new DateTimeOffset(today.AddDays(-6));
+        CustomFromPicker.Date = new DateTimeOffset(today);
         CustomToPicker.Date = new DateTimeOffset(today);
-        RangeComboBox.SelectedIndex = 1;
+        RangeComboBox.SelectedIndex = 0;
         ViewComboBox.SelectedIndex = 0;
         ResizeForLogicalContent();
         Closed += ReportsWindow_Closed;
+    }
+
+    /// <summary>Reselects the reports surface to the current day so repeated menu opens stay anchored to today.</summary>
+    public void SelectToday()
+    {
+        RangeComboBox.SelectedIndex = 0;
+        ViewComboBox.SelectedIndex = 0;
     }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)

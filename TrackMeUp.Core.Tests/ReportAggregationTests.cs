@@ -62,6 +62,32 @@ public sealed class ReportAggregationTests
     }
 
     [Fact]
+    public void Get24HourActivityTrend_RequiresFullCoverageAndBucketsActiveSeconds()
+    {
+        WithStore((store, _) =>
+        {
+            var windowEnd = new DateTimeOffset(2026, 2, 2, 0, 0, 0, TimeSpan.Zero);
+            var windowStart = windowEnd.AddHours(-24);
+            store.AppendSample(Sample(windowStart.AddHours(1), 3600, "first-hour"));
+
+            var incomplete = store.Get24HourActivityTrend(windowEnd);
+
+            Assert.False(incomplete.HasCompleteCoverage);
+
+            for (var hour = 0; hour < 24; hour++)
+            {
+                store.AppendSample(Sample(windowStart.AddHours(hour + 1), 3600, $"hour-{hour}"));
+            }
+
+            var trend = store.Get24HourActivityTrend(windowEnd);
+
+            Assert.True(trend.HasCompleteCoverage);
+            Assert.Equal(24, trend.HourlyActivityLevels.Count);
+            Assert.All(trend.HourlyActivityLevels, level => Assert.Equal(100d, level));
+        });
+    }
+
+    [Fact]
     public void Build_AggregatesAiUsageByProviderAndOrigin_WithoutEstimatingMissingCosts()
     {
         WithStore((store, reports) =>

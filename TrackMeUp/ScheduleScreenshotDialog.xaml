@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="TrackMeUp.ScheduleScreenshotDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TrackMeUp.Controls"
+    Title="Snapshot schedule"
+    PrimaryButtonText="Start"
+    CloseButtonText="Cancel"
+    PrimaryButtonClick="PrimaryButton_Click">
+    <ScrollViewer MaxHeight="620" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="16">
+        <TextBlock Text="Create snapshots automatically during the working hours selected below." TextWrapping="Wrap" />
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock 
+                Grid.Row="0" 
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Margin="0,0,12,0"
+                Text="Interval (minutes):" />
+            <NumberBox
+                x:Name="IntervalNumberBox"
+                Grid.Row="0"
+                Grid.Column="1"
+                Value="5"
+                Minimum="1"
+                Maximum="1440"
+                SmallChange="1"
+                LargeChange="5"
+                SpinButtonPlacementMode="Compact" />
+            
+            <TextBlock 
+                Grid.Row="1" 
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Margin="0,8,0,0"
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Interval: sets the time between eligible snapshots. The countdown restarts after every eligible interval." 
+                TextWrapping="Wrap" />
+        </Grid>
+        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+        <StackPanel Spacing="8">
+            <TextBlock FontWeight="SemiBold" Text="Working hours" />
+            <TextBlock
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Working hours: selected 30-minute blocks are the only times when scheduled snapshots can run. Gaps inside an active period are breaks. With no blocks selected, scheduled snapshots are skipped."
+                TextWrapping="Wrap" />
+            <controls:WeeklyHoursEditor x:Name="WorkingHoursEditor" />
+            <TextBlock
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Screenshots are optional: when enabled, a screen capture is attached to an eligible snapshot; otherwise only the system snapshot is created."
+                TextWrapping="Wrap" />
+        </StackPanel>
+    </StackPanel>
+</ScrollViewer>
+</ContentDialog>

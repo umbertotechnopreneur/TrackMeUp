@@ -60,8 +60,8 @@ pwsh -NoProfile -File '.\Protect-SecretWithYubiKey.ps1' -Action SetupSlot
 
 .EXAMPLE
 pwsh -NoProfile -File '.\Protect-SecretWithYubiKey.ps1' -Action MigrateCredentialXml `
-  -CredentialXmlPath 'C:\Users\umber\OneDrive\Obsidian\Vault\Views BYOK Test Key.credential.xml' `
-  -SecretPath 'C:\Users\umber\OneDrive\Obsidian\Vault\Views BYOK Test Key.yubi.xml'
+    -CredentialXmlPath 'C:\Path\To\Views BYOK Test Key.credential.xml' `
+    -SecretPath 'C:\Path\To\Views BYOK Test Key.yubi.xml'
 #>
 [CmdletBinding()]
 param(

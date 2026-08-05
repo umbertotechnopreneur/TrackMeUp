@@ -155,6 +155,13 @@ public sealed record AnalysisCostGate(
     int DailyAnalysisCount,
     decimal ProjectedDailyCostUsd);
 
+/// <summary>Represents privacy-safe hourly activity levels for one complete trailing 24-hour window.</summary>
+public sealed record ActivityTrendState(
+    DateTimeOffset WindowStartUtc,
+    DateTimeOffset WindowEndUtc,
+    bool HasCompleteCoverage,
+    IReadOnlyList<double> HourlyActivityLevels);
+
 public sealed record DashboardState(
     string StatusLabel,
     string CurrentContext,
@@ -165,7 +172,8 @@ public sealed record DashboardState(
     bool IsTracking,
     DateTimeOffset? LastSampleTimestamp,
     DateTimeOffset LocalTime,
-    DateTimeOffset UtcTime);
+    DateTimeOffset UtcTime,
+    ActivityTrendState? ActivityTrend = null);
 
 public sealed record LastSessionState(
     DateTimeOffset? Timestamp,

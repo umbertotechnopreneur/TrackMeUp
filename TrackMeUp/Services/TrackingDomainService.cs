@@ -90,7 +90,18 @@ public sealed class TrackingDomainService : IDisposable
             : IsTracking ? 5 : 5;
         var utcNow = DateTimeOffset.UtcNow;
 
-        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, IsTracking, sample?.Timestamp, utcNow.ToLocalTime(), utcNow);
+        return new DashboardState(
+            status,
+            context,
+            summary.KeyPresses,
+            summary.MouseClicks,
+            summary.ActiveSeconds,
+            intensity,
+            IsTracking,
+            sample?.Timestamp,
+            utcNow.ToLocalTime(),
+            utcNow,
+            _store.Get24HourActivityTrend(utcNow));
     }
 
     /// <summary>
@@ -164,7 +175,18 @@ public sealed class TrackingDomainService : IDisposable
         var intensity = sample.State == "active" ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2) : 5;
         var utcNow = DateTimeOffset.UtcNow;
 
-        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, true, sample.Timestamp, utcNow.ToLocalTime(), utcNow);
+        return new DashboardState(
+            status,
+            context,
+            summary.KeyPresses,
+            summary.MouseClicks,
+            summary.ActiveSeconds,
+            intensity,
+            true,
+            sample.Timestamp,
+            utcNow.ToLocalTime(),
+            utcNow,
+            _store.Get24HourActivityTrend(utcNow));
     }
 
     /// <summary>

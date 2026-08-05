@@ -83,6 +83,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window = new MainWindow(application, options);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.ReportsRequested += MainWindow_ReportsRequested;
+        _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.Closed += MainWindow_Closed;
         _window.Activate();
@@ -121,6 +122,9 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
+    private async void MainWindow_ScreenshotGalleryRequested(object? sender, EventArgs eventArgs)
+        => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null);
+
     private async void MainWindow_ScreenshotsRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
 
@@ -128,6 +132,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         if (_reportsWindow is not null)
         {
+            _reportsWindow.SelectToday();
             _reportsWindow.Activate();
             return;
         }
@@ -155,6 +160,20 @@ public partial class App : Microsoft.UI.Xaml.Application
         _screenshotsWindow.Activate();
     }
 
+    private async Task ShowScreenshotWindowAsync(ITrackMeUpApplication application, string? launchTheme)
+    {
+        if (_screenshotsWindow is not null)
+        {
+            await _screenshotsWindow.FocusTodayAsync();
+            _screenshotsWindow.Activate();
+            return;
+        }
+
+        _screenshotsWindow = new ScreenshotWindow(application, launchTheme);
+        _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
+        _screenshotsWindow.Activate();
+    }
+
     private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
     {
         if (_reportsWindow is not null)
@@ -176,6 +195,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
+            _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotsRequested -= MainWindow_ScreenshotsRequested;
             _window.Closed -= MainWindow_Closed;
             _window = null;

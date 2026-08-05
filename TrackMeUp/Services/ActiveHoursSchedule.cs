@@ -9,12 +9,23 @@ internal static class ActiveHoursSchedule
     [
         "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
     ];
+    private static readonly IReadOnlyList<ActiveHoursDay> DefaultSchedule =
+    [
+        new("monday", "09:00-18:00", "13:00-14:00"),
+        new("tuesday", "09:00-18:00", "13:00-14:00"),
+        new("wednesday", "09:00-18:00", "13:00-14:00"),
+        new("thursday", "09:00-18:00", "13:00-14:00"),
+        new("friday", "09:00-18:00", "13:00-14:00"),
+        new("saturday"),
+        new("sunday")
+    ];
 
     internal static IReadOnlyList<ActiveHoursDay> Normalize(IReadOnlyList<ActiveHoursDay>? configuredDays)
     {
+        var source = configuredDays ?? DefaultSchedule;
         return Days.Select(day =>
         {
-            var configured = configuredDays?.LastOrDefault(candidate =>
+            var configured = source.LastOrDefault(candidate =>
                 string.Equals(candidate.Day, day, StringComparison.OrdinalIgnoreCase));
             var active = TryNormalizeActivePeriod(configured?.ActivePeriod, out var normalizedActive)
                 ? normalizedActive

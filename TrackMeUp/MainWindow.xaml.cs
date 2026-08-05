@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
@@ -33,6 +34,7 @@ public sealed partial class MainWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DispatcherQueueTimer _refreshTimer;
+    private readonly DispatcherQueueTimer _screenshotScheduleTimer;
     private readonly AppWindow _appWindow;
     private LocalizationService _strings = new("system");
     private bool _detailsExpanded;
@@ -47,12 +49,22 @@ public sealed partial class MainWindow : Window
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
     private bool _screenshotsEnabled;
+    private int _screenshotIntervalMinutes = 0;
+    private DateTimeOffset? _nextScreenshotTime;
+    private const int PendingSnapshotDeleteSeconds = 30;
+    private string? _pendingSnapshotPath;
+    private ScreenshotCaptureResult? _pendingSnapshotCapture;
+    private DateTimeOffset? _pendingSnapshotDeleteDeadline;
+    private bool _pendingSnapshotDeleteInProgress;
 
     /// <summary>Occurs when a fully persisted settings snapshot has been applied to the player surface.</summary>
     public event Action<AppSettings>? SettingsApplied;
 
     /// <summary>Occurs when the user requests the dedicated reports surface.</summary>
     public event EventHandler? ReportsRequested;
+
+    /// <summary>Occurs when the user requests the retained screenshot gallery surface.</summary>
+    public event EventHandler? ScreenshotGalleryRequested;
 
     /// <summary>Occurs when the user requests the retained screenshot gallery.</summary>
     public event EventHandler<ScreenshotPreviewRequestedEventArgs>? ScreenshotsRequested;
@@ -88,6 +100,11 @@ public sealed partial class MainWindow : Window
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
         _refreshTimer.Start();
+
+        _screenshotScheduleTimer = DispatcherQueue.CreateTimer();
+        _screenshotScheduleTimer.Interval = TimeSpan.FromSeconds(1);
+        _screenshotScheduleTimer.Tick += async (_, _) => await CheckAndCaptureScreenshotAsync();
+
         _ = InitializeAsync(options);
         Closed += MainWindow_Closed;
     }
@@ -120,6 +137,147 @@ public sealed partial class MainWindow : Window
         {
             UpdatePlayer(state.Value);
         }
+    }
+
+    /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
+    private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
+    {
+        var request = new CaptureScreenshotRequest(
+            "all-screens",
+            true,
+            true,
+            ScreenshotCaptureOrigins.Manual,
+            DeferAiAnalysis: true);
+        var result = await _application.CaptureScreenshotAsync(request, CancellationToken.None);
+        if (!result.Succeeded)
+        {
+            return;
+        }
+
+        if (result.Value is { } captured && captured.StoredScreenshotPaths.FirstOrDefault() is { } capturedPath)
+        {
+            _pendingSnapshotPath = capturedPath;
+            _pendingSnapshotCapture = captured;
+            _pendingSnapshotDeleteDeadline = DateTimeOffset.Now.AddSeconds(PendingSnapshotDeleteSeconds);
+            UpdatePendingSnapshotDeleteUi();
+        }
+
+        // Refresh the last session to show the newly captured screenshot.
+        var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
+        if (lastSession.Succeeded)
+        {
+            UpdateLastSession(lastSession.Value);
+        }
+    }
+
+    /// <summary>Opens the screenshot scheduling dialog.</summary>
+    private async void ScheduleScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+
+        var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
+        if (!settingsResult.Succeeded || settingsResult.Value is null)
+        {
+            return;
+        }
+
+        var dialog = new ScheduleScreenshotDialog(settingsResult.Value.ActiveHours) { XamlRoot = RootGrid.XamlRoot };
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var patch = new SettingsPatch(new Dictionary<string, string?>
+        {
+            ["active_hours.monday.active"] = dialog.ActiveHours.Single(day => day.Day == "monday").ActivePeriod,
+            ["active_hours.monday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "monday").BreakPeriods,
+            ["active_hours.tuesday.active"] = dialog.ActiveHours.Single(day => day.Day == "tuesday").ActivePeriod,
+            ["active_hours.tuesday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "tuesday").BreakPeriods,
+            ["active_hours.wednesday.active"] = dialog.ActiveHours.Single(day => day.Day == "wednesday").ActivePeriod,
+            ["active_hours.wednesday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "wednesday").BreakPeriods,
+            ["active_hours.thursday.active"] = dialog.ActiveHours.Single(day => day.Day == "thursday").ActivePeriod,
+            ["active_hours.thursday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "thursday").BreakPeriods,
+            ["active_hours.friday.active"] = dialog.ActiveHours.Single(day => day.Day == "friday").ActivePeriod,
+            ["active_hours.friday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "friday").BreakPeriods,
+            ["active_hours.saturday.active"] = dialog.ActiveHours.Single(day => day.Day == "saturday").ActivePeriod,
+            ["active_hours.saturday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "saturday").BreakPeriods,
+            ["active_hours.sunday.active"] = dialog.ActiveHours.Single(day => day.Day == "sunday").ActivePeriod,
+            ["active_hours.sunday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "sunday").BreakPeriods
+        });
+        var saveResult = await _application.PatchSettingsAsync(patch, CancellationToken.None);
+        if (!saveResult.Succeeded)
+        {
+            return;
+        }
+
+        _screenshotIntervalMinutes = dialog.IntervalMinutes;
+        _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(_screenshotIntervalMinutes);
+        if (_screenshotIntervalMinutes > 0)
+        {
+            _screenshotScheduleTimer.Start();
+        }
+        else
+        {
+            _screenshotScheduleTimer.Stop();
+        }
+    }
+
+    /// <summary>Checks if it's time to capture a screenshot and captures one if needed.</summary>
+    private async Task CheckAndCaptureScreenshotAsync()
+    {
+        if (_screenshotIntervalMinutes <= 0 || _nextScreenshotTime is null)
+        {
+            _screenshotScheduleTimer.Stop();
+            return;
+        }
+
+        if (DateTimeOffset.Now >= _nextScreenshotTime.Value)
+        {
+            var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
+            if (settingsResult.Succeeded && settingsResult.Value is { } settings
+                && IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now))
+            {
+                await _application.CaptureSystemSnapshotAsync(CancellationToken.None);
+                if (settings.ScreenshotsEnabled)
+                {
+                    var request = new CaptureScreenshotRequest(
+                        "all-screens",
+                        true,
+                        true,
+                        ScreenshotCaptureOrigins.Scheduled);
+                    await _application.CaptureScreenshotAsync(request, CancellationToken.None);
+                }
+            }
+
+            // Failed settings reads and inactive periods skip this tick; the next interval remains scheduled.
+            _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(_screenshotIntervalMinutes);
+        }
+    }
+
+    private static bool IsWithinActiveHours(IReadOnlyList<ActiveHoursDay>? activeHours, DateTimeOffset timestamp)
+    {
+        var dayName = timestamp.DayOfWeek.ToString().ToLowerInvariant();
+        var day = activeHours?.LastOrDefault(candidate => string.Equals(candidate.Day, dayName, StringComparison.OrdinalIgnoreCase));
+        if (day is null)
+        {
+            return false;
+        }
+
+        var localTime = TimeOnly.FromDateTime(timestamp.DateTime);
+        return IsWithinTimeRange(day.ActivePeriod, localTime)
+            && !day.BreakPeriods.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Any(range => IsWithinTimeRange(range, localTime));
+    }
+
+    private static bool IsWithinTimeRange(string range, TimeOnly localTime)
+    {
+        var values = range.Split('-', StringSplitOptions.TrimEntries);
+        return values.Length == 2
+            && TimeOnly.TryParseExact(values[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
+            && TimeOnly.TryParseExact(values[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end)
+            && localTime >= start
+            && localTime < end;
     }
 
     /// <summary>Shows the shared overflow flyout from its title-bar command.</summary>
@@ -228,6 +386,13 @@ public sealed partial class MainWindow : Window
     {
         MoreButton.Flyout.Hide();
         ReportsRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Forwards gallery-window activation to the application composition root.</summary>
+    private void ScreenshotsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        ScreenshotGalleryRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Shows the operational and diagnostic facade surface.</summary>
@@ -380,12 +545,155 @@ public sealed partial class MainWindow : Window
         KeyCountText.Text = state.TotalKeyPresses.ToString("N0");
         ClickCountText.Text = state.TotalMouseClicks.ToString("N0");
         ActiveTimeText.Text = TimeSpan.FromSeconds(state.ActiveSeconds).ToString(@"hh\:mm\:ss");
-        ActivityLine.Value = state.Intensity;
+        RenderActivityTrend(state.ActivityTrend);
         TrackingStateText.Text = T(state.IsTracking ? "StateRunning" : "StatePaused");
         PlayPauseIcon.Glyph = state.IsTracking ? "\uE769" : "\uE768";
         LocalTimeText.Text = $"Local time {state.LocalTime:HH:mm:ss}";
         UtcTimeText.Text = $"UTC {state.UtcTime:HH:mm:ss}";
         AutomationProperties.SetName(TrackingButton, state.IsTracking ? "Metti in pausa il monitoraggio" : "Avvia il monitoraggio");
+
+        // Display countdown to next screenshot if scheduled.
+        if (_screenshotIntervalMinutes > 0 && _nextScreenshotTime.HasValue)
+        {
+            var timeRemaining = _nextScreenshotTime.Value - DateTimeOffset.Now;
+            if (timeRemaining.TotalSeconds > 0)
+            {
+                var minutes = (int)timeRemaining.TotalMinutes;
+                var seconds = (int)timeRemaining.Seconds;
+                ElapsedText.Text = $"{minutes:00}:{seconds:00}";
+            }
+            else
+            {
+                ElapsedText.Text = "00:00";
+            }
+        }
+        else
+        {
+            ElapsedText.Text = "00:00";
+        }
+
+        UpdatePendingSnapshotDeleteUi();
+    }
+
+    /// <summary>Updates the temporary delete action and its 30-second countdown.</summary>
+    private void UpdatePendingSnapshotDeleteUi()
+    {
+        if (_pendingSnapshotDeleteInProgress)
+        {
+            PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (_pendingSnapshotPath is null || _pendingSnapshotDeleteDeadline is not { } deadline)
+        {
+            PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var remaining = deadline - DateTimeOffset.Now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            var expiredCapture = _pendingSnapshotCapture;
+            _pendingSnapshotPath = null;
+            _pendingSnapshotCapture = null;
+            _pendingSnapshotDeleteDeadline = null;
+            PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            if (expiredCapture is not null)
+            {
+                _ = AnalyzeExpiredSnapshotAsync(expiredCapture);
+            }
+
+            return;
+        }
+
+        var remainingSeconds = Math.Clamp(remaining.TotalSeconds, 0, PendingSnapshotDeleteSeconds);
+        SnapshotDeleteCountdownProgress.Value = remainingSeconds;
+        SnapshotDeleteCountdownText.Text = $"00:{Math.Max(1, (int)Math.Ceiling(remainingSeconds)):00}";
+        DeleteSnapshotButton.IsEnabled = true;
+        PendingSnapshotPanel.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Analyzes the retained manual capture after its deletion window has elapsed.</summary>
+    private async Task AnalyzeExpiredSnapshotAsync(ScreenshotCaptureResult capture)
+    {
+        // The provider call is intentionally delayed until deletion is no longer available.
+        var result = await _application.AnalyzeCapturedScreenshotAsync(
+            new AnalyzeCapturedScreenshotRequest(capture, KeepCapture: true, Origin: "snapshot.manual"),
+            CancellationToken.None);
+        if (!result.Succeeded)
+        {
+            return;
+        }
+
+        var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
+        if (lastSession.Succeeded)
+        {
+            UpdateLastSession(lastSession.Value);
+        }
+    }
+
+    /// <summary>Displays the persisted 24-hour activity trend only after the full window is available.</summary>
+    private void RenderActivityTrend(ActivityTrendState? trend)
+    {
+        if (trend is not { HasCompleteCoverage: true } || trend.HourlyActivityLevels.Count != 24)
+        {
+            ActivityTrendChart.Visibility = Visibility.Collapsed;
+            ActivityTrendPath.Data = null;
+            return;
+        }
+
+        const double chartWidth = 344d;
+        const double chartHeight = 19d;
+        var pointSpacing = chartWidth / (trend.HourlyActivityLevels.Count - 1);
+        var figure = new PathFigure { StartPoint = new Point(0d, chartHeight - trend.HourlyActivityLevels[0] / 100d * chartHeight) };
+        for (var index = 1; index < trend.HourlyActivityLevels.Count; index++)
+        {
+            figure.Segments.Add(new LineSegment
+            {
+                Point = new Point(index * pointSpacing, chartHeight - trend.HourlyActivityLevels[index] / 100d * chartHeight)
+            });
+        }
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        ActivityTrendPath.Data = geometry;
+        ActivityTrendChart.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Deletes the most recent manual capture while its temporary countdown is active.</summary>
+    private async void DeleteSnapshotButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingSnapshotPath is not { } screenshotPath)
+        {
+            return;
+        }
+
+        _pendingSnapshotDeleteInProgress = true;
+        PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+        DeleteSnapshotButton.IsEnabled = false;
+        try
+        {
+            await _application.DeleteSnapshotAsync(screenshotPath, CancellationToken.None);
+            var result = await _application.DeleteScreenshotAsync(screenshotPath, CancellationToken.None);
+            if (!result.Succeeded)
+            {
+                return;
+            }
+
+            _pendingSnapshotPath = null;
+            _pendingSnapshotCapture = null;
+            _pendingSnapshotDeleteDeadline = null;
+            var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
+            if (lastSession.Succeeded)
+            {
+                UpdateLastSession(lastSession.Value);
+            }
+        }
+        finally
+        {
+            _pendingSnapshotDeleteInProgress = false;
+            UpdatePendingSnapshotDeleteUi();
+        }
     }
 
     /// <summary>Renders the latest-session labels and the screenshot URI supplied by the application facade.</summary>
@@ -534,6 +842,7 @@ public sealed partial class MainWindow : Window
         }
 
         _refreshTimer.Stop();
+        _screenshotScheduleTimer.Stop();
     }
 }
 
