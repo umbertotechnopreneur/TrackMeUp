@@ -66,7 +66,9 @@ public sealed class WinUiSurfaceContractTests
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var reportsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
 
-        Assert.Contains(player.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        var playerUsesMica = player.Descendants().Any(element => element.Name.LocalName == "MicaBackdrop")
+            || mainSource.Contains("SystemBackdrop = new MicaBackdrop", StringComparison.Ordinal);
+        Assert.True(playerUsesMica, "MainWindow must use MicaBackdrop in XAML or assign it in code-behind.");
         Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
         Assert.Contains(about.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
         Assert.Contains("SetTitleBar(DragRegion)", mainSource, StringComparison.Ordinal);
@@ -96,6 +98,57 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("None", widget.Root?.Attribute("WindowStyle")?.Value);
         Assert.Equal("False", widget.Root?.Attribute("ShowInTaskbar")?.Value);
         Assert.Contains("WsExNoActivate", hostSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TaskbarSurface_ParentsHiddenHwndBeforeFirstVisibleFrame()
+    {
+        var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp.Taskbar", "TaskbarWidgetWindow.xaml.cs"));
+        var surfaceSource = File.ReadAllText(RepositoryFile("TrackMeUp.Taskbar", "TaskbarWidgetSurface.cs"));
+        var hostSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "TaskbarWidgetHost.cs"));
+        var prepareStart = windowSource.IndexOf("internal void PrepareForTaskbar", StringComparison.Ordinal);
+        var prepareEnd = windowSource.IndexOf("internal void ApplySettings", StringComparison.Ordinal);
+        var attachStart = surfaceSource.IndexOf("private bool TryAttachPreparedWindow", StringComparison.Ordinal);
+        var attachEnd = surfaceSource.IndexOf("private void RecoverFromExplorerChanges", StringComparison.Ordinal);
+
+        Assert.True(prepareStart >= 0 && prepareEnd > prepareStart, "PrepareForTaskbar source contract was not found.");
+        Assert.True(attachStart >= 0 && attachEnd > attachStart, "TaskbarWidgetSurface attach lifecycle contract was not found.");
+        var prepareSource = windowSource[prepareStart..prepareEnd];
+        var attachSource = surfaceSource[attachStart..attachEnd];
+        Assert.Contains("Opacity = 1;", prepareSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Opacity = 0;", prepareSource, StringComparison.Ordinal);
+        Assert.Contains("_ = Handle;", prepareSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Show();", prepareSource, StringComparison.Ordinal);
+        Assert.Contains("_host.Attach", attachSource, StringComparison.Ordinal);
+        Assert.Contains("window.Show();", attachSource, StringComparison.Ordinal);
+        Assert.True(
+            attachSource.IndexOf("_host.Attach", StringComparison.Ordinal) < attachSource.IndexOf("window.Show();", StringComparison.Ordinal),
+            "The HWND must be parented before WPF shows its first visible frame.");
+        Assert.DoesNotContain("ContentRendered", surfaceSource, StringComparison.Ordinal);
+        Assert.Contains("DispatcherTimer", surfaceSource, StringComparison.Ordinal);
+        Assert.Contains("_host.Recover()", surfaceSource, StringComparison.Ordinal);
+        Assert.Contains("_host.HasValidWidgetHandle", surfaceSource, StringComparison.Ordinal);
+        Assert.Contains("PrepareReplacementWindow();", surfaceSource, StringComparison.Ordinal);
+        Assert.Contains("showWindow: false", hostSource, StringComparison.Ordinal);
+        Assert.Contains("SetWindowRgn", hostSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MainWindow_RemainsVisibleWhenTaskbarWidgetAttaches()
+    {
+        var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var startUiStart = appSource.IndexOf("private void StartUi", StringComparison.Ordinal);
+        var startUiEnd = appSource.IndexOf("private void StartReports", StringComparison.Ordinal);
+
+        Assert.True(startUiStart >= 0 && startUiEnd > startUiStart, "App.StartUi source contract was not found.");
+        var startUiSource = appSource[startUiStart..startUiEnd];
+        Assert.Contains("_window.Activate();", startUiSource, StringComparison.Ordinal);
+        Assert.True(
+            startUiSource.IndexOf("_window.Activate();", StringComparison.Ordinal) < startUiSource.IndexOf("new TaskbarWidgetSurface", StringComparison.Ordinal),
+            "MainWindow must activate before optional taskbar-widget initialization.");
+        Assert.DoesNotContain("HideTopLevelWindow", startUiSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("FirstRun", startUiSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("AlwaysShowInTaskbar", startUiSource, StringComparison.Ordinal);
     }
 
     [Theory]

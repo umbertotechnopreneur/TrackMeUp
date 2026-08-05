@@ -235,6 +235,8 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "plugins.disable" => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
                 "settings.get" => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
                 "settings.patch" => ToResponse(request, await _application.PatchSettingsAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
+                "window.state.restore" => ToResponse(request, await _application.RestoreWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                "window.state.save" => ToResponse(request, await _application.SaveWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "startup.status" => ToResponse(request, await _application.GetStartupStatusAsync(cancellationToken)),
                 "startup.enable" => ToResponse(request, await _application.SetStartupEnabledAsync(true, cancellationToken)),
                 "startup.disable" => ToResponse(request, await _application.SetStartupEnabledAsync(false, cancellationToken)),
@@ -491,6 +493,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken) => SendAsync<AppSettings>("settings.get", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>("settings.patch", patch, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState?>("window.state.restore", new { windowKey, windowHandle }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState>("window.state.save", new { windowKey, windowHandle }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken) => SendAsync<bool>("startup.status", null, cancellationToken);
     /// <inheritdoc />

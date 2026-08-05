@@ -108,7 +108,8 @@ public sealed record AppSettings(
     string TaskbarWidgetPosition = TaskbarWidgetPositions.Left,
     string AiCustomPrompt = "",
     IReadOnlyList<ActiveHoursDay>? ActiveHours = null,
-    bool IncludeDeviceLocation = false);
+    bool IncludeDeviceLocation = false,
+    IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

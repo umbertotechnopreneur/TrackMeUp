@@ -29,18 +29,21 @@ public sealed partial class AboutWindow : Window
         RootGrid.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         UiLocalization.Apply(RootGrid, _strings);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        ConfigureWindowBehavior();
         ResizeForLogicalContent();
-        Closed += (_, _) =>
-        {
-            if (_xamlRoot is not null)
-            {
-                _xamlRoot.Changed -= XamlRoot_Changed;
-            }
-        };
+        Closed += AboutWindow_Closed;
     }
 
     /// <summary>Forwards the close interaction to the window framework.</summary>
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void AboutWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_xamlRoot is not null)
+        {
+            _xamlRoot.Changed -= XamlRoot_Changed;
+        }
+    }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
@@ -51,6 +54,7 @@ public sealed partial class AboutWindow : Window
         }
 
         ResizeForLogicalContent();
+
         var result = await _application.GetProductInformationAsync(CancellationToken.None);
         if (!result.Succeeded || result.Value is null)
         {
@@ -88,5 +92,22 @@ public sealed partial class AboutWindow : Window
         var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(LogicalWindowHeight * scale));
         _appWindow.Resize(new SizeInt32(physicalWidth, physicalHeight));
+        CenterWindowInWorkArea(workArea);
+    }
+
+    private void ConfigureWindowBehavior()
+    {
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsResizable = false;
+            presenter.IsMaximizable = false;
+        }
+    }
+
+    private void CenterWindowInWorkArea(RectInt32 workArea)
+    {
+        var x = workArea.X + Math.Max(0, (workArea.Width - _appWindow.Size.Width) / 2);
+        var y = workArea.Y + Math.Max(0, (workArea.Height - _appWindow.Size.Height) / 2);
+        _appWindow.Move(new PointInt32(x, y));
     }
 }

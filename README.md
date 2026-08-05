@@ -21,7 +21,7 @@ This is not an MVP or a throwaway demo. TrackMeUp is a working internal product 
 ## What TrackMeUp does
 
 - Builds a quiet local timeline of active and idle time, applications, window context, key-press counts, and mouse-click counts. It never records what was typed.
-- Shows the current state in a small Windows player and a taskbar control.
+- Shows the current state in a small Windows player and a taskbar control. The player stays visible whenever the app starts, including when the taskbar control cannot attach.
 - Provides local reports for days, time patterns, trends, and applications.
 - Supports focus sessions and local HTML reports.
 - Adds extra context for selected applications such as Word, Excel, Visual Studio Code, and browsers. These details can be switched off individually.
@@ -113,7 +113,11 @@ pwsh -NoProfile -File .\scripts\test-cli.ps1
 
 Screenshots, AI, and retention mutations are guarded by the same privacy and confirmation rules in the app and CLI. API keys are never accepted as command-line arguments.
 
-Screenshot gallery validation checklist: open the gallery twice and confirm that only one window is activated, select another day with the floating WinUI `CalendarDatePicker`, and verify that a manual capture is labeled `Manuale` while an automatic capture is labeled `Pianificato`.
+Screenshot gallery validation checklist: open the gallery twice and confirm that only one window is activated, open it from the `Wayback Machine` flyout entry, select another day with the floating WinUI `CalendarDatePicker`, and verify that a manual capture is labeled `Manuale` while an automatic capture is labeled `Pianificato`.
+
+Window-state validation checklist: close and reopen each app window on a multi-monitor setup, confirm that its saved size, position, and monitor are restored, then disconnect or resize the saved monitor and confirm that the restored bounds remain inside the current work area.
+
+Taskbar-control validation checklist: launch the unpackaged x64 app and confirm that the player window remains visible while the logo, play/pause glyph, and recording indicator appear immediately in the taskbar; launch it again to confirm the same startup behavior, restart Explorer and confirm that the control returns, then repeat at 100%, 125%, and 150% display scaling.
 
 ## Repository map
 

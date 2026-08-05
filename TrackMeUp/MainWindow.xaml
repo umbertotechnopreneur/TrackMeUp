@@ -5,10 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:TrackMeUp.Controls"
     Title="TrackMeUp">
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
-
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
@@ -34,8 +30,8 @@
             <ScrollViewer
                 HorizontalScrollBarVisibility="Disabled"
                 HorizontalScrollMode="Disabled"
-                VerticalScrollBarVisibility="Auto"
-                VerticalScrollMode="Auto">
+                VerticalScrollBarVisibility="Hidden"
+                VerticalScrollMode="Enabled">
                 <Grid Padding="0,0,6,0" RowSpacing="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -79,6 +75,9 @@
                                         </Button>
                                         <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Reports" Background="Transparent" BorderBrush="Transparent" Click="ReportsMenuItem_Click">
                                             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE9D2;" /><TextBlock Grid.Column="1" Tag="Main.Menu.Reports" VerticalAlignment="Center" Text="Reports" /></Grid>
+                                        </Button>
+                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Wayback Machine" Background="Transparent" BorderBrush="Transparent" Click="WaybackMachineMenuItem_Click">
+                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE81C;" /><TextBlock Grid.Column="1" Tag="Main.Menu.WaybackMachine" VerticalAlignment="Center" Text="Wayback Machine" /></Grid>
                                         </Button>
                                         <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Tools and diagnostics" Background="Transparent" BorderBrush="Transparent" Click="OperationsMenuItem_Click">
                                             <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE9D9;" /><TextBlock Grid.Column="1" Tag="Main.Menu.Operations" VerticalAlignment="Center" Text="Tools and diagnostics" /></Grid>
@@ -233,15 +232,28 @@
                             BorderBrush="Transparent"
                             Click="ScreenshotPreviewButton_Click"
                             ToolTipService.ToolTip="Apri galleria screenshot">
-                            <Grid Width="112" Height="62">
-                                <Image x:Name="LastScreenshotImage" AutomationProperties.AccessibilityView="Raw" Stretch="UniformToFill" Visibility="Collapsed" />
-                                <Border x:Name="ScreenshotPlaceholder" Background="{ThemeResource ControlFillColorSecondaryBrush}" CornerRadius="8">
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE722;" />
-                                        <TextBlock Tag="ScreenshotDisabledHint" Style="{StaticResource CaptionTextBlockStyle}" Text="Snapshots disabled" TextAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
+                            <Border
+                                Width="112"
+                                Height="62"
+                                Padding="1"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Translation="0,0,12">
+                                <Border.Shadow>
+                                    <ThemeShadow />
+                                </Border.Shadow>
+                                <Grid>
+                                    <Image x:Name="LastScreenshotImage" AutomationProperties.AccessibilityView="Raw" Stretch="UniformToFill" Visibility="Collapsed" />
+                                    <Border x:Name="ScreenshotPlaceholder" Background="{ThemeResource ControlFillColorSecondaryBrush}" CornerRadius="8">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE722;" />
+                                            <TextBlock Tag="ScreenshotDisabledHint" Style="{StaticResource CaptionTextBlockStyle}" Text="Snapshots disabled" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
                         </Button>
                     </Grid>
                 </Grid>

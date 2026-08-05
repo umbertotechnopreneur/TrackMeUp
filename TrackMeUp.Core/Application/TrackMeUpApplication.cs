@@ -22,7 +22,7 @@ public static class TrackMeUpApplicationFactory
         var deviceContext = new DeviceContextService();
         var buildInformation = new BuildInformationService();
         var analysis = new OpenAiAnalysisService(store, capture, snapshot, deviceContext: deviceContext);
-        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext, new ScreenshotShareService());
+        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext, new ScreenshotShareService(), new WindowStateService(store));
     }
 }
 
@@ -37,6 +37,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly DeviceContextService _deviceContext;
     private readonly OpenAiAnalysisService _analysis;
     private readonly ScreenshotShareService _screenshotShare;
+    private readonly WindowStateService _windowState;
     private readonly StartupService _startup;
     private readonly BuildInformationService _buildInformation;
     private readonly ReportAggregationService _reports;
@@ -60,7 +61,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         ILogger<TrackMeUpApplication>? logger = null,
         ObservabilityHealth? observability = null,
         DeviceContextService? deviceContext = null,
-        ScreenshotShareService? screenshotShare = null)
+        ScreenshotShareService? screenshotShare = null,
+        WindowStateService? windowState = null)
     {
         _store = store;
         _utilities = utilities;
@@ -69,6 +71,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _snapshot = snapshot;
         _deviceContext = deviceContext ?? new DeviceContextService();
         _screenshotShare = screenshotShare ?? new ScreenshotShareService();
+        _windowState = windowState ?? new WindowStateService(store);
         _analysis = analysis;
         _startup = startup;
         _buildInformation = buildInformation;
@@ -94,7 +97,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "ai", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "window.state", "ai", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -635,6 +638,25 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         await Task.CompletedTask;
         return OperationResult<AppSettings>.Success("settings.saved", "SettingsSaved", current);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        var state = _windowState.Restore(windowKey, windowHandle);
+        await Task.CompletedTask;
+        return OperationResult<WindowState?>.Success(
+            state is null ? "window.state.not_found" : "window.state.restored",
+            state is null ? "WindowStateNotFound" : "WindowStateRestored",
+            state);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        var state = _windowState.Save(windowKey, windowHandle);
+        await Task.CompletedTask;
+        return OperationResult<WindowState>.Success("window.state.saved", "WindowStateSaved", state);
     }, cancellationToken);
 
     /// <inheritdoc />

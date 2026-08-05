@@ -7,6 +7,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
@@ -32,6 +33,7 @@ public sealed partial class MainWindow : Window
     private LocalizationService _strings = new("system");
     private bool _detailsExpanded;
     private bool _updatingMenuState;
+    private bool _windowStateRestored;
     private int _logicalHeight = PlayerHeight;
     private double _rasterizationScale = 1d;
     private string _theme = "system";
@@ -55,6 +57,7 @@ public sealed partial class MainWindow : Window
         _application = application;
         _viewModel = new MainViewModel(application);
         InitializeComponent();
+        SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
@@ -75,15 +78,7 @@ public sealed partial class MainWindow : Window
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
         _refreshTimer.Start();
         _ = InitializeAsync(options);
-        Closed += (_, _) =>
-        {
-            if (_xamlRoot is not null)
-            {
-                _xamlRoot.Changed -= XamlRoot_Changed;
-            }
-
-            _refreshTimer.Stop();
-        };
+        Closed += MainWindow_Closed;
     }
 
     private async Task InitializeAsync(LaunchOptions options)
@@ -158,6 +153,13 @@ public sealed partial class MainWindow : Window
     {
         MoreButton.Flyout.Hide();
         ReportsRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Forwards the Wayback Machine screenshot-gallery request to the application composition root.</summary>
+    private void WaybackMachineMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        ScreenshotsRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Shows the operational and diagnostic facade surface.</summary>
@@ -308,7 +310,11 @@ public sealed partial class MainWindow : Window
         UiLocalization.Apply(RootGrid, _strings);
         OptionsControl.ApplyLanguage(settings.UiLanguage);
         OperationsControl.ApplyLanguage(settings.UiLanguage);
-        ApplyFlyoutPosition(_position);
+        if (!_windowStateRestored)
+        {
+            ApplyFlyoutPosition(_position);
+        }
+
         SettingsApplied?.Invoke(settings);
     }
 
@@ -322,7 +328,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Starts the player entrance fade.</summary>
-    private void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
@@ -332,12 +338,27 @@ public sealed partial class MainWindow : Window
 
         ResizeForLogicalContent(_logicalHeight);
         ApplyFlyoutPosition(_position);
+        if (!_windowStateRestored)
+        {
+            _windowStateRestored = true;
+            var result = await _application.RestoreWindowStateAsync(WindowStateKeys.Main, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
+            }
+        }
+
         FadeIn(PlayerPanel);
     }
 
     /// <summary>Keeps the requested WinUI logical size stable when the window crosses displays with different DPI.</summary>
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
+        if (_windowStateRestored)
+        {
+            return;
+        }
+
         if (Math.Abs(sender.RasterizationScale - _rasterizationScale) < 0.001d)
         {
             return;
@@ -388,5 +409,21 @@ public sealed partial class MainWindow : Window
         };
         var y = position is FlyoutPositions.TopLeft or FlyoutPositions.TopRight ? area.Y + margin : area.Y + area.Height - _appWindow.Size.Height - margin;
         _appWindow.Move(new PointInt32(x, y));
+    }
+
+    private async void MainWindow_Closed(object sender, WindowEventArgs args)
+    {
+        var result = await _application.SaveWindowStateAsync(WindowStateKeys.Main, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Window state could not be saved ({result.Code}).");
+        }
+
+        if (_xamlRoot is not null)
+        {
+            _xamlRoot.Changed -= XamlRoot_Changed;
+        }
+
+        _refreshTimer.Stop();
     }
 }

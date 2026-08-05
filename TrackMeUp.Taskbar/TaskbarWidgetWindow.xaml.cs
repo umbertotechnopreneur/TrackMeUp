@@ -39,17 +39,17 @@ public sealed partial class TaskbarWidgetWindow : Window
     /// <summary>Gets the native transparent HWND used by the shared Core taskbar host.</summary>
     internal IntPtr Handle => new WindowInteropHelper(this).EnsureHandle();
 
-    /// <summary>Creates the WPF surface at its logical taskbar size before Core reparents it into Explorer.</summary>
-    internal void PrepareForTaskbar()
+    /// <summary>Creates the hidden WPF HWND at the logical taskbar size before Core reparents it into Explorer.</summary>
+    internal void PrepareForTaskbar(TaskbarWidgetHost.TaskbarWidgetBounds bounds)
     {
-        Width = TaskbarWidgetHost.LogicalWidth;
-        Height = TaskbarWidgetHost.LogicalHeight;
-        Opacity = 0;
-        Show();
+        // Size and position the hidden window in WPF DIPs so its HWND adopts the taskbar monitor's DPI.
+        Width = bounds.Width / bounds.Scale;
+        Height = bounds.Height / bounds.Scale;
+        Left = bounds.ScreenX / bounds.Scale;
+        Top = bounds.ScreenY / bounds.Scale;
+        Opacity = 1;
+        _ = Handle;
     }
-
-    /// <summary>Shows the rendered control only after its transparent HWND has been parented to Explorer.</summary>
-    internal void RevealInTaskbar() => Opacity = 1;
 
     /// <summary>Applies presentation colors from the persisted app theme without accessing external state.</summary>
     internal void ApplySettings(AppSettings settings)

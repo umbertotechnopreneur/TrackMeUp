@@ -33,6 +33,7 @@ public sealed partial class ScreenshotWindow : Window
     private double _rasterizationScale = 1d;
     private string _theme = "system";
     private bool _initialized;
+    private bool _windowStateRestored;
 
     /// <summary>Creates the Mica screenshot inspector backed by the shared application facade.</summary>
     public ScreenshotWindow(ITrackMeUpApplication application, string? launchTheme = null)
@@ -59,6 +60,16 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         ResizeForLogicalContent();
+        if (!_windowStateRestored)
+        {
+            _windowStateRestored = true;
+            var windowState = await _application.RestoreWindowStateAsync(WindowStateKeys.Screenshots, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), _lifetimeCancellation.Token);
+            if (!windowState.Succeeded)
+            {
+                throw new InvalidOperationException($"Window state could not be restored ({windowState.Code}).");
+            }
+        }
+
         if (_initialized)
         {
             return;
@@ -430,8 +441,14 @@ public sealed partial class ScreenshotWindow : Window
         _appWindow.Resize(new SizeInt32(physicalWidth, physicalHeight));
     }
 
-    private void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
+    private async void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
     {
+        var windowState = await _application.SaveWindowStateAsync(WindowStateKeys.Screenshots, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
+        if (!windowState.Succeeded)
+        {
+            throw new InvalidOperationException($"Window state could not be saved ({windowState.Code}).");
+        }
+
         _lifetimeCancellation.Cancel();
         _galleryCancellation?.Cancel();
         _galleryCancellation?.Dispose();

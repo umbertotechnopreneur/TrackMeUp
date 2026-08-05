@@ -43,6 +43,7 @@ public sealed partial class ReportsWindow : Window
     private ReportRangeKey? _cachedRange;
     private ReportSnapshot? _cachedSnapshot;
     private DateTimeOffset _cachedAtUtc;
+    private bool _windowStateRestored;
 
     /// <summary>Creates a reports window backed by the shared application facade.</summary>
     public ReportsWindow(ITrackMeUpApplication application, string? launchTheme = null)
@@ -75,6 +76,16 @@ public sealed partial class ReportsWindow : Window
         }
 
         ResizeForLogicalContent();
+        if (!_windowStateRestored)
+        {
+            _windowStateRestored = true;
+            var windowState = await _application.RestoreWindowStateAsync(WindowStateKeys.Reports, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), _lifetimeCancellation.Token);
+            if (!windowState.Succeeded)
+            {
+                throw new InvalidOperationException($"Window state could not be restored ({windowState.Code}).");
+            }
+        }
+
         if (_initializing || _webReady)
         {
             return;
@@ -566,8 +577,14 @@ public sealed partial class ReportsWindow : Window
         ReportsWebView.Visibility = Visibility.Visible;
     }
 
-    private void ReportsWindow_Closed(object sender, WindowEventArgs args)
+    private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
     {
+        var windowState = await _application.SaveWindowStateAsync(WindowStateKeys.Reports, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
+        if (!windowState.Succeeded)
+        {
+            throw new InvalidOperationException($"Window state could not be saved ({windowState.Code}).");
+        }
+
         _lifetimeCancellation.Cancel();
         _refreshCancellation?.Cancel();
         _refreshCancellation?.Dispose();

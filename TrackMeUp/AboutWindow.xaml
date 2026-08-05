@@ -8,61 +8,74 @@
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Padding="32,28" Background="Transparent" Loaded="RootGrid_Loaded">
+        <Grid.Resources>
+            <Style x:Key="AboutCardStyle" TargetType="Border">
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+            </Style>
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Padding="0,0,8,0" Spacing="16">
-                <Image
-                    Width="128"
-                    Height="128"
-                    HorizontalAlignment="Center"
-                    AutomationProperties.Name="TrackMeUp app icon"
-                    Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+            <StackPanel Spacing="14">
+                <Border Style="{StaticResource AboutCardStyle}">
+                    <StackPanel Spacing="12">
+                        <Image
+                            Width="128"
+                            Height="128"
+                            HorizontalAlignment="Center"
+                            AutomationProperties.Name="TrackMeUp app icon"
+                            Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
 
-                <StackPanel HorizontalAlignment="Center" Spacing="2">
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource TitleTextBlockStyle}"
-                        Text="TrackMeUp"
-                        TextAlignment="Center" />
-                    <HyperlinkButton
-                        HorizontalAlignment="Center"
-                        Content="github.com/umbertotechnopreneur/TrackMeUp"
-                        NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp" />
-                    <HyperlinkButton
-                        HorizontalAlignment="Center"
-                        Content="umbertogiacobbi.com"
-                        NavigateUri="https://umbertogiacobbi.com" />
-                </StackPanel>
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource TitleTextBlockStyle}"
+                                Text="TrackMeUp"
+                                TextAlignment="Center" />
+                            <HyperlinkButton
+                                HorizontalAlignment="Center"
+                                Content="github.com/umbertotechnopreneur/TrackMeUp"
+                                NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp" />
+                            <HyperlinkButton
+                                HorizontalAlignment="Center"
+                                Content="umbertogiacobbi.com"
+                                NavigateUri="https://umbertogiacobbi.com" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
-                <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                <StackPanel Spacing="12">
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
-                        <TextBlock x:Name="VersionText" Style="{StaticResource BodyStrongTextBlockStyle}" Text="—" TextWrapping="Wrap" />
+                <Border Style="{StaticResource AboutCardStyle}">
+                    <StackPanel Spacing="12">
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" TextAlignment="Center" />
+                            <TextBlock x:Name="VersionText" Style="{StaticResource BodyStrongTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock Tag="About.Built" Style="{StaticResource CaptionTextBlockStyle}" Text="Built" TextAlignment="Center" />
+                            <TextBlock x:Name="BuiltText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock Tag="About.Machine" Style="{StaticResource CaptionTextBlockStyle}" Text="Build machine" TextAlignment="Center" />
+                            <TextBlock x:Name="MachineText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock Tag="About.Commit" Style="{StaticResource CaptionTextBlockStyle}" Text="Git commit" TextAlignment="Center" />
+                            <HyperlinkButton
+                                x:Name="CommitLink"
+                                Padding="0"
+                                HorizontalAlignment="Center"
+                                Content="—" />
+                        </StackPanel>
+                        <TextBlock x:Name="BuildContextText" HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
                     </StackPanel>
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="About.Built" Style="{StaticResource CaptionTextBlockStyle}" Text="Built" />
-                        <TextBlock x:Name="BuiltText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="About.Machine" Style="{StaticResource CaptionTextBlockStyle}" Text="Build machine" />
-                        <TextBlock x:Name="MachineText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="About.Commit" Style="{StaticResource CaptionTextBlockStyle}" Text="Git commit" />
-                        <HyperlinkButton
-                            x:Name="CommitLink"
-                            Padding="0"
-                            HorizontalAlignment="Left"
-                            Content="—" />
-                    </StackPanel>
-                    <TextBlock x:Name="BuildContextText" Style="{StaticResource CaptionTextBlockStyle}" Text="—" TextWrapping="Wrap" />
-                </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 
@@ -70,7 +83,8 @@
             Tag="About.Close"
             Grid.Row="1"
             Margin="0,22,0,0"
-            HorizontalAlignment="Stretch"
+            MinWidth="120"
+            HorizontalAlignment="Right"
             Click="CloseButton_Click"
             Content="Close"
             Style="{StaticResource AccentButtonStyle}" />

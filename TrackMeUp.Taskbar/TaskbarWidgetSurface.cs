@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Threading;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 
@@ -10,19 +12,24 @@ public sealed class TaskbarWidgetSurface : IDisposable
 {
     private readonly ITrackMeUpApplication _application;
     private readonly TaskbarWidgetHost _host;
+    private readonly ILogger<TaskbarWidgetSurface> _logger;
     private readonly ManualResetEventSlim _ready = new(false);
     private readonly Thread _thread;
     private System.Windows.Application? _wpfApplication;
     private Dispatcher? _dispatcher;
+    private DispatcherTimer? _recoveryTimer;
     private TaskbarWidgetWindow? _window;
     private Exception? _startupException;
+    private AppSettings? _settings;
+    private string _position = TaskbarWidgetPositions.Left;
     private int _disposed;
 
     /// <summary>Starts the dedicated WPF dispatcher and creates the alpha-capable taskbar surface.</summary>
-    public TaskbarWidgetSurface(ITrackMeUpApplication application, TaskbarWidgetHost host)
+    public TaskbarWidgetSurface(ITrackMeUpApplication application, TaskbarWidgetHost host, ILogger<TaskbarWidgetSurface>? logger = null)
     {
         _application = application;
         _host = host;
+        _logger = logger ?? NullLogger<TaskbarWidgetSurface>.Instance;
         _thread = new Thread(DispatcherThreadMain)
         {
             IsBackground = true,
@@ -33,11 +40,13 @@ public sealed class TaskbarWidgetSurface : IDisposable
 
         if (!_ready.Wait(TimeSpan.FromSeconds(10)))
         {
+            Dispose();
             throw new TimeoutException("Timed out while creating the TrackMeUp taskbar surface.");
         }
 
         if (_startupException is not null)
         {
+            Dispose();
             throw new InvalidOperationException("Unable to create the TrackMeUp taskbar surface.", _startupException);
         }
     }
@@ -46,25 +55,32 @@ public sealed class TaskbarWidgetSurface : IDisposable
     public event EventHandler? FlyoutRequested;
 
     /// <summary>Applies persisted presentation settings on the WPF dispatcher.</summary>
-    public void ApplySettings(AppSettings settings) => Invoke(window => window.ApplySettings(settings));
+    public void ApplySettings(AppSettings settings) => Invoke(window =>
+    {
+        _settings = settings;
+        window.ApplySettings(settings);
+    });
 
-    /// <summary>Parents the already-rendered transparent HWND into the taskbar through the shared Core host.</summary>
+    /// <summary>Parents the hidden transparent HWND into the taskbar and only then shows its WPF surface.</summary>
     public bool Attach(string position) => Invoke(window =>
     {
-        var attached = _host.Attach(window.Handle, position);
-        if (attached)
-        {
-            window.RevealInTaskbar();
-        }
-
-        return attached;
+        _position = position;
+        return TryAttachPreparedWindow(window, startRecoveryTimer: true);
     });
 
     /// <summary>Updates only the Core host placement while preserving the WPF surface and shared runtime.</summary>
-    public void Configure(string position) => Invoke(_ => _host.Configure(position));
-
-    /// <summary>Hides the WinUI player after the transparent taskbar surface has attached successfully.</summary>
-    public void HideTopLevelWindow(IntPtr windowHandle) => _host.HideTopLevelWindow(windowHandle);
+    public void Configure(string position) => Invoke(window =>
+    {
+        _position = position;
+        if (window.IsVisible)
+        {
+            _host.Configure(position);
+        }
+        else
+        {
+            _ = TryAttachPreparedWindow(window, startRecoveryTimer: false);
+        }
+    });
 
     /// <summary>Closes the alpha surface and stops its WPF dispatcher after Core removes taskbar parenting.</summary>
     public void Dispose()
@@ -79,6 +95,7 @@ public sealed class TaskbarWidgetSurface : IDisposable
         {
             dispatcher.Invoke(() =>
             {
+                _recoveryTimer?.Stop();
                 _host.Dispose();
                 _window?.Close();
                 _wpfApplication?.Shutdown();
@@ -102,9 +119,7 @@ public sealed class TaskbarWidgetSurface : IDisposable
                 ShutdownMode = ShutdownMode.OnExplicitShutdown
             };
             _dispatcher = Dispatcher.CurrentDispatcher;
-            _window = new TaskbarWidgetWindow(_application);
-            _window.FlyoutRequested += Window_FlyoutRequested;
-            _window.PrepareForTaskbar();
+            PrepareReplacementWindow();
             _ready.Set();
             Dispatcher.Run();
         }
@@ -113,6 +128,86 @@ public sealed class TaskbarWidgetSurface : IDisposable
             _startupException = exception;
             _ready.Set();
         }
+    }
+
+    private void StartRecoveryTimer()
+    {
+        if (_recoveryTimer is not null)
+        {
+            return;
+        }
+
+        _recoveryTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _recoveryTimer.Tick += (_, _) => RecoverFromExplorerChanges();
+        _recoveryTimer.Start();
+    }
+
+    private bool TryAttachPreparedWindow(TaskbarWidgetWindow window, bool startRecoveryTimer)
+    {
+        _logger.LogInformation("Attaching taskbar widget. Handle={Handle} Position={Position}", window.Handle, _position);
+        var attached = _host.Attach(window.Handle, _position);
+        if (attached)
+        {
+            // A layered WPF HWND must be parented before its first visible frame; otherwise the Windows 11
+            // taskbar can retain the alpha hit-test surface without compositing any of its pixels.
+            window.Show();
+            if (startRecoveryTimer)
+            {
+                StartRecoveryTimer();
+            }
+        }
+
+        _logger.LogInformation("Taskbar widget attach result={Attached}.", attached);
+        return attached;
+    }
+
+    private void RecoverFromExplorerChanges()
+    {
+        try
+        {
+            if (!_host.HasValidWidgetHandle)
+            {
+                _logger.LogInformation("Explorer released the taskbar widget HWND; recreating its WPF surface.");
+                PrepareReplacementWindow();
+            }
+
+            var window = GetWindow();
+            if (!window.IsVisible)
+            {
+                _ = TryAttachPreparedWindow(window, startRecoveryTimer: false);
+                return;
+            }
+
+            _ = _host.Recover();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Taskbar widget recovery attempt failed.");
+        }
+    }
+
+    private void PrepareReplacementWindow()
+    {
+        if (_window is not null)
+        {
+            _window.FlyoutRequested -= Window_FlyoutRequested;
+        }
+
+        // Position the hidden surface on the taskbar monitor before realizing its HWND so WPF adopts the correct DPI.
+        var bounds = TaskbarWidgetHost.GetDesiredBounds(_position);
+        var replacement = new TaskbarWidgetWindow(_application);
+        replacement.FlyoutRequested += Window_FlyoutRequested;
+        if (_settings is not null)
+        {
+            replacement.ApplySettings(_settings);
+        }
+
+        replacement.PrepareForTaskbar(bounds);
+        _window = replacement;
+        _logger.LogInformation("Taskbar widget hidden WPF HWND created. Handle={Handle} Bounds=({X},{Y},{Width},{Height}) Scale={Scale}", replacement.Handle, bounds.ScreenX, bounds.ScreenY, bounds.Width, bounds.Height, bounds.Scale);
     }
 
     private void Window_FlyoutRequested(object? sender, EventArgs e) => FlyoutRequested?.Invoke(this, EventArgs.Empty);

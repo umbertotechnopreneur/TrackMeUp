@@ -1,10 +1,13 @@
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace TrackMeUp.Services;
 
 /// <summary>Hosts the compact alpha-capable TrackMeUp control inside the Windows taskbar without owning tracking state.</summary>
 public sealed class TaskbarWidgetHost : IDisposable
 {
+    private readonly ILogger<TaskbarWidgetHost> _logger;
     /// <summary>Gets the widget width in device-independent pixels.</summary>
     public const int LogicalWidth = 144;
 
@@ -29,16 +32,36 @@ public sealed class TaskbarWidgetHost : IDisposable
     private const int SwHide = 0;
 
     private readonly object _gate = new();
-    private Timer? _explorerRecoveryTimer;
     private IntPtr _widgetHandle;
     private string _position = TaskbarWidgetPositions.Left;
+    private int _regionWidth;
+    private int _regionHeight;
     private bool _disposed;
 
-    /// <summary>Embeds an alpha-capable control in the primary Windows taskbar and begins recovery checks.</summary>
+    /// <summary>Initializes the taskbar host.</summary>
+    public TaskbarWidgetHost(ILogger<TaskbarWidgetHost>? logger = null)
+    {
+        _logger = logger ?? NullLogger<TaskbarWidgetHost>.Instance;
+    }
+
+    /// <summary>Gets whether Explorer still owns the current widget HWND.</summary>
+    public bool HasValidWidgetHandle
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return !_disposed && _widgetHandle != IntPtr.Zero && IsWindow(_widgetHandle);
+            }
+        }
+    }
+
+    /// <summary>Embeds an alpha-capable control in the primary Windows taskbar.</summary>
     public bool Attach(IntPtr widgetHandle, string position)
     {
         if (widgetHandle == IntPtr.Zero)
         {
+            _logger.LogWarning("Taskbar widget attach rejected: zero handle.");
             return false;
         }
 
@@ -47,8 +70,9 @@ public sealed class TaskbarWidgetHost : IDisposable
             ThrowIfDisposed();
             _widgetHandle = widgetHandle;
             _position = NormalizePosition(position);
-            var attached = TryAttachAndPosition();
-            _explorerRecoveryTimer ??= new Timer(static state => ((TaskbarWidgetHost)state!).RecoverFromExplorerChanges(), this, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            _logger.LogInformation("Attempting taskbar attach. Handle={Handle} Position={Position}", widgetHandle, _position);
+            var attached = TryAttachAndPosition(useAsyncPositioning: false, showWindow: false);
+            _logger.LogInformation("Taskbar attach outcome={Attached}.", attached);
             return attached;
         }
     }
@@ -60,20 +84,63 @@ public sealed class TaskbarWidgetHost : IDisposable
         {
             ThrowIfDisposed();
             _position = NormalizePosition(position);
-            TryAttachAndPosition();
+            TryAttachAndPosition(useAsyncPositioning: false, showWindow: true);
         }
     }
 
-    /// <summary>Hides a top-level flyout after the taskbar control has been attached successfully.</summary>
-    public void HideTopLevelWindow(IntPtr windowHandle)
+    /// <summary>Reattaches and repositions the visible widget after Explorer or display changes.</summary>
+    public bool Recover()
     {
-        if (windowHandle != IntPtr.Zero && IsWindow(windowHandle))
+        lock (_gate)
         {
-            ShowWindow(windowHandle, SwHide);
+            ThrowIfDisposed();
+            return TryAttachAndPosition(useAsyncPositioning: true, showWindow: true);
         }
     }
 
-    /// <summary>Stops recovery checks and removes taskbar parenting before the widget window is closed.</summary>
+    /// <summary>Computes the taskbar client bounds where the widget should appear, scaled to the taskbar monitor.</summary>
+    public static TaskbarWidgetBounds GetDesiredBounds(string position)
+    {
+        var taskbarHandle = FindWindow("Shell_TrayWnd", null);
+        if (taskbarHandle == IntPtr.Zero || !IsWindow(taskbarHandle) || !GetWindowRect(taskbarHandle, out var taskbarScreenBounds) || !GetClientRect(taskbarHandle, out var taskbarClientBounds))
+        {
+            return new TaskbarWidgetBounds(0, 0, 0, 0, LogicalWidth, LogicalHeight, 1d);
+        }
+
+        var scale = Math.Max(1d, GetDpiForWindow(taskbarHandle) / 96d);
+        var taskbarClientWidth = taskbarClientBounds.Right - taskbarClientBounds.Left;
+        var taskbarClientHeight = taskbarClientBounds.Bottom - taskbarClientBounds.Top;
+        var maxWidgetWidth = (int)Math.Ceiling(LogicalWidth * scale);
+        var maxWidgetHeight = (int)Math.Ceiling(LogicalHeight * scale);
+        var widgetScale = Math.Min(1d, Math.Min(taskbarClientWidth / (double)maxWidgetWidth, taskbarClientHeight / (double)maxWidgetHeight));
+        var widgetWidth = Math.Max(1, (int)Math.Round(maxWidgetWidth * widgetScale));
+        var widgetHeight = Math.Max(1, (int)Math.Round(maxWidgetHeight * widgetScale));
+        if (taskbarClientWidth <= 0 || taskbarClientHeight <= 0)
+        {
+            return new TaskbarWidgetBounds(0, 0, 0, 0, LogicalWidth, LogicalHeight, 1d);
+        }
+
+        var normalized = NormalizePosition(position);
+        var isHorizontalTaskbar = taskbarClientWidth >= taskbarClientHeight;
+        var x = isHorizontalTaskbar ? normalized switch
+        {
+            TaskbarWidgetPositions.Center => Math.Max(0, (taskbarClientWidth - widgetWidth) / 2),
+            TaskbarWidgetPositions.Right => Math.Max(0, taskbarClientWidth - widgetWidth - (int)Math.Ceiling(320 * scale)),
+            _ => (int)Math.Ceiling(12 * scale)
+        } : Math.Max(0, (taskbarClientWidth - widgetWidth) / 2);
+        var y = isHorizontalTaskbar ? Math.Max(0, (taskbarClientHeight - widgetHeight) / 2) : normalized switch
+        {
+            TaskbarWidgetPositions.Center => Math.Max(0, (taskbarClientHeight - widgetHeight) / 2),
+            TaskbarWidgetPositions.Right => Math.Max(0, taskbarClientHeight - widgetHeight - (int)Math.Ceiling(320 * scale)),
+            _ => (int)Math.Ceiling(12 * scale)
+        };
+
+        var taskbarScreenX = taskbarScreenBounds.Left;
+        var taskbarScreenY = taskbarScreenBounds.Top;
+        return new TaskbarWidgetBounds(taskbarScreenX + x, taskbarScreenY + y, x, y, widgetWidth, widgetHeight, scale);
+    }
+
+    /// <summary>Removes taskbar parenting before the widget window is closed.</summary>
     public void Dispose()
     {
         lock (_gate)
@@ -84,8 +151,6 @@ public sealed class TaskbarWidgetHost : IDisposable
             }
 
             _disposed = true;
-            _explorerRecoveryTimer?.Dispose();
-            _explorerRecoveryTimer = null;
             if (_widgetHandle != IntPtr.Zero && IsWindow(_widgetHandle))
             {
                 ShowWindow(_widgetHandle, SwHide);
@@ -93,78 +158,92 @@ public sealed class TaskbarWidgetHost : IDisposable
             }
 
             _widgetHandle = IntPtr.Zero;
+            _regionWidth = 0;
+            _regionHeight = 0;
         }
     }
 
-    private void RecoverFromExplorerChanges()
-    {
-        lock (_gate)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            // Explorer may recreate the taskbar after a restart; an unavailable taskbar simply leaves the widget hidden until the next probe.
-            TryAttachAndPosition();
-        }
-    }
-
-    private bool TryAttachAndPosition()
+    private bool TryAttachAndPosition(bool useAsyncPositioning, bool showWindow)
     {
         if (_widgetHandle == IntPtr.Zero || !IsWindow(_widgetHandle))
         {
+            _logger.LogWarning("Taskbar widget handle is invalid.");
             return false;
         }
 
         var taskbarHandle = FindWindow("Shell_TrayWnd", null);
-        if (taskbarHandle == IntPtr.Zero || !IsWindow(taskbarHandle) || !GetClientRect(taskbarHandle, out var taskbarBounds))
+        _logger.LogDebug("Found taskbar handle={TaskbarHandle}.", taskbarHandle);
+        if (taskbarHandle == IntPtr.Zero || !IsWindow(taskbarHandle))
         {
+            _logger.LogWarning("Taskbar window is not available for widget attachment.");
             return false;
         }
 
+        var frameChanged = false;
         if (GetParent(_widgetHandle) != taskbarHandle)
         {
             var style = GetWindowStyle(_widgetHandle);
             var childStyle = (style | WsChild) & ~(WsPopup | WsCaption | WsThickFrame | WsSysMenu | WsMinimizeBox | WsMaximizeBox);
             SetWindowStyle(_widgetHandle, childStyle);
             SetWindowExStyle(_widgetHandle, GetWindowExStyle(_widgetHandle) | WsExNoActivate);
-            SetParent(_widgetHandle, taskbarHandle);
+            frameChanged = true;
+            var previousParent = SetParent(_widgetHandle, taskbarHandle);
+            _logger.LogInformation("SetParent result={PreviousParent} NewParent={NewParent}.", previousParent, GetParent(_widgetHandle));
             if (GetParent(_widgetHandle) != taskbarHandle)
             {
+                _logger.LogWarning("SetParent did not reparent the widget to the taskbar.");
                 return false;
             }
         }
 
-        var scale = Math.Max(1d, GetDpiForWindow(taskbarHandle) / 96d);
-        var taskbarWidth = taskbarBounds.Right - taskbarBounds.Left;
-        var taskbarHeight = taskbarBounds.Bottom - taskbarBounds.Top;
-        var maxWidgetWidth = (int)Math.Ceiling(LogicalWidth * scale);
-        var maxWidgetHeight = (int)Math.Ceiling(LogicalHeight * scale);
-        var widgetScale = Math.Min(1d, Math.Min(taskbarWidth / (double)maxWidgetWidth, taskbarHeight / (double)maxWidgetHeight));
-        var widgetWidth = Math.Max(1, (int)Math.Round(maxWidgetWidth * widgetScale));
-        var widgetHeight = Math.Max(1, (int)Math.Round(maxWidgetHeight * widgetScale));
-        if (taskbarWidth <= 0 || taskbarHeight <= 0)
+        var bounds = GetDesiredBounds(_position);
+        _logger.LogDebug("Positioning taskbar widget. Bounds=({X},{Y},{Width},{Height}) Scale={Scale}.", bounds.ClientX, bounds.ClientY, bounds.Width, bounds.Height, bounds.Scale);
+        var flags = SwpNoZOrder | SwpNoActivate;
+        if (frameChanged)
+        {
+            flags |= SwpFrameChanged;
+        }
+
+        if (showWindow)
+        {
+            flags |= SwpShowWindow;
+        }
+
+        if (useAsyncPositioning)
+        {
+            flags |= SwpAsyncWindowPos;
+        }
+
+        if ((frameChanged || _regionWidth != bounds.Width || _regionHeight != bounds.Height) && !ApplyWindowRegion(bounds.Width, bounds.Height))
         {
             return false;
         }
 
-        var isHorizontalTaskbar = taskbarWidth >= taskbarHeight;
-        var x = isHorizontalTaskbar ? _position switch
-        {
-            TaskbarWidgetPositions.Center => Math.Max(0, (taskbarWidth - widgetWidth) / 2),
-            TaskbarWidgetPositions.Right => Math.Max(0, taskbarWidth - widgetWidth - (int)Math.Ceiling(320 * scale)),
-            _ => (int)Math.Ceiling(12 * scale)
-        } : Math.Max(0, (taskbarWidth - widgetWidth) / 2);
-        var y = isHorizontalTaskbar ? Math.Max(0, (taskbarHeight - widgetHeight) / 2) : _position switch
-        {
-            TaskbarWidgetPositions.Center => Math.Max(0, (taskbarHeight - widgetHeight) / 2),
-            TaskbarWidgetPositions.Right => Math.Max(0, taskbarHeight - widgetHeight - (int)Math.Ceiling(320 * scale)),
-            _ => (int)Math.Ceiling(12 * scale)
-        };
+        var positioned = SetWindowPos(_widgetHandle, IntPtr.Zero, bounds.ClientX, bounds.ClientY, bounds.Width, bounds.Height, flags);
+        _logger.LogDebug("SetWindowPos result={Positioned}.", positioned);
+        return positioned;
+    }
 
-        // SetWindowPos is intentionally best-effort: a third-party shell can refuse child placement without affecting the local tracking runtime.
-        return SetWindowPos(_widgetHandle, IntPtr.Zero, x, y, widgetWidth, widgetHeight, SwpNoZOrder | SwpNoActivate | SwpFrameChanged | SwpShowWindow | SwpAsyncWindowPos);
+    private bool ApplyWindowRegion(int width, int height)
+    {
+        var region = CreateRectRgn(0, 0, width, height);
+        if (region == IntPtr.Zero)
+        {
+            _logger.LogWarning("CreateRectRgn failed while sizing the taskbar widget.");
+            return false;
+        }
+
+        // After a successful SetWindowRgn call Windows owns the HRGN; delete it only on failure.
+        if (SetWindowRgn(_widgetHandle, region, redraw: true) == 0)
+        {
+            _ = DeleteObject(region);
+            _logger.LogWarning("SetWindowRgn failed while sizing the taskbar widget.");
+            return false;
+        }
+
+        _regionWidth = width;
+        _regionHeight = height;
+        return true;
     }
 
     private static string NormalizePosition(string? position) => position is TaskbarWidgetPositions.Center or TaskbarWidgetPositions.Right ? position : TaskbarWidgetPositions.Left;
@@ -205,6 +284,16 @@ public sealed class TaskbarWidgetHost : IDisposable
         }
     }
 
+    /// <summary>Describes the bounds and scale for the embedded taskbar widget.</summary>
+    /// <param name="ScreenX">Screen-left physical pixel coordinate.</param>
+    /// <param name="ScreenY">Screen-top physical pixel coordinate.</param>
+    /// <param name="ClientX">Taskbar-client-left physical pixel coordinate.</param>
+    /// <param name="ClientY">Taskbar-client-top physical pixel coordinate.</param>
+    /// <param name="Width">Physical pixel width.</param>
+    /// <param name="Height">Physical pixel height.</param>
+    /// <param name="Scale">Taskbar monitor scale factor.</param>
+    public sealed record TaskbarWidgetBounds(int ScreenX, int ScreenY, int ClientX, int ClientY, int Width, int Height, double Scale);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect
     {
@@ -244,11 +333,25 @@ public sealed class TaskbarWidgetHost : IDisposable
     private static extern bool GetClientRect(IntPtr windowHandle, out NativeRect rectangle);
 
     [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr windowHandle, out NativeRect rectangle);
+
+    [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowPos(IntPtr windowHandle, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetWindowRgn(IntPtr windowHandle, IntPtr region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(IntPtr objectHandle);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

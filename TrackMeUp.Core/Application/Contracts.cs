@@ -47,6 +47,56 @@ public sealed record ScreenshotGallery(
     DateOnly Date,
     IReadOnlyList<ScreenshotGalleryItem> Items);
 
+/// <summary>Identifies one persisted top-level window placement in physical pixels.</summary>
+public sealed record WindowState(
+    int X,
+    int Y,
+    int Width,
+    int Height,
+    string MonitorDeviceName);
+
+/// <summary>Describes a monitor work area in physical pixels.</summary>
+public readonly record struct WindowWorkArea(int X, int Y, int Width, int Height)
+{
+    /// <summary>Gets the exclusive right edge of the work area.</summary>
+    public int Right => checked(X + Width);
+
+    /// <summary>Gets the exclusive bottom edge of the work area.</summary>
+    public int Bottom => checked(Y + Height);
+}
+
+/// <summary>Calculates safe window bounds without depending on a windowing API.</summary>
+public static class WindowStateCalculator
+{
+    /// <summary>Clamps a saved placement to the supplied monitor work area.</summary>
+    public static WindowState ClampToWorkArea(WindowState state, WindowWorkArea workArea, string monitorDeviceName)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (workArea.Width <= 0 || workArea.Height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(workArea), "A monitor work area must have positive dimensions.");
+        }
+
+        if (state.Width <= 0 || state.Height <= 0 || string.IsNullOrWhiteSpace(state.MonitorDeviceName))
+        {
+            throw new InvalidOperationException("Persisted window state is invalid.");
+        }
+
+        var width = Math.Min(state.Width, workArea.Width);
+        var height = Math.Min(state.Height, workArea.Height);
+        var x = Math.Clamp(state.X, workArea.X, workArea.Right - width);
+        var y = Math.Clamp(state.Y, workArea.Y, workArea.Bottom - height);
+        return state with
+        {
+            X = x,
+            Y = y,
+            Width = width,
+            Height = height,
+            MonitorDeviceName = string.IsNullOrWhiteSpace(monitorDeviceName) ? throw new ArgumentException("Monitor device name is required.", nameof(monitorDeviceName)) : monitorDeviceName
+        };
+    }
+}
+
 /// <summary>Requests analysis of the latest activity context.</summary>
 public sealed record AnalyzeCurrentActivityRequest(bool AllowCapture = true, string? Origin = null);
 
@@ -236,6 +286,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Validates and persists an allowed settings patch.</summary>
     Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken);
+
+    /// <summary>Restores one window placement using the current monitor topology.</summary>
+    Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);
+
+    /// <summary>Persists one window placement read from its native window handle.</summary>
+    Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);
 
     /// <summary>Gets startup registration state.</summary>
     Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken);

@@ -85,9 +85,6 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.ReportsRequested += MainWindow_ReportsRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.Closed += MainWindow_Closed;
-        var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost());
-        _taskbarWidgetSurface = taskbarWidgetSurface;
-        taskbarWidgetSurface.FlyoutRequested += (_, _) => _window?.DispatcherQueue.TryEnqueue(() => _window?.ShowFlyout());
         _window.Activate();
 
         var settings = application.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult().Value;
@@ -97,14 +94,21 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        taskbarWidgetSurface.ApplySettings(settings);
-        if (taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition))
+        try
         {
-            taskbarWidgetSurface.HideTopLevelWindow(WinRT.Interop.WindowNative.GetWindowHandle(_window));
+            var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost(_services.GetRequiredService<ILogger<TaskbarWidgetHost>>()), _services.GetRequiredService<ILogger<TaskbarWidgetSurface>>());
+            _taskbarWidgetSurface = taskbarWidgetSurface;
+            taskbarWidgetSurface.FlyoutRequested += (_, _) => _window?.DispatcherQueue.TryEnqueue(() => _window?.ShowFlyout());
+            taskbarWidgetSurface.ApplySettings(settings);
+            if (!taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition))
+            {
+                // If a custom shell rejects parenting, keep the normal player usable rather than leaving an orphaned top-level control.
+                DisposeTaskbarWidget();
+            }
         }
-        else
+        catch (Exception exception)
         {
-            // If a custom shell rejects parenting, keep the normal player usable rather than leaving an orphaned top-level control.
+            _logger.LogError(exception, "Taskbar widget initialization failed; the main window remains available.");
             DisposeTaskbarWidget();
         }
     }
