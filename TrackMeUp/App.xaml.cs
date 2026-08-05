@@ -22,6 +22,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly ILogger<App> _logger;
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
+    private ScreenshotWindow? _screenshotsWindow;
     private TaskbarWidgetSurface? _taskbarWidgetSurface;
     private RuntimeHost? _runtimeHost;
     private ITrackMeUpApplication? _runtimeApplication;
@@ -82,6 +83,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window = new MainWindow(application, options);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.ReportsRequested += MainWindow_ReportsRequested;
+        _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.Closed += MainWindow_Closed;
         var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost());
         _taskbarWidgetSurface = taskbarWidgetSurface;
@@ -115,6 +117,8 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
+    private void MainWindow_ScreenshotsRequested(object? sender, EventArgs eventArgs) => ShowScreenshotWindow(StartOrConnectRuntime(), null);
+
     private void ShowReportsWindow(ITrackMeUpApplication application, string? launchTheme)
     {
         if (_reportsWindow is not null)
@@ -126,6 +130,19 @@ public partial class App : Microsoft.UI.Xaml.Application
         _reportsWindow = new ReportsWindow(application, launchTheme);
         _reportsWindow.Closed += ReportsWindow_Closed;
         _reportsWindow.Activate();
+    }
+
+    private void ShowScreenshotWindow(ITrackMeUpApplication application, string? launchTheme)
+    {
+        if (_screenshotsWindow is not null)
+        {
+            _screenshotsWindow.Activate();
+            return;
+        }
+
+        _screenshotsWindow = new ScreenshotWindow(application, launchTheme);
+        _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
+        _screenshotsWindow.Activate();
     }
 
     private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
@@ -149,6 +166,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
+            _window.ScreenshotsRequested -= MainWindow_ScreenshotsRequested;
             _window.Closed -= MainWindow_Closed;
             _window = null;
         }
@@ -160,9 +178,25 @@ public partial class App : Microsoft.UI.Xaml.Application
             _reportsWindow = null;
         }
 
+        if (_screenshotsWindow is not null)
+        {
+            _screenshotsWindow.Closed -= ScreenshotsWindow_Closed;
+            _screenshotsWindow.Close();
+            _screenshotsWindow = null;
+        }
+
         DisposeTaskbarWidget();
         await ShutdownRuntimeAsync();
         Exit();
+    }
+
+    private void ScreenshotsWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_screenshotsWindow is not null)
+        {
+            _screenshotsWindow.Closed -= ScreenshotsWindow_Closed;
+            _screenshotsWindow = null;
+        }
     }
 
     private void ApplyTaskbarWidgetSettings(AppSettings settings)

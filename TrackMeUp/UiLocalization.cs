@@ -96,6 +96,13 @@ internal static class UiLocalization
                 });
                 SetIfTranslated(strings, $"{key}.Placeholder", value => datePicker.PlaceholderText = value);
                 break;
+            case MenuFlyoutItem menuItem:
+                SetIfTranslated(strings, key, value =>
+                {
+                    menuItem.Text = value;
+                    AutomationProperties.SetName(menuItem, value);
+                });
+                break;
             case DatePicker datePicker:
                 SetIfTranslated(strings, $"{key}.Header", value =>
                 {

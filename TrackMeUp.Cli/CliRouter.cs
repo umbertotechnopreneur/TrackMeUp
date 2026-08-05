@@ -142,7 +142,7 @@ public sealed class CliRouter
 
     private async Task<int> ScreenshotAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "capture" => await WriteAsync(_application.CaptureScreenshotAsync(new CaptureScreenshotRequest(ReadOption(arguments, "--mode") ?? "all-screens", arguments.Contains("--keep", StringComparer.OrdinalIgnoreCase), arguments.Contains("--watermark", StringComparer.OrdinalIgnoreCase)), cancellationToken)),
+        "capture" => await WriteAsync(_application.CaptureScreenshotAsync(new CaptureScreenshotRequest(ReadOption(arguments, "--mode") ?? "all-screens", arguments.Contains("--keep", StringComparer.OrdinalIgnoreCase), arguments.Contains("--watermark", StringComparer.OrdinalIgnoreCase), ScreenshotCaptureOrigins.Manual), cancellationToken)),
         "latest" => await WriteAsync(_application.GetLatestScreenshotAsync(cancellationToken)),
         "open-folder" => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
         _ => InvalidCommand()

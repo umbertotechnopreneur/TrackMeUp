@@ -66,8 +66,16 @@ public sealed class OpenAiAnalysisService
 
         // Keep analysis possible even when screenshots are disabled. In that case, run with empty image context.
         var captureResult = allowCapture && settings.ScreenshotsEnabled
-            ? _capture.CaptureByMode(settings.ScreenshotDirectory, settings.ScreenshotCaptureMode, settings.WatermarkScreenshots)
-            : new ScreenshotCaptureResult(Guid.NewGuid().ToString("N"), Array.Empty<string>(), Array.Empty<string>());
+            ? _capture.CaptureByMode(
+                settings.ScreenshotDirectory,
+                settings.ScreenshotCaptureMode,
+                settings.WatermarkScreenshots,
+                origin == "automatic.timer" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
+            : new ScreenshotCaptureResult(
+                Guid.NewGuid().ToString("N"),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                origin == "automatic.timer" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual);
 
         try
         {

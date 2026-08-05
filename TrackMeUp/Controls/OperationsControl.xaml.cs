@@ -79,7 +79,8 @@ public sealed partial class OperationsControl : UserControl
         var request = new CaptureScreenshotRequest(
             SelectedTag(ScreenshotModeBox, "all-screens"),
             KeepScreenshotBox.IsChecked == true,
-            WatermarkScreenshotBox.IsChecked == true);
+            WatermarkScreenshotBox.IsChecked == true,
+            ScreenshotCaptureOrigins.Manual);
         var result = await ExecuteAsync((application, token) => application.CaptureScreenshotAsync(request, token));
         if (result is { Succeeded: true, Value: { } capture })
         {

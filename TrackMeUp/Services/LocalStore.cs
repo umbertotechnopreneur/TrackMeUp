@@ -189,6 +189,105 @@ public sealed class LocalStore
     }
 
     /// <summary>
+    /// Lists owned screenshot artifacts for one local calendar date without exposing unrelated files.
+    /// </summary>
+    /// <param name="date">The local date represented by the gallery.</param>
+    /// <returns>A presentation-neutral screenshot projection ordered newest first.</returns>
+    public ScreenshotGallery GetScreenshotGallery(DateOnly date)
+    {
+        var settings = LoadSettings();
+        var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
+            ? _utilities.GetDefaultScreenshotDirectory()
+            : settings.ScreenshotDirectory;
+        if (!Directory.Exists(directory))
+        {
+            return new ScreenshotGallery(date, Array.Empty<ScreenshotGalleryItem>());
+        }
+
+        var files = new List<FileInfo>();
+        foreach (var path in Directory.EnumerateFiles(directory))
+        {
+            if (!ScreenCaptureService.IsOwnedArtifact(path))
+            {
+                continue;
+            }
+
+            var file = new FileInfo(path);
+            var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
+            if (DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime) == date)
+            {
+                files.Add(file);
+            }
+        }
+
+        var items = files
+            .GroupBy(file => ScreenshotIdentity(file.Name), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(file => IsPreferredStoredArtifact(file.Name))
+                .ThenByDescending(file => file.LastWriteTimeUtc)
+                .First())
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .Select(file =>
+            {
+                var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
+                return new ScreenshotGalleryItem(
+                    capturedAt,
+                    file.FullName,
+                    FindForegroundApplication(capturedAt),
+                    GetCaptureKind(file.Name),
+                    GetCaptureOrigin(file.Name));
+            })
+            .ToArray();
+
+        return new ScreenshotGallery(date, items);
+    }
+
+    private string FindForegroundApplication(DateTimeOffset capturedAt)
+    {
+        var samples = new List<ActivitySample>();
+        var fromUtc = capturedAt.ToUniversalTime().AddMinutes(-2);
+        var toUtc = capturedAt.ToUniversalTime().AddMinutes(2);
+        _activity.VisitOverlapping(fromUtc, toUtc, CancellationToken.None, samples.Add);
+        return samples
+            .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
+            .Select(sample => sample.Application)
+            .FirstOrDefault(application => !string.IsNullOrWhiteSpace(application))
+            ?? "Desktop";
+    }
+
+    private static string ScreenshotIdentity(string fileName)
+    {
+        var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        return withoutExtension.EndsWith("-raw", StringComparison.OrdinalIgnoreCase)
+            ? withoutExtension[..^4]
+            : withoutExtension;
+    }
+
+    private static bool IsPreferredStoredArtifact(string fileName) =>
+        !Path.GetFileNameWithoutExtension(fileName).EndsWith("-raw", StringComparison.OrdinalIgnoreCase);
+
+    private static string GetCaptureKind(string fileName) =>
+        fileName.Contains("_active-window", StringComparison.OrdinalIgnoreCase)
+            ? "Active window"
+            : "Monitor";
+
+    private static string GetCaptureOrigin(string fileName)
+    {
+        var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        if (withoutExtension.Contains("_manual_", StringComparison.OrdinalIgnoreCase))
+        {
+            return ScreenshotCaptureOrigins.Manual;
+        }
+
+        if (withoutExtension.Contains("_scheduled_", StringComparison.OrdinalIgnoreCase))
+        {
+            return ScreenshotCaptureOrigins.Scheduled;
+        }
+
+        throw new InvalidDataException($"Screenshot artifact has no valid capture origin: {fileName}");
+    }
+
+    /// <summary>
     /// Lists data files that contain at least one expired, parseable record without deleting them.
     /// </summary>
     /// <param name="cutoffUtc">Oldest allowed last-write timestamp.</param>

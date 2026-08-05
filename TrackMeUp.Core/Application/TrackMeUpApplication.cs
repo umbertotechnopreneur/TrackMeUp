@@ -22,7 +22,7 @@ public static class TrackMeUpApplicationFactory
         var deviceContext = new DeviceContextService();
         var buildInformation = new BuildInformationService();
         var analysis = new OpenAiAnalysisService(store, capture, snapshot, deviceContext: deviceContext);
-        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext);
+        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext, new ScreenshotShareService());
     }
 }
 
@@ -36,6 +36,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly SystemSnapshotService _snapshot;
     private readonly DeviceContextService _deviceContext;
     private readonly OpenAiAnalysisService _analysis;
+    private readonly ScreenshotShareService _screenshotShare;
     private readonly StartupService _startup;
     private readonly BuildInformationService _buildInformation;
     private readonly ReportAggregationService _reports;
@@ -58,7 +59,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         BuildInformationService buildInformation,
         ILogger<TrackMeUpApplication>? logger = null,
         ObservabilityHealth? observability = null,
-        DeviceContextService? deviceContext = null)
+        DeviceContextService? deviceContext = null,
+        ScreenshotShareService? screenshotShare = null)
     {
         _store = store;
         _utilities = utilities;
@@ -66,6 +68,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _capture = capture;
         _snapshot = snapshot;
         _deviceContext = deviceContext ?? new DeviceContextService();
+        _screenshotShare = screenshotShare ?? new ScreenshotShareService();
         _analysis = analysis;
         _startup = startup;
         _buildInformation = buildInformation;
@@ -91,7 +94,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "ai", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "ai", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -235,7 +238,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         var mode = request.Mode is "all-screens" or "active-window" ? request.Mode : settings.ScreenshotCaptureMode;
         // Capture happens only after the privacy and enabled-state gates above have succeeded.
-        var result = _capture.CaptureByMode(settings.ScreenshotDirectory, mode, request.Watermark && settings.WatermarkScreenshots);
+        var result = _capture.CaptureByMode(
+            settings.ScreenshotDirectory,
+            mode,
+            request.Watermark && settings.WatermarkScreenshots,
+            request.CaptureOrigin);
         if (!request.Keep)
         {
             foreach (var file in result.AllScreenshotPaths.Where(File.Exists))
@@ -254,6 +261,55 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(OperationResult<string?>.Success("screenshot.latest.loaded", "LatestScreenshotLoaded", _store.LoadLatestPrimaryScreenshot()));
     }
+
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(OperationResult<ScreenshotGallery>.Success(
+            "screenshot.gallery.loaded",
+            "ScreenshotGalleryLoaded",
+            _store.GetScreenshotGallery(date)));
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!ScreenCaptureService.IsOwnedArtifact(screenshotPath) || !File.Exists(screenshotPath))
+        {
+            return OperationResult<string>.Failure("screenshot.invalid", "ScreenshotInvalid");
+        }
+
+        if (string.IsNullOrWhiteSpace(destinationPath))
+        {
+            return OperationResult<string>.Failure("screenshot.destination.invalid", "ScreenshotDestinationInvalid");
+        }
+
+        var destination = Path.GetFullPath(destinationPath);
+        File.Copy(screenshotPath, destination, overwrite: true);
+        await Task.CompletedTask;
+        return OperationResult<string>.Success("screenshot.saved", "ScreenshotSaved", destination);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!ScreenCaptureService.IsOwnedArtifact(screenshotPath) || !File.Exists(screenshotPath))
+        {
+            return OperationResult<string>.Failure("screenshot.invalid", "ScreenshotInvalid");
+        }
+
+        if (windowHandle == 0)
+        {
+            return OperationResult<string>.Failure("screenshot.share.window.invalid", "ScreenshotShareWindowInvalid");
+        }
+
+        var result = _screenshotShare.Share(screenshotPath, new IntPtr(windowHandle));
+        await Task.CompletedTask;
+        return OperationResult<string>.Success("screenshot.share.opened", "ScreenshotShareOpened", result);
+    }, cancellationToken);
 
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => OpenFolderAsync(_store.LoadSettings().ScreenshotDirectory, "screenshot.folder.opened", "ScreenshotFolderOpened", cancellationToken);

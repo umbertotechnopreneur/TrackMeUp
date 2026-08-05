@@ -17,6 +17,24 @@ public sealed record ActivitySample(
     long MouseClicks,
     IReadOnlyDictionary<string, string>? Attributes = null);
 
+/// <summary>Identifies how a screenshot capture was initiated.</summary>
+public static class ScreenshotCaptureOrigins
+{
+    /// <summary>Capture explicitly requested by the user.</summary>
+    public const string Manual = "manual";
+
+    /// <summary>Capture initiated by the configured automatic schedule.</summary>
+    public const string Scheduled = "scheduled";
+
+    /// <summary>Validates an untrusted capture-origin value against the current contract.</summary>
+    public static string Validate(string? origin) => origin?.Trim().ToLowerInvariant() switch
+    {
+        Manual => Manual,
+        Scheduled => Scheduled,
+        _ => throw new ArgumentException("Screenshot capture origin must be 'manual' or 'scheduled'.", nameof(origin))
+    };
+}
+
 public static class FlyoutPositions
 {
     public const string BottomCenter = "bottom-center";

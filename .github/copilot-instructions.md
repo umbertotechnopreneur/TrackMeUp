@@ -17,7 +17,10 @@ alwaysApply: true
 
 ## Repository guardrails
 
-- Use `pwsh -NoProfile` for shell and script runs.
+- Support PowerShell 7 only: invoke every PowerShell command through `pwsh -NoProfile` (the supported equivalent of `--noprofile`); do not use Windows PowerShell 5.1 or bare `powershell`/`pwsh`.
+- Avoid PowerShell quoting errors: prefer `pwsh -NoProfile -File <script.ps1>` for scripts and `pwsh -NoProfile -Command '<single-quoted command>'` for short commands; pass arguments as arrays or explicit parameters, do not build nested shell strings, and escape embedded quotes for the receiving command instead of relying on PowerShell interpolation.
+- This repository is pre-production: do not add backward-compatibility layers for superseded contracts, persisted artifacts, filenames, or APIs unless explicitly requested. Prefer the clean current design and make migrations explicit.
+- Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
 - Do not commit credentials, private secrets, machine paths, or secrets.
 - Keep unrelated working-tree changes untouched.
 - Exclude generated artifacts (`bin/`, `obj/`, `artifacts/`, `.vs/`) from commits.

@@ -129,9 +129,10 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Theory]
-    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_monitor-1.webp", true)]
-    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_active-window-raw.webp", true)]
-    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_monitor-2.png", true)]
+    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_manual_monitor-1.webp", true)]
+    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_scheduled_active-window-raw.webp", true)]
+    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_manual_monitor-2.png", true)]
+    [InlineData("0123456789abcdef0123456789abcdef_1.2.3_monitor-1.webp", false)]
     [InlineData("family-photo.webp", false)]
     [InlineData("0123456789abcdef0123456789abcdef_notes.webp", false)]
     [InlineData("0123456789abcdef0123456789abcdef_1.2.3_monitor-0.webp", false)]

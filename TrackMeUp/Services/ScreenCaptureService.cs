@@ -18,7 +18,7 @@ namespace TrackMeUp.Services;
 public sealed class ScreenCaptureService
 {
     private static readonly Regex OwnedArtifactName = new(
-        "^[0-9a-f]{32}_[0-9]+\\.[0-9]+\\.[0-9]+_(?:monitor-[1-9][0-9]*|active-window)(?:-raw)?\\.(?:webp|png)$",
+        "^[0-9a-f]{32}_[0-9]+\\.[0-9]+\\.[0-9]+_(?:manual|scheduled)_(?:monitor-[1-9][0-9]*|active-window)(?:-raw)?\\.(?:webp|png)$",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.NonBacktracking);
     private readonly string _appVersion;
 
@@ -32,29 +32,25 @@ public sealed class ScreenCaptureService
     }
 
     /// <summary>
-    /// Compatibility method: captures without watermark and returns only analysis-ready paths.
-    /// </summary>
-    public IReadOnlyList<string> CaptureAll(string directory)
-        => CaptureByMode(directory, "all-screens", includeWatermark: false).AnalysisScreenshotPaths;
-
-    /// <summary>
-    /// Compatibility method: captures without watermark and returns only analysis-ready paths.
-    /// </summary>
-    public IReadOnlyList<string> CaptureByMode(string directory, string captureMode)
-        => CaptureByMode(directory, captureMode, includeWatermark: false).AnalysisScreenshotPaths;
-
-    /// <summary>
     /// Captures screenshots and returns both AI-ready and storage-visible artifacts.
     /// </summary>
     /// <param name="directory">Directory where files are written.</param>
     /// <param name="captureMode">Capture mode: all-screens or active-window.</param>
     /// <param name="includeWatermark">If true, stores watermarked files to disk.</param>
-    public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark)
+    public ScreenshotCaptureResult CaptureByMode(
+        string directory,
+        string captureMode,
+        bool includeWatermark,
+        string captureOrigin)
     {
         var captureId = Guid.NewGuid().ToString("N");
-        return captureMode?.ToLowerInvariant() == "active-window"
-            ? CaptureActiveWindow(directory, captureId, includeWatermark)
-            : CaptureAllScreens(directory, captureId, includeWatermark);
+        var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
+        return captureMode switch
+        {
+            "active-window" => CaptureActiveWindow(directory, captureId, includeWatermark, validatedOrigin),
+            "all-screens" => CaptureAllScreens(directory, captureId, includeWatermark, validatedOrigin),
+            _ => throw new ArgumentException("Screenshot capture mode must be 'all-screens' or 'active-window'.", nameof(captureMode))
+        };
     }
 
     /// <summary>Returns whether a path matches the versioned naming contract of a TrackMeUp screenshot artifact.</summary>
@@ -67,21 +63,15 @@ public sealed class ScreenCaptureService
             return false;
         }
 
-        try
-        {
-            return OwnedArtifactName.IsMatch(Path.GetFileName(path));
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
+        return OwnedArtifactName.IsMatch(Path.GetFileName(path));
     }
 
     /// <summary>
     /// Captures all monitors and returns a pair of analysis and storage screenshot lists.
     /// </summary>
-    public ScreenshotCaptureResult CaptureAllScreens(string directory, string captureId, bool includeWatermark)
+    public ScreenshotCaptureResult CaptureAllScreens(string directory, string captureId, bool includeWatermark, string captureOrigin)
     {
+        var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         Directory.CreateDirectory(directory);
         var displays = new List<NativeMethods.Rect>();
         NativeMethods.MonitorEnumProc callback = (IntPtr monitor, IntPtr deviceContext, ref NativeMethods.Rect rect, IntPtr data) =>
@@ -101,19 +91,21 @@ public sealed class ScreenCaptureService
                 $"monitor-{index + 1}",
                 captureId,
                 includeWatermark,
-                $"Monitor {index + 1}");
+                $"Monitor {index + 1}",
+                validatedOrigin);
             storage.AddRange(paths.Stored);
             analysis.AddRange(paths.Analysis);
         }
 
-        return new ScreenshotCaptureResult(captureId, analysis.AsReadOnly(), storage.AsReadOnly());
+        return new ScreenshotCaptureResult(captureId, analysis.AsReadOnly(), storage.AsReadOnly(), validatedOrigin);
     }
 
     /// <summary>
     /// Captures current foreground window and returns a pair of analysis/storage screenshot paths.
     /// </summary>
-    public ScreenshotCaptureResult CaptureActiveWindow(string directory, string captureId, bool includeWatermark)
+    public ScreenshotCaptureResult CaptureActiveWindow(string directory, string captureId, bool includeWatermark, string captureOrigin)
     {
+        var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         Directory.CreateDirectory(directory);
         var window = NativeMethods.GetForegroundWindow();
         if (window == IntPtr.Zero)
@@ -133,8 +125,8 @@ public sealed class ScreenCaptureService
             throw new InvalidOperationException("Invalid active window size.");
         }
 
-        var paths = CaptureRect(directory, rect, "active-window", captureId, includeWatermark, "Active window");
-        return new ScreenshotCaptureResult(captureId, paths.Analysis, paths.Stored);
+        var paths = CaptureRect(directory, rect, "active-window", captureId, includeWatermark, "Active window", validatedOrigin);
+        return new ScreenshotCaptureResult(captureId, paths.Analysis, paths.Stored, validatedOrigin);
     }
 
     private (IReadOnlyList<string> Analysis, IReadOnlyList<string> Stored) CaptureRect(
@@ -143,11 +135,13 @@ public sealed class ScreenCaptureService
         string stem,
         string captureId,
         bool includeWatermark,
-        string watermarkSuffix)
+        string watermarkSuffix,
+        string captureOrigin)
     {
         var width = rect.Right - rect.Left;
         var height = rect.Bottom - rect.Top;
-        var versionedStem = $"{captureId}_{_appVersion}_{stem}";
+        var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
+        var versionedStem = $"{captureId}_{_appVersion}_{validatedOrigin}_{stem}";
         var rawPngPath = Path.Combine(directory, $"{versionedStem}.png");
         var rawWebpPath = Path.Combine(directory, $"{versionedStem}-raw.webp");
         var storedPngPath = includeWatermark ? Path.Combine(directory, $"{versionedStem}.png") : rawPngPath;
@@ -271,7 +265,11 @@ internal static class GraphicsExtensions
 /// <summary>
 /// Result of a screenshot pass used by AI and local storage separately.
 /// </summary>
-public sealed record ScreenshotCaptureResult(string CaptureId, IReadOnlyList<string> AnalysisScreenshotPaths, IReadOnlyList<string> StoredScreenshotPaths)
+public sealed record ScreenshotCaptureResult(
+    string CaptureId,
+    IReadOnlyList<string> AnalysisScreenshotPaths,
+    IReadOnlyList<string> StoredScreenshotPaths,
+    string CaptureOrigin)
 {
     /// <summary>
     /// Returns all generated files, used for retention and cleanup.

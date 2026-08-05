@@ -46,6 +46,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the user requests the dedicated reports surface.</summary>
     public event EventHandler? ReportsRequested;
 
+    /// <summary>Occurs when the user requests the retained screenshot gallery.</summary>
+    public event EventHandler? ScreenshotsRequested;
+
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
     public MainWindow(ITrackMeUpApplication application, LaunchOptions options)
     {
@@ -207,7 +210,11 @@ public sealed partial class MainWindow : Window
         }
 
         await _application.CaptureScreenshotAsync(
-            new CaptureScreenshotRequest(settings.ScreenshotCaptureMode, settings.KeepScreenshots, settings.WatermarkScreenshots),
+            new CaptureScreenshotRequest(
+                settings.ScreenshotCaptureMode,
+                settings.KeepScreenshots,
+                settings.WatermarkScreenshots,
+                ScreenshotCaptureOrigins.Manual),
             CancellationToken.None);
     }
 
@@ -231,8 +238,8 @@ public sealed partial class MainWindow : Window
         ApplyFlyoutPosition(_position);
     }
 
-    /// <summary>Forwards opening the screenshot folder to the application facade.</summary>
-    private async void ScreenshotPreviewButton_Click(object sender, RoutedEventArgs e) => await _application.OpenScreenshotFolderAsync(CancellationToken.None);
+    /// <summary>Forwards screenshot-gallery activation to the application composition root.</summary>
+    private void ScreenshotPreviewButton_Click(object sender, RoutedEventArgs e) => ScreenshotsRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Returns from options to the player panel.</summary>
     private void OptionsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();

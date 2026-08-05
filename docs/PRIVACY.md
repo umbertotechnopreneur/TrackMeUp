@@ -11,7 +11,7 @@ TrackMeUp is an internal tool that we use to make workdays easier to understand 
 - Screenshots are off by default and can be disabled completely.
 - AI is off by default and can be disabled completely.
 - Automatic AI analysis is off by default and can be disabled independently.
-- The OpenAI key is read from the Windows user environment and is not copied into TrackMeUp storage.
+- The OpenAI key is read from the Windows environment on this PC and is not copied into TrackMeUp storage.
 - There is no TrackMeUp cloud service or hidden analytics account.
 - Sentry is optional. It sends diagnostics only when an operator explicitly configures a Sentry DSN.
 - The source code and the direct dependency list are public and inspectable.

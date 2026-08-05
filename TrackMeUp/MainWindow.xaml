@@ -228,11 +228,11 @@
                             x:Name="ScreenshotPreviewButton"
                             Grid.Column="1"
                             Padding="0"
-                            AutomationProperties.Name="Apri cartella screenshot"
+                            AutomationProperties.Name="Apri galleria screenshot"
                             Background="Transparent"
                             BorderBrush="Transparent"
                             Click="ScreenshotPreviewButton_Click"
-                            ToolTipService.ToolTip="Apri cartella screenshot">
+                            ToolTipService.ToolTip="Apri galleria screenshot">
                             <Grid Width="112" Height="62">
                                 <Image x:Name="LastScreenshotImage" AutomationProperties.AccessibilityView="Raw" Stretch="UniformToFill" Visibility="Collapsed" />
                                 <Border x:Name="ScreenshotPlaceholder" Background="{ThemeResource ControlFillColorSecondaryBrush}" CornerRadius="8">

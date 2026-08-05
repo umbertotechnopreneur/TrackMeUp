@@ -12,7 +12,7 @@ We use it internally — I use it myself first — to put some order into the da
 
 > “I saw a page with a blue-and-red image and a big white headline, but I cannot remember the address.”
 
-TrackMeUp keeps a local timeline and can, when explicitly enabled, turn a screen snapshot into a short description. That description can help reconstruct the context later. It cannot invent a URL that was never visible: browser titles are available, while reliable page addresses require a future opt-in browser integration.
+TrackMeUp keeps a local timeline and can, when explicitly enabled, turn a screen capture into a short description. That description can help reconstruct the context later. It cannot invent a URL that was never visible: browser titles are available, while reliable page addresses require a future opt-in browser integration.
 
 ## A working product, not an MVP
 
@@ -25,7 +25,7 @@ This is not an MVP or a throwaway demo. TrackMeUp is a working internal product 
 - Provides local reports for days, time patterns, trends, and applications.
 - Supports focus sessions and local HTML reports.
 - Adds extra context for selected applications such as Word, Excel, Visual Studio Code, and browsers. These details can be switched off individually.
-- Offers optional screen snapshots and optional AI descriptions of the current context.
+- Offers optional screen captures and optional AI descriptions of the current context.
 - Provides a PowerShell 7 CLI for status, tracking, reports, AI, privacy rules, and retention.
 - Keeps the report interface bundled with the app. Reports do not need a local web server or a TrackMeUp cloud account.
 
@@ -35,20 +35,20 @@ TrackMeUp is local by default. There is no TrackMeUp server receiving your activ
 
 You control the features that can create or send sensitive material:
 
-- **Screen snapshots:** off by default. When off, TrackMeUp does not create a screenshot for analysis.
-- **AI analysis:** off by default. When off, no AI provider is contacted.
+- **Screen captures:** off by default. When off, TrackMeUp does not create a screenshot for analysis.
+- **AI analysis:** off by default. When off, no AI service is contacted.
 - **Automatic AI analysis:** off by default. When off, analysis happens only when you ask for it.
 - **Location:** off by default. When enabled, location comes from the Windows Location service and is included only in an AI request.
 - **Privacy rules:** can block an application, a window title, or a context hint before capture and before an AI request.
 - **Retention:** controls how long local activity, AI results, and retained screenshots remain on this PC.
 
-The activity database, reports, diagnostic logs, and retained screenshots are local files under the current Windows user profile. Transient screenshots are deleted after analysis when screenshot retention is off, including the normal failure and cancellation paths.
+The activity database, reports, diagnostic logs, and retained screenshots are local files. Their default locations are under the current Windows user profile; screenshot and report folders can be changed explicitly in the app settings. Transient screenshots are deleted after analysis when screenshot retention is off, including the normal failure and cancellation paths.
 
 Read the complete, source-backed data-flow and dependency census in [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Your OpenAI key stays yours
 
-OpenAI is the default AI integration. TrackMeUp uses your own OpenAI API key from the Windows user environment on this PC.
+OpenAI is the default AI integration. TrackMeUp uses your own OpenAI API key from the Windows environment on this PC.
 
 The key is not copied into TrackMeUp settings, SQLite, reports, logs, command arguments, command history, or local IPC diagnostics. TrackMeUp has no server through which the key is routed. When you explicitly request an OpenAI analysis, the key is used in the direct HTTPS request to OpenAI — it is authentication for that request, not a TrackMeUp credential.
 
@@ -58,7 +58,7 @@ You can set the key from the app or with the hidden-input CLI prompt:
 trackmeup.exe -cli ai key set
 ```
 
-OpenRouter and Anthropic are supported as explicit alternatives. Choosing one uses that provider's own key and endpoint; the same local-key rule applies.
+OpenRouter and Anthropic are supported as explicit alternatives. Choosing one uses that service's own key and endpoint; the same local-key rule applies.
 
 ## Open source means no surprises
 
@@ -81,12 +81,12 @@ This is a short summary, not a substitute for the [full inventory](docs/PRIVACY.
 Screenshots and AI are separate choices. You can:
 
 1. track activity without taking screenshots;
-2. take a one-off local snapshot without asking an AI service to analyze it;
+2. take a one-off local screen capture without asking an AI service to analyze it;
 3. ask for an AI description without retaining the screenshot;
 4. disable both features completely;
 5. add privacy rules that block capture and analysis for sensitive work.
 
-AI requests may contain the current application/window context, selected system information, and a screenshot only when the relevant settings allow it. The request goes directly to the provider selected in the app. TrackMeUp stores sanitized request usage locally for cost and troubleshooting; it does not store prompts, images, authorization headers, or keys in that usage record.
+AI requests may contain the current application/window context, selected system information, and a screenshot only when the relevant settings allow it. The request goes directly to the AI service selected in the app. TrackMeUp stores small local records of request counts and timing for cost and troubleshooting; it does not store prompts, images, authorization headers, or keys in those records.
 
 AI output is an aid for recall, not a source of truth. The built-in prompts ask the model to separate observation from inference and avoid reproducing secrets or private text.
 
@@ -105,13 +105,15 @@ Useful installed-package commands:
 ```powershell
 trackmeup.exe -cli status
 trackmeup.exe -cli tracking start
-trackmeup.exe -cli reports
+trackmeup.exe -cli report today
 trackmeup.exe -cli ai status
 trackmeup.exe -cli retention preview
 pwsh -NoProfile -File .\scripts\test-cli.ps1
 ```
 
 Screenshots, AI, and retention mutations are guarded by the same privacy and confirmation rules in the app and CLI. API keys are never accepted as command-line arguments.
+
+Screenshot gallery validation checklist: open the gallery twice and confirm that only one window is activated, select another day with the floating WinUI `CalendarDatePicker`, and verify that a manual capture is labeled `Manuale` while an automatic capture is labeled `Pianificato`.
 
 ## Repository map
 
@@ -123,6 +125,7 @@ Screenshots, AI, and retention mutations are guarded by the same privacy and con
 - `TrackMeUp.*.Tests/` — core, presentation, and CLI tests.
 - `docs/PRIVACY.md` — plain-language privacy and dependency census.
 - `docs/CLI_IMPLEMENTATION_PLAN.md` — internal engineering notes for the CLI and shared application surface.
+- `store/` — versioned Microsoft Store copy, public links, screenshot inventory, and Partner Center publishing notes.
 
 ## Distribution
 

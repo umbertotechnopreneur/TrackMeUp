@@ -205,8 +205,11 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "focus.status" => ToResponse(request, await _application.GetFocusSessionAsync(cancellationToken)),
                 "focus.stop" => ToResponse(request, await _application.StopFocusSessionAsync(ReadBool(request.Payload, "summarize"), cancellationToken)),
                 "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
-                "screenshot.capture" => ToResponse(request, await _application.CaptureScreenshotAsync(Read<CaptureScreenshotRequest>(request.Payload) ?? new CaptureScreenshotRequest("all-screens", false, true), cancellationToken)),
+                "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
                 "screenshot.latest" => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
+                "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
+                "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
+                "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "screenshot.open_folder" => ToResponse(request, await _application.OpenScreenshotFolderAsync(cancellationToken)),
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
                 "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
@@ -253,6 +256,22 @@ public sealed class RuntimeHost : IAsyncDisposable
 
     private static RuntimeResponseEnvelope ToResponse<T>(RuntimeRequestEnvelope request, OperationResult<T> result) => new(RuntimeProtocol.ProtocolVersion, request.RequestId, result.Succeeded, result.Code, result.MessageKey, result.Value, result.Issues);
 
+    private async Task<OperationResult<ScreenshotGallery>> DispatchScreenshotGalleryAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var galleryRequest = Read<ScreenshotGalleryRequest>(request.Payload);
+        return galleryRequest is null
+            ? OperationResult<ScreenshotGallery>.Failure("screenshot.gallery.invalid", "ScreenshotGalleryRequestInvalid")
+            : await _application.GetScreenshotGalleryAsync(galleryRequest.Date, cancellationToken);
+    }
+
+    private async Task<RuntimeResponseEnvelope> DispatchScreenshotCaptureAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var captureRequest = Read<CaptureScreenshotRequest>(request.Payload);
+        return captureRequest is null
+            ? Failure(request, "screenshot.capture.invalid", "ScreenshotCaptureRequestInvalid")
+            : ToResponse(request, await _application.CaptureScreenshotAsync(captureRequest, cancellationToken));
+    }
+
     private async Task<RuntimeResponseEnvelope> DispatchDailyDigestAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
     {
         var digest = Read<GenerateDailyDigestRequest>(request.Payload);
@@ -284,6 +303,8 @@ public sealed class RuntimeHost : IAsyncDisposable
     private static string? ReadStringOrNull(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String ? property.GetString() : null;
 
     private static bool ReadBool(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind is JsonValueKind.True or JsonValueKind.False && property.GetBoolean();
+
+    private static long ReadInt64(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out var result) ? result : 0L;
 
     private void ThrowIfDisposed()
     {
@@ -420,6 +441,12 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<ScreenshotCaptureResult>("screenshot.capture", request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => SendAsync<string?>("screenshot.latest", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery", new ScreenshotGalleryRequest(date), cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.save", new { screenshotPath, destinationPath }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => SendAsync<string>("screenshot.share", new { screenshotPath, windowHandle }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", null, cancellationToken);
     /// <inheritdoc />

@@ -25,7 +25,27 @@ public sealed record OperationResult<T>(
 public sealed record StartTrackingRequest(bool SafeMode = false, string? Source = null);
 
 /// <summary>Requests screenshot capture without passing presentation objects into the application layer.</summary>
-public sealed record CaptureScreenshotRequest(string Mode, bool Keep, bool Watermark);
+public sealed record CaptureScreenshotRequest(
+    string Mode,
+    bool Keep,
+    bool Watermark,
+    string CaptureOrigin);
+
+/// <summary>Requests retained screenshots for one inclusive local calendar date.</summary>
+public sealed record ScreenshotGalleryRequest(DateOnly Date);
+
+/// <summary>Describes one retained screenshot that can be rendered by a presentation surface.</summary>
+public sealed record ScreenshotGalleryItem(
+    DateTimeOffset CapturedAt,
+    string Path,
+    string ForegroundApplication,
+    string CaptureKind,
+    string CaptureOrigin);
+
+/// <summary>Contains the retained screenshot projection for one local calendar date.</summary>
+public sealed record ScreenshotGallery(
+    DateOnly Date,
+    IReadOnlyList<ScreenshotGalleryItem> Items);
 
 /// <summary>Requests analysis of the latest activity context.</summary>
 public sealed record AnalyzeCurrentActivityRequest(bool AllowCapture = true, string? Origin = null);
@@ -141,6 +161,15 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the most recent retained screenshot.</summary>
     Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets the retained screenshot gallery for one local calendar date.</summary>
+    Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken);
+
+    /// <summary>Saves one retained screenshot to a user-selected destination.</summary>
+    Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken);
+
+    /// <summary>Requests the Windows Share UI for one retained screenshot.</summary>
+    Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken);
 
     /// <summary>Opens the configured screenshot folder.</summary>
     Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken);
