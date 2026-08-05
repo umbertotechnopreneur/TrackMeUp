@@ -1,10 +1,12 @@
-# TrackMeUp CLI and Presentation Architecture Plan
+# TrackMeUp CLI and shared application notes
 
-Status: implementation in progress; the shared runtime, CLI baseline, slash-command help, and public settings surface are implemented and covered by focused tests.
+This is an internal engineering document for the CLI and shared application surface. The product description and the plain-language privacy/dependency census live in [README.md](../README.md) and [docs/PRIVACY.md](PRIVACY.md).
+
+Status: active product architecture notes. TrackMeUp is a working internal product, not an MVP; this document records the engineering work that keeps the desktop app and CLI consistent.
 
 Date: 2026-08-05
 
-Target runtime: .NET 10 on Windows 10/11, x64 and ARM64. The existing x86 target may remain buildable, but the required validation matrix is x64 and ARM64.
+Target runtime: .NET 10 on Windows 10/11, x64 and ARM64. The existing x86 target remains supported where the project and package pipeline allow it.
 
 Supported shell: PowerShell 7 (`pwsh`) only. Windows PowerShell 5.1, `cmd.exe`, Bash, WSL, and other shells are outside the support contract.
 
