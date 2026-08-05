@@ -19,7 +19,7 @@ public static class SettingsCatalog
     private static readonly string[] ApiKeyVariables = ["OPENAI_API_KEY", "TRACKMEUP_OPENAI_APIKEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
     private static readonly string[] OutputDetails = ["compact", "balanced", "detailed"];
     private static readonly string[] ReasoningEfforts = ["auto", "none", "low", "medium", "high", "xhigh", "max"];
-    private static readonly string[] Languages = ["en", "it", "vi", "fr", "de", "es"];
+    private static readonly string[] Languages = ["system", "en", "it", "vi", "fr", "de", "es"];
     private static readonly string[] Themes = ["system", "light", "dark"];
     private static readonly string[] ScreenshotModes = ["all-screens", "active-window"];
     private static readonly string[] FlyoutAnchors = [FlyoutPositions.BottomCenter, FlyoutPositions.BottomLeft, FlyoutPositions.BottomRight, FlyoutPositions.TopLeft, FlyoutPositions.TopRight];
@@ -273,7 +273,7 @@ public static class SettingsCatalog
             AiReasoningEffort = Canonical(ReasoningEfforts, settings.AiReasoningEffort) ?? "auto",
             AiCustomPrompt = TryNormalizeCustomPrompt(settings.AiCustomPrompt, out var customPrompt) ? customPrompt : string.Empty,
             FlyoutPosition = Canonical(FlyoutAnchors, settings.FlyoutPosition) ?? FlyoutPositions.BottomCenter,
-            UiLanguage = Canonical(Languages, settings.UiLanguage) ?? "en",
+            UiLanguage = Canonical(Languages, settings.UiLanguage) ?? "system",
             Theme = Canonical(Themes, settings.Theme) ?? "system",
             TaskbarWidgetPosition = Canonical(TaskbarAnchors, settings.TaskbarWidgetPosition) ?? TaskbarWidgetPositions.Left,
             DailyDigestDirectory = digestDirectory,

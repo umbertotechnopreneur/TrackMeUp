@@ -1,46 +1,22 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-
-<Package
-  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
-  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
-  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10"
-  IgnorableNamespaces="uap desktop rescap systemai">
-
-  <Identity
-    Name="824b187b-e347-4efa-9275-d4c169a4eb9e"
-    Publisher="CN=umber"
-    Version="1.0.0.0" />
-
-  <mp:PhoneIdentity PhoneProductId="824b187b-e347-4efa-9275-d4c169a4eb9e" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
-
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10" IgnorableNamespaces="uap desktop rescap systemai">
+  <Identity Name="824b187b-e347-4efa-9275-d4c169a4eb9e" Publisher="CN=umber" Version="1.0.4.0" />
+  <mp:PhoneIdentity PhoneProductId="824b187b-e347-4efa-9275-d4c169a4eb9e" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>TrackMeUp</DisplayName>
     <PublisherDisplayName>umber</PublisherDisplayName>
     <Logo>Assets\TrackMeUpStoreLogo.png</Logo>
   </Properties>
-
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
   </Dependencies>
-
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="x-generate" />
   </Resources>
-
   <Applications>
-    <Application Id="App"
-      Executable="$targetnametoken$.exe"
-      EntryPoint="$targetentrypoint$">
-      <uap:VisualElements
-        DisplayName="TrackMeUp"
-        Description="TrackMeUp"
-        BackgroundColor="transparent"
-        Square150x150Logo="Assets\TrackMeUpSquare150Logo.png"
-        Square44x44Logo="Assets\TrackMeUpSquare44Logo.png">
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements DisplayName="TrackMeUp" Description="TrackMeUp" BackgroundColor="transparent" Square150x150Logo="Assets\TrackMeUpSquare150Logo.png" Square44x44Logo="Assets\TrackMeUpSquare44Logo.png">
         <uap:DefaultTile Wide310x150Logo="Assets\TrackMeUpWide310x150Logo.png" />
         <uap:SplashScreen Image="Assets\TrackMeUpSplashScreen.png" />
       </uap:VisualElements>
@@ -53,10 +29,9 @@
       </Extensions>
     </Application>
   </Applications>
-
   <Capabilities>
     <DeviceCapability Name="location" />
     <rescap:Capability Name="runFullTrust" />
-    <systemai:Capability Name="systemAIModels"/>
+    <systemai:Capability Name="systemAIModels" />
   </Capabilities>
 </Package>

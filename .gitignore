@@ -17,6 +17,7 @@ appsettings.local.json
 *.user
 *.suo
 *.cache
+TrackMeUp/BuildInfo.json
 
 # OS and editor noise
 Thumbs.db

@@ -20,8 +20,9 @@ public static class TrackMeUpApplicationFactory
         var capture = new ScreenCaptureService(utilities.GetAppVersion());
         var snapshot = new SystemSnapshotService();
         var deviceContext = new DeviceContextService();
+        var buildInformation = new BuildInformationService();
         var analysis = new OpenAiAnalysisService(store, capture, snapshot, deviceContext: deviceContext);
-        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), logger, observability, deviceContext);
+        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext);
     }
 }
 
@@ -36,6 +37,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly DeviceContextService _deviceContext;
     private readonly OpenAiAnalysisService _analysis;
     private readonly StartupService _startup;
+    private readonly BuildInformationService _buildInformation;
     private readonly ReportAggregationService _reports;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
@@ -53,6 +55,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         SystemSnapshotService snapshot,
         OpenAiAnalysisService analysis,
         StartupService startup,
+        BuildInformationService buildInformation,
         ILogger<TrackMeUpApplication>? logger = null,
         ObservabilityHealth? observability = null,
         DeviceContextService? deviceContext = null)
@@ -65,6 +68,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _deviceContext = deviceContext ?? new DeviceContextService();
         _analysis = analysis;
         _startup = startup;
+        _buildInformation = buildInformation;
         _reports = new ReportAggregationService(store);
         _logger = logger ?? NullLogger<TrackMeUpApplication>.Instance;
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
@@ -615,7 +619,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var info = new ProductInformation("TrackMeUp", _utilities.GetAppVersion(), "MIT", "https://github.com/umberto/TrackMeUp", "https://github.com/umberto", "mailto:contact@trackmeup.app", "https://github.com/umberto/TrackMeUp#privacy");
+        var info = new ProductInformation(
+            "TrackMeUp",
+            "MIT",
+            "https://github.com/umbertotechnopreneur/TrackMeUp",
+            "https://umbertogiacobbi.com",
+            _buildInformation.Load());
         return Task.FromResult(OperationResult<ProductInformation>.Success("product.loaded", "ProductInformationLoaded", info));
     }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useChartSettings } from '../composables/useChartSettings'
+import { reportDayNames, tr } from '../localization'
 import {
   formatDate,
   formatDuration,
@@ -28,41 +29,41 @@ watch(forcedColors, (enabled) => {
   if (enabled && !expanded.value.includes(0)) expanded.value = [0]
 })
 
-const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
+const dayNames = computed(() => reportDayNames())
 
 const headers = computed<DataTableHeader[]>(() => {
   switch (props.view) {
     case 'calendar':
       return [
-        { title: 'Data', key: 'period' },
-        { title: 'Disponibilità', key: 'availability' },
-        { title: 'Attivo', key: 'active' },
-        { title: 'Inattivo', key: 'idle' },
-        { title: 'Tracciato', key: 'tracked' },
-        { title: 'Campioni', key: 'samples' },
+        { title: tr('Date', 'Data'), key: 'period' },
+        { title: tr('Availability', 'Disponibilità'), key: 'availability' },
+        { title: tr('Active', 'Attivo'), key: 'active' },
+        { title: tr('Idle', 'Inattivo'), key: 'idle' },
+        { title: tr('Tracked', 'Tracciato'), key: 'tracked' },
+        { title: tr('Samples', 'Campioni'), key: 'samples' },
       ]
     case 'hourOfWeek':
       return [
-        { title: 'Giorno', key: 'day' },
-        { title: 'Ora', key: 'hour' },
-        { title: 'Disponibilità', key: 'availability' },
-        { title: 'Attivo medio', key: 'active' },
-        { title: 'Inattivo medio', key: 'idle' },
-        { title: 'Giorni osservati', key: 'observations' },
+        { title: tr('Day', 'Giorno'), key: 'day' },
+        { title: tr('Hour', 'Ora'), key: 'hour' },
+        { title: tr('Availability', 'Disponibilità'), key: 'availability' },
+        { title: tr('Average active', 'Attivo medio'), key: 'active' },
+        { title: tr('Average idle', 'Inattivo medio'), key: 'idle' },
+        { title: tr('Observed days', 'Giorni osservati'), key: 'observations' },
       ]
     case 'trend':
       return [
-        { title: 'Periodo', key: 'period' },
-        { title: 'Disponibilità', key: 'availability' },
-        { title: 'Attivo', key: 'active' },
-        { title: 'Inattivo', key: 'idle' },
-        { title: 'Tasti', key: 'keys' },
+        { title: tr('Period', 'Periodo'), key: 'period' },
+        { title: tr('Availability', 'Disponibilità'), key: 'availability' },
+        { title: tr('Active', 'Attivo'), key: 'active' },
+        { title: tr('Idle', 'Inattivo'), key: 'idle' },
+        { title: tr('Keys', 'Tasti'), key: 'keys' },
         { title: 'Click', key: 'clicks' },
       ]
     case 'applications':
       return [
-        { title: 'Applicazione', key: 'application' },
-        { title: 'Tempo attivo', key: 'active' },
+        { title: tr('Application', 'Applicazione'), key: 'application' },
+        { title: tr('Active time', 'Tempo attivo'), key: 'active' },
       ]
   }
 })
@@ -72,7 +73,7 @@ const items = computed<Record<string, string>[]>(() => {
     case 'calendar':
       return props.snapshot.calendar.map((cell) => ({
         period: formatDate(cell.date),
-        availability: cell.hasData ? 'Dati presenti' : 'Nessun dato',
+        availability: cell.hasData ? tr('Data available', 'Dati presenti') : tr('No data', 'Nessun dato'),
         active: cell.hasData ? formatDuration(cell.activeSeconds) : '—',
         idle: cell.hasData ? formatDuration(cell.idleSeconds) : '—',
         tracked: cell.hasData ? formatDuration(cell.trackedSeconds) : '—',
@@ -80,9 +81,9 @@ const items = computed<Record<string, string>[]>(() => {
       }))
     case 'hourOfWeek':
       return props.snapshot.hourOfWeek.map((cell) => ({
-        day: dayNames[cell.dayOfWeek] ?? String(cell.dayOfWeek),
+        day: dayNames.value[cell.dayOfWeek] ?? String(cell.dayOfWeek),
         hour: `${cell.hour.toString().padStart(2, '0')}:00`,
-        availability: cell.hasData ? 'Dati presenti' : 'Nessun dato',
+        availability: cell.hasData ? tr('Data available', 'Dati presenti') : tr('No data', 'Nessun dato'),
         active: cell.hasData ? formatDuration(cell.activeSeconds) : '—',
         idle: cell.hasData ? formatDuration(cell.idleSeconds) : '—',
         observations: cell.hasData ? formatInteger(cell.observationDays) : '—',
@@ -92,7 +93,7 @@ const items = computed<Record<string, string>[]>(() => {
         period: bucket.start === bucket.endInclusive
           ? formatDate(bucket.start)
           : `${formatDate(bucket.start)} – ${formatDate(bucket.endInclusive)}`,
-        availability: bucket.hasData ? 'Dati presenti' : 'Nessun dato',
+        availability: bucket.hasData ? tr('Data available', 'Dati presenti') : tr('No data', 'Nessun dato'),
         active: bucket.hasData ? formatDuration(bucket.activeSeconds) : '—',
         idle: bucket.hasData ? formatDuration(bucket.idleSeconds) : '—',
         keys: bucket.hasData ? formatInteger(bucket.keyPresses) : '—',
@@ -114,12 +115,12 @@ const items = computed<Record<string, string>[]>(() => {
         <v-expansion-panel-title>
           <span>
             <v-icon icon="mdi-table-eye" start color="primary" aria-hidden="true" />
-            Dati in formato tabellare
+            {{ tr('Tabular data', 'Dati in formato tabellare') }}
           </span>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <p class="fallback-table__note">
-            Alternativa accessibile al grafico. Lo zero indica un valore misurato; “Nessun dato” indica un intervallo non osservato.
+            {{ tr('Accessible alternative to the chart. Zero indicates a measured value; “No data” indicates an unobserved interval.', 'Alternativa accessibile al grafico. Lo zero indica un valore misurato; “Nessun dato” indica un intervallo non osservato.') }}
           </p>
           <v-data-table
             :headers="headers"
@@ -127,7 +128,7 @@ const items = computed<Record<string, string>[]>(() => {
             :search="search"
             :items-per-page="25"
             density="compact"
-            aria-label="Dati del report in formato tabellare"
+            :aria-label="tr('Report data in tabular format', 'Dati del report in formato tabellare')"
           />
         </v-expansion-panel-text>
       </v-expansion-panel>

@@ -34,7 +34,6 @@
                     VerticalAlignment="Center"
                     FontSize="13"
                     FontWeight="SemiBold"
-                    Foreground="{ThemeResource FlyoutTextBrush}"
                     IsHitTestVisible="False"
                     Text="TrackMeUp Reports" />
             </StackPanel>
@@ -44,10 +43,7 @@
             Grid.Row="1"
             Margin="24,18,24,12"
             Padding="22"
-            Background="{ThemeResource FlyoutSurfaceBrush}"
-            BorderBrush="{ThemeResource FlyoutBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="20">
+            Background="Transparent">
             <Grid RowSpacing="18">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -66,19 +62,17 @@
                         Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
                         <TextBlock
-                            CharacterSpacing="130"
-                            FontSize="14"
-                            FontWeight="SemiBold"
-                            Foreground="{ThemeResource FlyoutTextBrush}"
-                            Text="REPORTS" />
+                            Style="{StaticResource SubtitleTextBlockStyle}"
+                            Tag="Reports.Title"
+                            Text="Reports" />
                         <TextBlock
-                            FontSize="24"
-                            FontWeight="SemiBold"
-                            Foreground="{ThemeResource FlyoutTextBrush}"
-                            Text="Dai dati al ritmo." />
+                            Style="{StaticResource TitleTextBlockStyle}"
+                            Tag="Reports.Motto"
+                            Text="Turn data into rhythm." />
                         <TextBlock
-                            Foreground="{ThemeResource FlyoutMutedBrush}"
-                            Text="Scopri quando lavori, su cosa e con quale continuità."
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Tag="Reports.Description"
+                            Text="See when you work, where your time goes and how consistently."
                             TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>
@@ -93,65 +87,62 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Spacing="5">
-                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Intervallo" />
                         <ComboBox
                             x:Name="RangeComboBox"
+                            Tag="Reports.Range"
                             MinWidth="180"
-                            AutomationProperties.Name="Intervallo del report"
+                            Header="Range"
                             SelectionChanged="ReportSelection_Changed">
-                            <ComboBoxItem Content="Oggi" Tag="today" />
-                            <ComboBoxItem Content="7 giorni" Tag="7" />
-                            <ComboBoxItem Content="30 giorni" Tag="30" />
-                            <ComboBoxItem Content="90 giorni" Tag="90" />
-                            <ComboBoxItem Content="Questo mese" Tag="thisMonth" />
-                            <ComboBoxItem Content="Mese scorso" Tag="lastMonth" />
-                            <ComboBoxItem Content="Personalizzato" Tag="custom" />
+                            <ComboBoxItem Content="Today" Tag="today" />
+                            <ComboBoxItem Content="7 days" Tag="7" />
+                            <ComboBoxItem Content="30 days" Tag="30" />
+                            <ComboBoxItem Content="90 days" Tag="90" />
+                            <ComboBoxItem Content="This month" Tag="thisMonth" />
+                            <ComboBoxItem Content="Last month" Tag="lastMonth" />
+                            <ComboBoxItem Content="Custom" Tag="custom" />
                         </ComboBox>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Spacing="5">
-                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Vista" />
                         <ComboBox
                             x:Name="ViewComboBox"
+                            Tag="Reports.View"
                             MinWidth="180"
-                            AutomationProperties.Name="Vista del report"
+                            Header="View"
                             SelectionChanged="ReportSelection_Changed">
-                            <ComboBoxItem Content="Calendario" Tag="calendar" />
-                            <ComboBoxItem Content="Fasce orarie" Tag="hourOfWeek" />
-                            <ComboBoxItem Content="Andamento" Tag="trend" />
-                            <ComboBoxItem Content="Applicazioni" Tag="applications" />
+                            <ComboBoxItem Content="Calendar" Tag="calendar" />
+                            <ComboBoxItem Content="Time bands" Tag="hourOfWeek" />
+                            <ComboBoxItem Content="Trend" Tag="trend" />
+                            <ComboBoxItem Content="Applications" Tag="applications" />
                         </ComboBox>
                     </StackPanel>
 
                     <StackPanel x:Name="CustomFromPanel" Grid.Column="2" Spacing="5" Visibility="Collapsed">
-                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Dal" />
                         <DatePicker
                             x:Name="CustomFromPicker"
-                            AutomationProperties.Name="Data iniziale del report"
+                            Tag="Reports.From"
+                            Header="From"
                             DateChanged="CustomDatePicker_DateChanged" />
                     </StackPanel>
 
                     <StackPanel x:Name="CustomToPanel" Grid.Column="3" Spacing="5" Visibility="Collapsed">
-                        <TextBlock Foreground="{ThemeResource FlyoutMutedBrush}" Text="Al" />
                         <DatePicker
                             x:Name="CustomToPicker"
-                            AutomationProperties.Name="Data finale del report"
+                            Tag="Reports.To"
+                            Header="To"
                             DateChanged="CustomDatePicker_DateChanged" />
                     </StackPanel>
 
                     <Button
                         x:Name="RefreshReportButton"
+                        Tag="Reports.Refresh"
                         Grid.Column="4"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         AutomationProperties.Name="Aggiorna il report ignorando la cache"
                         Click="RefreshReportButton_Click"
-                        ToolTipService.ToolTip="Aggiorna report">
-                        <StackPanel Orientation="Horizontal" Spacing="7">
-                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" />
-                            <TextBlock Text="Aggiorna" />
-                        </StackPanel>
-                    </Button>
+                        Content="Refresh"
+                        ToolTipService.ToolTip="Aggiorna report" />
                 </Grid>
             </Grid>
         </Border>
@@ -159,8 +150,8 @@
         <Border
             Grid.Row="2"
             Margin="24,0,24,24"
-            Background="{ThemeResource ReportSurfaceBrush}"
-            BorderBrush="{ThemeResource FlyoutBorderBrush}"
+            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="1"
             CornerRadius="20">
             <Grid>
@@ -172,7 +163,7 @@
                 <Grid
                     x:Name="ReportStatusPanel"
                     Padding="32"
-                    Background="{ThemeResource ReportSurfaceBrush}">
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
                     <StackPanel
                         MaxWidth="620"
                         HorizontalAlignment="Center"
@@ -191,14 +182,13 @@
                             AutomationProperties.AccessibilityView="Raw"
                             FontFamily="Segoe Fluent Icons"
                             FontSize="32"
-                            Foreground="{ThemeResource ReportErrorBrush}"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                             Glyph="&#xEA39;"
                             Visibility="Collapsed" />
                         <TextBlock
                             x:Name="ReportStatusText"
                             AutomationProperties.LiveSetting="Assertive"
                             FontSize="15"
-                            Foreground="{ThemeResource FlyoutTextBrush}"
                             Text="Avvio del motore dei report…"
                             TextAlignment="Center"
                             TextWrapping="Wrap" />

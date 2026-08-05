@@ -1,7 +1,7 @@
 import { createApp, watch } from 'vue'
 import { createVuetify } from 'vuetify'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
-import { it } from 'vuetify/locale'
+import { en, it } from 'vuetify/locale'
 import { use } from 'echarts/core'
 import { BarChart, HeatmapChart } from 'echarts/charts'
 import {
@@ -22,6 +22,7 @@ import {
   resolveThemeName,
   themePreference,
 } from './themePreference'
+import { reportLanguage } from './localization'
 
 use([
   AriaComponent,
@@ -45,9 +46,9 @@ const vuetify = createVuetify({
     sets: { mdi },
   },
   locale: {
-    locale: 'it',
-    fallback: 'it',
-    messages: { it },
+    locale: reportLanguage.value,
+    fallback: 'en',
+    messages: { en, it },
   },
   theme: {
     defaultTheme: resolveThemeName(themePreference.value, colorScheme.matches),
@@ -94,6 +95,10 @@ colorScheme.addEventListener('change', (event) => {
 
 watch(themePreference, (preference) => {
   vuetify.theme.global.name.value = resolveThemeName(preference, colorScheme.matches)
+})
+
+watch(reportLanguage, (language) => {
+  vuetify.locale.current.value = language
 })
 
 createApp(App)

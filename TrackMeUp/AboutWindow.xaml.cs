@@ -2,7 +2,9 @@ using System;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using TrackMeUp.Application;
 using Windows.Graphics;
+using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
@@ -10,17 +12,22 @@ namespace TrackMeUp;
 public sealed partial class AboutWindow : Window
 {
     private const int LogicalWindowWidth = 440;
-    private const int LogicalWindowHeight = 360;
+    private const int LogicalWindowHeight = 590;
     private const int LogicalScreenMargin = 22;
     private readonly AppWindow _appWindow;
+    private readonly ITrackMeUpApplication _application;
+    private readonly LocalizationService _strings;
     private double _rasterizationScale = 1d;
     private XamlRoot? _xamlRoot;
 
     /// <summary>Creates and sizes the compact about window.</summary>
-    public AboutWindow(string theme)
+    public AboutWindow(ITrackMeUpApplication application, string theme, string language)
     {
+        _application = application;
+        _strings = new LocalizationService(language);
         InitializeComponent();
         RootGrid.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        UiLocalization.Apply(RootGrid, _strings);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         ResizeForLogicalContent();
         Closed += (_, _) =>
@@ -35,7 +42,7 @@ public sealed partial class AboutWindow : Window
     /// <summary>Forwards the close interaction to the window framework.</summary>
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
@@ -44,6 +51,21 @@ public sealed partial class AboutWindow : Window
         }
 
         ResizeForLogicalContent();
+        var result = await _application.GetProductInformationAsync(CancellationToken.None);
+        if (!result.Succeeded || result.Value is null)
+        {
+            throw new InvalidOperationException($"Build information is unavailable ({result.Code}).");
+        }
+
+        var product = result.Value;
+        var build = product.Build;
+        VersionText.Text = build.SemVer;
+        BuiltText.Text = build.BuiltAtLocal.ToString("yyyy-MM-dd HH:mm:ss zzz");
+        MachineText.Text = build.MachineName;
+        CommitLink.Content = build.GitCommitShort;
+        CommitLink.NavigateUri = new Uri($"{product.RepositoryUrl}/commit/{build.GitCommit}");
+        BuildContextText.Text = $"{build.Configuration} · {build.Platform} · {build.RuntimeIdentifier}" +
+            (build.GitDirty ? $" · {_strings.Translate("About.Dirty")}" : string.Empty);
     }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)

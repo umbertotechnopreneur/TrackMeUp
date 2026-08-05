@@ -1,3 +1,5 @@
+import { reportLocale, tr } from './localization'
+
 export const reportViews = ['calendar', 'hourOfWeek', 'trend', 'applications'] as const
 
 export type ReportView = (typeof reportViews)[number]
@@ -248,20 +250,20 @@ const isAiUsage = (value: unknown): value is AiUsageSummary => {
 /** Validates the versioned host envelope before any value reaches the chart renderer. */
 export function validateReportEnvelope(value: unknown): EnvelopeValidationResult {
   if (!isObject(value) || value.type !== 'report.snapshot') {
-    return { error: 'Il messaggio ricevuto non è un report TrackMeUp.' }
+    return { error: tr('The received message is not a TrackMeUp report.', 'Il messaggio ricevuto non è un report TrackMeUp.') }
   }
 
   if (typeof value.view !== 'string' || !reportViews.includes(value.view as ReportView)) {
-    return { error: 'La vista richiesta non è supportata.' }
+    return { error: tr('The requested view is not supported.', 'La vista richiesta non è supportata.') }
   }
 
   const snapshot = value.snapshot
   if (!isObject(snapshot)) {
-    return { error: 'Il report non contiene uno snapshot valido.' }
+    return { error: tr('The report does not contain a valid snapshot.', 'Il report non contiene uno snapshot valido.') }
   }
 
   if (snapshot.contractVersion !== 2) {
-    return { error: 'La versione del report non è compatibile con questa applicazione.' }
+    return { error: tr('The report version is not compatible with this application.', 'La versione del report non è compatibile con questa applicazione.') }
   }
 
   if (!isRange(snapshot.range)
@@ -276,38 +278,25 @@ export function validateReportEnvelope(value: unknown): EnvelopeValidationResult
     || !snapshot.applications.every(isApplicationSlice)
     || !isQuality(snapshot.quality)
     || !isAiUsage(snapshot.aiUsage)) {
-    return { error: 'Il contenuto del report è incompleto o non valido.' }
+    return { error: tr('The report content is incomplete or invalid.', 'Il contenuto del report è incompleto o non valido.') }
   }
 
   return { envelope: value as unknown as ReportEnvelope }
 }
 
-const dateFormatter = new Intl.DateTimeFormat('it-IT', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-})
-
-const dateTimeFormatter = new Intl.DateTimeFormat('it-IT', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-const numberFormatter = new Intl.NumberFormat('it-IT')
-
 export function formatDate(value: string): string {
   const date = new Date(`${value}T00:00:00Z`)
-  return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date)
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(reportLocale.value, {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+  }).format(date)
 }
 
 export function formatDateTime(value: string | null): string {
   if (!value) return '—'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : dateTimeFormatter.format(date)
+  return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat(reportLocale.value, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(date)
 }
 
 export function formatDuration(seconds: number): string {
@@ -323,19 +312,19 @@ export function formatDuration(seconds: number): string {
 }
 
 export function formatHours(seconds: number): string {
-  return `${(Math.max(0, seconds) / 3600).toLocaleString('it-IT', {
+  return `${(Math.max(0, seconds) / 3600).toLocaleString(reportLocale.value, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   })} h`
 }
 
 export function formatInteger(value: number): string {
-  return numberFormatter.format(Math.max(0, Math.round(value)))
+  return new Intl.NumberFormat(reportLocale.value).format(Math.max(0, Math.round(value)))
 }
 
 export function formatPercent(value: number): string {
   const safeValue = Math.min(1, Math.max(0, value))
-  return safeValue.toLocaleString('it-IT', {
+  return safeValue.toLocaleString(reportLocale.value, {
     style: 'percent',
     maximumFractionDigits: 0,
   })

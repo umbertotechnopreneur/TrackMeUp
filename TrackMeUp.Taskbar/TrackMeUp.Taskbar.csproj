@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>TrackMeUp.Taskbar</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrackMeUp.Core\TrackMeUp.Core.csproj" />
+    <Resource Include="..\TrackMeUp\Assets\TrackMeUpSquare44Logo.targetsize-24_altform-unplated.png" Link="Assets\TrackMeUpSquare44Logo.targetsize-24_altform-unplated.png" />
+  </ItemGroup>
+</Project>

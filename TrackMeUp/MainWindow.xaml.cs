@@ -7,11 +7,11 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using TrackMeUp.Runtime;
+using TrackMeUp.Services;
 using Windows.Graphics;
 
 namespace TrackMeUp;
@@ -20,20 +20,23 @@ namespace TrackMeUp;
 public sealed partial class MainWindow : Window
 {
     private const int LogicalWindowWidth = 430;
-    private const int PlayerHeight = 308;
-    private const int ExpandedPlayerHeight = 410;
-    private const int OptionsHeight = 650;
-    private const int OperationsHeight = 720;
+    private const int PlayerHeight = 356;
+    private const int ExpandedPlayerHeight = 458;
+    private const int OptionsHeight = 698;
+    private const int OperationsHeight = 768;
     private const int LogicalScreenMargin = 22;
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly AppWindow _appWindow;
+    private LocalizationService _strings = new("system");
     private bool _detailsExpanded;
+    private bool _updatingMenuState;
     private int _logicalHeight = PlayerHeight;
     private double _rasterizationScale = 1d;
     private string _theme = "system";
     private string _position = FlyoutPositions.BottomCenter;
+    private AppSettings? _menuSettings;
     private AboutWindow? _aboutWindow;
     private XamlRoot? _xamlRoot;
 
@@ -52,6 +55,13 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        if (AppWindowTitleBar.IsCustomizationSupported())
+        {
+            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        }
         ResizeForLogicalContent(PlayerHeight);
 
         OptionsControl.Initialize(application);
@@ -116,40 +126,89 @@ public sealed partial class MainWindow : Window
     /// <summary>Loads persisted settings into presentation-only flyout controls.</summary>
     private async void MoreMenu_Opened(object sender, object e)
     {
+        if (MoreButton.Flyout is Flyout flyout && flyout.Content is DependencyObject content)
+        {
+            UiLocalization.Apply(content, _strings);
+        }
+
         var result = await _application.GetSettingsAsync(CancellationToken.None);
         if (!result.Succeeded || result.Value is null)
         {
             return;
         }
 
-        OpenAiMenuToggle.IsChecked = result.Value.OpenAiEnabled;
-        ScreenshotMenuToggle.IsChecked = result.Value.ScreenshotsEnabled;
+        _menuSettings = result.Value;
+        _updatingMenuState = true;
+        OpenAiMenuToggle.IsOn = result.Value.OpenAiEnabled;
+        _updatingMenuState = false;
     }
 
     /// <summary>Shows the options view.</summary>
-    private void OptionsMenuItem_Click(object sender, RoutedEventArgs e) => ShowPanel(OptionsPanel, OptionsHeight);
+    private void OptionsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        ShowPanel(OptionsPanel, OptionsHeight);
+    }
 
     /// <summary>Forwards report-window activation to the application composition root.</summary>
-    private void ReportsMenuItem_Click(object sender, RoutedEventArgs e) => ReportsRequested?.Invoke(this, EventArgs.Empty);
+    private void ReportsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        ReportsRequested?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>Shows the operational and diagnostic facade surface.</summary>
-    private void OperationsMenuItem_Click(object sender, RoutedEventArgs e) => ShowPanel(OperationsPanel, OperationsHeight);
+    private void OperationsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        ShowPanel(OperationsPanel, OperationsHeight);
+    }
 
     /// <summary>Shows the passive About view.</summary>
     private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        _aboutWindow ??= new AboutWindow(_theme);
+        MoreButton.Flyout.Hide();
+        _aboutWindow ??= new AboutWindow(_application, _theme, _strings.RequestedLanguage);
         _aboutWindow.Closed += (_, _) => _aboutWindow = null;
         _aboutWindow.Activate();
     }
 
     /// <summary>Forwards the AI-toggle value to the application facade.</summary>
-    private async void OpenAiMenuToggle_Click(object sender, RoutedEventArgs e) => await _application.SetAiEnabledAsync(OpenAiMenuToggle.IsChecked, CancellationToken.None);
-
-    /// <summary>Forwards the screenshot-toggle value to the settings use case.</summary>
-    private async void ScreenshotMenuToggle_Click(object sender, RoutedEventArgs e)
+    private async void OpenAiMenuToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { ["screenshots.enabled"] = ScreenshotMenuToggle.IsChecked.ToString() }), CancellationToken.None);
+        if (_updatingMenuState)
+        {
+            return;
+        }
+
+        var result = await _application.SetAiEnabledAsync(OpenAiMenuToggle.IsOn, CancellationToken.None);
+        if (!result.Succeeded)
+        {
+            _updatingMenuState = true;
+            OpenAiMenuToggle.IsOn = !OpenAiMenuToggle.IsOn;
+            _updatingMenuState = false;
+        }
+    }
+
+    /// <summary>Captures one snapshot immediately using the current validated snapshot settings.</summary>
+    private async void TakeSnapshotNowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        var settings = _menuSettings;
+        if (settings is null)
+        {
+            var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
+            settings = settingsResult.Value;
+        }
+
+        if (settings is null)
+        {
+            return;
+        }
+
+        await _application.CaptureScreenshotAsync(
+            new CaptureScreenshotRequest(settings.ScreenshotCaptureMode, settings.KeepScreenshots, settings.WatermarkScreenshots),
+            CancellationToken.None);
     }
 
     /// <summary>Shows or hides the presentation-only latest-session panel.</summary>
@@ -158,7 +217,7 @@ public sealed partial class MainWindow : Window
         _detailsExpanded = !_detailsExpanded;
         DetailsPanel.Visibility = _detailsExpanded ? Visibility.Visible : Visibility.Collapsed;
         DetailsChevron.Glyph = _detailsExpanded ? "\uE70E" : "\uE70D";
-        AutomationProperties.SetName(DetailsButton, _detailsExpanded ? "Nascondi ultima sessione" : "Mostra ultima sessione");
+        AutomationProperties.SetName(DetailsButton, _detailsExpanded ? "Hide last session" : "Show last session");
         ResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);
         if (_detailsExpanded)
         {
@@ -212,14 +271,12 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders current dashboard values without making application calls.</summary>
     private void UpdatePlayer(DashboardState state)
     {
-        CurrentContextText.Text = state.CurrentContext is "STATE_READY" ? "Ready" : state.CurrentContext is "STATE_IDLE" ? "Idle" : state.CurrentContext;
+        CurrentContextText.Text = state.CurrentContext is "STATE_READY" ? T("StateReady") : state.CurrentContext is "STATE_IDLE" ? T("StateIdleContext") : state.CurrentContext;
         KeyCountText.Text = state.TotalKeyPresses.ToString("N0");
         ClickCountText.Text = state.TotalMouseClicks.ToString("N0");
         ActiveTimeText.Text = TimeSpan.FromSeconds(state.ActiveSeconds).ToString(@"hh\:mm\:ss");
         ActivityLine.Value = state.Intensity;
-        TrackingStateText.Text = state.StatusLabel;
-        TrackingStateText.Foreground = new SolidColorBrush(state.IsTracking ? Windows.UI.Color.FromArgb(255, 77, 151, 130) : Windows.UI.Color.FromArgb(255, 218, 107, 76));
-        TrackingButton.Background = new SolidColorBrush(state.IsTracking ? Windows.UI.Color.FromArgb(255, 129, 200, 178) : Windows.UI.Color.FromArgb(255, 255, 160, 122));
+        TrackingStateText.Text = T(state.IsTracking ? "StateRunning" : "StatePaused");
         PlayPauseIcon.Glyph = state.IsTracking ? "\uE769" : "\uE768";
         AutomationProperties.SetName(TrackingButton, state.IsTracking ? "Metti in pausa il monitoraggio" : "Avvia il monitoraggio");
     }
@@ -227,7 +284,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders the latest-session labels without accessing persistence or the file system.</summary>
     private void UpdateLastSession(LastSessionState? session)
     {
-        LastSessionAppText.Text = session?.Application ?? "No session yet";
+        LastSessionAppText.Text = session?.Application ?? T("NoSession");
         LastSessionDetailText.Text = session?.Timestamp is null ? string.Empty : $"{session.Timestamp:HH:mm} · {session.Context}";
         LastSessionAttributesText.Text = session?.Attributes is { Count: > 0 } attributes ? string.Join(" · ", attributes.Select(x => $"{x.Key}: {x.Value}")) : string.Empty;
         LastScreenshotImage.Visibility = Visibility.Collapsed;
@@ -237,12 +294,18 @@ public sealed partial class MainWindow : Window
     /// <summary>Applies presentation settings already validated and persisted by the application layer.</summary>
     private void ApplySettings(AppSettings settings)
     {
+        _strings = new LocalizationService(settings.UiLanguage);
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        UiLocalization.Apply(RootGrid, _strings);
+        OptionsControl.ApplyLanguage(settings.UiLanguage);
+        OperationsControl.ApplyLanguage(settings.UiLanguage);
         ApplyFlyoutPosition(_position);
         SettingsApplied?.Invoke(settings);
     }
+
+    private string T(string key) => _strings.Translate(key);
 
     /// <summary>Shows and positions the player when requested from the taskbar control.</summary>
     public void ShowFlyout()

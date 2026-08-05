@@ -5,6 +5,7 @@ using System.Threading;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
 
@@ -12,6 +13,7 @@ namespace TrackMeUp.Controls;
 public sealed partial class OptionsControl : UserControl
 {
     private ITrackMeUpApplication? _application;
+    private LocalizationService _strings = new("system");
 
     /// <summary>Initializes the options control.</summary>
     public OptionsControl() => InitializeComponent();
@@ -21,6 +23,14 @@ public sealed partial class OptionsControl : UserControl
 
     /// <summary>Occurs after a successfully persisted application settings snapshot is returned.</summary>
     public event Action<AppSettings>? SettingsSaved;
+
+    /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
+    public void ApplyLanguage(string language)
+    {
+        _strings = new LocalizationService(language);
+        UiLocalization.Apply(this, _strings);
+        UpdateScreenshotModeHint();
+    }
 
     /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
     public async void Initialize(ITrackMeUpApplication application)
@@ -41,7 +51,7 @@ public sealed partial class OptionsControl : UserControl
     {
         if (_application is null || string.IsNullOrWhiteSpace(ApiKeyBox.Password))
         {
-            StatusText.Text = "Inserisci prima una API key.";
+            StatusText.Text = T("ApiKeyMissing");
             return;
         }
 
@@ -51,7 +61,7 @@ public sealed partial class OptionsControl : UserControl
         ApiKeyBox.Password = string.Empty;
         var result = await _application.SetAiKeyAsync(keyName, secret, CancellationToken.None);
         secret = string.Empty;
-        StatusText.Text = result.Succeeded ? $"{keyName} impostata per l'utente Windows." : "Impossibile impostare la API key.";
+        StatusText.Text = result.Succeeded ? T("ApiKeySaved") : T("Options.ApiKeyError");
     }
 
     /// <summary>Builds a typed, whitelisted patch and forwards persistence to the application facade.</summary>
@@ -81,7 +91,7 @@ public sealed partial class OptionsControl : UserControl
             ["ai.custom_prompt"] = AiCustomPromptBox.Text,
             ["ai.include_device_location"] = IncludeDeviceLocationSwitch.IsOn.ToString(),
             ["screenshots.mode"] = SelectedTag(ScreenshotModeBox, "all-screens"),
-            ["language"] = SelectedTag(LanguageBox, "en"),
+            ["language"] = SelectedTag(LanguageBox, "system"),
             ["theme"] = SelectedTag(ThemeBox, "system"),
             ["position"] = SelectedTag(PositionBox, "bottom-center"),
             ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left"),
@@ -104,11 +114,11 @@ public sealed partial class OptionsControl : UserControl
         if (result.Succeeded && result.Value is not null)
         {
             SettingsSaved?.Invoke(result.Value);
-            StatusText.Text = "Opzioni salvate.";
+            StatusText.Text = T("OptionsSaved");
         }
         else
         {
-            StatusText.Text = "Correggi le opzioni indicate e riprova.";
+            StatusText.Text = T("Options.SaveError");
         }
     }
 
@@ -117,7 +127,7 @@ public sealed partial class OptionsControl : UserControl
     {
         if (_application is null) return;
         var result = await _application.GenerateTodayReportAsync(null, false, CancellationToken.None);
-        StatusText.Text = result.Succeeded ? $"Report creato: {result.Value}" : "Impossibile creare il report.";
+        StatusText.Text = result.Succeeded ? $"{T("ReportCreated")}: {result.Value}" : T("Options.ReportError");
     }
 
     /// <summary>Applies provider defaults as presentation convenience only.</summary>
@@ -133,6 +143,7 @@ public sealed partial class OptionsControl : UserControl
 
     private void ApplySettings(AppSettings settings)
     {
+        ApplyLanguage(settings.UiLanguage);
         ModelBox.Text = settings.Model;
         ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
         KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
@@ -148,7 +159,7 @@ public sealed partial class OptionsControl : UserControl
         SelectTag(AiOutputDetailBox, settings.AiOutputDetail, "balanced");
         SelectTag(AiReasoningEffortBox, settings.AiReasoningEffort, "auto");
         SelectTag(ScreenshotModeBox, settings.ScreenshotCaptureMode, "all-screens");
-        SelectTag(LanguageBox, settings.UiLanguage, "en");
+        SelectTag(LanguageBox, settings.UiLanguage, "system");
         SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
         SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
         SelectTag(ThemeBox, settings.Theme, "system");
@@ -164,7 +175,9 @@ public sealed partial class OptionsControl : UserControl
         UpdateScreenshotModeHint();
     }
 
-    private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? "Finestra attiva in focus -> 1 WEBP" : "Tutti gli schermi -> 1 WEBP per monitor";
+    private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? T("Options.SnapshotHintActive") : T("Options.SnapshotHintAll");
+
+    private string T(string key) => _strings.Translate(key);
 
     private static string SelectedTag(ComboBox comboBox, string fallback) => (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? fallback;
 

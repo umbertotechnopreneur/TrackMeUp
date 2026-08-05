@@ -4,66 +4,70 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="About TrackMeUp">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="BaseAlt" />
+        <MicaBackdrop Kind="Base" />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="RootGrid" Padding="28" Background="Transparent">
+    <Grid x:Name="RootGrid" Padding="32,28" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer
-            HorizontalScrollBarVisibility="Disabled"
-            VerticalScrollBarVisibility="Auto">
-            <StackPanel Padding="0,0,8,0" Spacing="14">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="0,0,8,0" Spacing="16">
                 <Image
-                    Width="88"
-                    Height="88"
+                    Width="128"
+                    Height="128"
                     HorizontalAlignment="Center"
-                    AutomationProperties.Name="Icona dell'app TrackMeUp"
+                    AutomationProperties.Name="TrackMeUp app icon"
                     Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
-                <StackPanel Spacing="4">
+
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
                     <TextBlock
                         HorizontalAlignment="Center"
-                        CharacterSpacing="110"
-                        FontSize="25"
-                        FontWeight="SemiBold"
-                        Foreground="{ThemeResource FlyoutTextBrush}"
-                        Text="TRACK ME UP"
-                        TextAlignment="Center"
-                        TextWrapping="Wrap" />
-                    <TextBlock
+                        Style="{StaticResource TitleTextBlockStyle}"
+                        Text="TrackMeUp"
+                        TextAlignment="Center" />
+                    <HyperlinkButton
                         HorizontalAlignment="Center"
-                        Foreground="{ThemeResource FlyoutMutedBrush}"
-                        Text="Personal activity player"
-                        TextAlignment="Center"
-                        TextWrapping="Wrap" />
-                </StackPanel>
-                <Rectangle Height="1" Fill="{ThemeResource FlyoutSoftBrush}" />
-                <TextBlock
-                    Foreground="{ThemeResource FlyoutTextBrush}"
-                    Text="Un piccolo player locale per comprendere tempo, applicazioni e ritmo di lavoro. Nessun tasto digitato viene registrato; screenshot e OpenAI sono sempre opt-in."
-                    TextWrapping="Wrap" />
-                <StackPanel Spacing="2">
-                    <HyperlinkButton
-                        HorizontalAlignment="Left"
-                        Content="Contact us"
-                        NavigateUri="https://umbertogiacobbi.biz/contacts" />
-                    <HyperlinkButton
-                        HorizontalAlignment="Left"
-                        Content="GitHub repository"
+                        Content="github.com/umbertotechnopreneur/TrackMeUp"
                         NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp" />
                     <HyperlinkButton
-                        HorizontalAlignment="Left"
-                        Content="Autore: Umberto Giacobbi"
-                        Foreground="#FF80B9AA"
-                        NavigateUri="https://umbertogiacobbi.biz/" />
+                        HorizontalAlignment="Center"
+                        Content="umbertogiacobbi.com"
+                        NavigateUri="https://umbertogiacobbi.com" />
+                </StackPanel>
+
+                <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
+                        <TextBlock x:Name="VersionText" Style="{StaticResource BodyStrongTextBlockStyle}" Text="—" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="About.Built" Style="{StaticResource CaptionTextBlockStyle}" Text="Built" />
+                        <TextBlock x:Name="BuiltText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="About.Machine" Style="{StaticResource CaptionTextBlockStyle}" Text="Build machine" />
+                        <TextBlock x:Name="MachineText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="About.Commit" Style="{StaticResource CaptionTextBlockStyle}" Text="Git commit" />
+                        <HyperlinkButton
+                            x:Name="CommitLink"
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Content="—" />
+                    </StackPanel>
+                    <TextBlock x:Name="BuildContextText" Style="{StaticResource CaptionTextBlockStyle}" Text="—" TextWrapping="Wrap" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
 
         <Button
+            Tag="About.Close"
             Grid.Row="1"
             Margin="0,22,0,0"
             HorizontalAlignment="Stretch"

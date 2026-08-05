@@ -7,6 +7,13 @@ namespace TrackMeUp.Cli.Tests;
 public sealed class CliOptionsTests
 {
     [Fact]
+    public void DefaultLanguage_FollowsTheSystemAndCanBeSelectedExplicitly()
+    {
+        Assert.Equal("system", CliOptions.Parse(["status"], redirected: false).Language);
+        Assert.Equal("system", CliOptions.Parse(["--language", "system", "status"], redirected: false).Language);
+    }
+
+    [Fact]
     public void JsonMode_DisablesColorAndAnimationAndRetainsCommand()
     {
         var options = CliOptions.Parse(["--json", "--language", "it", "status"], redirected: false);

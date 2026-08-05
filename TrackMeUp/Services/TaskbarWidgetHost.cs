@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace TrackMeUp.Services;
 
-/// <summary>Hosts the compact TrackMeUp control inside the Windows taskbar without owning tracking state.</summary>
+/// <summary>Hosts the compact alpha-capable TrackMeUp control inside the Windows taskbar without owning tracking state.</summary>
 public sealed class TaskbarWidgetHost : IDisposable
 {
     /// <summary>Gets the widget width in device-independent pixels.</summary>
@@ -12,6 +12,7 @@ public sealed class TaskbarWidgetHost : IDisposable
     public const int LogicalHeight = 40;
 
     private const int GwlStyle = -16;
+    private const int GwlExStyle = -20;
     private const long WsChild = 0x40000000L;
     private const long WsPopup = unchecked((long)0x80000000);
     private const long WsCaption = 0x00C00000L;
@@ -19,9 +20,12 @@ public sealed class TaskbarWidgetHost : IDisposable
     private const long WsSysMenu = 0x00080000L;
     private const long WsMinimizeBox = 0x00020000L;
     private const long WsMaximizeBox = 0x00010000L;
+    private const long WsExNoActivate = 0x08000000L;
+    private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpFrameChanged = 0x0020;
     private const uint SwpShowWindow = 0x0040;
+    private const uint SwpAsyncWindowPos = 0x4000;
     private const int SwHide = 0;
 
     private readonly object _gate = new();
@@ -30,7 +34,7 @@ public sealed class TaskbarWidgetHost : IDisposable
     private string _position = TaskbarWidgetPositions.Left;
     private bool _disposed;
 
-    /// <summary>Embeds a WinUI window in the primary Windows taskbar and begins recovery checks.</summary>
+    /// <summary>Embeds an alpha-capable control in the primary Windows taskbar and begins recovery checks.</summary>
     public bool Attach(IntPtr widgetHandle, string position)
     {
         if (widgetHandle == IntPtr.Zero)
@@ -124,6 +128,7 @@ public sealed class TaskbarWidgetHost : IDisposable
             var style = GetWindowStyle(_widgetHandle);
             var childStyle = (style | WsChild) & ~(WsPopup | WsCaption | WsThickFrame | WsSysMenu | WsMinimizeBox | WsMaximizeBox);
             SetWindowStyle(_widgetHandle, childStyle);
+            SetWindowExStyle(_widgetHandle, GetWindowExStyle(_widgetHandle) | WsExNoActivate);
             SetParent(_widgetHandle, taskbarHandle);
             if (GetParent(_widgetHandle) != taskbarHandle)
             {
@@ -159,12 +164,14 @@ public sealed class TaskbarWidgetHost : IDisposable
         };
 
         // SetWindowPos is intentionally best-effort: a third-party shell can refuse child placement without affecting the local tracking runtime.
-        return SetWindowPos(_widgetHandle, IntPtr.Zero, x, y, widgetWidth, widgetHeight, SwpNoActivate | SwpFrameChanged | SwpShowWindow);
+        return SetWindowPos(_widgetHandle, IntPtr.Zero, x, y, widgetWidth, widgetHeight, SwpNoZOrder | SwpNoActivate | SwpFrameChanged | SwpShowWindow | SwpAsyncWindowPos);
     }
 
     private static string NormalizePosition(string? position) => position is TaskbarWidgetPositions.Center or TaskbarWidgetPositions.Right ? position : TaskbarWidgetPositions.Left;
 
     private static long GetWindowStyle(IntPtr windowHandle) => IntPtr.Size == 8 ? GetWindowLongPtr64(windowHandle, GwlStyle).ToInt64() : GetWindowLong32(windowHandle, GwlStyle);
+
+    private static long GetWindowExStyle(IntPtr windowHandle) => IntPtr.Size == 8 ? GetWindowLongPtr64(windowHandle, GwlExStyle).ToInt64() : GetWindowLong32(windowHandle, GwlExStyle);
 
     private static void SetWindowStyle(IntPtr windowHandle, long style)
     {
@@ -175,6 +182,18 @@ public sealed class TaskbarWidgetHost : IDisposable
         else
         {
             _ = SetWindowLong32(windowHandle, GwlStyle, unchecked((int)style));
+        }
+    }
+
+    private static void SetWindowExStyle(IntPtr windowHandle, long style)
+    {
+        if (IntPtr.Size == 8)
+        {
+            _ = SetWindowLongPtr64(windowHandle, GwlExStyle, new IntPtr(style));
+        }
+        else
+        {
+            _ = SetWindowLong32(windowHandle, GwlExStyle, unchecked((int)style));
         }
     }
 

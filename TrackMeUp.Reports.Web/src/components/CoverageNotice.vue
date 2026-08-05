@@ -5,23 +5,24 @@ import {
   formatPercent,
   type ReportDataQuality,
 } from '../reporting'
+import { tr } from '../localization'
 
 const props = defineProps<{
   quality: ReportDataQuality
 }>()
 
 const title = computed(() => props.quality.hasData
-  ? `Copertura temporale ${formatPercent(props.quality.coverageRatio)}`
-  : 'Nessun dato nel periodo')
+  ? `${tr('Time coverage', 'Copertura temporale')} ${formatPercent(props.quality.coverageRatio)}`
+  : tr('No data in the period', 'Nessun dato nel periodo'))
 
 const description = computed(() => {
   if (!props.quality.hasData) {
-    return 'TrackMeUp non ha rilevato campioni nel range selezionato. L’assenza di dati non viene conteggiata come inattività.'
+    return tr('TrackMeUp detected no samples in the selected range. Missing data is not counted as idle time.', 'TrackMeUp non ha rilevato campioni nel range selezionato. L’assenza di dati non viene conteggiata come inattività.')
   }
 
   const first = formatDateTime(props.quality.firstSampleAt)
   const last = formatDateTime(props.quality.lastSampleAt)
-  return `Campioni osservati dal ${first} al ${last}. Gli intervalli non coperti non vengono interpretati come tempo inattivo.`
+  return tr(`Samples observed from ${first} to ${last}. Uncovered intervals are not interpreted as idle time.`, `Campioni osservati dal ${first} al ${last}. Gli intervalli non coperti non vengono interpretati come tempo inattivo.`)
 })
 </script>
 

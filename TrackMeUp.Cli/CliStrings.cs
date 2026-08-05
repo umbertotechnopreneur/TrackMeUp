@@ -1,5 +1,8 @@
 namespace TrackMeUp.Cli;
 
+using System.Globalization;
+using TrackMeUp.Services;
+
 /// <summary>Provides the compact CLI text catalog without exposing translated text to automation contracts.</summary>
 internal static class CliStrings
 {
@@ -21,7 +24,7 @@ internal static class CliStrings
 
     /// <summary>Returns the translated CLI string, falling back to its stable key when no catalog entry exists.</summary>
     internal static string Get(string language, string key) =>
-        Catalog.TryGetValue(language, out var languageCatalog) && languageCatalog.TryGetValue(key, out var translated)
+        Catalog.TryGetValue(LocalizationService.ResolveLanguage(language, CultureInfo.CurrentUICulture), out var languageCatalog) && languageCatalog.TryGetValue(key, out var translated)
             ? translated
             : English.TryGetValue(key, out var english) ? english : key;
 }

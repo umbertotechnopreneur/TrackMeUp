@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { formatInteger, type AiUsageSummary } from '../reporting'
+import { reportLocale, tr } from '../localization'
 
 const props = defineProps<{
   aiUsage: AiUsageSummary
 }>()
 
-const currencyFormatter = new Intl.NumberFormat('it-IT', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
-})
-
 const formatUsd = (value: number | null): string =>
-  value === null ? 'Non disponibile' : currencyFormatter.format(value)
+  value === null ? tr('Unavailable', 'Non disponibile') : new Intl.NumberFormat(reportLocale.value, {
+    style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 6,
+  }).format(value)
 
 const costNotice = computed(() => {
   const usage = props.aiUsage
@@ -22,8 +18,8 @@ const costNotice = computed(() => {
     return {
       color: 'primary',
       icon: 'mdi-information-outline',
-      title: 'Nessuna richiesta AI nel periodo',
-      text: 'Non ci sono richieste AI da contabilizzare nel periodo selezionato.',
+      title: tr('No AI requests in the period', 'Nessuna richiesta AI nel periodo'),
+      text: tr('There are no AI requests to account for in the selected period.', 'Non ci sono richieste AI da contabilizzare nel periodo selezionato.'),
     }
   }
 
@@ -31,8 +27,8 @@ const costNotice = computed(() => {
     return {
       color: 'warning',
       icon: 'mdi-cash-remove',
-      title: 'Costo non disponibile',
-      text: 'Nessun provider ha restituito un costo per richiesta. I token restano disponibili per l’analisi di utilizzo.',
+      title: tr('Cost unavailable', 'Costo non disponibile'),
+      text: tr('No provider returned a per-request cost. Token counts remain available for usage analysis.', 'Nessun provider ha restituito un costo per richiesta. I token restano disponibili per l’analisi di utilizzo.'),
     }
   }
 
@@ -40,29 +36,29 @@ const costNotice = computed(() => {
     return {
       color: 'warning',
       icon: 'mdi-cash-clock',
-      title: 'Costo parziale',
-      text: `Il provider ha dichiarato il costo per ${formatInteger(usage.actualCostRequestCount)} di ${formatInteger(usage.requestCount)} richieste. Il totale mostrato non copre le altre richieste.`,
+      title: tr('Partial cost', 'Costo parziale'),
+      text: tr(`The provider reported a cost for ${formatInteger(usage.actualCostRequestCount)} of ${formatInteger(usage.requestCount)} requests. The displayed total does not cover the other requests.`, `Il provider ha dichiarato il costo per ${formatInteger(usage.actualCostRequestCount)} di ${formatInteger(usage.requestCount)} richieste. Il totale mostrato non copre le altre richieste.`),
     }
   }
 
   return {
     color: 'success',
     icon: 'mdi-cash-check',
-    title: 'Costo dichiarato dal provider',
-    text: 'Il provider ha restituito un costo per tutte le richieste AI del periodo.',
+    title: tr('Provider-reported cost', 'Costo dichiarato dal provider'),
+    text: tr('The provider returned a cost for every AI request in the period.', 'Il provider ha restituito un costo per tutte le richieste AI del periodo.'),
   }
 })
 
 const summaryItems = computed(() => [
   {
-    label: 'Richieste',
+    label: tr('Requests', 'Richieste'),
     value: formatInteger(props.aiUsage.requestCount),
-    detail: `${formatInteger(props.aiUsage.successfulRequestCount)} riuscite, ${formatInteger(props.aiUsage.failedRequestCount)} non riuscite`,
+    detail: tr(`${formatInteger(props.aiUsage.successfulRequestCount)} succeeded, ${formatInteger(props.aiUsage.failedRequestCount)} failed`, `${formatInteger(props.aiUsage.successfulRequestCount)} riuscite, ${formatInteger(props.aiUsage.failedRequestCount)} non riuscite`),
   },
   {
     label: 'Token input',
     value: formatInteger(props.aiUsage.inputTokens),
-    detail: `Cache: ${formatInteger(props.aiUsage.cachedInputTokens)}`,
+    detail: `${tr('Cache', 'Cache')}: ${formatInteger(props.aiUsage.cachedInputTokens)}`,
   },
   {
     label: 'Token output',
@@ -70,14 +66,14 @@ const summaryItems = computed(() => [
     detail: `Reasoning: ${formatInteger(props.aiUsage.reasoningTokens)} · Thinking: ${formatInteger(props.aiUsage.thinkingTokens)}`,
   },
   {
-    label: 'Token totali',
+    label: tr('Total tokens', 'Token totali'),
     value: formatInteger(props.aiUsage.totalTokens),
-    detail: 'Input e output riportati dal provider',
+    detail: tr('Input and output reported by the provider', 'Input e output riportati dal provider'),
   },
   {
-    label: 'Costo dichiarato',
+    label: tr('Reported cost', 'Costo dichiarato'),
     value: formatUsd(props.aiUsage.actualCostUsd),
-    detail: `${formatInteger(props.aiUsage.actualCostRequestCount)} richieste con costo`,
+    detail: `${formatInteger(props.aiUsage.actualCostRequestCount)} ${tr('requests with cost', 'richieste con costo')}`,
   },
 ])
 </script>
@@ -88,10 +84,10 @@ const summaryItems = computed(() => [
       <v-card-text>
         <div class="ai-usage-header">
           <div>
-            <p class="ai-usage-eyebrow">Telemetria AI</p>
-            <h2 id="ai-usage-title" class="ai-usage-title">Utilizzo di token e costi</h2>
+            <p class="ai-usage-eyebrow">{{ tr('AI telemetry', 'Telemetria AI') }}</p>
+            <h2 id="ai-usage-title" class="ai-usage-title">{{ tr('Token usage and costs', 'Utilizzo di token e costi') }}</h2>
             <p class="ai-usage-description">
-              Dati raccolti per le analisi degli snapshot. Il costo è mostrato solo quando il provider lo comunica.
+              {{ tr('Data collected for snapshot analysis. Cost is shown only when reported by the provider.', 'Dati raccolti per le analisi degli snapshot. Il costo è mostrato solo quando il provider lo comunica.') }}
             </p>
           </div>
           <v-icon color="primary" icon="mdi-chart-donut-variant" size="28" aria-hidden="true" />
@@ -128,17 +124,17 @@ const summaryItems = computed(() => [
         <v-row class="mt-1" dense>
           <v-col cols="12" lg="6">
             <section class="ai-usage-table" aria-labelledby="ai-usage-provider-title">
-              <h3 id="ai-usage-provider-title" class="ai-usage-table__title">Per provider</h3>
+              <h3 id="ai-usage-provider-title" class="ai-usage-table__title">{{ tr('By provider', 'Per provider') }}</h3>
               <v-table density="compact" class="ai-usage-table__table">
-                <caption class="visually-hidden">Utilizzo AI suddiviso per provider</caption>
+                <caption class="visually-hidden">{{ tr('AI usage broken down by provider', 'Utilizzo AI suddiviso per provider') }}</caption>
                 <thead>
                   <tr>
                     <th scope="col">Provider</th>
-                    <th scope="col" class="text-right">Richieste</th>
+                    <th scope="col" class="text-right">{{ tr('Requests', 'Richieste') }}</th>
                     <th scope="col" class="text-right">Input</th>
                     <th scope="col" class="text-right">Output</th>
-                    <th scope="col" class="text-right">Totale</th>
-                    <th scope="col" class="text-right">Costo</th>
+                    <th scope="col" class="text-right">{{ tr('Total', 'Totale') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Cost', 'Costo') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,7 +147,7 @@ const summaryItems = computed(() => [
                     <td class="text-right">{{ formatUsd(slice.actualCostUsd) }}</td>
                   </tr>
                   <tr v-if="aiUsage.byProvider.length === 0">
-                    <td colspan="6" class="text-medium-emphasis">Nessun dettaglio per provider disponibile.</td>
+                    <td colspan="6" class="text-medium-emphasis">{{ tr('No provider details available.', 'Nessun dettaglio per provider disponibile.') }}</td>
                   </tr>
                 </tbody>
               </v-table>
@@ -160,17 +156,17 @@ const summaryItems = computed(() => [
 
           <v-col cols="12" lg="6">
             <section class="ai-usage-table" aria-labelledby="ai-usage-origin-title">
-              <h3 id="ai-usage-origin-title" class="ai-usage-table__title">Per provenienza</h3>
+              <h3 id="ai-usage-origin-title" class="ai-usage-table__title">{{ tr('By origin', 'Per provenienza') }}</h3>
               <v-table density="compact" class="ai-usage-table__table">
-                <caption class="visually-hidden">Utilizzo AI suddiviso per provenienza della richiesta</caption>
+                <caption class="visually-hidden">{{ tr('AI usage broken down by request origin', 'Utilizzo AI suddiviso per provenienza della richiesta') }}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Provenienza</th>
-                    <th scope="col" class="text-right">Richieste</th>
+                    <th scope="col">{{ tr('Origin', 'Provenienza') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Requests', 'Richieste') }}</th>
                     <th scope="col" class="text-right">Input</th>
                     <th scope="col" class="text-right">Output</th>
-                    <th scope="col" class="text-right">Totale</th>
-                    <th scope="col" class="text-right">Costo</th>
+                    <th scope="col" class="text-right">{{ tr('Total', 'Totale') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Cost', 'Costo') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -183,7 +179,7 @@ const summaryItems = computed(() => [
                     <td class="text-right">{{ formatUsd(slice.actualCostUsd) }}</td>
                   </tr>
                   <tr v-if="aiUsage.byOrigin.length === 0">
-                    <td colspan="6" class="text-medium-emphasis">Nessun dettaglio sulla provenienza disponibile.</td>
+                    <td colspan="6" class="text-medium-emphasis">{{ tr('No origin details available.', 'Nessun dettaglio sulla provenienza disponibile.') }}</td>
                   </tr>
                 </tbody>
               </v-table>

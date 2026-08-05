@@ -20,6 +20,7 @@ import {
   themePreference,
   type ThemePreference,
 } from './themePreference'
+import { reportLocale, setReportLanguage, tr } from './localization'
 
 type LoadState = 'waiting' | 'ready' | 'error'
 
@@ -33,44 +34,44 @@ const themePreferenceNotice = ref('')
 const themeSavePending = ref(!import.meta.env.DEV)
 let missingSnapshotTimer: number | undefined
 
-const themeOptions: { title: string; value: ThemePreference }[] = [
-  { title: 'Sistema', value: 'system' },
-  { title: 'Chiaro', value: 'light' },
-  { title: 'Scuro', value: 'dark' },
-]
+const themeOptions = computed<{ title: string; value: ThemePreference }[]>(() => [
+  { title: tr('System', 'Sistema'), value: 'system' },
+  { title: tr('Light', 'Chiaro'), value: 'light' },
+  { title: tr('Dark', 'Scuro'), value: 'dark' },
+])
 
 const selectedTheme = computed<ThemePreference>({
   get: () => themePreference.value,
   set: (value) => requestThemePreference(value),
 })
 
-const viewCopy: Record<ReportView, { title: string; description: string }> = {
+const viewCopy = computed<Record<ReportView, { title: string; description: string }>>(() => ({
   calendar: {
-    title: 'Attività giornaliera',
-    description: 'Confronta i giorni del periodo e individua rapidamente continuità, picchi e interruzioni.',
+    title: tr('Daily activity', 'Attività giornaliera'),
+    description: tr('Compare days and quickly spot continuity, peaks and interruptions.', 'Confronta i giorni del periodo e individua rapidamente continuità, picchi e interruzioni.'),
   },
   hourOfWeek: {
-    title: 'Fasce orarie',
-    description: 'Scopri in quali ore e giorni della settimana si concentra il tempo attivo.',
+    title: tr('Time bands', 'Fasce orarie'),
+    description: tr('See which hours and weekdays contain most of your active time.', 'Scopri in quali ore e giorni della settimana si concentra il tempo attivo.'),
   },
   trend: {
-    title: 'Andamento',
-    description: 'Segui nel tempo il rapporto fra attività rilevata e inattività.',
+    title: tr('Trend', 'Andamento'),
+    description: tr('Follow the balance between detected activity and inactivity over time.', 'Segui nel tempo il rapporto fra attività rilevata e inattività.'),
   },
   applications: {
-    title: 'Applicazioni',
-    description: 'Confronta le applicazioni che hanno raccolto più tempo attivo nel periodo.',
+    title: tr('Applications', 'Applicazioni'),
+    description: tr('Compare the applications with the most active time in the period.', 'Confronta le applicazioni che hanno raccolto più tempo attivo nel periodo.'),
   },
-}
+}))
 
 const snapshot = computed(() => envelope.value?.snapshot)
 const selectedView = computed(() => envelope.value?.view ?? 'calendar')
-const selectedCopy = computed(() => viewCopy[selectedView.value])
+const selectedCopy = computed(() => viewCopy.value[selectedView.value])
 const rangeLabel = computed(() => snapshot.value ? formatRange(snapshot.value.range) : '')
-const normalizedSearch = computed(() => searchQuery.value.trim().toLocaleLowerCase('it-IT'))
+const normalizedSearch = computed(() => searchQuery.value.trim().toLocaleLowerCase(reportLocale.value))
 const searchLabel = computed(() => selectedView.value === 'applications'
-  ? 'Cerca applicazione'
-  : 'Cerca nella tabella')
+  ? tr('Search applications', 'Cerca applicazione')
+  : tr('Search the table', 'Cerca nella tabella'))
 
 const displayedSnapshot = computed(() => {
   if (!snapshot.value || selectedView.value !== 'applications' || normalizedSearch.value.length === 0) {
@@ -80,7 +81,7 @@ const displayedSnapshot = computed(() => {
   return {
     ...snapshot.value,
     applications: snapshot.value.applications.filter((application) =>
-      application.application.toLocaleLowerCase('it-IT').includes(normalizedSearch.value)),
+      application.application.toLocaleLowerCase(reportLocale.value).includes(normalizedSearch.value)),
   }
 })
 
@@ -99,12 +100,12 @@ const selectedViewHasData = computed(() => {
 })
 
 const emptyStateTitle = computed(() => normalizedSearch.value.length > 0
-  ? 'Nessun risultato'
-  : 'Nessun dato per questa vista')
+  ? tr('No results', 'Nessun risultato')
+  : tr('No data for this view', 'Nessun dato per questa vista'))
 
 const emptyStateText = computed(() => normalizedSearch.value.length > 0
-  ? 'La ricerca non corrisponde ad alcun elemento. Modifica o cancella il testo cercato.'
-  : 'Il periodo selezionato non contiene campioni sufficienti. Prova un intervallo diverso.')
+  ? tr('No items match your search. Change or clear the search text.', 'La ricerca non corrisponde ad alcun elemento. Modifica o cancella il testo cercato.')
+  : tr('The selected period does not contain enough samples. Try a different range.', 'Il periodo selezionato non contiene campioni sufficienti. Prova un intervallo diverso.'))
 
 watch(selectedView, () => {
   searchQuery.value = ''
@@ -119,7 +120,7 @@ function showEnvelope(value: ReportEnvelope) {
 
 function requestThemePreference(value: unknown) {
   if (!isThemePreference(value)) {
-    themePreferenceNotice.value = 'La preferenza del tema richiesta non è valida.'
+    themePreferenceNotice.value = tr('The requested theme preference is invalid.', 'La preferenza del tema richiesta non è valida.')
     return
   }
 
@@ -132,7 +133,7 @@ function requestThemePreference(value: unknown) {
       return
     }
 
-    themePreferenceNotice.value = 'Il tema non può essere salvato perché il collegamento con TrackMeUp non è disponibile.'
+    themePreferenceNotice.value = tr('The theme cannot be saved because the TrackMeUp connection is unavailable.', 'Il tema non può essere salvato perché il collegamento con TrackMeUp non è disponibile.')
     return
   }
 
@@ -147,7 +148,7 @@ function handleThemeHostMessage(value: unknown): boolean {
   if (value.type === 'report.theme.state') {
     themeSavePending.value = false
     if (!('theme' in value) || !applyHostThemePreference(value.theme)) {
-      themePreferenceNotice.value = 'TrackMeUp ha restituito una preferenza del tema non valida.'
+      themePreferenceNotice.value = tr('TrackMeUp returned an invalid theme preference.', 'TrackMeUp ha restituito una preferenza del tema non valida.')
       return true
     }
 
@@ -159,7 +160,7 @@ function handleThemeHostMessage(value: unknown): boolean {
     themeSavePending.value = false
     if ('theme' in value) applyHostThemePreference(value.theme)
     const code = 'code' in value && typeof value.code === 'string' ? ` (${value.code})` : ''
-    themePreferenceNotice.value = `La preferenza del tema non è stata salvata${code}. La scelta precedente resta attiva.`
+    themePreferenceNotice.value = tr(`The theme preference was not saved${code}. The previous choice remains active.`, `La preferenza del tema non è stata salvata${code}. La scelta precedente resta attiva.`)
     return true
   }
 
@@ -167,6 +168,14 @@ function handleThemeHostMessage(value: unknown): boolean {
 }
 
 function handleWebViewMessage(event: MessageEvent<unknown>) {
+  if (typeof event.data === 'object'
+    && event.data !== null
+    && 'type' in event.data
+    && event.data.type === 'report.language.state') {
+    if ('language' in event.data) setReportLanguage(event.data.language)
+    return
+  }
+
   if (handleThemeHostMessage(event.data)) return
 
   const validation = validateReportEnvelope(event.data)
@@ -181,7 +190,7 @@ function handleWebViewMessage(event: MessageEvent<unknown>) {
     && event.data.type === 'report.snapshot') {
     if (missingSnapshotTimer !== undefined) window.clearTimeout(missingSnapshotTimer)
     envelope.value = undefined
-    errorMessage.value = validation.error ?? 'Il report ricevuto non è valido.'
+    errorMessage.value = validation.error ?? tr('The received report is invalid.', 'Il report ricevuto non è valido.')
     loadState.value = 'error'
   }
 }
@@ -201,7 +210,7 @@ onMounted(async () => {
 
   missingSnapshotTimer = window.setTimeout(() => {
     if (loadState.value === 'waiting') {
-      errorMessage.value = 'Il report non è disponibile: TrackMeUp non ha inviato uno snapshot valido.'
+      errorMessage.value = tr('The report is unavailable: TrackMeUp did not send a valid snapshot.', 'Il report non è disponibile: TrackMeUp non ha inviato uno snapshot valido.')
       loadState.value = 'error'
     }
   }, 5000)
@@ -218,7 +227,7 @@ onBeforeUnmount(() => {
     <v-main>
       <main class="report-dashboard" aria-live="polite">
         <v-container fluid class="report-container">
-          <div class="report-toolbar" aria-label="Strumenti del report">
+          <div class="report-toolbar" :aria-label="tr('Report tools', 'Strumenti del report')">
             <v-text-field
               v-if="loadState === 'ready' && snapshot?.quality.hasData"
               v-model="searchQuery"
@@ -237,12 +246,12 @@ onBeforeUnmount(() => {
               :items="themeOptions"
               item-title="title"
               item-value="value"
-              label="Tema"
+              :label="tr('Theme', 'Tema')"
               prepend-inner-icon="mdi-theme-light-dark"
               hide-details
               density="compact"
               variant="outlined"
-              aria-label="Scegli il tema dei report"
+              :aria-label="tr('Choose the report theme', 'Scegli il tema dei report')"
               :disabled="themeSavePending"
               :loading="themeSavePending"
             />
@@ -277,10 +286,10 @@ onBeforeUnmount(() => {
             variant="outlined"
           >
             <v-card-text class="state-card__content">
-              <v-progress-circular color="primary" indeterminate aria-label="Caricamento report" />
+              <v-progress-circular color="primary" indeterminate :aria-label="tr('Loading report', 'Caricamento report')" />
               <div>
-                <h1 class="text-h6">Preparazione del report</h1>
-                <p class="text-body-2 text-medium-emphasis mb-0">In attesa dei dati da TrackMeUp…</p>
+                <h1 class="text-h6">{{ tr('Preparing the report', 'Preparazione del report') }}</h1>
+                <p class="text-body-2 text-medium-emphasis mb-0">{{ tr('Waiting for data from TrackMeUp…', 'In attesa dei dati da TrackMeUp…') }}</p>
               </div>
             </v-card-text>
           </v-card>
@@ -291,7 +300,7 @@ onBeforeUnmount(() => {
             type="error"
             variant="tonal"
             icon="mdi-alert-circle-outline"
-            title="Impossibile mostrare il report"
+            :title="tr('Unable to display the report', 'Impossibile mostrare il report')"
             :text="errorMessage"
           />
 

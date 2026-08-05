@@ -19,9 +19,9 @@ public sealed class ReportsSurfaceContractTests
         Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "WebView2");
         Assert.Contains(reports.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarDragRegion"));
         Assert.Contains(reports.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "RefreshReportButton"));
-        Assert.Contains(reports.Descendants(), element => element.Attribute("Text")?.Value == "Dai dati al ritmo.");
-        Assert.Contains(reports.Descendants(), element => element.Attribute("Content")?.Value == "Personalizzato");
-        Assert.Contains(reports.Descendants(), element => element.Attribute("Content")?.Value == "Fasce orarie");
+        Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "Reports.Motto");
+        Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "custom");
+        Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "hourOfWeek");
         Assert.Contains(main.Descendants(), element => element.Attribute("Text")?.Value == "Reports");
     }
 

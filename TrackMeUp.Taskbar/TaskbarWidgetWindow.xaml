@@ -1,0 +1,128 @@
+<Window
+    x:Class="TrackMeUp.Taskbar.TaskbarWidgetWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="TrackMeUp taskbar control"
+    Width="144"
+    Height="40"
+    AllowsTransparency="True"
+    Background="Transparent"
+    ResizeMode="NoResize"
+    ShowActivated="False"
+    ShowInTaskbar="False"
+    SnapsToDevicePixels="True"
+    UseLayoutRounding="True"
+    WindowStyle="None">
+    <Window.Resources>
+        <Style x:Key="TaskbarButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border
+                            x:Name="ButtonSurface"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="19">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#1FFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Background" Value="#2FFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="RootGrid" Background="Transparent">
+        <Viewbox
+            x:Name="WidgetViewbox"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Stretch="Uniform"
+            StretchDirection="DownOnly">
+            <Grid Width="144" Height="40">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="42" />
+                    <ColumnDefinition Width="42" />
+                    <ColumnDefinition Width="51" />
+                </Grid.ColumnDefinitions>
+                <Button
+                    x:Name="OpenFlyoutButton"
+                    Width="38"
+                    Height="38"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Apri TrackMeUp"
+                    Click="OpenFlyoutButton_Click"
+                    Style="{StaticResource TaskbarButtonStyle}"
+                    ToolTip="Apri TrackMeUp">
+                    <Image
+                        Width="22"
+                        Height="22"
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        Source="pack://application:,,,/TrackMeUp.Taskbar;component/Assets/TrackMeUpSquare44Logo.targetsize-24_altform-unplated.png" />
+                </Button>
+                <Button
+                    x:Name="TrackingButton"
+                    Grid.Column="1"
+                    Width="38"
+                    Height="38"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Avvia registrazione sessione"
+                    Click="TrackingButton_Click"
+                    Style="{StaticResource TaskbarButtonStyle}"
+                    ToolTip="Avvia registrazione sessione">
+                    <TextBlock
+                        x:Name="PlayPauseIcon"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="17"
+                        Foreground="#FFF4F5F1"
+                        Text="&#xE768;" />
+                </Button>
+                <Grid
+                    x:Name="RecordingIndicator"
+                    Grid.Column="2"
+                    Width="51"
+                    Height="38"
+                    HorizontalAlignment="Center"
+                    AutomationProperties.Name="Registrazione in pausa"
+                    ToolTip="Registrazione in pausa">
+                    <Ellipse
+                        x:Name="RecordingGlow"
+                        Width="22"
+                        Height="22"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Fill="#88FB4351"
+                        Opacity="0" />
+                    <Ellipse
+                        x:Name="RecordingLed"
+                        Width="9"
+                        Height="9"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Fill="#FF77808D" />
+                </Grid>
+            </Grid>
+        </Viewbox>
+    </Grid>
+</Window>

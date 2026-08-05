@@ -17,11 +17,11 @@ TrackMeUp is a privacy-first Windows activity monitor presented as a compact, po
 - Five flyout positions: bottom-center (default), bottom corners, and top corners.
 - A discreet taskbar control: app icon to open the flyout, play/pause for tracking, and a camera-style status LED that is grey when paused and gently red-pulsing while recording.
 - Light, dark, and system-following theme support.
-- Three-dot menu for App Options, Reports, OpenAI integration, screenshot capture, and About.
+- Three-dot menu with native WinUI actions, an OpenAI integration switch, and the product command **Take snapshot now**.
 - A dedicated Mica Reports window renders bundled Vue, Vuetify, and ECharts views for calendar days, weekday/hour patterns, trends, and applications without a local HTTP server or network dependency.
 - Reports supports system, light, and dark themes through the same validated application setting used by the native shell, preserves the selection between launches, and exposes searchable tabular data alongside each chart.
-- Options rendered inside the same flyout, including flyout/taskbar-control position, screenshot archive folder, reporting, and OpenAI configuration.
-- A scrollable Tools and Diagnostics surface exposes runtime health, system snapshots, capture and AI actions, focus sessions, reports, privacy rules, confirmed retention cleanup, and context plugins through the same application facade used by the CLI.
+- Options rendered inside the same Mica window with native WinUI typography and section spacing instead of decorative cards; an explicit language overrides Windows, while System follows the Windows UI language.
+- A scrollable Tools and Diagnostics surface uses the same text-led WinUI hierarchy and exposes runtime health, system snapshots, capture and AI actions, focus sessions, reports, privacy rules, confirmed retention cleanup, and context plugins through the shared application facade.
 - Expandable latest-session details with an optional primary-monitor screenshot preview and local-folder shortcut.
 - Optional screenshot analysis through OpenAI Responses, Anthropic Messages, or OpenRouter, with one compressed WebP capture per monitor and compact, balanced, or detailed output profiles.
 - Configurable OpenAI model and reasoning effort (`auto`, `none`, `low`, `medium`, `high`, `xhigh`, or `max`) with provider-safe fallbacks.
@@ -59,7 +59,7 @@ trackmeup.exe -cli /doctor --json
 pwsh -NoProfile -File .\scripts\test-cli.ps1
 ```
 
-Use `--format rich|plain|json` (`--json` is an alias), `--language en|it|vi|fr|de|es`, `--no-color`, `--no-emoji`, `--no-animation`, `--quiet`, `--yes`, `--timeout`, and `--verbose`. JSON mode writes exactly one ANSI-free document to standard output.
+Use `--format rich|plain|json` (`--json` is an alias), `--language system|en|it|vi|fr|de|es`, `--no-color`, `--no-emoji`, `--no-animation`, `--quiet`, `--yes`, `--timeout`, and `--verbose`. JSON mode writes exactly one ANSI-free document to standard output.
 
 The first command token accepts both `command` and `/command`. Use `/help`, `/help /command`, or `/command --help` for contextual help. `/config list|get|set` exposes the same non-secret, validated settings catalog used by WinUI; internal identity/history fields and secret values are never part of that catalog.
 
@@ -84,6 +84,7 @@ An optional custom instruction is appended after the built-in profile prompt onl
 ## Repository structure
 
 - `TrackMeUp/` — WinUI 3 app source, app manifest, project files and assets.
+- `TrackMeUp.Taskbar/` — alpha-capable WPF taskbar surface that forwards actions through the same application facade.
 - `TrackMeUp.Core/` — domain/application contracts, infrastructure services, and runtime IPC host.
 - `TrackMeUp.Presentation/` — UI-neutral view models.
 - `TrackMeUp.Cli/` — Spectre.Console CLI frontend and console bootstrap.
@@ -108,6 +109,8 @@ pwsh -NoProfile -Command "dotnet build .\TrackMeUp.slnx -p:Platform=x64 -warnase
 pwsh -NoProfile -Command "dotnet test .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
 ```
 
+Every application build increments the tracked SemVer patch in `TrackMeUp/build-version.json`, updates the MSIX identity version, and generates the distributed `BuildInfo.json` manifest. The manifest records the local and UTC build time, build machine, Git commit, dirty-state, configuration, platform, and runtime identifier; it is intentionally generated and excluded from source control.
+
 Optional builds:
 
 - `dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=ARM64`
@@ -126,6 +129,10 @@ Verification checklist:
 - [ ] In Visual Studio, launch `TrackMeUp (MSIX)` with `Debug` and confirm the main window opens.
 - [ ] In Visual Studio, launch `TrackMeUp (Unpackaged)` with `Debug-Unpackaged` and confirm the main window opens without `REGDB_E_CLASSNOTREG`.
 - [ ] Open Tools and Diagnostics at narrow width, exercise each read-only action, and verify retention cleanup requires the explicit delete confirmation before any file is removed.
+- [ ] In App options, select System on an Italian Windows installation and verify Italian copy; then select English, save, restart TrackMeUp, and verify English overrides Windows throughout the native surfaces.
+- [ ] Verify App options and Tools and diagnostics use headings, supporting text, whitespace, and native dividers rather than card/expander hierarchy; confirm Mica remains visible around their content.
+- [ ] Open About and verify the large TrackMeUp icon, GitHub and website links, plus SemVer, timestamp, build machine, and clickable Git commit from `BuildInfo.json`.
+- [ ] Open the three-dot flyout and confirm the icon-only trigger has no permanent background, OpenAI integration uses a switch on the right, and Take snapshot now performs one immediate capture.
 - [ ] Open Reports from the three-dot menu and with `trackmeup.exe reports`; verify both use the same running tracker and never create a second runtime.
 - [ ] Exercise every report range and view, use Aggiorna to bypass the short-lived range cache, search the accessible table, switch among system/light/dark themes, restart Reports, and confirm the selection persisted through application settings. Simulate a settings-write failure and confirm Vue reports the failure while retaining the previous theme.
 - [ ] Configure a blank and a non-empty custom AI instruction; confirm the blank case sends only the built-in prompt and the non-empty case appends exactly one additional-instruction section.
@@ -153,6 +160,7 @@ When a Sentry project is configured, set `TRACKMEUP_SENTRY_DSN` (and optionally 
 - Regenerate MSIX tiles, splash screens, theme variants, target-size app-list icons, and the executable `.ico` with `python scripts/generate_trackmeup_assets.py`.
 - [ ] Before publishing, install an MSIX package and verify the icon in the taskbar, Start app list, context menu, and About window in both light and dark system themes.
 - [ ] Verify that the 30-second Mica status toast and each tracking start/pause transition show the correct localized state without starting tracking when `Start tracking on launch` is disabled.
+- [ ] Confirm the main player exposes the Windows 11 Mica backdrop and the three-dot menu uses native Acrylic/context-menu treatment in both light and dark themes.
 - [ ] Launch with Explorer running, choose each taskbar-control placement, then verify that the icon opens the player and the adjacent control toggles tracking while the LED stays grey when paused and softly pulses red only while recording.
 - [ ] Repeat the taskbar-control check at the available DPI/taskbar heights and verify that the transparent control scales uniformly without clipping or introducing a colored container.
 - [ ] Restart Explorer during a session and verify that the taskbar control reattaches without creating a second tracking runtime; if a custom shell rejects it, verify that the normal player remains open.

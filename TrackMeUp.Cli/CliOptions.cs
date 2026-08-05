@@ -24,13 +24,13 @@ public sealed record CliOptions(
     bool Verbose,
     IReadOnlyList<string> CommandArguments)
 {
-    private static readonly string[] SupportedLanguages = ["en", "it", "vi", "fr", "de", "es"];
+    private static readonly string[] SupportedLanguages = ["system", "en", "it", "vi", "fr", "de", "es"];
 
     /// <summary>Parses global flags and leaves command arguments intact.</summary>
     public static CliOptions Parse(IReadOnlyList<string> arguments, bool redirected)
     {
         var format = redirected ? CliFormat.Plain : CliFormat.Rich;
-        var language = "en";
+        var language = "system";
         var noColor = redirected;
         var noEmoji = false;
         var noAnimation = redirected;
@@ -76,7 +76,7 @@ public sealed record CliOptions(
 
         if (!SupportedLanguages.Contains(language, StringComparer.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("language must be en, it, vi, fr, de, or es");
+            throw new ArgumentException("language must be system, en, it, vi, fr, de, or es");
         }
 
         return new CliOptions(format, language.ToLowerInvariant(), noColor, noEmoji, noAnimation, quiet, yes, timeout, verbose, remaining);

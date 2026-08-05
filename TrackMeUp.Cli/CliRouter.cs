@@ -247,7 +247,7 @@ public sealed class CliRouter
                 return await SetSettingAsync(arguments[2], arguments[3], cancellationToken);
             case "wizard":
                 if (Console.IsInputRedirected) return InvalidCommand();
-                var language = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[cyan]Language[/]").AddChoices("en", "it", "vi", "fr", "de", "es"));
+                var language = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[cyan]Language[/]").AddChoices("system", "en", "it", "vi", "fr", "de", "es"));
                 var theme = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[cyan]Theme[/]").AddChoices("system", "light", "dark"));
                 var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { ["language"] = language, ["theme"] = theme }), cancellationToken);
                 return WriteSettingsResult(result, ["language", "theme"]);

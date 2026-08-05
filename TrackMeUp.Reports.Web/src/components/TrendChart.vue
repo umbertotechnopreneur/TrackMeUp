@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import VChart from 'vue-echarts'
 import { useChartSettings } from '../composables/useChartSettings'
+import { tr } from '../localization'
 import {
   formatDate,
   formatDuration,
@@ -25,7 +26,7 @@ const option = computed<EChartsOption>(() => {
     animation: !reducedMotion.value,
     aria: {
       enabled: true,
-      description: 'Grafico a barre impilate del tempo attivo e inattivo per periodo.',
+      description: tr('Stacked bar chart of active and idle time by period.', 'Grafico a barre impilate del tempo attivo e inattivo per periodo.'),
     },
     color: [palette.value.active, palette.value.idle],
     grid: {
@@ -40,7 +41,7 @@ const option = computed<EChartsOption>(() => {
       itemWidth: 12,
       itemHeight: 8,
       textStyle: { color: palette.value.muted, fontSize: 11 },
-      data: ['Attivo', 'Inattivo'],
+      data: [tr('Active', 'Attivo'), tr('Idle', 'Inattivo')],
     },
     tooltip: {
       trigger: 'axis',
@@ -51,15 +52,15 @@ const option = computed<EChartsOption>(() => {
         const entries = Array.isArray(parameters) ? parameters : [parameters]
         const index = entries[0]?.dataIndex as number | undefined
         const bucket = index === undefined ? undefined : buckets[index]
-        if (!bucket?.hasData) return 'Nessun dato osservato'
+        if (!bucket?.hasData) return tr('No observed data', 'Nessun dato osservato')
         const period = bucket.start === bucket.endInclusive
           ? formatDate(bucket.start)
           : `${formatDate(bucket.start)} – ${formatDate(bucket.endInclusive)}`
         return [
           period,
-          `Attivo: ${formatDuration(bucket.activeSeconds)}`,
-          `Inattivo: ${formatDuration(bucket.idleSeconds)}`,
-          `Tasti: ${formatInteger(bucket.keyPresses)}`,
+          `${tr('Active', 'Attivo')}: ${formatDuration(bucket.activeSeconds)}`,
+          `${tr('Idle', 'Inattivo')}: ${formatDuration(bucket.idleSeconds)}`,
+          `${tr('Keys', 'Tasti')}: ${formatInteger(bucket.keyPresses)}`,
           `Click: ${formatInteger(bucket.mouseClicks)}`,
         ].join('\n')
       },
@@ -93,7 +94,7 @@ const option = computed<EChartsOption>(() => {
     },
     yAxis: {
       type: 'value',
-      name: 'ore',
+      name: tr('hours', 'ore'),
       nameTextStyle: { color: palette.value.muted, fontSize: 10 },
       axisLabel: {
         color: palette.value.muted,
@@ -103,14 +104,14 @@ const option = computed<EChartsOption>(() => {
       splitLine: { lineStyle: { color: palette.value.border, type: 'dashed' } },
     },
     series: [{
-      name: 'Attivo',
+      name: tr('Active', 'Attivo'),
       type: 'bar',
       stack: 'tracked',
       barMaxWidth: 24,
       data: buckets.map((bucket) => bucket.hasData ? bucket.activeSeconds / 3600 : '-'),
       emphasis: { focus: 'series' },
     }, {
-      name: 'Inattivo',
+      name: tr('Idle', 'Inattivo'),
       type: 'bar',
       stack: 'tracked',
       barMaxWidth: 24,
@@ -125,8 +126,8 @@ const option = computed<EChartsOption>(() => {
   <section aria-labelledby="trend-chart-title">
     <div class="chart-heading">
       <div>
-        <h2 id="trend-chart-title" class="chart-title">Tempo tracciato nel periodo</h2>
-        <p class="chart-subtitle">Attività e inattività sono impilate; gli intervalli senza dati restano vuoti.</p>
+        <h2 id="trend-chart-title" class="chart-title">{{ tr('Tracked time in the period', 'Tempo tracciato nel periodo') }}</h2>
+        <p class="chart-subtitle">{{ tr('Active and idle time are stacked; intervals without data remain empty.', 'Attività e inattività sono impilate; gli intervalli senza dati restano vuoti.') }}</p>
       </div>
     </div>
     <v-chart
@@ -134,10 +135,10 @@ const option = computed<EChartsOption>(() => {
       :option="option"
       autoresize
       role="img"
-      aria-label="Andamento del tempo attivo e inattivo"
+      :aria-label="tr('Active and idle time trend', 'Andamento del tempo attivo e inattivo')"
     />
     <p class="chart-forced-colors-message">
-      Il grafico è nascosto in modalità contrasto elevato. Apri la tabella accessibile qui sotto per consultare tutti i valori.
+      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.', 'Il grafico è nascosto in modalità contrasto elevato. Apri la tabella accessibile qui sotto per consultare tutti i valori.') }}
     </p>
   </section>
 </template>

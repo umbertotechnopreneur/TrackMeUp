@@ -74,7 +74,22 @@ public sealed record RetentionStatus(int DataRetentionDays, int ScreenshotRetent
 public sealed record AiStatus(bool Enabled, string Provider, string Model, string Endpoint, string KeyVariable, bool HasKey, AnalysisCostGate CostGate);
 
 /// <summary>Provides product metadata and safe external links.</summary>
-public sealed record ProductInformation(string Name, string Version, string License, string RepositoryUrl, string AuthorUrl, string ContactUrl, string DataInformationUrl);
+public sealed record BuildInformation(
+    int SchemaVersion,
+    string SemVer,
+    string PackageVersion,
+    DateTimeOffset BuiltAtUtc,
+    DateTimeOffset BuiltAtLocal,
+    string MachineName,
+    string GitCommit,
+    string GitCommitShort,
+    bool GitDirty,
+    string Configuration,
+    string Platform,
+    string RuntimeIdentifier);
+
+/// <summary>Provides product metadata, build provenance and safe external links.</summary>
+public sealed record ProductInformation(string Name, string License, string RepositoryUrl, string AuthorUrl, BuildInformation Build);
 
 /// <summary>Signals a runtime state transition to all presentation clients.</summary>
 public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, string Code);

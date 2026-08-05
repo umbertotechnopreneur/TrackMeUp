@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
+using TrackMeUp.Services;
 using Windows.Graphics;
 
 namespace TrackMeUp;
@@ -38,6 +39,7 @@ public sealed partial class ReportsWindow : Window
     private double _rasterizationScale = 1d;
     private XamlRoot? _xamlRoot;
     private string _reportTheme = "system";
+    private string _reportLanguage = "en";
     private ReportRangeKey? _cachedRange;
     private ReportSnapshot? _cachedSnapshot;
     private DateTimeOffset _cachedAtUtc;
@@ -110,6 +112,9 @@ public sealed partial class ReportsWindow : Window
             }
 
             ApplyReportTheme(result.Value.Theme);
+            var strings = new LocalizationService(result.Value.UiLanguage);
+            _reportLanguage = strings.Language;
+            UiLocalization.Apply(RootGrid, strings);
             return true;
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
@@ -216,6 +221,7 @@ public sealed partial class ReportsWindow : Window
 
             if (type.GetString() == "report.ready")
             {
+                PostLanguageState();
                 PostThemeState();
                 _frontendReadyCompletion?.TrySetResult(true);
                 return;
@@ -278,6 +284,12 @@ public sealed partial class ReportsWindow : Window
     {
         type = "report.theme.state",
         theme = _reportTheme
+    });
+
+    private void PostLanguageState() => PostWebEnvelope(new
+    {
+        type = "report.language.state",
+        language = _reportLanguage
     });
 
     private void PostThemeError(string code) => PostWebEnvelope(new

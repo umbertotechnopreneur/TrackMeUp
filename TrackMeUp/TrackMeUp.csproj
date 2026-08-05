@@ -24,6 +24,7 @@
     <TrackMeUpDistributionMode Condition="'$(TrackMeUpDistributionMode)' == ''">MSIX</TrackMeUpDistributionMode>
     <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'Unpackaged'">None</WindowsPackageType>
     <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'MSIX'">MSIX</WindowsPackageType>
+    <TrackMeUpBuildInfoPath>$(MSBuildProjectDirectory)\BuildInfo.json</TrackMeUpBuildInfoPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,6 +37,7 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\TrackMeUp*.png" />
     <Content Include="Assets\TrackMeUpIcon.ico" />
+    <Content Include="$(TrackMeUpBuildInfoPath)" Link="BuildInfo.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
     <Content Include="..\TrackMeUp.Reports.Web\dist\**\*">
       <Link>ReportsWeb\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <TargetPath>ReportsWeb\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
@@ -43,6 +45,10 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+
+  <Target Name="GenerateTrackMeUpBuildInformation" BeforeTargets="PrepareForBuild">
+    <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\New-BuildInfo.ps1&quot; -VersionStatePath &quot;$(MSBuildProjectDirectory)\build-version.json&quot; -OutputPath &quot;$(TrackMeUpBuildInfoPath)&quot; -PackageManifestPath &quot;$(MSBuildProjectDirectory)\Package.appxmanifest&quot; -Configuration &quot;$(Configuration)&quot; -Platform &quot;$(Platform)&quot; -RuntimeIdentifier &quot;$(RuntimeIdentifier)&quot;" />
+  </Target>
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
@@ -93,6 +99,7 @@
     <ProjectReference Include="..\TrackMeUp.Core\TrackMeUp.Core.csproj" />
     <ProjectReference Include="..\TrackMeUp.Cli\TrackMeUp.Cli.csproj" />
     <ProjectReference Include="..\TrackMeUp.Presentation\TrackMeUp.Presentation.csproj" />
+    <ProjectReference Include="..\TrackMeUp.Taskbar\TrackMeUp.Taskbar.csproj" />
   </ItemGroup>
 
   <ItemGroup>

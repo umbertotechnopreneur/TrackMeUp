@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <UserControl
     x:Class="TrackMeUp.Controls.OptionsControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -6,14 +7,10 @@
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="WidthStates">
                 <VisualState x:Name="Narrow">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="0" />
-                    </VisualState.StateTriggers>
+                    <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
                 </VisualState>
                 <VisualState x:Name="Wide">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="720" />
-                    </VisualState.StateTriggers>
+                    <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="GeneralPositionColumn.Width" Value="*" />
                         <Setter Target="GeneralTaskbarColumn.Width" Value="*" />
@@ -21,18 +18,15 @@
                         <Setter Target="PositionBox.(Grid.Column)" Value="1" />
                         <Setter Target="TaskbarWidgetPositionBox.(Grid.Row)" Value="0" />
                         <Setter Target="TaskbarWidgetPositionBox.(Grid.Column)" Value="2" />
-
                         <Setter Target="ScreenshotHintColumn.Width" Value="*" />
                         <Setter Target="ScreenshotModeHintBox.(Grid.Row)" Value="0" />
                         <Setter Target="ScreenshotModeHintBox.(Grid.Column)" Value="1" />
-
                         <Setter Target="AiEndpointColumn.Width" Value="*" />
                         <Setter Target="AiKeyNameColumn.Width" Value="*" />
                         <Setter Target="AiEndpointBox.(Grid.Row)" Value="0" />
                         <Setter Target="AiEndpointBox.(Grid.Column)" Value="1" />
                         <Setter Target="AiApiKeyNameBox.(Grid.Row)" Value="0" />
                         <Setter Target="AiApiKeyNameBox.(Grid.Column)" Value="2" />
-
                         <Setter Target="SecondaryActionColumn.Width" Value="*" />
                         <Setter Target="SaveOptionsButton.(Grid.Row)" Value="0" />
                         <Setter Target="SaveOptionsButton.(Grid.Column)" Value="1" />
@@ -46,45 +40,30 @@
             HorizontalScrollMode="Disabled"
             VerticalScrollBarVisibility="Auto"
             VerticalScrollMode="Auto">
-            <StackPanel Padding="0,0,8,0" Spacing="12">
-                <Grid MinHeight="44">
+            <StackPanel Padding="0,0,8,20" Spacing="20">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Button
-                        Click="BackButton_Click"
-                        MinWidth="44"
-                        MinHeight="44"
-                        Padding="9"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="Torna al player"
-                        Background="{ThemeResource FlyoutSoftBrush}"
+                        Width="40"
+                        Height="40"
+                        Padding="8"
+                        VerticalAlignment="Top"
+                        AutomationProperties.Name="Back"
+                        Background="Transparent"
                         BorderBrush="Transparent"
-                        CornerRadius="16">
-                        <FontIcon
-                            AutomationProperties.AccessibilityView="Raw"
-                            FontFamily="Segoe Fluent Icons"
-                            Foreground="#FF80B9AA"
-                            Glyph="&#xE72B;" />
+                        Click="BackButton_Click">
+                        <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE72B;" />
                     </Button>
-                    <StackPanel Margin="52,0" HorizontalAlignment="Center">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            CharacterSpacing="120"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="{ThemeResource FlyoutTextBrush}"
-                            Text="OPZIONI APP"
-                            TextAlignment="Center"
-                            TextWrapping="Wrap" />
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            FontSize="11"
-                            Foreground="{ThemeResource FlyoutMutedBrush}"
-                            Text="Tutto resta sul tuo PC"
-                            TextAlignment="Center"
-                            TextWrapping="Wrap" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Tag="Options.Title" Style="{StaticResource TitleTextBlockStyle}" Text="App options" TextWrapping="Wrap" />
+                        <TextBlock Tag="Options.Subtitle" Style="{StaticResource BodyTextBlockStyle}" Text="Your data stays on this PC" TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>
 
-                <Grid x:Name="GeneralSettingsGrid" ColumnSpacing="8" RowSpacing="8">
+                <Grid x:Name="GeneralSettingsGrid" ColumnSpacing="12" RowSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition x:Name="GeneralPositionColumn" Width="0" />
@@ -95,40 +74,27 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ComboBox
-                        x:Name="ThemeBox"
-                        Header="Tema"
-                        AutomationProperties.Name="Tema dell'app">
-                        <ComboBoxItem Content="Sistema" Tag="system" />
-                        <ComboBoxItem Content="Chiaro" Tag="light" />
-                        <ComboBoxItem Content="Scuro" Tag="dark" />
+                    <ComboBox x:Name="ThemeBox" Tag="Options.Theme" HorizontalAlignment="Stretch" Header="Theme">
+                        <ComboBoxItem Content="System" Tag="system" />
+                        <ComboBoxItem Content="Light" Tag="light" />
+                        <ComboBoxItem Content="Dark" Tag="dark" />
                     </ComboBox>
-                    <ComboBox
-                        x:Name="PositionBox"
-                        Grid.Row="1"
-                        Header="Posizione player"
-                        AutomationProperties.Name="Posizione del player">
-                        <ComboBoxItem Content="Basso centro" Tag="bottom-center" />
-                        <ComboBoxItem Content="Basso sinistra" Tag="bottom-left" />
-                        <ComboBoxItem Content="Basso destra" Tag="bottom-right" />
-                        <ComboBoxItem Content="Alto sinistra" Tag="top-left" />
-                        <ComboBoxItem Content="Alto destra" Tag="top-right" />
+                    <ComboBox x:Name="PositionBox" Tag="Options.Position" Grid.Row="1" HorizontalAlignment="Stretch" Header="Player position">
+                        <ComboBoxItem Content="Bottom center" Tag="bottom-center" />
+                        <ComboBoxItem Content="Bottom left" Tag="bottom-left" />
+                        <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
+                        <ComboBoxItem Content="Top left" Tag="top-left" />
+                        <ComboBoxItem Content="Top right" Tag="top-right" />
                     </ComboBox>
-                    <ComboBox
-                        x:Name="TaskbarWidgetPositionBox"
-                        Grid.Row="2"
-                        Header="Posizione controllo taskbar"
-                        AutomationProperties.Name="Posizione del controllo nella taskbar">
-                        <ComboBoxItem Content="Sinistra" Tag="left" />
-                        <ComboBoxItem Content="Centro" Tag="center" />
-                        <ComboBoxItem Content="Destra" Tag="right" />
+                    <ComboBox x:Name="TaskbarWidgetPositionBox" Tag="Options.TaskbarPosition" Grid.Row="2" HorizontalAlignment="Stretch" Header="Taskbar control position">
+                        <ComboBoxItem Content="Left" Tag="left" />
+                        <ComboBoxItem Content="Center" Tag="center" />
+                        <ComboBoxItem Content="Right" Tag="right" />
                     </ComboBox>
                 </Grid>
 
-                <ComboBox
-                    x:Name="LanguageBox"
-                    Header="Lingua interfaccia"
-                    AutomationProperties.Name="Lingua dell'interfaccia">
+                <ComboBox x:Name="LanguageBox" Tag="Options.Language" HorizontalAlignment="Stretch" Header="Interface language">
+                    <ComboBoxItem Content="System" Tag="system" />
                     <ComboBoxItem Content="English" Tag="en" />
                     <ComboBoxItem Content="Italiano" Tag="it" />
                     <ComboBoxItem Content="Français" Tag="fr" />
@@ -137,220 +103,118 @@
                     <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
                 </ComboBox>
 
-                <Border Padding="12" Background="{ThemeResource FlyoutSoftBrush}" CornerRadius="14">
-                    <StackPanel Spacing="7">
-                        <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="AUTOSTART WINDOWS" />
-                        <ToggleSwitch x:Name="StartWithWindowsSwitch" Header="Avviare a apertura sistema" OffContent="Disattivato" OnContent="Attivo" />
-                        <TextBlock FontSize="10" Foreground="{ThemeResource FlyoutMutedBrush}" Text="L'app partirà con Windows dopo il login." TextWrapping="Wrap" />
-                        <ToggleSwitch x:Name="StartTrackingOnLaunchSwitch" Header="Avvia tracking all'apertura" OffContent="Attendi Play" OnContent="Avvia subito" />
-                        <TextBlock FontSize="10" Foreground="{ThemeResource FlyoutMutedBrush}" Text="Quando disattivato, TrackMeUp aspetta un avvio esplicito dal player." TextWrapping="Wrap" />
-
-                        <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="SCREENSHOT" />
-                        <ToggleSwitch x:Name="ScreenshotsEnabledSwitch" Header="Take screenshot" OffContent="Disattivato" OnContent="Attivo" />
-                        <TextBox
-                            x:Name="ScreenshotFolderBox"
-                            Header="Cartella screenshot"
-                            AutomationProperties.Name="Cartella screenshot WebP"
-                            PlaceholderText="Cartella WebP" />
-                        <Grid x:Name="ScreenshotModeGrid" ColumnSpacing="8" RowSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition x:Name="ScreenshotHintColumn" Width="0" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <ComboBox
-                                x:Name="ScreenshotModeBox"
-                                Header="Modalità screenshot"
-                                AutomationProperties.Name="Modalità screenshot"
-                                PlaceholderText="Modalità screenshot"
-                                SelectionChanged="ScreenshotModeBox_SelectionChanged">
-                                <ComboBoxItem Content="Tutti gli schermi" Tag="all-screens" />
-                                <ComboBoxItem Content="Finestra attiva" Tag="active-window" />
-                            </ComboBox>
-                            <TextBox
-                                x:Name="ScreenshotModeHintBox"
-                                Grid.Row="1"
-                                Header="Risultato"
-                                AutomationProperties.Name="Descrizione della modalità screenshot"
-                                IsReadOnly="True"
-                                IsTabStop="False"
-                                Text="Ogni schermo -> un WEBP. Modalità finestra attiva -> 1 WEBP."
-                                TextWrapping="Wrap" />
-                        </Grid>
-                        <ToggleSwitch x:Name="KeepScreenshotsSwitch" Header="Conserva gli screenshot" OffContent="Elimina dopo analisi" OnContent="Archivia localmente" />
-                        <ToggleSwitch x:Name="WatermarkSwitch" Header="Filigrana watermark" OffContent="Nessuna" OnContent="Aggiungi nome host/data/id/ora" />
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="Options.Section.Startup" Style="{StaticResource SubtitleTextBlockStyle}" Text="Startup" />
+                        <TextBlock Tag="Options.Section.Startup.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Choose how TrackMeUp behaves after Windows sign-in." TextWrapping="Wrap" />
                     </StackPanel>
-                </Border>
+                    <ToggleSwitch x:Name="StartWithWindowsSwitch" Tag="Options.StartWithWindows" Header="Start with Windows" OffContent="Off" OnContent="On" />
+                    <ToggleSwitch x:Name="StartTrackingOnLaunchSwitch" Tag="Options.StartTracking" Header="Start tracking on launch" OffContent="Wait for Play" OnContent="Start immediately" />
+                </StackPanel>
 
-                <Border Padding="12" Background="{ThemeResource FlyoutSoftBrush}" CornerRadius="14">
-                    <StackPanel Spacing="7">
-                        <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="AI" />
-                        <ToggleSwitch x:Name="OpenAiEnabledSwitch" Header="AI integration" OffContent="Disattivata" OnContent="Attiva" />
-                        <Grid x:Name="AiFieldsGrid" ColumnSpacing="8" RowSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition x:Name="AiEndpointColumn" Width="0" />
-                                <ColumnDefinition x:Name="AiKeyNameColumn" Width="0" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <ComboBox
-                                x:Name="AiProviderBox"
-                                Header="Provider AI"
-                                AutomationProperties.Name="Provider AI"
-                                SelectionChanged="AiProviderBox_SelectionChanged">
-                                <ComboBoxItem Content="openai" Tag="openai" />
-                                <ComboBoxItem Content="openrouter" Tag="openrouter" />
-                                <ComboBoxItem Content="anthropic" Tag="anthropic" />
-                            </ComboBox>
-                            <TextBox
-                                x:Name="AiEndpointBox"
-                                Grid.Row="1"
-                                Header="Endpoint"
-                                AutomationProperties.Name="Endpoint AI" />
-                            <TextBox
-                                x:Name="AiApiKeyNameBox"
-                                Grid.Row="2"
-                                Header="Nome variabile API key"
-                                AutomationProperties.Name="Nome della variabile ambiente API key" />
-                        </Grid>
-                        <PasswordBox
-                            x:Name="ApiKeyBox"
-                            Header="API key temporanea"
-                            AutomationProperties.HelpText="La chiave viene salvata tramite il flusso sicuro dell'app e non nelle impostazioni."
-                            AutomationProperties.Name="API key"
-                            PlaceholderText="API key (non viene salvata)" />
-                        <TextBox x:Name="ModelBox" Header="Modello" AutomationProperties.Name="Modello AI" />
-                        <ComboBox
-                            x:Name="AiOutputDetailBox"
-                            Header="Dettaglio analisi screenshot"
-                            AutomationProperties.HelpText="Controlla dettaglio dell'immagine, verbosità e budget massimo di output."
-                            AutomationProperties.Name="Livello di dettaglio analisi screenshot">
-                            <ComboBoxItem Content="Compatto · consumo minimo" Tag="compact" />
-                            <ComboBoxItem Content="Bilanciato" Tag="balanced" />
-                            <ComboBoxItem Content="Dettagliato · budget maggiore" Tag="detailed" />
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="Options.Section.Snapshots" Style="{StaticResource SubtitleTextBlockStyle}" Text="Snapshots" />
+                        <TextBlock Tag="Options.Section.Snapshots.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Control local WebP captures and retention." TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="ScreenshotsEnabledSwitch" Tag="Options.SnapshotsEnabled" Header="Enable snapshots" OffContent="Off" OnContent="On" />
+                    <TextBox x:Name="ScreenshotFolderBox" Tag="Options.SnapshotFolder" Header="Snapshot folder" PlaceholderText="WebP folder" />
+                    <Grid x:Name="ScreenshotModeGrid" ColumnSpacing="12" RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition x:Name="ScreenshotHintColumn" Width="0" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ComboBox x:Name="ScreenshotModeBox" Tag="Options.SnapshotMode" HorizontalAlignment="Stretch" Header="Capture mode" SelectionChanged="ScreenshotModeBox_SelectionChanged">
+                            <ComboBoxItem Content="All displays" Tag="all-screens" />
+                            <ComboBoxItem Content="Active window" Tag="active-window" />
                         </ComboBox>
-                        <ComboBox
-                            x:Name="AiReasoningEffortBox"
-                            Header="Livello di ragionamento"
-                            AutomationProperties.HelpText="Auto lascia scegliere al modello; gli altri valori vengono inviati ai modelli OpenAI compatibili."
-                            AutomationProperties.Name="Livello di ragionamento del modello">
-                            <ComboBoxItem Content="Automatico" Tag="auto" />
-                            <ComboBoxItem Content="Nessuno" Tag="none" />
-                            <ComboBoxItem Content="Basso" Tag="low" />
-                            <ComboBoxItem Content="Medio" Tag="medium" />
-                            <ComboBoxItem Content="Alto" Tag="high" />
-                            <ComboBoxItem Content="Molto alto" Tag="xhigh" />
-                            <ComboBoxItem Content="Massimo" Tag="max" />
-                        </ComboBox>
-                        <TextBox
-                            x:Name="AiCustomPromptBox"
-                            AcceptsReturn="True"
-                            Header="Additional AI instruction (optional)"
-                            AutomationProperties.HelpText="Appended after the built-in prompt. Leave empty to use only the TrackMeUp prompt."
-                            AutomationProperties.Name="Additional AI instruction"
-                            MinHeight="80"
-                            PlaceholderText="Example: Prioritize concise, factual descriptions."
-                            TextWrapping="Wrap" />
-                        <ToggleSwitch
-                            x:Name="IncludeDeviceLocationSwitch"
-                            Header="Include device location in AI snapshots"
-                            AutomationProperties.HelpText="Uses only Windows Location when access is available. Time zone and languages are included separately; no IP lookup is used."
-                            OffContent="Off"
-                            OnContent="Windows Location" />
-                        <ToggleSwitch x:Name="AutomaticAnalysisSwitch" Header="Analisi automatica" OffContent="Solo su richiesta" OnContent="Ogni 15 minuti" />
-                        <Button Click="SetApiKeyButton_Click" Content="Salva chiave API" HorizontalAlignment="Stretch" />
-                    </StackPanel>
-                </Border>
+                        <TextBox x:Name="ScreenshotModeHintBox" Tag="Options.SnapshotResult" Grid.Row="1" Header="Result" IsReadOnly="True" IsTabStop="False" TextWrapping="Wrap" />
+                    </Grid>
+                    <ToggleSwitch x:Name="KeepScreenshotsSwitch" Tag="Options.KeepSnapshots" Header="Keep snapshots" OffContent="Delete after analysis" OnContent="Store locally" />
+                    <ToggleSwitch x:Name="WatermarkSwitch" Tag="Options.Watermark" Header="Snapshot watermark" OffContent="None" OnContent="Add host, date and ID" />
+                </StackPanel>
 
-                <Border Padding="12" Background="{ThemeResource FlyoutSoftBrush}" CornerRadius="14">
-                    <StackPanel Spacing="7">
-                        <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource FlyoutTextBrush}" Text="ACTIVE HOURS (INFORMATIONAL)" />
-                        <TextBlock FontSize="10" Foreground="{ThemeResource FlyoutMutedBrush}" Text="These periods are added to AI snapshots as context only; they never start, stop, or alter tracking. Use HH:mm-HH:mm and separate multiple breaks with commas." TextWrapping="Wrap" />
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="92" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource FlyoutMutedBrush}" Text="Active hours" />
-                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource FlyoutMutedBrush}" Text="Breaks" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Monday" />
-                            <TextBox x:Name="MondayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Monday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="MondayBreaksBox" Grid.Column="2" AutomationProperties.Name="Monday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Tuesday" />
-                            <TextBox x:Name="TuesdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Tuesday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="TuesdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Tuesday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Wednesday" />
-                            <TextBox x:Name="WednesdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Wednesday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="WednesdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Wednesday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Thursday" />
-                            <TextBox x:Name="ThursdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Thursday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="ThursdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Thursday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Friday" />
-                            <TextBox x:Name="FridayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Friday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="FridayBreaksBox" Grid.Column="2" AutomationProperties.Name="Friday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Saturday" />
-                            <TextBox x:Name="SaturdayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Saturday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="SaturdayBreaksBox" Grid.Column="2" AutomationProperties.Name="Saturday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Text="Sunday" />
-                            <TextBox x:Name="SundayActiveHoursBox" Grid.Column="1" AutomationProperties.Name="Sunday active hours" PlaceholderText="09:00-18:00" />
-                            <TextBox x:Name="SundayBreaksBox" Grid.Column="2" AutomationProperties.Name="Sunday breaks" PlaceholderText="13:00-14:00" />
-                        </Grid>
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="Options.Section.Ai" Style="{StaticResource SubtitleTextBlockStyle}" Text="AI" />
+                        <TextBlock Tag="Options.Section.Ai.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Configure the provider, model and analysis behavior." TextWrapping="Wrap" />
                     </StackPanel>
-                </Border>
+                    <ToggleSwitch x:Name="OpenAiEnabledSwitch" Tag="Options.OpenAi" Header="OpenAI integration" OffContent="Off" OnContent="On" />
+                    <Grid x:Name="AiFieldsGrid" ColumnSpacing="12" RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition x:Name="AiEndpointColumn" Width="0" />
+                            <ColumnDefinition x:Name="AiKeyNameColumn" Width="0" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ComboBox x:Name="AiProviderBox" Tag="Options.AiProvider" HorizontalAlignment="Stretch" Header="AI provider" SelectionChanged="AiProviderBox_SelectionChanged">
+                            <ComboBoxItem Content="OpenAI" Tag="openai" />
+                            <ComboBoxItem Content="OpenRouter" Tag="openrouter" />
+                            <ComboBoxItem Content="Anthropic" Tag="anthropic" />
+                        </ComboBox>
+                        <TextBox x:Name="AiEndpointBox" Tag="Options.AiEndpoint" Grid.Row="1" Header="Endpoint" />
+                        <TextBox x:Name="AiApiKeyNameBox" Tag="Options.AiKeyVariable" Grid.Row="2" Header="API key variable name" />
+                    </Grid>
+                    <PasswordBox x:Name="ApiKeyBox" Tag="Options.ApiKey" Header="Temporary API key" PlaceholderText="API key (not stored in settings)" />
+                    <TextBox x:Name="ModelBox" Tag="Options.Model" Header="Model" />
+                    <ComboBox x:Name="AiOutputDetailBox" Tag="Options.OutputDetail" Header="Snapshot analysis detail">
+                        <ComboBoxItem Content="Compact · lowest usage" Tag="compact" />
+                        <ComboBoxItem Content="Balanced" Tag="balanced" />
+                        <ComboBoxItem Content="Detailed · larger budget" Tag="detailed" />
+                    </ComboBox>
+                    <ComboBox x:Name="AiReasoningEffortBox" Tag="Options.Reasoning" Header="Reasoning effort">
+                        <ComboBoxItem Content="Automatic" Tag="auto" />
+                        <ComboBoxItem Content="None" Tag="none" />
+                        <ComboBoxItem Content="Low" Tag="low" />
+                        <ComboBoxItem Content="Medium" Tag="medium" />
+                        <ComboBoxItem Content="High" Tag="high" />
+                        <ComboBoxItem Content="Very high" Tag="xhigh" />
+                        <ComboBoxItem Content="Maximum" Tag="max" />
+                    </ComboBox>
+                    <TextBox x:Name="AiCustomPromptBox" Tag="Options.CustomPrompt" AcceptsReturn="True" Header="Additional AI instruction (optional)" MinHeight="80" PlaceholderText="Example: Prioritize concise, factual descriptions." TextWrapping="Wrap" />
+                    <ToggleSwitch x:Name="IncludeDeviceLocationSwitch" Tag="Options.DeviceLocation" Header="Include device location in AI snapshots" OffContent="Off" OnContent="Windows Location" />
+                    <ToggleSwitch x:Name="AutomaticAnalysisSwitch" Tag="Options.AutomaticAnalysis" Header="Automatic analysis" OffContent="On demand only" OnContent="Every 15 minutes" />
+                    <Button Tag="Options.SaveApiKey" Click="SetApiKeyButton_Click" Content="Save API key" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Tag="Options.Section.ActiveHours" Style="{StaticResource SubtitleTextBlockStyle}" Text="Active hours" />
+                        <TextBlock Tag="Options.Section.ActiveHours.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Informational context for AI snapshots only. Use HH:mm-HH:mm and commas between breaks." TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Tag="Options.ActiveHours" Style="{StaticResource CaptionTextBlockStyle}" Text="Active hours" />
+                        <TextBlock Grid.Column="2" Tag="Options.Breaks" Style="{StaticResource CaptionTextBlockStyle}" Text="Breaks" />
+                    </Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.monday" VerticalAlignment="Center" Text="Monday" /><TextBox x:Name="MondayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="MondayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.tuesday" VerticalAlignment="Center" Text="Tuesday" /><TextBox x:Name="TuesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="TuesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.wednesday" VerticalAlignment="Center" Text="Wednesday" /><TextBox x:Name="WednesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="WednesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.thursday" VerticalAlignment="Center" Text="Thursday" /><TextBox x:Name="ThursdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="ThursdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.friday" VerticalAlignment="Center" Text="Friday" /><TextBox x:Name="FridayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="FridayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.saturday" VerticalAlignment="Center" Text="Saturday" /><TextBox x:Name="SaturdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SaturdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.sunday" VerticalAlignment="Center" Text="Sunday" /><TextBox x:Name="SundayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SundayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                </StackPanel>
 
                 <Grid x:Name="ActionsGrid" ColumnSpacing="8" RowSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="SecondaryActionColumn" Width="0" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Button Click="ExportReportButton_Click" Content="Esporta report HTML" HorizontalAlignment="Stretch" />
-                    <Button
-                        x:Name="SaveOptionsButton"
-                        Grid.Row="1"
-                        Click="SaveButton_Click"
-                        Content="Salva opzioni"
-                        HorizontalAlignment="Stretch"
-                        Style="{StaticResource AccentButtonStyle}" />
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="SecondaryActionColumn" Width="0" /></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Button Tag="Options.ExportReport" Click="ExportReportButton_Click" Content="Export HTML report" HorizontalAlignment="Stretch" />
+                    <Button x:Name="SaveOptionsButton" Tag="Options.Save" Grid.Row="1" Click="SaveButton_Click" Content="Save options" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}" />
                 </Grid>
-                <TextBlock
-                    x:Name="StatusText"
-                    AutomationProperties.LiveSetting="Polite"
-                    FontSize="11"
-                    Foreground="{ThemeResource FlyoutMutedBrush}"
-                    TextWrapping="Wrap" />
+                <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

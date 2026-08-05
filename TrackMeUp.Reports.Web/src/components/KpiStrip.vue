@@ -6,6 +6,7 @@ import {
   formatPercent,
   type ReportSnapshot,
 } from '../reporting'
+import { tr } from '../localization'
 
 const props = defineProps<{
   snapshot: ReportSnapshot
@@ -24,48 +25,48 @@ const items = computed(() => {
   return [
     {
       icon: 'mdi-clock-check-outline',
-      label: 'Tempo attivo',
+      label: tr('Active time', 'Tempo attivo'),
       value: hasData.value ? formatDuration(props.snapshot.totals.activeSeconds) : unavailable,
-      detail: 'Nel periodo selezionato',
+      detail: tr('In the selected period', 'Nel periodo selezionato'),
     },
     {
       icon: 'mdi-coffee-outline',
-      label: 'Tempo inattivo',
+      label: tr('Idle time', 'Tempo inattivo'),
       value: hasData.value ? formatDuration(props.snapshot.totals.idleSeconds) : unavailable,
-      detail: 'Durante il tracking',
+      detail: tr('While tracking', 'Durante il tracking'),
     },
     {
       icon: 'mdi-calendar-check-outline',
-      label: 'Giorni attivi',
+      label: tr('Active days', 'Giorni attivi'),
       value: hasData.value
         ? `${formatInteger(activeDays)} / ${formatInteger(props.snapshot.range.dayCount)}`
         : unavailable,
-      detail: 'Giorni con attività',
+      detail: tr('Days with activity', 'Giorni con attività'),
     },
     {
       icon: 'mdi-chart-timeline-variant',
-      label: 'Media giornaliera',
+      label: tr('Daily average', 'Media giornaliera'),
       value: hasData.value ? formatDuration(averageSeconds) : unavailable,
-      detail: 'Sui giorni attivi',
+      detail: tr('Across active days', 'Sui giorni attivi'),
     },
     {
       icon: 'mdi-apps',
-      label: 'Applicazione principale',
+      label: tr('Top application', 'Applicazione principale'),
       value: hasData.value && topApplication ? topApplication.application : unavailable,
-      detail: topApplication ? formatDuration(topApplication.activeSeconds) : 'Nessun dato disponibile',
+      detail: topApplication ? formatDuration(topApplication.activeSeconds) : tr('No data available', 'Nessun dato disponibile'),
     },
     {
       icon: 'mdi-radar',
-      label: 'Copertura',
+      label: tr('Coverage', 'Copertura'),
       value: hasData.value ? formatPercent(props.snapshot.quality.coverageRatio) : unavailable,
-      detail: `${formatInteger(props.snapshot.quality.sampleCount)} campioni`,
+      detail: `${formatInteger(props.snapshot.quality.sampleCount)} ${tr('samples', 'campioni')}`,
     },
   ]
 })
 </script>
 
 <template>
-  <section aria-label="Indicatori principali">
+  <section :aria-label="tr('Key indicators', 'Indicatori principali')">
     <v-row dense>
       <v-col
         v-for="item in items"

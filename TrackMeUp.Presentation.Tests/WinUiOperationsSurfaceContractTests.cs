@@ -17,7 +17,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
 
         Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
-        Assert.Contains(mainWindow.Descendants(), element => element.Attribute("Text")?.Value == "Strumenti e diagnostica");
+        Assert.Contains(mainWindow.Descendants(), element => element.Attribute("Tag")?.Value == "Main.Menu.Operations");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "InfoBar");

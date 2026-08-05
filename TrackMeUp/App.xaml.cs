@@ -11,6 +11,7 @@ using TrackMeUp.Application;
 using TrackMeUp.Cli;
 using TrackMeUp.Runtime;
 using TrackMeUp.Services;
+using TaskbarWidgetSurface = TrackMeUp.Taskbar.TaskbarWidgetSurface;
 
 namespace TrackMeUp;
 
@@ -21,8 +22,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly ILogger<App> _logger;
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
-    private TaskbarWidgetWindow? _taskbarWidgetWindow;
-    private TaskbarWidgetHost? _taskbarWidgetHost;
+    private TaskbarWidgetSurface? _taskbarWidgetSurface;
     private RuntimeHost? _runtimeHost;
     private ITrackMeUpApplication? _runtimeApplication;
     private ITrackMeUpApplication? _applicationFacade;
@@ -83,11 +83,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.ReportsRequested += MainWindow_ReportsRequested;
         _window.Closed += MainWindow_Closed;
-        _taskbarWidgetWindow = new TaskbarWidgetWindow(application);
-        _taskbarWidgetWindow.FlyoutRequested += (_, _) => _window?.ShowFlyout();
+        var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost());
+        _taskbarWidgetSurface = taskbarWidgetSurface;
+        taskbarWidgetSurface.FlyoutRequested += (_, _) => _window?.DispatcherQueue.TryEnqueue(() => _window?.ShowFlyout());
         _window.Activate();
-        _taskbarWidgetWindow.Activate();
-        _taskbarWidgetWindow.PrepareForTaskbar();
 
         var settings = application.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult().Value;
         if (settings is null)
@@ -96,12 +95,10 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        _taskbarWidgetWindow.ApplySettings(settings);
-        _taskbarWidgetHost = new TaskbarWidgetHost();
-        var widgetHandle = WinRT.Interop.WindowNative.GetWindowHandle(_taskbarWidgetWindow);
-        if (_taskbarWidgetHost.Attach(widgetHandle, settings.TaskbarWidgetPosition))
+        taskbarWidgetSurface.ApplySettings(settings);
+        if (taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition))
         {
-            _taskbarWidgetHost.HideTopLevelWindow(WinRT.Interop.WindowNative.GetWindowHandle(_window));
+            taskbarWidgetSurface.HideTopLevelWindow(WinRT.Interop.WindowNative.GetWindowHandle(_window));
         }
         else
         {
@@ -170,16 +167,14 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void ApplyTaskbarWidgetSettings(AppSettings settings)
     {
-        _taskbarWidgetWindow?.ApplySettings(settings);
-        _taskbarWidgetHost?.Configure(settings.TaskbarWidgetPosition);
+        _taskbarWidgetSurface?.ApplySettings(settings);
+        _taskbarWidgetSurface?.Configure(settings.TaskbarWidgetPosition);
     }
 
     private void DisposeTaskbarWidget()
     {
-        _taskbarWidgetHost?.Dispose();
-        _taskbarWidgetHost = null;
-        _taskbarWidgetWindow?.Close();
-        _taskbarWidgetWindow = null;
+        _taskbarWidgetSurface?.Dispose();
+        _taskbarWidgetSurface = null;
     }
 
     private void StartBackgroundRuntime(LaunchOptions options)

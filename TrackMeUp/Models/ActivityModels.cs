@@ -63,7 +63,7 @@ public sealed record AppSettings(
     string AiOutputDetail = "balanced",
     string AiReasoningEffort = "auto",
     string FlyoutPosition = "bottom-center",
-    string UiLanguage = "en",
+    string UiLanguage = "system",
     string Theme = "system",
     bool OpenAiEnabled = false,
     bool ScreenshotsEnabled = false,
