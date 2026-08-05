@@ -253,8 +253,9 @@ public sealed partial class ScreenshotWindow : Window
     {
         var hasItems = _items.Count > 0;
         GalleryCountText.Text = hasItems ? $"{_items.Count} captures" : "0 captures";
-        FilmstripCountText.Text = _items.Count.ToString(CultureInfo.InvariantCulture);
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
+        CoverFlowPanel.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         EmptyGalleryText.Text = error ?? (_items.Count == 0 ? "No screenshots for this day." : string.Empty);
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
@@ -277,23 +278,9 @@ public sealed partial class ScreenshotWindow : Window
         SetImage(CurrentImage, current);
         SetImage(PreviousImage, previous);
         SetImage(NextImage, next);
-
-        if (current is null)
-        {
-            CaptureDateText.Text = "—";
-            CaptureTimeText.Text = "—";
-            CaptureApplicationText.Text = "—";
-            CaptureOriginText.Text = "—";
-        }
-        else
-        {
-            var localTime = current.CapturedAt.ToLocalTime();
-            var culture = CultureInfo.GetCultureInfo(_strings.Language);
-            CaptureDateText.Text = localTime.ToString("d MMM yyyy", culture);
-            CaptureTimeText.Text = localTime.ToString("HH:mm:ss", culture);
-            CaptureApplicationText.Text = string.IsNullOrWhiteSpace(current.ForegroundApplication) ? "Desktop" : current.ForegroundApplication;
-            CaptureOriginText.Text = FormatCaptureOrigin(current.CaptureOrigin);
-        }
+        GalleryImageFrame.Visibility = current is null ? Visibility.Collapsed : Visibility.Visible;
+        PreviousPreviewFrame.Visibility = previous is null ? Visibility.Collapsed : Visibility.Visible;
+        NextPreviewFrame.Visibility = next is null ? Visibility.Collapsed : Visibility.Visible;
 
         PreviousButton.IsEnabled = _items.Count > 1;
         NextButton.IsEnabled = _items.Count > 1;
@@ -409,27 +396,45 @@ public sealed partial class ScreenshotWindow : Window
 
     private Button CreateFilmstripButton(ScreenshotGalleryItem item, int index)
     {
+        var localTime = item.CapturedAt.ToLocalTime();
+        var culture = CultureInfo.GetCultureInfo(_strings.Language);
         var thumbnail = new Image
         {
-            Width = 116,
-            Height = 72,
+            Width = 124,
+            Height = 76,
             Stretch = Stretch.UniformToFill
         };
         SetImage(thumbnail, item);
 
-        var border = new Border
+        var preview = new Border
         {
-            Width = 122,
-            Height = 78,
+            Width = 128,
+            Height = 80,
             Padding = new Thickness(2),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = new CornerRadius(7),
             BorderThickness = new Thickness(index == _selectedIndex ? 2 : 1),
             BorderBrush = new SolidColorBrush(index == _selectedIndex ? Colors.DodgerBlue : Colors.Transparent),
             Child = thumbnail
         };
+        var metadata = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        metadata.Children.Add(new TextBlock
+        {
+            Text = localTime.ToString("d MMM", culture),
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Colors.Gray)
+        });
+        metadata.Children.Add(new TextBlock
+        {
+            Text = localTime.ToString("HH:mm", culture),
+            FontSize = 12,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        });
+        var content = new StackPanel { Spacing = 6 };
+        content.Children.Add(preview);
+        content.Children.Add(metadata);
         var button = new Button
         {
-            Content = border,
+            Content = content,
             Padding = new Thickness(0),
             Background = new SolidColorBrush(Colors.Transparent),
             BorderBrush = new SolidColorBrush(Colors.Transparent),
@@ -467,6 +472,14 @@ public sealed partial class ScreenshotWindow : Window
         }
     }
 
+    private void FilmstripToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        var isExpanded = FilmstripPanelHost.Visibility != Visibility.Visible;
+        FilmstripPanelHost.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+        FilmstripChevronIcon.Glyph = isExpanded ? "\uE70E" : "\uE70D";
+        AutomationProperties.SetName(FilmstripToggleButton, isExpanded ? "Hide screenshot strip" : "Show screenshot strip");
+    }
+
     private void GallerySurface_PointerEntered(object sender, PointerRoutedEventArgs e) => SetNavigationOpacity(1);
 
     private void GallerySurface_PointerExited(object sender, PointerRoutedEventArgs e) => SetNavigationOpacity(1);
@@ -497,13 +510,6 @@ public sealed partial class ScreenshotWindow : Window
             target.Visibility = Visibility.Collapsed;
         }
     }
-
-    private string FormatCaptureOrigin(string origin) => origin switch
-    {
-        ScreenshotCaptureOrigins.Manual => _strings.Language == "it" ? "Manuale" : "Manual",
-        ScreenshotCaptureOrigins.Scheduled => _strings.Language == "it" ? "Pianificato" : "Scheduled",
-        _ => throw new InvalidDataException($"Unsupported screenshot capture origin: {origin}")
-    };
 
     private void SetLoading(bool isLoading)
     {

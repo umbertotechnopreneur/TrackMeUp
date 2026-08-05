@@ -3,8 +3,19 @@
     x:Class="TrackMeUp.Controls.WeeklyHoursEditor"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel Spacing="8">
-        <Grid ColumnSpacing="8">
+    <UserControl.Resources>
+        <Style x:Key="ScheduleSlotStyle" TargetType="ToggleButton">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+    </UserControl.Resources>
+    <StackPanel Spacing="10">
+        <Grid ColumnSpacing="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="64" />
                 <ColumnDefinition Width="*" />
@@ -14,7 +25,7 @@
                 FontSize="12"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Text="Day" />
-            <Grid Grid.Column="1" ColumnSpacing="0">
+            <Grid Grid.Column="1" Width="672" ColumnSpacing="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -34,11 +45,11 @@
             HorizontalScrollMode="Enabled"
             VerticalScrollBarVisibility="Disabled"
             VerticalScrollMode="Disabled">
-            <StackPanel x:Name="DaysHost" Spacing="4" />
+            <StackPanel x:Name="DaysHost" Spacing="0" />
         </ScrollViewer>
         <TextBlock
-            FontSize="12"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Style="{StaticResource CaptionTextBlockStyle}"
             Text="Click or drag across 30-minute blocks. Selected blocks are active hours; gaps inside an active period are breaks."
             TextWrapping="Wrap" />
     </StackPanel>

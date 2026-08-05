@@ -45,14 +45,16 @@ public sealed class WinUiSurfaceContractTests
     public void SettingsAndOperations_KeepFlatHierarchyWithScopedModelFeedback()
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
 
         Assert.DoesNotContain(options.Descendants(), element => element.Name.LocalName == "Expander");
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "Expander");
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("CornerRadius") is not null);
         Assert.Contains(options.Descendants(), element => element.Attribute("Style")?.Value.Contains("BodyStrongTextBlockStyle", StringComparison.Ordinal) == true);
-        Assert.Contains(options.Descendants(), element => element.Attribute("Style")?.Value.Contains("SubtitleTextBlockStyle", StringComparison.Ordinal) == true);
         Assert.Contains(operations.Descendants(), element => element.Attribute("Style")?.Value.Contains("SubtitleTextBlockStyle", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(options.Descendants(), element => element.Attribute("Tag")?.Value.StartsWith("Options.Section.ActiveHours", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain("active_hours.", optionsSource, StringComparison.Ordinal);
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelInfoCard") && element.Attribute("CornerRadius")?.Value == "6");
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelAccentBar") && element.Attribute("CornerRadius")?.Value == "2");
         Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
@@ -114,11 +116,12 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
         Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
         Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
-        Assert.Equal("36", takeScreenshotButton.Attribute("Width")?.Value);
+        Assert.Equal("32", takeScreenshotButton.Attribute("Width")?.Value);
         Assert.Equal("{ThemeResource SnapshotCaptureBrush}", takeScreenshotButton.Attribute("Background")?.Value);
         Assert.Equal("Collapsed", pendingSnapshotPanel.Attribute("Visibility")?.Value);
-        Assert.Equal("36", deleteSnapshotButton.Attribute("Width")?.Value);
+        Assert.Equal("32", deleteSnapshotButton.Attribute("Width")?.Value);
         Assert.Equal("{ThemeResource SnapshotDeleteBrush}", deleteSnapshotButton.Attribute("Background")?.Value);
         Assert.Equal(5, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
@@ -149,10 +152,28 @@ public sealed class WinUiSurfaceContractTests
             .ToArray();
 
         Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(["Screenshots.Menu.DeleteScreenshot", "Screenshots.Menu.DeleteSnapshot"], menuTags);
         Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
         Assert.Contains("DeleteSnapshotAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SnapshotSchedule_UsesASeparateThemedWindow()
+    {
+        var schedule = XDocument.Load(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml"));
+        var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var scheduleSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
+
+        Assert.Equal("Window", schedule.Root?.Name.LocalName);
+        Assert.Contains(schedule.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Contains(schedule.Descendants(), element => HasName(element, "WorkingHoursEditor"));
+        Assert.Contains("settingsResult.Value.ScreenshotIntervalMinutes", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ScheduleScreenshotDialog", mainSource, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.RequestedTheme = theme switch", scheduleSource, StringComparison.Ordinal);
+        Assert.Contains("SetTitleBar(TitleBarDragRegion);", scheduleSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -191,7 +212,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("UtcTimeText.Text = $\"UTC {state.UtcTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
         Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
-        Assert.Contains("private const int ExpandedPlayerHeight = 492;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int ExpandedPlayerHeight = 424;", source, StringComparison.Ordinal);
     }
 
     [Fact]

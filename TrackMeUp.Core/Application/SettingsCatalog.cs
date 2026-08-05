@@ -33,6 +33,7 @@ public static class SettingsCatalog
         Boolean("screenshots.watermark", "Add the local audit watermark to retained screenshots."),
         Choice("screenshots.mode", "Select all displays or only the active window.", ScreenshotModes),
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
+        Integer("screenshots.interval_minutes", "Minutes between scheduled eligible screenshots."),
         Boolean("ai.enabled", "Analyze every captured snapshot after privacy and cost checks."),
         Choice("ai.provider", "AI provider used for screenshot analysis.", Providers),
         Text("ai.model", "Provider model identifier."),
@@ -93,6 +94,7 @@ public static class SettingsCatalog
             "screenshots.watermark" => settings.WatermarkScreenshots,
             "screenshots.mode" => settings.ScreenshotCaptureMode,
             "screenshots.directory" => settings.ScreenshotDirectory,
+            "screenshots.interval_minutes" => settings.ScreenshotIntervalMinutes,
             "ai.enabled" => settings.OpenAiEnabled,
             "ai.provider" => settings.AiProvider,
             "ai.model" => settings.Model,
@@ -197,6 +199,7 @@ public static class SettingsCatalog
                 case "screenshots.watermark" when TryBoolean(value, out var watermark): current = current with { WatermarkScreenshots = watermark }; break;
                 case "screenshots.mode" when Canonical(ScreenshotModes, value) is { } screenshotMode: current = current with { ScreenshotCaptureMode = screenshotMode }; break;
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
+                case "screenshots.interval_minutes" when TryInteger(value, 1, 1440, out var screenshotIntervalMinutes): current = current with { ScreenshotIntervalMinutes = screenshotIntervalMinutes }; break;
                 case "ai.enabled" when TryBoolean(value, out var enabled): current = current with { OpenAiEnabled = enabled }; break;
                 case "ai.model" when !string.IsNullOrWhiteSpace(value) && value.Length <= 200: current = current with { Model = value }; break;
                 case "ai.endpoint" when IsAllowedEndpoint(value): current = current with { AiEndpoint = value! }; break;
@@ -260,6 +263,9 @@ public static class SettingsCatalog
             Model = string.IsNullOrWhiteSpace(settings.Model) || settings.Model.Trim().Length > 200 ? "gpt-5.6" : settings.Model.Trim(),
             ScreenshotDirectory = screenshotDirectory,
             ScreenshotCaptureMode = Canonical(ScreenshotModes, settings.ScreenshotCaptureMode) ?? "all-screens",
+            ScreenshotIntervalMinutes = settings.ScreenshotIntervalMinutes <= 0
+                ? 5
+                : Math.Min(settings.ScreenshotIntervalMinutes, 1440),
             AiProvider = provider,
             AiEndpoint = endpoint,
             AiApiKeyName = keyVariable,

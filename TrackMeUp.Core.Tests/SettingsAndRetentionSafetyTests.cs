@@ -77,6 +77,28 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
+    public void Apply_PersistsScheduledScreenshotInterval()
+    {
+        var result = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["screenshots.interval_minutes"] = "15"
+            }));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(15, result.Value?.ScreenshotIntervalMinutes);
+    }
+
+    [Fact]
+    public void SettingsWithoutAnInterval_UseTheFiveMinuteScheduleDefault()
+    {
+        var settings = JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.Equal(5, settings?.ScreenshotIntervalMinutes);
+    }
+
+    [Fact]
     public void Apply_RejectsBreakOutsideItsInformationalActivePeriod()
     {
         var result = SettingsCatalog.Apply(
@@ -113,6 +135,7 @@ public sealed class SettingsAndRetentionSafetyTests
                 AiApiKeyName: "SECRET_FROM_SETTINGS",
                 AiOutputDetail: "unbounded",
                 AiReasoningEffort: "extreme",
+                ScreenshotIntervalMinutes: 50_000,
                 DataRetentionDays: -50,
                 ScreenshotRetentionDays: 50_000),
             Path.Combine(Path.GetTempPath(), "TrackMeUp", "screenshots"));
@@ -122,6 +145,7 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Equal("OPENAI_API_KEY", normalized.AiApiKeyName);
         Assert.Equal("balanced", normalized.AiOutputDetail);
         Assert.Equal("auto", normalized.AiReasoningEffort);
+        Assert.Equal(1440, normalized.ScreenshotIntervalMinutes);
         Assert.Equal(0, normalized.DataRetentionDays);
         Assert.Equal(3650, normalized.ScreenshotRetentionDays);
     }

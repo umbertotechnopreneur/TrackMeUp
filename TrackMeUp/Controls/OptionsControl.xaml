@@ -434,27 +434,6 @@
                         <TextBox x:Name="AiEndpointBox" Tag="Options.AiEndpoint" Header="Service address" />
                         <TextBox x:Name="AiApiKeyNameBox" Tag="Options.AiKeyVariable" Header="Windows key name" />
 
-                        <StackPanel Margin="0,8,0,0" Spacing="2">
-                            <TextBlock Tag="Options.Section.ActiveHours" Style="{StaticResource SubtitleTextBlockStyle}" Text="Active hours" />
-                            <TextBlock
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Tag="Options.Section.ActiveHours.Description"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="Optional guidance for AI descriptions only. Use HH:mm-HH:mm and commas between breaks."
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="1" Tag="Options.ActiveHours" Style="{StaticResource CaptionTextBlockStyle}" Text="Active hours" />
-                            <TextBlock Grid.Column="2" Tag="Options.Breaks" Style="{StaticResource CaptionTextBlockStyle}" Text="Breaks" />
-                        </Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.monday" VerticalAlignment="Center" Text="Monday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="MondayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="MondayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.tuesday" VerticalAlignment="Center" Text="Tuesday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="TuesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="TuesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.wednesday" VerticalAlignment="Center" Text="Wednesday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="WednesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="WednesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.thursday" VerticalAlignment="Center" Text="Thursday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="ThursdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="ThursdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.friday" VerticalAlignment="Center" Text="Friday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="FridayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="FridayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.saturday" VerticalAlignment="Center" Text="Saturday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="SaturdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SaturdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.sunday" VerticalAlignment="Center" Text="Sunday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="SundayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SundayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

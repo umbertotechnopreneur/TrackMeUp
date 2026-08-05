@@ -192,7 +192,7 @@
                 HorizontalScrollMode="Disabled"
                 VerticalScrollBarVisibility="Hidden"
                 VerticalScrollMode="Enabled">
-                <Grid Padding="0,0,6,0" RowSpacing="10">
+                <Grid Padding="0,0,6,0" RowSpacing="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -212,8 +212,9 @@
                                 FontSize="15"
                                 Glyph="&#xE712;" />
                             <Button.Flyout>
-                                <Flyout Opened="MoreMenu_Opened" Placement="BottomEdgeAlignedRight">
-                                    <Flyout.SystemBackdrop>
+                            <Flyout Opened="MoreMenu_Opened"
+                                    Placement="TopEdgeAlignedRight">
+                                <Flyout.SystemBackdrop>
                                         <DesktopAcrylicBackdrop />
                                     </Flyout.SystemBackdrop>
                                     <Flyout.FlyoutPresenterStyle>
@@ -492,7 +493,7 @@
                         <StackPanel x:Name="CaptureActionsPanel"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Bottom"
-                                    Spacing="6">
+                                    Spacing="8">
                             <Button
                                 x:Name="TrackingButton"
                                 Width="84"
@@ -521,8 +522,8 @@
                             </Button>
                             <Button
                                 x:Name="TakeScreenshotButton"
-                                Width="36"
-                                Height="36"
+                                Width="32"
+                                Height="32"
                                 Padding="0"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
@@ -531,27 +532,27 @@
                                 BorderBrush="#D9FFFFFF"
                                 BorderThickness="2"
                                 Click="TakeScreenshotButton_Click"
-                                CornerRadius="18"
+                                CornerRadius="16"
                                 Style="{StaticResource CircularActionButtonStyle}"
                                 ToolTipService.ToolTip="Take snapshot">
                                 <FontIcon
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
-                                    FontSize="16"
+                                    FontSize="14"
                                     Foreground="White"
                                     Glyph="&#xE722;"/>
                             </Button>
                             <StackPanel
                                 x:Name="PendingSnapshotPanel"
-                                Width="42"
+                                Width="36"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Bottom"
                                 Spacing="2"
                                 Visibility="Collapsed">
                                 <Button
                                     x:Name="DeleteSnapshotButton"
-                                    Width="36"
-                                    Height="36"
+                                    Width="32"
+                                    Height="32"
                                     Padding="0"
                                     VerticalAlignment="Bottom"
                                     AutomationProperties.Name="Delete snapshot"
@@ -559,19 +560,19 @@
                                     BorderBrush="#D9FFFFFF"
                                     BorderThickness="2"
                                     Click="DeleteSnapshotButton_Click"
-                                    CornerRadius="18"
+                                    CornerRadius="16"
                                     Style="{StaticResource CircularActionButtonStyle}"
                                     ToolTipService.ToolTip="Delete snapshot">
                                     <FontIcon
                                         AutomationProperties.AccessibilityView="Raw"
                                         FontFamily="Segoe Fluent Icons"
-                                        FontSize="15"
+                                        FontSize="14"
                                         Foreground="White"
                                         Glyph="&#xE74D;"/>
                                 </Button>
                                 <ProgressBar
                                     x:Name="SnapshotDeleteCountdownProgress"
-                                    Width="36"
+                                    Width="32"
                                     Height="3"
                                     Foreground="{ThemeResource SnapshotDeleteBrush}"
                                     IsHitTestVisible="False"
@@ -663,7 +664,7 @@
                         x:Name="DetailsButton"
                         Grid.Row="2"
                         MinWidth="44"
-                        MinHeight="36"
+                        MinHeight="32"
                         Padding="8,3"
                         HorizontalAlignment="Center"
                         AutomationProperties.Name="Mostra ultima sessione"
@@ -679,7 +680,7 @@
                             Glyph="&#xE70D;" />
                     </Button>
 
-                    <Grid x:Name="DetailsPanel" Grid.Row="3" Margin="0,0,0,2" RowSpacing="12" Visibility="Collapsed">
+                    <Grid x:Name="DetailsPanel" Grid.Row="3" Margin="0,0,0,2" RowSpacing="10" Visibility="Collapsed">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="1" />
                             <RowDefinition Height="Auto" />
@@ -745,45 +746,47 @@
                                     Width="112"
                                     Height="64"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                                     BorderThickness="1"
-                                    CornerRadius="8"
-                                    Translation="0,0,10">
+                                    CornerRadius="9"
+                                    Translation="0,2,5">
                                     <Border.Shadow>
                                         <ThemeShadow />
                                     </Border.Shadow>
-                                    <Grid>
-                                        <Image
-                                            x:Name="ScreenshotPlaceholderImage"
-                                            AutomationProperties.Name="Snapshot placeholder"
-                                            Source="ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png"
-                                            Stretch="UniformToFill" />
-                                        <Image
-                                            x:Name="LastScreenshotImage"
-                                            AutomationProperties.Name="Latest snapshot"
-                                            ImageFailed="LastScreenshotImage_ImageFailed"
-                                            Stretch="UniformToFill"
-                                            Visibility="Collapsed" />
-                                        <Border
-                                            x:Name="ScreenshotOpenOverlay"
-                                            Width="27"
-                                            Height="27"
-                                            Margin="0,0,6,6"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Bottom"
-                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            IsHitTestVisible="False"
-                                            Opacity="0">
-                                            <FontIcon
-                                                AutomationProperties.AccessibilityView="Raw"
-                                                FontFamily="Segoe Fluent Icons"
-                                                FontSize="13"
-                                                Glyph="&#xE8A7;" />
-                                        </Border>
-                                    </Grid>
+                                    <Border CornerRadius="8">
+                                        <Grid>
+                                            <Image
+                                                x:Name="ScreenshotPlaceholderImage"
+                                                AutomationProperties.Name="Snapshot placeholder"
+                                                Source="ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png"
+                                                Stretch="UniformToFill" />
+                                            <Image
+                                                x:Name="LastScreenshotImage"
+                                                AutomationProperties.Name="Latest snapshot"
+                                                ImageFailed="LastScreenshotImage_ImageFailed"
+                                                Stretch="UniformToFill"
+                                                Visibility="Collapsed" />
+                                            <Border
+                                                x:Name="ScreenshotOpenOverlay"
+                                                Width="27"
+                                                Height="27"
+                                                Margin="0,0,6,6"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Bottom"
+                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                IsHitTestVisible="False"
+                                                Opacity="0">
+                                                <FontIcon
+                                                    AutomationProperties.AccessibilityView="Raw"
+                                                    FontFamily="Segoe Fluent Icons"
+                                                    FontSize="13"
+                                                    Glyph="&#xE8A7;" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
                                 </Border>
                             </Button>
                         </Grid>

@@ -73,6 +73,7 @@ public sealed record AppSettings(
     bool StartWithWindows = false,
     string ScreenshotDirectory = "",
     string ScreenshotCaptureMode = "all-screens",
+    int ScreenshotIntervalMinutes = 5,
     bool WatermarkScreenshots = true,
     string AiProvider = "openai",
     string AiEndpoint = "https://api.openai.com/v1/responses",

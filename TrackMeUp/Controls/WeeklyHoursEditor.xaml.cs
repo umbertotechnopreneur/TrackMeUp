@@ -10,6 +10,8 @@ namespace TrackMeUp.Controls;
 public sealed partial class WeeklyHoursEditor : UserControl
 {
     private const int SlotsPerDay = 48;
+    private const double SlotWidth = 14d;
+    private const double SlotHeight = 28d;
     private static readonly string[] Days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     private readonly Dictionary<string, ToggleButton[]> _daySlots = new(StringComparer.Ordinal);
     private bool? _dragSelectionValue;
@@ -44,11 +46,14 @@ public sealed partial class WeeklyHoursEditor : UserControl
 
     private void BuildGrid()
     {
+        var slotStyle = Resources["ScheduleSlotStyle"] as Style
+            ?? throw new InvalidOperationException("The schedule slot style is required.");
+
         foreach (var day in Days)
         {
-            var row = new Grid { ColumnSpacing = 8 };
+            var row = new Grid { ColumnSpacing = 0, Height = SlotHeight };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SlotsPerDay * SlotWidth) });
 
             var label = new TextBlock
             {
@@ -58,16 +63,24 @@ public sealed partial class WeeklyHoursEditor : UserControl
             };
             row.Children.Add(label);
 
-            var slotsPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 1 };
-            Grid.SetColumn(slotsPanel, 1);
+            var slotsGrid = new Grid { Width = SlotsPerDay * SlotWidth, Height = SlotHeight };
+            for (var column = 0; column < SlotsPerDay; column++)
+            {
+                slotsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SlotWidth) });
+            }
+
+            Grid.SetColumn(slotsGrid, 1);
             var slots = new ToggleButton[SlotsPerDay];
             for (var slot = 0; slot < SlotsPerDay; slot++)
             {
                 var button = new ToggleButton
                 {
-                    Width = 13,
-                    Height = 24,
+                    Width = SlotWidth,
+                    Height = SlotHeight,
                     Padding = new Thickness(0),
+                    Margin = new Thickness(0),
+                    CornerRadius = new CornerRadius(0),
+                    Style = slotStyle,
                     Tag = slot
                 };
                 ToolTipService.SetToolTip(button, CreateSlotLabel(slot));
@@ -75,11 +88,12 @@ public sealed partial class WeeklyHoursEditor : UserControl
                 button.PointerEntered += Slot_PointerEntered;
                 button.PointerReleased += Slot_PointerReleased;
                 slots[slot] = button;
-                slotsPanel.Children.Add(button);
+                Grid.SetColumn(button, slot);
+                slotsGrid.Children.Add(button);
             }
 
             _daySlots.Add(day, slots);
-            row.Children.Add(slotsPanel);
+            row.Children.Add(slotsGrid);
             DaysHost.Children.Add(row);
         }
     }

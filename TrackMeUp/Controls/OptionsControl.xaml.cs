@@ -191,21 +191,7 @@ public sealed partial class OptionsControl : UserControl
             ["language"] = SelectedTag(LanguageBox, "system"),
             ["theme"] = SelectedTheme(),
             ["position"] = SelectedTag(PositionBox, "bottom-center"),
-            ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left"),
-            ["active_hours.monday.active"] = MondayActiveHoursBox.Text,
-            ["active_hours.monday.breaks"] = MondayBreaksBox.Text,
-            ["active_hours.tuesday.active"] = TuesdayActiveHoursBox.Text,
-            ["active_hours.tuesday.breaks"] = TuesdayBreaksBox.Text,
-            ["active_hours.wednesday.active"] = WednesdayActiveHoursBox.Text,
-            ["active_hours.wednesday.breaks"] = WednesdayBreaksBox.Text,
-            ["active_hours.thursday.active"] = ThursdayActiveHoursBox.Text,
-            ["active_hours.thursday.breaks"] = ThursdayBreaksBox.Text,
-            ["active_hours.friday.active"] = FridayActiveHoursBox.Text,
-            ["active_hours.friday.breaks"] = FridayBreaksBox.Text,
-            ["active_hours.saturday.active"] = SaturdayActiveHoursBox.Text,
-            ["active_hours.saturday.breaks"] = SaturdayBreaksBox.Text,
-            ["active_hours.sunday.active"] = SundayActiveHoursBox.Text,
-            ["active_hours.sunday.breaks"] = SundayBreaksBox.Text
+            ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left")
         });
         var result = await _application.PatchSettingsAsync(patch, CancellationToken.None);
         if (result.Succeeded && result.Value is not null)
@@ -262,13 +248,6 @@ public sealed partial class OptionsControl : UserControl
         SelectTheme(settings.Theme);
         AiCustomPromptBox.Text = settings.AiCustomPrompt;
         IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
-        ApplyActiveHours(settings, "monday", MondayActiveHoursBox, MondayBreaksBox);
-        ApplyActiveHours(settings, "tuesday", TuesdayActiveHoursBox, TuesdayBreaksBox);
-        ApplyActiveHours(settings, "wednesday", WednesdayActiveHoursBox, WednesdayBreaksBox);
-        ApplyActiveHours(settings, "thursday", ThursdayActiveHoursBox, ThursdayBreaksBox);
-        ApplyActiveHours(settings, "friday", FridayActiveHoursBox, FridayBreaksBox);
-        ApplyActiveHours(settings, "saturday", SaturdayActiveHoursBox, SaturdayBreaksBox);
-        ApplyActiveHours(settings, "sunday", SundayActiveHoursBox, SundayBreaksBox);
         UpdateScreenshotModeHint();
     }
 
@@ -360,13 +339,6 @@ public sealed partial class OptionsControl : UserControl
     private static string SelectedTag(ComboBox comboBox, string fallback) => (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? fallback;
 
     private static void SelectTag(ComboBox comboBox, string value, string fallback) => comboBox.SelectedItem = comboBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, value)) ?? comboBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, fallback));
-
-    private static void ApplyActiveHours(AppSettings settings, string day, TextBox activeHoursBox, TextBox breaksBox)
-    {
-        var configuredDay = settings.ActiveHours?.FirstOrDefault(candidate => string.Equals(candidate.Day, day, StringComparison.OrdinalIgnoreCase));
-        activeHoursBox.Text = configuredDay?.ActivePeriod ?? string.Empty;
-        breaksBox.Text = configuredDay?.BreakPeriods ?? string.Empty;
-    }
 
     private static string DefaultEndpoint(string provider) => SettingsCatalog.GetDefaultEndpoint(provider);
 

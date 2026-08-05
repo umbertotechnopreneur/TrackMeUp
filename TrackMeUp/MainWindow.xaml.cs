@@ -26,25 +26,31 @@ namespace TrackMeUp;
 public sealed partial class MainWindow : Window
 {
     private const int LogicalWindowWidth = 430;
-    private const int PlayerHeight = 342;
-    private const int ExpandedPlayerHeight = 492;
+    private const int PlayerHeight = 304;
+    private const int ExpandedPlayerHeight = 424;
     private const int OptionsHeight = 650;
     private const int OperationsHeight = 768;
     private const int LogicalScreenMargin = 22;
+    private const int WindowResizeAnimationDurationMilliseconds = 180;
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly DispatcherQueueTimer _screenshotScheduleTimer;
+    private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly AppWindow _appWindow;
     private LocalizationService _strings = new("system");
     private bool _detailsExpanded;
     private bool _updatingMenuState;
     private int _logicalHeight = PlayerHeight;
     private double _rasterizationScale = 1d;
+    private DateTimeOffset _windowResizeAnimationStartedAt;
+    private SizeInt32 _windowResizeAnimationStartSize;
+    private SizeInt32 _windowResizeAnimationTargetSize;
     private string _theme = "system";
     private string _position = FlyoutPositions.BottomCenter;
     private AppSettings? _menuSettings;
     private AboutWindow? _aboutWindow;
+    private ScheduleWindow? _scheduleWindow;
     private XamlRoot? _xamlRoot;
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
@@ -104,6 +110,10 @@ public sealed partial class MainWindow : Window
         _screenshotScheduleTimer = DispatcherQueue.CreateTimer();
         _screenshotScheduleTimer.Interval = TimeSpan.FromSeconds(1);
         _screenshotScheduleTimer.Tick += async (_, _) => await CheckAndCaptureScreenshotAsync();
+
+        _windowResizeAnimationTimer = DispatcherQueue.CreateTimer();
+        _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
+        _windowResizeAnimationTimer.Tick += WindowResizeAnimationTimer_Tick;
 
         _ = InitializeAsync(options);
         Closed += MainWindow_Closed;
@@ -170,10 +180,16 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Opens the screenshot scheduling dialog.</summary>
+    /// <summary>Opens the detached screenshot scheduling window.</summary>
     private async void ScheduleScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
+
+        if (_scheduleWindow is not null)
+        {
+            _scheduleWindow.Activate();
+            return;
+        }
 
         var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
         if (!settingsResult.Succeeded || settingsResult.Value is null)
@@ -181,46 +197,61 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var dialog = new ScheduleScreenshotDialog(settingsResult.Value.ActiveHours) { XamlRoot = RootGrid.XamlRoot };
-        var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary)
-        {
-            return;
-        }
+        var scheduleWindow = new ScheduleWindow(
+            settingsResult.Value.ActiveHours,
+            settingsResult.Value.ScreenshotIntervalMinutes,
+            _theme);
+        scheduleWindow.ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed;
+        scheduleWindow.Closed += ScheduleWindow_Closed;
+        _scheduleWindow = scheduleWindow;
+        scheduleWindow.Activate();
+    }
 
+    /// <summary>Persists a confirmed schedule and starts or stops its timer from the main runtime owner.</summary>
+    private async void ScheduleWindow_ScheduleConfirmed(object? sender, ScheduleConfigurationEventArgs eventArgs)
+    {
         var patch = new SettingsPatch(new Dictionary<string, string?>
         {
-            ["active_hours.monday.active"] = dialog.ActiveHours.Single(day => day.Day == "monday").ActivePeriod,
-            ["active_hours.monday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "monday").BreakPeriods,
-            ["active_hours.tuesday.active"] = dialog.ActiveHours.Single(day => day.Day == "tuesday").ActivePeriod,
-            ["active_hours.tuesday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "tuesday").BreakPeriods,
-            ["active_hours.wednesday.active"] = dialog.ActiveHours.Single(day => day.Day == "wednesday").ActivePeriod,
-            ["active_hours.wednesday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "wednesday").BreakPeriods,
-            ["active_hours.thursday.active"] = dialog.ActiveHours.Single(day => day.Day == "thursday").ActivePeriod,
-            ["active_hours.thursday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "thursday").BreakPeriods,
-            ["active_hours.friday.active"] = dialog.ActiveHours.Single(day => day.Day == "friday").ActivePeriod,
-            ["active_hours.friday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "friday").BreakPeriods,
-            ["active_hours.saturday.active"] = dialog.ActiveHours.Single(day => day.Day == "saturday").ActivePeriod,
-            ["active_hours.saturday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "saturday").BreakPeriods,
-            ["active_hours.sunday.active"] = dialog.ActiveHours.Single(day => day.Day == "sunday").ActivePeriod,
-            ["active_hours.sunday.breaks"] = dialog.ActiveHours.Single(day => day.Day == "sunday").BreakPeriods
+            ["active_hours.monday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "monday").ActivePeriod,
+            ["active_hours.monday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "monday").BreakPeriods,
+            ["active_hours.tuesday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "tuesday").ActivePeriod,
+            ["active_hours.tuesday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "tuesday").BreakPeriods,
+            ["active_hours.wednesday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "wednesday").ActivePeriod,
+            ["active_hours.wednesday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "wednesday").BreakPeriods,
+            ["active_hours.thursday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "thursday").ActivePeriod,
+            ["active_hours.thursday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "thursday").BreakPeriods,
+            ["active_hours.friday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "friday").ActivePeriod,
+            ["active_hours.friday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "friday").BreakPeriods,
+            ["active_hours.saturday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "saturday").ActivePeriod,
+            ["active_hours.saturday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "saturday").BreakPeriods,
+            ["active_hours.sunday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "sunday").ActivePeriod,
+            ["active_hours.sunday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "sunday").BreakPeriods,
+            ["screenshots.interval_minutes"] = eventArgs.IntervalMinutes.ToString(CultureInfo.InvariantCulture)
         });
         var saveResult = await _application.PatchSettingsAsync(patch, CancellationToken.None);
-        if (!saveResult.Succeeded)
+        if (!saveResult.Succeeded || saveResult.Value is null)
         {
             return;
         }
 
-        _screenshotIntervalMinutes = dialog.IntervalMinutes;
-        _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(_screenshotIntervalMinutes);
-        if (_screenshotIntervalMinutes > 0)
+        ApplyScreenshotSchedule(saveResult.Value.ScreenshotIntervalMinutes, restartCountdown: true);
+
+        if (sender is ScheduleWindow scheduleWindow)
         {
-            _screenshotScheduleTimer.Start();
+            scheduleWindow.Close();
         }
-        else
+    }
+
+    /// <summary>Releases the detached scheduling window reference after it closes.</summary>
+    private void ScheduleWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (sender is ScheduleWindow scheduleWindow)
         {
-            _screenshotScheduleTimer.Stop();
+            scheduleWindow.ScheduleConfirmed -= ScheduleWindow_ScheduleConfirmed;
+            scheduleWindow.Closed -= ScheduleWindow_Closed;
         }
+
+        _scheduleWindow = null;
     }
 
     /// <summary>Checks if it's time to capture a screenshot and captures one if needed.</summary>
@@ -253,6 +284,31 @@ public sealed partial class MainWindow : Window
             // Failed settings reads and inactive periods skip this tick; the next interval remains scheduled.
             _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(_screenshotIntervalMinutes);
         }
+    }
+
+    /// <summary>Synchronizes the local capture timer with the validated, persisted schedule interval.</summary>
+    private void ApplyScreenshotSchedule(int intervalMinutes, bool restartCountdown)
+    {
+        if (intervalMinutes is < 0 or > 1440)
+        {
+            throw new ArgumentOutOfRangeException(nameof(intervalMinutes));
+        }
+
+        var intervalChanged = _screenshotIntervalMinutes != intervalMinutes;
+        _screenshotIntervalMinutes = intervalMinutes;
+        if (intervalMinutes == 0)
+        {
+            _nextScreenshotTime = null;
+            _screenshotScheduleTimer.Stop();
+            return;
+        }
+
+        if (restartCountdown || intervalChanged || _nextScreenshotTime is null)
+        {
+            _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(intervalMinutes);
+        }
+
+        _screenshotScheduleTimer.Start();
     }
 
     private static bool IsWithinActiveHours(IReadOnlyList<ActiveHoursDay>? activeHours, DateTimeOffset timestamp)
@@ -470,7 +526,7 @@ public sealed partial class MainWindow : Window
         DetailsPanel.Visibility = _detailsExpanded ? Visibility.Visible : Visibility.Collapsed;
         DetailsChevron.Glyph = _detailsExpanded ? "\uE70E" : "\uE70D";
         AutomationProperties.SetName(DetailsButton, _detailsExpanded ? "Hide last session" : "Show last session");
-        ResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);
+        AnimateResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);
         if (_detailsExpanded)
         {
             var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
@@ -480,7 +536,10 @@ public sealed partial class MainWindow : Window
             }
             FadeIn(DetailsPanel);
         }
-        ApplyFlyoutPosition(_position);
+        if (!_windowResizeAnimationTimer.IsRunning)
+        {
+            ApplyFlyoutPosition(_position);
+        }
     }
 
     /// <summary>Forwards screenshot-gallery activation to the application composition root.</summary>
@@ -558,9 +617,9 @@ public sealed partial class MainWindow : Window
             var timeRemaining = _nextScreenshotTime.Value - DateTimeOffset.Now;
             if (timeRemaining.TotalSeconds > 0)
             {
-                var minutes = (int)timeRemaining.TotalMinutes;
-                var seconds = (int)timeRemaining.Seconds;
-                ElapsedText.Text = $"{minutes:00}:{seconds:00}";
+                var remainingSeconds = Math.Max(1, (int)Math.Ceiling(timeRemaining.TotalSeconds));
+                var remaining = TimeSpan.FromSeconds(remainingSeconds);
+                ElapsedText.Text = $"{(int)remaining.TotalMinutes:00}:{remaining.Seconds:00}";
             }
             else
             {
@@ -743,7 +802,9 @@ public sealed partial class MainWindow : Window
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
+        ApplyScreenshotSchedule(settings.ScreenshotIntervalMinutes, restartCountdown: false);
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        _scheduleWindow?.ApplyTheme(_theme);
         UiLocalization.Apply(RootGrid, _strings);
         if (ScreenshotPlaceholderImage.Visibility == Visibility.Visible)
         {
@@ -806,6 +867,47 @@ public sealed partial class MainWindow : Window
     /// <summary>Converts the compact surface size from WinUI DIPs to the physical pixels required by AppWindow.</summary>
     private void ResizeForLogicalContent(int logicalHeight)
     {
+        _appWindow.Resize(GetPhysicalWindowSize(logicalHeight));
+    }
+
+    /// <summary>Interpolates the compact player height when the details panel is shown or hidden.</summary>
+    private void AnimateResizeForLogicalContent(int logicalHeight)
+    {
+        _logicalHeight = logicalHeight;
+        _windowResizeAnimationStartSize = _appWindow.Size;
+        _windowResizeAnimationTargetSize = GetPhysicalWindowSize(logicalHeight);
+        if (_windowResizeAnimationStartSize.Height == _windowResizeAnimationTargetSize.Height)
+        {
+            _appWindow.Resize(_windowResizeAnimationTargetSize);
+            ApplyFlyoutPosition(_position);
+            return;
+        }
+
+        _windowResizeAnimationStartedAt = DateTimeOffset.UtcNow;
+        _windowResizeAnimationTimer.Start();
+    }
+
+    /// <summary>Advances the AppWindow height animation while preserving the chosen flyout anchor.</summary>
+    private void WindowResizeAnimationTimer_Tick(DispatcherQueueTimer sender, object args)
+    {
+        var elapsedMilliseconds = (DateTimeOffset.UtcNow - _windowResizeAnimationStartedAt).TotalMilliseconds;
+        var progress = Math.Clamp(elapsedMilliseconds / WindowResizeAnimationDurationMilliseconds, 0d, 1d);
+        var easedProgress = 1d - Math.Pow(1d - progress, 3d);
+        var height = (int)Math.Round(
+            _windowResizeAnimationStartSize.Height
+            + ((_windowResizeAnimationTargetSize.Height - _windowResizeAnimationStartSize.Height) * easedProgress));
+        _appWindow.Resize(new SizeInt32(_windowResizeAnimationTargetSize.Width, height));
+        ApplyFlyoutPosition(_position);
+
+        if (progress >= 1d)
+        {
+            _windowResizeAnimationTimer.Stop();
+        }
+    }
+
+    /// <summary>Calculates the physical AppWindow size for one logical content height.</summary>
+    private SizeInt32 GetPhysicalWindowSize(int logicalHeight)
+    {
         _logicalHeight = logicalHeight;
         var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale);
         _rasterizationScale = scale;
@@ -816,7 +918,7 @@ public sealed partial class MainWindow : Window
         var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
         var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(logicalHeight * scale));
-        _appWindow.Resize(new SizeInt32(physicalWidth, physicalHeight));
+        return new SizeInt32(physicalWidth, physicalHeight);
     }
 
     /// <summary>Places the player at the selected visual anchor.</summary>
@@ -843,6 +945,13 @@ public sealed partial class MainWindow : Window
 
         _refreshTimer.Stop();
         _screenshotScheduleTimer.Stop();
+        _windowResizeAnimationTimer.Stop();
+
+        if (_scheduleWindow is not null)
+        {
+            _scheduleWindow.Close();
+            _scheduleWindow = null;
+        }
     }
 }
 
