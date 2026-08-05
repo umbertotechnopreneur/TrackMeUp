@@ -210,8 +210,9 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
                 "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                "screenshot.open_folder" => ToResponse(request, await _application.OpenScreenshotFolderAsync(cancellationToken)),
+                "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
+                "ai.models" => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
                 "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
                 "ai.disable" => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
                 "ai.configure" => ToResponse(request, await _application.ConfigureAiAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
@@ -303,6 +304,11 @@ public sealed class RuntimeHost : IAsyncDisposable
     private static string ReadString(JsonElement value, string name) => ReadStringOrNull(value, name) ?? string.Empty;
 
     private static string? ReadStringOrNull(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String ? property.GetString() : null;
+
+    private Task<OperationResult<string>> DispatchOpenScreenshotFolderAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+        => ReadStringOrNull(request.Payload, "directory") is { } directory
+            ? _application.OpenScreenshotFolderAsync(directory, cancellationToken)
+            : _application.OpenScreenshotFolderAsync(cancellationToken);
 
     private static bool ReadBool(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind is JsonValueKind.True or JsonValueKind.False && property.GetBoolean();
 
@@ -452,7 +458,11 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", null, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", new { directory }, cancellationToken);
+    /// <inheritdoc />
     public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken) => SendAsync<AiStatus>("ai.status", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => SendAsync<AiModelCatalogSnapshot>("ai.models", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => SendAsync<AiStatus>(enabled ? "ai.enable" : "ai.disable", null, cancellationToken);
     /// <inheritdoc />

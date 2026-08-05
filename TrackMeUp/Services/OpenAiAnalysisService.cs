@@ -1,17 +1,48 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TrackMeUp.Services;
 
+/// <summary>Runs AI analysis for either a newly captured or caller-supplied snapshot.</summary>
+public interface IAiAnalysisService
+{
+    /// <summary>Captures when allowed, then analyzes the current screen context.</summary>
+    /// <param name="activity">Current context sample used to build the analysis prompt.</param>
+    /// <param name="allowCapture">Whether this invocation may capture screenshots when globally enabled.</param>
+    /// <param name="origin">Stable analysis origin recorded with local usage and history.</param>
+    /// <param name="cancellationToken">Cancels capture, device-context collection, and the provider request.</param>
+    /// <returns>The AI summary record persisted in the local history store.</returns>
+    Task<AiAnalysis> AnalyzeCurrentScreenAsync(
+        AnalysisContextSnapshot? activity,
+        bool allowCapture = true,
+        string origin = "manual",
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Analyzes an already captured snapshot without creating a second capture.</summary>
+    /// <param name="activity">Current context sample used to build the analysis prompt.</param>
+    /// <param name="captureResult">The completed snapshot capture to submit to the configured provider.</param>
+    /// <param name="keepCapture">Whether the retained snapshot files should remain on disk after analysis.</param>
+    /// <param name="origin">Stable analysis origin recorded with local usage and history.</param>
+    /// <param name="cancellationToken">Cancels device-context collection and the provider request.</param>
+    /// <returns>The AI summary record persisted in the local history store.</returns>
+    Task<AiAnalysis> AnalyzeCapturedScreenAsync(
+        AnalysisContextSnapshot? activity,
+        ScreenshotCaptureResult captureResult,
+        bool keepCapture,
+        string origin,
+        CancellationToken cancellationToken = default);
+}
+
 /// <summary>
 /// Orchestrates screenshot capture, prompt assembly, AI provider call, and persistence.
 /// </summary>
-public sealed class OpenAiAnalysisService
+public sealed class OpenAiAnalysisService : IAiAnalysisService
 {
     private readonly LocalStore _store;
-    private readonly ScreenCaptureService _capture;
+    private readonly IScreenCaptureService _capture;
     private readonly SystemSnapshotService _snapshotService;
     private readonly IAIDecoder? _decoder;
     private readonly DeviceContextService _deviceContext;
@@ -26,7 +57,7 @@ public sealed class OpenAiAnalysisService
     /// <param name="deviceContext">Optional device-context provider for time zone, language, and Windows location metadata.</param>
     public OpenAiAnalysisService(
         LocalStore store,
-        ScreenCaptureService capture,
+        IScreenCaptureService capture,
         SystemSnapshotService? snapshotService = null,
         IAIDecoder? decoder = null,
         DeviceContextService? deviceContext = null)
@@ -43,6 +74,8 @@ public sealed class OpenAiAnalysisService
     /// </summary>
     /// <param name="activity">Current context sample used to build the analysis prompt.</param>
     /// <param name="allowCapture">Whether this invocation may capture screenshots when globally enabled.</param>
+    /// <param name="origin">Stable analysis origin recorded with local usage and history.</param>
+    /// <param name="cancellationToken">Cancels capture, device-context collection, and the provider request.</param>
     /// <returns>The AI summary record persisted in the local history store.</returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when OpenAI integration is disabled or the API key is missing.
@@ -50,19 +83,12 @@ public sealed class OpenAiAnalysisService
     public async Task<AiAnalysis> AnalyzeCurrentScreenAsync(
         AnalysisContextSnapshot? activity,
         bool allowCapture = true,
-        string origin = "manual")
+        string origin = "manual",
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = _store.LoadSettings();
-        if (!settings.OpenAiEnabled)
-        {
-            throw new InvalidOperationException("Enable AI integration from the app options before running analysis.");
-        }
-
-        var apiKey = _store.LoadApiKey(settings.AiApiKeyName);
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            throw new InvalidOperationException($"Set the environment variable {settings.AiApiKeyName} for {settings.AiProvider}.");
-        }
+        var apiKey = LoadRequiredApiKey(settings);
 
         // Keep analysis possible even when screenshots are disabled. In that case, run with empty image context.
         var captureResult = allowCapture && settings.ScreenshotsEnabled
@@ -70,16 +96,83 @@ public sealed class OpenAiAnalysisService
                 settings.ScreenshotDirectory,
                 settings.ScreenshotCaptureMode,
                 settings.WatermarkScreenshots,
-                origin == "automatic.timer" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
+                origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
             : new ScreenshotCaptureResult(
                 Guid.NewGuid().ToString("N"),
                 Array.Empty<string>(),
                 Array.Empty<string>(),
-                origin == "automatic.timer" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual);
+                origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual);
 
+        return await AnalyzeCapturedScreenCoreAsync(
+            settings,
+            apiKey,
+            activity,
+            captureResult,
+            settings.KeepScreenshots,
+            origin,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Analyzes an already captured snapshot so capture and AI processing share the same correlation ID and files.
+    /// </summary>
+    /// <param name="activity">Current context sample used to build the analysis prompt.</param>
+    /// <param name="captureResult">The completed snapshot capture to submit to the configured provider.</param>
+    /// <param name="keepCapture">Whether the captured files should remain on disk after analysis.</param>
+    /// <param name="origin">Stable analysis origin recorded with local usage and history.</param>
+    /// <param name="cancellationToken">Cancels device-context collection and the provider request.</param>
+    /// <returns>The AI summary record persisted in the local history store.</returns>
+    public async Task<AiAnalysis> AnalyzeCapturedScreenAsync(
+        AnalysisContextSnapshot? activity,
+        ScreenshotCaptureResult captureResult,
+        bool keepCapture,
+        string origin,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(captureResult);
+        var coreOwnsCleanup = false;
         try
         {
-            var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (captureResult.AnalysisScreenshotPaths.Count == 0 ||
+                captureResult.AnalysisScreenshotPaths.Any(path => !ScreenCaptureService.IsOwnedArtifact(path) || !File.Exists(path)))
+            {
+                throw new InvalidOperationException("The captured snapshot does not contain valid analysis files.");
+            }
+
+            var settings = _store.LoadSettings();
+            var apiKey = LoadRequiredApiKey(settings);
+            coreOwnsCleanup = true;
+            return await AnalyzeCapturedScreenCoreAsync(
+                settings,
+                apiKey,
+                activity,
+                captureResult,
+                keepCapture,
+                origin,
+                cancellationToken);
+        }
+        finally
+        {
+            if (!coreOwnsCleanup)
+            {
+                CleanupCapture(captureResult, keepCapture);
+            }
+        }
+    }
+
+    private async Task<AiAnalysis> AnalyzeCapturedScreenCoreAsync(
+        AppSettings settings,
+        string apiKey,
+        AnalysisContextSnapshot? activity,
+        ScreenshotCaptureResult captureResult,
+        bool keepCapture,
+        string origin,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
             var capturedSnapshot = _snapshotService.Capture();
             var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, capturedSnapshot.Timestamp);
             var snapshot = capturedSnapshot with
@@ -117,7 +210,12 @@ public sealed class OpenAiAnalysisService
                     captureResult.AnalysisScreenshotPaths,
                     settings,
                     apiKey,
-                    captureResult.CaptureId);
+                    captureResult.CaptureId,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (AiProviderRequestException exception)
             {
@@ -154,13 +252,14 @@ public sealed class OpenAiAnalysisService
                 throw;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             var result = new AiAnalysis(
                 DateTimeOffset.Now,
                 context.Application,
                 context.Context,
                 providerResult.Text,
                 settings.InstallationId,
-                settings.KeepScreenshots ? string.Join(";", captureResult.StoredScreenshotPaths) : null,
+                keepCapture ? string.Join(";", captureResult.StoredScreenshotPaths) : null,
                 context.Snapshot,
                 captureResult.CaptureId,
                 origin,
@@ -183,22 +282,47 @@ public sealed class OpenAiAnalysisService
         }
         finally
         {
-            // Remove transient screenshots only when the user chose not to retain them.
-            if (!settings.KeepScreenshots)
+            CleanupCapture(captureResult, keepCapture);
+        }
+    }
+
+    private static void CleanupCapture(ScreenshotCaptureResult captureResult, bool keepCapture)
+    {
+        var retainedPaths = captureResult.StoredScreenshotPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var cleanupPaths = keepCapture
+            ? captureResult.AnalysisScreenshotPaths.Where(path => !retainedPaths.Contains(path))
+            : captureResult.AllScreenshotPaths;
+
+        foreach (var screenshot in cleanupPaths
+                     .Where(ScreenCaptureService.IsOwnedArtifact)
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Where(File.Exists))
+        {
+            try
             {
-                foreach (var screenshot in captureResult.AllScreenshotPaths.Where(File.Exists))
-                {
-                    try
-                    {
-                        File.Delete(screenshot);
-                    }
-                    catch
-                    {
-                        // Keep analysis flow resilient: cleanup failures should not block result persistence.
-                    }
-                }
+                File.Delete(screenshot);
+            }
+            catch
+            {
+                // Cleanup is best effort: retained history remains valid and provider/persistence errors stay primary.
             }
         }
+    }
+
+    private string LoadRequiredApiKey(AppSettings settings)
+    {
+        if (!settings.OpenAiEnabled)
+        {
+            throw new InvalidOperationException("Enable AI integration from the app options before running analysis.");
+        }
+
+        var apiKey = _store.LoadApiKey(settings.AiApiKeyName);
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new InvalidOperationException($"Set the environment variable {settings.AiApiKeyName} for {settings.AiProvider}.");
+        }
+
+        return apiKey;
     }
 
     private void AppendFailedUsageOrThrow(AiRequestUsageRecord usage, Exception providerException)

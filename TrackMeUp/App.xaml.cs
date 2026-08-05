@@ -121,7 +121,8 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
-    private void MainWindow_ScreenshotsRequested(object? sender, EventArgs eventArgs) => ShowScreenshotWindow(StartOrConnectRuntime(), null);
+    private async void MainWindow_ScreenshotsRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs)
+        => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
 
     private void ShowReportsWindow(ITrackMeUpApplication application, string? launchTheme)
     {
@@ -136,15 +137,20 @@ public partial class App : Microsoft.UI.Xaml.Application
         _reportsWindow.Activate();
     }
 
-    private void ShowScreenshotWindow(ITrackMeUpApplication application, string? launchTheme)
+    private async Task ShowScreenshotWindowAsync(
+        ITrackMeUpApplication application,
+        string? launchTheme,
+        string screenshotPath,
+        DateTimeOffset capturedAt)
     {
         if (_screenshotsWindow is not null)
         {
+            await _screenshotsWindow.FocusScreenshotAsync(screenshotPath, capturedAt);
             _screenshotsWindow.Activate();
             return;
         }
 
-        _screenshotsWindow = new ScreenshotWindow(application, launchTheme);
+        _screenshotsWindow = new ScreenshotWindow(application, launchTheme, screenshotPath, capturedAt);
         _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
         _screenshotsWindow.Activate();
     }

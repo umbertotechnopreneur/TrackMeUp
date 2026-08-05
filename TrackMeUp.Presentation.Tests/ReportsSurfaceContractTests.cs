@@ -13,7 +13,6 @@ public sealed class ReportsSurfaceContractTests
     public void ReportsWindow_ProvidesMicaHeaderFiltersAndWebView()
     {
         var reports = XDocument.Load(RepositoryFile("TrackMeUp", "ReportsWindow.xaml"));
-        var main = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
 
         Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
         Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "WebView2");
@@ -22,7 +21,6 @@ public sealed class ReportsSurfaceContractTests
         Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "Reports.Motto");
         Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "custom");
         Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "hourOfWeek");
-        Assert.Contains(main.Descendants(), element => element.Attribute("Text")?.Value == "Reports");
     }
 
     [Fact]

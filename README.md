@@ -37,7 +37,7 @@ You control the features that can create or send sensitive material:
 
 - **Screen captures:** off by default. When off, TrackMeUp does not create a screenshot for analysis.
 - **AI analysis:** off by default. When off, no AI service is contacted.
-- **Automatic AI analysis:** off by default. When off, analysis happens only when you ask for it.
+- **Snapshot analysis:** when AI analysis is enabled, every permitted snapshot is analyzed immediately after capture. There is no separate analysis schedule.
 - **Location:** off by default. When enabled, location comes from the Windows Location service and is included only in an AI request.
 - **Privacy rules:** can block an application, a window title, or a context hint before capture and before an AI request.
 - **Retention:** controls how long local activity, AI results, and retained screenshots remain on this PC.
@@ -50,7 +50,7 @@ Read the complete, source-backed data-flow and dependency census in [docs/PRIVAC
 
 OpenAI is the default AI integration. TrackMeUp uses your own OpenAI API key from the Windows environment on this PC.
 
-The key is not copied into TrackMeUp settings, SQLite, reports, logs, command arguments, command history, or local IPC diagnostics. TrackMeUp has no server through which the key is routed. When you explicitly request an OpenAI analysis, the key is used in the direct HTTPS request to OpenAI — it is authentication for that request, not a TrackMeUp credential.
+The key is not copied into TrackMeUp settings, SQLite, reports, logs, command arguments, command history, or local IPC diagnostics. TrackMeUp has no server through which the key is routed. When AI analysis is enabled and TrackMeUp captures a permitted snapshot, the key is used in the direct HTTPS request to OpenAI — it is authentication for that request, not a TrackMeUp credential.
 
 You can set the key from the app or with the hidden-input CLI prompt:
 
@@ -81,8 +81,8 @@ This is a short summary, not a substitute for the [full inventory](docs/PRIVACY.
 Screenshots and AI are separate choices. You can:
 
 1. track activity without taking screenshots;
-2. take a one-off local screen capture without asking an AI service to analyze it;
-3. ask for an AI description without retaining the screenshot;
+2. capture local snapshots without contacting an AI service by leaving AI analysis disabled;
+3. analyze every captured snapshot without retaining the image locally;
 4. disable both features completely;
 5. add privacy rules that block capture and analysis for sensitive work.
 
@@ -115,9 +115,13 @@ Screenshots, AI, and retention mutations are guarded by the same privacy and con
 
 Screenshot gallery validation checklist: open the gallery twice and confirm that only one window is activated, open it from the `Wayback Machine` flyout entry, select another day with the floating WinUI `CalendarDatePicker`, and verify that a manual capture is labeled `Manuale` while an automatic capture is labeled `Pianificato`.
 
-Window-state validation checklist: close and reopen each app window on a multi-monitor setup, confirm that its saved size, position, and monitor are restored, then disconnect or resize the saved monitor and confirm that the restored bounds remain inside the current work area.
+Window-state validation checklist: close and reopen the reports and screenshot windows on a multi-monitor setup, confirm that their saved size, position, and monitor are restored, then disconnect or resize the saved monitor and confirm that the restored bounds remain inside the current work area. Reopen the compact player separately and confirm that its fixed size and configured player position are not overridden by previously saved window geometry.
 
 Taskbar-control validation checklist: launch the unpackaged x64 app and confirm that the player window remains visible while the logo, play/pause glyph, and recording indicator appear immediately in the taskbar; launch it again to confirm the same startup behavior, restart Explorer and confirm that the control returns, then repeat at 100%, 125%, and 150% display scaling.
+
+Player overflow validation checklist: open the overflow menu from the always-visible ellipsis in light and dark themes, confirm that the compact surface contains App options, OpenAI, screenshot, and About only, toggle screen capture off and on, reopen the menu, and confirm that the persisted switch state matches the app options page.
+
+OpenAI settings validation checklist: open OpenAI configuration and confirm that the model is selected from the catalog-backed combo box, the selected model shows its name, key, description, availability, and accent color, and the thinking-effort choices update to match that model. Confirm that no analysis-interval or duplicate privacy callout is shown. With screenshots and AI enabled, capture one snapshot and confirm that exactly one analysis uses that same captured file; disable AI and confirm that snapshots remain local and are not analyzed.
 
 ## Repository map
 

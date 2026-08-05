@@ -1,18 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using TrackMeUp.Runtime;
 using TrackMeUp.Services;
+using Windows.Foundation;
 using Windows.Graphics;
 
 namespace TrackMeUp;
@@ -21,9 +25,9 @@ namespace TrackMeUp;
 public sealed partial class MainWindow : Window
 {
     private const int LogicalWindowWidth = 430;
-    private const int PlayerHeight = 356;
-    private const int ExpandedPlayerHeight = 458;
-    private const int OptionsHeight = 698;
+    private const int PlayerHeight = 342;
+    private const int ExpandedPlayerHeight = 492;
+    private const int OptionsHeight = 650;
     private const int OperationsHeight = 768;
     private const int LogicalScreenMargin = 22;
     private readonly ITrackMeUpApplication _application;
@@ -33,7 +37,6 @@ public sealed partial class MainWindow : Window
     private LocalizationService _strings = new("system");
     private bool _detailsExpanded;
     private bool _updatingMenuState;
-    private bool _windowStateRestored;
     private int _logicalHeight = PlayerHeight;
     private double _rasterizationScale = 1d;
     private string _theme = "system";
@@ -41,6 +44,9 @@ public sealed partial class MainWindow : Window
     private AppSettings? _menuSettings;
     private AboutWindow? _aboutWindow;
     private XamlRoot? _xamlRoot;
+    private string? _latestScreenshotPath;
+    private DateTimeOffset? _latestScreenshotCapturedAt;
+    private bool _screenshotsEnabled;
 
     /// <summary>Occurs when a fully persisted settings snapshot has been applied to the player surface.</summary>
     public event Action<AppSettings>? SettingsApplied;
@@ -49,7 +55,7 @@ public sealed partial class MainWindow : Window
     public event EventHandler? ReportsRequested;
 
     /// <summary>Occurs when the user requests the retained screenshot gallery.</summary>
-    public event EventHandler? ScreenshotsRequested;
+    public event EventHandler<ScreenshotPreviewRequestedEventArgs>? ScreenshotsRequested;
 
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
     public MainWindow(ITrackMeUpApplication application, LaunchOptions options)
@@ -61,6 +67,11 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsResizable = false;
+            presenter.IsMaximizable = false;
+        }
         if (AppWindowTitleBar.IsCustomizationSupported())
         {
             _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
@@ -111,6 +122,68 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>Shows the shared overflow flyout from its title-bar command.</summary>
+    private void TitleBarMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (MoreButton.Flyout is Flyout flyout)
+        {
+            flyout.ShowAt(TitleBarMoreButton);
+        }
+    }
+
+    /// <summary>Delegates compact settings navigation to the active passive view.</summary>
+    private void TitleBarBackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (OptionsPanel.Visibility == Visibility.Visible)
+        {
+            OptionsControl.NavigateBack();
+            return;
+        }
+
+        ShowPlayer();
+    }
+
+    /// <summary>Initializes caption insets and the title-bar button passthrough region after layout.</summary>
+    private void DragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarLayout();
+
+    /// <summary>Keeps caption insets and the title-bar button passthrough region aligned after resizing.</summary>
+    private void DragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarLayout();
+
+    /// <summary>Reserves the native caption area and makes only title-bar commands interactive.</summary>
+    private void UpdateTitleBarLayout()
+    {
+        if (!ExtendsContentIntoTitleBar || DragRegion.XamlRoot is not { } xamlRoot)
+        {
+            return;
+        }
+
+        var scale = xamlRoot.RasterizationScale;
+        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
+        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
+
+        var passthroughRects = new List<RectInt32> { ElementRect(TitleBarMoreButton, scale) };
+        if (TitleBarBackButton.Visibility == Visibility.Visible)
+        {
+            passthroughRects.Add(ElementRect(TitleBarBackButton, scale));
+        }
+
+        // The system keeps the rest of the title bar draggable and owns the caption buttons.
+        InputNonClientPointerSource
+            .GetForWindowId(_appWindow.Id)
+            .SetRegionRects(NonClientRegionKind.Passthrough, passthroughRects.ToArray());
+    }
+
+    private static RectInt32 ElementRect(FrameworkElement element, double scale)
+    {
+        var transform = element.TransformToVisual(null);
+        var bounds = transform.TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+        return new RectInt32(
+            (int)Math.Round(bounds.X * scale),
+            (int)Math.Round(bounds.Y * scale),
+            (int)Math.Round(bounds.Width * scale),
+            (int)Math.Round(bounds.Height * scale));
+    }
+
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
     {
@@ -138,7 +211,9 @@ public sealed partial class MainWindow : Window
         _menuSettings = result.Value;
         _updatingMenuState = true;
         OpenAiMenuToggle.IsOn = result.Value.OpenAiEnabled;
+        ScreenshotsMenuToggle.IsOn = result.Value.ScreenshotsEnabled;
         _updatingMenuState = false;
+
     }
 
     /// <summary>Shows the options view.</summary>
@@ -153,13 +228,6 @@ public sealed partial class MainWindow : Window
     {
         MoreButton.Flyout.Hide();
         ReportsRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    /// <summary>Forwards the Wayback Machine screenshot-gallery request to the application composition root.</summary>
-    private void WaybackMachineMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MoreButton.Flyout.Hide();
-        ScreenshotsRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Shows the operational and diagnostic facade surface.</summary>
@@ -195,29 +263,39 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Captures one snapshot immediately using the current validated snapshot settings.</summary>
-    private async void TakeSnapshotNowMenuItem_Click(object sender, RoutedEventArgs e)
+    /// <summary>Forwards the screenshot-capture toggle to the validated settings application service.</summary>
+    private async void ScreenshotsMenuToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        MoreButton.Flyout.Hide();
-        var settings = _menuSettings;
-        if (settings is null)
-        {
-            var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
-            settings = settingsResult.Value;
-        }
-
-        if (settings is null)
+        if (_updatingMenuState)
         {
             return;
         }
 
-        await _application.CaptureScreenshotAsync(
-            new CaptureScreenshotRequest(
-                settings.ScreenshotCaptureMode,
-                settings.KeepScreenshots,
-                settings.WatermarkScreenshots,
-                ScreenshotCaptureOrigins.Manual),
+        var requestedValue = ScreenshotsMenuToggle.IsOn;
+        var result = await _application.PatchSettingsAsync(
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["screenshots.enabled"] = requestedValue.ToString()
+            }),
             CancellationToken.None);
+
+        if (result.Succeeded && result.Value is not null)
+        {
+            _menuSettings = result.Value;
+            SettingsApplied?.Invoke(result.Value);
+            return;
+        }
+
+        _updatingMenuState = true;
+        ScreenshotsMenuToggle.IsOn = !requestedValue;
+        _updatingMenuState = false;
+    }
+
+    /// <summary>Localizes a compact icon command without replacing its visual content.</summary>
+    private static void ApplyOverflowCommandLabel(Button button, string label)
+    {
+        AutomationProperties.SetName(button, label);
+        ToolTipService.SetToolTip(button, label);
     }
 
     /// <summary>Shows or hides the presentation-only latest-session panel.</summary>
@@ -241,7 +319,21 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Forwards screenshot-gallery activation to the application composition root.</summary>
-    private void ScreenshotPreviewButton_Click(object sender, RoutedEventArgs e) => ScreenshotsRequested?.Invoke(this, EventArgs.Empty);
+    private void ScreenshotPreviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_latestScreenshotPath is not { } screenshotPath || _latestScreenshotCapturedAt is not { } capturedAt)
+        {
+            return;
+        }
+
+        ScreenshotsRequested?.Invoke(this, new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt));
+    }
+
+    private void ScreenshotPreviewButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        => ScreenshotOpenOverlay.Opacity = _latestScreenshotPath is null ? 0 : 1;
+
+    private void ScreenshotPreviewButton_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        => ScreenshotOpenOverlay.Opacity = 0;
 
     /// <summary>Returns from options to the player panel.</summary>
     private void OptionsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
@@ -260,9 +352,11 @@ public sealed partial class MainWindow : Window
         OperationsPanel.Visibility = Visibility.Collapsed;
         AboutPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
+        TitleBarBackButton.Visibility = ReferenceEquals(panel, OptionsPanel) ? Visibility.Visible : Visibility.Collapsed;
         ResizeForLogicalContent(height);
         ApplyFlyoutPosition(_position);
         FadeIn(panel);
+        DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
     }
 
     /// <summary>Restores the player panel.</summary>
@@ -272,9 +366,11 @@ public sealed partial class MainWindow : Window
         OperationsPanel.Visibility = Visibility.Collapsed;
         AboutPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
+        TitleBarBackButton.Visibility = Visibility.Collapsed;
         ResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);
         ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
+        DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
     }
 
     /// <summary>Renders current dashboard values without making application calls.</summary>
@@ -287,17 +383,49 @@ public sealed partial class MainWindow : Window
         ActivityLine.Value = state.Intensity;
         TrackingStateText.Text = T(state.IsTracking ? "StateRunning" : "StatePaused");
         PlayPauseIcon.Glyph = state.IsTracking ? "\uE769" : "\uE768";
+        LocalTimeText.Text = $"Local time {state.LocalTime:HH:mm:ss}";
+        UtcTimeText.Text = $"UTC {state.UtcTime:HH:mm:ss}";
         AutomationProperties.SetName(TrackingButton, state.IsTracking ? "Metti in pausa il monitoraggio" : "Avvia il monitoraggio");
     }
 
-    /// <summary>Renders the latest-session labels without accessing persistence or the file system.</summary>
+    /// <summary>Renders the latest-session labels and the screenshot URI supplied by the application facade.</summary>
     private void UpdateLastSession(LastSessionState? session)
     {
         LastSessionAppText.Text = session?.Application ?? T("NoSession");
         LastSessionDetailText.Text = session?.Timestamp is null ? string.Empty : $"{session.Timestamp:HH:mm} · {session.Context}";
-        LastSessionAttributesText.Text = session?.Attributes is { Count: > 0 } attributes ? string.Join(" · ", attributes.Select(x => $"{x.Key}: {x.Value}")) : string.Empty;
+        if (session?.ScreenshotCapturedAt is { } capturedAt && Uri.TryCreate(session.ScreenshotPath, UriKind.Absolute, out var screenshotUri))
+        {
+            _latestScreenshotPath = session.ScreenshotPath;
+            _latestScreenshotCapturedAt = capturedAt;
+            LastScreenshotImage.Source = new BitmapImage(screenshotUri);
+            LastScreenshotImage.Visibility = Visibility.Visible;
+            ScreenshotPlaceholderImage.Visibility = Visibility.Collapsed;
+            ScreenshotStatusText.Visibility = Visibility.Collapsed;
+            ScreenshotPreviewButton.IsHitTestVisible = true;
+            AutomationProperties.SetName(ScreenshotPreviewButton, "Open latest screenshot");
+            ToolTipService.SetToolTip(ScreenshotPreviewButton, "Open latest screenshot");
+            return;
+        }
+
+        ShowScreenshotPlaceholder();
+    }
+
+    /// <summary>Falls back to the packaged pastoral placeholder when an artifact cannot be rendered.</summary>
+    private void LastScreenshotImage_ImageFailed(object sender, ExceptionRoutedEventArgs e) => ShowScreenshotPlaceholder();
+
+    private void ShowScreenshotPlaceholder()
+    {
+        _latestScreenshotPath = null;
+        _latestScreenshotCapturedAt = null;
+        LastScreenshotImage.Source = null;
         LastScreenshotImage.Visibility = Visibility.Collapsed;
-        ScreenshotPlaceholder.Visibility = Visibility.Visible;
+        ScreenshotPlaceholderImage.Visibility = Visibility.Visible;
+        ScreenshotStatusText.Visibility = Visibility.Visible;
+        ScreenshotStatusText.Text = T(_screenshotsEnabled ? "ScreenshotUnavailableHint" : "ScreenshotDisabledHint");
+        ScreenshotOpenOverlay.Opacity = 0;
+        ScreenshotPreviewButton.IsHitTestVisible = false;
+        AutomationProperties.SetName(ScreenshotPreviewButton, "No captured screenshot");
+        ToolTipService.SetToolTip(ScreenshotPreviewButton, "No captured screenshot");
     }
 
     /// <summary>Applies presentation settings already validated and persisted by the application layer.</summary>
@@ -306,14 +434,16 @@ public sealed partial class MainWindow : Window
         _strings = new LocalizationService(settings.UiLanguage);
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
+        _screenshotsEnabled = settings.ScreenshotsEnabled;
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         UiLocalization.Apply(RootGrid, _strings);
+        if (ScreenshotPlaceholderImage.Visibility == Visibility.Visible)
+        {
+            ScreenshotStatusText.Text = T(_screenshotsEnabled ? "ScreenshotUnavailableHint" : "ScreenshotDisabledHint");
+        }
         OptionsControl.ApplyLanguage(settings.UiLanguage);
         OperationsControl.ApplyLanguage(settings.UiLanguage);
-        if (!_windowStateRestored)
-        {
-            ApplyFlyoutPosition(_position);
-        }
+        ApplyFlyoutPosition(_position);
 
         SettingsApplied?.Invoke(settings);
     }
@@ -328,7 +458,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Starts the player entrance fade.</summary>
-    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    private void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
@@ -338,27 +468,12 @@ public sealed partial class MainWindow : Window
 
         ResizeForLogicalContent(_logicalHeight);
         ApplyFlyoutPosition(_position);
-        if (!_windowStateRestored)
-        {
-            _windowStateRestored = true;
-            var result = await _application.RestoreWindowStateAsync(WindowStateKeys.Main, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
-            if (!result.Succeeded)
-            {
-                throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
-            }
-        }
-
         FadeIn(PlayerPanel);
     }
 
     /// <summary>Keeps the requested WinUI logical size stable when the window crosses displays with different DPI.</summary>
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        if (_windowStateRestored)
-        {
-            return;
-        }
-
         if (Math.Abs(sender.RasterizationScale - _rasterizationScale) < 0.001d)
         {
             return;
@@ -411,14 +526,8 @@ public sealed partial class MainWindow : Window
         _appWindow.Move(new PointInt32(x, y));
     }
 
-    private async void MainWindow_Closed(object sender, WindowEventArgs args)
+    private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
-        var result = await _application.SaveWindowStateAsync(WindowStateKeys.Main, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException($"Window state could not be saved ({result.Code}).");
-        }
-
         if (_xamlRoot is not null)
         {
             _xamlRoot.Changed -= XamlRoot_Changed;
@@ -426,4 +535,12 @@ public sealed partial class MainWindow : Window
 
         _refreshTimer.Stop();
     }
+}
+
+/// <summary>Identifies the retained capture that the screenshot inspector should select.</summary>
+public sealed class ScreenshotPreviewRequestedEventArgs(string screenshotPath, DateTimeOffset capturedAt) : EventArgs
+{
+    public string ScreenshotPath { get; } = screenshotPath;
+
+    public DateTimeOffset CapturedAt { get; } = capturedAt;
 }

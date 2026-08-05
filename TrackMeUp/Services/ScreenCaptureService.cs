@@ -12,10 +12,17 @@ using SkiaSharp;
 
 namespace TrackMeUp.Services;
 
+/// <summary>Captures one validated snapshot pass for application-layer orchestration.</summary>
+public interface IScreenCaptureService
+{
+    /// <summary>Captures the configured screen scope and returns AI and retained artifacts.</summary>
+    ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin);
+}
+
 /// <summary>
 /// Captures desktop images to WEBP for local history and AI context.
 /// </summary>
-public sealed class ScreenCaptureService
+public sealed class ScreenCaptureService : IScreenCaptureService
 {
     private static readonly Regex OwnedArtifactName = new(
         "^[0-9a-f]{32}_[0-9]+\\.[0-9]+\\.[0-9]+_(?:manual|scheduled)_(?:monitor-[1-9][0-9]*|active-window)(?:-raw)?\\.(?:webp|png)$",

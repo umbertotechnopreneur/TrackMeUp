@@ -88,8 +88,9 @@ public sealed class TrackingDomainService : IDisposable
         var intensity = sample?.State == "active"
             ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2)
             : IsTracking ? 5 : 5;
+        var utcNow = DateTimeOffset.UtcNow;
 
-        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, IsTracking, sample?.Timestamp);
+        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, IsTracking, sample?.Timestamp, utcNow.ToLocalTime(), utcNow);
     }
 
     /// <summary>
@@ -103,7 +104,16 @@ public sealed class TrackingDomainService : IDisposable
             return null;
         }
 
-        return new LastSessionState(sample.Timestamp, sample.Application, sample.Context, sample.InstallationId, sample.Attributes, _store.LoadLatestPrimaryScreenshot());
+        var screenshotPath = _store.LoadLatestPrimaryScreenshot();
+        DateTimeOffset? screenshotCapturedAt = screenshotPath is not null && File.Exists(screenshotPath)
+            ? new DateTimeOffset(File.GetLastWriteTimeUtc(screenshotPath), TimeSpan.Zero)
+            : null;
+        if (screenshotCapturedAt is null)
+        {
+            screenshotPath = null;
+        }
+
+        return new LastSessionState(sample.Timestamp, sample.Application, sample.Context, sample.InstallationId, sample.Attributes, screenshotPath, screenshotCapturedAt);
     }
 
     /// <summary>
@@ -152,8 +162,9 @@ public sealed class TrackingDomainService : IDisposable
         var status = sample.State == "active" ? "RUNNING" : "PAUSED";
         var context = sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
         var intensity = sample.State == "active" ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2) : 5;
+        var utcNow = DateTimeOffset.UtcNow;
 
-        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, true, sample.Timestamp);
+        return new DashboardState(status, context, summary.KeyPresses, summary.MouseClicks, summary.ActiveSeconds, intensity, true, sample.Timestamp, utcNow.ToLocalTime(), utcNow);
     }
 
     /// <summary>

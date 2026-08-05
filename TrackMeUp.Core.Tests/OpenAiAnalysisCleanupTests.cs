@@ -1,0 +1,200 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using TrackMeUp.Services;
+using Xunit;
+
+namespace TrackMeUp.Core.Tests;
+
+public sealed class OpenAiAnalysisCleanupTests
+{
+    private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
+
+    [Fact]
+    public async Task RetainedWatermarkedCapture_DeletesRawAnalysisArtifact()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = CreateStore(dataDirectory, openAiEnabled: true);
+            var capture = CreateWatermarkedCapture(dataDirectory);
+            var service = new OpenAiAnalysisService(store, new UnexpectedCaptureService(), decoder: new SuccessfulDecoder());
+
+            var analysis = await service.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: true,
+                origin: "snapshot.manual",
+                CancellationToken.None);
+
+            Assert.False(File.Exists(capture.AnalysisScreenshotPaths[0]));
+            Assert.True(File.Exists(capture.StoredScreenshotPaths[0]));
+            Assert.Equal(capture.StoredScreenshotPaths[0], analysis.ScreenshotPaths);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task InvalidConfigurationBeforeProvider_DeletesTransientCapture()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory, openAiEnabled: false);
+            var capture = CreateWatermarkedCapture(dataDirectory);
+            var service = new OpenAiAnalysisService(store, new UnexpectedCaptureService(), decoder: new SuccessfulDecoder());
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: false,
+                origin: "snapshot.manual",
+                CancellationToken.None));
+
+            Assert.All(capture.AllScreenshotPaths, path => Assert.False(File.Exists(path)));
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Cancellation_ReachesDecoderAndDeletesTransientCapture()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = CreateStore(dataDirectory, openAiEnabled: true);
+            var capture = CreateWatermarkedCapture(dataDirectory);
+            var decoder = new CancellationDecoder();
+            var service = new OpenAiAnalysisService(store, new UnexpectedCaptureService(), decoder: decoder);
+            using var cancellation = new CancellationTokenSource();
+
+            var task = service.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: false,
+                origin: "snapshot.manual",
+                cancellation.Token);
+            await decoder.Entered;
+            cancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+            Assert.True(decoder.CancellationObserved);
+            Assert.All(capture.AllScreenshotPaths, path => Assert.False(File.Exists(path)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    private static LocalStore CreateStore(string dataDirectory, bool openAiEnabled)
+    {
+        var store = new LocalStore(dataDirectory);
+        store.SaveSettings(store.LoadSettings() with
+        {
+            OpenAiEnabled = openAiEnabled,
+            AiApiKeyName = TestApiKeyVariable,
+            IncludeDeviceLocation = false,
+            ScreenshotDirectory = dataDirectory
+        });
+        return store;
+    }
+
+    private static ScreenshotCaptureResult CreateWatermarkedCapture(string directory)
+    {
+        var captureId = Guid.NewGuid().ToString("N");
+        var rawPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1-raw.webp");
+        var storedPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1.webp");
+        File.WriteAllBytes(rawPath, [1, 2, 3]);
+        File.WriteAllBytes(storedPath, [4, 5, 6]);
+        return new ScreenshotCaptureResult(
+            captureId,
+            [rawPath],
+            [storedPath],
+            ScreenshotCaptureOrigins.Manual);
+    }
+
+    private static string CreateTemporaryDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    private sealed class UnexpectedCaptureService : IScreenCaptureService
+    {
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin) =>
+            throw new InvalidOperationException("The supplied capture must be reused.");
+    }
+
+    private sealed class SuccessfulDecoder : IAIDecoder
+    {
+        public string Provider => "openai";
+
+        public Task<AiProviderResult> DecodeAsync(
+            string prompt,
+            IReadOnlyList<string> screenshotPaths,
+            AppSettings settings,
+            string apiKey,
+            string correlationId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AiProviderResult(
+                "analyzed",
+                new AiUsageMetrics(),
+                "response-id",
+                "request-id",
+                settings.Model,
+                "completed",
+                200,
+                1,
+                null));
+    }
+
+    private sealed class CancellationDecoder : IAIDecoder
+    {
+        private readonly TaskCompletionSource<bool> _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public string Provider => "openai";
+
+        public Task Entered => _entered.Task;
+
+        public bool CancellationObserved { get; private set; }
+
+        public async Task<AiProviderResult> DecodeAsync(
+            string prompt,
+            IReadOnlyList<string> screenshotPaths,
+            AppSettings settings,
+            string apiKey,
+            string correlationId,
+            CancellationToken cancellationToken = default)
+        {
+            _entered.TrySetResult(true);
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                throw new InvalidOperationException("Cancellation decoder unexpectedly completed.");
+            }
+            catch (OperationCanceledException)
+            {
+                CancellationObserved = true;
+                throw;
+            }
+        }
+    }
+}

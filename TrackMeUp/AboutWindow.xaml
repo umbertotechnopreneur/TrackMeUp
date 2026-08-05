@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="TrackMeUp.AboutWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -7,86 +8,174 @@
         <MicaBackdrop Kind="Base" />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="RootGrid" Padding="32,28" Background="Transparent" Loaded="RootGrid_Loaded">
+    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.Resources>
-            <Style x:Key="AboutCardStyle" TargetType="Border">
-                <Setter Property="Padding" Value="16" />
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <LinearGradientBrush x:Key="AboutAccentBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FFFFB197" Offset="0" />
+                <GradientStop Color="#FFF27553" Offset="1" />
+            </LinearGradientBrush>
+            <Style x:Key="AboutLinkButtonStyle" TargetType="HyperlinkButton">
+                <Setter Property="MinHeight" Value="44" />
+                <Setter Property="Padding" Value="12,9" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="CornerRadius" Value="7" />
             </Style>
         </Grid.Resources>
+
         <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
-            <StackPanel Spacing="14">
-                <Border Style="{StaticResource AboutCardStyle}">
-                    <StackPanel Spacing="12">
-                        <Image
-                            Width="128"
-                            Height="128"
-                            HorizontalAlignment="Center"
-                            AutomationProperties.Name="TrackMeUp app icon"
-                            Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
+        <Grid
+            x:Name="TitleBarDragRegion"
+            Height="48"
+            Loaded="TitleBarDragRegion_Loaded"
+            SizeChanged="TitleBarDragRegion_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                Grid.Column="1"
+                Margin="28,0,12,0"
+                VerticalAlignment="Center"
+                AutomationProperties.AccessibilityView="Raw"
+                CharacterSpacing="130"
+                FontSize="13"
+                FontWeight="SemiBold"
+                IsHitTestVisible="False"
+                Text="TRACK ME UP" />
+            <TextBlock
+                Grid.Column="3"
+                Margin="12,0,18,5"
+                VerticalAlignment="Center"
+                AutomationProperties.AccessibilityView="Raw"
+                CharacterSpacing="80"
+                FontSize="19"
+                FontWeight="Bold"
+                IsHitTestVisible="False"
+                Text="•••" />
+        </Grid>
 
-                        <StackPanel HorizontalAlignment="Center" Spacing="2">
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                Style="{StaticResource TitleTextBlockStyle}"
-                                Text="TrackMeUp"
-                                TextAlignment="Center" />
-                            <HyperlinkButton
-                                HorizontalAlignment="Center"
-                                Content="github.com/umbertotechnopreneur/TrackMeUp"
-                                NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp" />
-                            <HyperlinkButton
-                                HorizontalAlignment="Center"
-                                Content="umbertogiacobbi.com"
-                                NavigateUri="https://umbertogiacobbi.com" />
-                        </StackPanel>
-                    </StackPanel>
+        <Grid Grid.Row="1" Padding="28,12,28,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid x:Name="ProductPanel" ColumnSpacing="18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="88" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    x:Name="AboutIcon"
+                    Width="88"
+                    Height="88"
+                    Translation="0,0,12"
+                    Background="{StaticResource AboutAccentBrush}"
+                    BorderBrush="#99FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <Viewbox Width="60" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path
+                            Data="M 4,30 L 18,30 L 28,10 L 40,48 L 51,27 L 68,27"
+                            Stroke="White"
+                            StrokeEndLineCap="Round"
+                            StrokeLineJoin="Round"
+                            StrokeStartLineCap="Round"
+                            StrokeThickness="3.2" />
+                    </Viewbox>
                 </Border>
 
-                <Border Style="{StaticResource AboutCardStyle}">
-                    <StackPanel Spacing="12">
-                        <StackPanel HorizontalAlignment="Center" Spacing="2">
-                            <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" TextAlignment="Center" />
-                            <TextBlock x:Name="VersionText" Style="{StaticResource BodyStrongTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <StackPanel HorizontalAlignment="Center" Spacing="2">
-                            <TextBlock Tag="About.Built" Style="{StaticResource CaptionTextBlockStyle}" Text="Built" TextAlignment="Center" />
-                            <TextBlock x:Name="BuiltText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <StackPanel HorizontalAlignment="Center" Spacing="2">
-                            <TextBlock Tag="About.Machine" Style="{StaticResource CaptionTextBlockStyle}" Text="Build machine" TextAlignment="Center" />
-                            <TextBlock x:Name="MachineText" Style="{StaticResource BodyTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <StackPanel HorizontalAlignment="Center" Spacing="2">
-                            <TextBlock Tag="About.Commit" Style="{StaticResource CaptionTextBlockStyle}" Text="Git commit" TextAlignment="Center" />
-                            <HyperlinkButton
-                                x:Name="CommitLink"
-                                Padding="0"
-                                HorizontalAlignment="Center"
-                                Content="—" />
-                        </StackPanel>
-                        <TextBlock x:Name="BuildContextText" HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Text="—" TextAlignment="Center" TextWrapping="Wrap" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                    <TextBlock
+                        FontSize="19"
+                        FontWeight="SemiBold"
+                        Text="TRACK ME UP" />
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
+                        <TextBlock x:Name="VersionText" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
                     </StackPanel>
-                </Border>
+                    <TextBlock
+                        Tag="About.Description"
+                        MaxLines="3"
+                        Opacity="0.82"
+                        Text="Simple desktop activity tracking that respects your privacy."
+                        TextTrimming="WordEllipsis"
+                        TextWrapping="WrapWholeWords" />
+                </StackPanel>
+            </Grid>
+
+            <Rectangle
+                Grid.Row="1"
+                Height="1"
+                Margin="0,18,0,16"
+                Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <Grid x:Name="AboutActions" Grid.Row="2" ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <HyperlinkButton
+                    Grid.Column="0"
+                    AutomationProperties.Name="Contact TrackMeUp"
+                    NavigateUri="https://umbertogiacobbi.com"
+                    Style="{StaticResource AboutLinkButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="16" Glyph="&#xE715;" />
+                        <TextBlock Text="Contact us" />
+                    </StackPanel>
+                </HyperlinkButton>
+
+                <HyperlinkButton
+                    Grid.Column="1"
+                    AutomationProperties.Name="Open the TrackMeUp GitHub repository"
+                    NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp"
+                    Style="{StaticResource AboutLinkButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="16" Glyph="&#xE71B;" />
+                        <TextBlock Text="GitHub repository" />
+                    </StackPanel>
+                </HyperlinkButton>
+            </Grid>
+
+            <StackPanel Grid.Row="3" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Opacity="0.68" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
+                <HyperlinkButton
+                    x:Name="CreatedByLink"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    Content="Umberto Giacobbi"
+                    NavigateUri="https://umbertogiacobbi.com" />
             </StackPanel>
-        </ScrollViewer>
 
-        <Button
-            Tag="About.Close"
-            Grid.Row="1"
-            Margin="0,22,0,0"
-            MinWidth="120"
-            HorizontalAlignment="Right"
-            Click="CloseButton_Click"
-            Content="Close"
-            Style="{StaticResource AccentButtonStyle}" />
+            <Button
+                x:Name="CloseButton"
+                Tag="About.Close"
+                Grid.Row="4"
+                MinHeight="44"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Click="CloseButton_Click"
+                Content="Close" />
+        </Grid>
     </Grid>
 </Window>

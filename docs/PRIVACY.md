@@ -10,7 +10,7 @@ TrackMeUp is an internal tool that we use to make workdays easier to understand 
 - Typed text is never recorded. TrackMeUp records counts, not the content of keys or clicks.
 - Screenshots are off by default and can be disabled completely.
 - AI is off by default and can be disabled completely.
-- Automatic AI analysis is off by default and can be disabled independently.
+- When AI analysis is enabled, every permitted snapshot is analyzed immediately after capture; there is no separate analysis schedule.
 - The OpenAI key is read from the Windows environment on this PC and is not copied into TrackMeUp storage.
 - There is no TrackMeUp cloud service or hidden analytics account.
 - Sentry is optional. It sends diagnostics only when an operator explicitly configures a Sentry DSN.
@@ -97,7 +97,7 @@ TrackMeUp does not hide an AI SDK behind the product. The adapters use .NET `Htt
 - OpenRouter chat completions: `https://openrouter.ai/api/v1/chat/completions`
 - Anthropic Messages API: `https://api.anthropic.com/v1/messages`
 
-Changing provider, endpoint, model, screenshot retention, or automatic analysis is an explicit setting. API keys are never accepted as command-line arguments.
+Changing provider, endpoint, model, thinking effort, screenshot retention, or whether AI analysis is enabled is an explicit setting. When AI analysis is enabled, every permitted snapshot is analyzed as part of that capture. API keys are never accepted as command-line arguments.
 
 ## Sentry and Serilog, without vague wording
 

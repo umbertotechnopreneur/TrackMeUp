@@ -114,8 +114,7 @@ public sealed class SettingsAndRetentionSafetyTests
                 AiOutputDetail: "unbounded",
                 AiReasoningEffort: "extreme",
                 DataRetentionDays: -50,
-                ScreenshotRetentionDays: 50_000,
-                AutomaticAnalysisIntervalMinutes: 0),
+                ScreenshotRetentionDays: 50_000),
             Path.Combine(Path.GetTempPath(), "TrackMeUp", "screenshots"));
 
         Assert.Equal("openai", normalized.AiProvider);
@@ -125,7 +124,6 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Equal("auto", normalized.AiReasoningEffort);
         Assert.Equal(0, normalized.DataRetentionDays);
         Assert.Equal(3650, normalized.ScreenshotRetentionDays);
-        Assert.Equal(1, normalized.AutomaticAnalysisIntervalMinutes);
     }
 
     [Theory]

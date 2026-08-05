@@ -88,7 +88,7 @@ const aiUsage: AiUsageSummary = {
   ],
   byOrigin: [
     { label: 'winui.operations', requestCount: 8, inputTokens: 22000, outputTokens: 3410, totalTokens: 25410, actualCostUsd: 0.082 },
-    { label: 'automatic.timer', requestCount: 5, inputTokens: 13240, outputTokens: 2100, totalTokens: 15340, actualCostUsd: 0.0454 },
+    { label: 'snapshot.scheduled', requestCount: 5, inputTokens: 13240, outputTokens: 2100, totalTokens: 15340, actualCostUsd: 0.0454 },
     { label: 'cli.ai', requestCount: 1, inputTokens: 3000, outputTokens: 500, totalTokens: 3500, actualCostUsd: null },
   ],
 }

@@ -13,12 +13,71 @@
         <Grid
             x:Name="DragRegion"
             Height="48"
-            Padding="12,0,150,0"
-            AutomationProperties.AccessibilityView="Raw">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                <Image Width="20" Height="20" IsHitTestVisible="False" Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
-                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" IsHitTestVisible="False" Text="TrackMeUp" />
-            </StackPanel>
+            Loaded="DragRegion_Loaded"
+            SizeChanged="DragRegion_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <Button
+                x:Name="TitleBarBackButton"
+                Grid.Column="1"
+                Width="40"
+                Height="40"
+                Margin="8,0,0,0"
+                Padding="8"
+                AllowFocusOnInteraction="False"
+                AutomationProperties.Name="Indietro"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="TitleBarBackButton_Click"
+                IsTabStop="False"
+                Visibility="Collapsed">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="17"
+                    Glyph="&#xE72B;" />
+            </Button>
+            <TextBlock
+                Grid.Column="2"
+                Margin="20,0,12,0"
+                VerticalAlignment="Center"
+                AutomationProperties.AccessibilityView="Raw"
+                CharacterSpacing="130"
+                FontSize="13"
+                FontWeight="SemiBold"
+                IsHitTestVisible="False"
+                Text="TRACK ME UP"
+                TextTrimming="CharacterEllipsis" />
+            <Button
+                x:Name="TitleBarMoreButton"
+                Grid.Column="4"
+                Width="46"
+                Height="40"
+                Margin="0,0,8,0"
+                Padding="6,0,6,7"
+                AllowFocusOnInteraction="False"
+                AutomationProperties.Name="Apri menu applicazione"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="TitleBarMoreButton_Click"
+                IsTabStop="False"
+                ToolTipService.ToolTip="Menu">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="M" Modifiers="Menu" />
+                </Button.KeyboardAccelerators>
+                <TextBlock
+                    AutomationProperties.AccessibilityView="Raw"
+                    CharacterSpacing="80"
+                    FontSize="19"
+                    FontWeight="Bold"
+                    Text="•••" />
+            </Button>
         </Grid>
 
         <Border
@@ -27,6 +86,31 @@
             Margin="12"
             Padding="16"
             Background="Transparent">
+            <Border.Resources>
+                <ResourceDictionary>
+                    <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#FFFFAB8D" Offset="0" />
+                        <GradientStop Color="#FFF16F4E" Offset="1" />
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFF16F4E" />
+                    <ResourceDictionary.ThemeDictionaries>
+                        <ResourceDictionary x:Key="Light">
+                            <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FFFFAB8D" Offset="0" />
+                                <GradientStop Color="#FFF16F4E" Offset="1" />
+                            </LinearGradientBrush>
+                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFF16F4E" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="Dark">
+                            <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FF96DDD1" Offset="0" />
+                                <GradientStop Color="#FF55B9A7" Offset="1" />
+                            </LinearGradientBrush>
+                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FF68C9B7" />
+                        </ResourceDictionary>
+                    </ResourceDictionary.ThemeDictionaries>
+                </ResourceDictionary>
+            </Border.Resources>
             <ScrollViewer
                 HorizontalScrollBarVisibility="Disabled"
                 HorizontalScrollMode="Disabled"
@@ -38,27 +122,14 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Grid MinHeight="40">
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            CharacterSpacing="130"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Text="TRACK ME UP"
-                            TextTrimming="CharacterEllipsis" />
-                        <Button
-                            x:Name="MoreButton"
-                            MinWidth="40"
-                            MinHeight="40"
-                            Padding="8"
-                            HorizontalAlignment="Right"
-                            AutomationProperties.Name="Apri menu applicazione"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            ToolTipService.ToolTip="Menu">
+                    <Button
+                        x:Name="MoreButton"
+                        AutomationProperties.Name="Menu applicazione"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Visibility="Collapsed">
                             <FontIcon
                                 AutomationProperties.AccessibilityView="Raw"
                                 FontFamily="Segoe Fluent Icons"
@@ -69,96 +140,139 @@
                                     <Flyout.SystemBackdrop>
                                         <DesktopAcrylicBackdrop />
                                     </Flyout.SystemBackdrop>
-                                    <StackPanel MinWidth="300" Spacing="2">
-                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="App options" Background="Transparent" BorderBrush="Transparent" Click="OptionsMenuItem_Click">
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" /><TextBlock Grid.Column="1" Tag="MenuTitleOptions" VerticalAlignment="Center" Text="App options" /></Grid>
+                                    <Flyout.FlyoutPresenterStyle>
+                                        <Style TargetType="FlyoutPresenter">
+                                            <Setter Property="Padding" Value="10" />
+                                            <Setter Property="CornerRadius" Value="12" />
+                                        </Style>
+                                    </Flyout.FlyoutPresenterStyle>
+                                    <StackPanel Width="224" Spacing="2">
+                                        <StackPanel.Resources>
+                                            <Style x:Key="OverflowMenuButtonStyle" TargetType="Button">
+                                                <Setter Property="MinHeight" Value="42" />
+                                                <Setter Property="Padding" Value="12,7" />
+                                                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Setter Property="BorderBrush" Value="Transparent" />
+                                                <Setter Property="CornerRadius" Value="6" />
+                                            </Style>
+                                        </StackPanel.Resources>
+                                        <Button
+                                            AutomationProperties.Name="App options"
+                                            Click="OptionsMenuItem_Click"
+                                            Style="{StaticResource OverflowMenuButtonStyle}">
+                                            <TextBlock Tag="MenuTitleOptions" VerticalAlignment="Center" Text="App options" />
                                         </Button>
-                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Reports" Background="Transparent" BorderBrush="Transparent" Click="ReportsMenuItem_Click">
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE9D2;" /><TextBlock Grid.Column="1" Tag="Main.Menu.Reports" VerticalAlignment="Center" Text="Reports" /></Grid>
-                                        </Button>
-                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Wayback Machine" Background="Transparent" BorderBrush="Transparent" Click="WaybackMachineMenuItem_Click">
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE81C;" /><TextBlock Grid.Column="1" Tag="Main.Menu.WaybackMachine" VerticalAlignment="Center" Text="Wayback Machine" /></Grid>
-                                        </Button>
-                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Tools and diagnostics" Background="Transparent" BorderBrush="Transparent" Click="OperationsMenuItem_Click">
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE9D9;" /><TextBlock Grid.Column="1" Tag="Main.Menu.Operations" VerticalAlignment="Center" Text="Tools and diagnostics" /></Grid>
-                                        </Button>
-                                        <Grid MinHeight="44" Padding="12,4" ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <FontIcon VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Glyph="&#xE950;" />
-                                            <TextBlock Grid.Column="1" Tag="MenuToggleOpenAi" VerticalAlignment="Center" Text="OpenAI integration" />
-                                            <ToggleSwitch x:Name="OpenAiMenuToggle" Grid.Column="2" MinWidth="0" OffContent="" OnContent="" Toggled="OpenAiMenuToggle_Toggled" />
-                                        </Grid>
-                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="Take snapshot now" Background="Transparent" BorderBrush="Transparent" Click="TakeSnapshotNowMenuItem_Click">
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE722;" /><TextBlock Grid.Column="1" Tag="Main.Menu.TakeSnapshotNow" VerticalAlignment="Center" Text="Take snapshot now" /></Grid>
-                                        </Button>
-                                        <Border Height="1" Margin="0,4" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                        <Button HorizontalContentAlignment="Stretch" AutomationProperties.Name="About" Background="Transparent" BorderBrush="Transparent" Click="AboutMenuItem_Click">
-                                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE946;" /><TextBlock Grid.Column="1" Tag="MenuTitleAbout" VerticalAlignment="Center" Text="About" /></Grid>
+                                        <Border MinHeight="44" Padding="10,4" CornerRadius="6">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Tag="MenuToggleOpenAi" VerticalAlignment="Center" Text="OpenAI integration" />
+                                                <ToggleSwitch x:Name="OpenAiMenuToggle" Grid.Column="1" MinWidth="0" OffContent="" OnContent="" Toggled="OpenAiMenuToggle_Toggled" />
+                                            </Grid>
+                                        </Border>
+                                        <Border MinHeight="44" Padding="10,4" CornerRadius="6">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Tag="MenuToggleScreenshot" VerticalAlignment="Center" Text="Screenshot" />
+                                                <ToggleSwitch x:Name="ScreenshotsMenuToggle" Grid.Column="1" MinWidth="0" OffContent="" OnContent="" Toggled="ScreenshotsMenuToggle_Toggled" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Height="1" Margin="0,5" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                        <Button
+                                            AutomationProperties.Name="About"
+                                            Click="AboutMenuItem_Click"
+                                            Style="{StaticResource OverflowMenuButtonStyle}">
+                                            <TextBlock Tag="MenuTitleAbout" VerticalAlignment="Center" Text="About" />
                                         </Button>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
-                        </Button>
-                    </Grid>
+                    </Button>
 
-                    <Grid Grid.Row="1" ColumnSpacing="16">
+                    <Grid Grid.Row="0" ColumnSpacing="18">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="82" />
+                            <ColumnDefinition Width="92" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Button
                             x:Name="TrackingButton"
-                            Width="72"
-                            Height="72"
+                            Width="84"
+                            Height="84"
                             Padding="0"
                             VerticalAlignment="Center"
                             AutomationProperties.Name="Avvia il monitoraggio"
+                            Background="{ThemeResource PlayerAccentBrush}"
+                            BorderBrush="#D9FFFFFF"
+                            BorderThickness="2"
                             Click="TrackingButton_Click"
-                            CornerRadius="36"
-                            Style="{StaticResource AccentButtonStyle}">
+                            CornerRadius="42"
+                            Translation="0,0,16">
+                            <Button.Shadow>
+                                <ThemeShadow />
+                            </Button.Shadow>
                             <FontIcon
                                 x:Name="PlayPauseIcon"
                                 AutomationProperties.AccessibilityView="Raw"
                                 FontFamily="Segoe Fluent Icons"
-                                FontSize="27"
+                                FontSize="30"
                                 Foreground="White"
                                 Glyph="&#xE768;" />
                         </Button>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                             <TextBlock
                                 x:Name="TrackingStateText"
                                 AutomationProperties.LiveSetting="Polite"
                                 CharacterSpacing="80"
-                                FontSize="12"
+                                FontSize="14"
                                 FontWeight="SemiBold"
+                                Foreground="{ThemeResource PlayerAccentTextBrush}"
                                 Text="IN PAUSA" />
                             <TextBlock
                                 x:Name="ElapsedText"
-                                FontSize="31"
-                                FontWeight="SemiBold"
+                                FontSize="36"
+                                FontWeight="Normal"
                                 Text="00:00" />
                             <TextBlock
                                 x:Name="CurrentContextText"
                                 AutomationProperties.LiveSetting="Polite"
                                 FontSize="12"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                MaxLines="2"
+                                MaxLines="1"
                                 Text="Pronto a misurare il tuo tempo"
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="Wrap" />
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Grid.Row="2" Spacing="10">
-                        <ProgressBar
-                            x:Name="ActivityLine"
-                            Height="3"
-                            AutomationProperties.Name="Intensità attività corrente"
-                            Background="{ThemeResource ControlFillColorDefaultBrush}"
-                            Foreground="{ThemeResource ActivityLineBrush}"
-                            Maximum="100"
-                            Value="0" />
-                        <Grid ColumnSpacing="6">
+                    <StackPanel Grid.Row="1" Spacing="8">
+                        <Grid Height="26">
+                            <Path
+                                Margin="0,3,0,4"
+                                AutomationProperties.AccessibilityView="Raw"
+                                Data="M 0,15 C 12,15 12,9 24,10 S 42,19 56,14 S 74,5 90,13 S 108,18 122,12 S 142,6 158,14 S 180,19 196,11 S 218,8 234,14 S 256,18 272,10 S 294,6 310,14 S 330,12 344,13"
+                                Stretch="Fill"
+                                Stroke="{ThemeResource PlayerAccentTextBrush}"
+                                StrokeLineJoin="Round"
+                                StrokeThickness="1.5" />
+                            <ProgressBar
+                                x:Name="ActivityLine"
+                                Height="2"
+                                VerticalAlignment="Bottom"
+                                AutomationProperties.Name="Intensità attività corrente"
+                                Background="Transparent"
+                                Foreground="{ThemeResource PlayerAccentBrush}"
+                                Maximum="100"
+                                Value="0" />
+                        </Grid>
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <Grid Margin="0,2,0,0" ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="1" />
@@ -166,27 +280,27 @@
                                 <ColumnDefinition Width="1" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE765;" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE765;" />
                                 <StackPanel>
-                                    <TextBlock Tag="KeysLabel" Style="{StaticResource CaptionTextBlockStyle}" Text="KEYS" />
-                                    <TextBlock x:Name="KeyCountText" FontWeight="SemiBold" Text="0" />
+                                    <TextBlock Tag="KeysLabel" CharacterSpacing="80" FontSize="10" Text="KEYS" />
+                                    <TextBlock x:Name="KeyCountText" FontSize="19" FontWeight="SemiBold" Text="0" />
                                 </StackPanel>
                             </StackPanel>
-                            <Rectangle Grid.Column="1" Width="1" Height="25" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                            <StackPanel Grid.Column="2" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE962;" />
+                            <Rectangle Grid.Column="1" Width="1" Height="34" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE962;" />
                                 <StackPanel>
-                                    <TextBlock Tag="ClicksLabel" Style="{StaticResource CaptionTextBlockStyle}" Text="CLICKS" />
-                                    <TextBlock x:Name="ClickCountText" FontWeight="SemiBold" Text="0" />
+                                    <TextBlock Tag="ClicksLabel" CharacterSpacing="80" FontSize="10" Text="CLICKS" />
+                                    <TextBlock x:Name="ClickCountText" FontSize="19" FontWeight="SemiBold" Text="0" />
                                 </StackPanel>
                             </StackPanel>
-                            <Rectangle Grid.Column="3" Width="1" Height="25" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                            <StackPanel Grid.Column="4" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE823;" />
+                            <Rectangle Grid.Column="3" Width="1" Height="34" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <StackPanel Grid.Column="4" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE823;" />
                                 <StackPanel>
-                                    <TextBlock Tag="ActiveLabel" Style="{StaticResource CaptionTextBlockStyle}" Text="ACTIVE" />
-                                    <TextBlock x:Name="ActiveTimeText" FontWeight="SemiBold" Text="0 min" />
+                                    <TextBlock Tag="ActiveLabel" CharacterSpacing="80" FontSize="10" Text="ACTIVE" />
+                                    <TextBlock x:Name="ActiveTimeText" FontSize="17" FontWeight="SemiBold" Text="0 min" />
                                 </StackPanel>
                             </StackPanel>
                         </Grid>
@@ -194,7 +308,7 @@
 
                     <Button
                         x:Name="DetailsButton"
-                        Grid.Row="3"
+                        Grid.Row="2"
                         MinWidth="44"
                         MinHeight="36"
                         Padding="8,3"
@@ -212,49 +326,144 @@
                             Glyph="&#xE70D;" />
                     </Button>
 
-                    <Grid x:Name="DetailsPanel" Grid.Row="4" Margin="0,0,0,2" ColumnSpacing="12" Visibility="Collapsed">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="112" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center" Spacing="3">
-                            <TextBlock Tag="LastSessionTitle" Style="{StaticResource CaptionTextBlockStyle}" Text="LAST SESSION" />
-                            <TextBlock x:Name="LastSessionAppText" FontWeight="SemiBold" MaxLines="2" Text="No session recorded" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
-                            <TextBlock x:Name="LastSessionDetailText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
-                            <TextBlock x:Name="LastSessionAttributesText" Style="{StaticResource CaptionTextBlockStyle}" MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <Button
-                            x:Name="ScreenshotPreviewButton"
-                            Grid.Column="1"
-                            Padding="0"
-                            AutomationProperties.Name="Apri galleria screenshot"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Click="ScreenshotPreviewButton_Click"
-                            ToolTipService.ToolTip="Apri galleria screenshot">
-                            <Border
+                    <Grid x:Name="DetailsPanel" Grid.Row="3" Margin="0,0,0,2" RowSpacing="12" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="1" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="36" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="112" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <FontIcon
+                                Grid.RowSpan="2"
+                                VerticalAlignment="Top"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="26"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Glyph="&#xE7F4;" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock
+                                    x:Name="LastSessionAppText"
+                                    FontWeight="SemiBold"
+                                    MaxLines="1"
+                                    Text="No session recorded"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    x:Name="LastSessionDetailText"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    MaxLines="1"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock
+                                x:Name="ScreenshotStatusText"
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Tag="ScreenshotDisabledHint"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Screen captures are off"
+                                TextTrimming="CharacterEllipsis" />
+                            <Button
+                                x:Name="ScreenshotPreviewButton"
+                                Grid.RowSpan="2"
+                                Grid.Column="2"
                                 Width="112"
-                                Height="62"
-                                Padding="1"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                Translation="0,0,12">
-                                <Border.Shadow>
-                                    <ThemeShadow />
-                                </Border.Shadow>
-                                <Grid>
-                                    <Image x:Name="LastScreenshotImage" AutomationProperties.AccessibilityView="Raw" Stretch="UniformToFill" Visibility="Collapsed" />
-                                    <Border x:Name="ScreenshotPlaceholder" Background="{ThemeResource ControlFillColorSecondaryBrush}" CornerRadius="8">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE722;" />
-                                            <TextBlock Tag="ScreenshotDisabledHint" Style="{StaticResource CaptionTextBlockStyle}" Text="Snapshots disabled" TextAlignment="Center" />
-                                        </StackPanel>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                        </Button>
+                                Height="64"
+                                Padding="0"
+                                VerticalAlignment="Top"
+                                AutomationProperties.Name="Apri galleria screenshot"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                Click="ScreenshotPreviewButton_Click"
+                                PointerEntered="ScreenshotPreviewButton_PointerEntered"
+                                PointerExited="ScreenshotPreviewButton_PointerExited"
+                                ToolTipService.ToolTip="Apri galleria screenshot">
+                                <Border
+                                    Width="112"
+                                    Height="64"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Translation="0,0,10">
+                                    <Border.Shadow>
+                                        <ThemeShadow />
+                                    </Border.Shadow>
+                                    <Grid>
+                                        <Image
+                                            x:Name="ScreenshotPlaceholderImage"
+                                            AutomationProperties.Name="Snapshot placeholder"
+                                            Source="ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png"
+                                            Stretch="UniformToFill" />
+                                        <Image
+                                            x:Name="LastScreenshotImage"
+                                            AutomationProperties.Name="Latest snapshot"
+                                            ImageFailed="LastScreenshotImage_ImageFailed"
+                                            Stretch="UniformToFill"
+                                            Visibility="Collapsed" />
+                                        <Border
+                                            x:Name="ScreenshotOpenOverlay"
+                                            Width="27"
+                                            Height="27"
+                                            Margin="0,0,6,6"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            IsHitTestVisible="False"
+                                            Opacity="0">
+                                            <FontIcon
+                                                AutomationProperties.AccessibilityView="Raw"
+                                                FontFamily="Segoe Fluent Icons"
+                                                FontSize="13"
+                                                Glyph="&#xE8A7;" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </Button>
+                        </Grid>
+                        <Grid Grid.Row="2" Margin="0,6,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="1" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Border Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <Grid Grid.Row="1" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="LocalTimeText"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Local time"
+                                    FontSize="11"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Opacity="0.82"
+                                    Text="Local time --:--:--" />
+                                <TextBlock
+                                    x:Name="UtcTimeText"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Right"
+                                    AutomationProperties.Name="UTC time"
+                                    FontSize="11"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Opacity="0.82"
+                                    Text="UTC --:--:--" />
+                            </Grid>
+                        </Grid>
                     </Grid>
                 </Grid>
             </ScrollViewer>

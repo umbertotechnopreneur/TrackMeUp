@@ -34,21 +34,55 @@ public sealed partial class ScreenshotWindow : Window
     private string _theme = "system";
     private bool _initialized;
     private bool _windowStateRestored;
+    private bool _settingSelectedDate;
+    private string? _requestedScreenshotPath;
 
     /// <summary>Creates the Mica screenshot inspector backed by the shared application facade.</summary>
-    public ScreenshotWindow(ITrackMeUpApplication application, string? launchTheme = null)
+    public ScreenshotWindow(
+        ITrackMeUpApplication application,
+        string? launchTheme = null,
+        string? requestedScreenshotPath = null,
+        DateTimeOffset? requestedCapturedAt = null)
     {
+        if ((requestedScreenshotPath is null) != (requestedCapturedAt is null))
+        {
+            throw new ArgumentException("A targeted screenshot requires both its path and capture timestamp.");
+        }
+
+        if (requestedScreenshotPath is not null && string.IsNullOrWhiteSpace(requestedScreenshotPath))
+        {
+            throw new ArgumentException("The targeted screenshot path cannot be empty.", nameof(requestedScreenshotPath));
+        }
+
         _application = application;
         _launchTheme = launchTheme;
+        _requestedScreenshotPath = requestedScreenshotPath;
+        if (requestedCapturedAt is { } capturedAt)
+        {
+            _selectedDate = DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime);
+        }
         InitializeComponent();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
-        SelectedDatePicker.Date = new DateTimeOffset(_selectedDate.ToDateTime(TimeOnly.MinValue));
+        SetSelectedDate(_selectedDate);
         ApplyTheme(_theme);
         ResizeForLogicalContent();
         Closed += ScreenshotWindow_Closed;
+    }
+
+    /// <summary>Selects a retained capture when an already-open inspector is reused.</summary>
+    public async Task FocusScreenshotAsync(string screenshotPath, DateTimeOffset capturedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(screenshotPath);
+        _requestedScreenshotPath = screenshotPath;
+        var selectedDate = DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime);
+        SetSelectedDate(selectedDate);
+        if (_initialized)
+        {
+            await LoadGalleryAsync(selectedDate);
+        }
     }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
@@ -112,7 +146,7 @@ public sealed partial class ScreenshotWindow : Window
 
     private async void SelectedDatePicker_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
     {
-        if (!_initialized || args.NewDate is not { } newDate)
+        if (_settingSelectedDate || !_initialized || args.NewDate is not { } newDate)
         {
             return;
         }
@@ -145,6 +179,7 @@ public sealed partial class ScreenshotWindow : Window
             }
 
             _items = result.Value.Items;
+            SelectRequestedScreenshot();
             RenderGallery(null);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -161,6 +196,39 @@ public sealed partial class ScreenshotWindow : Window
             if (!cancellationToken.IsCancellationRequested)
             {
                 SetLoading(false);
+            }
+        }
+    }
+
+    private void SetSelectedDate(DateOnly date)
+    {
+        _selectedDate = date;
+        _settingSelectedDate = true;
+        try
+        {
+            SelectedDatePicker.Date = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue));
+        }
+        finally
+        {
+            _settingSelectedDate = false;
+        }
+    }
+
+    private void SelectRequestedScreenshot()
+    {
+        if (_requestedScreenshotPath is not { } requestedPath)
+        {
+            return;
+        }
+
+        var requestedFullPath = Path.GetFullPath(requestedPath);
+        for (var index = 0; index < _items.Count; index++)
+        {
+            if (string.Equals(Path.GetFullPath(_items[index].Path), requestedFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                _selectedIndex = index;
+                _requestedScreenshotPath = null;
+                return;
             }
         }
     }

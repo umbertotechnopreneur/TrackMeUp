@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TrackMeUp.Services;
@@ -24,18 +25,26 @@ public sealed class OpenRouterDecoder : IAIDecoder
     /// <summary>
     /// Sends one request to OpenRouter endpoint.
     /// </summary>
+    /// <param name="prompt">Prompt to send.</param>
+    /// <param name="screenshotPaths">Optional screenshot paths.</param>
+    /// <param name="settings">Current settings.</param>
+    /// <param name="apiKey">Resolved API key.</param>
+    /// <param name="correlationId">Business correlation identifier for the snapshot.</param>
+    /// <param name="cancellationToken">Cancels local file reads and the provider request.</param>
+    /// <returns>Model output plus nullable provider telemetry.</returns>
     public async Task<AiProviderResult> DecodeAsync(
         string prompt,
         IReadOnlyList<string> screenshotPaths,
         AppSettings settings,
         string apiKey,
-        string correlationId)
+        string correlationId,
+        CancellationToken cancellationToken = default)
     {
         _ = correlationId; // Correlation remains local because this endpoint documents no generic client-request header.
         var imageDataUrls = new List<string>();
         foreach (var screenshot in screenshotPaths)
         {
-            var image = Convert.ToBase64String(await File.ReadAllBytesAsync(screenshot));
+            var image = Convert.ToBase64String(await File.ReadAllBytesAsync(screenshot, cancellationToken));
             imageDataUrls.Add($"data:image/webp;base64,{image}");
         }
 
@@ -49,8 +58,8 @@ public sealed class OpenRouterDecoder : IAIDecoder
         var timer = AiProviderTelemetry.StartTimer();
         try
         {
-            using var response = await Http.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            using var response = await Http.SendAsync(request, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             timer.Stop();
             var providerRequestId = AiProviderTelemetry.Header(response, "x-request-id");
             var providerResponseId = ReadResponseId(responseBody);
@@ -81,6 +90,10 @@ public sealed class OpenRouterDecoder : IAIDecoder
                 null);
         }
         catch (AiProviderRequestException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }

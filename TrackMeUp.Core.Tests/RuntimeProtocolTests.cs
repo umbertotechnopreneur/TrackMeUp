@@ -113,6 +113,25 @@ public sealed class RuntimeProtocolTests
         await proxy.ReportCancelled.Task.WaitAsync(TimeSpan.FromSeconds(3));
     }
 
+    [Fact]
+    public async Task AiModelCatalog_RoundTripsThroughTheRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, CatalogRuntimeProxy>();
+        var installationId = $"catalog-runtime-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+
+        var result = await client.GetAiModelCatalogAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Value);
+        Assert.Equal(1, result.Value.SchemaVersion);
+        var model = Assert.Single(result.Value.Models);
+        Assert.Equal("gpt-test", model.Key);
+        Assert.Equal(["auto", "low"], model.SupportedThinkingEfforts);
+    }
+
     public class ConcurrentRuntimeProxy : DispatchProxy
     {
         public TaskCompletionSource<bool> ReportStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -146,6 +165,26 @@ public sealed class RuntimeProtocolTests
                 ReportCancelled.TrySetResult(true);
                 throw;
             }
+        }
+    }
+
+    public class CatalogRuntimeProxy : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetAiModelCatalogAsync) => Task.FromResult(
+                    OperationResult<AiModelCatalogSnapshot>.Success(
+                        "ai.models.loaded",
+                        "AiModelsLoaded",
+                        new AiModelCatalogSnapshot(
+                            1,
+                            [new AiModelDescriptor("gpt-test", ["gpt-test-alias"], "Test", "Test model", "#123456", ["auto", "low"], true, "general", false)]))),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
         }
     }
 }

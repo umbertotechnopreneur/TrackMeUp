@@ -70,7 +70,7 @@ public sealed class ReportAggregationTests
             var firstRequest = AiUsage(
                 occurredAt,
                 "openrouter",
-                "automatic.timer",
+                "snapshot.scheduled",
                 success: true,
                 usage: new AiUsageMetrics(
                     InputTokens: 100,
@@ -97,13 +97,13 @@ public sealed class ReportAggregationTests
             store.AppendAiUsage(AiUsage(
                 occurredAt.AddMinutes(2),
                 "openrouter",
-                "automatic.timer",
+                "snapshot.scheduled",
                 success: false,
                 usage: new AiUsageMetrics()));
             var outOfRangeRequest = AiUsage(
                 occurredAt.AddDays(-1),
                 "openrouter",
-                "automatic.timer",
+                "snapshot.scheduled",
                 success: true,
                 usage: new AiUsageMetrics(InputTokens: 999, ReportedCostUsd: 9.99m));
             store.AppendAiAnalysisAndUsage(outOfRangeRequest, AnalysisFor(outOfRangeRequest));
@@ -148,7 +148,7 @@ public sealed class ReportAggregationTests
                 usage.ByOrigin,
                 automatic =>
                 {
-                    Assert.Equal("automatic.timer", automatic.Label);
+                    Assert.Equal("snapshot.scheduled", automatic.Label);
                     Assert.Equal(2, automatic.RequestCount);
                     Assert.Equal(0.015m, automatic.ActualCostUsd);
                 },
@@ -170,7 +170,7 @@ public sealed class ReportAggregationTests
             var request = AiUsage(
                 now.AddDays(-10),
                 "openrouter",
-                "automatic.timer",
+                "snapshot.scheduled",
                 success: true,
                 usage: new AiUsageMetrics(InputTokens: 10, OutputTokens: 2, TotalTokens: 12));
             var analysis = AnalysisFor(request) with { Timestamp = now };

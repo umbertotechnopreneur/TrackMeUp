@@ -33,8 +33,7 @@ public static class SettingsCatalog
         Boolean("screenshots.watermark", "Add the local audit watermark to retained screenshots."),
         Choice("screenshots.mode", "Select all displays or only the active window.", ScreenshotModes),
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
-        Boolean("ai.enabled", "Enable AI analysis after privacy and cost checks."),
-        Boolean("ai.automatic", "Run AI analysis periodically while tracking."),
+        Boolean("ai.enabled", "Analyze every captured snapshot after privacy and cost checks."),
         Choice("ai.provider", "AI provider used for screenshot analysis.", Providers),
         Text("ai.model", "Provider model identifier."),
         Text("ai.endpoint", "HTTPS provider endpoint; loopback HTTP is allowed for local testing.", "uri"),
@@ -44,7 +43,6 @@ public static class SettingsCatalog
         Text("ai.custom_prompt", "Optional user instruction appended after the built-in screenshot prompt; empty keeps only the built-in prompt.", "multiline"),
         Boolean("ai.include_device_location", "Include Windows-provided latitude and longitude in AI snapshots only when location access is available."),
         Integer("ai.daily_limit", "Maximum AI analyses per local day."),
-        Integer("ai.automatic_interval_minutes", "Minutes between automatic analyses."),
         Decimal("ai.estimated_cost_per_analysis_usd", "Estimated cost used by the local guardrail."),
         Decimal("ai.estimated_cost_per_screenshot_usd", "Estimated screenshot cost used by the local guardrail."),
         Boolean("ai.show_cost_guardrail", "Include local cost guardrail state in status output."),
@@ -96,7 +94,6 @@ public static class SettingsCatalog
             "screenshots.mode" => settings.ScreenshotCaptureMode,
             "screenshots.directory" => settings.ScreenshotDirectory,
             "ai.enabled" => settings.OpenAiEnabled,
-            "ai.automatic" => settings.AutomaticAnalysis,
             "ai.provider" => settings.AiProvider,
             "ai.model" => settings.Model,
             "ai.endpoint" => settings.AiEndpoint,
@@ -106,7 +103,6 @@ public static class SettingsCatalog
             "ai.custom_prompt" => settings.AiCustomPrompt,
             "ai.include_device_location" => settings.IncludeDeviceLocation,
             "ai.daily_limit" => settings.OpenAiDailyLimit,
-            "ai.automatic_interval_minutes" => settings.AutomaticAnalysisIntervalMinutes,
             "ai.estimated_cost_per_analysis_usd" => settings.EstimatedCostPerAnalysisUsd,
             "ai.estimated_cost_per_screenshot_usd" => settings.EstimatedCostPerScreenshotUsd,
             "ai.show_cost_guardrail" => settings.ShowCostGuardrailInStatus,
@@ -202,7 +198,6 @@ public static class SettingsCatalog
                 case "screenshots.mode" when Canonical(ScreenshotModes, value) is { } screenshotMode: current = current with { ScreenshotCaptureMode = screenshotMode }; break;
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
                 case "ai.enabled" when TryBoolean(value, out var enabled): current = current with { OpenAiEnabled = enabled }; break;
-                case "ai.automatic" when TryBoolean(value, out var automatic): current = current with { AutomaticAnalysis = automatic }; break;
                 case "ai.model" when !string.IsNullOrWhiteSpace(value) && value.Length <= 200: current = current with { Model = value }; break;
                 case "ai.endpoint" when IsAllowedEndpoint(value): current = current with { AiEndpoint = value! }; break;
                 case "ai.key_variable" when Canonical(ApiKeyVariables, value) is { } keyVariable: current = current with { AiApiKeyName = keyVariable }; break;
@@ -211,7 +206,6 @@ public static class SettingsCatalog
                 case "ai.custom_prompt" when TryNormalizeCustomPrompt(rawValue, out var customPrompt): current = current with { AiCustomPrompt = customPrompt }; break;
                 case "ai.include_device_location" when TryBoolean(value, out var includeDeviceLocation): current = current with { IncludeDeviceLocation = includeDeviceLocation }; break;
                 case "ai.daily_limit" when TryInteger(value, 0, 10_000, out var dailyLimit): current = current with { OpenAiDailyLimit = dailyLimit }; break;
-                case "ai.automatic_interval_minutes" when TryInteger(value, 1, 240, out var interval): current = current with { AutomaticAnalysisIntervalMinutes = interval }; break;
                 case "ai.estimated_cost_per_analysis_usd" when TryDecimal(value, 0m, 1_000m, out var analysisCost): current = current with { EstimatedCostPerAnalysisUsd = analysisCost }; break;
                 case "ai.estimated_cost_per_screenshot_usd" when TryDecimal(value, 0m, 1_000m, out var screenshotCost): current = current with { EstimatedCostPerScreenshotUsd = screenshotCost }; break;
                 case "ai.show_cost_guardrail" when TryBoolean(value, out var showGuardrail): current = current with { ShowCostGuardrailInStatus = showGuardrail }; break;
@@ -280,7 +274,6 @@ public static class SettingsCatalog
             DataRetentionDays = Math.Clamp(settings.DataRetentionDays, 0, 3650),
             ScreenshotRetentionDays = Math.Clamp(settings.ScreenshotRetentionDays, 0, 3650),
             OpenAiDailyLimit = Math.Clamp(settings.OpenAiDailyLimit, 0, 10_000),
-            AutomaticAnalysisIntervalMinutes = Math.Clamp(settings.AutomaticAnalysisIntervalMinutes, 1, 240),
             OpenAiDailyCostUsd = Math.Max(0m, settings.OpenAiDailyCostUsd),
             EstimatedCostPerAnalysisUsd = Math.Clamp(settings.EstimatedCostPerAnalysisUsd, 0m, 1_000m),
             EstimatedCostPerScreenshotUsd = Math.Clamp(settings.EstimatedCostPerScreenshotUsd, 0m, 1_000m),

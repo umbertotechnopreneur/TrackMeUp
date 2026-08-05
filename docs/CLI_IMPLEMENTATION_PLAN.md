@@ -168,7 +168,7 @@ Dialogs receive immutable presentation models and return a typed user decision. 
 
 ## 8. Runtime ownership and IPC
 
-Only one runtime may own input hooks, activity sampling, settings writes, retention, and automatic analysis for an installation.
+Only one runtime may own input hooks, activity sampling, settings writes, retention, and snapshot analysis for an installation.
 
 Use a per-installation named mutex and a same-user named pipe. Derive names from a SHA-256 hash of the installation ID; do not put the raw machine name or full installation ID in kernel object names.
 

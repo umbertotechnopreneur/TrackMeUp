@@ -170,7 +170,8 @@ public sealed class CliRouterTests
         {
             TotalCalls++;
             DashboardReads++;
-            return Success(new DashboardState("PAUSED", "Ready", 0, 0, 0, 0, false, null), "dashboard.loaded");
+            var utcNow = new DateTimeOffset(2026, 8, 5, 15, 0, 0, TimeSpan.Zero);
+            return Success(new DashboardState("PAUSED", "Ready", 0, 0, 0, 0, false, null, utcNow.ToLocalTime(), utcNow), "dashboard.loaded");
         }
 
         public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken)
@@ -216,12 +217,14 @@ public sealed class CliRouterTests
         public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => Unsupported<string>();
+        public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken)
         {
             TotalCalls++;
             AiStatusReads++;
             return Success(new AiStatus(false, "openai", "gpt-5.6", "https://api.openai.com/v1/responses", "OPENAI_API_KEY", false, new AnalysisCostGate(true, null, 0m, 0, 0m)), "ai.status.loaded");
         }
+        public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => Unsupported<AiModelCatalogSnapshot>();
         public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => Unsupported<AiStatus>();
         public Task<OperationResult<AppSettings>> ConfigureAiAsync(SettingsPatch patch, CancellationToken cancellationToken)
         {

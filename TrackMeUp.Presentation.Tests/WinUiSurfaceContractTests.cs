@@ -19,42 +19,147 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void CompactSurfaces_ProvideScrollingAndAdaptiveOptions()
+    public void CompactSurfaces_ScrollWhereNeededAndKeepAboutFixed()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
         var about = XDocument.Load(RepositoryFile("TrackMeUp", "AboutWindow.xaml"));
+        var aboutSource = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
 
         Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ScrollViewer");
-        Assert.Contains(options.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "ScrollViewer"));
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
-        Assert.Contains(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "Expander");
+        Assert.Contains(about.Descendants(), element => HasName(element, "AboutIcon") && element.Attribute("CornerRadius")?.Value == "20");
+        Assert.Contains(about.Descendants(), element => HasName(element, "CreatedByLink") && element.Attribute("Content")?.Value == "Umberto Giacobbi");
+        Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Stretch");
+        Assert.Contains("private const int LogicalWindowWidth = 430;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowHeight = 450;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsResizable = false;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsMaximizable = false;", aboutSource, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void SettingsAndOperations_UseNativeTypographyInsteadOfCardHierarchy()
+    public void SettingsAndOperations_KeepFlatHierarchyWithScopedModelFeedback()
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
 
         Assert.DoesNotContain(options.Descendants(), element => element.Name.LocalName == "Expander");
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "Expander");
-        Assert.DoesNotContain(options.Descendants(), element => element.Attribute("CornerRadius") is not null);
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("CornerRadius") is not null);
-        Assert.Contains(options.Descendants(), element => element.Attribute("Style")?.Value.Contains("TitleTextBlockStyle", StringComparison.Ordinal) == true);
+        Assert.Contains(options.Descendants(), element => element.Attribute("Style")?.Value.Contains("BodyStrongTextBlockStyle", StringComparison.Ordinal) == true);
+        Assert.Contains(options.Descendants(), element => element.Attribute("Style")?.Value.Contains("SubtitleTextBlockStyle", StringComparison.Ordinal) == true);
         Assert.Contains(operations.Descendants(), element => element.Attribute("Style")?.Value.Contains("SubtitleTextBlockStyle", StringComparison.Ordinal) == true);
+        Assert.Contains(options.Descendants(), element => HasName(element, "ModelInfoCard") && element.Attribute("CornerRadius")?.Value == "6");
+        Assert.Contains(options.Descendants(), element => HasName(element, "ModelAccentBar") && element.Attribute("CornerRadius")?.Value == "2");
+        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
+        Assert.Contains(options.Descendants(), element => element.Name.LocalName == "Border" && element.Attribute("Padding")?.Value == "0,10,18,0");
+        var openFolderButton = options.Descendants().Single(element => HasName(element, "OpenScreenshotFolderButton"));
+        Assert.Null(openFolderButton.Attribute("Content"));
+        Assert.Contains(openFolderButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE8A7");
+        var keepScreenshots = options.Descendants().Single(element => HasName(element, "KeepScreenshotsSwitch"));
+        Assert.Equal("Right", keepScreenshots.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("0", keepScreenshots.Attribute("MinWidth")?.Value);
     }
 
     [Fact]
-    public void MainMenu_UsesNativeSwitchAndSnapshotProductWording()
+    public void OpenAiOptions_UseCatalogPickerAndPerSnapshotLayout()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var aiView = options.Descendants().Single(element => HasName(element, "AiOptionsView"));
+        var modelPicker = options.Descendants().Single(element => HasName(element, "ModelBox"));
+        var thinkingEffortPicker = options.Descendants().Single(element => HasName(element, "AiReasoningEffortBox"));
+
+        Assert.Equal("ComboBox", modelPicker.Name.LocalName);
+        Assert.Equal("Options.Model", modelPicker.Attribute("Tag")?.Value);
+        Assert.Contains(modelPicker.Descendants(), element => element.Name.LocalName == "DataTemplate");
+        Assert.Contains(modelPicker.Descendants(), element => element.Attribute("Background")?.Value == "{Binding AccentBrush}");
+        Assert.Equal("ComboBox", thinkingEffortPicker.Name.LocalName);
+        Assert.Equal("Options.Reasoning", thinkingEffortPicker.Attribute("Tag")?.Value);
+        Assert.Contains(thinkingEffortPicker.Ancestors(), element => ReferenceEquals(element, aiView));
+        Assert.DoesNotContain(thinkingEffortPicker.Ancestors(), element => HasName(element, "AiAdvancedPanel"));
+        Assert.DoesNotContain(options.Descendants(), element =>
+            HasName(element, "AnalysisIntervalBox") || HasName(element, "AutomaticAnalysisBox"));
+        Assert.DoesNotContain(options.Descendants(), element =>
+            element.Attribute("Tag")?.Value.Contains("AnalysisInterval", StringComparison.Ordinal) == true
+            || element.Attribute("Tag")?.Value.Contains("AiPrivacy", StringComparison.Ordinal) == true);
+        Assert.Contains("GetAiModelCatalogAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Directory.", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MainMenu_ExposesExactlyFourActionsFromAlwaysVisibleEllipsis()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
-        var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "MoreButton"));
+        var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
+        var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
+        var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
+        var menu = player.Descendants().Single(element => element.Name.LocalName == "Flyout" && element.Attribute("Opened")?.Value == "MoreMenu_Opened");
+        var menuTags = menu
+            .Descendants()
+            .Where(element => element.Name.LocalName == "TextBlock" && element.Attribute("Tag") is not null)
+            .Select(element => element.Attribute("Tag")!.Value)
+            .ToArray();
 
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
-        Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ToggleSwitch" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "OpenAiMenuToggle"));
-        Assert.Contains(player.Descendants(), element => element.Attribute("Tag")?.Value == "Main.Menu.TakeSnapshotNow" && element.Attribute("Text")?.Value == "Take snapshot now");
+        Assert.Null(moreButton.Attribute("Visibility"));
+        Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
+        Assert.Equal(
+            ["MenuTitleOptions", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
+            menuTags);
+        Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
+        Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
+        Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
+        Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
+        Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain(player.Descendants(), element => element.Name.LocalName == "ToggleMenuFlyoutItem");
+    }
+
+    [Fact]
+    public void MainWindow_IsFixedSizeAndDoesNotRestorePersistedWindowState()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+
+        Assert.Contains("presenter.IsResizable = false;", source, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsMaximizable = false;", source, StringComparison.Ordinal);
+        Assert.Contains("ResizeForLogicalContent(PlayerHeight);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("WindowStateKeys.Main", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("RestoreWindowState", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SaveWindowState", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExpandedPlayer_ShowsSnapshotPlaceholderAndSeparatedLocalUtcClock()
+    {
+        var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var localTime = player.Descendants().Single(element => HasName(element, "LocalTimeText"));
+        var utcTime = player.Descendants().Single(element => HasName(element, "UtcTimeText"));
+        var placeholder = player.Descendants().Single(element => HasName(element, "ScreenshotPlaceholderImage"));
+        var previewButton = player.Descendants().Single(element => HasName(element, "ScreenshotPreviewButton"));
+        var openOverlay = player.Descendants().Single(element => HasName(element, "ScreenshotOpenOverlay"));
+
+        Assert.Equal("Left", localTime.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Right", utcTime.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("11", localTime.Attribute("FontSize")?.Value);
+        Assert.Equal("11", utcTime.Attribute("FontSize")?.Value);
+        Assert.Equal("ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png", placeholder.Attribute("Source")?.Value);
+        Assert.Equal("ScreenshotPreviewButton_PointerEntered", previewButton.Attribute("PointerEntered")?.Value);
+        Assert.Equal("ScreenshotPreviewButton_PointerExited", previewButton.Attribute("PointerExited")?.Value);
+        Assert.Equal("0", openOverlay.Attribute("Opacity")?.Value);
+        Assert.Contains("LocalTimeText.Text = $\"Local time {state.LocalTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
+        Assert.Contains("UtcTimeText.Text = $\"UTC {state.UtcTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
+        Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
+        Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
+        Assert.Contains("private const int ExpandedPlayerHeight = 492;", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -184,4 +289,7 @@ public sealed class WinUiSurfaceContractTests
 
         throw new DirectoryNotFoundException("Could not locate the TrackMeUp repository root.");
     }
+
+    private static bool HasName(XElement element, string name) =>
+        element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == name);
 }

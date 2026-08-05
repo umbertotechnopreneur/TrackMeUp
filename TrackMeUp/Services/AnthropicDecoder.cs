@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TrackMeUp.Services;
@@ -23,18 +24,26 @@ public sealed class AnthropicDecoder : IAIDecoder
     /// <summary>
     /// Sends one request to Anthropic endpoint.
     /// </summary>
+    /// <param name="prompt">Prompt to send.</param>
+    /// <param name="screenshotPaths">Optional screenshot paths.</param>
+    /// <param name="settings">Current settings.</param>
+    /// <param name="apiKey">Resolved API key.</param>
+    /// <param name="correlationId">Business correlation identifier for the snapshot.</param>
+    /// <param name="cancellationToken">Cancels local file reads and the provider request.</param>
+    /// <returns>Model output plus nullable provider telemetry.</returns>
     public async Task<AiProviderResult> DecodeAsync(
         string prompt,
         IReadOnlyList<string> screenshotPaths,
         AppSettings settings,
         string apiKey,
-        string correlationId)
+        string correlationId,
+        CancellationToken cancellationToken = default)
     {
         _ = correlationId; // Anthropic has no documented generic client-correlation header for this endpoint.
         var base64Images = new List<string>();
         foreach (var screenshot in screenshotPaths)
         {
-            var image = Convert.ToBase64String(await File.ReadAllBytesAsync(screenshot));
+            var image = Convert.ToBase64String(await File.ReadAllBytesAsync(screenshot, cancellationToken));
             base64Images.Add(image);
         }
 
@@ -46,8 +55,8 @@ public sealed class AnthropicDecoder : IAIDecoder
         var timer = AiProviderTelemetry.StartTimer();
         try
         {
-            using var response = await Http.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            using var response = await Http.SendAsync(request, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             timer.Stop();
             var providerRequestId = AiProviderTelemetry.Header(response, "request-id");
             var providerResponseId = ReadResponseId(responseBody);
@@ -77,6 +86,10 @@ public sealed class AnthropicDecoder : IAIDecoder
                 null);
         }
         catch (AiProviderRequestException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }

@@ -9,7 +9,7 @@ namespace TrackMeUp.Presentation.Tests;
 /// <summary>Guards complete, passive access to operational use cases from the WinUI frontend.</summary>
 public sealed class WinUiOperationsSurfaceContractTests
 {
-    /// <summary>Ensures the dense operational surface remains reachable and usable at narrow widths.</summary>
+    /// <summary>Ensures the dense operational surface remains integrated and usable at narrow widths.</summary>
     [Fact]
     public void OperationsSurface_IsIntegratedScrollableAndAdaptive()
     {
@@ -17,7 +17,6 @@ public sealed class WinUiOperationsSurfaceContractTests
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
 
         Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
-        Assert.Contains(mainWindow.Descendants(), element => element.Attribute("Tag")?.Value == "Main.Menu.Operations");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "InfoBar");

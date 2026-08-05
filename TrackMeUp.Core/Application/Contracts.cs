@@ -224,8 +224,14 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Opens the configured screenshot folder.</summary>
     Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken);
 
+    /// <summary>Opens an explicitly supplied screenshot folder without persisting it.</summary>
+    Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken);
+
     /// <summary>Gets safe AI status.</summary>
     Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets the validated model catalog available to presentation clients.</summary>
+    Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken);
 
     /// <summary>Changes the enabled AI state.</summary>
     Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken);

@@ -71,7 +71,6 @@ public sealed record AppSettings(
     string Model = "gpt-5.6",
     bool KeepScreenshots = false,
     bool StartWithWindows = false,
-    bool AutomaticAnalysis = false,
     string ScreenshotDirectory = "",
     string ScreenshotCaptureMode = "all-screens",
     bool WatermarkScreenshots = true,
@@ -97,7 +96,6 @@ public sealed record AppSettings(
     int DataRetentionDays = 30,
     int ScreenshotRetentionDays = 30,
     int OpenAiDailyLimit = 20,
-    int AutomaticAnalysisIntervalMinutes = 15,
     decimal OpenAiDailyCostUsd = 0m,
     decimal EstimatedCostPerAnalysisUsd = 0.02m,
     decimal EstimatedCostPerScreenshotUsd = 0.003m,
@@ -165,7 +163,9 @@ public sealed record DashboardState(
     long ActiveSeconds,
     double Intensity,
     bool IsTracking,
-    DateTimeOffset? LastSampleTimestamp);
+    DateTimeOffset? LastSampleTimestamp,
+    DateTimeOffset LocalTime,
+    DateTimeOffset UtcTime);
 
 public sealed record LastSessionState(
     DateTimeOffset? Timestamp,
@@ -173,7 +173,8 @@ public sealed record LastSessionState(
     string Context,
     string InstallationId,
     IReadOnlyDictionary<string, string>? Attributes,
-    string? ScreenshotPath);
+    string? ScreenshotPath,
+    DateTimeOffset? ScreenshotCapturedAt);
 
 public sealed record DiskSnapshotState(
     string Drive,

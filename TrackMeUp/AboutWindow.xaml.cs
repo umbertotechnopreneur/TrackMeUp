@@ -11,8 +11,8 @@ namespace TrackMeUp;
 /// <summary>Displays immutable about information and uses declarative links for external navigation.</summary>
 public sealed partial class AboutWindow : Window
 {
-    private const int LogicalWindowWidth = 440;
-    private const int LogicalWindowHeight = 590;
+    private const int LogicalWindowWidth = 430;
+    private const int LogicalWindowHeight = 450;
     private const int LogicalScreenMargin = 22;
     private readonly AppWindow _appWindow;
     private readonly ITrackMeUpApplication _application;
@@ -28,6 +28,8 @@ public sealed partial class AboutWindow : Window
         InitializeComponent();
         RootGrid.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         UiLocalization.Apply(RootGrid, _strings);
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         ConfigureWindowBehavior();
         ResizeForLogicalContent();
@@ -54,6 +56,7 @@ public sealed partial class AboutWindow : Window
         }
 
         ResizeForLogicalContent();
+        UpdateTitleBarInsets();
 
         var result = await _application.GetProductInformationAsync(CancellationToken.None);
         if (!result.Succeeded || result.Value is null)
@@ -62,15 +65,12 @@ public sealed partial class AboutWindow : Window
         }
 
         var product = result.Value;
-        var build = product.Build;
-        VersionText.Text = build.SemVer;
-        BuiltText.Text = build.BuiltAtLocal.ToString("yyyy-MM-dd HH:mm:ss zzz");
-        MachineText.Text = build.MachineName;
-        CommitLink.Content = build.GitCommitShort;
-        CommitLink.NavigateUri = new Uri($"{product.RepositoryUrl}/commit/{build.GitCommit}");
-        BuildContextText.Text = $"{build.Configuration} · {build.Platform} · {build.RuntimeIdentifier}" +
-            (build.GitDirty ? $" · {_strings.Translate("About.Dirty")}" : string.Empty);
+        VersionText.Text = product.Build.SemVer;
     }
+
+    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
+
+    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
@@ -102,6 +102,26 @@ public sealed partial class AboutWindow : Window
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
         }
+
+        if (AppWindowTitleBar.IsCustomizationSupported())
+        {
+            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        }
+    }
+
+    private void UpdateTitleBarInsets()
+    {
+        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
+        {
+            return;
+        }
+
+        var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
+        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
+        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
     }
 
     private void CenterWindowInWorkArea(RectInt32 workArea)

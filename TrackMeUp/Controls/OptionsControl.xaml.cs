@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 
@@ -14,6 +17,8 @@ public sealed partial class OptionsControl : UserControl
 {
     private ITrackMeUpApplication? _application;
     private LocalizationService _strings = new("system");
+    private IReadOnlyList<AiModelOption> _modelOptions = Array.Empty<AiModelOption>();
+    private string _requestedThinkingEffort = "auto";
 
     /// <summary>Initializes the options control.</summary>
     public OptionsControl() => InitializeComponent();
@@ -29,6 +34,13 @@ public sealed partial class OptionsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        if (SelectedModel() is { } selectedModel)
+        {
+            PopulateThinkingEfforts(selectedModel, SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort));
+        }
+        var openFolderLabel = T("Options.OpenFolderAction");
+        AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
+        ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
         UpdateScreenshotModeHint();
     }
 
@@ -36,15 +48,81 @@ public sealed partial class OptionsControl : UserControl
     public async void Initialize(ITrackMeUpApplication application)
     {
         _application = application;
-        var result = await application.GetSettingsAsync(CancellationToken.None);
-        if (result.Succeeded && result.Value is not null)
+        var settingsTask = application.GetSettingsAsync(CancellationToken.None);
+        var catalogTask = application.GetAiModelCatalogAsync(CancellationToken.None);
+        await Task.WhenAll(settingsTask, catalogTask);
+
+        var settingsResult = await settingsTask;
+        var catalogResult = await catalogTask;
+        if (!catalogResult.Succeeded || catalogResult.Value is null || catalogResult.Value.Models.Count == 0)
         {
-            ApplySettings(result.Value);
+            StatusText.Text = T("Options.ModelCatalogError");
+            SaveOptionsButton.IsEnabled = false;
+            return;
+        }
+
+        ConfigureModelOptions(catalogResult.Value);
+        if (settingsResult.Succeeded && settingsResult.Value is not null)
+        {
+            ApplySettings(settingsResult.Value);
         }
     }
 
-    /// <summary>Forwards navigation intent to the host view.</summary>
-    private void BackButton_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
+    /// <summary>Moves from AI configuration to general options, then back to the player.</summary>
+    public void NavigateBack()
+    {
+        if (AiOptionsView.Visibility == Visibility.Visible)
+        {
+            AiOptionsView.Visibility = Visibility.Collapsed;
+            AppOptionsView.Visibility = Visibility.Visible;
+            return;
+        }
+
+        BackRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Shows the focused AI configuration view without changing persisted settings.</summary>
+    private void AiSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        AppOptionsView.Visibility = Visibility.Collapsed;
+        AiOptionsView.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Maintains a single selected theme in the segmented theme control.</summary>
+    private void ThemeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeSystemButton.IsChecked = ReferenceEquals(sender, ThemeSystemButton);
+        ThemeLightButton.IsChecked = ReferenceEquals(sender, ThemeLightButton);
+        ThemeDarkButton.IsChecked = ReferenceEquals(sender, ThemeDarkButton);
+    }
+
+    /// <summary>Shows or hides lower-frequency application settings.</summary>
+    private void GeneralAdvancedButton_Click(object sender, RoutedEventArgs e)
+    {
+        var show = GeneralAdvancedPanel.Visibility != Visibility.Visible;
+        GeneralAdvancedPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        GeneralAdvancedChevron.Glyph = show ? "\uE70E" : "\uE70D";
+    }
+
+    /// <summary>Shows or hides lower-frequency provider and analysis settings.</summary>
+    private void AiAdvancedButton_Click(object sender, RoutedEventArgs e)
+    {
+        var show = AiAdvancedPanel.Visibility != Visibility.Visible;
+        AiAdvancedPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        AiAdvancedChevron.Glyph = show ? "\uE70E" : "\uE70D";
+    }
+
+    /// <summary>Opens the configured screen-capture folder through the shared application facade.</summary>
+    private async void OpenScreenshotFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_application is null)
+        {
+            return;
+        }
+
+        var result = await _application.OpenScreenshotFolderAsync(ScreenshotFolderBox.Text, CancellationToken.None);
+        StatusText.Text = result.Succeeded ? result.Value ?? string.Empty : T("Options.OpenFolderError");
+    }
 
     /// <summary>Forwards a secret to the application facade without placing it in settings or UI state.</summary>
     private async void SetApiKeyButton_Click(object sender, RoutedEventArgs e)
@@ -72,13 +150,32 @@ public sealed partial class OptionsControl : UserControl
             return;
         }
 
+        var selectedModel = SelectedModel();
+        if (selectedModel is null)
+        {
+            StatusText.Text = T("Options.ModelRequired");
+            return;
+        }
+
+        if (!selectedModel.SupportsImageInput)
+        {
+            StatusText.Text = T("Options.ModelImageUnsupported");
+            return;
+        }
+
+        var thinkingEffort = SelectedTag(AiReasoningEffortBox, "auto");
+        if (!selectedModel.SupportedThinkingEfforts.Contains(thinkingEffort, StringComparer.Ordinal))
+        {
+            StatusText.Text = T("Options.ThinkingEffortUnsupported");
+            return;
+        }
+
         var patch = new SettingsPatch(new Dictionary<string, string?>
         {
-            ["ai.model"] = string.IsNullOrWhiteSpace(ModelBox.Text) ? "gpt-5.6" : ModelBox.Text.Trim(),
+            ["ai.model"] = selectedModel.Key,
             ["screenshots.directory"] = ScreenshotFolderBox.Text,
             ["screenshots.keep"] = KeepScreenshotsSwitch.IsOn.ToString(),
             ["ai.enabled"] = OpenAiEnabledSwitch.IsOn.ToString(),
-            ["ai.automatic"] = AutomaticAnalysisSwitch.IsOn.ToString(),
             ["screenshots.enabled"] = ScreenshotsEnabledSwitch.IsOn.ToString(),
             ["startup.enabled"] = StartWithWindowsSwitch.IsOn.ToString(),
             ["tracking.start_on_launch"] = StartTrackingOnLaunchSwitch.IsOn.ToString(),
@@ -87,12 +184,12 @@ public sealed partial class OptionsControl : UserControl
             ["ai.endpoint"] = string.IsNullOrWhiteSpace(AiEndpointBox.Text) ? DefaultEndpoint(SelectedTag(AiProviderBox, "openai")) : AiEndpointBox.Text.Trim(),
             ["ai.key_variable"] = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(SelectedTag(AiProviderBox, "openai")) : AiApiKeyNameBox.Text.Trim(),
             ["ai.output_detail"] = SelectedTag(AiOutputDetailBox, "balanced"),
-            ["ai.reasoning_effort"] = SelectedTag(AiReasoningEffortBox, "auto"),
+            ["ai.reasoning_effort"] = thinkingEffort,
             ["ai.custom_prompt"] = AiCustomPromptBox.Text,
             ["ai.include_device_location"] = IncludeDeviceLocationSwitch.IsOn.ToString(),
             ["screenshots.mode"] = SelectedTag(ScreenshotModeBox, "all-screens"),
             ["language"] = SelectedTag(LanguageBox, "system"),
-            ["theme"] = SelectedTag(ThemeBox, "system"),
+            ["theme"] = SelectedTheme(),
             ["position"] = SelectedTag(PositionBox, "bottom-center"),
             ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left"),
             ["active_hours.monday.active"] = MondayActiveHoursBox.Text,
@@ -144,10 +241,10 @@ public sealed partial class OptionsControl : UserControl
     private void ApplySettings(AppSettings settings)
     {
         ApplyLanguage(settings.UiLanguage);
-        ModelBox.Text = settings.Model;
+        _requestedThinkingEffort = settings.AiReasoningEffort;
+        SelectModel(settings.Model);
         ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
         KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
-        AutomaticAnalysisSwitch.IsOn = settings.AutomaticAnalysis;
         OpenAiEnabledSwitch.IsOn = settings.OpenAiEnabled;
         ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
         StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
@@ -162,7 +259,7 @@ public sealed partial class OptionsControl : UserControl
         SelectTag(LanguageBox, settings.UiLanguage, "system");
         SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
         SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
-        SelectTag(ThemeBox, settings.Theme, "system");
+        SelectTheme(settings.Theme);
         AiCustomPromptBox.Text = settings.AiCustomPrompt;
         IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
         ApplyActiveHours(settings, "monday", MondayActiveHoursBox, MondayBreaksBox);
@@ -177,7 +274,88 @@ public sealed partial class OptionsControl : UserControl
 
     private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? T("Options.SnapshotHintActive") : T("Options.SnapshotHintAll");
 
+    private void ConfigureModelOptions(AiModelCatalogSnapshot catalog)
+    {
+        _modelOptions = catalog.Models
+            .Select(model => new AiModelOption(model, CreateBrush(model.Color)))
+            .ToArray();
+        ModelBox.ItemsSource = _modelOptions;
+    }
+
+    private void SelectModel(string identifier)
+    {
+        ModelBox.SelectedItem = _modelOptions.FirstOrDefault(option =>
+            string.Equals(option.Key, identifier, StringComparison.OrdinalIgnoreCase) ||
+            option.Aliases.Contains(identifier, StringComparer.OrdinalIgnoreCase));
+        if (ModelBox.SelectedItem is null)
+        {
+            ModelInfoCard.Visibility = Visibility.Collapsed;
+            StatusText.Text = T("Options.ModelUnsupported");
+        }
+    }
+
+    private AiModelDescriptor? SelectedModel() => (ModelBox.SelectedItem as AiModelOption)?.Descriptor;
+
+    private void ModelBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var model = SelectedModel();
+        if (model is null)
+        {
+            ModelInfoCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var preferredEffort = AiReasoningEffortBox.SelectedItem is null
+            ? _requestedThinkingEffort
+            : SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort);
+        PopulateThinkingEfforts(model, preferredEffort);
+        _requestedThinkingEffort = SelectedTag(AiReasoningEffortBox, "auto");
+        var option = (AiModelOption)ModelBox.SelectedItem;
+        ModelAccentBar.Background = option.AccentBrush;
+        ModelInfoCard.BorderBrush = option.AccentBrush;
+        ModelDescriptionText.Text = model.Description;
+        ModelKeyText.Text = model.Key;
+        ModelPreviewBadge.Visibility = model.IsPreview ? Visibility.Visible : Visibility.Collapsed;
+        ModelCapabilityText.Text = T(model.SupportsImageInput ? "Options.ModelImageInput" : "Options.ModelTextOnly");
+        ModelCapabilityBadge.Visibility = Visibility.Visible;
+        ModelInfoCard.Visibility = Visibility.Visible;
+        StatusText.Text = model.SupportsImageInput ? string.Empty : T("Options.ModelImageUnsupported");
+    }
+
+    private void PopulateThinkingEfforts(AiModelDescriptor model, string preferredEffort)
+    {
+        AiReasoningEffortBox.Items.Clear();
+        foreach (var effort in model.SupportedThinkingEfforts)
+        {
+            AiReasoningEffortBox.Items.Add(new ComboBoxItem
+            {
+                Tag = effort,
+                Content = T($"Options.Reasoning.{effort}")
+            });
+        }
+
+        SelectTag(AiReasoningEffortBox, preferredEffort, "auto");
+        AiReasoningEffortBox.IsEnabled = AiReasoningEffortBox.Items.Count > 1;
+    }
+
+    private static SolidColorBrush CreateBrush(string hexColor)
+    {
+        var red = Convert.ToByte(hexColor.Substring(1, 2), 16);
+        var green = Convert.ToByte(hexColor.Substring(3, 2), 16);
+        var blue = Convert.ToByte(hexColor.Substring(5, 2), 16);
+        return new SolidColorBrush(Windows.UI.Color.FromArgb(255, red, green, blue));
+    }
+
     private string T(string key) => _strings.Translate(key);
+
+    private string SelectedTheme() => ThemeLightButton.IsChecked == true ? "light" : ThemeDarkButton.IsChecked == true ? "dark" : "system";
+
+    private void SelectTheme(string theme)
+    {
+        ThemeSystemButton.IsChecked = theme is not "light" and not "dark";
+        ThemeLightButton.IsChecked = theme == "light";
+        ThemeDarkButton.IsChecked = theme == "dark";
+    }
 
     private static string SelectedTag(ComboBox comboBox, string fallback) => (comboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? fallback;
 
@@ -197,4 +375,19 @@ public sealed partial class OptionsControl : UserControl
     private static bool IsDefaultOrKnownEndpoint(string? endpoint) => string.IsNullOrWhiteSpace(endpoint) || endpoint is "https://api.openai.com/v1/responses" or "https://openrouter.ai/api/v1/chat/completions" or "https://api.anthropic.com/v1/messages";
 
     private static bool IsDefaultOrKnownApiKeyName(string? keyName) => string.IsNullOrWhiteSpace(keyName) || keyName.Trim() is "TRACKMEUP_OPENAI_APIKEY" or "OPENAI_API_KEY" or "OPENROUTER_API_KEY" or "ANTHROPIC_API_KEY";
+}
+
+internal sealed class AiModelOption(AiModelDescriptor descriptor, SolidColorBrush accentBrush)
+{
+    public AiModelDescriptor Descriptor { get; } = descriptor;
+
+    public string Key => Descriptor.Key;
+
+    public string Name => Descriptor.Name;
+
+    public IReadOnlyList<string> Aliases => Descriptor.Aliases;
+
+    public string CapabilityLabel => Descriptor.SupportsImageInput ? string.Empty : "Text only";
+
+    public SolidColorBrush AccentBrush { get; } = accentBrush;
 }

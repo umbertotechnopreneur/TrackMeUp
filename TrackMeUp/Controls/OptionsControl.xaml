@@ -7,173 +7,382 @@
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="WidthStates">
                 <VisualState x:Name="Narrow">
-                    <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
                 </VisualState>
                 <VisualState x:Name="Wide">
-                    <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers>
-                    <VisualState.Setters>
-                        <Setter Target="GeneralPositionColumn.Width" Value="*" />
-                        <Setter Target="GeneralTaskbarColumn.Width" Value="*" />
-                        <Setter Target="PositionBox.(Grid.Row)" Value="0" />
-                        <Setter Target="PositionBox.(Grid.Column)" Value="1" />
-                        <Setter Target="TaskbarWidgetPositionBox.(Grid.Row)" Value="0" />
-                        <Setter Target="TaskbarWidgetPositionBox.(Grid.Column)" Value="2" />
-                        <Setter Target="ScreenshotHintColumn.Width" Value="*" />
-                        <Setter Target="ScreenshotModeHintBox.(Grid.Row)" Value="0" />
-                        <Setter Target="ScreenshotModeHintBox.(Grid.Column)" Value="1" />
-                        <Setter Target="AiEndpointColumn.Width" Value="*" />
-                        <Setter Target="AiKeyNameColumn.Width" Value="*" />
-                        <Setter Target="AiEndpointBox.(Grid.Row)" Value="0" />
-                        <Setter Target="AiEndpointBox.(Grid.Column)" Value="1" />
-                        <Setter Target="AiApiKeyNameBox.(Grid.Row)" Value="0" />
-                        <Setter Target="AiApiKeyNameBox.(Grid.Column)" Value="2" />
-                        <Setter Target="SecondaryActionColumn.Width" Value="*" />
-                        <Setter Target="SaveOptionsButton.(Grid.Row)" Value="0" />
-                        <Setter Target="SaveOptionsButton.(Grid.Column)" Value="1" />
-                    </VisualState.Setters>
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="720" />
+                    </VisualState.StateTriggers>
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
-        <ScrollViewer
-            HorizontalScrollBarVisibility="Disabled"
-            HorizontalScrollMode="Disabled"
-            VerticalScrollBarVisibility="Auto"
-            VerticalScrollMode="Auto">
-            <StackPanel Padding="0,0,8,20" Spacing="20">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Button
-                        Width="40"
-                        Height="40"
-                        Padding="8"
-                        VerticalAlignment="Top"
-                        AutomationProperties.Name="Back"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
-                        Click="BackButton_Click">
-                        <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE72B;" />
-                    </Button>
-                    <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock Tag="Options.Title" Style="{StaticResource TitleTextBlockStyle}" Text="App options" TextWrapping="Wrap" />
-                        <TextBlock Tag="Options.Subtitle" Style="{StaticResource BodyTextBlockStyle}" Text="Your data stays on this PC" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-                <Grid x:Name="GeneralSettingsGrid" ColumnSpacing="12" RowSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="GeneralPositionColumn" Width="0" />
-                        <ColumnDefinition x:Name="GeneralTaskbarColumn" Width="0" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <ComboBox x:Name="ThemeBox" Tag="Options.Theme" HorizontalAlignment="Stretch" Header="Theme">
-                        <ComboBoxItem Content="System" Tag="system" />
-                        <ComboBoxItem Content="Light" Tag="light" />
-                        <ComboBoxItem Content="Dark" Tag="dark" />
-                    </ComboBox>
-                    <ComboBox x:Name="PositionBox" Tag="Options.Position" Grid.Row="1" HorizontalAlignment="Stretch" Header="Player position">
+        <Grid x:Name="AppOptionsView">
+            <ScrollViewer
+                HorizontalScrollBarVisibility="Disabled"
+                HorizontalScrollMode="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                VerticalScrollMode="Auto">
+                <StackPanel Padding="0,0,18,12" Spacing="0">
+                    <TextBlock Tag="Options.Theme.Header" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Theme" />
+                    <Grid Margin="0,8,0,0" ColumnSpacing="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ToggleButton
+                            x:Name="ThemeSystemButton"
+                            MinHeight="36"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            AutomationProperties.Name="System theme"
+                            Click="ThemeButton_Click"
+                            IsChecked="True">
+                            <TextBlock Tag="Options.Theme.system" Text="System" />
+                        </ToggleButton>
+                        <ToggleButton
+                            x:Name="ThemeLightButton"
+                            Grid.Column="1"
+                            MinHeight="36"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            AutomationProperties.Name="Light theme"
+                            Click="ThemeButton_Click">
+                            <TextBlock Tag="Options.Theme.light" Text="Light" />
+                        </ToggleButton>
+                        <ToggleButton
+                            x:Name="ThemeDarkButton"
+                            Grid.Column="2"
+                            MinHeight="36"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            AutomationProperties.Name="Dark theme"
+                            Click="ThemeButton_Click">
+                            <TextBlock Tag="Options.Theme.dark" Text="Dark" />
+                        </ToggleButton>
+                    </Grid>
+
+                    <ComboBox
+                        x:Name="PositionBox"
+                        Margin="0,16,0,0"
+                        Tag="Options.Position"
+                        HorizontalAlignment="Stretch"
+                        Header="Player position">
                         <ComboBoxItem Content="Bottom center" Tag="bottom-center" />
                         <ComboBoxItem Content="Bottom left" Tag="bottom-left" />
                         <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
                         <ComboBoxItem Content="Top left" Tag="top-left" />
                         <ComboBoxItem Content="Top right" Tag="top-right" />
                     </ComboBox>
-                    <ComboBox x:Name="TaskbarWidgetPositionBox" Tag="Options.TaskbarPosition" Grid.Row="2" HorizontalAlignment="Stretch" Header="Taskbar control position">
-                        <ComboBoxItem Content="Left" Tag="left" />
-                        <ComboBoxItem Content="Center" Tag="center" />
-                        <ComboBoxItem Content="Right" Tag="right" />
-                    </ComboBox>
-                </Grid>
 
-                <ComboBox x:Name="LanguageBox" Tag="Options.Language" HorizontalAlignment="Stretch" Header="Interface language">
-                    <ComboBoxItem Content="System" Tag="system" />
-                    <ComboBoxItem Content="English" Tag="en" />
-                    <ComboBoxItem Content="Italiano" Tag="it" />
-                    <ComboBoxItem Content="Français" Tag="fr" />
-                    <ComboBoxItem Content="Deutsch" Tag="de" />
-                    <ComboBoxItem Content="Español" Tag="es" />
-                    <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
-                </ComboBox>
-
-                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <StackPanel Spacing="10">
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="Options.Section.Startup" Style="{StaticResource SubtitleTextBlockStyle}" Text="Startup" />
-                        <TextBlock Tag="Options.Section.Startup.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Choose how TrackMeUp behaves after Windows sign-in." TextWrapping="Wrap" />
-                    </StackPanel>
-                    <ToggleSwitch x:Name="StartWithWindowsSwitch" Tag="Options.StartWithWindows" Header="Start with Windows" OffContent="Off" OnContent="On" />
-                    <ToggleSwitch x:Name="StartTrackingOnLaunchSwitch" Tag="Options.StartTracking" Header="Start tracking on launch" OffContent="Wait for Play" OnContent="Start immediately" />
-                </StackPanel>
-
-                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <StackPanel Spacing="10">
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="Options.Section.Snapshots" Style="{StaticResource SubtitleTextBlockStyle}" Text="Snapshots" />
-                        <TextBlock Tag="Options.Section.Snapshots.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Control local WebP captures and retention." TextWrapping="Wrap" />
-                    </StackPanel>
-                    <ToggleSwitch x:Name="ScreenshotsEnabledSwitch" Tag="Options.SnapshotsEnabled" Header="Enable snapshots" OffContent="Off" OnContent="On" />
-                    <TextBox x:Name="ScreenshotFolderBox" Tag="Options.SnapshotFolder" Header="Snapshot folder" PlaceholderText="WebP folder" />
-                    <Grid x:Name="ScreenshotModeGrid" ColumnSpacing="12" RowSpacing="10">
+                    <Grid Margin="0,14,0,0" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition x:Name="ScreenshotHintColumn" Width="0" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <ComboBox x:Name="ScreenshotModeBox" Tag="Options.SnapshotMode" HorizontalAlignment="Stretch" Header="Capture mode" SelectionChanged="ScreenshotModeBox_SelectionChanged">
+                        <TextBox
+                            x:Name="ScreenshotFolderBox"
+                            Tag="Options.SnapshotFolder"
+                            Header="Screen-capture folder"
+                            PlaceholderText="Folder for screen captures" />
+                        <Button
+                            x:Name="OpenScreenshotFolderButton"
+                            Grid.Column="1"
+                            Margin="0,28,0,0"
+                            Width="40"
+                            Height="32"
+                            MinWidth="40"
+                            Padding="0"
+                            VerticalAlignment="Top"
+                            AutomationProperties.Name="Open screen-capture folder"
+                            Click="OpenScreenshotFolderButton_Click"
+                            ToolTipService.ToolTip="Open screen-capture folder">
+                            <FontIcon
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="15"
+                                Glyph="&#xE8A7;" />
+                        </Button>
+                    </Grid>
+
+                    <Grid MinHeight="52" Margin="0,10,0,0" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Tag="Options.KeepSnapshots.Header" Text="Keep screen captures" TextWrapping="Wrap" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Tag="Options.KeepSnapshots.On"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Keep on this PC"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch
+                            x:Name="KeepScreenshotsSwitch"
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right"
+                            MinWidth="0"
+                            AutomationProperties.Name="Keep screen captures"
+                            OffContent=""
+                            OnContent="" />
+                    </Grid>
+
+                    <Button
+                        Margin="0,12,0,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        AutomationProperties.Name="Open AI configuration"
+                        Click="AiSettingsButton_Click"
+                        Padding="12,10">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="17"
+                                Glyph="&#xE945;" />
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <TextBlock Tag="Options.AiConfiguration.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="AI configuration" />
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Tag="Options.AiConfiguration.Subtitle"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Model, key and thinking effort"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <FontIcon
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="12"
+                                Glyph="&#xE76C;" />
+                        </Grid>
+                    </Button>
+
+                    <Button
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        AutomationProperties.Name="Advanced app options"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="GeneralAdvancedButton_Click"
+                        Padding="4,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Tag="Options.Advanced" Text="Advanced options" />
+                            <FontIcon
+                                x:Name="GeneralAdvancedChevron"
+                                Grid.Column="1"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="12"
+                                Glyph="&#xE70D;" />
+                        </Grid>
+                    </Button>
+
+                    <StackPanel x:Name="GeneralAdvancedPanel" Margin="0,8,0,0" Spacing="10" Visibility="Collapsed">
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <ComboBox x:Name="TaskbarWidgetPositionBox" Tag="Options.TaskbarPosition" HorizontalAlignment="Stretch" Header="Taskbar control position">
+                            <ComboBoxItem Content="Left" Tag="left" />
+                            <ComboBoxItem Content="Center" Tag="center" />
+                            <ComboBoxItem Content="Right" Tag="right" />
+                        </ComboBox>
+                        <ComboBox x:Name="LanguageBox" Tag="Options.Language" HorizontalAlignment="Stretch" Header="Interface language">
+                            <ComboBoxItem Content="System" Tag="system" />
+                            <ComboBoxItem Content="English" Tag="en" />
+                            <ComboBoxItem Content="Italiano" Tag="it" />
+                            <ComboBoxItem Content="Français" Tag="fr" />
+                            <ComboBoxItem Content="Deutsch" Tag="de" />
+                            <ComboBoxItem Content="Español" Tag="es" />
+                            <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
+                        </ComboBox>
+                        <ToggleSwitch x:Name="StartWithWindowsSwitch" Tag="Options.StartWithWindows" Header="Start with Windows" OffContent="Off" OnContent="On" />
+                        <ToggleSwitch x:Name="StartTrackingOnLaunchSwitch" Tag="Options.StartTracking" Header="Start tracking on launch" OffContent="Wait for Play" OnContent="Start immediately" />
+                        <ToggleSwitch x:Name="ScreenshotsEnabledSwitch" Tag="Options.SnapshotsEnabled" Header="Allow screen captures" OffContent="Off" OnContent="On" />
+                        <ComboBox x:Name="ScreenshotModeBox" Tag="Options.SnapshotMode" HorizontalAlignment="Stretch" Header="What to capture" SelectionChanged="ScreenshotModeBox_SelectionChanged">
                             <ComboBoxItem Content="All displays" Tag="all-screens" />
                             <ComboBoxItem Content="Active window" Tag="active-window" />
                         </ComboBox>
-                        <TextBox x:Name="ScreenshotModeHintBox" Tag="Options.SnapshotResult" Grid.Row="1" Header="Result" IsReadOnly="True" IsTabStop="False" TextWrapping="Wrap" />
-                    </Grid>
-                    <ToggleSwitch x:Name="KeepScreenshotsSwitch" Tag="Options.KeepSnapshots" Header="Keep snapshots" OffContent="Delete after analysis" OnContent="Store locally" />
-                    <ToggleSwitch x:Name="WatermarkSwitch" Tag="Options.Watermark" Header="Snapshot watermark" OffContent="None" OnContent="Add host, date and ID" />
-                </StackPanel>
-
-                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <StackPanel Spacing="10">
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="Options.Section.Ai" Style="{StaticResource SubtitleTextBlockStyle}" Text="AI" />
-                        <TextBlock Tag="Options.Section.Ai.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Configure the provider, model and analysis behavior." TextWrapping="Wrap" />
+                        <TextBox x:Name="ScreenshotModeHintBox" Tag="Options.SnapshotResult" Header="Result" IsReadOnly="True" IsTabStop="False" TextWrapping="Wrap" />
+                        <ToggleSwitch x:Name="WatermarkSwitch" Tag="Options.Watermark" Header="Screen-capture label" OffContent="None" OnContent="Add host, date and ID" />
                     </StackPanel>
-                    <ToggleSwitch x:Name="OpenAiEnabledSwitch" Tag="Options.OpenAi" Header="OpenAI integration" OffContent="Off" OnContent="On" />
-                    <Grid x:Name="AiFieldsGrid" ColumnSpacing="12" RowSpacing="10">
+
+                    <Button
+                        Margin="0,14,0,0"
+                        Tag="Options.ExportReport"
+                        HorizontalAlignment="Stretch"
+                        Click="ExportReportButton_Click"
+                        Content="Export HTML report">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE9F9;" />
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Grid x:Name="AiOptionsView" Visibility="Collapsed">
+            <ScrollViewer
+                HorizontalScrollBarVisibility="Disabled"
+                HorizontalScrollMode="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                VerticalScrollMode="Auto">
+                <StackPanel Padding="0,0,18,12" Spacing="0">
+                    <Grid MinHeight="44" ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition x:Name="AiEndpointColumn" Width="0" />
-                            <ColumnDefinition x:Name="AiKeyNameColumn" Width="0" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <ComboBox x:Name="AiProviderBox" Tag="Options.AiProvider" HorizontalAlignment="Stretch" Header="AI provider" SelectionChanged="AiProviderBox_SelectionChanged">
-                            <ComboBoxItem Content="OpenAI" Tag="openai" />
-                            <ComboBoxItem Content="OpenRouter" Tag="openrouter" />
-                            <ComboBoxItem Content="Anthropic" Tag="anthropic" />
-                        </ComboBox>
-                        <TextBox x:Name="AiEndpointBox" Tag="Options.AiEndpoint" Grid.Row="1" Header="Endpoint" />
-                        <TextBox x:Name="AiApiKeyNameBox" Tag="Options.AiKeyVariable" Grid.Row="2" Header="API key variable name" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Tag="Options.OpenAi.Header"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="OpenAI integration"
+                            TextWrapping="Wrap" />
+                        <ToggleSwitch
+                            x:Name="OpenAiEnabledSwitch"
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="OpenAI integration"
+                            OffContent=""
+                            OnContent="" />
                     </Grid>
-                    <PasswordBox x:Name="ApiKeyBox" Tag="Options.ApiKey" Header="Temporary API key" PlaceholderText="API key (not stored in settings)" />
-                    <TextBox x:Name="ModelBox" Tag="Options.Model" Header="Model" />
-                    <ComboBox x:Name="AiOutputDetailBox" Tag="Options.OutputDetail" Header="Snapshot analysis detail">
-                        <ComboBoxItem Content="Compact · lowest usage" Tag="compact" />
-                        <ComboBoxItem Content="Balanced" Tag="balanced" />
-                        <ComboBoxItem Content="Detailed · larger budget" Tag="detailed" />
+
+                    <PasswordBox
+                        x:Name="ApiKeyBox"
+                        Margin="0,10,0,0"
+                        Tag="Options.ApiKey"
+                        Header="API key"
+                        PasswordRevealMode="Peek"
+                        PlaceholderText="Used from Windows; not copied by TrackMeUp" />
+                    <Button
+                        Margin="0,8,0,0"
+                        Tag="Options.SaveApiKey"
+                        HorizontalAlignment="Stretch"
+                        Click="SetApiKeyButton_Click"
+                        Content="Set key for this PC" />
+                    <TextBlock
+                        Margin="0,5,0,0"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Tag="Options.AiKeyStorageHint"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Stored only in your Windows user environment."
+                        TextWrapping="Wrap" />
+
+                    <ComboBox
+                        x:Name="ModelBox"
+                        Margin="0,12,0,0"
+                        Tag="Options.Model"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        Header="Model"
+                        SelectionChanged="ModelBox_SelectionChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid MinWidth="294" ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Width="10"
+                                        Height="10"
+                                        VerticalAlignment="Center"
+                                        Background="{Binding AccentBrush}"
+                                        CornerRadius="5" />
+                                    <StackPanel Grid.Column="1" Spacing="1">
+                                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{Binding Name}" />
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{Binding Key}" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        FontSize="11"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="{Binding CapabilityLabel}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <ComboBox x:Name="AiReasoningEffortBox" Tag="Options.Reasoning" Header="Reasoning effort">
+                    <Border
+                        x:Name="ModelInfoCard"
+                        Margin="0,7,0,0"
+                        Padding="10"
+                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Visibility="Collapsed">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="4" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="ModelAccentBar" Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="2" />
+                            <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock
+                                    x:Name="ModelDescriptionText"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock x:Name="ModelKeyText" Style="{StaticResource CaptionTextBlockStyle}" />
+                                    <Border
+                                        x:Name="ModelPreviewBadge"
+                                        Padding="6,1"
+                                        Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                        CornerRadius="8"
+                                        Visibility="Collapsed">
+                                        <TextBlock FontSize="11" Tag="Options.ModelPreview" Text="Preview" />
+                                    </Border>
+                                    <Border
+                                        x:Name="ModelCapabilityBadge"
+                                        Padding="6,1"
+                                        Background="{ThemeResource ControlFillColorTertiaryBrush}"
+                                        CornerRadius="8"
+                                        Visibility="Collapsed">
+                                        <TextBlock x:Name="ModelCapabilityText" FontSize="11" />
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <ComboBox
+                        x:Name="AiReasoningEffortBox"
+                        Margin="0,10,0,0"
+                        Tag="Options.Reasoning"
+                        HorizontalAlignment="Stretch"
+                        Header="Thinking effort">
                         <ComboBoxItem Content="Automatic" Tag="auto" />
                         <ComboBoxItem Content="None" Tag="none" />
                         <ComboBoxItem Content="Low" Tag="low" />
@@ -182,40 +391,95 @@
                         <ComboBoxItem Content="Very high" Tag="xhigh" />
                         <ComboBoxItem Content="Maximum" Tag="max" />
                     </ComboBox>
-                    <TextBox x:Name="AiCustomPromptBox" Tag="Options.CustomPrompt" AcceptsReturn="True" Header="Additional AI instruction (optional)" MinHeight="80" PlaceholderText="Example: Prioritize concise, factual descriptions." TextWrapping="Wrap" />
-                    <ToggleSwitch x:Name="IncludeDeviceLocationSwitch" Tag="Options.DeviceLocation" Header="Include device location in AI snapshots" OffContent="Off" OnContent="Windows Location" />
-                    <ToggleSwitch x:Name="AutomaticAnalysisSwitch" Tag="Options.AutomaticAnalysis" Header="Automatic analysis" OffContent="On demand only" OnContent="Every 15 minutes" />
-                    <Button Tag="Options.SaveApiKey" Click="SetApiKeyButton_Click" Content="Save API key" HorizontalAlignment="Left" />
-                </StackPanel>
 
-                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <StackPanel Spacing="10">
-                    <StackPanel Spacing="2">
-                        <TextBlock Tag="Options.Section.ActiveHours" Style="{StaticResource SubtitleTextBlockStyle}" Text="Active hours" />
-                        <TextBlock Tag="Options.Section.ActiveHours.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Informational context for AI snapshots only. Use HH:mm-HH:mm and commas between breaks." TextWrapping="Wrap" />
+                    <Button
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        AutomationProperties.Name="Advanced AI options"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="AiAdvancedButton_Click"
+                        Padding="4,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Tag="Options.Advanced" Text="Advanced options" />
+                            <FontIcon
+                                x:Name="AiAdvancedChevron"
+                                Grid.Column="1"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="12"
+                                Glyph="&#xE70D;" />
+                        </Grid>
+                    </Button>
+
+                    <StackPanel x:Name="AiAdvancedPanel" Margin="0,8,0,0" Spacing="10" Visibility="Collapsed">
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <ComboBox x:Name="AiOutputDetailBox" Tag="Options.OutputDetail" HorizontalAlignment="Stretch" Header="Analysis detail">
+                            <ComboBoxItem Content="Compact · lowest usage" Tag="compact" />
+                            <ComboBoxItem Content="Balanced" Tag="balanced" />
+                            <ComboBoxItem Content="Detailed · larger budget" Tag="detailed" />
+                        </ComboBox>
+                        <TextBox x:Name="AiCustomPromptBox" Tag="Options.CustomPrompt" AcceptsReturn="True" Header="Additional AI instruction (optional)" MinHeight="76" PlaceholderText="Example: Prioritize concise, factual descriptions." TextWrapping="Wrap" />
+                        <ToggleSwitch x:Name="IncludeDeviceLocationSwitch" Tag="Options.DeviceLocation" Header="Include Windows location in AI requests" OffContent="Off" OnContent="Windows Location" />
+                        <ComboBox x:Name="AiProviderBox" Tag="Options.AiProvider" HorizontalAlignment="Stretch" Header="AI service" SelectionChanged="AiProviderBox_SelectionChanged">
+                            <ComboBoxItem Content="OpenAI" Tag="openai" />
+                            <ComboBoxItem Content="OpenRouter" Tag="openrouter" />
+                            <ComboBoxItem Content="Anthropic" Tag="anthropic" />
+                        </ComboBox>
+                        <TextBox x:Name="AiEndpointBox" Tag="Options.AiEndpoint" Header="Service address" />
+                        <TextBox x:Name="AiApiKeyNameBox" Tag="Options.AiKeyVariable" Header="Windows key name" />
+
+                        <StackPanel Margin="0,8,0,0" Spacing="2">
+                            <TextBlock Tag="Options.Section.ActiveHours" Style="{StaticResource SubtitleTextBlockStyle}" Text="Active hours" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Tag="Options.Section.ActiveHours.Description"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Optional guidance for AI descriptions only. Use HH:mm-HH:mm and commas between breaks."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Tag="Options.ActiveHours" Style="{StaticResource CaptionTextBlockStyle}" Text="Active hours" />
+                            <TextBlock Grid.Column="2" Tag="Options.Breaks" Style="{StaticResource CaptionTextBlockStyle}" Text="Breaks" />
+                        </Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.monday" VerticalAlignment="Center" Text="Monday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="MondayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="MondayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.tuesday" VerticalAlignment="Center" Text="Tuesday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="TuesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="TuesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.wednesday" VerticalAlignment="Center" Text="Wednesday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="WednesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="WednesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.thursday" VerticalAlignment="Center" Text="Thursday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="ThursdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="ThursdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.friday" VerticalAlignment="Center" Text="Friday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="FridayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="FridayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.saturday" VerticalAlignment="Center" Text="Saturday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="SaturdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SaturdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.sunday" VerticalAlignment="Center" Text="Sunday" TextTrimming="CharacterEllipsis" /><TextBox x:Name="SundayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SundayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
                     </StackPanel>
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Tag="Options.ActiveHours" Style="{StaticResource CaptionTextBlockStyle}" Text="Active hours" />
-                        <TextBlock Grid.Column="2" Tag="Options.Breaks" Style="{StaticResource CaptionTextBlockStyle}" Text="Breaks" />
-                    </Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.monday" VerticalAlignment="Center" Text="Monday" /><TextBox x:Name="MondayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="MondayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.tuesday" VerticalAlignment="Center" Text="Tuesday" /><TextBox x:Name="TuesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="TuesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.wednesday" VerticalAlignment="Center" Text="Wednesday" /><TextBox x:Name="WednesdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="WednesdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.thursday" VerticalAlignment="Center" Text="Thursday" /><TextBox x:Name="ThursdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="ThursdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.friday" VerticalAlignment="Center" Text="Friday" /><TextBox x:Name="FridayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="FridayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.saturday" VerticalAlignment="Center" Text="Saturday" /><TextBox x:Name="SaturdayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SaturdayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
-                    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Tag="Options.Day.sunday" VerticalAlignment="Center" Text="Sunday" /><TextBox x:Name="SundayActiveHoursBox" Grid.Column="1" PlaceholderText="09:00-18:00" /><TextBox x:Name="SundayBreaksBox" Grid.Column="2" PlaceholderText="13:00-14:00" /></Grid>
                 </StackPanel>
+            </ScrollViewer>
+        </Grid>
 
-                <Grid x:Name="ActionsGrid" ColumnSpacing="8" RowSpacing="8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="SecondaryActionColumn" Width="0" /></Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <Button Tag="Options.ExportReport" Click="ExportReportButton_Click" Content="Export HTML report" HorizontalAlignment="Stretch" />
-                    <Button x:Name="SaveOptionsButton" Tag="Options.Save" Grid.Row="1" Click="SaveButton_Click" Content="Save options" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}" />
-                </Grid>
-                <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap" />
+        <Border
+            Grid.Row="1"
+            Padding="0,10,18,0"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+            <StackPanel Spacing="6">
+                <Button
+                    x:Name="SaveOptionsButton"
+                    Tag="Options.Save"
+                    HorizontalAlignment="Stretch"
+                    Click="SaveButton_Click"
+                    Content="Save options"
+                    Style="{StaticResource AccentButtonStyle}" />
+                <TextBlock
+                    x:Name="StatusText"
+                    AutomationProperties.LiveSetting="Polite"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    TextWrapping="Wrap" />
             </StackPanel>
-        </ScrollViewer>
+        </Border>
     </Grid>
 </UserControl>

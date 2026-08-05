@@ -21,8 +21,9 @@ public static class TrackMeUpApplicationFactory
         var snapshot = new SystemSnapshotService();
         var deviceContext = new DeviceContextService();
         var buildInformation = new BuildInformationService();
+        var aiModelCatalog = AiModelCatalog.LoadDefault();
         var analysis = new OpenAiAnalysisService(store, capture, snapshot, deviceContext: deviceContext);
-        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext, new ScreenshotShareService(), new WindowStateService(store));
+        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext, new ScreenshotShareService(), new WindowStateService(store), aiModelCatalog);
     }
 }
 
@@ -32,19 +33,19 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly LocalStore _store;
     private readonly UtilityService _utilities;
     private readonly TrackingDomainService _tracking;
-    private readonly ScreenCaptureService _capture;
+    private readonly IScreenCaptureService _capture;
     private readonly SystemSnapshotService _snapshot;
     private readonly DeviceContextService _deviceContext;
-    private readonly OpenAiAnalysisService _analysis;
+    private readonly IAiAnalysisService _analysis;
     private readonly ScreenshotShareService _screenshotShare;
     private readonly WindowStateService _windowState;
     private readonly StartupService _startup;
     private readonly BuildInformationService _buildInformation;
+    private readonly AiModelCatalogSnapshot _aiModelCatalog;
     private readonly ReportAggregationService _reports;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
-    private Timer? _automaticAnalysisTimer;
     private FocusSessionState _focus = new(null, false, null, TimeSpan.Zero, 0, 0, 0, 0, null);
     private bool _disposed;
 
@@ -53,16 +54,17 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         LocalStore store,
         UtilityService utilities,
         TrackingDomainService tracking,
-        ScreenCaptureService capture,
+        IScreenCaptureService capture,
         SystemSnapshotService snapshot,
-        OpenAiAnalysisService analysis,
+        IAiAnalysisService analysis,
         StartupService startup,
         BuildInformationService buildInformation,
         ILogger<TrackMeUpApplication>? logger = null,
         ObservabilityHealth? observability = null,
         DeviceContextService? deviceContext = null,
         ScreenshotShareService? screenshotShare = null,
-        WindowStateService? windowState = null)
+        WindowStateService? windowState = null,
+        AiModelCatalog? aiModelCatalog = null)
     {
         _store = store;
         _utilities = utilities;
@@ -75,6 +77,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _analysis = analysis;
         _startup = startup;
         _buildInformation = buildInformation;
+        _aiModelCatalog = (aiModelCatalog ?? AiModelCatalog.LoadDefault()).Snapshot;
         _reports = new ReportAggregationService(store);
         _logger = logger ?? NullLogger<TrackMeUpApplication>.Instance;
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
@@ -97,7 +100,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "window.state", "ai", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -239,6 +242,33 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<ScreenshotCaptureResult>.Failure("privacy.blocked", "PrivacyBlocked");
         }
 
+        if (settings.OpenAiEnabled)
+        {
+            if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
+            {
+                return OperationResult<ScreenshotCaptureResult>.Failure(
+                    "ai.configuration.invalid",
+                    "AiConfigurationInvalid",
+                    validationIssue!);
+            }
+
+            if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
+            {
+                _store.SaveSettings(validatedSettings);
+            }
+
+            settings = validatedSettings;
+            if (string.IsNullOrWhiteSpace(_store.LoadApiKey(settings.AiApiKeyName)))
+            {
+                return OperationResult<ScreenshotCaptureResult>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
+            }
+
+            if (!BuildCostGate(settings).Allowed)
+            {
+                return OperationResult<ScreenshotCaptureResult>.Failure("ai.cost_guardrail", "AiCostGuardrail");
+            }
+        }
+
         var mode = request.Mode is "all-screens" or "active-window" ? request.Mode : settings.ScreenshotCaptureMode;
         // Capture happens only after the privacy and enabled-state gates above have succeeded.
         var result = _capture.CaptureByMode(
@@ -246,7 +276,36 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             mode,
             request.Watermark && settings.WatermarkScreenshots,
             request.CaptureOrigin);
-        if (!request.Keep)
+
+        if (settings.OpenAiEnabled)
+        {
+            try
+            {
+                var analysisOrigin = result.CaptureOrigin == ScreenshotCaptureOrigins.Scheduled
+                    ? "snapshot.scheduled"
+                    : "snapshot.manual";
+                await _analysis.AnalyzeCapturedScreenAsync(
+                    _tracking.LatestAnalysisContext,
+                    result,
+                    request.Keep,
+                    analysisOrigin,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return OperationResult<ScreenshotCaptureResult>.Failure("operation.cancelled", "OperationCancelled");
+            }
+            catch (InvalidOperationException)
+            {
+                return OperationResult<ScreenshotCaptureResult>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning("Snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                return OperationResult<ScreenshotCaptureResult>.Failure("ai.provider.failed", "AiProviderFailed");
+            }
+        }
+        else if (!request.Keep)
         {
             foreach (var file in result.AllScreenshotPaths.Where(File.Exists))
             {
@@ -318,6 +377,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => OpenFolderAsync(_store.LoadSettings().ScreenshotDirectory, "screenshot.folder.opened", "ScreenshotFolderOpened", cancellationToken);
 
     /// <inheritdoc />
+    public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken)
+        => string.IsNullOrWhiteSpace(directory)
+            ? Task.FromResult(OperationResult<string>.Failure("screenshot.folder.path.required", "ScreenshotFolderPathRequired", new ValidationIssue("directory", "required", "ScreenshotFolderPathRequired")))
+            : OpenFolderAsync(directory, "screenshot.folder.opened", "ScreenshotFolderOpened", cancellationToken);
+
+    /// <inheritdoc />
     public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -325,11 +390,17 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(OperationResult<AiModelCatalogSnapshot>.Success("ai.models.loaded", "AiModelsLoaded", _aiModelCatalog));
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _store.LoadSettings() with { OpenAiEnabled = enabled };
         _store.SaveSettings(settings);
-        ConfigureAutomaticAnalysis(settings);
         await Task.CompletedTask;
         return OperationResult<AiStatus>.Success(enabled ? "ai.enabled" : "ai.disabled", enabled ? "AiEnabled" : "AiDisabled", BuildAiStatus());
     }, cancellationToken);
@@ -378,6 +449,25 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<AiAnalysis>.Failure("privacy.blocked", "PrivacyBlocked");
         }
 
+        if (!TryValidateOpenAiConfiguration(
+                settings,
+                request.AllowCapture && settings.ScreenshotsEnabled,
+                out var validatedSettings,
+                out var validationIssue))
+        {
+            return OperationResult<AiAnalysis>.Failure(
+                "ai.configuration.invalid",
+                "AiConfigurationInvalid",
+                validationIssue!);
+        }
+
+        if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
+        {
+            _store.SaveSettings(validatedSettings);
+        }
+
+        settings = validatedSettings;
+
         var gate = BuildCostGate(settings);
         if (!gate.Allowed)
         {
@@ -387,7 +477,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         try
         {
             var origin = NormalizeAnalysisOrigin(request.Origin);
-            var result = await _analysis.AnalyzeCurrentScreenAsync(_tracking.LatestAnalysisContext, request.AllowCapture, origin).WaitAsync(cancellationToken);
+            var result = await _analysis.AnalyzeCurrentScreenAsync(
+                _tracking.LatestAnalysisContext,
+                request.AllowCapture,
+                origin,
+                cancellationToken);
             return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
         }
         catch (OperationCanceledException)
@@ -607,6 +701,15 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         var current = validation.Value;
+        if (!TryValidateOpenAiConfiguration(current, requireImageInput: false, out var validatedSettings, out var validationIssue))
+        {
+            return OperationResult<AppSettings>.Failure(
+                "settings.validation.failed",
+                "SettingsValidationFailed",
+                validationIssue!);
+        }
+
+        current = validatedSettings;
         var startupChanged = current.StartWithWindows != settings.StartWithWindows;
         if (startupChanged && !_startup.SetEnabled(current.StartWithWindows))
         {
@@ -634,8 +737,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             _logger.LogInformation("Windows startup state updated. Enabled={Enabled}", current.StartWithWindows);
         }
-        ConfigureAutomaticAnalysis(current);
-
         await Task.CompletedTask;
         return OperationResult<AppSettings>.Success("settings.saved", "SettingsSaved", current);
     }, cancellationToken);
@@ -718,7 +819,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _tracking.DashboardStateChanged -= OnDashboardStateChanged;
         _tracking.TrackingStateChanged -= OnTrackingStateChanged;
         _tracking.Dispose();
-        _automaticAnalysisTimer?.Dispose();
         _mutations.Dispose();
         return ValueTask.CompletedTask;
     }
@@ -851,37 +951,56 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         new PluginInfo("browser", "Browser", settings.EnableBrowserDetailPlugin, "Extracts safe browser activity context.")
     ];
 
-    private void ConfigureAutomaticAnalysis(AppSettings settings)
+    private AiModelDescriptor? ResolveAiModel(string identifier) => _aiModelCatalog.Models.FirstOrDefault(model =>
+        string.Equals(model.Key, identifier, StringComparison.OrdinalIgnoreCase) ||
+        model.Aliases.Contains(identifier, StringComparer.OrdinalIgnoreCase));
+
+    private bool TryValidateOpenAiConfiguration(
+        AppSettings settings,
+        bool requireImageInput,
+        out AppSettings validatedSettings,
+        out ValidationIssue? issue)
     {
-        _automaticAnalysisTimer?.Dispose();
-        _automaticAnalysisTimer = null;
-        if (!_tracking.IsTracking || !settings.AutomaticAnalysis || !settings.OpenAiEnabled)
+        validatedSettings = settings;
+        issue = null;
+        if (!string.Equals(settings.AiProvider, "openai", StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return true;
         }
 
-        var interval = TimeSpan.FromMinutes(Math.Clamp(settings.AutomaticAnalysisIntervalMinutes, 1, 240));
-        // The timer invokes the same policy-enforced operation used by both frontends; failures are non-fatal.
-        _automaticAnalysisTimer = new Timer(async _ =>
+        var selectedModel = ResolveAiModel(settings.Model);
+        if (selectedModel is null)
         {
-            try { await AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(Origin: "automatic.timer"), CancellationToken.None); }
-            catch { /* Background analysis is best effort and leaves tracking operational on provider failures. */ }
-        }, null, interval, interval);
+            issue = new ValidationIssue("ai.model", "unsupported", "AiModelUnsupported");
+            return false;
+        }
+
+        if (requireImageInput && !selectedModel.SupportsImageInput)
+        {
+            issue = new ValidationIssue("ai.model", "image_input_unsupported", "AiModelImageInputUnsupported");
+            return false;
+        }
+
+        if (!selectedModel.SupportedThinkingEfforts.Contains(settings.AiReasoningEffort, StringComparer.Ordinal))
+        {
+            issue = new ValidationIssue("ai.reasoning_effort", "unsupported", "AiThinkingEffortUnsupported");
+            return false;
+        }
+
+        validatedSettings = settings with { Model = selectedModel.Key };
+        return true;
     }
 
     private void OnDashboardStateChanged(DashboardState state) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(state, "runtime.dashboard.changed"));
 
-    private void OnTrackingStateChanged(bool isTracking)
-    {
-        ConfigureAutomaticAnalysis(_store.LoadSettings());
-        RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(_tracking.LoadCurrentDashboardState(), isTracking ? "tracking.started" : "tracking.paused"));
-    }
+    private void OnTrackingStateChanged(bool isTracking) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(_tracking.LoadCurrentDashboardState(), isTracking ? "tracking.started" : "tracking.paused"));
 
     private static string NormalizeAnalysisOrigin(string? origin) => origin?.Trim().ToLowerInvariant() switch
     {
         "winui.operations" => "winui.operations",
         "cli.ai" => "cli.ai",
-        "automatic.timer" => "automatic.timer",
+        "snapshot.manual" => "snapshot.manual",
+        "snapshot.scheduled" => "snapshot.scheduled",
         "runtime.ai" => "runtime.ai",
         _ => "manual"
     };
