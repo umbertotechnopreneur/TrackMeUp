@@ -174,7 +174,12 @@ public sealed record DashboardState(
     DateTimeOffset? LastSampleTimestamp,
     DateTimeOffset LocalTime,
     DateTimeOffset UtcTime,
-    ActivityTrendState? ActivityTrend = null);
+    ActivityTrendState? ActivityTrend = null,
+    TimeSpan? ScheduledSnapshotRemaining = null,
+    PendingManualScreenshotState? PendingManualScreenshot = null);
+
+/// <summary>Describes a retained manual screenshot that can be deleted before deferred analysis begins.</summary>
+public sealed record PendingManualScreenshotState(string ScreenshotPath, DateTimeOffset ExpiresAt);
 
 public sealed record LastSessionState(
     DateTimeOffset? Timestamp,

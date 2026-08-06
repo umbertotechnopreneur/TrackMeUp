@@ -35,26 +35,14 @@
             Padding="32,24,48,16"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
-            <StackPanel MaxWidth="960" Spacing="24">
-                <StackPanel Spacing="5">
-                    <TextBlock
-                        Style="{StaticResource TitleTextBlockStyle}"
-                        Text="Snapshot schedule" />
-                    <TextBlock
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource BodyTextBlockStyle}"
-                        Text="Plan automatic snapshots during the working hours selected below."
-                        TextWrapping="Wrap" />
-                </StackPanel>
+            <StackPanel MaxWidth="960"
+                        Spacing="16">
                 <Grid ColumnSpacing="20" RowSpacing="6">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center" Spacing="2">
                         <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Capture interval" />
                         <TextBlock
@@ -64,7 +52,7 @@
                     </StackPanel>
                     <NumberBox
                         x:Name="IntervalNumberBox"
-                        Grid.Column="1"
+                        Grid.Row="1"
                         Width="176"
                         HorizontalAlignment="Left"
                         Value="5"
@@ -74,8 +62,7 @@
                         LargeChange="5"
                         SpinButtonPlacementMode="Inline" />
                     <TextBlock
-                        Grid.Row="1"
-                        Grid.ColumnSpan="2"
+                        Grid.Row="2"
                         Margin="0,4,0,0"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"

@@ -46,7 +46,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
+    private readonly Timer _scheduledSnapshotTimer;
     private FocusSessionState _focus = new(null, false, null, TimeSpan.Zero, 0, 0, 0, 0, null);
+    private DateTimeOffset? _nextScheduledSnapshotAt;
+    private TimeSpan? _pausedScheduledSnapshotRemaining;
+    private ScreenshotCaptureResult? _pendingManualScreenshotCapture;
+    private DateTimeOffset? _pendingManualScreenshotExpiresAt;
+    private int _scheduledSnapshotIntervalMinutes;
+    private const int ManualScreenshotDeletionWindowSeconds = 30;
     private bool _disposed;
 
     /// <summary>Initializes an application facade with infrastructure owned by the runtime host.</summary>
@@ -83,6 +90,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
         _tracking.TrackingStateChanged += OnTrackingStateChanged;
+        ConfigureScheduledSnapshots(_store.LoadSettings(), restartCountdown: true);
+        _scheduledSnapshotTimer = new Timer(HandleScheduledSnapshotTimerTick, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         _logger.LogInformation("Application facade initialized.");
     }
 
@@ -113,9 +122,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<DashboardState>.Failure("tracking.safe_mode", "TrackingBlockedSafeMode", new ValidationIssue("safeMode", "safe_mode", "SafeModeBlocksTracking"));
         }
 
+        ResumeScheduledSnapshots();
         _tracking.Start();
         _logger.LogInformation("Tracking started. SafeMode={SafeMode}", request.SafeMode);
-        var state = _tracking.LoadCurrentDashboardState();
+        var state = LoadDashboardState();
         await Task.CompletedTask;
         return OperationResult<DashboardState>.Success("tracking.started", "TrackingStarted", state);
     }, cancellationToken);
@@ -123,9 +133,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<DashboardState>> PauseTrackingAsync(CancellationToken cancellationToken) => MutateAsync(async () =>
     {
+        PauseScheduledSnapshots();
         _tracking.Stop();
         _logger.LogInformation("Tracking paused.");
-        var state = _tracking.LoadCurrentDashboardState();
+        var state = LoadDashboardState();
         await Task.CompletedTask;
         return OperationResult<DashboardState>.Success("tracking.paused", "TrackingPaused", state);
     }, cancellationToken);
@@ -139,7 +150,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<DashboardState>.Success("dashboard.loaded", "DashboardLoaded", _tracking.LoadCurrentDashboardState()));
+        return Task.FromResult(OperationResult<DashboardState>.Success("dashboard.loaded", "DashboardLoaded", LoadDashboardState()));
     }
 
     /// <inheritdoc />
@@ -315,6 +326,63 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         await Task.CompletedTask;
         return OperationResult<ScreenshotCaptureResult>.Success("screenshot.captured", "ScreenshotCaptured", result);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken)
+    {
+        if (GetPendingManualScreenshotState() is not null)
+        {
+            return OperationResult<PendingManualScreenshotState>.Failure("snapshot.pending.exists", "PendingManualSnapshotExists");
+        }
+
+        var capture = await CaptureScreenshotAsync(
+            new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: true, ScreenshotCaptureOrigins.Manual, DeferAiAnalysis: true),
+            cancellationToken);
+        if (!capture.Succeeded || capture.Value is not { } captured || captured.StoredScreenshotPaths.FirstOrDefault() is not { } screenshotPath)
+        {
+            return OperationResult<PendingManualScreenshotState>.Failure(capture.Code, capture.MessageKey, capture.Issues.ToArray());
+        }
+
+        return await MutateAsync(async () =>
+        {
+            _pendingManualScreenshotCapture = captured;
+            _pendingManualScreenshotExpiresAt = DateTimeOffset.Now.AddSeconds(ManualScreenshotDeletionWindowSeconds);
+            var pending = new PendingManualScreenshotState(screenshotPath, _pendingManualScreenshotExpiresAt.Value);
+            await Task.CompletedTask;
+            return OperationResult<PendingManualScreenshotState>.Success("snapshot.pending.created", "PendingManualSnapshotCreated", pending);
+        }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        if (_pendingManualScreenshotCapture is not { } capture || GetPendingManualScreenshotState() is null)
+        {
+            return OperationResult<bool>.Failure("snapshot.pending.not_found", "PendingManualSnapshotNotFound");
+        }
+
+        try
+        {
+            foreach (var artifact in capture.AllScreenshotPaths.Where(File.Exists))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                File.Delete(artifact);
+            }
+        }
+        catch (IOException)
+        {
+            return OperationResult<bool>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return OperationResult<bool>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
+        }
+
+        _pendingManualScreenshotCapture = null;
+        _pendingManualScreenshotExpiresAt = null;
+        await Task.CompletedTask;
+        return OperationResult<bool>.Success("snapshot.pending.deleted", "PendingManualSnapshotDeleted", true);
     }, cancellationToken);
 
     /// <inheritdoc />
@@ -855,6 +923,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             _logger.LogInformation("Windows startup state updated. Enabled={Enabled}", current.StartWithWindows);
         }
+        ConfigureScheduledSnapshots(current, restartCountdown: current.ScreenshotIntervalMinutes != settings.ScreenshotIntervalMinutes);
         await Task.CompletedTask;
         return OperationResult<AppSettings>.Success("settings.saved", "SettingsSaved", current);
     }, cancellationToken);
@@ -934,6 +1003,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         _disposed = true;
+        _scheduledSnapshotTimer.Dispose();
         _tracking.DashboardStateChanged -= OnDashboardStateChanged;
         _tracking.TrackingStateChanged -= OnTrackingStateChanged;
         _tracking.Dispose();
@@ -951,6 +1021,144 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         finally
         {
             _mutations.Release();
+        }
+    }
+
+    private DashboardState LoadDashboardState() => _tracking.LoadCurrentDashboardState() with
+    {
+        ScheduledSnapshotRemaining = GetScheduledSnapshotRemaining(),
+        PendingManualScreenshot = GetPendingManualScreenshotState()
+    };
+
+    private PendingManualScreenshotState? GetPendingManualScreenshotState() =>
+        _pendingManualScreenshotCapture?.StoredScreenshotPaths.FirstOrDefault() is { } screenshotPath &&
+        _pendingManualScreenshotExpiresAt is { } expiresAt && expiresAt > DateTimeOffset.Now
+            ? new PendingManualScreenshotState(screenshotPath, expiresAt)
+            : null;
+
+    private TimeSpan? GetScheduledSnapshotRemaining()
+    {
+        if (_tracking.IsTracking && _nextScheduledSnapshotAt is { } nextSnapshotAt)
+        {
+            return nextSnapshotAt > DateTimeOffset.Now
+                ? nextSnapshotAt - DateTimeOffset.Now
+                : TimeSpan.Zero;
+        }
+
+        return _pausedScheduledSnapshotRemaining;
+    }
+
+    private void ConfigureScheduledSnapshots(AppSettings settings, bool restartCountdown)
+    {
+        _scheduledSnapshotIntervalMinutes = settings.ScreenshotIntervalMinutes;
+        if (_scheduledSnapshotIntervalMinutes <= 0)
+        {
+            _nextScheduledSnapshotAt = null;
+            _pausedScheduledSnapshotRemaining = null;
+            return;
+        }
+
+        if (_tracking.IsTracking)
+        {
+            if (restartCountdown || _nextScheduledSnapshotAt is null)
+            {
+                _nextScheduledSnapshotAt = DateTimeOffset.Now.AddMinutes(_scheduledSnapshotIntervalMinutes);
+            }
+
+            _pausedScheduledSnapshotRemaining = null;
+            return;
+        }
+
+        if (restartCountdown || _pausedScheduledSnapshotRemaining is null)
+        {
+            _pausedScheduledSnapshotRemaining = TimeSpan.FromMinutes(_scheduledSnapshotIntervalMinutes);
+        }
+
+        _nextScheduledSnapshotAt = null;
+    }
+
+    private void PauseScheduledSnapshots()
+    {
+        _pausedScheduledSnapshotRemaining = GetScheduledSnapshotRemaining();
+        _nextScheduledSnapshotAt = null;
+    }
+
+    private void ResumeScheduledSnapshots()
+    {
+        if (_scheduledSnapshotIntervalMinutes <= 0)
+        {
+            return;
+        }
+
+        var remaining = _pausedScheduledSnapshotRemaining ?? TimeSpan.FromMinutes(_scheduledSnapshotIntervalMinutes);
+        _nextScheduledSnapshotAt = DateTimeOffset.Now.Add(remaining);
+        _pausedScheduledSnapshotRemaining = null;
+    }
+
+    private void HandleScheduledSnapshotTimerTick(object? state) => _ = ProcessScheduledSnapshotAsync();
+
+    private async Task ProcessScheduledSnapshotAsync()
+    {
+        try
+        {
+            var expiredManualCapture = await MutateAsync(async () =>
+            {
+                if (_pendingManualScreenshotCapture is not { } capture ||
+                    _pendingManualScreenshotExpiresAt is not { } expiresAt || expiresAt > DateTimeOffset.Now)
+                {
+                    return OperationResult<ScreenshotCaptureResult?>.Success("snapshot.pending.not_due", "PendingManualSnapshotNotDue");
+                }
+
+                _pendingManualScreenshotCapture = null;
+                _pendingManualScreenshotExpiresAt = null;
+                await Task.CompletedTask;
+                return OperationResult<ScreenshotCaptureResult?>.Success("snapshot.pending.expired", "PendingManualSnapshotExpired", capture);
+            }, CancellationToken.None);
+
+            if (expiredManualCapture.Succeeded && expiredManualCapture.Value is { } capture)
+            {
+                // Analysis begins only after the runtime closes the deletion window.
+                await AnalyzeCapturedScreenshotAsync(
+                    new AnalyzeCapturedScreenshotRequest(capture, KeepCapture: true, Origin: "snapshot.manual"),
+                    CancellationToken.None);
+            }
+
+            var due = await MutateAsync(async () =>
+            {
+                if (!_tracking.IsTracking || _nextScheduledSnapshotAt is not { } nextSnapshotAt || DateTimeOffset.Now < nextSnapshotAt)
+                {
+                    return OperationResult<bool>.Success("snapshot.schedule.not_due", "SnapshotScheduleNotDue", false);
+                }
+
+                _nextScheduledSnapshotAt = DateTimeOffset.Now.AddMinutes(_scheduledSnapshotIntervalMinutes);
+                await Task.CompletedTask;
+                return OperationResult<bool>.Success("snapshot.schedule.due", "SnapshotScheduleDue", true);
+            }, CancellationToken.None);
+
+            if (!due.Succeeded || due.Value != true)
+            {
+                return;
+            }
+
+            var settings = _store.LoadSettings();
+            if (!ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now))
+            {
+                return;
+            }
+
+            // Scheduled capture is runtime-owned; pause clears its deadline before another tick can become due.
+            await CaptureSystemSnapshotAsync(CancellationToken.None);
+            if (settings.ScreenshotsEnabled)
+            {
+                await CaptureScreenshotAsync(
+                    new CaptureScreenshotRequest("all-screens", true, true, ScreenshotCaptureOrigins.Scheduled),
+                    CancellationToken.None);
+            }
+        }
+        catch (Exception exception)
+        {
+            // Timer failures are logged and the next configured interval remains available for a later attempt.
+            _logger.LogWarning("Scheduled snapshot processing failed. ExceptionType={ExceptionType}", exception.GetType().Name);
         }
     }
 
@@ -1109,9 +1317,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         return true;
     }
 
-    private void OnDashboardStateChanged(DashboardState state) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(state, "runtime.dashboard.changed"));
+    private void OnDashboardStateChanged(DashboardState state) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(LoadDashboardState(), "runtime.dashboard.changed"));
 
-    private void OnTrackingStateChanged(bool isTracking) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(_tracking.LoadCurrentDashboardState(), isTracking ? "tracking.started" : "tracking.paused"));
+    private void OnTrackingStateChanged(bool isTracking) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(LoadDashboardState(), isTracking ? "tracking.started" : "tracking.paused"));
 
     private static string NormalizeAnalysisOrigin(string? origin) => origin?.Trim().ToLowerInvariant() switch
     {

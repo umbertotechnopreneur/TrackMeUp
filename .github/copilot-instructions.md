@@ -31,6 +31,7 @@ alwaysApply: true
 - For PowerShell scripts, prefer dry runs for destructive actions.
 - Add XML doc comments (`///`) to public/protected methods, and include 1-2 clear inline comment lines for critical runtime paths (I/O, process/OS interop, and external calls).
 - For any service/monitoring logic, include explicit comments describing failure behavior and fallback path.
+- For Screenshot UI work, break the window into reusable components and keep data/business logic in models/services; UI should remain passive and only render/interact. **Avoid duplicate big titles, avoid card wrappers around controls, and emphasize a translucent Mica/Acrylic look.**
 - For code quality checks before shipping changes, include:
   - method-level XML docs for new/modified public APIs
   - explicit fallback comments in exception/guard clauses
@@ -48,4 +49,4 @@ alwaysApply: true
 ## Task notes
 
 - `.github/tasks/todo.md` is the active work list.
-- `.github/tasks/archive.md` stores closed items.
+- `.github/tasks/archive.md` stores closed items

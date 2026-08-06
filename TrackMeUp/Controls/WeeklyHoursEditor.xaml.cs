@@ -21,6 +21,11 @@ public sealed partial class WeeklyHoursEditor : UserControl
     {
         InitializeComponent();
         BuildGrid();
+        DaysHost.AddHandler(PointerPressedEvent, new PointerEventHandler(DaysHost_PointerPressed), true);
+        DaysHost.AddHandler(PointerMovedEvent, new PointerEventHandler(DaysHost_PointerMoved), true);
+        DaysHost.AddHandler(PointerReleasedEvent, new PointerEventHandler(DaysHost_PointerReleased), true);
+        DaysHost.PointerCanceled += DaysHost_PointerCanceled;
+        DaysHost.PointerCaptureLost += DaysHost_PointerCaptureLost;
     }
 
     /// <summary>Loads a normalized working-hours schedule into the selectable grid.</summary>
@@ -57,13 +62,21 @@ public sealed partial class WeeklyHoursEditor : UserControl
 
             var label = new TextBlock
             {
+                Margin = new Thickness(0, 0, 8, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
                 Text = CultureInfo.CurrentCulture.DateTimeFormat.GetDayName(
                     Enum.Parse<DayOfWeek>(day, ignoreCase: true))
             };
             row.Children.Add(label);
 
-            var slotsGrid = new Grid { Width = SlotsPerDay * SlotWidth, Height = SlotHeight };
+            var slotsGrid = new Grid
+            {
+                Width = SlotsPerDay * SlotWidth,
+                Height = SlotHeight,
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent)
+            };
             for (var column = 0; column < SlotsPerDay; column++)
             {
                 slotsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SlotWidth) });
@@ -80,13 +93,10 @@ public sealed partial class WeeklyHoursEditor : UserControl
                     Padding = new Thickness(0),
                     Margin = new Thickness(0),
                     CornerRadius = new CornerRadius(0),
+                    IsHitTestVisible = false,
                     Style = slotStyle,
                     Tag = slot
                 };
-                ToolTipService.SetToolTip(button, CreateSlotLabel(slot));
-                button.PointerPressed += Slot_PointerPressed;
-                button.PointerEntered += Slot_PointerEntered;
-                button.PointerReleased += Slot_PointerReleased;
                 slots[slot] = button;
                 Grid.SetColumn(button, slot);
                 slotsGrid.Children.Add(button);
@@ -98,33 +108,52 @@ public sealed partial class WeeklyHoursEditor : UserControl
         }
     }
 
-    private void Slot_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void DaysHost_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is not ToggleButton slot)
+        if (!TryGetSlot(e, out var slot))
         {
             return;
         }
 
         _dragSelectionValue = !(slot.IsChecked == true);
         slot.IsChecked = _dragSelectionValue;
-        slot.CapturePointer(e.Pointer);
+        DaysHost.CapturePointer(e.Pointer);
+        e.Handled = true;
     }
 
-    private void Slot_PointerEntered(object sender, PointerRoutedEventArgs e)
+    private void DaysHost_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (_dragSelectionValue.HasValue && sender is ToggleButton slot && e.Pointer.IsInContact)
+        if (_dragSelectionValue.HasValue && e.Pointer.IsInContact && TryGetSlot(e, out var slot))
         {
             slot.IsChecked = _dragSelectionValue;
+            e.Handled = true;
         }
     }
 
-    private void Slot_PointerReleased(object sender, PointerRoutedEventArgs e)
+    private void DaysHost_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
         _dragSelectionValue = null;
-        if (sender is UIElement slot)
+        DaysHost.ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void DaysHost_PointerCanceled(object sender, PointerRoutedEventArgs e) => _dragSelectionValue = null;
+
+    private void DaysHost_PointerCaptureLost(object sender, PointerRoutedEventArgs e) => _dragSelectionValue = null;
+
+    private bool TryGetSlot(PointerRoutedEventArgs e, out ToggleButton slot)
+    {
+        var position = e.GetCurrentPoint(DaysHost).Position;
+        var dayIndex = (int)Math.Floor(position.Y / SlotHeight);
+        var slotIndex = (int)Math.Floor((position.X - 64d) / SlotWidth);
+        if (dayIndex < 0 || dayIndex >= Days.Length || slotIndex < 0 || slotIndex >= SlotsPerDay)
         {
-            slot.ReleasePointerCaptures();
+            slot = null!;
+            return false;
         }
+
+        slot = _daySlots[Days[dayIndex]][slotIndex];
+        return true;
     }
 
     private static bool[] ParseSelectedSlots(ActiveHoursDay day)

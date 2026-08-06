@@ -39,6 +39,56 @@ public sealed partial class ScreenshotWindow : Window
     private bool _settingSelectedDate;
     private string? _requestedScreenshotPath;
 
+    private CalendarDatePicker SelectedDatePicker => HeaderSection.DatePicker;
+
+    private TextBlock GalleryCountText => HeaderSection.CountText;
+
+    private Grid GallerySurface => GallerySection.Surface;
+
+    private Grid CoverFlowPanel => GallerySection.CoverFlow;
+
+    private Border GalleryImageFrame => GallerySection.CurrentFrame;
+
+    private Border PreviousPreviewFrame => GallerySection.PreviousFrame;
+
+    private Border NextPreviewFrame => GallerySection.NextFrame;
+
+    private Image CurrentImage => GallerySection.CurrentGalleryImage;
+
+    private Image PreviousImage => GallerySection.PreviousGalleryImage;
+
+    private Image NextImage => GallerySection.NextGalleryImage;
+
+    private Button PreviousButton => GallerySection.PreviousNavigationButton;
+
+    private Button NextButton => GallerySection.NextNavigationButton;
+
+    private Border MetadataPanel => GallerySection.MetadataContainer;
+
+    private TextBlock MetadataDateValueText => GallerySection.MetadataDateText;
+
+    private TextBlock MetadataTimeValueText => GallerySection.MetadataTimeText;
+
+    private TextBlock MetadataAppValueText => GallerySection.MetadataApplicationText;
+
+    private TextBlock MetadataOriginValueText => GallerySection.MetadataOriginText;
+
+    private Grid EmptyGalleryPanel => GallerySection.EmptyPanel;
+
+    private TextBlock EmptyGalleryText => GallerySection.EmptyText;
+
+    private ProgressRing GalleryProgressRing => GallerySection.LoadingRing;
+
+    private StackPanel FilmstripStrip => TimelineSection.TimelineRoot;
+
+    private ScrollViewer FilmstripPanelHost => TimelineSection.FilmstripHost;
+
+    private StackPanel FilmstripPanel => TimelineSection.ItemsHost;
+
+    private Button FilmstripToggleButton => TimelineSection.ToggleButton;
+
+    private FontIcon FilmstripChevronIcon => TimelineSection.ToggleChevronIcon;
+
     /// <summary>Creates the Mica screenshot inspector backed by the shared application facade.</summary>
     public ScreenshotWindow(
         ITrackMeUpApplication application,
@@ -63,7 +113,9 @@ public sealed partial class ScreenshotWindow : Window
         {
             _selectedDate = DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime);
         }
+
         InitializeComponent();
+        WireViewEvents();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
@@ -73,6 +125,16 @@ public sealed partial class ScreenshotWindow : Window
         ResizeForLogicalContent();
         UpdateTitleBarLayout();
         Closed += ScreenshotWindow_Closed;
+    }
+
+    private void WireViewEvents()
+    {
+        SelectedDatePicker.DateChanged += SelectedDatePicker_DateChanged;
+        PreviousButton.Click += PreviousButton_Click;
+        NextButton.Click += NextButton_Click;
+        FilmstripToggleButton.Click += FilmstripToggleButton_Click;
+        GallerySurface.PointerEntered += GallerySurface_PointerEntered;
+        GallerySurface.PointerExited += GallerySurface_PointerExited;
     }
 
     /// <summary>Selects a retained capture when an already-open inspector is reused.</summary>
@@ -144,6 +206,7 @@ public sealed partial class ScreenshotWindow : Window
                 _strings = new LocalizationService(result.Value.UiLanguage);
                 ApplyTheme(_theme);
                 UiLocalization.Apply(RootGrid, _strings);
+                ApplyHeaderLocalization();
             }
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
@@ -155,6 +218,7 @@ public sealed partial class ScreenshotWindow : Window
             // The gallery remains usable with the system theme and default strings if optional settings cannot be read.
             _strings = new LocalizationService("system");
             UiLocalization.Apply(RootGrid, _strings);
+            ApplyHeaderLocalization();
         }
 
         await LoadGalleryAsync(_selectedDate);
@@ -230,6 +294,12 @@ public sealed partial class ScreenshotWindow : Window
         }
     }
 
+    private void ApplyHeaderLocalization()
+    {
+        SelectedDatePicker.PlaceholderText = _strings.Translate("Screenshots.Date.Placeholder");
+        AutomationProperties.SetName(SelectedDatePicker, _strings.Translate("Screenshots.Date"));
+    }
+
     private void SelectRequestedScreenshot()
     {
         if (_requestedScreenshotPath is not { } requestedPath)
@@ -285,6 +355,39 @@ public sealed partial class ScreenshotWindow : Window
         PreviousButton.IsEnabled = _items.Count > 1;
         NextButton.IsEnabled = _items.Count > 1;
         SetNavigationOpacity(1);
+        RenderMetadata(current);
+    }
+
+    private void RenderMetadata(ScreenshotGalleryItem? item)
+    {
+        if (item is null)
+        {
+            MetadataDateValueText.Text = "--";
+            MetadataTimeValueText.Text = "--";
+            MetadataAppValueText.Text = "--";
+            MetadataOriginValueText.Text = "--";
+            MetadataPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var culture = CultureInfo.GetCultureInfo(_strings.Language);
+        var localTime = item.CapturedAt.ToLocalTime();
+        MetadataDateValueText.Text = localTime.ToString("D", culture);
+        MetadataTimeValueText.Text = localTime.ToString("T", culture);
+        MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
+        MetadataOriginValueText.Text = FormatCaptureOrigin(item.CaptureOrigin);
+        MetadataPanel.Visibility = Visibility.Visible;
+    }
+
+    private string FormatCaptureOrigin(string captureOrigin)
+    {
+        var normalizedOrigin = captureOrigin.Trim().ToLowerInvariant();
+        return normalizedOrigin switch
+        {
+            ScreenshotCaptureOrigins.Manual => _strings.Translate("Screenshots.Origin.Manual"),
+            ScreenshotCaptureOrigins.Scheduled => _strings.Translate("Screenshots.Origin.Scheduled"),
+            _ => captureOrigin
+        };
     }
 
     private void MoreMenu_Opened(object sender, object e)

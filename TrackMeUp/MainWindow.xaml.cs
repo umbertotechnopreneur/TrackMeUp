@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
+#region Using directives
 using System.Globalization;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
@@ -19,15 +16,18 @@ using TrackMeUp.Runtime;
 using TrackMeUp.Services;
 using Windows.Foundation;
 using Windows.Graphics;
+#endregion
 
 namespace TrackMeUp;
 
 /// <summary>Displays the compact player and forwards user intent to UI-neutral view models.</summary>
 public sealed partial class MainWindow : Window
 {
+    #region Fields
+
     private const int LogicalWindowWidth = 430;
     private const int PlayerHeight = 304;
-    private const int ExpandedPlayerHeight = 424;
+    private const int ExpandedPlayerHeight = 456;
     private const int OptionsHeight = 650;
     private const int OperationsHeight = 768;
     private const int LogicalScreenMargin = 22;
@@ -35,7 +35,6 @@ public sealed partial class MainWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DispatcherQueueTimer _refreshTimer;
-    private readonly DispatcherQueueTimer _screenshotScheduleTimer;
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly AppWindow _appWindow;
     private LocalizationService _strings = new("system");
@@ -55,13 +54,12 @@ public sealed partial class MainWindow : Window
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
     private bool _screenshotsEnabled;
-    private int _screenshotIntervalMinutes = 0;
-    private DateTimeOffset? _nextScreenshotTime;
     private const int PendingSnapshotDeleteSeconds = 30;
-    private string? _pendingSnapshotPath;
-    private ScreenshotCaptureResult? _pendingSnapshotCapture;
-    private DateTimeOffset? _pendingSnapshotDeleteDeadline;
     private bool _pendingSnapshotDeleteInProgress;
+
+    #endregion
+
+    #region Events
 
     /// <summary>Occurs when a fully persisted settings snapshot has been applied to the player surface.</summary>
     public event Action<AppSettings>? SettingsApplied;
@@ -74,6 +72,10 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Occurs when the user requests the retained screenshot gallery.</summary>
     public event EventHandler<ScreenshotPreviewRequestedEventArgs>? ScreenshotsRequested;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
     public MainWindow(ITrackMeUpApplication application, LaunchOptions options)
@@ -107,10 +109,6 @@ public sealed partial class MainWindow : Window
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
         _refreshTimer.Start();
 
-        _screenshotScheduleTimer = DispatcherQueue.CreateTimer();
-        _screenshotScheduleTimer.Interval = TimeSpan.FromSeconds(1);
-        _screenshotScheduleTimer.Tick += async (_, _) => await CheckAndCaptureScreenshotAsync();
-
         _windowResizeAnimationTimer = DispatcherQueue.CreateTimer();
         _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
         _windowResizeAnimationTimer.Tick += WindowResizeAnimationTimer_Tick;
@@ -140,6 +138,8 @@ public sealed partial class MainWindow : Window
         await RefreshDashboardAsync();
     }
 
+    #endregion
+
     private async Task RefreshDashboardAsync()
     {
         var state = await _viewModel.RefreshAsync(CancellationToken.None);
@@ -152,25 +152,20 @@ public sealed partial class MainWindow : Window
     /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
     private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
     {
-        var request = new CaptureScreenshotRequest(
-            "all-screens",
-            true,
-            true,
-            ScreenshotCaptureOrigins.Manual,
-            DeferAiAnalysis: true);
-        var result = await _application.CaptureScreenshotAsync(request, CancellationToken.None);
-        if (!result.Succeeded)
+        if (!TakeScreenshotButton.IsEnabled)
         {
             return;
         }
 
-        if (result.Value is { } captured && captured.StoredScreenshotPaths.FirstOrDefault() is { } capturedPath)
+        TakeScreenshotButton.IsEnabled = false;
+        var result = await _application.CaptureManualScreenshotAsync(CancellationToken.None);
+        if (!result.Succeeded)
         {
-            _pendingSnapshotPath = capturedPath;
-            _pendingSnapshotCapture = captured;
-            _pendingSnapshotDeleteDeadline = DateTimeOffset.Now.AddSeconds(PendingSnapshotDeleteSeconds);
-            UpdatePendingSnapshotDeleteUi();
+            await RefreshDashboardAsync();
+            return;
         }
+
+        await RefreshDashboardAsync();
 
         // Refresh the last session to show the newly captured screenshot.
         var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
@@ -234,7 +229,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        ApplyScreenshotSchedule(saveResult.Value.ScreenshotIntervalMinutes, restartCountdown: true);
+        await RefreshDashboardAsync();
 
         if (sender is ScheduleWindow scheduleWindow)
         {
@@ -252,88 +247,6 @@ public sealed partial class MainWindow : Window
         }
 
         _scheduleWindow = null;
-    }
-
-    /// <summary>Checks if it's time to capture a screenshot and captures one if needed.</summary>
-    private async Task CheckAndCaptureScreenshotAsync()
-    {
-        if (_screenshotIntervalMinutes <= 0 || _nextScreenshotTime is null)
-        {
-            _screenshotScheduleTimer.Stop();
-            return;
-        }
-
-        if (DateTimeOffset.Now >= _nextScreenshotTime.Value)
-        {
-            var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
-            if (settingsResult.Succeeded && settingsResult.Value is { } settings
-                && IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now))
-            {
-                await _application.CaptureSystemSnapshotAsync(CancellationToken.None);
-                if (settings.ScreenshotsEnabled)
-                {
-                    var request = new CaptureScreenshotRequest(
-                        "all-screens",
-                        true,
-                        true,
-                        ScreenshotCaptureOrigins.Scheduled);
-                    await _application.CaptureScreenshotAsync(request, CancellationToken.None);
-                }
-            }
-
-            // Failed settings reads and inactive periods skip this tick; the next interval remains scheduled.
-            _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(_screenshotIntervalMinutes);
-        }
-    }
-
-    /// <summary>Synchronizes the local capture timer with the validated, persisted schedule interval.</summary>
-    private void ApplyScreenshotSchedule(int intervalMinutes, bool restartCountdown)
-    {
-        if (intervalMinutes is < 0 or > 1440)
-        {
-            throw new ArgumentOutOfRangeException(nameof(intervalMinutes));
-        }
-
-        var intervalChanged = _screenshotIntervalMinutes != intervalMinutes;
-        _screenshotIntervalMinutes = intervalMinutes;
-        if (intervalMinutes == 0)
-        {
-            _nextScreenshotTime = null;
-            _screenshotScheduleTimer.Stop();
-            return;
-        }
-
-        if (restartCountdown || intervalChanged || _nextScreenshotTime is null)
-        {
-            _nextScreenshotTime = DateTimeOffset.Now.AddMinutes(intervalMinutes);
-        }
-
-        _screenshotScheduleTimer.Start();
-    }
-
-    private static bool IsWithinActiveHours(IReadOnlyList<ActiveHoursDay>? activeHours, DateTimeOffset timestamp)
-    {
-        var dayName = timestamp.DayOfWeek.ToString().ToLowerInvariant();
-        var day = activeHours?.LastOrDefault(candidate => string.Equals(candidate.Day, dayName, StringComparison.OrdinalIgnoreCase));
-        if (day is null)
-        {
-            return false;
-        }
-
-        var localTime = TimeOnly.FromDateTime(timestamp.DateTime);
-        return IsWithinTimeRange(day.ActivePeriod, localTime)
-            && !day.BreakPeriods.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Any(range => IsWithinTimeRange(range, localTime));
-    }
-
-    private static bool IsWithinTimeRange(string range, TimeOnly localTime)
-    {
-        var values = range.Split('-', StringSplitOptions.TrimEntries);
-        return values.Length == 2
-            && TimeOnly.TryParseExact(values[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
-            && TimeOnly.TryParseExact(values[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end)
-            && localTime >= start
-            && localTime < end;
     }
 
     /// <summary>Shows the shared overflow flyout from its title-bar command.</summary>
@@ -611,57 +524,46 @@ public sealed partial class MainWindow : Window
         UtcTimeText.Text = $"UTC {state.UtcTime:HH:mm:ss}";
         AutomationProperties.SetName(TrackingButton, state.IsTracking ? "Metti in pausa il monitoraggio" : "Avvia il monitoraggio");
 
-        // Display countdown to next screenshot if scheduled.
-        if (_screenshotIntervalMinutes > 0 && _nextScreenshotTime.HasValue)
+        // The runtime owns the deadline and freezes this value while tracking is paused.
+        if (state.ScheduledSnapshotRemaining is { } scheduledSnapshotRemaining)
         {
-            var timeRemaining = _nextScreenshotTime.Value - DateTimeOffset.Now;
-            if (timeRemaining.TotalSeconds > 0)
-            {
-                var remainingSeconds = Math.Max(1, (int)Math.Ceiling(timeRemaining.TotalSeconds));
-                var remaining = TimeSpan.FromSeconds(remainingSeconds);
-                ElapsedText.Text = $"{(int)remaining.TotalMinutes:00}:{remaining.Seconds:00}";
-            }
-            else
-            {
-                ElapsedText.Text = "00:00";
-            }
+            var remainingSeconds = Math.Max(0, (int)Math.Ceiling(scheduledSnapshotRemaining.TotalSeconds));
+            var remaining = TimeSpan.FromSeconds(remainingSeconds);
+            ElapsedText.Text = $"{(int)remaining.TotalMinutes:00}:{remaining.Seconds:00}";
         }
         else
         {
             ElapsedText.Text = "00:00";
         }
 
-        UpdatePendingSnapshotDeleteUi();
+        UpdatePendingSnapshotDeleteUi(state.PendingManualScreenshot);
     }
 
     /// <summary>Updates the temporary delete action and its 30-second countdown.</summary>
-    private void UpdatePendingSnapshotDeleteUi()
+    private void UpdatePendingSnapshotDeleteUi(PendingManualScreenshotState? pendingSnapshot)
     {
         if (_pendingSnapshotDeleteInProgress)
         {
             PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            DeleteSnapshotButton.Visibility = Visibility.Collapsed;
+            TakeScreenshotButton.IsEnabled = false;
             return;
         }
 
-        if (_pendingSnapshotPath is null || _pendingSnapshotDeleteDeadline is not { } deadline)
+        if (pendingSnapshot is not { } pending)
         {
             PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            DeleteSnapshotButton.Visibility = Visibility.Collapsed;
+            TakeScreenshotButton.IsEnabled = true;
             return;
         }
 
-        var remaining = deadline - DateTimeOffset.Now;
+        var remaining = pending.ExpiresAt - DateTimeOffset.Now;
         if (remaining <= TimeSpan.Zero)
         {
-            var expiredCapture = _pendingSnapshotCapture;
-            _pendingSnapshotPath = null;
-            _pendingSnapshotCapture = null;
-            _pendingSnapshotDeleteDeadline = null;
             PendingSnapshotPanel.Visibility = Visibility.Collapsed;
-            if (expiredCapture is not null)
-            {
-                _ = AnalyzeExpiredSnapshotAsync(expiredCapture);
-            }
-
+            DeleteSnapshotButton.Visibility = Visibility.Collapsed;
+            TakeScreenshotButton.IsEnabled = true;
             return;
         }
 
@@ -669,26 +571,9 @@ public sealed partial class MainWindow : Window
         SnapshotDeleteCountdownProgress.Value = remainingSeconds;
         SnapshotDeleteCountdownText.Text = $"00:{Math.Max(1, (int)Math.Ceiling(remainingSeconds)):00}";
         DeleteSnapshotButton.IsEnabled = true;
+        DeleteSnapshotButton.Visibility = Visibility.Visible;
+        TakeScreenshotButton.IsEnabled = false;
         PendingSnapshotPanel.Visibility = Visibility.Visible;
-    }
-
-    /// <summary>Analyzes the retained manual capture after its deletion window has elapsed.</summary>
-    private async Task AnalyzeExpiredSnapshotAsync(ScreenshotCaptureResult capture)
-    {
-        // The provider call is intentionally delayed until deletion is no longer available.
-        var result = await _application.AnalyzeCapturedScreenshotAsync(
-            new AnalyzeCapturedScreenshotRequest(capture, KeepCapture: true, Origin: "snapshot.manual"),
-            CancellationToken.None);
-        if (!result.Succeeded)
-        {
-            return;
-        }
-
-        var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
-        if (lastSession.Succeeded)
-        {
-            UpdateLastSession(lastSession.Value);
-        }
     }
 
     /// <summary>Displays the persisted 24-hour activity trend only after the full window is available.</summary>
@@ -722,26 +607,19 @@ public sealed partial class MainWindow : Window
     /// <summary>Deletes the most recent manual capture while its temporary countdown is active.</summary>
     private async void DeleteSnapshotButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_pendingSnapshotPath is not { } screenshotPath)
-        {
-            return;
-        }
-
         _pendingSnapshotDeleteInProgress = true;
         PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+        DeleteSnapshotButton.Visibility = Visibility.Collapsed;
+        TakeScreenshotButton.IsEnabled = false;
         DeleteSnapshotButton.IsEnabled = false;
         try
         {
-            await _application.DeleteSnapshotAsync(screenshotPath, CancellationToken.None);
-            var result = await _application.DeleteScreenshotAsync(screenshotPath, CancellationToken.None);
+            var result = await _application.DeletePendingManualScreenshotAsync(CancellationToken.None);
             if (!result.Succeeded)
             {
                 return;
             }
 
-            _pendingSnapshotPath = null;
-            _pendingSnapshotCapture = null;
-            _pendingSnapshotDeleteDeadline = null;
             var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
             if (lastSession.Succeeded)
             {
@@ -751,7 +629,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _pendingSnapshotDeleteInProgress = false;
-            UpdatePendingSnapshotDeleteUi();
+            await RefreshDashboardAsync();
         }
     }
 
@@ -802,7 +680,6 @@ public sealed partial class MainWindow : Window
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
-        ApplyScreenshotSchedule(settings.ScreenshotIntervalMinutes, restartCountdown: false);
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         _scheduleWindow?.ApplyTheme(_theme);
         UiLocalization.Apply(RootGrid, _strings);
@@ -944,7 +821,6 @@ public sealed partial class MainWindow : Window
         }
 
         _refreshTimer.Stop();
-        _screenshotScheduleTimer.Stop();
         _windowResizeAnimationTimer.Stop();
 
         if (_scheduleWindow is not null)

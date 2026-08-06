@@ -110,6 +110,21 @@ internal static class ActiveHoursSchedule
             : $"{label}: planned active hours {entry.ActivePeriod}; planned breaks {entry.BreakPeriods}. This is informational only.";
     }
 
+    /// <summary>Determines whether a local timestamp falls within a configured working period and outside its breaks.</summary>
+    internal static bool IsWithinActiveHours(IReadOnlyList<ActiveHoursDay>? configuredDays, DateTimeOffset timestamp)
+    {
+        var day = timestamp.DayOfWeek.ToString().ToLowerInvariant();
+        var entry = Normalize(configuredDays).Single(candidate => candidate.Day == day);
+        var localTime = TimeOnly.FromDateTime(timestamp.DateTime);
+        return TryParseRange(entry.ActivePeriod, out var activeStart, out var activeEnd)
+            && localTime >= activeStart
+            && localTime < activeEnd
+            && !entry.BreakPeriods.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Any(range => TryParseRange(range, out var breakStart, out var breakEnd)
+                    && localTime >= breakStart
+                    && localTime < breakEnd);
+    }
+
     private static bool TryNormalizeRanges(string? value, bool allowMultiple, out string normalized)
     {
         normalized = string.Empty;

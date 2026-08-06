@@ -103,6 +103,7 @@ public sealed class WinUiSurfaceContractTests
         var takeScreenshotButton = player.Descendants().Single(element => HasName(element, "TakeScreenshotButton"));
         var pendingSnapshotPanel = player.Descendants().Single(element => HasName(element, "PendingSnapshotPanel"));
         var deleteSnapshotButton = player.Descendants().Single(element => HasName(element, "DeleteSnapshotButton"));
+        var deleteCountdownProgress = player.Descendants().Single(element => HasName(element, "SnapshotDeleteCountdownProgress"));
         var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
         var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
@@ -117,12 +118,19 @@ public sealed class WinUiSurfaceContractTests
         Assert.Null(moreButton.Attribute("Visibility"));
         Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
         Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
+        Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
         Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
         Assert.Equal("32", takeScreenshotButton.Attribute("Width")?.Value);
         Assert.Equal("{ThemeResource SnapshotCaptureBrush}", takeScreenshotButton.Attribute("Background")?.Value);
         Assert.Equal("Collapsed", pendingSnapshotPanel.Attribute("Visibility")?.Value);
         Assert.Equal("32", deleteSnapshotButton.Attribute("Width")?.Value);
         Assert.Equal("{ThemeResource SnapshotDeleteBrush}", deleteSnapshotButton.Attribute("Background")?.Value);
+        Assert.Same(captureActions, deleteSnapshotButton.Parent);
+        Assert.Equal("Collapsed", deleteSnapshotButton.Attribute("Visibility")?.Value);
+        Assert.Equal("1", pendingSnapshotPanel.Parent?.Attribute("Grid.Column")?.Value);
+        Assert.Equal("Stretch", deleteCountdownProgress.Attribute("HorizontalAlignment")?.Value);
+        Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TakeScreenshotButton.IsEnabled = true;", mainSource, StringComparison.Ordinal);
         Assert.Equal(5, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
         Assert.Equal(
@@ -130,8 +138,9 @@ public sealed class WinUiSurfaceContractTests
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
-        Assert.Contains("DeferAiAnalysis: true", mainSource, StringComparison.Ordinal);
-        Assert.Contains("AnalyzeCapturedScreenshotAsync", mainSource, StringComparison.Ordinal);
+        Assert.Contains("CaptureManualScreenshotAsync", mainSource, StringComparison.Ordinal);
+        Assert.Contains("DeletePendingManualScreenshotAsync", mainSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("AnalyzeCapturedScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
@@ -153,6 +162,7 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
         Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
+        Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(["Screenshots.Menu.DeleteScreenshot", "Screenshots.Menu.DeleteSnapshot"], menuTags);
         Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
@@ -212,7 +222,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("UtcTimeText.Text = $\"UTC {state.UtcTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
         Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
-        Assert.Contains("private const int ExpandedPlayerHeight = 424;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int ExpandedPlayerHeight = 456;", source, StringComparison.Ordinal);
     }
 
     [Fact]

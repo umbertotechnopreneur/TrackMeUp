@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+	x:Class="TrackMeUp.Controls.ScreenshotHeaderControl"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<Grid VerticalAlignment="Center" ColumnSpacing="16">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="Auto" />
+		</Grid.ColumnDefinitions>
+
+		<TextBlock
+			x:Name="GalleryCountText"
+			VerticalAlignment="Center"
+			Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+			Style="{StaticResource BodyTextBlockStyle}"
+			Text="0 captures" />
+
+		<StackPanel
+			Grid.Column="1"
+			VerticalAlignment="Center"
+			Orientation="Horizontal"
+			Spacing="10">
+			<FontIcon
+				AutomationProperties.AccessibilityView="Raw"
+				FontFamily="Segoe Fluent Icons"
+				FontSize="14"
+				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+				Glyph="&#xE787;" />
+			<CalendarDatePicker
+				x:Name="SelectedDatePicker"
+				Width="270"
+				AutomationProperties.Name="Screenshot date"
+				DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
+				PlaceholderText="Select a day" />
+		</StackPanel>
+	</Grid>
+</UserControl>

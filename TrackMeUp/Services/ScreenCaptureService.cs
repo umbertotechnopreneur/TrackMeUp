@@ -204,19 +204,24 @@ public sealed class ScreenCaptureService : IScreenCaptureService
 
     private static void AddWatermark(string sourcePng, string destinationPng, string watermarkText)
     {
-        using var source = new Bitmap(sourcePng);
+        // Load source bytes first so no file handle to sourcePng remains open.
+        var sourceBytes = File.ReadAllBytes(sourcePng);
+
+        using var sourceStream = new MemoryStream(sourceBytes, writable: false);
+        using var source = new Bitmap(sourceStream);
         using var destination = new Bitmap(source);
         using var graphics = Graphics.FromImage(destination);
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
         graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
         using var font = new Font("Segoe UI", 18f, FontStyle.Bold, GraphicsUnit.Pixel);
-        var textBrush = new SolidBrush(Color.FromArgb(225, 240, 240, 255));
-        var shadowBrush = new SolidBrush(Color.FromArgb(170, 5, 5, 5));
+        using var textBrush = new SolidBrush(Color.FromArgb(225, 240, 240, 255));
+        using var shadowBrush = new SolidBrush(Color.FromArgb(170, 5, 5, 5));
         var shadowOffset = new PointF(1f, 1f);
         var margin = 12;
-        var textWidth = graphics.MeasureString(watermarkText, font).Width;
-        var textHeight = graphics.MeasureString(watermarkText, font).Height;
+        var textSize = graphics.MeasureString(watermarkText, font);
+        var textWidth = textSize.Width;
+        var textHeight = textSize.Height;
         var x = Math.Max(margin, destination.Width - textWidth - margin);
         var y = Math.Max(margin, destination.Height - textHeight - margin);
 

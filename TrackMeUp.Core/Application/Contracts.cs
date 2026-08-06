@@ -216,6 +216,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Captures screenshots after privacy checks.</summary>
     Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Captures a manual screenshot and starts its runtime-owned deletion window.</summary>
+    Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken);
+
+    /// <summary>Deletes the manual screenshot that is still inside its runtime-owned deletion window.</summary>
+    Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken);
+
     /// <summary>Analyzes an existing screenshot capture after its temporary deletion window has elapsed.</summary>
     Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken);
 

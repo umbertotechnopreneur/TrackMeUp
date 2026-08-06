@@ -206,6 +206,8 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "focus.stop" => ToResponse(request, await _application.StopFocusSessionAsync(ReadBool(request.Payload, "summarize"), cancellationToken)),
                 "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
                 "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
+                "screenshot.manual.capture" => ToResponse(request, await _application.CaptureManualScreenshotAsync(cancellationToken)),
+                "screenshot.manual.delete" => ToResponse(request, await _application.DeletePendingManualScreenshotAsync(cancellationToken)),
                 "screenshot.analyze" => await DispatchScreenshotAnalysisAsync(request, cancellationToken),
                 "screenshot.latest" => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
                 "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
@@ -459,6 +461,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => SendAsync<SystemSnapshot>("system.snapshot", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<ScreenshotCaptureResult>("screenshot.capture", request, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<PendingManualScreenshotState>("screenshot.manual.capture", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<bool>("screenshot.manual.delete", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>("screenshot.analyze", request, cancellationToken, ScreenshotAnalysisTimeout);
     /// <inheritdoc />
