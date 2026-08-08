@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -14,7 +16,10 @@ public sealed partial class TaskbarWidgetWindow : Window
 {
     private readonly ITrackMeUpApplication _application;
     private readonly DispatcherTimer _refreshTimer;
+    private readonly DispatcherTimer _spanLabelSaveTimer;
     private bool _refreshInProgress;
+    private bool _updatingSpanLabel;
+    private bool _spanLabelSaveInProgress;
     private LocalizationService _strings = new("system");
 
     /// <summary>Initializes the transparent taskbar control.</summary>
@@ -25,10 +30,13 @@ public sealed partial class TaskbarWidgetWindow : Window
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _refreshTimer.Tick += RefreshTimer_Tick;
+        _spanLabelSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+        _spanLabelSaveTimer.Tick += SpanLabelSaveTimer_Tick;
         Loaded += TaskbarWidgetWindow_Loaded;
         Closed += (_, _) =>
         {
             _refreshTimer.Stop();
+            _spanLabelSaveTimer.Stop();
             RecordingGlow.BeginAnimation(OpacityProperty, null);
         };
     }
@@ -60,6 +68,10 @@ public sealed partial class TaskbarWidgetWindow : Window
             ? Color.FromRgb(23, 59, 63)
             : Color.FromRgb(244, 245, 241));
         PlayPauseIcon.Foreground = foreground;
+        if (!SpanLabelTextBox.IsKeyboardFocusWithin)
+        {
+            SetSpanLabelText(settings.SpanLabel);
+        }
     }
 
     private async void TaskbarWidgetWindow_Loaded(object sender, RoutedEventArgs e)
@@ -110,6 +122,64 @@ public sealed partial class TaskbarWidgetWindow : Window
         TrackingButton.ToolTip = actionName;
         AutomationProperties.SetName(TrackingButton, actionName);
         SetRecordingVisual(state.IsTracking);
+        if (!SpanLabelTextBox.IsKeyboardFocusWithin)
+        {
+            SetSpanLabelText(state.SpanLabel);
+        }
+    }
+
+    private void SpanLabelTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SpanLabelWatermark.Visibility = string.IsNullOrEmpty(SpanLabelTextBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        if (_updatingSpanLabel)
+        {
+            return;
+        }
+
+        _spanLabelSaveTimer.Stop();
+        _spanLabelSaveTimer.Start();
+    }
+
+    private async void SpanLabelSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _spanLabelSaveTimer.Stop();
+        if (_spanLabelSaveInProgress)
+        {
+            return;
+        }
+
+        _spanLabelSaveInProgress = true;
+        var label = SpanLabelTextBox.Text;
+        try
+        {
+            var result = await _application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?> { ["activity.span_label"] = label }),
+                CancellationToken.None);
+            if (result.Succeeded && result.Value is not null)
+            {
+                SetSpanLabelText(result.Value.SpanLabel);
+            }
+        }
+        finally
+        {
+            _spanLabelSaveInProgress = false;
+            if (!string.Equals(label, SpanLabelTextBox.Text, StringComparison.Ordinal))
+            {
+                _spanLabelSaveTimer.Start();
+            }
+        }
+    }
+
+    private void SetSpanLabelText(string? label)
+    {
+        _updatingSpanLabel = true;
+        SpanLabelTextBox.Text = label ?? string.Empty;
+        _updatingSpanLabel = false;
+        SpanLabelWatermark.Visibility = string.IsNullOrEmpty(SpanLabelTextBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void SetRecordingVisual(bool isTracking)

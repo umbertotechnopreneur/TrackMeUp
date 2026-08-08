@@ -91,11 +91,30 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
-    public void SettingsWithoutAnInterval_UseTheFiveMinuteScheduleDefault()
+    public void SettingsWithoutAnInterval_UseTheFifteenMinuteScheduleDefault()
     {
         var settings = JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
-        Assert.Equal(5, settings?.ScreenshotIntervalMinutes);
+        Assert.Equal(15, settings?.ScreenshotIntervalMinutes);
+    }
+
+    [Fact]
+    public void Apply_PersistsTheBoundedLocalSpanLabel()
+    {
+        var result = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?> { ["activity.span_label"] = "  Project brief  " }));
+
+        var settings = Assert.IsType<AppSettings>(result.Value);
+        Assert.Equal("Project brief", settings.SpanLabel);
+        Assert.True(SettingsCatalog.TryGetValue(settings, "activity.span_label", out var storedLabel));
+        Assert.Equal("Project brief", storedLabel);
+
+        var invalid = SettingsCatalog.Apply(
+            settings,
+            new SettingsPatch(new Dictionary<string, string?> { ["activity.span_label"] = new string('x', 21) }));
+        Assert.False(invalid.Succeeded);
+        Assert.Contains(invalid.Issues, issue => issue.Field == "activity.span_label");
     }
 
     [Fact]

@@ -289,12 +289,14 @@ public sealed class LocalStore
             .Select(file =>
             {
                 var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
+                var activity = FindScreenshotActivity(capturedAt, settings.ScreenshotIntervalMinutes);
                 return new ScreenshotGalleryItem(
                     capturedAt,
                     file.FullName,
-                    FindForegroundApplication(capturedAt),
+                    activity.ForegroundApplication,
                     GetCaptureKind(file.Name),
-                    GetCaptureOrigin(file.Name));
+                    GetCaptureOrigin(file.Name),
+                    activity.SpanLabels);
             })
             .ToArray();
 
@@ -316,18 +318,43 @@ public sealed class LocalStore
         return GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
     }
 
-    private string FindForegroundApplication(DateTimeOffset capturedAt)
+    private ScreenshotActivityContext FindScreenshotActivity(DateTimeOffset capturedAt, int screenshotIntervalMinutes)
     {
         var samples = new List<ActivitySample>();
-        var fromUtc = capturedAt.ToUniversalTime().AddMinutes(-2);
-        var toUtc = capturedAt.ToUniversalTime().AddMinutes(2);
+        var fromUtc = capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
+        var toUtc = capturedAt.ToUniversalTime();
         _activity.VisitOverlapping(fromUtc, toUtc, CancellationToken.None, samples.Add);
-        return samples
+        var foregroundApplication = samples
             .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
             .Select(sample => sample.Application)
             .FirstOrDefault(application => !string.IsNullOrWhiteSpace(application))
             ?? "Desktop";
+        var labels = samples
+            .OrderBy(sample => sample.Timestamp)
+            .Select(sample => new
+            {
+                sample.Timestamp,
+                Label = sample.Attributes is not null
+                    && sample.Attributes.TryGetValue(ActivityAttributeKeys.SpanLabel, out var label)
+                    ? label.Trim()
+                    : string.Empty
+            })
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Label))
+            .Aggregate(
+                new List<ActivityLabelSample>(),
+                (distinct, entry) =>
+                {
+                    if (distinct.Count == 0 || !string.Equals(distinct[^1].Label, entry.Label, StringComparison.Ordinal))
+                    {
+                        distinct.Add(new ActivityLabelSample(entry.Timestamp, entry.Label));
+                    }
+
+                    return distinct;
+                });
+        return new ScreenshotActivityContext(foregroundApplication, labels);
     }
+
+    private sealed record ScreenshotActivityContext(string ForegroundApplication, IReadOnlyList<ActivityLabelSample> SpanLabels);
 
     private static string ScreenshotIdentity(string fileName)
     {

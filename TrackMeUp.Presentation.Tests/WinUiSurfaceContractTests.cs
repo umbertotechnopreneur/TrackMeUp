@@ -143,14 +143,14 @@ public sealed class WinUiSurfaceContractTests
             ["Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "Main.Menu.Operations", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
-        Assert.Contains("ShowPanel(OperationsPanel, OperationsHeight);", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ShowPanel(OperationsPanel, MainWindowSurface.Operations);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ApplyOverflowCommandLabel(OperationsMenuItem, T(\"Main.Menu.Operations\"));", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
         Assert.Contains("CaptureManualScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.Contains("DeletePendingManualScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("AnalyzeCapturedScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.Contains("FormatCurrentContext(currentContext)", mainSource, StringComparison.Ordinal);
-        Assert.Contains("T(_detailsExpanded ? \"LastSession.Hide\" : \"LastSession.Show\")", mainSource, StringComparison.Ordinal);
+        Assert.Contains("T(_layoutState.IsLastSessionVisible ? \"LastSession.Hide\" : \"LastSession.Show\")", mainSource, StringComparison.Ordinal);
         Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
@@ -218,7 +218,8 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Contains("presenter.IsResizable = false;", source, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", source, StringComparison.Ordinal);
-        Assert.Contains("ResizeForLogicalContent(PlayerHeight);", source, StringComparison.Ordinal);
+        Assert.Contains("ResizeForLogicalContent(_layoutState.LogicalHeight);", source, StringComparison.Ordinal);
+        Assert.Contains("ResizeForCurrentLayout(animate: false);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("WindowStateKeys.Main", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RestoreWindowState", source, StringComparison.Ordinal);
         Assert.DoesNotContain("SaveWindowState", source, StringComparison.Ordinal);
@@ -254,7 +255,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
         Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
-        Assert.Contains("private const int ExpandedPlayerHeight = 432;", source, StringComparison.Ordinal);
+        Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
     }
 
     [Fact]

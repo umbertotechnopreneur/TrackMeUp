@@ -52,6 +52,8 @@ public sealed partial class ScreenshotWindow : Window
 
     private TextBlock MetadataOriginValueText => GallerySection.MetadataOriginText;
 
+    private TextBlock MetadataSpanLabelsValueText => GallerySection.MetadataSpanLabelsText;
+
     private Grid EmptyGalleryPanel => GallerySection.EmptyPanel;
 
     private TextBlock EmptyGalleryText => GallerySection.EmptyText;
@@ -342,6 +344,7 @@ public sealed partial class ScreenshotWindow : Window
             MetadataTimeValueText.Text = "--";
             MetadataAppValueText.Text = "--";
             MetadataOriginValueText.Text = "--";
+            MetadataSpanLabelsValueText.Text = "--";
             MetadataPanel.Visibility = Visibility.Collapsed;
             return;
         }
@@ -352,8 +355,14 @@ public sealed partial class ScreenshotWindow : Window
         MetadataTimeValueText.Text = localTime.ToString("t", culture);
         MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
         MetadataOriginValueText.Text = FormatCaptureOrigin(item.CaptureOrigin);
+        MetadataSpanLabelsValueText.Text = FormatSpanLabels(item.SpanLabels, culture);
         MetadataPanel.Visibility = Visibility.Visible;
     }
+
+    private static string FormatSpanLabels(IReadOnlyList<ActivityLabelSample>? labels, CultureInfo culture) =>
+        labels is not { Count: > 0 }
+            ? "--"
+            : string.Join("  ·  ", labels.Select(label => $"{label.SampledAt.ToLocalTime().ToString("t", culture)} {label.Label}"));
 
     private static string FormatMetadataDate(DateTimeOffset capturedAt, CultureInfo culture)
     {

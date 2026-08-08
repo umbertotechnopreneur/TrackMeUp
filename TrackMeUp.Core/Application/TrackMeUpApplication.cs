@@ -54,6 +54,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private DateTimeOffset? _pendingManualScreenshotExpiresAt;
     private int _scheduledSnapshotIntervalMinutes;
     private bool _scheduledSnapshotsEnabled;
+    private readonly object _activityScoreTelemetryGate = new();
+    private DateTimeOffset? _nextActivityScoreTelemetryAt;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private bool _disposed;
 
@@ -227,6 +229,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
             var snapshot = _snapshot.Capture();
             var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, snapshot.Timestamp);
+            _tracking.RecordSystemSnapshot(snapshot);
             return OperationResult<SystemSnapshot>.Success(
                 "system.snapshot.captured",
                 "SystemSnapshotCaptured",
@@ -1144,7 +1147,41 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _pausedScheduledSnapshotRemaining = null;
     }
 
-    private void HandleScheduledSnapshotTimerTick(object? state) => _ = ProcessScheduledSnapshotAsync();
+    private void HandleScheduledSnapshotTimerTick(object? state) => _ = ProcessRuntimeTimerAsync();
+
+    private async Task ProcessRuntimeTimerAsync()
+    {
+        await CaptureActivityScoreTelemetryIfDueAsync();
+        await ProcessScheduledSnapshotAsync();
+    }
+
+    /// <summary>Captures one telemetry point per minute while tracking so the live score includes CPU and GPU activity.</summary>
+    private async Task CaptureActivityScoreTelemetryIfDueAsync()
+    {
+        if (!_tracking.IsTracking)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        lock (_activityScoreTelemetryGate)
+        {
+            if (_nextActivityScoreTelemetryAt is { } nextTelemetryAt && now < nextTelemetryAt)
+            {
+                return;
+            }
+
+            _nextActivityScoreTelemetryAt = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, TimeSpan.Zero)
+                .AddMinutes(1);
+        }
+
+        var result = await CaptureSystemSnapshotAsync(CancellationToken.None);
+        if (!result.Succeeded)
+        {
+            // The score keeps its input-only data for this minute when optional telemetry is unavailable.
+            _logger.LogWarning("Activity score telemetry sample failed. Code={Code}", result.Code);
+        }
+    }
 
     private async Task ProcessScheduledSnapshotAsync()
     {

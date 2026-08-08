@@ -9,7 +9,7 @@ public sealed class TaskbarWidgetHost : IDisposable
 {
     private readonly ILogger<TaskbarWidgetHost> _logger;
     /// <summary>Gets the widget width in device-independent pixels.</summary>
-    public const int LogicalWidth = 144;
+    public const int LogicalWidth = 288;
 
     /// <summary>Gets the widget height in device-independent pixels.</summary>
     public const int LogicalHeight = 40;
@@ -23,6 +23,7 @@ public sealed class TaskbarWidgetHost : IDisposable
     private const long WsSysMenu = 0x00080000L;
     private const long WsMinimizeBox = 0x00020000L;
     private const long WsMaximizeBox = 0x00010000L;
+    // Retained as the host's documented non-activation style; it is intentionally not applied while the widget contains editable text.
     private const long WsExNoActivate = 0x08000000L;
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
@@ -183,7 +184,6 @@ public sealed class TaskbarWidgetHost : IDisposable
             var style = GetWindowStyle(_widgetHandle);
             var childStyle = (style | WsChild) & ~(WsPopup | WsCaption | WsThickFrame | WsSysMenu | WsMinimizeBox | WsMaximizeBox);
             SetWindowStyle(_widgetHandle, childStyle);
-            SetWindowExStyle(_widgetHandle, GetWindowExStyle(_widgetHandle) | WsExNoActivate);
             frameChanged = true;
             var previousParent = SetParent(_widgetHandle, taskbarHandle);
             _logger.LogInformation("SetParent result={PreviousParent} NewParent={NewParent}.", previousParent, GetParent(_widgetHandle));

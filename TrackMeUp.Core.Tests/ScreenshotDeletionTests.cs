@@ -144,6 +144,40 @@ public sealed class ScreenshotDeletionTests
         }
     }
 
+    [Fact]
+    public void ScreenshotGallery_ShowsDistinctSpanLabelsSampledDuringItsInterval()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with { ScreenshotIntervalMinutes = 15 });
+            var capture = CreateCapture(dataDirectory);
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            foreach (var path in capture.AllScreenshotPaths)
+            {
+                File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
+            }
+
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-14), "Planning"));
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-8), "Planning"));
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-4), "Implementation"));
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-1), "Implementation"));
+
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+
+            var labels = Assert.Single(gallery.Items).SpanLabels;
+            Assert.Collection(
+                labels!,
+                label => Assert.Equal("Planning", label.Label),
+                label => Assert.Equal("Implementation", label.Label));
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
     private static LocalStore CreateStore(string dataDirectory)
     {
         var store = new LocalStore(dataDirectory);
@@ -168,6 +202,19 @@ public sealed class ScreenshotDeletionTests
             [storedPath],
             ScreenshotCaptureOrigins.Manual);
     }
+
+    private static ActivitySample CreateActivitySample(DateTimeOffset timestamp, string spanLabel) => new(
+        timestamp,
+        5,
+        "active",
+        "test",
+        "Test",
+        "Test",
+        "Test",
+        "installation",
+        1,
+        1,
+        new Dictionary<string, string> { [ActivityAttributeKeys.SpanLabel] = spanLabel });
 
     private static TrackMeUpApplication CreateApplication(LocalStore store, IAiAnalysisService? analysis = null) =>
         new(

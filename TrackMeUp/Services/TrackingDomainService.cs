@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
@@ -12,6 +13,7 @@ public sealed class TrackingDomainService : IDisposable
     private readonly LocalStore _store;
     private readonly InputHookService _inputHooks = new();
     private readonly ActivityMonitorService _monitor;
+    private readonly ActivityScoreService _activityScore = new();
     private ActivitySample? _latestSample;
     private DateTimeOffset? _trackingStartedAt;
 
@@ -82,6 +84,7 @@ public sealed class TrackingDomainService : IDisposable
     public DashboardState LoadCurrentDashboardState()
     {
         var summary = _store.GetTodaySummary();
+        var settings = _store.LoadSettings();
         var sample = _latestSample;
         var status = IsTracking && sample?.State == "active" ? "RUNNING" : "PAUSED";
         var context = sample is null ? "STATE_READY" : sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
@@ -101,7 +104,9 @@ public sealed class TrackingDomainService : IDisposable
             sample?.Timestamp,
             utcNow.ToLocalTime(),
             utcNow,
-            _store.Get24HourActivityTrend(utcNow));
+            _store.Get24HourActivityTrend(utcNow),
+            ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
+            SpanLabel: settings.SpanLabel);
     }
 
     /// <summary>
@@ -152,6 +157,14 @@ public sealed class TrackingDomainService : IDisposable
     /// <param name="settings">Settings instance to persist.</param>
     public void SaveSettings(AppSettings settings) => _store.SaveSettings(settings);
 
+    /// <summary>Records application-owned telemetry for the live score without exposing OS access to the UI.</summary>
+    public void RecordSystemSnapshot(SystemSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        _activityScore.RecordSystemSnapshot(snapshot);
+        DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
+    }
+
     /// <summary>
     /// Handles each new sample and publishes updated UI state.
     /// </summary>
@@ -159,6 +172,7 @@ public sealed class TrackingDomainService : IDisposable
     private void HandleSampleRecorded(ActivitySample sample)
     {
         _latestSample = sample;
+        _activityScore.RecordSample(sample);
         DashboardStateChanged?.Invoke(BuildDashboardState(sample));
     }
 
@@ -170,6 +184,7 @@ public sealed class TrackingDomainService : IDisposable
     private DashboardState BuildDashboardState(ActivitySample sample)
     {
         var summary = _store.GetTodaySummary();
+        var settings = _store.LoadSettings();
         var status = sample.State == "active" ? "RUNNING" : "PAUSED";
         var context = sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
         var intensity = sample.State == "active" ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2) : 5;
@@ -186,7 +201,9 @@ public sealed class TrackingDomainService : IDisposable
             sample.Timestamp,
             utcNow.ToLocalTime(),
             utcNow,
-            _store.Get24HourActivityTrend(utcNow));
+            _store.Get24HourActivityTrend(utcNow),
+            ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
+            SpanLabel: settings.SpanLabel);
     }
 
     /// <summary>
@@ -199,7 +216,20 @@ public sealed class TrackingDomainService : IDisposable
         sample.Context,
         sample.WindowTitle,
         sample.State,
-        sample.Attributes);
+        FilterAnalysisAttributes(sample.Attributes));
+
+    private static IReadOnlyDictionary<string, string>? FilterAnalysisAttributes(IReadOnlyDictionary<string, string>? attributes)
+    {
+        if (attributes is null)
+        {
+            return null;
+        }
+
+        var safeAttributes = attributes
+            .Where(attribute => !string.Equals(attribute.Key, ActivityAttributeKeys.SpanLabel, StringComparison.Ordinal))
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value, StringComparer.Ordinal);
+        return safeAttributes.Count == 0 ? null : safeAttributes;
+    }
 
     /// <summary>
     /// Disposes active hooks and unsubscribes events.

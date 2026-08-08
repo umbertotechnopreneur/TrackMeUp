@@ -11,12 +11,14 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using TrackMeUp.Runtime;
 using TrackMeUp.Services;
 using Windows.Foundation;
 using Windows.Graphics;
+using Windows.UI;
 #endregion
 
 namespace TrackMeUp;
@@ -27,11 +29,6 @@ public sealed partial class MainWindow : Window
     #region Fields
 
     private const int LogicalWindowWidth = 430;
-    private const int PlayerHeight = 304;
-    private const int ExpandedPlayerHeight = 432;
-    private const int OutsideActiveHoursBannerHeight = 48;
-    private const int OptionsHeight = 650;
-    private const int OperationsHeight = 768;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
     private readonly ITrackMeUpApplication _application;
@@ -39,10 +36,10 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly AppWindow _appWindow;
+    private readonly MainWindowLayoutState _layoutState = new();
     private LocalizationService _strings = new("system");
-    private bool _detailsExpanded;
     private bool _updatingMenuState;
-    private int _logicalHeight = PlayerHeight;
+    private int _logicalHeight;
     private double _rasterizationScale = 1d;
     private DateTimeOffset _windowResizeAnimationStartedAt;
     private SizeInt32 _windowResizeAnimationStartSize;
@@ -58,8 +55,6 @@ public sealed partial class MainWindow : Window
     private bool _screenshotsEnabled;
     private const int PendingSnapshotDeleteSeconds = 30;
     private bool _pendingSnapshotDeleteInProgress;
-    private bool _outsideActiveHoursWarningVisible;
-
     #endregion
 
     /// <summary>Gets the single observable AI state shared by the player menu and options surface.</summary>
@@ -108,10 +103,11 @@ public sealed partial class MainWindow : Window
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
         }
-        ResizeForLogicalContent(PlayerHeight);
+        ResizeForLogicalContent(_layoutState.LogicalHeight);
 
         OptionsControl.Initialize(application, AiState);
         OptionsControl.SettingsSaved += ApplySettings;
+        OptionsControl.LayoutChanged += OptionsControl_LayoutChanged;
         OperationsControl.Initialize(application);
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
@@ -372,7 +368,7 @@ public sealed partial class MainWindow : Window
     private void OptionsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        ShowPanel(OptionsPanel, OptionsHeight);
+        ShowPanel(OptionsPanel, MainWindowSurface.Options);
     }
 
     /// <summary>Forwards report-window activation to the application composition root.</summary>
@@ -393,7 +389,7 @@ public sealed partial class MainWindow : Window
     private void OperationsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        ShowPanel(OperationsPanel, OperationsHeight);
+        ShowPanel(OperationsPanel, MainWindowSurface.Operations);
     }
 
     /// <summary>Shows the passive About view.</summary>
@@ -460,12 +456,10 @@ public sealed partial class MainWindow : Window
     /// <summary>Shows or hides the presentation-only latest-session panel.</summary>
     private async void DetailsButton_Click(object sender, RoutedEventArgs e)
     {
-        _detailsExpanded = !_detailsExpanded;
-        DetailsPanel.Visibility = _detailsExpanded ? Visibility.Visible : Visibility.Collapsed;
-        DetailsChevron.Glyph = _detailsExpanded ? "\uE70E" : "\uE70D";
+        var isVisible = TogglePlayerSection(MainWindowLayoutSection.LastSession, DetailsPanel);
+        DetailsChevron.Glyph = isVisible ? "\uE70E" : "\uE70D";
         UpdateDetailsAccessibility();
-        AnimateResizeForLogicalContent(GetPlayerLogicalHeight());
-        if (_detailsExpanded)
+        if (isVisible)
         {
             var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
             if (lastSession.Succeeded)
@@ -474,6 +468,23 @@ public sealed partial class MainWindow : Window
             }
             FadeIn(DetailsPanel);
         }
+        if (!_windowResizeAnimationTimer.IsRunning)
+        {
+            ApplyFlyoutPosition(_position);
+        }
+    }
+
+    /// <summary>Shows or hides the presentation-only live activity-score histogram.</summary>
+    private void ActivityScoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        var isVisible = TogglePlayerSection(MainWindowLayoutSection.ActivityScore, ActivityScorePanel);
+        ActivityScoreChevron.Glyph = isVisible ? "\uE70E" : "\uE70D";
+        UpdateActivityScoreAccessibility();
+        if (isVisible)
+        {
+            FadeIn(ActivityScorePanel);
+        }
+
         if (!_windowResizeAnimationTimer.IsRunning)
         {
             ApplyFlyoutPosition(_position);
@@ -503,15 +514,25 @@ public sealed partial class MainWindow : Window
     /// <summary>Returns from operational tools to the player panel.</summary>
     private void OperationsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
 
-    /// <summary>Shows one view panel and applies its expected compact size.</summary>
-    private void ShowPanel(FrameworkElement panel, int height)
+    /// <summary>Re-measures the options surface after one of its nested sections changes visibility.</summary>
+    private void OptionsControl_LayoutChanged(object? sender, EventArgs e)
+    {
+        if (_layoutState.Surface == MainWindowSurface.Options)
+        {
+            ResizeForCurrentLayout(animate: true);
+        }
+    }
+
+    /// <summary>Shows one top-level panel and measures the visible XAML content before resizing.</summary>
+    private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
+        _layoutState.ShowSurface(surface);
         TitleBarBackButton.Visibility = ReferenceEquals(panel, OptionsPanel) ? Visibility.Visible : Visibility.Collapsed;
-        ResizeForLogicalContent(height);
+        ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(panel);
         DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
@@ -523,11 +544,46 @@ public sealed partial class MainWindow : Window
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
+        _layoutState.ShowSurface(MainWindowSurface.Player);
         TitleBarBackButton.Visibility = Visibility.Collapsed;
-        ResizeForLogicalContent(GetPlayerLogicalHeight());
+        ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
         DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
+    }
+
+    /// <summary>Toggles one player section and resizes from the XAML content currently visible.</summary>
+    private bool TogglePlayerSection(MainWindowLayoutSection section, FrameworkElement element)
+    {
+        var isVisible = _layoutState.ToggleSection(section);
+        element.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        ResizeForCurrentLayout(animate: RootGrid.IsLoaded);
+        return isVisible;
+    }
+
+    /// <summary>Applies one player section visibility and re-measures only when the layout changed.</summary>
+    private void SetPlayerSectionVisibility(MainWindowLayoutSection section, FrameworkElement element, bool isVisible)
+    {
+        var changed = _layoutState.SetSectionVisibility(section, isVisible);
+        element.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (changed && _layoutState.Surface == MainWindowSurface.Player)
+        {
+            ResizeForCurrentLayout(animate: RootGrid.IsLoaded);
+        }
+    }
+
+    /// <summary>Measures the active XAML surface at the flyout width and applies the resulting window height.</summary>
+    private void ResizeForCurrentLayout(bool animate)
+    {
+        RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));
+        var logicalHeight = _layoutState.RecordMeasuredHeight(RootGrid.DesiredSize.Height);
+        if (animate && RootGrid.IsLoaded)
+        {
+            AnimateResizeForLogicalContent(logicalHeight);
+            return;
+        }
+
+        ResizeForLogicalContent(logicalHeight);
     }
 
     /// <summary>Renders current dashboard values without making application calls.</summary>
@@ -543,7 +599,7 @@ public sealed partial class MainWindow : Window
         KeyCountText.Text = state.TotalKeyPresses.ToString("N0");
         ClickCountText.Text = state.TotalMouseClicks.ToString("N0");
         ActiveTimeText.Text = TimeSpan.FromSeconds(state.ActiveSeconds).ToString(@"hh\:mm\:ss");
-        RenderActivityTrend(state.ActivityTrend);
+        RenderActivityScore(state.ActivityScore);
         TrackingStateText.Text = T(state.IsTracking ? "StateRunning" : "StatePaused");
         PlayPauseIcon.Glyph = state.IsTracking ? "\uE769" : "\uE768";
         LocalTimeText.Text = $"Local time {state.LocalTime:HH:mm:ss}";
@@ -578,7 +634,7 @@ public sealed partial class MainWindow : Window
     {
         if (_pendingSnapshotDeleteInProgress)
         {
-            PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
             DeleteSnapshotButton.Visibility = Visibility.Collapsed;
             TakeScreenshotButton.IsEnabled = false;
             return;
@@ -586,7 +642,7 @@ public sealed partial class MainWindow : Window
 
         if (pendingSnapshot is not { } pending)
         {
-            PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
             DeleteSnapshotButton.Visibility = Visibility.Collapsed;
             TakeScreenshotButton.IsEnabled = true;
             return;
@@ -595,7 +651,7 @@ public sealed partial class MainWindow : Window
         var remaining = pending.ExpiresAt - DateTimeOffset.Now;
         if (remaining <= TimeSpan.Zero)
         {
-            PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+            SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
             DeleteSnapshotButton.Visibility = Visibility.Collapsed;
             TakeScreenshotButton.IsEnabled = true;
             return;
@@ -606,42 +662,106 @@ public sealed partial class MainWindow : Window
         DeleteSnapshotButton.IsEnabled = true;
         DeleteSnapshotButton.Visibility = Visibility.Visible;
         TakeScreenshotButton.IsEnabled = false;
-        PendingSnapshotPanel.Visibility = Visibility.Visible;
+        SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: true);
     }
 
-    /// <summary>Displays the persisted 24-hour activity trend only after the full window is available.</summary>
-    private void RenderActivityTrend(ActivityTrendState? trend)
+    /// <summary>Renders the bounded one-minute score series supplied by the application facade.</summary>
+    private void RenderActivityScore(ActivityScoreState? state)
     {
-        if (trend is not { HasCompleteCoverage: true } || trend.HourlyActivityLevels.Count != 24)
+        if (state is not { Minutes.Count: > 0 })
         {
-            ActivityTrendChart.Visibility = Visibility.Collapsed;
-            ActivityTrendPath.Data = null;
+            ActivityScoreValueText.Text = "0";
+            ActivityScoreTelemetryText.Text = "CPU -- · GPU --";
+            ActivityScorePreviousIntervalText.Text = T("Activity.Previous") + ": --";
+            ActivityScoreLatestIntervalText.Text = T("Activity.Latest") + ": --";
+            ActivityScoreBarHost.Children.Clear();
+            ActivityScoreBarHost.ColumnDefinitions.Clear();
             return;
         }
 
-        const double chartWidth = 344d;
-        const double chartHeight = 19d;
-        var pointSpacing = chartWidth / (trend.HourlyActivityLevels.Count - 1);
-        var figure = new PathFigure { StartPoint = new Point(0d, chartHeight - trend.HourlyActivityLevels[0] / 100d * chartHeight) };
-        for (var index = 1; index < trend.HourlyActivityLevels.Count; index++)
-        {
-            figure.Segments.Add(new LineSegment
-            {
-                Point = new Point(index * pointSpacing, chartHeight - trend.HourlyActivityLevels[index] / 100d * chartHeight)
-            });
-        }
+        var latestMinute = state.Minutes[^1];
+        ActivityScoreValueText.Text = state.CurrentScore.ToString(CultureInfo.CurrentCulture);
+        ActivityScoreTelemetryText.Text = $"CPU {latestMinute.CpuUsagePercent}% · GPU {(latestMinute.GpuUsagePercent is { } gpu ? $"{gpu}%" : "--")}";
+        ActivityScorePreviousIntervalText.Text = FormatInterval(T("Activity.Previous"), state.PreviousSnapshotInterval);
+        ActivityScoreLatestIntervalText.Text = FormatInterval(T("Activity.Latest"), state.LatestSnapshotInterval);
 
-        var geometry = new PathGeometry();
-        geometry.Figures.Add(figure);
-        ActivityTrendPath.Data = geometry;
-        ActivityTrendChart.Visibility = Visibility.Visible;
+        var maximumKeys = Math.Max(1L, state.Minutes.Max(minute => minute.KeyPresses));
+        var maximumClicks = Math.Max(1L, state.Minutes.Max(minute => minute.MouseClicks));
+        var inputStartIndex = Math.Max(0, state.Minutes.Count - (state.SnapshotIntervalMinutes * 2));
+        var latestSnapshotStartIndex = Math.Max(0, state.Minutes.Count - state.SnapshotIntervalMinutes);
+        var scoreBrush = (Brush)PlayerPanel.Resources["PlayerAccentTextBrush"];
+        var inputBrush = GetActivityInputBrush();
+        ActivityScoreBarHost.Children.Clear();
+        ActivityScoreBarHost.ColumnDefinitions.Clear();
+        for (var index = 0; index < state.Minutes.Count; index++)
+        {
+            var minute = state.Minutes[index];
+            ActivityScoreBarHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1d, GridUnitType.Star) });
+            var cell = new Grid { Margin = new Thickness(1, 0, 1, 0) };
+            Grid.SetColumn(cell, index);
+            cell.Children.Add(new Rectangle
+            {
+                Height = Math.Max(2d, minute.Score / 100d * 78d),
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Fill = scoreBrush,
+                Opacity = 0.25,
+                RadiusX = 1,
+                RadiusY = 1
+            });
+            if (index >= inputStartIndex)
+            {
+                cell.Children.Add(new Rectangle
+                {
+                    Width = 2,
+                    Height = Math.Max(2d, minute.KeyPresses / (double)maximumKeys * 42d),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Fill = inputBrush,
+                    RadiusX = 1,
+                    RadiusY = 1
+                });
+                cell.Children.Add(new Rectangle
+                {
+                    Width = 2,
+                    Height = Math.Max(2d, minute.MouseClicks / (double)maximumClicks * 42d),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Fill = scoreBrush,
+                    RadiusX = 1,
+                    RadiusY = 1
+                });
+            }
+
+            if (index == latestSnapshotStartIndex)
+            {
+                cell.Children.Add(new Rectangle
+                {
+                    Width = 1,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    Fill = scoreBrush,
+                    Opacity = 0.6
+                });
+            }
+
+            ActivityScoreBarHost.Children.Add(cell);
+        }
     }
+
+    private string FormatInterval(string intervalName, ActivityScoreInterval interval) =>
+        $"{intervalName}: {interval.MouseClicks:N0} {T("Activity.Clicks")} · {interval.KeyPresses:N0} {T("Activity.Keys")}";
+
+    private Brush GetActivityInputBrush() =>
+        Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue("SystemAccentColor", out var accent)
+        && accent is Color accentColor
+            ? new SolidColorBrush(accentColor)
+            : (Brush)PlayerPanel.Resources["PlayerAccentTextBrush"];
 
     /// <summary>Deletes the most recent manual capture while its temporary countdown is active.</summary>
     private async void DeleteSnapshotButton_Click(object sender, RoutedEventArgs e)
     {
         _pendingSnapshotDeleteInProgress = true;
-        PendingSnapshotPanel.Visibility = Visibility.Collapsed;
+        SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
         DeleteSnapshotButton.Visibility = Visibility.Collapsed;
         TakeScreenshotButton.IsEnabled = false;
         DeleteSnapshotButton.IsEnabled = false;
@@ -715,11 +835,13 @@ public sealed partial class MainWindow : Window
         _scheduleWindow?.ApplyTheme(_theme);
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
+        UpdateActivityScoreAccessibility();
         UpdateDetailsAccessibility();
         UpdateOpenAiMenuAccessibility();
         UpdateScreenshotCaptureStatus();
         OptionsControl.ApplyLanguage(settings.UiLanguage);
         OperationsControl.ApplyLanguage(settings.UiLanguage);
+        ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
 
         SettingsApplied?.Invoke(settings);
@@ -730,9 +852,16 @@ public sealed partial class MainWindow : Window
 
     private void UpdateDetailsAccessibility()
     {
-        var label = T(_detailsExpanded ? "LastSession.Hide" : "LastSession.Show");
+        var label = T(_layoutState.IsLastSessionVisible ? "LastSession.Hide" : "LastSession.Show");
         AutomationProperties.SetName(DetailsButton, label);
         ToolTipService.SetToolTip(DetailsButton, label);
+    }
+
+    private void UpdateActivityScoreAccessibility()
+    {
+        var label = T(_layoutState.IsActivityScoreVisible ? "Activity.Hide" : "Activity.Show");
+        AutomationProperties.SetName(ActivityScoreButton, label);
+        ToolTipService.SetToolTip(ActivityScoreButton, label);
     }
 
     private void AiState_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -760,29 +889,11 @@ public sealed partial class MainWindow : Window
     private void UpdateActiveHoursAvailability(bool isWithinActiveHours)
     {
         var warningVisible = !isWithinActiveHours;
-        var visibilityChanged = warningVisible != _outsideActiveHoursWarningVisible;
-        _outsideActiveHoursWarningVisible = warningVisible;
-        OutsideActiveHoursBanner.Visibility = warningVisible ? Visibility.Visible : Visibility.Collapsed;
         OutsideActiveHoursMessageRun.Text = T("Schedule.OutsideActiveHoursBanner");
         OutsideActiveHoursLinkRun.Text = T("Schedule.ConfigureHours");
         AutomationProperties.SetName(OutsideActiveHoursBanner, $"{OutsideActiveHoursMessageRun.Text} {OutsideActiveHoursLinkRun.Text}");
-
-        if (visibilityChanged && PlayerPanel.Visibility == Visibility.Visible)
-        {
-            if (RootGrid.IsLoaded)
-            {
-                AnimateResizeForLogicalContent(GetPlayerLogicalHeight());
-            }
-            else
-            {
-                ResizeForLogicalContent(GetPlayerLogicalHeight());
-            }
-        }
+        SetPlayerSectionVisibility(MainWindowLayoutSection.OutsideActiveHoursWarning, OutsideActiveHoursBanner, warningVisible);
     }
-
-    private int GetPlayerLogicalHeight() =>
-        (_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight)
-        + (_outsideActiveHoursWarningVisible ? OutsideActiveHoursBannerHeight : 0);
 
     private string T(string key) => _strings.Translate(key);
 
@@ -802,7 +913,7 @@ public sealed partial class MainWindow : Window
             _xamlRoot.Changed += XamlRoot_Changed;
         }
 
-        ResizeForLogicalContent(_logicalHeight);
+        ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
     }
@@ -815,7 +926,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        ResizeForLogicalContent(_logicalHeight);
+        ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
     }
 
@@ -837,7 +948,7 @@ public sealed partial class MainWindow : Window
         _appWindow.Resize(GetPhysicalWindowSize(logicalHeight));
     }
 
-    /// <summary>Interpolates the compact player height when the details panel is shown or hidden.</summary>
+    /// <summary>Interpolates the compact player height after a visible layout change.</summary>
     private void AnimateResizeForLogicalContent(int logicalHeight)
     {
         _logicalHeight = logicalHeight;

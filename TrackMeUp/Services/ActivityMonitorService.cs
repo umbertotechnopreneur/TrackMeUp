@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
@@ -59,8 +60,18 @@ public sealed class ActivityMonitorService : IDisposable
             var context = _providers.Resolve(window);
             var counts = _inputHooks.TakeCounts();
             var state = GetIdleSeconds() >= IdleThresholdSeconds ? "idle" : "active";
+            var attributes = context.Attributes is null
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : new Dictionary<string, string>(context.Attributes, StringComparer.Ordinal);
+            var spanLabel = _store.LoadSettings().SpanLabel;
+            if (!string.IsNullOrWhiteSpace(spanLabel))
+            {
+                attributes[ActivityAttributeKeys.SpanLabel] = spanLabel;
+            }
+
             sample = new ActivitySample(DateTimeOffset.Now, SampleSeconds, state, window.ProcessName,
-                context.Application, context.Context, window.WindowTitle, _installationId, counts.Keys, counts.Clicks, context.Attributes);
+                context.Application, context.Context, window.WindowTitle, _installationId, counts.Keys, counts.Clicks,
+                attributes.Count == 0 ? null : attributes);
         }
         catch
         {

@@ -162,13 +162,14 @@
 			BorderBrush="Transparent"
 			BorderThickness="0"
 			Visibility="Collapsed">
-			<Grid ColumnSpacing="40">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="1.35*" />
-					<ColumnDefinition Width="1*" />
-					<ColumnDefinition Width="1.53*" />
-					<ColumnDefinition Width="1.07*" />
-				</Grid.ColumnDefinitions>
+			<Grid RowSpacing="8">
+				<Grid ColumnSpacing="40">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="1.35*" />
+						<ColumnDefinition Width="1*" />
+						<ColumnDefinition Width="1.53*" />
+						<ColumnDefinition Width="1.07*" />
+					</Grid.ColumnDefinitions>
 				<Border Style="{StaticResource ScreenshotMetadataPillStyle}">
 					<Grid HorizontalAlignment="Center" ColumnSpacing="12">
 						<Grid.ColumnDefinitions>
@@ -211,6 +212,18 @@
 						<FontIcon VerticalAlignment="Center" Glyph="&#xE7C3;" Style="{StaticResource ScreenshotInfoIconStyle}" />
 						<TextBlock Grid.Column="1" Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.OriginLabel" Text="Origin" Visibility="Collapsed" />
 						<TextBlock x:Name="MetadataOriginValueText" Grid.Column="1" MaxWidth="105" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
+					</Grid>
+				</Border>
+				</Grid>
+				<Border Grid.Row="1" Style="{StaticResource ScreenshotMetadataPillStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="12">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<FontIcon VerticalAlignment="Center" Glyph="&#xE8A9;" Style="{StaticResource ScreenshotInfoIconStyle}" />
+						<TextBlock Grid.Column="1" Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.SpanLabels" Text="Span labels" Visibility="Collapsed" />
+						<TextBlock x:Name="MetadataSpanLabelsValueText" Grid.Column="1" MaxWidth="824" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" TextTrimming="CharacterEllipsis" />
 					</Grid>
 				</Border>
 			</Grid>

@@ -52,7 +52,11 @@ public sealed record ScreenshotGalleryItem(
     string Path,
     string ForegroundApplication,
     string CaptureKind,
-    string CaptureOrigin);
+    string CaptureOrigin,
+    IReadOnlyList<ActivityLabelSample>? SpanLabels = null);
+
+/// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
+public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);
 
 /// <summary>Contains the retained screenshot projection for one local calendar date.</summary>
 public sealed record ScreenshotGallery(

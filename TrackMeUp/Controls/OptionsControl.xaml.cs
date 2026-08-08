@@ -33,6 +33,9 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Occurs after a successfully persisted application settings snapshot is returned.</summary>
     public event Action<AppSettings>? SettingsSaved;
 
+    /// <summary>Occurs after visible option content changes and the host may need to re-measure its window.</summary>
+    public event EventHandler? LayoutChanged;
+
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
     {
@@ -48,6 +51,7 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
         UpdateApiKeyPresentation();
         UpdateScreenshotModeHint();
+        NotifyLayoutChanged();
     }
 
     /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
@@ -90,6 +94,7 @@ public sealed partial class OptionsControl : UserControl
         {
             AiOptionsView.Visibility = Visibility.Collapsed;
             AppOptionsView.Visibility = Visibility.Visible;
+            NotifyLayoutChanged();
             return;
         }
 
@@ -101,6 +106,7 @@ public sealed partial class OptionsControl : UserControl
     {
         AppOptionsView.Visibility = Visibility.Collapsed;
         AiOptionsView.Visibility = Visibility.Visible;
+        NotifyLayoutChanged();
         if (_aiState is not null)
         {
             await _aiState.LoadAsync(CancellationToken.None);
@@ -124,6 +130,7 @@ public sealed partial class OptionsControl : UserControl
         var show = GeneralAdvancedPanel.Visibility != Visibility.Visible;
         GeneralAdvancedPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         GeneralAdvancedChevron.Glyph = show ? "\uE70E" : "\uE70D";
+        NotifyLayoutChanged();
     }
 
     /// <summary>Shows or hides lower-frequency provider and analysis settings.</summary>
@@ -132,6 +139,7 @@ public sealed partial class OptionsControl : UserControl
         var show = AiAdvancedPanel.Visibility != Visibility.Visible;
         AiAdvancedPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         AiAdvancedChevron.Glyph = show ? "\uE70E" : "\uE70D";
+        NotifyLayoutChanged();
     }
 
     /// <summary>Opens the configured screen-capture folder through the shared application facade.</summary>
@@ -300,6 +308,7 @@ public sealed partial class OptionsControl : UserControl
         AiCustomPromptBox.Text = settings.AiCustomPrompt;
         IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
         UpdateScreenshotModeHint();
+        NotifyLayoutChanged();
     }
 
     private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? T("Options.SnapshotHintActive") : T("Options.SnapshotHintAll");
@@ -321,6 +330,7 @@ public sealed partial class OptionsControl : UserControl
         {
             ModelInfoCard.Visibility = Visibility.Collapsed;
             StatusText.Text = T("Options.ModelUnsupported");
+            NotifyLayoutChanged();
         }
     }
 
@@ -332,6 +342,7 @@ public sealed partial class OptionsControl : UserControl
         if (model is null)
         {
             ModelInfoCard.Visibility = Visibility.Collapsed;
+            NotifyLayoutChanged();
             return;
         }
 
@@ -350,7 +361,10 @@ public sealed partial class OptionsControl : UserControl
         ModelCapabilityBadge.Visibility = Visibility.Visible;
         ModelInfoCard.Visibility = Visibility.Visible;
         StatusText.Text = model.SupportsImageInput ? string.Empty : T("Options.ModelImageUnsupported");
+        NotifyLayoutChanged();
     }
+
+    private void NotifyLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
 
     private void PopulateThinkingEfforts(AiModelDescriptor model, string preferredEffort)
     {
@@ -409,6 +423,7 @@ public sealed partial class OptionsControl : UserControl
 
         ApiKeyStatusIcon.Glyph = glyph;
         ApiKeyStatusText.Text = T(messageKey);
+        NotifyLayoutChanged();
     }
 
     private string T(string key) => _strings.Translate(key);

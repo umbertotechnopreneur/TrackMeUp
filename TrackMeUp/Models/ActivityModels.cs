@@ -17,6 +17,13 @@ public sealed record ActivitySample(
     long MouseClicks,
     IReadOnlyDictionary<string, string>? Attributes = null);
 
+/// <summary>Names the privacy-scoped attributes retained with local activity samples.</summary>
+public static class ActivityAttributeKeys
+{
+    /// <summary>Stores the short activity label entered through the taskbar widget.</summary>
+    public const string SpanLabel = "span_label";
+}
+
 /// <summary>Identifies how a screenshot capture was initiated.</summary>
 public static class ScreenshotCaptureOrigins
 {
@@ -70,7 +77,7 @@ public sealed record AppSettings(
     bool StartWithWindows = false,
     string ScreenshotDirectory = "",
     string ScreenshotCaptureMode = "all-screens",
-    int ScreenshotIntervalMinutes = 5,
+    int ScreenshotIntervalMinutes = 15,
     bool WatermarkScreenshots = true,
     string AiProvider = "openai",
     string AiEndpoint = "https://api.openai.com/v1/responses",
@@ -103,6 +110,7 @@ public sealed record AppSettings(
     bool StartTrackingOnLaunch = false,
     bool TaskbarWidgetVisible = false,
     string TaskbarWidgetPosition = TaskbarWidgetPositions.Left,
+    string SpanLabel = "",
     string AiCustomPrompt = "",
     IReadOnlyList<ActiveHoursDay>? ActiveHours = null,
     bool IncludeDeviceLocation = false,
@@ -161,6 +169,29 @@ public sealed record ActivityTrendState(
     bool HasCompleteCoverage,
     IReadOnlyList<double> HourlyActivityLevels);
 
+/// <summary>Describes one one-minute contribution to the live activity score.</summary>
+public sealed record ActivityScoreMinute(
+    DateTimeOffset MinuteUtc,
+    int Score,
+    long KeyPresses,
+    long MouseClicks,
+    int ActiveSeconds,
+    int CpuUsagePercent,
+    int? GpuUsagePercent);
+
+/// <summary>Summarizes input captured between one pair of scheduled screenshot boundaries.</summary>
+public sealed record ActivityScoreInterval(long KeyPresses, long MouseClicks);
+
+/// <summary>Provides the bounded live score series rendered by the compact player.</summary>
+public sealed record ActivityScoreState(
+    DateTimeOffset WindowStartUtc,
+    DateTimeOffset WindowEndUtc,
+    int SnapshotIntervalMinutes,
+    IReadOnlyList<ActivityScoreMinute> Minutes,
+    int CurrentScore,
+    ActivityScoreInterval PreviousSnapshotInterval,
+    ActivityScoreInterval LatestSnapshotInterval);
+
 public sealed record DashboardState(
     string StatusLabel,
     string CurrentContext,
@@ -173,9 +204,11 @@ public sealed record DashboardState(
     DateTimeOffset LocalTime,
     DateTimeOffset UtcTime,
     ActivityTrendState? ActivityTrend = null,
+    ActivityScoreState? ActivityScore = null,
     TimeSpan? ScheduledSnapshotRemaining = null,
     PendingManualScreenshotState? PendingManualScreenshot = null,
-    bool IsWithinActiveHours = true);
+    bool IsWithinActiveHours = true,
+    string SpanLabel = "");
 
 /// <summary>Describes a retained manual screenshot that can be deleted before deferred analysis begins.</summary>
 public sealed record PendingManualScreenshotState(string ScreenshotPath, DateTimeOffset ExpiresAt);

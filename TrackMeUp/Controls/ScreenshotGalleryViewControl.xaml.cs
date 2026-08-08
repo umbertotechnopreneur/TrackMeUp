@@ -29,6 +29,9 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
     /// <summary>Gets the metadata origin value text element.</summary>
     public TextBlock MetadataOriginText => MetadataOriginValueText;
 
+    /// <summary>Gets the metadata activity-label history value text element.</summary>
+    public TextBlock MetadataSpanLabelsText => MetadataSpanLabelsValueText;
+
     /// <summary>Gets the empty-state panel.</summary>
     public Grid EmptyPanel => EmptyGalleryPanel;
 

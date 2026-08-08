@@ -200,12 +200,13 @@
                 HorizontalScrollMode="Disabled"
                 VerticalScrollBarVisibility="Hidden"
                 VerticalScrollMode="Enabled">
-                <Grid Padding="0,0,6,0" RowSpacing="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                    <Grid Padding="0,0,6,0" RowSpacing="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Button
@@ -696,25 +697,6 @@
                     </Grid>
 
                     <StackPanel Grid.Row="1" Spacing="7">
-                        <Grid x:Name="ActivityTrendChart"
-                                Height="24"
-                                Visibility="Collapsed">
-                            <Border
-                                Height="1"
-                                VerticalAlignment="Center"
-                                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                                Opacity="0.45" />
-                            <Path
-                                x:Name="ActivityTrendPath"
-                                Margin="0,2,0,3"
-                                AutomationProperties.Name="Attività delle ultime 24 ore"
-                                Stretch="Fill"
-                                Stroke="{ThemeResource PlayerAccentTextBrush}"
-                                StrokeEndLineCap="Round"
-                                StrokeLineJoin="Round"
-                                StrokeStartLineCap="Round"
-                                StrokeThickness="1.5" />
-                        </Grid>
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                         <Grid Margin="0,4,4,2" ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -750,9 +732,121 @@
                         </Grid>
                     </StackPanel>
 
+                    <Grid Grid.Row="2" Margin="0,2,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Button
+                            x:Name="ActivityScoreButton"
+                            MinHeight="34"
+                            Padding="2,7"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            AutomationProperties.Name="Hide activity score"
+                            Background="Transparent"
+                            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                            BorderThickness="0,1,0,0"
+                            Click="ActivityScoreButton_Click"
+                            CornerRadius="0"
+                            ToolTipService.ToolTip="Hide activity score">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Tag="Activity.Title"
+                                    VerticalAlignment="Center"
+                                    CharacterSpacing="100"
+                                    FontSize="10"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="ACTIVITY" />
+                                <StackPanel Grid.Column="1" Margin="0,0,10,0" Orientation="Horizontal" Spacing="5">
+                                    <TextBlock
+                                        x:Name="ActivityScoreValueText"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Foreground="{ThemeResource PlayerAccentTextBrush}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Tag="Activity.Score"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="score" />
+                                </StackPanel>
+                                <FontIcon
+                                    x:Name="ActivityScoreChevron"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontFamily="Segoe Fluent Icons"
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Glyph="&#xE70E;" />
+                            </Grid>
+                        </Button>
+
+                        <Grid x:Name="ActivityScorePanel" Grid.Row="1" Margin="2,0,2,4" RowSpacing="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="82" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Tag="Activity.LastThirtyMinutes"
+                                    VerticalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="Last 30 minutes · 1 minute bars" />
+                                <TextBlock
+                                    x:Name="ActivityScoreTelemetryText"
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="CPU -- · GPU --" />
+                            </Grid>
+                            <Grid x:Name="ActivityScoreBarHost" Grid.Row="1" AutomationProperties.Name="Activity score for the last 30 minutes" />
+                            <Grid Grid.Row="2" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="ActivityScorePreviousIntervalText"
+                                    VerticalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    MaxLines="1"
+                                    Text="Previous: 0 clicks · 0 keys"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    x:Name="ActivityScoreLatestIntervalText"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    MaxLines="1"
+                                    Text="Latest: 0 clicks · 0 keys"
+                                    TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
                     <Button
                         x:Name="DetailsButton"
-                        Grid.Row="2"
+                        Grid.Row="3"
                         MinHeight="36"
                         Margin="0,2,0,0"
                         Padding="2,8"
@@ -790,7 +884,7 @@
                         </Grid>
                     </Button>
 
-                    <Grid x:Name="DetailsPanel" Grid.Row="3" RowSpacing="8" Visibility="Collapsed">
+                    <Grid x:Name="DetailsPanel" Grid.Row="4" RowSpacing="8" Visibility="Collapsed">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
