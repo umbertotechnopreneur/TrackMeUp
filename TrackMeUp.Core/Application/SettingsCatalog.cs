@@ -34,6 +34,11 @@ public static class SettingsCatalog
         Choice("screenshots.mode", "Select all displays or only the active window.", ScreenshotModes),
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
         Integer("screenshots.interval_minutes", "Minutes between scheduled eligible screenshots."),
+        Boolean("ocr.enabled", "Extract searchable text locally from captured screenshots.", requiresRestart: true),
+        Choice("ocr.language", "Preferred Windows OCR recognizer language.", Languages, requiresRestart: true),
+        Choice("search.language", "Language used for local query analysis and stemming.", Languages),
+        Boolean("search.synonyms", "Expand local queries with configured multilingual synonyms."),
+        Boolean("search.typo_tolerance", "Use controlled fuzzy matching for eligible query terms."),
         Boolean("ai.enabled", "Analyze every captured snapshot after privacy and cost checks."),
         Choice("ai.provider", "AI provider used for screenshot analysis.", Providers),
         Text("ai.model", "Provider model identifier."),
@@ -97,6 +102,11 @@ public static class SettingsCatalog
             "screenshots.mode" => settings.ScreenshotCaptureMode,
             "screenshots.directory" => settings.ScreenshotDirectory,
             "screenshots.interval_minutes" => settings.ScreenshotIntervalMinutes,
+            "ocr.enabled" => settings.OcrEnabled,
+            "ocr.language" => settings.OcrLanguage,
+            "search.language" => settings.SearchLanguage,
+            "search.synonyms" => settings.SearchSynonymsEnabled,
+            "search.typo_tolerance" => settings.SearchTypoToleranceEnabled,
             "ai.enabled" => settings.OpenAiEnabled,
             "ai.provider" => settings.AiProvider,
             "ai.model" => settings.Model,
@@ -204,6 +214,11 @@ public static class SettingsCatalog
                 case "screenshots.mode" when Canonical(ScreenshotModes, value) is { } screenshotMode: current = current with { ScreenshotCaptureMode = screenshotMode }; break;
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
                 case "screenshots.interval_minutes" when TryInteger(value, 1, 1440, out var screenshotIntervalMinutes): current = current with { ScreenshotIntervalMinutes = screenshotIntervalMinutes }; break;
+                case "ocr.enabled" when TryBoolean(value, out var ocrEnabled): current = current with { OcrEnabled = ocrEnabled }; break;
+                case "ocr.language" when Canonical(Languages, value) is { } ocrLanguage: current = current with { OcrLanguage = ocrLanguage }; break;
+                case "search.language" when Canonical(Languages, value) is { } searchLanguage: current = current with { SearchLanguage = searchLanguage }; break;
+                case "search.synonyms" when TryBoolean(value, out var searchSynonyms): current = current with { SearchSynonymsEnabled = searchSynonyms }; break;
+                case "search.typo_tolerance" when TryBoolean(value, out var typoTolerance): current = current with { SearchTypoToleranceEnabled = typoTolerance }; break;
                 case "ai.enabled" when TryBoolean(value, out var enabled): current = current with { OpenAiEnabled = enabled }; break;
                 case "ai.model" when !string.IsNullOrWhiteSpace(value) && value.Length <= 200: current = current with { Model = value }; break;
                 case "ai.endpoint" when IsAllowedEndpoint(value): current = current with { AiEndpoint = value! }; break;
@@ -272,6 +287,8 @@ public static class SettingsCatalog
             ScreenshotIntervalMinutes = settings.ScreenshotIntervalMinutes <= 0
                 ? 15
                 : Math.Min(settings.ScreenshotIntervalMinutes, 1440),
+            OcrLanguage = Canonical(Languages, settings.OcrLanguage) ?? "system",
+            SearchLanguage = Canonical(Languages, settings.SearchLanguage) ?? "system",
             AiProvider = provider,
             AiEndpoint = endpoint,
             AiApiKeyName = keyVariable,

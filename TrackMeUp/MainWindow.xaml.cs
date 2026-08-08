@@ -72,6 +72,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the user requests the dedicated reports surface.</summary>
     public event EventHandler? ReportsRequested;
 
+    /// <summary>Occurs when the user requests the floating local-search surface.</summary>
+    public event EventHandler? SearchRequested;
+
     /// <summary>Occurs when the user requests the retained screenshot gallery surface.</summary>
     public event EventHandler? ScreenshotGalleryRequested;
 
@@ -378,6 +381,7 @@ public sealed partial class MainWindow : Window
         var passthroughRects = new List<RectInt32>
         {
             ElementRect(TitleBarMoreButton, scale),
+            ElementRect(TitleBarSearchButton, scale),
             ElementRect(TitleBarReportButton, scale)
         };
         if (TitleBarBackButton.Visibility == Visibility.Visible)
@@ -424,6 +428,7 @@ public sealed partial class MainWindow : Window
         var aiStateTask = AiState.LoadAsync(CancellationToken.None);
         await Task.WhenAll(settingsTask, aiStateTask);
         ApplyOverflowCommandLabel(OperationsMenuItem, T("Main.Menu.Operations"));
+        ApplyOverflowCommandLabel(SearchMenuItem, T("Search.Title"));
         var result = await settingsTask;
         if (!result.Succeeded || result.Value is null)
         {
@@ -457,6 +462,18 @@ public sealed partial class MainWindow : Window
     private void TitleBarReportButton_Click(object sender, RoutedEventArgs e) => RequestReports();
 
     private void RequestReports() => ReportsRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Forwards search-window activation to the application composition root.</summary>
+    private void SearchMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        RequestSearch();
+    }
+
+    /// <summary>Opens local search directly from the title bar.</summary>
+    private void TitleBarSearchButton_Click(object sender, RoutedEventArgs e) => RequestSearch();
+
+    private void RequestSearch() => SearchRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Forwards gallery-window activation to the application composition root.</summary>
     private void ScreenshotsMenuItem_Click(object sender, RoutedEventArgs e)
@@ -916,6 +933,9 @@ public sealed partial class MainWindow : Window
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
         var reportsLabel = T("Reports.Title");
+        var searchLabel = T("Search.Title");
+        AutomationProperties.SetName(TitleBarSearchButton, searchLabel);
+        ToolTipService.SetToolTip(TitleBarSearchButton, searchLabel);
         AutomationProperties.SetName(TitleBarReportButton, reportsLabel);
         ToolTipService.SetToolTip(TitleBarReportButton, reportsLabel);
         UpdateActivityScoreAccessibility();

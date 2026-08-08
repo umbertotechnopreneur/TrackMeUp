@@ -89,6 +89,11 @@ public sealed record AppSettings(
     string Theme = "system",
     bool OpenAiEnabled = false,
     bool ScreenshotsEnabled = false,
+    bool OcrEnabled = false,
+    string OcrLanguage = "system",
+    string SearchLanguage = "system",
+    bool SearchSynonymsEnabled = true,
+    bool SearchTypoToleranceEnabled = true,
     bool EnableWordDetailPlugin = true,
     bool EnableExcelDetailPlugin = true,
     bool EnableVsCodeDetailPlugin = true,
@@ -126,7 +131,8 @@ public sealed record AiAnalysis(
     SystemSnapshot? Snapshot = null,
     string? CorrelationId = null,
     string? Origin = null,
-    string? InformationalSchedule = null);
+    string? InformationalSchedule = null,
+    IReadOnlyList<TrackMeUp.Application.ScreenshotTextSnapshot>? TextSnapshots = null);
 
 public sealed record ApplicationSummary(string Application, long ActiveSeconds);
 

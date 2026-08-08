@@ -3,7 +3,9 @@ using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using TrackMeUp.Ocr;
 using TrackMeUp.Runtime;
+using TrackMeUp.Search;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Application;
@@ -24,6 +26,18 @@ public static class TrackMeUpApplicationFactory
         var buildInformation = new BuildInformationService();
         var aiModelCatalog = AiModelCatalog.LoadDefault();
         var fileShare = new WindowsFileShareService();
+        var settings = store.LoadSettings();
+        var screenshotOcr = new WindowsScreenshotOcrService(new OcrOptions
+        {
+            Enabled = settings.OcrEnabled,
+            PreferredLanguageTag = string.Equals(settings.OcrLanguage, "system", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : settings.OcrLanguage
+        });
+        var ocrRefinement = new OpenAiOcrRefinementService(
+            store,
+            logger: loggerFactory?.CreateLogger<OpenAiOcrRefinementService>());
+        var localSearch = CreateLocalSearchService(store);
         var analysis = new OpenAiAnalysisService(
             store,
             capture,
@@ -45,7 +59,43 @@ public static class TrackMeUpApplicationFactory
             new ScreenshotShareService(fileShare),
             new WindowStateService(store),
             aiModelCatalog,
-            new ApplicationLogService(fileShare: fileShare));
+            new ApplicationLogService(fileShare: fileShare),
+            screenshotOcr,
+            ocrRefinement,
+            loggerFactory?.CreateLogger<ScreenshotTextExtractionCoordinator>(),
+            localSearch);
+    }
+
+    private static ILocalSearchService CreateLocalSearchService(LocalStore store)
+    {
+        var options = new SearchOptions
+        {
+            IndexRootPath = store.SearchIndexRootDirectory,
+            SynonymSets = SearchSynonymConfiguration.Load(Path.Combine(AppContext.BaseDirectory, "search-synonyms.json"))
+        };
+        try
+        {
+            return new LocalSearchService(options);
+        }
+        catch (InvalidDataException)
+        {
+            var root = Path.GetFullPath(options.IndexRootPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var indexPath = Path.GetFullPath(Path.Combine(root, LocalSearchService.IndexDirectoryName));
+            var requiredPrefix = root + Path.DirectorySeparatorChar;
+            if (!indexPath.StartsWith(requiredPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The derived search index path escaped its configured root.");
+            }
+
+            // A schema-mismatched Lucene directory contains derived data only and is rebuilt from SQLite and screenshots.
+            if (Directory.Exists(indexPath))
+            {
+                Directory.Delete(indexPath, recursive: true);
+            }
+
+            return new LocalSearchService(options);
+        }
     }
 }
 
@@ -59,6 +109,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly SystemSnapshotService _snapshot;
     private readonly DeviceContextService _deviceContext;
     private readonly IAiAnalysisService _analysis;
+    private readonly IAiOcrRefinementService _ocrRefinement;
+    private readonly ScreenshotTextExtractionCoordinator _textExtraction;
+    private readonly LocalSearchCoordinator _search;
     private readonly ScreenshotShareService _screenshotShare;
     private readonly ApplicationLogService _applicationLogs;
     private readonly WindowStateService _windowState;
@@ -102,7 +155,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         ScreenshotShareService? screenshotShare = null,
         WindowStateService? windowState = null,
         AiModelCatalog? aiModelCatalog = null,
-        ApplicationLogService? applicationLogs = null)
+        ApplicationLogService? applicationLogs = null,
+        IScreenshotOcrService? screenshotOcr = null,
+        IAiOcrRefinementService? ocrRefinement = null,
+        ILogger<ScreenshotTextExtractionCoordinator>? screenshotTextLogger = null,
+        ILocalSearchService? localSearch = null)
     {
         _store = store;
         _utilities = utilities;
@@ -114,6 +171,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _applicationLogs = applicationLogs ?? new ApplicationLogService();
         _windowState = windowState ?? new WindowStateService(store);
         _analysis = analysis;
+        _ocrRefinement = ocrRefinement ?? new OpenAiOcrRefinementService(store);
+        _textExtraction = new ScreenshotTextExtractionCoordinator(
+            store,
+            screenshotOcr ?? new WindowsScreenshotOcrService(new OcrOptions { Enabled = false }),
+            screenshotTextLogger);
+        _search = new LocalSearchCoordinator(
+            store,
+            localSearch ?? new LocalSearchService(new SearchOptions { IndexRootPath = store.SearchIndexRootDirectory }));
         _startup = startup;
         _buildInformation = buildInformation;
         _aiModelCatalog = (aiModelCatalog ?? AiModelCatalog.LoadDefault()).Snapshot;
@@ -141,7 +206,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "notifications", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -334,11 +399,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             mode,
             request.Watermark && settings.WatermarkScreenshots,
             request.CaptureOrigin);
+        result = await _textExtraction.AttachAsync(result, cancellationToken);
 
         if (settings.OpenAiEnabled && !request.DeferAiAnalysis)
         {
             try
             {
+                result = await _ocrRefinement.RefineAsync(result, settings, cancellationToken);
                 var analysisOrigin = result.CaptureOrigin == ScreenshotCaptureOrigins.Scheduled
                     ? "snapshot.scheduled"
                     : "snapshot.manual";
@@ -369,6 +436,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 _logger.LogWarning("Snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
                 EnqueueAiAnalysisFailure("ai.provider.failed");
                 return OperationResult<ScreenshotCaptureResult>.Failure("ai.provider.failed", "AiProviderFailed");
+            }
+            finally
+            {
+                // Refinement runs before normal analysis, so Core must still clean raw files if refinement itself fails.
+                CleanupCaptureArtifacts(result, request.Keep);
             }
         }
         else if (!request.Keep)
@@ -440,6 +512,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<bool>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
         }
 
+        foreach (var sourcePath in (capture.TextSnapshots ?? Array.Empty<ScreenshotTextSnapshot>())
+                     .Select(snapshot => snapshot.SourceScreenshotPath)
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            _store.DeleteScreenshotTextSnapshot(sourcePath);
+        }
+
         _pendingManualScreenshotCapture = null;
         _pendingManualScreenshotExpiresAt = null;
         await Task.CompletedTask;
@@ -493,9 +572,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             try
             {
                 var origin = NormalizeAnalysisOrigin(request.Origin);
+                var refinedCapture = await _ocrRefinement.RefineAsync(request.Capture, settings, cancellationToken);
                 var result = await _analysis.AnalyzeCapturedScreenAsync(
                     _tracking.LatestAnalysisContext,
-                    request.Capture,
+                    refinedCapture,
                     request.KeepCapture,
                     origin,
                     cancellationToken);
@@ -520,6 +600,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 _logger.LogWarning("Deferred snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
                 return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
             }
+            finally
+            {
+                // Refinement may fail before the analysis service assumes cleanup ownership.
+                CleanupCaptureArtifacts(request.Capture, request.KeepCapture);
+            }
         }, cancellationToken);
 
         if (!operation.Succeeded && aiEnabledForAnalysis && ShouldNotifyAiAnalysisFailure(operation.Code))
@@ -529,6 +614,51 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         return operation;
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _search.SearchAsync(request, cancellationToken).ConfigureAwait(false);
+            return OperationResult<SearchResponse>.Success("search.completed", "SearchCompleted", response);
+        }
+        catch (OperationCanceledException)
+        {
+            return OperationResult<SearchResponse>.Failure("operation.cancelled", "OperationCancelled");
+        }
+        catch (ArgumentException)
+        {
+            return OperationResult<SearchResponse>.Failure(
+                "search.query.invalid",
+                "SearchQueryInvalid",
+                new ValidationIssue("query", "invalid", "SearchQueryInvalid"));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning("Local search failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<SearchResponse>.Failure("search.failed", "SearchFailed");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var count = await _search.RebuildAsync(cancellationToken).ConfigureAwait(false);
+            return OperationResult<int>.Success("search.index.rebuilt", "SearchIndexRebuilt", count);
+        }
+        catch (OperationCanceledException)
+        {
+            return OperationResult<int>.Failure("operation.cancelled", "OperationCancelled");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning("Local search index rebuild failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<int>.Failure("search.index.failed", "SearchIndexFailed");
+        }
     }
 
     /// <inheritdoc />
@@ -583,6 +713,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<string>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
         }
 
+        _store.DeleteScreenshotTextSnapshot(screenshotPath);
+
         await Task.CompletedTask;
         return OperationResult<string>.Success("screenshot.deleted", "ScreenshotDeleted", screenshotPath);
     }, cancellationToken);
@@ -596,7 +728,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<string>.Failure("snapshot.invalid", "SnapshotInvalid", new ValidationIssue("screenshotPath", "invalid", "SnapshotInvalid"));
         }
 
-        var deletedCount = _store.DeleteAiAnalysesReferencingScreenshot(screenshotPath);
+        var deletedCount = checked(
+            _store.DeleteAiAnalysesReferencingScreenshot(screenshotPath)
+            + _store.DeleteScreenshotTextSnapshot(screenshotPath));
         if (deletedCount == 0)
         {
             return OperationResult<string>.Failure("snapshot.not_found", "SnapshotNotFound", new ValidationIssue("screenshotPath", "not_found", "SnapshotNotFound"));
@@ -831,12 +965,46 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         try
         {
             var origin = NormalizeAnalysisOrigin(request.Origin);
-            var result = await _analysis.AnalyzeCurrentScreenAsync(
-                _tracking.LatestAnalysisContext,
-                request.AllowCapture,
-                origin,
-                cancellationToken);
-            return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
+            ScreenshotCaptureResult? capture = null;
+            try
+            {
+                AiAnalysis result;
+                if (request.AllowCapture && settings.ScreenshotsEnabled)
+                {
+                    capture = _capture.CaptureByMode(
+                        settings.ScreenshotDirectory,
+                        settings.ScreenshotCaptureMode,
+                        settings.WatermarkScreenshots,
+                        string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
+                            ? ScreenshotCaptureOrigins.Scheduled
+                            : ScreenshotCaptureOrigins.Manual);
+                    capture = await _textExtraction.AttachAsync(capture, cancellationToken);
+                    capture = await _ocrRefinement.RefineAsync(capture, settings, cancellationToken);
+                    result = await _analysis.AnalyzeCapturedScreenAsync(
+                        _tracking.LatestAnalysisContext,
+                        capture,
+                        settings.KeepScreenshots,
+                        origin,
+                        cancellationToken);
+                }
+                else
+                {
+                    result = await _analysis.AnalyzeCurrentScreenAsync(
+                        _tracking.LatestAnalysisContext,
+                        allowCapture: false,
+                        origin,
+                        cancellationToken);
+                }
+
+                return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
+            }
+            finally
+            {
+                if (capture is not null)
+                {
+                    CleanupCaptureArtifacts(capture, settings.KeepScreenshots);
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -993,6 +1161,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             cancellationToken.ThrowIfCancellationRequested();
             File.Delete(path);
+            _store.DeleteScreenshotTextSnapshot(path);
         }
 
         var settings = _store.LoadSettings();
@@ -1203,11 +1372,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
 
         _disposed = true;
@@ -1215,8 +1384,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _tracking.DashboardStateChanged -= OnDashboardStateChanged;
         _tracking.TrackingStateChanged -= OnTrackingStateChanged;
         _tracking.Dispose();
+        await _search.DisposeAsync().ConfigureAwait(false);
         _mutations.Dispose();
-        return ValueTask.CompletedTask;
     }
 
     private async Task<OperationResult<T>> MutateAsync<T>(Func<Task<OperationResult<T>>> operation, CancellationToken cancellationToken)
@@ -1328,6 +1497,26 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             exception.Failure.FailureCode,
             exception.Failure.ElapsedMilliseconds,
             AiProviderTelemetry.SafeToken(exception.Failure.ProviderRequestId, 80));
+    }
+
+    private void CleanupCaptureArtifacts(ScreenshotCaptureResult capture, bool keepStoredArtifacts)
+    {
+        var storedPaths = capture.StoredScreenshotPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var cleanupPaths = keepStoredArtifacts
+            ? capture.AnalysisScreenshotPaths.Where(path => !storedPaths.Contains(path))
+            : capture.AllScreenshotPaths;
+        foreach (var path in cleanupPaths.Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
+        {
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Image cleanup is best effort; OCR and provider failures remain the primary operation outcome.
+                _logger.LogWarning("Screenshot cleanup failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            }
+        }
     }
 
     /// <summary>Captures one telemetry point per minute while tracking so the live score includes CPU and GPU activity.</summary>

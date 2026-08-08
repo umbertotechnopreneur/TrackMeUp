@@ -16,6 +16,7 @@ public sealed class LocalStore
 {
     private readonly UtilityService _utilities = new();
     private readonly SqliteActivityStore _activity;
+    private readonly string _dataDirectory;
     private readonly string _settingsPath;
     private readonly string _settingsBootstrapMutexName;
     private readonly object _fileLock = new();
@@ -31,6 +32,7 @@ public sealed class LocalStore
             ? _utilities.AppDataDirectory
             : Path.GetFullPath(dataDirectory);
         Directory.CreateDirectory(resolvedDataDirectory);
+        _dataDirectory = resolvedDataDirectory;
         var unsupportedLegacyPath = new[]
         {
             Path.Combine(resolvedDataDirectory, "activity.jsonl"),
@@ -53,8 +55,91 @@ public sealed class LocalStore
     /// </summary>
     public void AppendSample(ActivitySample sample) => _activity.Append(sample);
 
-    /// <summary>Persists one sanitized AI request-usage record in SQLite.</summary>
-    internal void AppendAiUsage(AiRequestUsageRecord usage) => _activity.AppendFailedAiRequest(usage);
+    /// <summary>Gets the dedicated directory used by the reconstructible Lucene search index.</summary>
+    internal string SearchIndexRootDirectory => Path.Combine(_dataDirectory, "search");
+
+    /// <summary>Persists raw local OCR and optional AI refinement for one owned screenshot source.</summary>
+    internal void UpsertScreenshotTextSnapshot(string captureId, ScreenshotTextSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (!ScreenCaptureService.IsOwnedArtifact(snapshot.SourceScreenshotPath))
+        {
+            throw new ArgumentException("Screenshot text can only reference a TrackMeUp-owned artifact.", nameof(snapshot));
+        }
+
+        _activity.UpsertScreenshotTextSnapshot(
+            ScreenshotIdentity(Path.GetFileName(snapshot.SourceScreenshotPath)),
+            captureId,
+            snapshot);
+    }
+
+    /// <summary>Loads raw OCR and optional AI refinement for one owned screenshot artifact.</summary>
+    internal ScreenshotTextSnapshot? LoadScreenshotTextSnapshot(string screenshotPath)
+    {
+        if (!ScreenCaptureService.IsOwnedArtifact(screenshotPath))
+        {
+            return null;
+        }
+
+        return _activity.LoadScreenshotTextSnapshot(ScreenshotIdentity(Path.GetFileName(screenshotPath)));
+    }
+
+    /// <summary>Deletes OCR and AI text refinement data for one owned screenshot artifact.</summary>
+    internal int DeleteScreenshotTextSnapshot(string screenshotPath)
+    {
+        if (!ScreenCaptureService.IsOwnedArtifact(screenshotPath))
+        {
+            return 0;
+        }
+
+        return _activity.DeleteScreenshotTextSnapshot(ScreenshotIdentity(Path.GetFileName(screenshotPath)));
+    }
+
+    /// <summary>Visits every retained activity sample with its stable local identifier.</summary>
+    internal void VisitAllActivitySamples(CancellationToken cancellationToken, Action<long, ActivitySample> visitor) =>
+        _activity.VisitAllActivitySamples(cancellationToken, visitor);
+
+    /// <summary>Visits every durable screenshot text snapshot for search-index rebuilds.</summary>
+    internal void VisitScreenshotTextSnapshots(
+        CancellationToken cancellationToken,
+        Action<string, string, ScreenshotTextSnapshot> visitor) =>
+        _activity.VisitScreenshotTextSnapshots(cancellationToken, visitor);
+
+    /// <summary>Visits every persisted successful AI analysis for search-index rebuilds.</summary>
+    internal void VisitAllAiAnalyses(CancellationToken cancellationToken, Action<AiAnalysis> visitor) =>
+        _activity.VisitAllAiAnalyses(cancellationToken, visitor);
+
+    /// <summary>Builds a cheap stamp covering every durable source used by the derived search index.</summary>
+    internal string GetSearchSourceStamp()
+    {
+        static string FileStamp(string path)
+        {
+            var file = new FileInfo(path);
+            return file.Exists ? $"{file.Length}:{file.LastWriteTimeUtc.Ticks}" : "missing";
+        }
+
+        var settings = LoadSettings();
+        var screenshotFiles = Directory.Exists(settings.ScreenshotDirectory)
+            ? Directory.EnumerateFiles(settings.ScreenshotDirectory, "*", SearchOption.TopDirectoryOnly)
+                .Where(ScreenCaptureService.IsOwnedArtifact)
+                .Select(path => new FileInfo(path))
+                .ToArray()
+            : Array.Empty<FileInfo>();
+        var latestScreenshotWrite = screenshotFiles.Length == 0
+            ? 0
+            : screenshotFiles.Max(file => file.LastWriteTimeUtc.Ticks);
+        return string.Join(
+            "|",
+            FileStamp(_activity.DatabasePath),
+            FileStamp(_activity.DatabasePath + "-wal"),
+            screenshotFiles.Length,
+            latestScreenshotWrite,
+            settings.ScreenshotDirectory.ToUpperInvariant(),
+            settings.SearchLanguage.ToUpperInvariant());
+    }
+
+    /// <summary>Persists one sanitized standalone AI request-usage record in SQLite.</summary>
+    internal void AppendAiUsage(AiRequestUsageRecord usage) => _activity.AppendStandaloneAiRequest(usage);
 
     /// <summary>Persists provider usage and the corresponding analysis in one SQLite transaction.</summary>
     internal void AppendAiAnalysisAndUsage(AiRequestUsageRecord usage, AiAnalysis analysis)
@@ -294,6 +379,7 @@ public sealed class LocalStore
                 var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
                 var activity = FindScreenshotActivity(capturedAt, settings.ScreenshotIntervalMinutes);
                 analyses.TryGetValue(file.FullName, out var analysis);
+                var textSnapshot = LoadScreenshotTextSnapshot(file.FullName);
                 return new ScreenshotGalleryItem(
                     capturedAt,
                     file.FullName,
@@ -303,7 +389,8 @@ public sealed class LocalStore
                     activity.SpanLabels,
                     analysis?.Summary,
                     analysis?.Timestamp,
-                    activity.ActivityIndex);
+                    activity.ActivityIndex,
+                    textSnapshot);
             })
             .ToArray();
 
@@ -323,6 +410,27 @@ public sealed class LocalStore
         // File timestamps remain the capture-time source used by the date-filtered gallery.
         var capturedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(latestPath), TimeSpan.Zero);
         return GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+    }
+
+    /// <summary>Loads every retained screenshot projection for deterministic search-index rebuilds.</summary>
+    internal IReadOnlyList<ScreenshotGalleryItem> GetAllScreenshotGalleryItems()
+    {
+        var settings = LoadSettings();
+        if (!Directory.Exists(settings.ScreenshotDirectory))
+        {
+            return Array.Empty<ScreenshotGalleryItem>();
+        }
+
+        var dates = Directory.EnumerateFiles(settings.ScreenshotDirectory, "*", SearchOption.TopDirectoryOnly)
+            .Where(ScreenCaptureService.IsOwnedArtifact)
+            .Select(path => DateOnly.FromDateTime(File.GetLastWriteTime(path).Date))
+            .Distinct()
+            .Order()
+            .ToArray();
+        return dates
+            .SelectMany(date => GetScreenshotGallery(date).Items)
+            .OrderBy(item => item.CapturedAt)
+            .ToArray();
     }
 
     private ScreenshotActivityContext FindScreenshotActivity(DateTimeOffset capturedAt, int screenshotIntervalMinutes)

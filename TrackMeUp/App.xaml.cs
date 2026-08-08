@@ -24,11 +24,13 @@ public partial class App : Microsoft.UI.Xaml.Application
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
     private ScreenshotWindow? _screenshotsWindow;
+    private SearchWindow? _searchWindow;
     private TaskbarWidgetSurface? _taskbarWidgetSurface;
     private RuntimeHost? _runtimeHost;
     private ITrackMeUpApplication? _runtimeApplication;
     private ITrackMeUpApplication? _applicationFacade;
     private bool _reportsOnly;
+    private bool _searchWindowOpening;
     private int _shutdownStarted;
 
     /// <summary>Initializes the WinUI application object and its logging composition root.</summary>
@@ -84,6 +86,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window = new MainWindow(application, options, _dialogs);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.ReportsRequested += MainWindow_ReportsRequested;
+        _window.SearchRequested += MainWindow_SearchRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.Closed += MainWindow_Closed;
@@ -107,6 +110,9 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
+    private async void MainWindow_SearchRequested(object? sender, EventArgs eventArgs) =>
+        await ShowSearchWindowAsync(StartOrConnectRuntime());
+
     private async void MainWindow_ScreenshotGalleryRequested(object? sender, EventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null);
 
@@ -126,6 +132,47 @@ public partial class App : Microsoft.UI.Xaml.Application
         _reportsWindow.Closed += ReportsWindow_Closed;
         _reportsWindow.Activate();
     }
+
+    private async Task ShowSearchWindowAsync(ITrackMeUpApplication application)
+    {
+        if (_searchWindow is not null)
+        {
+            _searchWindow.Activate();
+            _searchWindow.FocusQuery();
+            return;
+        }
+
+        if (_searchWindowOpening)
+        {
+            return;
+        }
+
+        _searchWindowOpening = true;
+        try
+        {
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (!settings.Succeeded || settings.Value is null)
+            {
+                throw new InvalidOperationException($"Search window settings are unavailable ({settings.Code}).");
+            }
+
+            _searchWindow = new SearchWindow(application, settings.Value.Theme, settings.Value.UiLanguage);
+            _searchWindow.ScreenshotRequested += SearchWindow_ScreenshotRequested;
+            _searchWindow.Closed += SearchWindow_Closed;
+            _searchWindow.Activate();
+        }
+        finally
+        {
+            _searchWindowOpening = false;
+        }
+    }
+
+    private async void SearchWindow_ScreenshotRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs) =>
+        await ShowScreenshotWindowAsync(
+            StartOrConnectRuntime(),
+            null,
+            eventArgs.ScreenshotPath,
+            eventArgs.CapturedAt);
 
     private async Task ShowScreenshotWindowAsync(
         ITrackMeUpApplication application,
@@ -180,6 +227,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
+            _window.SearchRequested -= MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotsRequested -= MainWindow_ScreenshotsRequested;
             _window.Closed -= MainWindow_Closed;
@@ -200,6 +248,14 @@ public partial class App : Microsoft.UI.Xaml.Application
             _screenshotsWindow = null;
         }
 
+        if (_searchWindow is not null)
+        {
+            _searchWindow.ScreenshotRequested -= SearchWindow_ScreenshotRequested;
+            _searchWindow.Closed -= SearchWindow_Closed;
+            _searchWindow.Close();
+            _searchWindow = null;
+        }
+
         DisposeTaskbarWidget();
         await ShutdownRuntimeAsync();
         Exit();
@@ -211,6 +267,16 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             _screenshotsWindow.Closed -= ScreenshotsWindow_Closed;
             _screenshotsWindow = null;
+        }
+    }
+
+    private void SearchWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_searchWindow is not null)
+        {
+            _searchWindow.ScreenshotRequested -= SearchWindow_ScreenshotRequested;
+            _searchWindow.Closed -= SearchWindow_Closed;
+            _searchWindow = null;
         }
     }
 

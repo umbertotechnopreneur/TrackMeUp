@@ -24,6 +24,12 @@
     <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
     <BuildType Solution="Release-Unpackaged|*" Project="Release" />
   </Project>
+  <Project Path="TrackMeUp.Search.Tests/TrackMeUp.Search.Tests.csproj">
+    <BuildType Project="Debug" />
+  </Project>
+  <Project Path="TrackMeUp.Search/TrackMeUp.Search.csproj">
+    <BuildType Project="Debug" />
+  </Project>
   <Project Path="TrackMeUp.Taskbar/TrackMeUp.Taskbar.csproj">
     <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
     <BuildType Solution="Release-Unpackaged|*" Project="Release" />
@@ -31,6 +37,12 @@
   <Project Path="TrackMeUp.Core.Tests/TrackMeUp.Core.Tests.csproj">
     <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
     <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Ocr.Tests/TrackMeUp.Ocr.Tests.csproj">
+    <BuildType Project="Debug" />
+  </Project>
+  <Project Path="TrackMeUp.Ocr/TrackMeUp.Ocr.csproj">
+    <BuildType Project="Debug" />
   </Project>
   <Project Path="TrackMeUp.Presentation.Tests/TrackMeUp.Presentation.Tests.csproj">
     <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />

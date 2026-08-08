@@ -281,7 +281,8 @@ public sealed record ScreenshotCaptureResult(
     string CaptureId,
     IReadOnlyList<string> AnalysisScreenshotPaths,
     IReadOnlyList<string> StoredScreenshotPaths,
-    string CaptureOrigin)
+    string CaptureOrigin,
+    IReadOnlyList<TrackMeUp.Application.ScreenshotTextSnapshot>? TextSnapshots = null)
 {
     /// <summary>
     /// Returns all generated files, used for retention and cleanup.

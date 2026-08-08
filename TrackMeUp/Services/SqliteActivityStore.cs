@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
 
@@ -9,7 +10,7 @@ namespace TrackMeUp.Services;
 internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
     private const long FixedEstimatedRowBytes = 96;
     private static readonly SchemaColumn[] ExpectedActivityColumns =
     [
@@ -46,6 +47,16 @@ internal sealed class SqliteActivityStore
         "installation_id", "origin", "informational_schedule", "screenshot_paths", "image_count"
     ];
 
+    private static readonly SchemaColumn[] ExpectedScreenshotTextSnapshotColumns =
+    [
+        new("artifact_identity", "TEXT", true, 1),
+        new("capture_id", "TEXT", true, 0),
+        new("source_path", "TEXT", true, 0),
+        new("extracted_utc_ticks", "INTEGER", true, 0),
+        new("snapshot_json", "TEXT", true, 0),
+        new("updated_utc_ticks", "INTEGER", true, 0)
+    ];
+
     private static readonly HashSet<string> ExpectedActivityIndexes =
     [
         "ix_activity_samples_start",
@@ -66,7 +77,13 @@ internal sealed class SqliteActivityStore
         "ix_ai_analysis_results_timestamp"
     ];
 
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    private static readonly HashSet<string> ExpectedScreenshotTextSnapshotIndexes =
+    [
+        "sqlite_autoindex_screenshot_text_snapshots_1",
+        "ix_screenshot_text_snapshots_capture"
+    ];
+
+    private static readonly HashSet<string> ExpectedVersion3ApplicationSchemaObjects =
     [
         "activity_samples",
         "ix_activity_samples_start",
@@ -82,6 +99,13 @@ internal sealed class SqliteActivityStore
         "ai_analysis_search_content",
         "ai_analysis_search_docsize",
         "ai_analysis_search_config"
+    ];
+
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    [
+        .. ExpectedVersion3ApplicationSchemaObjects,
+        "screenshot_text_snapshots",
+        "ix_screenshot_text_snapshots_capture"
     ];
 
     private readonly string _databasePath;
@@ -149,14 +173,109 @@ internal sealed class SqliteActivityStore
         command.ExecuteNonQuery();
     }
 
-    /// <summary>Appends one failed AI provider attempt without persisting provider error text or request content.</summary>
-    internal void AppendFailedAiRequest(AiRequestUsageRecord request)
+    /// <summary>Upserts the complete local OCR snapshot and optional AI refinement for one owned screenshot artifact.</summary>
+    internal void UpsertScreenshotTextSnapshot(
+        string artifactIdentity,
+        string captureId,
+        ScreenshotTextSnapshot snapshot)
+    {
+        if (string.IsNullOrWhiteSpace(artifactIdentity) || string.IsNullOrWhiteSpace(captureId))
+        {
+            throw new ArgumentException("Screenshot text persistence requires artifact and capture identifiers.");
+        }
+
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (string.IsNullOrWhiteSpace(snapshot.SourceScreenshotPath)
+            || string.IsNullOrWhiteSpace(snapshot.Ocr.Engine)
+            || snapshot.Ocr.Lines is null)
+        {
+            throw new ArgumentException("Screenshot text snapshot is incomplete.", nameof(snapshot));
+        }
+
+        var payload = JsonSerializer.Serialize(snapshot, _json);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO screenshot_text_snapshots (
+                artifact_identity, capture_id, source_path, extracted_utc_ticks, snapshot_json, updated_utc_ticks)
+            VALUES ($identity, $captureId, $sourcePath, $extractedAt, $snapshot, $updatedAt)
+            ON CONFLICT(artifact_identity) DO UPDATE SET
+                capture_id = excluded.capture_id,
+                source_path = excluded.source_path,
+                extracted_utc_ticks = excluded.extracted_utc_ticks,
+                snapshot_json = excluded.snapshot_json,
+                updated_utc_ticks = excluded.updated_utc_ticks;
+            """;
+        command.Parameters.AddWithValue("$identity", artifactIdentity);
+        command.Parameters.AddWithValue("$captureId", captureId);
+        command.Parameters.AddWithValue("$sourcePath", snapshot.SourceScreenshotPath);
+        command.Parameters.AddWithValue("$extractedAt", snapshot.Ocr.ExtractedAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$snapshot", payload);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.UtcNow.UtcDateTime.Ticks);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Loads the persisted text snapshot for one screenshot artifact identity.</summary>
+    internal ScreenshotTextSnapshot? LoadScreenshotTextSnapshot(string artifactIdentity)
+    {
+        if (string.IsNullOrWhiteSpace(artifactIdentity))
+        {
+            throw new ArgumentException("Screenshot artifact identity is required.", nameof(artifactIdentity));
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT snapshot_json FROM screenshot_text_snapshots WHERE artifact_identity = $identity;";
+        command.Parameters.AddWithValue("$identity", artifactIdentity);
+        var payload = command.ExecuteScalar() as string;
+        return payload is null
+            ? null
+            : JsonSerializer.Deserialize<ScreenshotTextSnapshot>(payload, _json)
+                ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
+    }
+
+    /// <summary>Visits every persisted screenshot text snapshot for deterministic search-index rebuilds.</summary>
+    internal void VisitScreenshotTextSnapshots(
+        CancellationToken cancellationToken,
+        Action<string, string, ScreenshotTextSnapshot> visitor)
+    {
+        ArgumentNullException.ThrowIfNull(visitor);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT artifact_identity, capture_id, snapshot_json
+            FROM screenshot_text_snapshots
+            ORDER BY artifact_identity;
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var snapshot = JsonSerializer.Deserialize<ScreenshotTextSnapshot>(reader.GetString(2), _json)
+                ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
+            visitor(reader.GetString(0), reader.GetString(1), snapshot);
+        }
+    }
+
+    /// <summary>Deletes the text snapshot associated with one screenshot artifact identity.</summary>
+    internal int DeleteScreenshotTextSnapshot(string artifactIdentity)
+    {
+        if (string.IsNullOrWhiteSpace(artifactIdentity))
+        {
+            throw new ArgumentException("Screenshot artifact identity is required.", nameof(artifactIdentity));
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM screenshot_text_snapshots WHERE artifact_identity = $identity;";
+        command.Parameters.AddWithValue("$identity", artifactIdentity);
+        return command.ExecuteNonQuery();
+    }
+
+    /// <summary>Appends one standalone AI provider attempt without persisting provider error text or request content.</summary>
+    internal void AppendStandaloneAiRequest(AiRequestUsageRecord request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Success)
-        {
-            throw new ArgumentException("A failed-attempt writer cannot accept a successful request.", nameof(request));
-        }
 
         using var connection = OpenConnection();
         using var transaction = connection.BeginTransaction();
@@ -225,6 +344,26 @@ internal sealed class SqliteActivityStore
         }
 
         return ReadAiAnalysis(reader);
+    }
+
+    /// <summary>Visits every persisted successful AI analysis for search-index rebuilds.</summary>
+    internal void VisitAllAiAnalyses(CancellationToken cancellationToken, Action<AiAnalysis> visitor)
+    {
+        ArgumentNullException.ThrowIfNull(visitor);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT correlation_id, timestamp_utc_ticks, application, context, summary, installation_id,
+                   screenshot_paths, origin, informational_schedule
+            FROM ai_analysis_results
+            ORDER BY timestamp_utc_ticks, correlation_id;
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            visitor(ReadAiAnalysis(reader));
+        }
     }
 
     /// <summary>Loads the newest successful analysis that references each requested screenshot path.</summary>
@@ -489,6 +628,27 @@ internal sealed class SqliteActivityStore
         }
     }
 
+    /// <summary>Visits every retained activity sample with its stable SQLite identifier for search indexing.</summary>
+    internal void VisitAllActivitySamples(CancellationToken cancellationToken, Action<long, ActivitySample> visitor)
+    {
+        ArgumentNullException.ThrowIfNull(visitor);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT
+                timestamp_utc_ticks, timestamp_offset_minutes, duration_seconds, state, process_name, application,
+                context, window_title, installation_id, key_presses, mouse_clicks, attributes_json, id
+            FROM activity_samples
+            ORDER BY timestamp_utc_ticks, id;
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            visitor(reader.GetInt64(12), ReadSample(reader));
+        }
+    }
+
     /// <summary>Loads the most recently completed activity sample.</summary>
     internal ActivitySample? LoadLatest()
     {
@@ -610,6 +770,14 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
+            if (version == 3)
+            {
+                // Version 3 is validated before the one-way migration so unsupported databases are never mutated.
+                ValidateVersion3Schema(connection);
+                MigrateVersion3To4(connection);
+                version = ReadSchemaVersion(connection);
+            }
+
             if (version != SchemaVersion)
             {
                 throw new InvalidOperationException($"Unsupported activity database schema version {version}; expected {SchemaVersion}.");
@@ -641,12 +809,56 @@ internal sealed class SqliteActivityStore
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = ActivitySchemaSql + AiSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
     }
 
+    private static void MigrateVersion3To4(SqliteConnection connection)
+    {
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = ScreenshotTextSchemaSql + "PRAGMA user_version = 4;";
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    private static void ValidateVersion3Schema(SqliteConnection connection)
+    {
+        ValidateBaseSchema(connection);
+        var schemaObjects = ReadApplicationSchemaObjects(connection);
+        if (!schemaObjects.SetEquals(ExpectedVersion3ApplicationSchemaObjects))
+        {
+            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
+        }
+    }
+
     private static void ValidateSchema(SqliteConnection connection)
+    {
+        ValidateBaseSchema(connection);
+        ValidateCreateStatement(connection, "screenshot_text_snapshots", ScreenshotTextSchemaSql);
+
+        var actualScreenshotTextColumns = ReadColumns(connection, "screenshot_text_snapshots");
+        if (!actualScreenshotTextColumns.SequenceEqual(ExpectedScreenshotTextSnapshotColumns))
+        {
+            throw new InvalidOperationException("The screenshot text snapshot schema does not match the supported schema.");
+        }
+
+        var screenshotTextIndexes = ReadIndexes(connection, "screenshot_text_snapshots");
+        if (!screenshotTextIndexes.SetEquals(ExpectedScreenshotTextSnapshotIndexes))
+        {
+            throw new InvalidOperationException("The screenshot text snapshot indexes do not match the supported schema.");
+        }
+
+        var schemaObjects = ReadApplicationSchemaObjects(connection);
+        if (!schemaObjects.SetEquals(ExpectedApplicationSchemaObjects))
+        {
+            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
+        }
+    }
+
+    private static void ValidateBaseSchema(SqliteConnection connection)
     {
         ValidateCreateStatement(connection, "activity_samples", ActivitySchemaSql);
         ValidateCreateStatement(connection, "ai_request_usage", AiSchemaSql);
@@ -678,12 +890,6 @@ internal sealed class SqliteActivityStore
         if (!resultIndexes.SetEquals(ExpectedAiAnalysisResultIndexes))
         {
             throw new InvalidOperationException("The AI result indexes do not match the supported schema.");
-        }
-
-        var schemaObjects = ReadApplicationSchemaObjects(connection);
-        if (!schemaObjects.SetEquals(ExpectedApplicationSchemaObjects))
-        {
-            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
         }
     }
 
@@ -1055,6 +1261,19 @@ internal sealed class SqliteActivityStore
             summary,
             tokenize = 'unicode61 remove_diacritics 2'
         );
+        """;
+
+    private const string ScreenshotTextSchemaSql = """
+        CREATE TABLE screenshot_text_snapshots (
+            artifact_identity TEXT NOT NULL PRIMARY KEY,
+            capture_id TEXT NOT NULL,
+            source_path TEXT NOT NULL,
+            extracted_utc_ticks INTEGER NOT NULL,
+            snapshot_json TEXT NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL
+        );
+        CREATE INDEX ix_screenshot_text_snapshots_capture
+            ON screenshot_text_snapshots (capture_id, artifact_identity);
         """;
 
     private readonly record struct SchemaColumn(string Name, string Type, bool NotNull, int PrimaryKeyOrder);

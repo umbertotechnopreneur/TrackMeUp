@@ -18,6 +18,12 @@
   <ItemGroup>
     <Content Include="..\prompts\*.prompt.md" Link="prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="search-synonyms.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrackMeUp.Ocr\TrackMeUp.Ocr.csproj" />
+    <ProjectReference Include="..\TrackMeUp.Search\TrackMeUp.Search.csproj" />
   </ItemGroup>
 
   <ItemGroup>

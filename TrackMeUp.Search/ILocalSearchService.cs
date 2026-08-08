@@ -1,0 +1,36 @@
+namespace TrackMeUp.Search;
+
+/// <summary>
+/// Provides mandatory local full-text indexing and retrieval independent of the UI and AI pipeline.
+/// </summary>
+public interface ILocalSearchService : IAsyncDisposable
+{
+    /// <summary>
+    /// Adds or atomically replaces a document by its stable identifier and commits the change.
+    /// </summary>
+    /// <param name="document">The complete document to index.</param>
+    /// <param name="cancellationToken">A token observed before Lucene's synchronous commit begins.</param>
+    Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a document by its stable, case-sensitive identifier and commits the change.
+    /// </summary>
+    /// <param name="id">The document identifier.</param>
+    /// <param name="cancellationToken">A token observed before Lucene's synchronous commit begins.</param>
+    Task DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces the complete index contents with a validated, reconstructible document set.
+    /// </summary>
+    /// <param name="documents">The authoritative documents from which to rebuild the index.</param>
+    /// <param name="cancellationToken">A token observed while preparing documents and before commit.</param>
+    Task RebuildAsync(IEnumerable<SearchDocument> documents, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Executes a programmatically constructed, ranked query against the latest committed index.
+    /// </summary>
+    /// <param name="request">The text, filters, and pagination to apply.</param>
+    /// <param name="cancellationToken">A token observed before the synchronous Lucene read begins.</param>
+    /// <returns>The matching page and total count.</returns>
+    Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
+}

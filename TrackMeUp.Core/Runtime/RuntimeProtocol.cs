@@ -10,10 +10,10 @@ namespace TrackMeUp.Runtime;
 public static class RuntimeProtocol
 {
     /// <summary>Gets the supported wire-protocol version.</summary>
-    public const int ProtocolVersion = 1;
+    public const int ProtocolVersion = 2;
 
     /// <summary>Gets the maximum accepted JSON envelope size in bytes.</summary>
-    public const int MaximumMessageBytes = 1_048_576;
+    public const int MaximumMessageBytes = 16_777_216;
 
     /// <summary>Builds the mutex and named-pipe names from an installation identifier without exposing it.</summary>
     public static RuntimeEndpoint CreateEndpoint(string installationId)

@@ -53,6 +53,11 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
         AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
         AutomationProperties.SetName(WatermarkSwitch, T("Options.Watermark.Header"));
+        AutomationProperties.SetName(SearchSettingsButton, T("Options.SearchConfiguration.Title"));
+        AutomationProperties.SetName(SearchSynonymsSwitch, T("Options.Search.Synonyms"));
+        AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
+        AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
+        AutomationProperties.SetName(RebuildSearchIndexButton, T("Options.Search.Rebuild"));
         UpdateApiKeyPresentation();
         UpdateScreenshotModeHint();
         NotifyLayoutChanged();
@@ -94,6 +99,14 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Moves from AI configuration to general options, then back to the player.</summary>
     public void NavigateBack()
     {
+        if (SearchOptionsView.Visibility == Visibility.Visible)
+        {
+            SearchOptionsView.Visibility = Visibility.Collapsed;
+            AppOptionsView.Visibility = Visibility.Visible;
+            NotifyLayoutChanged();
+            return;
+        }
+
         if (AiOptionsView.Visibility == Visibility.Visible)
         {
             AiOptionsView.Visibility = Visibility.Collapsed;
@@ -114,6 +127,39 @@ public sealed partial class OptionsControl : UserControl
         if (_aiState is not null)
         {
             await _aiState.LoadAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>Shows the focused local-search and OCR settings view.</summary>
+    private void SearchSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        AppOptionsView.Visibility = Visibility.Collapsed;
+        SearchOptionsView.Visibility = Visibility.Visible;
+        NotifyLayoutChanged();
+    }
+
+    private void OcrEnabledSwitch_Toggled(object sender, RoutedEventArgs e) =>
+        OcrLanguageBox.IsEnabled = OcrEnabledSwitch.IsOn;
+
+    /// <summary>Requests a complete rebuild of the reconstructible local search index.</summary>
+    private async void RebuildSearchIndexButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_application is null)
+        {
+            return;
+        }
+
+        RebuildSearchIndexButton.IsEnabled = false;
+        try
+        {
+            var result = await _application.RebuildSearchIndexAsync(CancellationToken.None);
+            StatusText.Text = result.Succeeded
+                ? string.Format(T("Options.Search.RebuildCompleted"), result.Value)
+                : T("Options.Search.RebuildError");
+        }
+        finally
+        {
+            RebuildSearchIndexButton.IsEnabled = true;
         }
     }
 
@@ -251,6 +297,11 @@ public sealed partial class OptionsControl : UserControl
             ["screenshots.directory"] = ScreenshotFolderBox.Text,
             ["screenshots.keep"] = KeepScreenshotsSwitch.IsOn.ToString(),
             ["screenshots.enabled"] = ScreenshotsEnabledSwitch.IsOn.ToString(),
+            ["search.language"] = SelectedTag(SearchLanguageBox, "system"),
+            ["search.synonyms"] = SearchSynonymsSwitch.IsOn.ToString(),
+            ["search.typo_tolerance"] = SearchTypoToleranceSwitch.IsOn.ToString(),
+            ["ocr.enabled"] = OcrEnabledSwitch.IsOn.ToString(),
+            ["ocr.language"] = SelectedTag(OcrLanguageBox, "system"),
             ["startup.enabled"] = StartWithWindowsSwitch.IsOn.ToString(),
             ["tracking.start_on_launch"] = StartTrackingOnLaunchSwitch.IsOn.ToString(),
             ["screenshots.watermark"] = WatermarkSwitch.IsOn.ToString(),
@@ -303,6 +354,12 @@ public sealed partial class OptionsControl : UserControl
         ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
         KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
         ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
+        SelectTag(SearchLanguageBox, settings.SearchLanguage, "system");
+        SearchSynonymsSwitch.IsOn = settings.SearchSynonymsEnabled;
+        SearchTypoToleranceSwitch.IsOn = settings.SearchTypoToleranceEnabled;
+        OcrEnabledSwitch.IsOn = settings.OcrEnabled;
+        SelectTag(OcrLanguageBox, settings.OcrLanguage, "system");
+        OcrLanguageBox.IsEnabled = settings.OcrEnabled;
         StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
         StartTrackingOnLaunchSwitch.IsOn = settings.StartTrackingOnLaunch;
         WatermarkSwitch.IsOn = settings.WatermarkScreenshots;

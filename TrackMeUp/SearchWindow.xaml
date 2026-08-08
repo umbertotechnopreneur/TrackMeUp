@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="TrackMeUp.SearchWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:presentation="using:TrackMeUp.Presentation"
+    Title="Search captured moments">
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            x:Name="TitleBarDragRegion"
+            Height="48"
+            Loaded="TitleBarDragRegion_Loaded"
+            SizeChanged="TitleBarDragRegion_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <StackPanel
+                Grid.Column="1"
+                Margin="22,0,12,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="9">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="15"
+                    Glyph="&#xE721;" />
+                <TextBlock
+                    x:Name="WindowTitleText"
+                    Tag="Search.Title"
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Text="Search captured moments"
+                    TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="20,10,20,18" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <AutoSuggestBox
+                    x:Name="QueryBox"
+                    Tag="Search.Placeholder"
+                    AutomationProperties.Name="Search captured moments"
+                    PlaceholderText="Search captured moments"
+                    QuerySubmitted="QueryBox_QuerySubmitted"
+                    TextChanged="QueryBox_TextChanged">
+                    <AutoSuggestBox.QueryIcon>
+                        <SymbolIcon Symbol="Find" />
+                    </AutoSuggestBox.QueryIcon>
+                    <AutoSuggestBox.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F" Modifiers="Control" />
+                    </AutoSuggestBox.KeyboardAccelerators>
+                </AutoSuggestBox>
+                <ProgressRing
+                    x:Name="SearchProgressRing"
+                    Grid.Column="1"
+                    Width="20"
+                    Height="20"
+                    VerticalAlignment="Center"
+                    IsActive="False" />
+            </Grid>
+
+            <InfoBar
+                x:Name="SearchInfoBar"
+                Grid.Row="1"
+                IsClosable="True"
+                IsOpen="False"
+                Severity="Error" />
+
+            <Grid Grid.Row="2">
+                <TextBlock
+                    x:Name="ResultCountText"
+                    Margin="4,0,4,8"
+                    VerticalAlignment="Top"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Visibility="Collapsed" />
+
+                <ListView
+                    x:Name="SearchResultsList"
+                    Margin="0,24,0,0"
+                    HorizontalContentAlignment="Stretch"
+                    IsItemClickEnabled="True"
+                    ItemClick="SearchResultsList_ItemClick"
+                    ItemsSource="{Binding Results, Mode=OneWay}"
+                    SelectionMode="None"
+                    Visibility="Collapsed">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Margin" Value="0,0,0,8" />
+                            <Setter Property="Padding" Value="0" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="presentation:ScreenshotSearchResult">
+                            <Border
+                                MinHeight="92"
+                                Padding="8"
+                                Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="136" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Width="136"
+                                        Height="76"
+                                        Background="{ThemeResource ControlFillColorTertiaryBrush}"
+                                        CornerRadius="5">
+                                        <Grid>
+                                            <FontIcon
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.AccessibilityView="Raw"
+                                                FontFamily="Segoe Fluent Icons"
+                                                FontSize="24"
+                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                Glyph="&#xEB9F;" />
+                                            <Image
+                                                AutomationProperties.AccessibilityView="Raw"
+                                                Source="{Binding ScreenshotUri}"
+                                                Stretch="UniformToFill" />
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                        <TextBlock
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Text="{x:Bind CapturedAtDisplay, Mode=OneTime}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind Application, Mode=OneTime}"
+                                            TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <FontIcon
+                                        Grid.Column="2"
+                                        Margin="6"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Glyph="&#xE76C;" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <StackPanel
+                    x:Name="EmptyStatePanel"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8"
+                    Visibility="Collapsed">
+                    <FontIcon
+                        HorizontalAlignment="Center"
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="28"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Glyph="&#xE721;" />
+                    <TextBlock
+                        Tag="Search.NoResults"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="No matching screenshots"
+                        TextAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

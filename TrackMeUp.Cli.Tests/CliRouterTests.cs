@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
 using TrackMeUp.Cli;
+using TrackMeUp.Search;
 using TrackMeUp.Services;
 using Xunit;
 
@@ -253,6 +254,8 @@ public sealed class CliRouterTests
         public Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken) => Unsupported<DashboardState>();
         public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => Unsupported<LastSessionState?>();
         public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => Unsupported<DailySummary>();
+        public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) => Unsupported<SearchResponse>();
+        public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();
         public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => Unsupported<FocusSessionState>();
         public Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken) => Unsupported<FocusSessionState>();

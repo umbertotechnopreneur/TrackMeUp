@@ -316,7 +316,8 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 context.Snapshot,
                 captureResult.CaptureId,
                 origin,
-                context.InformationalSchedule);
+                context.InformationalSchedule,
+                captureResult.TextSnapshots);
             var usage = CreateUsageRecord(
                 attemptId,
                 captureResult.CaptureId,

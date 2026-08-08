@@ -22,6 +22,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
             </Grid.ColumnDefinitions>
             <Button
@@ -79,8 +80,28 @@
                     Glyph="&#xE712;" />
             </Button>
             <Button
-                x:Name="TitleBarReportButton"
+                x:Name="TitleBarSearchButton"
                 Grid.Column="5"
+                Width="40"
+                Height="40"
+                Padding="8"
+                AllowFocusOnInteraction="False"
+                AutomationProperties.Name="Search captured moments"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="TitleBarSearchButton_Click"
+                IsTabStop="False"
+                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                ToolTipService.ToolTip="Search">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="17"
+                    Glyph="&#xE721;" />
+            </Button>
+            <Button
+                x:Name="TitleBarReportButton"
+                Grid.Column="6"
                 Width="40"
                 Height="40"
                 Margin="0,0,8,0"
@@ -356,6 +377,27 @@
                                                     Value="Raw"/>
                                         </Style>
                                     </StackPanel.Resources>
+                                    <Button
+                                        x:Name="SearchMenuItem"
+                                        AutomationProperties.Name="Search captured moments"
+                                        Click="SearchMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FFDB8D72"
+                                                          Glyph="&#xE721;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="Search.Title"
+                                                       VerticalAlignment="Center"
+                                                       Text="Search captured moments"/>
+                                        </Grid>
+                                    </Button>
                                     <Button
                                         AutomationProperties.Name="Open reports"
                                         Click="ReportsMenuItem_Click"

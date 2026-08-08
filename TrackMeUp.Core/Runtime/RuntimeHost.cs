@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using TrackMeUp.Application;
+using TrackMeUp.Search;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Runtime;
@@ -201,6 +202,8 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "dashboard.get" => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
                 "session.last" => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
+                "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
+                "search.rebuild.v1" => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
                 "focus.start" => ToResponse(request, await _application.StartFocusSessionAsync(Read<StartFocusSessionRequest>(request.Payload) ?? new StartFocusSessionRequest(string.Empty), cancellationToken)),
                 "focus.status" => ToResponse(request, await _application.GetFocusSessionAsync(cancellationToken)),
                 "focus.stop" => ToResponse(request, await _application.StopFocusSessionAsync(ReadBool(request.Payload, "summarize"), cancellationToken)),
@@ -275,6 +278,14 @@ public sealed class RuntimeHost : IAsyncDisposable
         return galleryRequest is null
             ? OperationResult<ScreenshotGallery>.Failure("screenshot.gallery.invalid", "ScreenshotGalleryRequestInvalid")
             : await _application.GetScreenshotGalleryAsync(galleryRequest.Date, cancellationToken);
+    }
+
+    private async Task<RuntimeResponseEnvelope> DispatchSearchAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var searchRequest = Read<SearchRequest>(request.Payload);
+        return searchRequest is null
+            ? Failure(request, "search.query.invalid", "SearchQueryInvalid")
+            : ToResponse(request, await _application.SearchAsync(searchRequest, cancellationToken));
     }
 
     private async Task<RuntimeResponseEnvelope> DispatchScreenshotCaptureAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
@@ -420,6 +431,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
 {
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RuntimeClient> _logger;
@@ -453,6 +465,12 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>("session.last", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => SendAsync<DailySummary>("session.today", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
+        SendAsync<SearchResponse>("search.query.v1", request, cancellationToken, SearchTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) =>
+        SendAsync<int>("search.rebuild.v1", null, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
         SendAsync<ReportSnapshot>("report.query.v1", query, cancellationToken, ReportQueryTimeout);

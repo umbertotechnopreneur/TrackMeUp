@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using TrackMeUp.Search;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Application;
@@ -46,6 +47,68 @@ public sealed record AnalyzeCapturedScreenshotRequest(
 /// <summary>Requests retained screenshots for one inclusive local calendar date.</summary>
 public sealed record ScreenshotGalleryRequest(DateOnly Date);
 
+/// <summary>Identifies the outcome of local screenshot text extraction.</summary>
+public enum ScreenshotTextExtractionStatus
+{
+    /// <summary>OCR was explicitly disabled and no image I/O was performed.</summary>
+    Disabled,
+
+    /// <summary>OCR completed but found no readable text.</summary>
+    NoText,
+
+    /// <summary>OCR completed and returned raw text data.</summary>
+    Succeeded,
+
+    /// <summary>OCR was enabled but the local recognizer could not complete extraction.</summary>
+    Failed
+}
+
+/// <summary>Describes one raw OCR word and its image-relative pixel bounds.</summary>
+public sealed record OcrWordSnapshot(
+    string Text,
+    double X,
+    double Y,
+    double Width,
+    double Height);
+
+/// <summary>Describes one raw OCR line and all words returned by the local recognizer.</summary>
+public sealed record OcrLineSnapshot(
+    string Text,
+    IReadOnlyList<OcrWordSnapshot> Words);
+
+/// <summary>Contains the complete local OCR output retained for one screenshot artifact.</summary>
+public sealed record OcrRawSnapshot(
+    ScreenshotTextExtractionStatus Status,
+    string RawText,
+    string? LanguageTag,
+    double? TextAngleDegrees,
+    DateTimeOffset ExtractedAt,
+    string Engine,
+    uint? PixelWidth,
+    uint? PixelHeight,
+    IReadOnlyList<OcrLineSnapshot> Lines,
+    string? FailureCode = null);
+
+/// <summary>Contains an AI-produced, structured summary of locally extracted OCR text.</summary>
+public sealed record OcrStructuredSummary(
+    string Overview,
+    IReadOnlyList<string> KeyPoints,
+    IReadOnlyList<string> Entities,
+    IReadOnlyList<string> Actions);
+
+/// <summary>Contains the optional AI correction of OCR text produced by a dedicated enrichment request.</summary>
+public sealed record OcrAiRefinement(
+    string CorrectedText,
+    string? LanguageTag,
+    OcrStructuredSummary Summary,
+    DateTimeOffset RefinedAt);
+
+/// <summary>Associates raw local OCR and optional AI refinement with one screenshot source artifact.</summary>
+public sealed record ScreenshotTextSnapshot(
+    string SourceScreenshotPath,
+    OcrRawSnapshot Ocr,
+    OcrAiRefinement? AiRefinement = null);
+
 /// <summary>Describes one retained screenshot that can be rendered by a presentation surface.</summary>
 /// <param name="CapturedAt">The capture timestamp stored with the retained screenshot artifact.</param>
 /// <param name="Path">The absolute path of the retained screenshot artifact.</param>
@@ -56,6 +119,7 @@ public sealed record ScreenshotGalleryRequest(DateOnly Date);
 /// <param name="AiDescriptionMarkdown">The newest persisted AI description that references this exact artifact, formatted as Markdown.</param>
 /// <param name="AiAnalyzedAt">The timestamp of the associated AI analysis, or <see langword="null"/> when no successful result exists.</param>
 /// <param name="ActivityIndex">A 0-100 historical interval index based on durable keyboard, click, and active-time samples; CPU and GPU telemetry are not reconstructed.</param>
+/// <param name="TextSnapshot">The local OCR snapshot and optional AI refinement associated with this artifact.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
@@ -65,7 +129,8 @@ public sealed record ScreenshotGalleryItem(
     IReadOnlyList<ActivityLabelSample>? SpanLabels = null,
     string? AiDescriptionMarkdown = null,
     DateTimeOffset? AiAnalyzedAt = null,
-    int? ActivityIndex = null);
+    int? ActivityIndex = null,
+    ScreenshotTextSnapshot? TextSnapshot = null);
 
 /// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
 public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);
@@ -240,6 +305,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets today's activity summary.</summary>
     Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken);
+
+    /// <summary>Searches every locally available activity, screenshot, OCR, and AI text field.</summary>
+    Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Rebuilds the mandatory local search index from durable source data.</summary>
+    Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken);
 
     /// <summary>Gets a privacy-safe aggregate report for an inclusive local-date range.</summary>
     Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken);

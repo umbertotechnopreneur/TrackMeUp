@@ -27,7 +27,7 @@ public sealed class WinUiSurfaceContractTests
         var aboutSource = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
 
         Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ScrollViewer");
-        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "ScrollViewer"));
+        Assert.Equal(3, options.Descendants().Count(element => element.Name.LocalName == "ScrollViewer"));
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "Expander");
@@ -71,7 +71,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("active_hours.", optionsSource, StringComparison.Ordinal);
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelInfoCard") && element.Attribute("CornerRadius")?.Value == "6");
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelAccentBar") && element.Attribute("CornerRadius")?.Value == "2");
-        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
+        Assert.Equal(3, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "Border" && element.Attribute("Padding")?.Value == "0,10,18,0");
         var openFolderButton = options.Descendants().Single(element => HasName(element, "OpenScreenshotFolderButton"));
         Assert.Null(openFolderButton.Attribute("Content"));
@@ -129,6 +129,7 @@ public sealed class WinUiSurfaceContractTests
         var pendingSnapshotPanel = player.Descendants().Single(element => HasName(element, "PendingSnapshotPanel"));
         var deleteSnapshotButton = player.Descendants().Single(element => HasName(element, "DeleteSnapshotButton"));
         var deleteCountdownLabel = pendingSnapshotPanel.Descendants().Single(element => element.Attribute("Tag")?.Value == "Snapshot.DeleteAvailable");
+        var searchButton = player.Descendants().Single(element => HasName(element, "TitleBarSearchButton"));
         var reportButton = player.Descendants().Single(element => HasName(element, "TitleBarReportButton"));
         var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
@@ -142,7 +143,10 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
-        Assert.Equal("5", reportButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("5", searchButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("TitleBarSearchButton_Click", searchButton.Attribute("Click")?.Value);
+        Assert.Contains(searchButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE721");
+        Assert.Equal("6", reportButton.Attribute("Grid.Column")?.Value);
         Assert.Equal("0,0,8,0", reportButton.Attribute("Margin")?.Value);
         Assert.Equal("TitleBarReportButton_Click", reportButton.Attribute("Click")?.Value);
         Assert.Contains(reportButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE9F9");
@@ -168,13 +172,14 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE74D");
         Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("TakeScreenshotButton.IsEnabled = true;", mainSource, StringComparison.Ordinal);
-        Assert.Equal(6, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Equal(7, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
         Assert.Equal(
-            ["Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "Main.Menu.Operations", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
+            ["Search.Title", "Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "Main.Menu.Operations", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ElementRect(TitleBarReportButton, scale)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ElementRect(TitleBarSearchButton, scale)", mainSource, StringComparison.Ordinal);
         Assert.Contains("ShowPanel(OperationsPanel, MainWindowSurface.Operations);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ApplyOverflowCommandLabel(OperationsMenuItem, T(\"Main.Menu.Operations\"));", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);

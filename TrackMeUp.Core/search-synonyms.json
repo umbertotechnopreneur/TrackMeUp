@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "sets": [
+    { "language": "it", "terms": ["screenshot", "schermata", "cattura schermo"] },
+    { "language": "it", "terms": ["email", "e-mail", "posta"] },
+    { "language": "it", "terms": ["riunione", "meeting", "call"] },
+    { "language": "en", "terms": ["screenshot", "screen capture", "snapshot"] },
+    { "language": "en", "terms": ["email", "e-mail", "mail"] },
+    { "language": "en", "terms": ["meeting", "call", "video call"] },
+    { "language": "fr", "terms": ["capture d'ecran", "screenshot", "instantane"] },
+    { "language": "fr", "terms": ["courriel", "email", "e-mail"] },
+    { "language": "fr", "terms": ["reunion", "meeting", "appel"] },
+    { "language": "de", "terms": ["bildschirmfoto", "screenshot", "aufnahme"] },
+    { "language": "de", "terms": ["e-mail", "email", "post"] },
+    { "language": "de", "terms": ["besprechung", "meeting", "anruf"] },
+    { "language": "es", "terms": ["captura de pantalla", "screenshot", "instantanea"] },
+    { "language": "es", "terms": ["correo", "email", "e-mail"] },
+    { "language": "es", "terms": ["reunion", "meeting", "llamada"] }
+  ]
+}
