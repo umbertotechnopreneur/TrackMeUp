@@ -11,13 +11,13 @@ internal static class ActiveHoursSchedule
     ];
     private static readonly IReadOnlyList<ActiveHoursDay> DefaultSchedule =
     [
-        new("monday", "09:00-18:00", "13:00-14:00"),
-        new("tuesday", "09:00-18:00", "13:00-14:00"),
-        new("wednesday", "09:00-18:00", "13:00-14:00"),
-        new("thursday", "09:00-18:00", "13:00-14:00"),
-        new("friday", "09:00-18:00", "13:00-14:00"),
-        new("saturday"),
-        new("sunday")
+        new("monday", "00:00-24:00"),
+        new("tuesday", "00:00-24:00"),
+        new("wednesday", "00:00-24:00"),
+        new("thursday", "00:00-24:00"),
+        new("friday", "00:00-24:00"),
+        new("saturday", "00:00-24:00"),
+        new("sunday", "00:00-24:00")
     ];
 
     internal static IReadOnlyList<ActiveHoursDay> Normalize(IReadOnlyList<ActiveHoursDay>? configuredDays)
@@ -86,6 +86,10 @@ internal static class ActiveHoursSchedule
         return true;
     }
 
+    /// <summary>Determines whether at least one day contains an eligible scheduled-snapshot period.</summary>
+    internal static bool HasAnyActivePeriod(IReadOnlyList<ActiveHoursDay>? configuredDays) =>
+        Normalize(configuredDays).Any(day => !string.IsNullOrEmpty(day.ActivePeriod));
+
     /// <summary>Builds the current-day note that is sent only as non-enforcing AI context.</summary>
     /// <param name="configuredDays">The configured weekly schedule.</param>
     /// <param name="timestamp">The instant represented by the snapshot.</param>
@@ -115,14 +119,14 @@ internal static class ActiveHoursSchedule
     {
         var day = timestamp.DayOfWeek.ToString().ToLowerInvariant();
         var entry = Normalize(configuredDays).Single(candidate => candidate.Day == day);
-        var localTime = TimeOnly.FromDateTime(timestamp.DateTime);
+        var localMinutes = (timestamp.Hour * 60) + timestamp.Minute;
         return TryParseRange(entry.ActivePeriod, out var activeStart, out var activeEnd)
-            && localTime >= activeStart
-            && localTime < activeEnd
+            && localMinutes >= activeStart
+            && localMinutes < activeEnd
             && !entry.BreakPeriods.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Any(range => TryParseRange(range, out var breakStart, out var breakEnd)
-                    && localTime >= breakStart
-                    && localTime < breakEnd);
+                    && localMinutes >= breakStart
+                    && localMinutes < breakEnd);
     }
 
     private static bool TryNormalizeRanges(string? value, bool allowMultiple, out string normalized)
@@ -147,7 +151,7 @@ internal static class ActiveHoursSchedule
                 return false;
             }
 
-            normalizedRanges.Add($"{start:HH\\:mm}-{end:HH\\:mm}");
+            normalizedRanges.Add($"{FormatBoundary(start)}-{FormatBoundary(end)}");
         }
 
         normalized = string.Join(", ", normalizedRanges);
@@ -172,13 +176,36 @@ internal static class ActiveHoursSchedule
                 && breakEnd <= activeEnd);
     }
 
-    private static bool TryParseRange(string value, out TimeOnly start, out TimeOnly end)
+    private static bool TryParseRange(string value, out int start, out int end)
     {
         start = default;
         end = default;
         var parts = value.Split('-', StringSplitOptions.TrimEntries);
         return parts.Length == 2
-            && TimeOnly.TryParseExact(parts[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out start)
-            && TimeOnly.TryParseExact(parts[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out end);
+            && TryParseBoundary(parts[0], allowEndOfDay: false, out start)
+            && TryParseBoundary(parts[1], allowEndOfDay: true, out end);
     }
+
+    private static bool TryParseBoundary(string value, bool allowEndOfDay, out int minutes)
+    {
+        if (allowEndOfDay && string.Equals(value, "24:00", StringComparison.Ordinal))
+        {
+            minutes = 24 * 60;
+            return true;
+        }
+
+        if (TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
+        {
+            minutes = (time.Hour * 60) + time.Minute;
+            return true;
+        }
+
+        minutes = default;
+        return false;
+    }
+
+    private static string FormatBoundary(int minutes) =>
+        minutes == 24 * 60
+            ? "24:00"
+            : $"{minutes / 60:00}:{minutes % 60:00}";
 }

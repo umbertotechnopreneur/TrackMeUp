@@ -148,7 +148,7 @@ public sealed record RetentionPreview(int FileCount, long TotalBytes, IReadOnlyL
 public sealed record RetentionStatus(int DataRetentionDays, int ScreenshotRetentionDays, string ScreenshotDirectory);
 
 /// <summary>Describes safe, non-secret AI configuration state.</summary>
-public sealed record AiStatus(bool Enabled, string Provider, string Model, string Endpoint, string KeyVariable, bool HasKey, AnalysisCostGate CostGate);
+public sealed record AiStatus(bool Enabled, string Provider, string Model, string Endpoint, string KeyVariable, bool HasKey, bool CanEnable, AnalysisCostGate CostGate);
 
 /// <summary>Provides product metadata and safe external links.</summary>
 public sealed record BuildInformation(
@@ -236,6 +236,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the retained screenshot gallery for one local calendar date.</summary>
     Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken);
+
+    /// <summary>Gets the retained screenshot gallery for the most recent local calendar date that contains a capture.</summary>
+    Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken);
 
     /// <summary>Saves one retained screenshot to a user-selected destination.</summary>
     Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken);

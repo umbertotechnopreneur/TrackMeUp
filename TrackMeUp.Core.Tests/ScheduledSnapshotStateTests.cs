@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
@@ -10,6 +12,50 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class ScheduledSnapshotStateTests
 {
+    [Fact]
+    public async Task EmptyActiveHours_DisableCountdownUntilAWorkingPeriodIsConfigured()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotIntervalMinutes = 1,
+                ActiveHours = ActiveHoursSchedule.Days.Select(day => new ActiveHoursDay(day)).ToArray()
+            });
+            var utilities = new UtilityService();
+            await using var application = new TrackMeUpApplication(
+                store,
+                utilities,
+                new TrackingDomainService(store, utilities),
+                new ScreenCaptureService(utilities.GetAppVersion()),
+                new SystemSnapshotService(),
+                new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion()), new SystemSnapshotService()),
+                new StartupService(),
+                new BuildInformationService());
+
+            var started = await application.StartTrackingAsync(new StartTrackingRequest(), CancellationToken.None);
+            var enabled = await application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?>
+                {
+                    ["active_hours.monday.active"] = "09:00-18:00"
+                }),
+                CancellationToken.None);
+            var dashboard = await application.GetDashboardAsync(CancellationToken.None);
+
+            Assert.True(started.Succeeded);
+            Assert.Null(started.Value?.ScheduledSnapshotRemaining);
+            Assert.False(started.Value?.IsWithinActiveHours);
+            Assert.True(enabled.Succeeded);
+            Assert.NotNull(dashboard.Value?.ScheduledSnapshotRemaining);
+        }
+        finally
+        {
+            await DeleteTemporaryDirectoryAsync(dataDirectory);
+        }
+    }
+
     [Fact]
     public async Task PauseTracking_FreezesScheduledSnapshotCountdown_UntilTrackingResumes()
     {

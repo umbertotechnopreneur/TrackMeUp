@@ -53,6 +53,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private ScreenshotCaptureResult? _pendingManualScreenshotCapture;
     private DateTimeOffset? _pendingManualScreenshotExpiresAt;
     private int _scheduledSnapshotIntervalMinutes;
+    private bool _scheduledSnapshotsEnabled;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private bool _disposed;
 
@@ -521,6 +522,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(OperationResult<ScreenshotGallery>.Success(
+            "screenshot.gallery.latest.loaded",
+            "LatestScreenshotGalleryLoaded",
+            _store.GetLatestScreenshotGallery()));
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -586,7 +597,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _store.LoadSettings() with { OpenAiEnabled = enabled };
-        _store.SaveSettings(settings);
+        var validatedSettings = settings;
+        if (enabled
+            && !TryValidateOpenAiConfiguration(settings, requireImageInput: false, out validatedSettings, out var validationIssue))
+        {
+            return OperationResult<AiStatus>.Failure("ai.configuration.invalid", "AiConfigurationInvalid", validationIssue!);
+        }
+
+        _store.SaveSettings(validatedSettings);
         await Task.CompletedTask;
         return OperationResult<AiStatus>.Success(enabled ? "ai.enabled" : "ai.disabled", enabled ? "AiEnabled" : "AiDisabled", BuildAiStatus());
     }, cancellationToken);
@@ -607,14 +625,17 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<string>> SetAiKeyAsync(string keyVariable, string secret, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
-        if (!SettingsCatalog.IsAllowedApiKeyVariable(keyVariable) || string.IsNullOrWhiteSpace(secret))
+        var normalizedKeyVariable = keyVariable ?? string.Empty;
+        var secretValue = secret ?? string.Empty;
+        if (!SettingsCatalog.IsAllowedApiKeyVariable(normalizedKeyVariable)
+            || !AiApiKeyPolicy.LooksPlausibleForVariable(normalizedKeyVariable, secretValue))
         {
             return OperationResult<string>.Failure("ai.key.invalid", "AiKeyInvalid", new ValidationIssue("key", "invalid", "AiKeyInvalid"));
         }
 
         // The secret is immediately delegated to the user environment store and never persisted or logged.
-        var normalizedKeyVariable = keyVariable.Trim();
-        _utilities.SetApiKey(normalizedKeyVariable, secret.Trim());
+        _utilities.SetApiKey(normalizedKeyVariable, secretValue);
+        secretValue = string.Empty;
         var settings = _store.LoadSettings();
         _store.SaveSettings(settings with { AiApiKeyName = normalizedKeyVariable });
         await Task.CompletedTask;
@@ -1024,11 +1045,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
     }
 
-    private DashboardState LoadDashboardState() => _tracking.LoadCurrentDashboardState() with
+    private DashboardState LoadDashboardState()
     {
-        ScheduledSnapshotRemaining = GetScheduledSnapshotRemaining(),
-        PendingManualScreenshot = GetPendingManualScreenshotState()
-    };
+        var settings = _store.LoadSettings();
+        return _tracking.LoadCurrentDashboardState() with
+        {
+            ScheduledSnapshotRemaining = GetScheduledSnapshotRemaining(),
+            PendingManualScreenshot = GetPendingManualScreenshotState(),
+            IsWithinActiveHours = ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now)
+        };
+    }
 
     private PendingManualScreenshotState? GetPendingManualScreenshotState() =>
         _pendingManualScreenshotCapture?.StoredScreenshotPaths.FirstOrDefault() is { } screenshotPath &&
@@ -1051,8 +1077,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private void ConfigureScheduledSnapshots(AppSettings settings, bool restartCountdown)
     {
         _scheduledSnapshotIntervalMinutes = settings.ScreenshotIntervalMinutes;
-        if (_scheduledSnapshotIntervalMinutes <= 0)
+        _scheduledSnapshotsEnabled = _scheduledSnapshotIntervalMinutes > 0
+            && ActiveHoursSchedule.HasAnyActivePeriod(settings.ActiveHours);
+        if (!_scheduledSnapshotsEnabled)
         {
+            // With no eligible hours there is no countdown to display and no silent timer loop to keep resetting.
             _nextScheduledSnapshotAt = null;
             _pausedScheduledSnapshotRemaining = null;
             return;
@@ -1085,7 +1114,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private void ResumeScheduledSnapshots()
     {
-        if (_scheduledSnapshotIntervalMinutes <= 0)
+        if (!_scheduledSnapshotsEnabled)
         {
             return;
         }
@@ -1147,12 +1176,35 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             }
 
             // Scheduled capture is runtime-owned; pause clears its deadline before another tick can become due.
-            await CaptureSystemSnapshotAsync(CancellationToken.None);
+            var systemSnapshot = await CaptureSystemSnapshotAsync(CancellationToken.None);
+            if (!systemSnapshot.Succeeded)
+            {
+                _logger.LogWarning("Scheduled system snapshot failed. Code={Code}", systemSnapshot.Code);
+            }
+
             if (settings.ScreenshotsEnabled)
             {
-                await CaptureScreenshotAsync(
-                    new CaptureScreenshotRequest("all-screens", true, true, ScreenshotCaptureOrigins.Scheduled),
+                // The retained image is the primary result. AI enrichment is attempted only after local capture succeeds.
+                var scheduledCapture = await CaptureScreenshotAsync(
+                    new CaptureScreenshotRequest("all-screens", true, true, ScreenshotCaptureOrigins.Scheduled, DeferAiAnalysis: true),
                     CancellationToken.None);
+                if (!scheduledCapture.Succeeded || scheduledCapture.Value is not { } retainedCapture)
+                {
+                    _logger.LogWarning("Scheduled screen capture failed. Code={Code}", scheduledCapture.Code);
+                    return;
+                }
+
+                if (settings.OpenAiEnabled)
+                {
+                    var analysis = await AnalyzeCapturedScreenshotAsync(
+                        new AnalyzeCapturedScreenshotRequest(retainedCapture, KeepCapture: true, Origin: "snapshot.scheduled"),
+                        CancellationToken.None);
+                    if (!analysis.Succeeded)
+                    {
+                        // Missing keys, cost limits, and provider failures never remove the already retained snapshot.
+                        _logger.LogWarning("Scheduled snapshot retained without AI analysis. Code={Code}", analysis.Code);
+                    }
+                }
             }
         }
         catch (Exception exception)
@@ -1181,7 +1233,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private AiStatus BuildAiStatus()
     {
         var settings = _store.LoadSettings();
-        return new AiStatus(settings.OpenAiEnabled, settings.AiProvider, settings.Model, settings.AiEndpoint, settings.AiApiKeyName, !string.IsNullOrWhiteSpace(_store.LoadApiKey(settings.AiApiKeyName)), BuildCostGate(settings));
+        var key = _store.LoadApiKey(settings.AiApiKeyName);
+        var hasKey = !string.IsNullOrWhiteSpace(key);
+        var canEnable = AiApiKeyPolicy.LooksPlausible(settings.AiProvider, settings.AiApiKeyName, key);
+        key = string.Empty;
+        return new AiStatus(settings.OpenAiEnabled, settings.AiProvider, settings.Model, settings.AiEndpoint, settings.AiApiKeyName, hasKey, canEnable, BuildCostGate(settings));
     }
 
     private AnalysisCostGate BuildCostGate(AppSettings settings)
@@ -1289,6 +1345,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         validatedSettings = settings;
         issue = null;
+        if (settings.OpenAiEnabled
+            && !AiApiKeyPolicy.LooksPlausible(
+                settings.AiProvider,
+                settings.AiApiKeyName,
+                _store.LoadApiKey(settings.AiApiKeyName)))
+        {
+            issue = new ValidationIssue("ai.enabled", "api_key_required", "AiKeyInvalid");
+            return false;
+        }
+
         if (!string.Equals(settings.AiProvider, "openai", StringComparison.OrdinalIgnoreCase))
         {
             return true;

@@ -50,9 +50,6 @@ public static class TaskbarWidgetPositions
     /// <summary>Places the control near the left edge of the taskbar.</summary>
     public const string Left = "left";
 
-    /// <summary>Places the control in the middle of the taskbar.</summary>
-    public const string Center = "center";
-
     /// <summary>Places the control before the notification area.</summary>
     public const string Right = "right";
 }
@@ -104,6 +101,7 @@ public sealed record AppSettings(
     string LastDailyDigestDate = "",
     bool FocusSessionSummaryEnabled = true,
     bool StartTrackingOnLaunch = false,
+    bool TaskbarWidgetVisible = false,
     string TaskbarWidgetPosition = TaskbarWidgetPositions.Left,
     string AiCustomPrompt = "",
     IReadOnlyList<ActiveHoursDay>? ActiveHours = null,
@@ -176,7 +174,8 @@ public sealed record DashboardState(
     DateTimeOffset UtcTime,
     ActivityTrendState? ActivityTrend = null,
     TimeSpan? ScheduledSnapshotRemaining = null,
-    PendingManualScreenshotState? PendingManualScreenshot = null);
+    PendingManualScreenshotState? PendingManualScreenshot = null,
+    bool IsWithinActiveHours = true);
 
 /// <summary>Describes a retained manual screenshot that can be deleted before deferred analysis begins.</summary>
 public sealed record PendingManualScreenshotState(string ScreenshotPath, DateTimeOffset ExpiresAt);

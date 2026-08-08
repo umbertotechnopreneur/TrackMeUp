@@ -11,32 +11,8 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
     /// <summary>Gets the gallery surface that hosts pointer interactions.</summary>
     public Grid Surface => GallerySurface;
 
-    /// <summary>Gets the panel that hosts previous/current/next preview frames.</summary>
-    public Grid CoverFlow => CoverFlowPanel;
-
-    /// <summary>Gets the current screenshot frame.</summary>
-    public Border CurrentFrame => GalleryImageFrame;
-
-    /// <summary>Gets the previous screenshot frame.</summary>
-    public Border PreviousFrame => PreviousPreviewFrame;
-
-    /// <summary>Gets the next screenshot frame.</summary>
-    public Border NextFrame => NextPreviewFrame;
-
-    /// <summary>Gets the current screenshot image control.</summary>
-    public Image CurrentGalleryImage => CurrentImage;
-
-    /// <summary>Gets the previous screenshot image control.</summary>
-    public Image PreviousGalleryImage => PreviousImage;
-
-    /// <summary>Gets the next screenshot image control.</summary>
-    public Image NextGalleryImage => NextImage;
-
-    /// <summary>Gets the previous navigation button.</summary>
-    public Button PreviousNavigationButton => PreviousButton;
-
-    /// <summary>Gets the next navigation button.</summary>
-    public Button NextNavigationButton => NextButton;
+    /// <summary>Gets the circular, recycled screenshot navigation surface.</summary>
+    public ScreenshotCoverFlowControl CoverFlow => CoverFlowView;
 
     /// <summary>Gets the metadata summary panel.</summary>
     public Border MetadataContainer => MetadataPanel;

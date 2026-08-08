@@ -99,6 +99,33 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
+    public void TaskbarWidget_IsHiddenByDefaultAndCanBeEnabledAtAValidatedPosition()
+    {
+        var defaults = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var result = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["taskbar.widget.visible"] = "true",
+                ["taskbar.widget.position"] = "right"
+            }));
+
+        Assert.False(defaults.TaskbarWidgetVisible);
+        Assert.True(result.Succeeded);
+        var settings = Assert.IsType<AppSettings>(result.Value);
+        Assert.True(settings.TaskbarWidgetVisible);
+        Assert.Equal(TaskbarWidgetPositions.Right, settings.TaskbarWidgetPosition);
+        Assert.True(SettingsCatalog.TryGetValue(settings, "taskbar.widget.visible", out var visible));
+        Assert.Equal(true, visible);
+
+        var invalidPosition = SettingsCatalog.Apply(
+            settings,
+            new SettingsPatch(new Dictionary<string, string?> { ["taskbar.widget.position"] = "center" }));
+        Assert.False(invalidPosition.Succeeded);
+        Assert.Contains(invalidPosition.Issues, issue => issue.Field == "taskbar.widget.position");
+    }
+
+    [Fact]
     public void Apply_RejectsBreakOutsideItsInformationalActivePeriod()
     {
         var result = SettingsCatalog.Apply(
@@ -151,25 +178,40 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
-    public void NormalizePersisted_UsesDefaultWorkingHoursOnFirstRun()
+    public void NormalizePersisted_UsesAllDayEveryDayOnFirstRun()
     {
         var normalized = SettingsCatalog.NormalizePersisted(
             new AppSettings(),
             Path.Combine(Path.GetTempPath(), "TrackMeUp", "screenshots"));
 
-        var monday = Assert.Single(normalized.ActiveHours!, day => day.Day == "monday");
-        Assert.Equal("09:00-18:00", monday.ActivePeriod);
-        Assert.Equal("13:00-14:00", monday.BreakPeriods);
-        Assert.All(normalized.ActiveHours!.Where(day => day.Day is "tuesday" or "wednesday" or "thursday" or "friday"), day =>
+        Assert.All(normalized.ActiveHours!, day =>
         {
-            Assert.Equal("09:00-18:00", day.ActivePeriod);
-            Assert.Equal("13:00-14:00", day.BreakPeriods);
-        });
-        Assert.All(normalized.ActiveHours!.Where(day => day.Day is "saturday" or "sunday"), day =>
-        {
-            Assert.Empty(day.ActivePeriod);
+            Assert.Equal("00:00-24:00", day.ActivePeriod);
             Assert.Empty(day.BreakPeriods);
         });
+    }
+
+    [Fact]
+    public void ActiveHours_AllDayEndBoundaryIncludesTheFinalSlot()
+    {
+        var schedule = ActiveHoursSchedule.Normalize(null);
+
+        Assert.True(ActiveHoursSchedule.HasAnyActivePeriod(schedule));
+        Assert.True(ActiveHoursSchedule.IsWithinActiveHours(
+            schedule,
+            new DateTimeOffset(2026, 8, 3, 23, 59, 0, TimeSpan.FromHours(7))));
+    }
+
+    [Fact]
+    public void NormalizePersisted_PreservesAnExplicitlyClearedSchedule()
+    {
+        var cleared = ActiveHoursSchedule.Days.Select(day => new ActiveHoursDay(day)).ToArray();
+        var normalized = SettingsCatalog.NormalizePersisted(
+            new AppSettings(ActiveHours: cleared),
+            Path.Combine(Path.GetTempPath(), "TrackMeUp", "screenshots"));
+
+        Assert.False(ActiveHoursSchedule.HasAnyActivePeriod(normalized.ActiveHours));
+        Assert.All(normalized.ActiveHours!, day => Assert.Empty(day.ActivePeriod));
     }
 
     [Theory]

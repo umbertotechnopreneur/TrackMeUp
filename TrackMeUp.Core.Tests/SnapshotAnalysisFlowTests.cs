@@ -17,7 +17,7 @@ public sealed class SnapshotAnalysisFlowTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -58,7 +58,7 @@ public sealed class SnapshotAnalysisFlowTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -133,11 +133,53 @@ public sealed class SnapshotAnalysisFlowTests
     }
 
     [Fact]
+    public async Task DeferredScheduledCapture_IsRetainedBeforeAiConfigurationIsAvailable()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, null, EnvironmentVariableTarget.Process);
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+
+            var capture = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(store, capture, analysis);
+
+            var result = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest(
+                    "all-screens",
+                    Keep: true,
+                    Watermark: false,
+                    ScreenshotCaptureOrigins.Scheduled,
+                    DeferAiAnalysis: true),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(1, capture.CallCount);
+            Assert.Equal(ScreenshotCaptureOrigins.Scheduled, capture.LastCaptureOrigin);
+            Assert.Equal(0, analysis.CallCount);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CaptureScreenshot_RejectsUnsupportedPersistedModelBeforeCapture()
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -177,7 +219,7 @@ public sealed class SnapshotAnalysisFlowTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -218,7 +260,7 @@ public sealed class SnapshotAnalysisFlowTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -259,7 +301,7 @@ public sealed class SnapshotAnalysisFlowTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -297,7 +339,7 @@ public sealed class SnapshotAnalysisFlowTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
 
         try
         {
@@ -372,11 +414,14 @@ public sealed class SnapshotAnalysisFlowTests
 
         public int CallCount { get; private set; }
 
+        public string? LastCaptureOrigin { get; private set; }
+
         public ScreenshotCaptureResult Result { get; }
 
         public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin)
         {
             CallCount++;
+            LastCaptureOrigin = captureOrigin;
             return Result;
         }
     }

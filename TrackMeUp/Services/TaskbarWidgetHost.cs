@@ -124,13 +124,11 @@ public sealed class TaskbarWidgetHost : IDisposable
         var isHorizontalTaskbar = taskbarClientWidth >= taskbarClientHeight;
         var x = isHorizontalTaskbar ? normalized switch
         {
-            TaskbarWidgetPositions.Center => Math.Max(0, (taskbarClientWidth - widgetWidth) / 2),
             TaskbarWidgetPositions.Right => Math.Max(0, taskbarClientWidth - widgetWidth - (int)Math.Ceiling(320 * scale)),
             _ => (int)Math.Ceiling(12 * scale)
         } : Math.Max(0, (taskbarClientWidth - widgetWidth) / 2);
         var y = isHorizontalTaskbar ? Math.Max(0, (taskbarClientHeight - widgetHeight) / 2) : normalized switch
         {
-            TaskbarWidgetPositions.Center => Math.Max(0, (taskbarClientHeight - widgetHeight) / 2),
             TaskbarWidgetPositions.Right => Math.Max(0, taskbarClientHeight - widgetHeight - (int)Math.Ceiling(320 * scale)),
             _ => (int)Math.Ceiling(12 * scale)
         };
@@ -246,7 +244,7 @@ public sealed class TaskbarWidgetHost : IDisposable
         return true;
     }
 
-    private static string NormalizePosition(string? position) => position is TaskbarWidgetPositions.Center or TaskbarWidgetPositions.Right ? position : TaskbarWidgetPositions.Left;
+    private static string NormalizePosition(string? position) => position == TaskbarWidgetPositions.Right ? position : TaskbarWidgetPositions.Left;
 
     private static long GetWindowStyle(IntPtr windowHandle) => IntPtr.Size == 8 ? GetWindowLongPtr64(windowHandle, GwlStyle).ToInt64() : GetWindowLong32(windowHandle, GwlStyle);
 

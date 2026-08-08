@@ -3,36 +3,87 @@
 	x:Class="TrackMeUp.Controls.ScreenshotHeaderControl"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-	<Grid VerticalAlignment="Center" ColumnSpacing="16">
+	<UserControl.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key="Light">
+					<LinearGradientBrush x:Key="ScreenshotHeaderControlBrush" StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#40FFFFFF" Offset="0" />
+						<GradientStop Color="#18EAF4FF" Offset="1" />
+					</LinearGradientBrush>
+					<LinearGradientBrush x:Key="ScreenshotHeaderControlBorderBrush" StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#8CFFFFFF" Offset="0" />
+						<GradientStop Color="#3DFFFFFF" Offset="1" />
+					</LinearGradientBrush>
+					<SolidColorBrush x:Key="ScreenshotHeaderAccentBrush" Color="#FF4E8DEB" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Dark">
+					<LinearGradientBrush x:Key="ScreenshotHeaderControlBrush" StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#66162335" Offset="0" />
+						<GradientStop Color="#4013355D" Offset="1" />
+					</LinearGradientBrush>
+					<LinearGradientBrush x:Key="ScreenshotHeaderControlBorderBrush" StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#66FFFFFF" Offset="0" />
+						<GradientStop Color="#2BFFFFFF" Offset="1" />
+					</LinearGradientBrush>
+					<SolidColorBrush x:Key="ScreenshotHeaderAccentBrush" Color="#FF4E8DEB" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Default">
+					<LinearGradientBrush x:Key="ScreenshotHeaderControlBrush" StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#40FFFFFF" Offset="0" />
+						<GradientStop Color="#18EAF4FF" Offset="1" />
+					</LinearGradientBrush>
+					<LinearGradientBrush x:Key="ScreenshotHeaderControlBorderBrush" StartPoint="0,0" EndPoint="1,1">
+						<GradientStop Color="#8CFFFFFF" Offset="0" />
+						<GradientStop Color="#3DFFFFFF" Offset="1" />
+					</LinearGradientBrush>
+					<SolidColorBrush x:Key="ScreenshotHeaderAccentBrush" Color="#FF4E8DEB" />
+				</ResourceDictionary>
+			</ResourceDictionary.ThemeDictionaries>
+		</ResourceDictionary>
+	</UserControl.Resources>
+	<Grid MinHeight="36" VerticalAlignment="Center" ColumnSpacing="20">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="*" />
 			<ColumnDefinition Width="Auto" />
 		</Grid.ColumnDefinitions>
 
-		<TextBlock
-			x:Name="GalleryCountText"
-			VerticalAlignment="Center"
-			Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-			Style="{StaticResource BodyTextBlockStyle}"
-			Text="0 captures" />
-
 		<StackPanel
-			Grid.Column="1"
 			VerticalAlignment="Center"
 			Orientation="Horizontal"
-			Spacing="10">
+			Spacing="8">
 			<FontIcon
 				AutomationProperties.AccessibilityView="Raw"
 				FontFamily="Segoe Fluent Icons"
-				FontSize="14"
+				FontSize="13"
 				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-				Glyph="&#xE787;" />
-			<CalendarDatePicker
-				x:Name="SelectedDatePicker"
-				Width="270"
-				AutomationProperties.Name="Screenshot date"
-				DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
-				PlaceholderText="Select a day" />
+				Glyph="&#xE8B9;" />
+			<TextBlock
+				x:Name="GalleryCountText"
+				VerticalAlignment="Center"
+				FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+				FontSize="12"
+				FontWeight="Medium"
+				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+				LineHeight="16"
+				Text="0 captures" />
 		</StackPanel>
+
+		<CalendarDatePicker
+			x:Name="SelectedDatePicker"
+			Grid.Column="1"
+			Width="220"
+			Height="36"
+			VerticalAlignment="Center"
+			AutomationProperties.Name="Screenshot date"
+			Background="{ThemeResource ScreenshotHeaderControlBrush}"
+			BorderBrush="{ThemeResource ScreenshotHeaderControlBorderBrush}"
+			CornerRadius="18"
+			DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
+			FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+			FontSize="13"
+			FontWeight="Medium"
+			HorizontalContentAlignment="Left"
+			PlaceholderText="Select a day" />
 	</Grid>
 </UserControl>

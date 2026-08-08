@@ -1,5 +1,6 @@
 # Lessons
 
+- When invoking PowerShell through Codex `exec_command` in this workspace, set `login: false` as well as calling `pwsh -NoProfile`; `-NoProfile` applies only to the inner PowerShell process, while the default login shell can still load the user profile and emit PSReadLine or Fastfetch output before the command runs.
 - The root `README.md` can drift from the live workspace tree; when refreshing repo docs here, rebuild the structure from actual folders, project files, and script inventories instead of carrying forward old subproject names.
 - In PowerShell scripts that enable `Set-StrictMode`, guard reads of `$args`; direct access can fail on normal parameterized runs when no unbound arguments were supplied.
 - When `compress-to-sources.ps1` reloads `CommandHistory` from JSON, normalize `Timestamp` values back to ISO 8601 because `ConvertFrom-Json` may surface prior ISO strings as `DateTime` values and change their serialized format on the next save.

@@ -43,7 +43,7 @@ public sealed class ScreenshotDeletionTests
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
         try
         {
             var store = CreateStore(dataDirectory);
@@ -75,6 +75,71 @@ public sealed class ScreenshotDeletionTests
         finally
         {
             Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LoadLatestPrimaryScreenshot_UsesRetainedFilesWhenAiDatabaseIsEmpty()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var older = CreateCapture(dataDirectory);
+            var latest = CreateCapture(dataDirectory);
+            foreach (var path in older.AllScreenshotPaths)
+            {
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(-5));
+            }
+
+            foreach (var path in latest.AllScreenshotPaths)
+            {
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+            }
+
+            var reloadedStore = new LocalStore(dataDirectory);
+
+            Assert.Null(reloadedStore.LoadLatestAnalysis());
+            Assert.Equal(latest.StoredScreenshotPaths[0], reloadedStore.LoadLatestPrimaryScreenshot());
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void GetLatestScreenshotGallery_UsesMostRecentRetainedDayAfterRestart()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var older = CreateCapture(dataDirectory);
+            var latest = CreateCapture(dataDirectory);
+            var olderLocalTime = DateTime.Today.AddDays(-2).AddHours(12);
+            var latestLocalTime = DateTime.Today.AddDays(-1).AddHours(16);
+            foreach (var path in older.AllScreenshotPaths)
+            {
+                File.SetLastWriteTime(path, olderLocalTime);
+            }
+
+            foreach (var path in latest.AllScreenshotPaths)
+            {
+                File.SetLastWriteTime(path, latestLocalTime);
+            }
+
+            var reloadedStore = new LocalStore(dataDirectory);
+
+            var gallery = reloadedStore.GetLatestScreenshotGallery();
+
+            Assert.Equal(DateOnly.FromDateTime(latestLocalTime), gallery.Date);
+            var item = Assert.Single(gallery.Items);
+            Assert.Equal(latest.StoredScreenshotPaths[0], item.Path);
+        }
+        finally
+        {
             Directory.Delete(dataDirectory, recursive: true);
         }
     }

@@ -103,7 +103,7 @@ public sealed class WinUiSurfaceContractTests
         var takeScreenshotButton = player.Descendants().Single(element => HasName(element, "TakeScreenshotButton"));
         var pendingSnapshotPanel = player.Descendants().Single(element => HasName(element, "PendingSnapshotPanel"));
         var deleteSnapshotButton = player.Descendants().Single(element => HasName(element, "DeleteSnapshotButton"));
-        var deleteCountdownProgress = player.Descendants().Single(element => HasName(element, "SnapshotDeleteCountdownProgress"));
+        var deleteCountdownLabel = pendingSnapshotPanel.Descendants().Single(element => element.Attribute("Tag")?.Value == "Snapshot.DeleteAvailable");
         var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
         var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
@@ -116,19 +116,24 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
-        Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Contains(
+            moreButton.Descendants(),
+            element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE712");
         Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
         Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
         Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
         Assert.Equal("32", takeScreenshotButton.Attribute("Width")?.Value);
-        Assert.Equal("{ThemeResource SnapshotCaptureBrush}", takeScreenshotButton.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource ControlFillColorSecondaryBrush}", takeScreenshotButton.Attribute("Background")?.Value);
         Assert.Equal("Collapsed", pendingSnapshotPanel.Attribute("Visibility")?.Value);
         Assert.Equal("32", deleteSnapshotButton.Attribute("Width")?.Value);
-        Assert.Equal("{ThemeResource SnapshotDeleteBrush}", deleteSnapshotButton.Attribute("Background")?.Value);
-        Assert.Same(captureActions, deleteSnapshotButton.Parent);
+        Assert.Equal("{ThemeResource ControlFillColorSecondaryBrush}", deleteSnapshotButton.Attribute("Background")?.Value);
+        Assert.Same(takeScreenshotButton.Parent, deleteSnapshotButton.Parent);
+        Assert.Contains(captureActions.Descendants(), element => ReferenceEquals(element, deleteSnapshotButton));
         Assert.Equal("Collapsed", deleteSnapshotButton.Attribute("Visibility")?.Value);
         Assert.Equal("1", pendingSnapshotPanel.Parent?.Attribute("Grid.Column")?.Value);
-        Assert.Equal("Stretch", deleteCountdownProgress.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("{ThemeResource SystemFillColorCriticalBrush}", deleteCountdownLabel.Attribute("Foreground")?.Value);
+        Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "ProgressBar");
+        Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE74D");
         Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("TakeScreenshotButton.IsEnabled = true;", mainSource, StringComparison.Ordinal);
         Assert.Equal(5, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
@@ -141,6 +146,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("CaptureManualScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.Contains("DeletePendingManualScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("AnalyzeCapturedScreenshotAsync", mainSource, StringComparison.Ordinal);
+        Assert.Contains("FormatCurrentContext(currentContext)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("T(_detailsExpanded ? \"LastSession.Hide\" : \"LastSession.Show\")", mainSource, StringComparison.Ordinal);
         Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
@@ -208,6 +215,7 @@ public sealed class WinUiSurfaceContractTests
         var utcTime = player.Descendants().Single(element => HasName(element, "UtcTimeText"));
         var placeholder = player.Descendants().Single(element => HasName(element, "ScreenshotPlaceholderImage"));
         var previewButton = player.Descendants().Single(element => HasName(element, "ScreenshotPreviewButton"));
+        var screenshotStatus = player.Descendants().Single(element => HasName(element, "ScreenshotStatusText"));
         var openOverlay = player.Descendants().Single(element => HasName(element, "ScreenshotOpenOverlay"));
 
         Assert.Equal("Left", localTime.Attribute("HorizontalAlignment")?.Value);
@@ -215,14 +223,20 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("11", localTime.Attribute("FontSize")?.Value);
         Assert.Equal("11", utcTime.Attribute("FontSize")?.Value);
         Assert.Equal("ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png", placeholder.Attribute("Source")?.Value);
+        Assert.Equal("104", previewButton.Attribute("Width")?.Value);
+        Assert.Equal("92", previewButton.Attribute("Height")?.Value);
         Assert.Equal("ScreenshotPreviewButton_PointerEntered", previewButton.Attribute("PointerEntered")?.Value);
         Assert.Equal("ScreenshotPreviewButton_PointerExited", previewButton.Attribute("PointerExited")?.Value);
+        Assert.Equal("Screenshot.Status.Off", screenshotStatus.Attribute("Tag")?.Value);
+        Assert.Null(screenshotStatus.Attribute("Visibility"));
         Assert.Equal("0", openOverlay.Attribute("Opacity")?.Value);
         Assert.Contains("LocalTimeText.Text = $\"Local time {state.LocalTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
         Assert.Contains("UtcTimeText.Text = $\"UTC {state.UtcTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
         Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
-        Assert.Contains("private const int ExpandedPlayerHeight = 456;", source, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int ExpandedPlayerHeight = 432;", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -233,6 +247,9 @@ public sealed class WinUiSurfaceContractTests
         var about = XDocument.Load(RepositoryFile("TrackMeUp", "AboutWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var reportsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
+        var highContrastResources = player
+            .Descendants()
+            .Single(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "HighContrast"));
 
         var playerUsesMica = player.Descendants().Any(element => element.Name.LocalName == "MicaBackdrop")
             || mainSource.Contains("SystemBackdrop = new MicaBackdrop", StringComparison.Ordinal);
@@ -242,6 +259,9 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("SetTitleBar(DragRegion)", mainSource, StringComparison.Ordinal);
         Assert.Contains("SetTitleBar(TitleBarDragRegion)", reportsSource, StringComparison.Ordinal);
         Assert.DoesNotContain(player.Descendants(), element => element.Attribute("Background")?.Value.Contains("FlyoutSurfaceBrush", StringComparison.Ordinal) == true);
+        Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentBrush"));
+        Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentTextBrush"));
+        Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentGlyphBrush"));
     }
 
     [Fact]
@@ -253,6 +273,30 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Options.Language", languagePicker.Attribute("Tag")?.Value);
         Assert.Contains(languagePicker.Descendants(), element => element.Attribute("Tag")?.Value == "system");
         Assert.Contains(languagePicker.Descendants(), element => element.Attribute("Tag")?.Value == "en");
+    }
+
+    [Fact]
+    public void TaskbarWidgetOptions_ExposeOptInVisibilityAndSupportedAnchors()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var visibilitySwitch = options.Descendants().Single(element => HasName(element, "TaskbarWidgetVisibleSwitch"));
+        var positionPicker = options.Descendants().Single(element => HasName(element, "TaskbarWidgetPositionBox"));
+        var positions = positionPicker
+            .Descendants()
+            .Where(element => element.Name.LocalName == "ComboBoxItem")
+            .Select(element => element.Attribute("Tag")?.Value)
+            .OfType<string>()
+            .ToArray();
+
+        Assert.Contains(options.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Section.TaskbarWidget");
+        Assert.Contains(options.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Section.TaskbarWidget.Description");
+        Assert.Equal("TaskbarWidgetVisibleSwitch_Toggled", visibilitySwitch.Attribute("Toggled")?.Value);
+        Assert.Null(visibilitySwitch.Attribute("IsOn"));
+        Assert.Equal("False", positionPicker.Attribute("IsEnabled")?.Value);
+        Assert.Equal(["left", "right"], positions);
+        Assert.Contains("[\"taskbar.widget.visible\"] = TaskbarWidgetVisibleSwitch.IsOn.ToString()", source, StringComparison.Ordinal);
+        Assert.Contains("TaskbarWidgetPositionBox.IsEnabled = TaskbarWidgetVisibleSwitch.IsOn;", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -307,13 +351,20 @@ public sealed class WinUiSurfaceContractTests
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var startUiStart = appSource.IndexOf("private void StartUi", StringComparison.Ordinal);
         var startUiEnd = appSource.IndexOf("private void StartReports", StringComparison.Ordinal);
+        var applyWidgetStart = appSource.IndexOf("private void ApplyTaskbarWidgetSettings", StringComparison.Ordinal);
+        var applyWidgetEnd = appSource.IndexOf("private void DisposeTaskbarWidget", StringComparison.Ordinal);
 
         Assert.True(startUiStart >= 0 && startUiEnd > startUiStart, "App.StartUi source contract was not found.");
+        Assert.True(applyWidgetStart >= 0 && applyWidgetEnd > applyWidgetStart, "Taskbar widget settings lifecycle contract was not found.");
         var startUiSource = appSource[startUiStart..startUiEnd];
+        var applyWidgetSource = appSource[applyWidgetStart..applyWidgetEnd];
         Assert.Contains("_window.Activate();", startUiSource, StringComparison.Ordinal);
         Assert.True(
-            startUiSource.IndexOf("_window.Activate();", StringComparison.Ordinal) < startUiSource.IndexOf("new TaskbarWidgetSurface", StringComparison.Ordinal),
+            startUiSource.IndexOf("_window.Activate();", StringComparison.Ordinal) < startUiSource.IndexOf("ApplyTaskbarWidgetSettings(settings);", StringComparison.Ordinal),
             "MainWindow must activate before optional taskbar-widget initialization.");
+        Assert.Contains("if (!settings.TaskbarWidgetVisible)", applyWidgetSource, StringComparison.Ordinal);
+        Assert.Contains("new TaskbarWidgetSurface", applyWidgetSource, StringComparison.Ordinal);
+        Assert.Contains("taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition)", applyWidgetSource, StringComparison.Ordinal);
         Assert.DoesNotContain("HideTopLevelWindow", startUiSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FirstRun", startUiSource, StringComparison.Ordinal);
         Assert.DoesNotContain("AlwaysShowInTaskbar", startUiSource, StringComparison.Ordinal);

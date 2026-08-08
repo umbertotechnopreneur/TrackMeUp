@@ -211,6 +211,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.analyze" => await DispatchScreenshotAnalysisAsync(request, cancellationToken),
                 "screenshot.latest" => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
                 "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
+                "screenshot.gallery.latest" => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
                 "screenshot.delete" => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "snapshot.delete" => ToResponse(request, await _application.DeleteSnapshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
@@ -471,6 +472,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => SendAsync<string?>("screenshot.latest", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery", new ScreenshotGalleryRequest(date), cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery.latest", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.delete", new { screenshotPath }, cancellationToken);
     /// <inheritdoc />

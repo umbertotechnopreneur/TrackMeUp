@@ -96,21 +96,6 @@ public sealed class OptionsViewModel : ViewModelBase
     }
 }
 
-/// <summary>Provides safe AI configuration state and commands.</summary>
-public sealed class AiConfigurationViewModel
-{
-    private readonly ITrackMeUpApplication _application;
-
-    /// <summary>Initializes the AI configuration view model.</summary>
-    public AiConfigurationViewModel(ITrackMeUpApplication application) => _application = application;
-
-    /// <summary>Loads non-secret AI status.</summary>
-    public Task<OperationResult<AiStatus>> LoadAsync(CancellationToken cancellationToken) => _application.GetAiStatusAsync(cancellationToken);
-
-    /// <summary>Stores a secret only through the application boundary.</summary>
-    public Task<OperationResult<string>> SetSecretAsync(string variable, string secret, CancellationToken cancellationToken) => _application.SetAiKeyAsync(variable, secret, cancellationToken);
-}
-
 /// <summary>Provides immutable product metadata to an About view.</summary>
 public sealed class AboutViewModel
 {

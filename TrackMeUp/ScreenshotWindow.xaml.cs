@@ -4,9 +4,6 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using System.Globalization;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -43,25 +40,7 @@ public sealed partial class ScreenshotWindow : Window
 
     private TextBlock GalleryCountText => HeaderSection.CountText;
 
-    private Grid GallerySurface => GallerySection.Surface;
-
-    private Grid CoverFlowPanel => GallerySection.CoverFlow;
-
-    private Border GalleryImageFrame => GallerySection.CurrentFrame;
-
-    private Border PreviousPreviewFrame => GallerySection.PreviousFrame;
-
-    private Border NextPreviewFrame => GallerySection.NextFrame;
-
-    private Image CurrentImage => GallerySection.CurrentGalleryImage;
-
-    private Image PreviousImage => GallerySection.PreviousGalleryImage;
-
-    private Image NextImage => GallerySection.NextGalleryImage;
-
-    private Button PreviousButton => GallerySection.PreviousNavigationButton;
-
-    private Button NextButton => GallerySection.NextNavigationButton;
+    private Controls.ScreenshotCoverFlowControl CoverFlow => GallerySection.CoverFlow;
 
     private Border MetadataPanel => GallerySection.MetadataContainer;
 
@@ -81,15 +60,13 @@ public sealed partial class ScreenshotWindow : Window
 
     private StackPanel FilmstripStrip => TimelineSection.TimelineRoot;
 
-    private ScrollViewer FilmstripPanelHost => TimelineSection.FilmstripHost;
-
-    private StackPanel FilmstripPanel => TimelineSection.ItemsHost;
+    private ListView FilmstripList => TimelineSection.ItemsView;
 
     private Button FilmstripToggleButton => TimelineSection.ToggleButton;
 
     private FontIcon FilmstripChevronIcon => TimelineSection.ToggleChevronIcon;
 
-    /// <summary>Creates the Mica screenshot inspector backed by the shared application facade.</summary>
+    /// <summary>Creates the translucent screenshot inspector backed by the shared application facade.</summary>
     public ScreenshotWindow(
         ITrackMeUpApplication application,
         string? launchTheme = null,
@@ -130,11 +107,9 @@ public sealed partial class ScreenshotWindow : Window
     private void WireViewEvents()
     {
         SelectedDatePicker.DateChanged += SelectedDatePicker_DateChanged;
-        PreviousButton.Click += PreviousButton_Click;
-        NextButton.Click += NextButton_Click;
+        CoverFlow.SelectedIndexChanged += CoverFlow_SelectedIndexChanged;
+        TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
         FilmstripToggleButton.Click += FilmstripToggleButton_Click;
-        GallerySurface.PointerEntered += GallerySurface_PointerEntered;
-        GallerySurface.PointerExited += GallerySurface_PointerExited;
     }
 
     /// <summary>Selects a retained capture when an already-open inspector is reused.</summary>
@@ -150,15 +125,13 @@ public sealed partial class ScreenshotWindow : Window
         }
     }
 
-    /// <summary>Reselects the gallery to the current day when the menu reopens an existing window.</summary>
-    public async Task FocusTodayAsync()
+    /// <summary>Reselects the gallery to the most recent retained capture when the menu reopens an existing window.</summary>
+    public async Task FocusLatestAsync()
     {
         _requestedScreenshotPath = null;
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        SetSelectedDate(today);
         if (_initialized)
         {
-            await LoadGalleryAsync(today);
+            await LoadGalleryAsync(null);
         }
     }
 
@@ -221,7 +194,7 @@ public sealed partial class ScreenshotWindow : Window
             ApplyHeaderLocalization();
         }
 
-        await LoadGalleryAsync(_selectedDate);
+        await LoadGalleryAsync(_requestedScreenshotPath is null ? null : _selectedDate);
     }
 
     private async void SelectedDatePicker_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
@@ -235,7 +208,7 @@ public sealed partial class ScreenshotWindow : Window
         await LoadGalleryAsync(_selectedDate);
     }
 
-    private async Task LoadGalleryAsync(DateOnly date)
+    private async Task LoadGalleryAsync(DateOnly? date)
     {
         _galleryCancellation?.Cancel();
         _galleryCancellation?.Dispose();
@@ -245,7 +218,9 @@ public sealed partial class ScreenshotWindow : Window
 
         try
         {
-            var result = await _application.GetScreenshotGalleryAsync(date, cancellationToken);
+            var result = date is { } selectedDate
+                ? await _application.GetScreenshotGalleryAsync(selectedDate, cancellationToken)
+                : await _application.GetLatestScreenshotGalleryAsync(cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
                 return;
@@ -258,6 +233,7 @@ public sealed partial class ScreenshotWindow : Window
                 return;
             }
 
+            SetSelectedDate(result.Value.Date);
             _items = result.Value.Items;
             SelectRequestedScreenshot();
             RenderGallery(null);
@@ -324,38 +300,38 @@ public sealed partial class ScreenshotWindow : Window
         var hasItems = _items.Count > 0;
         GalleryCountText.Text = hasItems ? $"{_items.Count} captures" : "0 captures";
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
-        CoverFlowPanel.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        CoverFlow.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         EmptyGalleryText.Text = error ?? (_items.Count == 0 ? "No screenshots for this day." : string.Empty);
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
-        RenderSelection();
+        CoverFlow.SetItems(_items, _selectedIndex);
+        TimelineSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
+        RenderMetadata(hasItems ? _items[_selectedIndex] : null);
     }
 
     private int _selectedIndex;
 
-    private void RenderSelection()
+    private void CoverFlow_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        FilmstripPanel.Children.Clear();
-        for (var index = 0; index < _items.Count; index++)
+        if (_items.Count == 0 || CoverFlow.SelectedIndex < 0 || CoverFlow.SelectedIndex >= _items.Count)
         {
-            FilmstripPanel.Children.Add(CreateFilmstripButton(_items[index], index));
+            return;
         }
 
-        var current = _items.Count == 0 ? null : _items[_selectedIndex];
-        var previous = _items.Count > 1 ? _items[(_selectedIndex - 1 + _items.Count) % _items.Count] : null;
-        var next = _items.Count > 1 ? _items[(_selectedIndex + 1) % _items.Count] : null;
-        SetImage(CurrentImage, current);
-        SetImage(PreviousImage, previous);
-        SetImage(NextImage, next);
-        GalleryImageFrame.Visibility = current is null ? Visibility.Collapsed : Visibility.Visible;
-        PreviousPreviewFrame.Visibility = previous is null ? Visibility.Collapsed : Visibility.Visible;
-        NextPreviewFrame.Visibility = next is null ? Visibility.Collapsed : Visibility.Visible;
+        _selectedIndex = CoverFlow.SelectedIndex;
+        TimelineSection.SetSelectedIndex(_selectedIndex);
+        RenderMetadata(_items[_selectedIndex]);
+    }
 
-        PreviousButton.IsEnabled = _items.Count > 1;
-        NextButton.IsEnabled = _items.Count > 1;
-        SetNavigationOpacity(1);
-        RenderMetadata(current);
+    private void TimelineSection_SelectedIndexChanged(int selectedIndex)
+    {
+        if (selectedIndex < 0 || selectedIndex >= _items.Count)
+        {
+            return;
+        }
+
+        CoverFlow.MoveToIndex(selectedIndex);
     }
 
     private void RenderMetadata(ScreenshotGalleryItem? item)
@@ -372,11 +348,20 @@ public sealed partial class ScreenshotWindow : Window
 
         var culture = CultureInfo.GetCultureInfo(_strings.Language);
         var localTime = item.CapturedAt.ToLocalTime();
-        MetadataDateValueText.Text = localTime.ToString("D", culture);
-        MetadataTimeValueText.Text = localTime.ToString("T", culture);
+        MetadataDateValueText.Text = FormatMetadataDate(localTime, culture);
+        MetadataTimeValueText.Text = localTime.ToString("t", culture);
         MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
         MetadataOriginValueText.Text = FormatCaptureOrigin(item.CaptureOrigin);
         MetadataPanel.Visibility = Visibility.Visible;
+    }
+
+    private static string FormatMetadataDate(DateTimeOffset capturedAt, CultureInfo culture)
+    {
+        var pattern = culture.DateTimeFormat.LongDatePattern
+            .Replace("dddd,", string.Empty, StringComparison.Ordinal)
+            .Replace("dddd", string.Empty, StringComparison.Ordinal)
+            .TrimStart(' ', ',');
+        return capturedAt.ToString(pattern, culture);
     }
 
     private string FormatCaptureOrigin(string captureOrigin)
@@ -497,121 +482,12 @@ public sealed partial class ScreenshotWindow : Window
             ? throw new InvalidOperationException("Screenshot action requested without a selected capture.")
             : _items[_selectedIndex];
 
-    private Button CreateFilmstripButton(ScreenshotGalleryItem item, int index)
-    {
-        var localTime = item.CapturedAt.ToLocalTime();
-        var culture = CultureInfo.GetCultureInfo(_strings.Language);
-        var thumbnail = new Image
-        {
-            Width = 124,
-            Height = 76,
-            Stretch = Stretch.UniformToFill
-        };
-        SetImage(thumbnail, item);
-
-        var preview = new Border
-        {
-            Width = 128,
-            Height = 80,
-            Padding = new Thickness(2),
-            CornerRadius = new CornerRadius(7),
-            BorderThickness = new Thickness(index == _selectedIndex ? 2 : 1),
-            BorderBrush = new SolidColorBrush(index == _selectedIndex ? Colors.DodgerBlue : Colors.Transparent),
-            Child = thumbnail
-        };
-        var metadata = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        metadata.Children.Add(new TextBlock
-        {
-            Text = localTime.ToString("d MMM", culture),
-            FontSize = 12,
-            Foreground = new SolidColorBrush(Colors.Gray)
-        });
-        metadata.Children.Add(new TextBlock
-        {
-            Text = localTime.ToString("HH:mm", culture),
-            FontSize = 12,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-        });
-        var content = new StackPanel { Spacing = 6 };
-        content.Children.Add(preview);
-        content.Children.Add(metadata);
-        var button = new Button
-        {
-            Content = content,
-            Padding = new Thickness(0),
-            Background = new SolidColorBrush(Colors.Transparent),
-            BorderBrush = new SolidColorBrush(Colors.Transparent),
-            Tag = index
-        };
-        AutomationProperties.SetName(button, $"Screenshot {index + 1}");
-        button.Click += FilmstripButton_Click;
-        return button;
-    }
-
-    private void FilmstripButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: int index } && index >= 0 && index < _items.Count)
-        {
-            _selectedIndex = index;
-            RenderSelection();
-        }
-    }
-
-    private void PreviousButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_items.Count > 1)
-        {
-            _selectedIndex = (_selectedIndex - 1 + _items.Count) % _items.Count;
-            RenderSelection();
-        }
-    }
-
-    private void NextButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_items.Count > 1)
-        {
-            _selectedIndex = (_selectedIndex + 1) % _items.Count;
-            RenderSelection();
-        }
-    }
-
     private void FilmstripToggleButton_Click(object sender, RoutedEventArgs e)
     {
-        var isExpanded = FilmstripPanelHost.Visibility != Visibility.Visible;
-        FilmstripPanelHost.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
+        var isExpanded = FilmstripList.Visibility != Visibility.Visible;
+        FilmstripList.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
         FilmstripChevronIcon.Glyph = isExpanded ? "\uE70E" : "\uE70D";
         AutomationProperties.SetName(FilmstripToggleButton, isExpanded ? "Hide screenshot strip" : "Show screenshot strip");
-    }
-
-    private void GallerySurface_PointerEntered(object sender, PointerRoutedEventArgs e) => SetNavigationOpacity(1);
-
-    private void GallerySurface_PointerExited(object sender, PointerRoutedEventArgs e) => SetNavigationOpacity(1);
-
-    private void SetNavigationOpacity(double opacity)
-    {
-        var effectiveOpacity = _items.Count > 1 ? opacity : 0;
-        PreviousButton.Opacity = effectiveOpacity;
-        NextButton.Opacity = effectiveOpacity;
-    }
-
-    private static void SetImage(Image target, ScreenshotGalleryItem? item)
-    {
-        target.Source = null;
-        if (item is null)
-        {
-            target.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        try
-        {
-            target.Source = new BitmapImage(new Uri(item.Path, UriKind.Absolute));
-            target.Visibility = Visibility.Visible;
-        }
-        catch (UriFormatException)
-        {
-            target.Visibility = Visibility.Collapsed;
-        }
     }
 
     private void SetLoading(bool isLoading)

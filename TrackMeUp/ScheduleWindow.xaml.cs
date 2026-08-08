@@ -1,7 +1,9 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using TrackMeUp.Services;
 using Windows.Graphics;
 
 namespace TrackMeUp;
@@ -13,18 +15,21 @@ public sealed partial class ScheduleWindow : Window
     private const int LogicalWindowHeight = 700;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
+    private LocalizationService _strings;
 
     /// <summary>Occurs after the user confirms a valid screenshot schedule.</summary>
     public event EventHandler<ScheduleConfigurationEventArgs>? ScheduleConfirmed;
 
     /// <summary>Creates a detached schedule editor with the supplied working hours, interval and theme.</summary>
-    public ScheduleWindow(IReadOnlyList<ActiveHoursDay>? activeHours, int intervalMinutes, string theme)
+    public ScheduleWindow(IReadOnlyList<ActiveHoursDay>? activeHours, int intervalMinutes, string theme, string uiLanguage)
     {
+        _strings = new LocalizationService(uiLanguage);
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         ApplyTheme(theme);
+        ApplyLanguage(uiLanguage);
         IntervalNumberBox.Value = intervalMinutes is >= 1 and <= 1440 ? intervalMinutes : 5;
         WorkingHoursEditor.LoadSchedule(activeHours);
         ResizeAndCenter();
@@ -41,14 +46,56 @@ public sealed partial class ScheduleWindow : Window
         };
     }
 
+    /// <summary>Applies localized labels to schedule-specific commands and confirmations.</summary>
+    public void ApplyLanguage(string uiLanguage)
+    {
+        _strings = new LocalizationService(uiLanguage);
+        StandardWorkWeekButton.Content = _strings.Translate("Schedule.Preset.WorkWeek");
+        ClearAllHoursButton.Content = _strings.Translate("Schedule.ClearAll");
+        AutomationProperties.SetName(StandardWorkWeekButton, _strings.Translate("Schedule.Preset.WorkWeek.Title"));
+        AutomationProperties.SetName(ClearAllHoursButton, _strings.Translate("Schedule.ClearAll.Title"));
+    }
+
     private void RootGrid_Loaded(object sender, RoutedEventArgs e) => ResizeAndCenter();
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    private async void StandardWorkWeekButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmReplacementAsync("Schedule.Preset.WorkWeek.Title", "Schedule.Preset.WorkWeek.Message"))
+        {
+            WorkingHoursEditor.ApplyStandardWorkWeek();
+        }
+    }
+
+    private async void ClearAllHoursButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmReplacementAsync("Schedule.ClearAll.Title", "Schedule.ClearAll.Message"))
+        {
+            WorkingHoursEditor.ClearAll();
+        }
+    }
 
     private void StartButton_Click(object sender, RoutedEventArgs e)
     {
         var intervalMinutes = (int)IntervalNumberBox.Value;
         ScheduleConfirmed?.Invoke(this, new ScheduleConfigurationEventArgs(intervalMinutes, WorkingHoursEditor.GetSchedule()));
+    }
+
+    private async Task<bool> ConfirmReplacementAsync(string titleKey, string messageKey)
+    {
+        var xamlRoot = RootGrid.XamlRoot
+            ?? throw new InvalidOperationException("The schedule window must be loaded before showing a confirmation dialog.");
+        var dialog = new ContentDialog
+        {
+            XamlRoot = xamlRoot,
+            Title = _strings.Translate(titleKey),
+            Content = _strings.Translate(messageKey),
+            PrimaryButtonText = _strings.Translate("Schedule.Apply"),
+            CloseButtonText = _strings.Translate("Schedule.Cancel"),
+            DefaultButton = ContentDialogButton.Close
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     private void ResizeAndCenter()

@@ -6,44 +6,122 @@
     xmlns:controls="using:TrackMeUp.Controls"
     Title="Captured moments">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="Base" />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#48FFFFFF" Offset="0" />
+                            <GradientStop Color="#20EDF7FF" Offset="0.52" />
+                            <GradientStop Color="#3DFFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                        <RadialGradientBrush
+							x:Key="ScreenshotBackdropBloomBrush"
+							Center="0.60,0.38"
+							GradientOrigin="0.60,0.38"
+							RadiusX="0.62"
+							RadiusY="0.82">
+							<GradientStop Color="#4674B8FF" Offset="0" />
+							<GradientStop Color="#2464A7EF" Offset="0.48" />
+							<GradientStop Color="#0064A7EF" Offset="1" />
+						</RadialGradientBrush>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#3D020914" Offset="0" />
+                            <GradientStop Color="#22081322" Offset="0.52" />
+                            <GradientStop Color="#30020A16" Offset="1" />
+                        </LinearGradientBrush>
+                        <RadialGradientBrush
+							x:Key="ScreenshotBackdropBloomBrush"
+							Center="0.60,0.38"
+							GradientOrigin="0.60,0.38"
+							RadiusX="0.62"
+							RadiusY="0.82">
+							<GradientStop Color="#4D1F6FC4" Offset="0" />
+							<GradientStop Color="#26124F96" Offset="0.48" />
+							<GradientStop Color="#00124F96" Offset="1" />
+						</RadialGradientBrush>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Default">
+                        <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#48FFFFFF" Offset="0" />
+                            <GradientStop Color="#20EDF7FF" Offset="0.52" />
+                            <GradientStop Color="#3DFFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                        <RadialGradientBrush
+							x:Key="ScreenshotBackdropBloomBrush"
+							Center="0.60,0.38"
+							GradientOrigin="0.60,0.38"
+							RadiusX="0.62"
+							RadiusY="0.82">
+							<GradientStop Color="#4674B8FF" Offset="0" />
+							<GradientStop Color="#2464A7EF" Offset="0.48" />
+							<GradientStop Color="#0064A7EF" Offset="1" />
+						</RadialGradientBrush>
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+
+                <Style x:Key="ScreenshotTitleTextStyle" TargetType="TextBlock">
+                    <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                    <Setter Property="FontSize" Value="15" />
+					<Setter Property="FontWeight" Value="Normal" />
+                    <Setter Property="LineHeight" Value="20" />
+                    <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+                </Style>
+            </ResourceDictionary>
+        </Grid.Resources>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="48" />
+            <RowDefinition Height="52" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid
+        <Rectangle
+            Grid.RowSpan="4"
+			Fill="{ThemeResource ScreenshotBackdropVeilBrush}"
+            IsHitTestVisible="False" />
+		<Rectangle
+			Grid.RowSpan="4"
+			Fill="{ThemeResource ScreenshotBackdropBloomBrush}"
+			IsHitTestVisible="False" />
+
+        <Border
             x:Name="TitleBarDragRegion"
-            Height="48"
-            Padding="24,0,180,0"
+            Height="52"
+            Padding="28,0,180,0"
             Background="Transparent"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
             Loaded="TitleBarDragRegion_Loaded"
             SizeChanged="TitleBarDragRegion_SizeChanged">
-            <TextBlock
-                VerticalAlignment="Center"
-                Tag="Screenshots.Caption"
-                Text="Captured moments" />
+            <Grid>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{StaticResource ScreenshotTitleTextStyle}"
+                    Tag="Screenshots.Caption"
+                    Text="Captured moments" />
 
-            <Button
-                x:Name="TitleBarMoreButton"
-                Width="46"
-                Height="40"
-                Margin="0,0,8,0"
-                Padding="6,0,6,7"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                AutomationProperties.Name="Screenshot actions menu"
-                Background="Transparent"
-                BorderBrush="Transparent"
-                Click="TitleBarMoreButton_Click"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
-                ToolTipService.ToolTip="Menu">
+                <Button
+                    x:Name="TitleBarMoreButton"
+                    Width="42"
+                    Height="36"
+                    Margin="0,0,8,0"
+                    Padding="6,0,6,7"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Screenshot actions menu"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    Click="TitleBarMoreButton_Click"
+                    Style="{StaticResource TitleBarOverflowButtonStyle}"
+                    ToolTipService.ToolTip="Menu">
                 <TextBlock
                     AutomationProperties.AccessibilityView="Raw"
                     CharacterSpacing="80"
@@ -218,22 +296,23 @@
                         </StackPanel>
                     </Flyout>
                 </Button.Flyout>
-            </Button>
-        </Grid>
+                </Button>
+            </Grid>
+        </Border>
 
         <controls:ScreenshotHeaderControl
             x:Name="HeaderSection"
             Grid.Row="1"
-            Margin="32,16,32,0" />
+            Margin="32,12,32,0" />
 
         <controls:ScreenshotGalleryViewControl
             x:Name="GallerySection"
             Grid.Row="2"
-            Margin="32,16,32,10" />
+            Margin="16,2,16,12" />
 
         <controls:ScreenshotTimelineControl
             x:Name="TimelineSection"
             Grid.Row="3"
-            Margin="32,0,32,20" />
+            Margin="0,0,0,20" />
     </Grid>
 </Window>

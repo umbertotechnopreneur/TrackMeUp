@@ -23,7 +23,7 @@ public static class SettingsCatalog
     private static readonly string[] Themes = ["system", "light", "dark"];
     private static readonly string[] ScreenshotModes = ["all-screens", "active-window"];
     private static readonly string[] FlyoutAnchors = [FlyoutPositions.BottomCenter, FlyoutPositions.BottomLeft, FlyoutPositions.BottomRight, FlyoutPositions.TopLeft, FlyoutPositions.TopRight];
-    private static readonly string[] TaskbarAnchors = [TaskbarWidgetPositions.Left, TaskbarWidgetPositions.Center, TaskbarWidgetPositions.Right];
+    private static readonly string[] TaskbarAnchors = [TaskbarWidgetPositions.Left, TaskbarWidgetPositions.Right];
 
     /// <summary>Gets all settings that are safe to expose and writable through WinUI or CLI.</summary>
     public static IReadOnlyList<SettingDescriptor> Definitions { get; } =
@@ -50,6 +50,7 @@ public static class SettingsCatalog
         Choice("language", "Application language.", Languages, requiresRestart: true),
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
+        Boolean("taskbar.widget.visible", "Show the compact control in the Windows taskbar."),
         Choice("taskbar.widget.position", "Taskbar control anchor.", TaskbarAnchors),
         Text("active_hours.monday.active", "Informational Monday active period in HH:mm-HH:mm format.", "time_range"),
         Text("active_hours.monday.breaks", "Informational Monday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
@@ -111,6 +112,7 @@ public static class SettingsCatalog
             "language" => settings.UiLanguage,
             "theme" => settings.Theme,
             "position" => settings.FlyoutPosition,
+            "taskbar.widget.visible" => settings.TaskbarWidgetVisible,
             "taskbar.widget.position" => settings.TaskbarWidgetPosition,
             "startup.enabled" => settings.StartWithWindows,
             "tracking.start_on_launch" => settings.StartTrackingOnLaunch,
@@ -215,6 +217,7 @@ public static class SettingsCatalog
                 case "language" when Canonical(Languages, value) is { } language: current = current with { UiLanguage = language }; break;
                 case "theme" when Canonical(Themes, value) is { } theme: current = current with { Theme = theme }; break;
                 case "position" when Canonical(FlyoutAnchors, value) is { } position: current = current with { FlyoutPosition = position }; break;
+                case "taskbar.widget.visible" when TryBoolean(value, out var taskbarVisible): current = current with { TaskbarWidgetVisible = taskbarVisible }; break;
                 case "taskbar.widget.position" when Canonical(TaskbarAnchors, value) is { } taskbarPosition: current = current with { TaskbarWidgetPosition = taskbarPosition }; break;
                 case "startup.enabled" when TryBoolean(value, out var startup): current = current with { StartWithWindows = startup }; break;
                 case "tracking.start_on_launch" when TryBoolean(value, out var startOnLaunch): current = current with { StartTrackingOnLaunch = startOnLaunch }; break;

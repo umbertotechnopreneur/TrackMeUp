@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
@@ -16,9 +18,11 @@ namespace TrackMeUp.Controls;
 public sealed partial class OptionsControl : UserControl
 {
     private ITrackMeUpApplication? _application;
+    private AiApplicationState? _aiState;
     private LocalizationService _strings = new("system");
     private IReadOnlyList<AiModelOption> _modelOptions = Array.Empty<AiModelOption>();
     private string _requestedThinkingEffort = "auto";
+    private bool _updatingAiToggle;
 
     /// <summary>Initializes the options control.</summary>
     public OptionsControl() => InitializeComponent();
@@ -41,16 +45,27 @@ public sealed partial class OptionsControl : UserControl
         var openFolderLabel = T("Options.OpenFolderAction");
         AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
         ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
+        AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
+        UpdateApiKeyPresentation();
         UpdateScreenshotModeHint();
     }
 
     /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
-    public async void Initialize(ITrackMeUpApplication application)
+    public async void Initialize(ITrackMeUpApplication application, AiApplicationState aiState)
     {
         _application = application;
+        if (_aiState is not null)
+        {
+            _aiState.PropertyChanged -= AiState_PropertyChanged;
+        }
+        _aiState = aiState;
+        _aiState.PropertyChanged += AiState_PropertyChanged;
+        DataContext = aiState;
+        UpdateApiKeyPresentation();
         var settingsTask = application.GetSettingsAsync(CancellationToken.None);
         var catalogTask = application.GetAiModelCatalogAsync(CancellationToken.None);
-        await Task.WhenAll(settingsTask, catalogTask);
+        var aiStateTask = aiState.LoadAsync(CancellationToken.None);
+        await Task.WhenAll(settingsTask, catalogTask, aiStateTask);
 
         var settingsResult = await settingsTask;
         var catalogResult = await catalogTask;
@@ -82,10 +97,14 @@ public sealed partial class OptionsControl : UserControl
     }
 
     /// <summary>Shows the focused AI configuration view without changing persisted settings.</summary>
-    private void AiSettingsButton_Click(object sender, RoutedEventArgs e)
+    private async void AiSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         AppOptionsView.Visibility = Visibility.Collapsed;
         AiOptionsView.Visibility = Visibility.Visible;
+        if (_aiState is not null)
+        {
+            await _aiState.LoadAsync(CancellationToken.None);
+        }
     }
 
     /// <summary>Maintains a single selected theme in the segmented theme control.</summary>
@@ -95,6 +114,9 @@ public sealed partial class OptionsControl : UserControl
         ThemeLightButton.IsChecked = ReferenceEquals(sender, ThemeLightButton);
         ThemeDarkButton.IsChecked = ReferenceEquals(sender, ThemeDarkButton);
     }
+
+    private void TaskbarWidgetVisibleSwitch_Toggled(object sender, RoutedEventArgs e) =>
+        TaskbarWidgetPositionBox.IsEnabled = TaskbarWidgetVisibleSwitch.IsOn;
 
     /// <summary>Shows or hides lower-frequency application settings.</summary>
     private void GeneralAdvancedButton_Click(object sender, RoutedEventArgs e)
@@ -127,7 +149,7 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Forwards a secret to the application facade without placing it in settings or UI state.</summary>
     private async void SetApiKeyButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_application is null || string.IsNullOrWhiteSpace(ApiKeyBox.Password))
+        if (_application is null || _aiState is null || string.IsNullOrWhiteSpace(ApiKeyBox.Password))
         {
             StatusText.Text = T("ApiKeyMissing");
             return;
@@ -137,9 +159,33 @@ public sealed partial class OptionsControl : UserControl
         var keyName = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(provider) : AiApiKeyNameBox.Text.Trim();
         var secret = ApiKeyBox.Password;
         ApiKeyBox.Password = string.Empty;
-        var result = await _application.SetAiKeyAsync(keyName, secret, CancellationToken.None);
+        var result = await _aiState.SetSecretAsync(keyName, secret, CancellationToken.None);
         secret = string.Empty;
-        StatusText.Text = result.Succeeded ? T("ApiKeySaved") : T("Options.ApiKeyError");
+        StatusText.Text = result.Succeeded
+            ? T("ApiKeySaved")
+            : result.Code == "ai.key.stored_status_unavailable"
+                ? T("Options.ApiKeyStatus.RefreshFailed")
+                : T("Options.ApiKeyError");
+    }
+
+    /// <summary>Forwards an AI enabled-state request through the shared observable application state.</summary>
+    private async void OpenAiEnabledSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_aiState is null || _updatingAiToggle || OpenAiEnabledSwitch.IsOn == _aiState.Enabled)
+        {
+            return;
+        }
+
+        var result = await _aiState.SetEnabledAsync(OpenAiEnabledSwitch.IsOn, CancellationToken.None);
+        if (result.Succeeded)
+        {
+            return;
+        }
+
+        _updatingAiToggle = true;
+        OpenAiEnabledSwitch.IsOn = _aiState.Enabled;
+        _updatingAiToggle = false;
+        StatusText.Text = T("Options.OpenAi.KeyRequired");
     }
 
     /// <summary>Builds a typed, whitelisted patch and forwards persistence to the application facade.</summary>
@@ -175,7 +221,6 @@ public sealed partial class OptionsControl : UserControl
             ["ai.model"] = selectedModel.Key,
             ["screenshots.directory"] = ScreenshotFolderBox.Text,
             ["screenshots.keep"] = KeepScreenshotsSwitch.IsOn.ToString(),
-            ["ai.enabled"] = OpenAiEnabledSwitch.IsOn.ToString(),
             ["screenshots.enabled"] = ScreenshotsEnabledSwitch.IsOn.ToString(),
             ["startup.enabled"] = StartWithWindowsSwitch.IsOn.ToString(),
             ["tracking.start_on_launch"] = StartTrackingOnLaunchSwitch.IsOn.ToString(),
@@ -191,11 +236,16 @@ public sealed partial class OptionsControl : UserControl
             ["language"] = SelectedTag(LanguageBox, "system"),
             ["theme"] = SelectedTheme(),
             ["position"] = SelectedTag(PositionBox, "bottom-center"),
+            ["taskbar.widget.visible"] = TaskbarWidgetVisibleSwitch.IsOn.ToString(),
             ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left")
         });
         var result = await _application.PatchSettingsAsync(patch, CancellationToken.None);
         if (result.Succeeded && result.Value is not null)
         {
+            if (_aiState is not null)
+            {
+                await _aiState.LoadAsync(CancellationToken.None);
+            }
             SettingsSaved?.Invoke(result.Value);
             StatusText.Text = T("OptionsSaved");
         }
@@ -231,7 +281,6 @@ public sealed partial class OptionsControl : UserControl
         SelectModel(settings.Model);
         ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
         KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
-        OpenAiEnabledSwitch.IsOn = settings.OpenAiEnabled;
         ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
         StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
         StartTrackingOnLaunchSwitch.IsOn = settings.StartTrackingOnLaunch;
@@ -244,7 +293,9 @@ public sealed partial class OptionsControl : UserControl
         SelectTag(ScreenshotModeBox, settings.ScreenshotCaptureMode, "all-screens");
         SelectTag(LanguageBox, settings.UiLanguage, "system");
         SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
+        TaskbarWidgetVisibleSwitch.IsOn = settings.TaskbarWidgetVisible;
         SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
+        TaskbarWidgetPositionBox.IsEnabled = settings.TaskbarWidgetVisible;
         SelectTheme(settings.Theme);
         AiCustomPromptBox.Text = settings.AiCustomPrompt;
         IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
@@ -323,6 +374,41 @@ public sealed partial class OptionsControl : UserControl
         var green = Convert.ToByte(hexColor.Substring(3, 2), 16);
         var blue = Convert.ToByte(hexColor.Substring(5, 2), 16);
         return new SolidColorBrush(Windows.UI.Color.FromArgb(255, red, green, blue));
+    }
+
+    private void AiState_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AiApplicationState.HasKey)
+            or nameof(AiApplicationState.CanEnable)
+            or nameof(AiApplicationState.Enabled)
+            or nameof(AiApplicationState.IsStatusUnavailable))
+        {
+            UpdateApiKeyPresentation();
+        }
+    }
+
+    private void UpdateApiKeyPresentation()
+    {
+        AutomationProperties.SetName(OpenAiEnabledSwitch, T("Options.OpenAi.Header"));
+        AutomationProperties.SetHelpText(
+            OpenAiEnabledSwitch,
+            _aiState is null || _aiState.IsStatusUnavailable
+                ? T("Options.ApiKeyStatus.Unavailable")
+                : !_aiState.CanEnable && !_aiState.Enabled
+                    ? T("Options.OpenAi.KeyRequired")
+                    : string.Empty);
+
+        var (messageKey, glyph) = _aiState switch
+        {
+            null => ("Options.ApiKeyStatus.Unavailable", "\uE946"),
+            { IsStatusUnavailable: true } => ("Options.ApiKeyStatus.Unavailable", "\uE946"),
+            { CanEnable: true } => ("Options.ApiKeyStatus.Set", "\uE73E"),
+            { HasKey: false } => ("Options.ApiKeyStatus.Missing", "\uE946"),
+            _ => ("Options.ApiKeyStatus.Invalid", "\uE783")
+        };
+
+        ApiKeyStatusIcon.Glyph = glyph;
+        ApiKeyStatusText.Text = T(messageKey);
     }
 
     private string T(string key) => _strings.Translate(key);

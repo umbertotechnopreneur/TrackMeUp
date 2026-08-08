@@ -45,7 +45,7 @@
             </Button>
             <TextBlock
                 Grid.Column="2"
-                Margin="20,0,12,0"
+                Margin="28,0,12,0"
                 VerticalAlignment="Center"
                 AutomationProperties.AccessibilityView="Raw"
                 CharacterSpacing="130"
@@ -72,45 +72,42 @@
                 <Button.KeyboardAccelerators>
                     <KeyboardAccelerator Key="M" Modifiers="Menu" />
                 </Button.KeyboardAccelerators>
-                <TextBlock
+                <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
-                    CharacterSpacing="80"
-                    FontSize="19"
-                    FontWeight="Bold"
-                    Text="•••" />
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="17"
+                    Glyph="&#xE712;" />
             </Button>
         </Grid>
 
         <Border
             x:Name="PlayerPanel"
             Grid.Row="1"
-            Margin="12"
-            Padding="16"
+            Margin="12,4,12,8"
+            Padding="16,8,16,10"
             Background="Transparent">
             <Border.Resources>
                 <ResourceDictionary>
                     <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#FFFFAB8D" Offset="0" />
-                        <GradientStop Color="#FFF16F4E" Offset="1" />
+                        <GradientStop Color="#FFE86C4F" Offset="0" />
+                        <GradientStop Color="#FFD34D34" Offset="1" />
                     </LinearGradientBrush>
-                    <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFF16F4E" />
-                    <SolidColorBrush x:Key="SnapshotCaptureBrush"
-                                     Color="#FF2D8BA8"/>
-                    <SolidColorBrush x:Key="SnapshotDeleteBrush"
-                                     Color="#FFC8544D"/>
+                    <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
+                    <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
                     <Style x:Key="CircularActionButtonStyle"
                            TargetType="Button">
+                        <Setter Property="UseSystemFocusVisuals" Value="True" />
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="Button">
-                                    <Grid>
+                                    <Grid x:Name="ActionRoot">
                                         <Border x:Name="ActionSurface"
                                                 Background="{TemplateBinding Background}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
                                                 CornerRadius="{TemplateBinding CornerRadius}"/>
                                         <Border x:Name="ActionHoverOverlay"
-                                                Background="Black"
+                                                Background="{ThemeResource TextFillColorPrimaryBrush}"
                                                 CornerRadius="{TemplateBinding CornerRadius}"
                                                 IsHitTestVisible="False"
                                                 Opacity="0"/>
@@ -124,31 +121,43 @@
                                             <VisualStateGroup x:Name="CommonStates">
                                                 <VisualState x:Name="Normal">
                                                     <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionRoot"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="1"
+                                                                         Duration="0"/>
                                                         <DoubleAnimation Storyboard.TargetName="ActionHoverOverlay"
                                                                          Storyboard.TargetProperty="Opacity"
                                                                          To="0"
-                                                                         Duration="0:0:0.5"/>
+                                                                         Duration="0:0:0.12"/>
                                                     </Storyboard>
                                                 </VisualState>
                                                 <VisualState x:Name="PointerOver">
                                                     <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionRoot"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="1"
+                                                                         Duration="0"/>
                                                         <DoubleAnimation Storyboard.TargetName="ActionHoverOverlay"
                                                                          Storyboard.TargetProperty="Opacity"
-                                                                         To="0.12"
-                                                                         Duration="0:0:0.5"/>
+                                                                         To="0.06"
+                                                                         Duration="0:0:0.12"/>
                                                     </Storyboard>
                                                 </VisualState>
                                                 <VisualState x:Name="Pressed">
                                                     <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActionRoot"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="1"
+                                                                         Duration="0"/>
                                                         <DoubleAnimation Storyboard.TargetName="ActionHoverOverlay"
                                                                          Storyboard.TargetProperty="Opacity"
-                                                                         To="0.22"
-                                                                         Duration="0:0:0.5"/>
+                                                                         To="0.1"
+                                                                         Duration="0:0:0.08"/>
                                                     </Storyboard>
                                                 </VisualState>
                                                 <VisualState x:Name="Disabled">
                                                     <Storyboard>
-                                                        <DoubleAnimation Storyboard.TargetName="ActionSurface"
+                                                        <DoubleAnimation Storyboard.TargetName="ActionRoot"
                                                                          Storyboard.TargetProperty="Opacity"
                                                                          To="0.45"
                                                                          Duration="0"/>
@@ -164,25 +173,24 @@
                     <ResourceDictionary.ThemeDictionaries>
                         <ResourceDictionary x:Key="Light">
                             <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#FFFFAB8D" Offset="0" />
-                                <GradientStop Color="#FFF16F4E" Offset="1" />
+                                <GradientStop Color="#FFE86C4F" Offset="0" />
+                                <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
-                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFF16F4E" />
-                            <SolidColorBrush x:Key="SnapshotCaptureBrush"
-                                             Color="#FF2D8BA8"/>
-                            <SolidColorBrush x:Key="SnapshotDeleteBrush"
-                                             Color="#FFC8544D"/>
+                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
+                            <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="Dark">
                             <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#FF96DDD1" Offset="0" />
-                                <GradientStop Color="#FF55B9A7" Offset="1" />
+                                <GradientStop Color="#FFE86C4F" Offset="0" />
+                                <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
-                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FF68C9B7" />
-                            <SolidColorBrush x:Key="SnapshotCaptureBrush"
-                                             Color="#FF55B9A7"/>
-                            <SolidColorBrush x:Key="SnapshotDeleteBrush"
-                                             Color="#FFE3746A"/>
+                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFFF9B82" />
+                            <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="HighContrast">
+                            <SolidColorBrush x:Key="PlayerAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                            <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
@@ -427,6 +435,8 @@
                                             <ToggleSwitch x:Name="OpenAiMenuToggle"
                                                           Grid.Column="2"
                                                           MinWidth="0"
+                                                          IsEnabled="{x:Bind AiState.CanToggle, Mode=OneWay}"
+                                                          IsOn="{x:Bind AiState.Enabled, Mode=OneWay}"
                                                           OffContent=""
                                                           OnContent=""
                                                           Toggled="OpenAiMenuToggle_Toggled"/>
@@ -486,30 +496,69 @@
                         </Button.Flyout>
                     </Button>
 
-                    <Grid Grid.Row="0" ColumnSpacing="18">
+                    <Grid Grid.Row="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Grid
+                            x:Name="OutsideActiveHoursBanner"
+                            Grid.Row="0"
+                            Margin="0,4,0,12"
+                            Padding="0,2"
+                            ColumnSpacing="8"
+                            Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="14"
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                Glyph="&#xE7BA;" />
+                            <RichTextBlock
+                                Grid.Column="1"
+                                FontSize="11"
+                                IsTextSelectionEnabled="False"
+                                TextWrapping="Wrap">
+                                <Paragraph>
+                                    <Run x:Name="OutsideActiveHoursMessageRun" Text="Outside active hours, scheduled snapshots are not recorded." />
+                                    <Run Text=" " />
+                                    <Hyperlink Click="OutsideActiveHoursSettingsLink_Click">
+                                        <Run x:Name="OutsideActiveHoursLinkRun" Text="Configure hours" />
+                                    </Hyperlink>
+                                </Paragraph>
+                            </RichTextBlock>
+                        </Grid>
+
+                        <Grid Grid.Row="1" ColumnSpacing="16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel x:Name="CaptureActionsPanel"
                                     Orientation="Horizontal"
-                                    VerticalAlignment="Bottom"
-                                    Spacing="8">
+                                    VerticalAlignment="Center"
+                                    Spacing="9">
                             <Button
                                 x:Name="TrackingButton"
-                                Width="84"
-                                Height="84"
+                                Width="80"
+                                Height="80"
                                 Padding="0"
                                 HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
+                                VerticalAlignment="Center"
                                 AutomationProperties.Name="Avvia il monitoraggio"
                                 Background="{ThemeResource PlayerAccentBrush}"
                                 BorderBrush="#D9FFFFFF"
-                                BorderThickness="2"
+                                BorderThickness="1"
                                 Click="TrackingButton_Click"
-                                CornerRadius="42"
+                                CornerRadius="40"
                                 Style="{StaticResource CircularActionButtonStyle}"
-                                Translation="0,0,6">
+                                Translation="0,0,3">
                                 <Button.Shadow>
                                     <ThemeShadow/>
                                 </Button.Shadow>
@@ -517,96 +566,103 @@
                                     x:Name="PlayPauseIcon"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
-                                    FontSize="30"
-                                    Foreground="White"
+                                    FontSize="28"
+                                    Foreground="{ThemeResource PlayerAccentGlyphBrush}"
                                     Glyph="&#xE768;"/>
                             </Button>
-                            <Button
-                                x:Name="TakeScreenshotButton"
-                                Width="32"
-                                Height="32"
-                                Padding="0"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
-                                AutomationProperties.Name="Scatta uno snapshot"
-                                Background="{ThemeResource SnapshotCaptureBrush}"
-                                BorderBrush="#D9FFFFFF"
-                                BorderThickness="2"
-                                Click="TakeScreenshotButton_Click"
-                                CornerRadius="16"
-                                Style="{StaticResource CircularActionButtonStyle}"
-                                ToolTipService.ToolTip="Take snapshot">
-                                <FontIcon
-                                    AutomationProperties.AccessibilityView="Raw"
-                                    FontFamily="Segoe Fluent Icons"
-                                    FontSize="14"
-                                    Foreground="White"
-                                    Glyph="&#xE722;"/>
-                            </Button>
-                            <Button
-                                x:Name="DeleteSnapshotButton"
-                                Width="32"
-                                Height="32"
-                                Padding="0"
-                                VerticalAlignment="Bottom"
-                                AutomationProperties.Name="Delete snapshot"
-                                Background="{ThemeResource SnapshotDeleteBrush}"
-                                BorderBrush="#D9FFFFFF"
-                                BorderThickness="2"
-                                Click="DeleteSnapshotButton_Click"
-                                CornerRadius="16"
-                                Style="{StaticResource CircularActionButtonStyle}"
-                                ToolTipService.ToolTip="Delete snapshot"
-                                Visibility="Collapsed">
-                                <FontIcon
-                                    AutomationProperties.AccessibilityView="Raw"
-                                    FontFamily="Segoe Fluent Icons"
-                                    FontSize="14"
-                                    Foreground="White"
-                                    Glyph="&#xE74D;"/>
-                            </Button>
+                            <StackPanel
+                                VerticalAlignment="Center"
+                                Spacing="6">
+                                <Button
+                                    x:Name="TakeScreenshotButton"
+                                    Width="32"
+                                    Height="32"
+                                    Padding="0"
+                                    HorizontalAlignment="Center"
+                                    AutomationProperties.Name="Scatta uno snapshot"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    Click="TakeScreenshotButton_Click"
+                                    CornerRadius="16"
+                                    Style="{StaticResource CircularActionButtonStyle}"
+                                    ToolTipService.ToolTip="Take snapshot">
+                                    <FontIcon
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="14"
+                                        Foreground="{ThemeResource PlayerAccentTextBrush}"
+                                        Glyph="&#xE722;"/>
+                                </Button>
+                                <Button
+                                    x:Name="DeleteSnapshotButton"
+                                    Width="32"
+                                    Height="32"
+                                    Padding="0"
+                                    HorizontalAlignment="Center"
+                                    AutomationProperties.Name="Delete snapshot"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    Click="DeleteSnapshotButton_Click"
+                                    CornerRadius="16"
+                                    Style="{StaticResource CircularActionButtonStyle}"
+                                    ToolTipService.ToolTip="Delete snapshot"
+                                    Visibility="Collapsed">
+                                    <FontIcon
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        FontFamily="Segoe Fluent Icons"
+                                        FontSize="14"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        Glyph="&#xE74D;"/>
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
                             <TextBlock
                                 x:Name="TrackingStateText"
                                 AutomationProperties.LiveSetting="Polite"
-                                CharacterSpacing="80"
-                                FontSize="14"
+                                CharacterSpacing="100"
+                                FontSize="12"
                                 FontWeight="SemiBold"
                                 Foreground="{ThemeResource PlayerAccentTextBrush}"
                                 Text="IN PAUSA" />
                             <TextBlock
                                 x:Name="ElapsedText"
                                 FontSize="36"
-                                FontWeight="Normal"
+                                FontWeight="Light"
                                 Text="00:00" />
                             <Grid
                                 x:Name="PendingSnapshotPanel"
-                                Margin="0,2,0,1"
-                                RowSpacing="2"
+                                Margin="0,3,0,1"
                                 Visibility="Collapsed">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <ProgressBar
-                                    x:Name="SnapshotDeleteCountdownProgress"
-                                    Height="4"
-                                    HorizontalAlignment="Stretch"
-                                    Foreground="{ThemeResource SnapshotDeleteBrush}"
-                                    IsHitTestVisible="False"
-                                    Maximum="30"
-                                    Value="30"/>
-                                <TextBlock
-                                    x:Name="SnapshotDeleteCountdownText"
-                                    Grid.Row="1"
-                                    HorizontalAlignment="Right"
-                                    FontSize="9"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="00:30"/>
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <TextBlock
+                                        Tag="Snapshot.DeleteAvailable"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        MaxLines="1"
+                                        Text="Delete available"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        FontSize="10"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="·" />
+                                    <TextBlock
+                                        x:Name="SnapshotDeleteCountdownText"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        FontWeight="SemiBold"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="00:30" />
+                                </StackPanel>
                             </Grid>
                             <TextBlock
                                 x:Name="CurrentContextText"
+                                Margin="0,3,0,0"
                                 AutomationProperties.LiveSetting="Polite"
                                 FontSize="12"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -615,23 +671,31 @@
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="Wrap" />
                         </StackPanel>
+                        </Grid>
                     </Grid>
 
-                    <StackPanel Grid.Row="1" Spacing="8">
+                    <StackPanel Grid.Row="1" Spacing="7">
                         <Grid x:Name="ActivityTrendChart"
-                                Height="26"
+                                Height="24"
                                 Visibility="Collapsed">
+                            <Border
+                                Height="1"
+                                VerticalAlignment="Center"
+                                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                Opacity="0.45" />
                             <Path
                                 x:Name="ActivityTrendPath"
-                                Margin="0,3,0,4"
+                                Margin="0,2,0,3"
                                 AutomationProperties.Name="Attività delle ultime 24 ore"
                                 Stretch="Fill"
                                 Stroke="{ThemeResource PlayerAccentTextBrush}"
+                                StrokeEndLineCap="Round"
                                 StrokeLineJoin="Round"
-                                StrokeThickness="1.5"/>
+                                StrokeStartLineCap="Round"
+                                StrokeThickness="1.5" />
                         </Grid>
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <Grid Margin="0,2,0,0" ColumnSpacing="8">
+                        <Grid Margin="0,4,4,2" ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="1" />
@@ -640,26 +704,26 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE765;" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE765;" />
                                 <StackPanel>
-                                    <TextBlock Tag="KeysLabel" CharacterSpacing="80" FontSize="10" Text="KEYS" />
+                                    <TextBlock Tag="KeysLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="KEYS" />
                                     <TextBlock x:Name="KeyCountText" FontSize="19" FontWeight="SemiBold" Text="0" />
                                 </StackPanel>
                             </StackPanel>
-                            <Rectangle Grid.Column="1" Width="1" Height="34" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <Rectangle Grid.Column="1" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />
                             <StackPanel Grid.Column="2" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE962;" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE962;" />
                                 <StackPanel>
-                                    <TextBlock Tag="ClicksLabel" CharacterSpacing="80" FontSize="10" Text="CLICKS" />
+                                    <TextBlock Tag="ClicksLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="CLICKS" />
                                     <TextBlock x:Name="ClickCountText" FontSize="19" FontWeight="SemiBold" Text="0" />
                                 </StackPanel>
                             </StackPanel>
-                            <Rectangle Grid.Column="3" Width="1" Height="34" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <Rectangle Grid.Column="3" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />
                             <StackPanel Grid.Column="4" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE823;" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE823;" />
                                 <StackPanel>
-                                    <TextBlock Tag="ActiveLabel" CharacterSpacing="80" FontSize="10" Text="ACTIVE" />
-                                    <TextBlock x:Name="ActiveTimeText" FontSize="17" FontWeight="SemiBold" Text="0 min" />
+                                    <TextBlock Tag="ActiveLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="ACTIVE" />
+                                    <TextBlock x:Name="ActiveTimeText" FontSize="19" FontWeight="SemiBold" Text="0 min" />
                                 </StackPanel>
                             </StackPanel>
                         </Grid>
@@ -668,76 +732,94 @@
                     <Button
                         x:Name="DetailsButton"
                         Grid.Row="2"
-                        MinWidth="44"
-                        MinHeight="32"
-                        Padding="8,3"
-                        HorizontalAlignment="Center"
+                        MinHeight="36"
+                        Margin="0,2,0,0"
+                        Padding="2,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
                         AutomationProperties.Name="Mostra ultima sessione"
                         Background="Transparent"
-                        BorderBrush="Transparent"
+                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        BorderThickness="0,1,0,0"
                         Click="DetailsButton_Click"
+                        CornerRadius="0"
                         ToolTipService.ToolTip="Ultima sessione">
-                        <FontIcon
-                            x:Name="DetailsChevron"
-                            AutomationProperties.AccessibilityView="Raw"
-                            FontFamily="Segoe Fluent Icons"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Glyph="&#xE70D;" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Tag="LastSessionTitle"
+                                VerticalAlignment="Center"
+                                CharacterSpacing="100"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="LAST SESSION" />
+                            <FontIcon
+                                x:Name="DetailsChevron"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Glyph="&#xE70D;" />
+                        </Grid>
                     </Button>
 
-                    <Grid x:Name="DetailsPanel" Grid.Row="3" Margin="0,0,0,2" RowSpacing="10" Visibility="Collapsed">
+                    <Grid x:Name="DetailsPanel" Grid.Row="3" RowSpacing="8" Visibility="Collapsed">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="1" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <Border Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="8">
+                        <Grid Grid.Row="0" Height="92" ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="36" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="112" />
+                                <ColumnDefinition Width="104" />
                             </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
                             <FontIcon
-                                Grid.RowSpan="2"
+                                Margin="0,12,0,0"
                                 VerticalAlignment="Top"
                                 AutomationProperties.AccessibilityView="Raw"
                                 FontFamily="Segoe Fluent Icons"
-                                FontSize="26"
+                                FontSize="28"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Glyph="&#xE7F4;" />
-                            <StackPanel Grid.Column="1" Spacing="2">
+                            <Grid Grid.Column="1" Height="92">
+                                <StackPanel Margin="0,12,0,0" Spacing="2">
+                                    <TextBlock
+                                        x:Name="LastSessionAppText"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        MaxLines="1"
+                                        Text="No session recorded"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        x:Name="LastSessionDetailText"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        MaxLines="1"
+                                        TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
                                 <TextBlock
-                                    x:Name="LastSessionAppText"
-                                    FontWeight="SemiBold"
-                                    MaxLines="1"
-                                    Text="No session recorded"
-                                    TextTrimming="CharacterEllipsis" />
-                                <TextBlock
-                                    x:Name="LastSessionDetailText"
+                                    x:Name="ScreenshotStatusText"
+                                    Margin="0,0,0,2"
+                                    VerticalAlignment="Bottom"
+                                    Tag="Screenshot.Status.Off"
+                                    FontSize="11"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     MaxLines="1"
+                                    Text="Screenshot off"
                                     TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                            <TextBlock
-                                x:Name="ScreenshotStatusText"
-                                Grid.Row="1"
-                                Grid.Column="1"
-                                Tag="ScreenshotDisabledHint"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="Screen captures are off"
-                                TextTrimming="CharacterEllipsis" />
+                            </Grid>
                             <Button
                                 x:Name="ScreenshotPreviewButton"
-                                Grid.RowSpan="2"
                                 Grid.Column="2"
-                                Width="112"
-                                Height="64"
+                                Width="104"
+                                Height="92"
                                 Padding="0"
                                 VerticalAlignment="Top"
                                 AutomationProperties.Name="Apri galleria screenshot"
@@ -748,15 +830,12 @@
                                 PointerExited="ScreenshotPreviewButton_PointerExited"
                                 ToolTipService.ToolTip="Apri galleria screenshot">
                                 <Border
-                                    Width="112"
-                                    Height="64"
-                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="8"
-                                    Translation="0,1,2">
-                                    <Border.Shadow>
-                                        <ThemeShadow />
-                                    </Border.Shadow>
+                                    Width="104"
+                                    Height="92"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8">
                                     <Border CornerRadius="8">
                                         <Grid>
                                             <Image
@@ -794,13 +873,13 @@
                                 </Border>
                             </Button>
                         </Grid>
-                        <Grid Grid.Row="2" Margin="0,6,0,0">
+                        <Grid Grid.Row="1" Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="1" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Border Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                            <Grid Grid.Row="1" Margin="0,10,0,0">
+                            <Grid Grid.Row="1" Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />

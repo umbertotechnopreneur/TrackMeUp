@@ -32,4 +32,18 @@ public sealed class LocalizationServiceTests
         Assert.True(result.Succeeded);
         Assert.Equal("system", result.Value?.UiLanguage);
     }
+
+    [Fact]
+    public void ApiKeyStatus_IsExplicitInEnglishAndItalian()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Equal("API key set and ready.", english.Translate("Options.ApiKeyStatus.Set"));
+        Assert.Equal("API key not set.", english.Translate("Options.ApiKeyStatus.Missing"));
+        Assert.Equal("API key status is unavailable.", english.Translate("Options.ApiKeyStatus.Unavailable"));
+        Assert.Equal("Chiave API impostata e pronta.", italian.Translate("Options.ApiKeyStatus.Set"));
+        Assert.Equal("Chiave API non impostata.", italian.Translate("Options.ApiKeyStatus.Missing"));
+        Assert.Equal("Lo stato della chiave API non è disponibile.", italian.Translate("Options.ApiKeyStatus.Unavailable"));
+    }
 }

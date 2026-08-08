@@ -95,23 +95,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        try
-        {
-            var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost(_services.GetRequiredService<ILogger<TaskbarWidgetHost>>()), _services.GetRequiredService<ILogger<TaskbarWidgetSurface>>());
-            _taskbarWidgetSurface = taskbarWidgetSurface;
-            taskbarWidgetSurface.FlyoutRequested += (_, _) => _window?.DispatcherQueue.TryEnqueue(() => _window?.ShowFlyout());
-            taskbarWidgetSurface.ApplySettings(settings);
-            if (!taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition))
-            {
-                // If a custom shell rejects parenting, keep the normal player usable rather than leaving an orphaned top-level control.
-                DisposeTaskbarWidget();
-            }
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Taskbar widget initialization failed; the main window remains available.");
-            DisposeTaskbarWidget();
-        }
+        ApplyTaskbarWidgetSettings(settings);
     }
 
     private void StartReports(LaunchOptions options)
@@ -164,7 +148,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         if (_screenshotsWindow is not null)
         {
-            await _screenshotsWindow.FocusTodayAsync();
+            await _screenshotsWindow.FocusLatestAsync();
             _screenshotsWindow.Activate();
             return;
         }
@@ -231,8 +215,37 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void ApplyTaskbarWidgetSettings(AppSettings settings)
     {
-        _taskbarWidgetSurface?.ApplySettings(settings);
-        _taskbarWidgetSurface?.Configure(settings.TaskbarWidgetPosition);
+        if (!settings.TaskbarWidgetVisible)
+        {
+            DisposeTaskbarWidget();
+            return;
+        }
+
+        if (_taskbarWidgetSurface is not null)
+        {
+            _taskbarWidgetSurface.ApplySettings(settings);
+            _taskbarWidgetSurface.Configure(settings.TaskbarWidgetPosition);
+            return;
+        }
+
+        try
+        {
+            var application = _applicationFacade ?? throw new InvalidOperationException("The taskbar widget requires an initialized application facade.");
+            var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost(_services.GetRequiredService<ILogger<TaskbarWidgetHost>>()), _services.GetRequiredService<ILogger<TaskbarWidgetSurface>>());
+            _taskbarWidgetSurface = taskbarWidgetSurface;
+            taskbarWidgetSurface.FlyoutRequested += (_, _) => _window?.DispatcherQueue.TryEnqueue(() => _window?.ShowFlyout());
+            taskbarWidgetSurface.ApplySettings(settings);
+            if (!taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition))
+            {
+                // If a custom shell rejects parenting, keep the normal player usable rather than leaving an orphaned top-level control.
+                DisposeTaskbarWidget();
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Taskbar widget initialization failed; the main window remains available.");
+            DisposeTaskbarWidget();
+        }
     }
 
     private void DisposeTaskbarWidget()

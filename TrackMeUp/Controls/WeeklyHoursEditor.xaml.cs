@@ -49,6 +49,30 @@ public sealed partial class WeeklyHoursEditor : UserControl
         return Days.Select(day => CreateDaySchedule(day, _daySlots[day])).ToArray();
     }
 
+    /// <summary>Replaces the grid with a Monday-Friday 09:00-18:00 work week and clears weekends.</summary>
+    public void ApplyStandardWorkWeek()
+    {
+        for (var dayIndex = 0; dayIndex < Days.Length; dayIndex++)
+        {
+            for (var slot = 0; slot < SlotsPerDay; slot++)
+            {
+                _daySlots[Days[dayIndex]][slot].IsChecked = dayIndex < 5 && slot is >= 18 and < 36;
+            }
+        }
+    }
+
+    /// <summary>Clears every active-hours block in the editor.</summary>
+    public void ClearAll()
+    {
+        foreach (var slots in _daySlots.Values)
+        {
+            foreach (var slot in slots)
+            {
+                slot.IsChecked = false;
+            }
+        }
+    }
+
     private void BuildGrid()
     {
         var slotStyle = Resources["ScheduleSlotStyle"] as Style
@@ -210,24 +234,42 @@ public sealed partial class WeeklyHoursEditor : UserControl
             string.Join(", ", breaks));
     }
 
-    private static void SetRange(bool[] slots, TimeOnly start, TimeOnly end, bool value)
+    private static void SetRange(bool[] slots, int startMinutes, int endMinutes, bool value)
     {
-        var startSlot = start.Hour * 2 + start.Minute / 30;
-        var endSlot = end.Hour * 2 + end.Minute / 30;
+        var startSlot = startMinutes / 30;
+        var endSlot = endMinutes / 30;
         for (var slot = startSlot; slot < endSlot; slot++)
         {
             slots[slot] = value;
         }
     }
 
-    private static bool TryParseRange(string value, out TimeOnly start, out TimeOnly end)
+    private static bool TryParseRange(string value, out int start, out int end)
     {
         start = default;
         end = default;
         var parts = value.Split('-', StringSplitOptions.TrimEntries);
         return parts.Length == 2
-            && TimeOnly.TryParseExact(parts[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out start)
-            && TimeOnly.TryParseExact(parts[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out end);
+            && TryParseBoundary(parts[0], allowEndOfDay: false, out start)
+            && TryParseBoundary(parts[1], allowEndOfDay: true, out end);
+    }
+
+    private static bool TryParseBoundary(string value, bool allowEndOfDay, out int minutes)
+    {
+        if (allowEndOfDay && string.Equals(value, "24:00", StringComparison.Ordinal))
+        {
+            minutes = 24 * 60;
+            return true;
+        }
+
+        if (TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
+        {
+            minutes = (time.Hour * 60) + time.Minute;
+            return true;
+        }
+
+        minutes = default;
+        return false;
     }
 
     private static string CreateSlotLabel(int slot) => $"{slot / 2:00}:{(slot % 2) * 30:00}";

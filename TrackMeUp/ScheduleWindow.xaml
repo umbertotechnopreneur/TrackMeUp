@@ -71,14 +71,32 @@
                 </Grid>
                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                 <StackPanel Spacing="10">
-                    <StackPanel Spacing="3">
-                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Working hours" />
-                        <TextBlock
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource BodyTextBlockStyle}"
-                            Text="Select the 30-minute periods when scheduled snapshots may run."
-                            TextWrapping="Wrap" />
-                    </StackPanel>
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="3">
+                            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Working hours" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource BodyTextBlockStyle}"
+                                Text="Select the 30-minute periods when scheduled snapshots may run."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Bottom" Orientation="Horizontal" Spacing="8">
+                            <Button
+                                x:Name="StandardWorkWeekButton"
+                                AutomationProperties.Name="Apply the 09:00-18:00 work week"
+                                Click="StandardWorkWeekButton_Click"
+                                Content="09:00-18:00" />
+                            <Button
+                                x:Name="ClearAllHoursButton"
+                                AutomationProperties.Name="Clear all working hours"
+                                Click="ClearAllHoursButton_Click"
+                                Content="Clear all" />
+                        </StackPanel>
+                    </Grid>
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"

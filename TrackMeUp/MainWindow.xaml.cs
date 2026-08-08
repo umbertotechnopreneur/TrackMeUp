@@ -1,4 +1,5 @@
 #region Using directives
+using System.ComponentModel;
 using System.Globalization;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
@@ -27,7 +28,8 @@ public sealed partial class MainWindow : Window
 
     private const int LogicalWindowWidth = 430;
     private const int PlayerHeight = 304;
-    private const int ExpandedPlayerHeight = 456;
+    private const int ExpandedPlayerHeight = 432;
+    private const int OutsideActiveHoursBannerHeight = 48;
     private const int OptionsHeight = 650;
     private const int OperationsHeight = 768;
     private const int LogicalScreenMargin = 22;
@@ -56,8 +58,12 @@ public sealed partial class MainWindow : Window
     private bool _screenshotsEnabled;
     private const int PendingSnapshotDeleteSeconds = 30;
     private bool _pendingSnapshotDeleteInProgress;
+    private bool _outsideActiveHoursWarningVisible;
 
     #endregion
+
+    /// <summary>Gets the single observable AI state shared by the player menu and options surface.</summary>
+    public AiApplicationState AiState { get; }
 
     #region Events
 
@@ -82,7 +88,10 @@ public sealed partial class MainWindow : Window
     {
         _application = application;
         _viewModel = new MainViewModel(application);
+        AiState = new AiApplicationState(application);
         InitializeComponent();
+        AiState.PropertyChanged += AiState_PropertyChanged;
+        UpdateOpenAiMenuAccessibility();
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
@@ -101,7 +110,7 @@ public sealed partial class MainWindow : Window
         }
         ResizeForLogicalContent(PlayerHeight);
 
-        OptionsControl.Initialize(application);
+        OptionsControl.Initialize(application, AiState);
         OptionsControl.SettingsSaved += ApplySettings;
         OperationsControl.Initialize(application);
         _refreshTimer = DispatcherQueue.CreateTimer();
@@ -177,8 +186,17 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Opens the detached screenshot scheduling window.</summary>
     private async void ScheduleScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
+        => await OpenScheduleWindowAsync();
+
+    private async void OutsideActiveHoursSettingsLink_Click(object sender, RoutedEventArgs e)
+        => await OpenScheduleWindowAsync();
+
+    private async Task OpenScheduleWindowAsync()
     {
-        MoreButton.Flyout.Hide();
+        if (MoreButton.Flyout is Flyout flyout)
+        {
+            flyout.Hide();
+        }
 
         if (_scheduleWindow is not null)
         {
@@ -195,7 +213,8 @@ public sealed partial class MainWindow : Window
         var scheduleWindow = new ScheduleWindow(
             settingsResult.Value.ActiveHours,
             settingsResult.Value.ScreenshotIntervalMinutes,
-            _theme);
+            _theme,
+            settingsResult.Value.UiLanguage);
         scheduleWindow.ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed;
         scheduleWindow.Closed += ScheduleWindow_Closed;
         _scheduleWindow = scheduleWindow;
@@ -229,6 +248,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        ApplySettings(saveResult.Value);
         await RefreshDashboardAsync();
 
         if (sender is ScheduleWindow scheduleWindow)
@@ -329,15 +349,19 @@ public sealed partial class MainWindow : Window
             UiLocalization.Apply(content, _strings);
         }
 
-        var result = await _application.GetSettingsAsync(CancellationToken.None);
+        var settingsTask = _application.GetSettingsAsync(CancellationToken.None);
+        var aiStateTask = AiState.LoadAsync(CancellationToken.None);
+        await Task.WhenAll(settingsTask, aiStateTask);
+        var result = await settingsTask;
         if (!result.Succeeded || result.Value is null)
         {
             return;
         }
 
         _menuSettings = result.Value;
+        _screenshotsEnabled = result.Value.ScreenshotsEnabled;
+        UpdateScreenshotCaptureStatus();
         _updatingMenuState = true;
-        OpenAiMenuToggle.IsOn = result.Value.OpenAiEnabled;
         ScreenshotsMenuToggle.IsOn = result.Value.ScreenshotsEnabled;
         _updatingMenuState = false;
 
@@ -383,16 +407,16 @@ public sealed partial class MainWindow : Window
     /// <summary>Forwards the AI-toggle value to the application facade.</summary>
     private async void OpenAiMenuToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (_updatingMenuState)
+        if (_updatingMenuState || OpenAiMenuToggle.IsOn == AiState.Enabled)
         {
             return;
         }
 
-        var result = await _application.SetAiEnabledAsync(OpenAiMenuToggle.IsOn, CancellationToken.None);
+        var result = await AiState.SetEnabledAsync(OpenAiMenuToggle.IsOn, CancellationToken.None);
         if (!result.Succeeded)
         {
             _updatingMenuState = true;
-            OpenAiMenuToggle.IsOn = !OpenAiMenuToggle.IsOn;
+            OpenAiMenuToggle.IsOn = AiState.Enabled;
             _updatingMenuState = false;
         }
     }
@@ -416,7 +440,7 @@ public sealed partial class MainWindow : Window
         if (result.Succeeded && result.Value is not null)
         {
             _menuSettings = result.Value;
-            SettingsApplied?.Invoke(result.Value);
+            ApplySettings(result.Value);
             return;
         }
 
@@ -438,8 +462,8 @@ public sealed partial class MainWindow : Window
         _detailsExpanded = !_detailsExpanded;
         DetailsPanel.Visibility = _detailsExpanded ? Visibility.Visible : Visibility.Collapsed;
         DetailsChevron.Glyph = _detailsExpanded ? "\uE70E" : "\uE70D";
-        AutomationProperties.SetName(DetailsButton, _detailsExpanded ? "Hide last session" : "Show last session");
-        AnimateResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);
+        UpdateDetailsAccessibility();
+        AnimateResizeForLogicalContent(GetPlayerLogicalHeight());
         if (_detailsExpanded)
         {
             var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
@@ -504,7 +528,7 @@ public sealed partial class MainWindow : Window
         AboutPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
-        ResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);
+        ResizeForLogicalContent(GetPlayerLogicalHeight());
         ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
         DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
@@ -513,7 +537,13 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders current dashboard values without making application calls.</summary>
     private void UpdatePlayer(DashboardState state)
     {
-        CurrentContextText.Text = state.CurrentContext is "STATE_READY" ? T("StateReady") : state.CurrentContext is "STATE_IDLE" ? T("StateIdleContext") : state.CurrentContext;
+        UpdateActiveHoursAvailability(state.IsWithinActiveHours);
+        var currentContext = state.CurrentContext is "STATE_READY"
+            ? T("StateReady")
+            : state.CurrentContext is "STATE_IDLE"
+                ? T("StateIdleContext")
+                : state.CurrentContext;
+        CurrentContextText.Text = FormatCurrentContext(currentContext);
         KeyCountText.Text = state.TotalKeyPresses.ToString("N0");
         ClickCountText.Text = state.TotalMouseClicks.ToString("N0");
         ActiveTimeText.Text = TimeSpan.FromSeconds(state.ActiveSeconds).ToString(@"hh\:mm\:ss");
@@ -537,6 +567,14 @@ public sealed partial class MainWindow : Window
         }
 
         UpdatePendingSnapshotDeleteUi(state.PendingManualScreenshot);
+    }
+
+    private static string FormatCurrentContext(string context)
+    {
+        var parts = context.Split(" · ", 2, StringSplitOptions.TrimEntries);
+        return parts.Length == 2 && string.Equals(parts[0], parts[1], StringComparison.OrdinalIgnoreCase)
+            ? parts[0]
+            : context;
     }
 
     /// <summary>Updates the temporary delete action and its 30-second countdown.</summary>
@@ -568,7 +606,6 @@ public sealed partial class MainWindow : Window
         }
 
         var remainingSeconds = Math.Clamp(remaining.TotalSeconds, 0, PendingSnapshotDeleteSeconds);
-        SnapshotDeleteCountdownProgress.Value = remainingSeconds;
         SnapshotDeleteCountdownText.Text = $"00:{Math.Max(1, (int)Math.Ceiling(remainingSeconds)):00}";
         DeleteSnapshotButton.IsEnabled = true;
         DeleteSnapshotButton.Visibility = Visibility.Visible;
@@ -645,7 +682,6 @@ public sealed partial class MainWindow : Window
             LastScreenshotImage.Source = new BitmapImage(screenshotUri);
             LastScreenshotImage.Visibility = Visibility.Visible;
             ScreenshotPlaceholderImage.Visibility = Visibility.Collapsed;
-            ScreenshotStatusText.Visibility = Visibility.Collapsed;
             ScreenshotPreviewButton.IsHitTestVisible = true;
             AutomationProperties.SetName(ScreenshotPreviewButton, "Open latest screenshot");
             ToolTipService.SetToolTip(ScreenshotPreviewButton, "Open latest screenshot");
@@ -665,8 +701,7 @@ public sealed partial class MainWindow : Window
         LastScreenshotImage.Source = null;
         LastScreenshotImage.Visibility = Visibility.Collapsed;
         ScreenshotPlaceholderImage.Visibility = Visibility.Visible;
-        ScreenshotStatusText.Visibility = Visibility.Visible;
-        ScreenshotStatusText.Text = T(_screenshotsEnabled ? "ScreenshotUnavailableHint" : "ScreenshotDisabledHint");
+        UpdateScreenshotCaptureStatus();
         ScreenshotOpenOverlay.Opacity = 0;
         ScreenshotPreviewButton.IsHitTestVisible = false;
         AutomationProperties.SetName(ScreenshotPreviewButton, "No captured screenshot");
@@ -682,17 +717,76 @@ public sealed partial class MainWindow : Window
         _screenshotsEnabled = settings.ScreenshotsEnabled;
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         _scheduleWindow?.ApplyTheme(_theme);
+        _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
-        if (ScreenshotPlaceholderImage.Visibility == Visibility.Visible)
-        {
-            ScreenshotStatusText.Text = T(_screenshotsEnabled ? "ScreenshotUnavailableHint" : "ScreenshotDisabledHint");
-        }
+        UpdateDetailsAccessibility();
+        UpdateOpenAiMenuAccessibility();
+        UpdateScreenshotCaptureStatus();
         OptionsControl.ApplyLanguage(settings.UiLanguage);
         OperationsControl.ApplyLanguage(settings.UiLanguage);
         ApplyFlyoutPosition(_position);
 
         SettingsApplied?.Invoke(settings);
     }
+
+    private void UpdateScreenshotCaptureStatus() =>
+        ScreenshotStatusText.Text = T(_screenshotsEnabled ? "Screenshot.Status.On" : "Screenshot.Status.Off");
+
+    private void UpdateDetailsAccessibility()
+    {
+        var label = T(_detailsExpanded ? "LastSession.Hide" : "LastSession.Show");
+        AutomationProperties.SetName(DetailsButton, label);
+        ToolTipService.SetToolTip(DetailsButton, label);
+    }
+
+    private void AiState_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AiApplicationState.CanEnable)
+            or nameof(AiApplicationState.Enabled)
+            or nameof(AiApplicationState.IsStatusUnavailable))
+        {
+            UpdateOpenAiMenuAccessibility();
+        }
+    }
+
+    private void UpdateOpenAiMenuAccessibility()
+    {
+        AutomationProperties.SetName(OpenAiMenuToggle, T("Options.OpenAi.Header"));
+        AutomationProperties.SetHelpText(
+            OpenAiMenuToggle,
+            AiState.IsStatusUnavailable
+                ? T("Options.ApiKeyStatus.Unavailable")
+                : !AiState.CanEnable && !AiState.Enabled
+                    ? T("Options.OpenAi.KeyRequired")
+                    : string.Empty);
+    }
+
+    private void UpdateActiveHoursAvailability(bool isWithinActiveHours)
+    {
+        var warningVisible = !isWithinActiveHours;
+        var visibilityChanged = warningVisible != _outsideActiveHoursWarningVisible;
+        _outsideActiveHoursWarningVisible = warningVisible;
+        OutsideActiveHoursBanner.Visibility = warningVisible ? Visibility.Visible : Visibility.Collapsed;
+        OutsideActiveHoursMessageRun.Text = T("Schedule.OutsideActiveHoursBanner");
+        OutsideActiveHoursLinkRun.Text = T("Schedule.ConfigureHours");
+        AutomationProperties.SetName(OutsideActiveHoursBanner, $"{OutsideActiveHoursMessageRun.Text} {OutsideActiveHoursLinkRun.Text}");
+
+        if (visibilityChanged && PlayerPanel.Visibility == Visibility.Visible)
+        {
+            if (RootGrid.IsLoaded)
+            {
+                AnimateResizeForLogicalContent(GetPlayerLogicalHeight());
+            }
+            else
+            {
+                ResizeForLogicalContent(GetPlayerLogicalHeight());
+            }
+        }
+    }
+
+    private int GetPlayerLogicalHeight() =>
+        (_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight)
+        + (_outsideActiveHoursWarningVisible ? OutsideActiveHoursBannerHeight : 0);
 
     private string T(string key) => _strings.Translate(key);
 
