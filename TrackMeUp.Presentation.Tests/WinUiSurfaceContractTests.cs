@@ -34,6 +34,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(about.Descendants(), element => HasName(element, "AboutIcon") && element.Attribute("CornerRadius")?.Value == "20");
         Assert.Contains(about.Descendants(), element => HasName(element, "CreatedByLink") && element.Attribute("Content")?.Value == "Umberto Giacobbi");
         Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Stretch");
+        Assert.DoesNotContain(about.Descendants(), element => element.Attribute("Text")?.Value == "•••");
         Assert.Contains("private const int LogicalWindowWidth = 430;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeight = 450;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
@@ -116,7 +117,7 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
-        Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Contains(moreButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE712");
         Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
         Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
         Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
@@ -131,12 +132,14 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Stretch", deleteCountdownProgress.Attribute("HorizontalAlignment")?.Value);
         Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("TakeScreenshotButton.IsEnabled = true;", mainSource, StringComparison.Ordinal);
-        Assert.Equal(5, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Equal(6, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
         Assert.Equal(
-            ["Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
+            ["Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "Main.Menu.Operations", "MenuToggleOpenAi", "MenuToggleScreenshot", "MenuTitleAbout"],
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ShowPanel(OperationsPanel, OperationsHeight);", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ApplyOverflowCommandLabel(OperationsMenuItem, T(\"Main.Menu.Operations\"));", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
         Assert.Contains("CaptureManualScreenshotAsync", mainSource, StringComparison.Ordinal);
         Assert.Contains("DeletePendingManualScreenshotAsync", mainSource, StringComparison.Ordinal);
@@ -148,23 +151,38 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void ScreenshotWindow_ExposesDeletionActionsFromEllipsis()
+    public void ScreenshotWindow_ExposesFileAndDeletionActionsFromEllipsis()
     {
         var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
         var moreButton = screenshotWindow.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var menu = screenshotWindow.Descendants().Single(element => element.Name.LocalName == "Flyout" && element.Attribute("Opened")?.Value == "MoreMenu_Opened");
+        var actionInfoBar = screenshotWindow.Descendants().Single(element => HasName(element, "ScreenshotActionInfoBar"));
+        var openFolderItem = menu.Descendants().Single(element => HasName(element, "OpenScreenshotFolderMenuItem"));
         var menuTags = menu
             .Descendants()
             .Where(element => element.Name.LocalName == "TextBlock" && element.Attribute("Tag") is not null)
             .Select(element => element.Attribute("Tag")!.Value)
             .ToArray();
 
-        Assert.Contains(moreButton.Descendants(), element => element.Attribute("Text")?.Value == "•••");
+        Assert.Contains(moreButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE712");
         Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
         Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
-        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
-        Assert.Equal(["Screenshots.Menu.DeleteScreenshot", "Screenshots.Menu.DeleteSnapshot"], menuTags);
+        Assert.Equal("False", actionInfoBar.Attribute("IsOpen")?.Value);
+        Assert.Equal(5, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Equal(
+            ["Screenshots.Menu.Save", "Screenshots.Menu.Share", "Screenshots.Menu.OpenFolder", "Screenshots.Menu.DeleteScreenshot", "Screenshots.Menu.DeleteSnapshot"],
+            menuTags);
+        Assert.Contains("SaveScreenshotMenuItem_Click", source, StringComparison.Ordinal);
+        Assert.Contains("ShareScreenshotMenuItem_Click", source, StringComparison.Ordinal);
+        Assert.Contains("OpenScreenshotFolderMenuItem_Click", source, StringComparison.Ordinal);
+        Assert.Contains("SaveScreenshotMenuItem.IsEnabled = hasSelection;", source, StringComparison.Ordinal);
+        Assert.Contains("ShareScreenshotMenuItem.IsEnabled = hasSelection;", source, StringComparison.Ordinal);
+        Assert.Null(openFolderItem.Attribute("IsEnabled"));
+        Assert.DoesNotContain("OpenScreenshotFolderMenuItem.IsEnabled = hasSelection;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("_ = GetSelectedItem();", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyMenuCommandLabel(SaveScreenshotMenuItem, \"Screenshots.Menu.Save\");", source, StringComparison.Ordinal);
+        Assert.Contains("ShowActionResult(result", source, StringComparison.Ordinal);
         Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
         Assert.Contains("DeleteSnapshotAsync", source, StringComparison.Ordinal);
     }

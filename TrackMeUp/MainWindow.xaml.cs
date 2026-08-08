@@ -329,6 +329,8 @@ public sealed partial class MainWindow : Window
             UiLocalization.Apply(content, _strings);
         }
 
+        ApplyOverflowCommandLabel(OperationsMenuItem, T("Main.Menu.Operations"));
+
         var result = await _application.GetSettingsAsync(CancellationToken.None);
         if (!result.Succeeded || result.Value is null)
         {
@@ -478,16 +480,12 @@ public sealed partial class MainWindow : Window
     /// <summary>Returns from operational tools to the player panel.</summary>
     private void OperationsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
 
-    /// <summary>Returns from the inline about panel to the player panel.</summary>
-    private void AboutBackButton_Click(object sender, RoutedEventArgs e) => ShowPlayer();
-
     /// <summary>Shows one view panel and applies its expected compact size.</summary>
     private void ShowPanel(FrameworkElement panel, int height)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
-        AboutPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
         TitleBarBackButton.Visibility = ReferenceEquals(panel, OptionsPanel) ? Visibility.Visible : Visibility.Collapsed;
         ResizeForLogicalContent(height);
@@ -501,7 +499,6 @@ public sealed partial class MainWindow : Window
     {
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
-        AboutPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         ResizeForLogicalContent(_detailsExpanded ? ExpandedPlayerHeight : PlayerHeight);

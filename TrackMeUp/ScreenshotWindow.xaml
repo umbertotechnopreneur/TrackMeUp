@@ -14,6 +14,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -44,12 +45,11 @@
                 Click="TitleBarMoreButton_Click"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
                 ToolTipService.ToolTip="Menu">
-                <TextBlock
+                <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
-                    CharacterSpacing="80"
+                    FontFamily="Segoe Fluent Icons"
                     FontSize="19"
-                    FontWeight="Bold"
-                    Text="•••"/>
+                    Glyph="&#xE712;"/>
                 <Button.Flyout>
                     <Flyout Opened="MoreMenu_Opened"
                             Placement="TopEdgeAlignedRight"
@@ -168,6 +168,79 @@
                                 </Style>
                             </StackPanel.Resources>
                             <Button
+                                x:Name="SaveScreenshotMenuItem"
+                                AutomationProperties.Name="Save selected image"
+                                Click="SaveScreenshotMenuItem_Click"
+                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource ScreenshotOverflowIconChipStyle}">
+                                        <FontIcon
+                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Glyph="&#xE74E;"/>
+                                    </Border>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Tag="Screenshots.Menu.Save"
+                                        VerticalAlignment="Center"
+                                        Text="Save selected image"/>
+                                </Grid>
+                            </Button>
+                            <Button
+                                x:Name="ShareScreenshotMenuItem"
+                                AutomationProperties.Name="Share with another app"
+                                Click="ShareScreenshotMenuItem_Click"
+                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource ScreenshotOverflowIconChipStyle}">
+                                        <FontIcon
+                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Glyph="&#xE72D;"/>
+                                    </Border>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Tag="Screenshots.Menu.Share"
+                                        VerticalAlignment="Center"
+                                        Text="Share with another app"/>
+                                </Grid>
+                            </Button>
+                            <Button
+                                x:Name="OpenScreenshotFolderMenuItem"
+                                AutomationProperties.Name="Open containing folder"
+                                Click="OpenScreenshotFolderMenuItem_Click"
+                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource ScreenshotOverflowIconChipStyle}">
+                                        <FontIcon
+                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Glyph="&#xE8B7;"/>
+                                    </Border>
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Tag="Screenshots.Menu.OpenFolder"
+                                        VerticalAlignment="Center"
+                                        Text="Open containing folder"/>
+                                </Grid>
+                            </Button>
+                            <Border
+                                Height="1"
+                                Margin="0,5"
+                                Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                            <Button
                                 x:Name="DeleteScreenshotMenuItem"
                                 AutomationProperties.Name="Delete screenshot"
                                 Click="DeleteScreenshotMenuItem_Click"
@@ -221,19 +294,27 @@
             </Button>
         </Grid>
 
+        <InfoBar
+            x:Name="ScreenshotActionInfoBar"
+            Grid.Row="1"
+            Margin="32,8,32,0"
+            AutomationProperties.LiveSetting="Polite"
+            IsClosable="True"
+            IsOpen="False" />
+
         <controls:ScreenshotHeaderControl
             x:Name="HeaderSection"
-            Grid.Row="1"
+            Grid.Row="2"
             Margin="32,16,32,0" />
 
         <controls:ScreenshotGalleryViewControl
             x:Name="GallerySection"
-            Grid.Row="2"
+            Grid.Row="3"
             Margin="32,16,32,10" />
 
         <controls:ScreenshotTimelineControl
             x:Name="TimelineSection"
-            Grid.Row="3"
+            Grid.Row="4"
             Margin="32,0,32,20" />
     </Grid>
 </Window>

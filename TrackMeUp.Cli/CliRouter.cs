@@ -140,13 +140,32 @@ public sealed class CliRouter
         return result.Succeeded ? 0 : ExitCodeMapper.Map(result.Code);
     }
 
-    private async Task<int> ScreenshotAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
+    private async Task<int> ScreenshotAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        "capture" => await WriteAsync(_application.CaptureScreenshotAsync(new CaptureScreenshotRequest(ReadOption(arguments, "--mode") ?? "all-screens", arguments.Contains("--keep", StringComparer.OrdinalIgnoreCase), arguments.Contains("--watermark", StringComparer.OrdinalIgnoreCase), ScreenshotCaptureOrigins.Manual), cancellationToken)),
-        "latest" => await WriteAsync(_application.GetLatestScreenshotAsync(cancellationToken)),
-        "open-folder" => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
-        _ => InvalidCommand()
-    };
+        if (arguments.ElementAtOrDefault(1)?.Equals("capture", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var modeIndex = arguments.ToList().FindIndex(argument => argument.Equals("--mode", StringComparison.OrdinalIgnoreCase));
+            if (modeIndex >= 0 && modeIndex + 1 >= arguments.Count)
+            {
+                return InvalidCommand();
+            }
+
+            return await WriteAsync(_application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest(
+                    ReadOption(arguments, "--mode"),
+                    arguments.Contains("--keep", StringComparer.OrdinalIgnoreCase),
+                    arguments.Contains("--watermark", StringComparer.OrdinalIgnoreCase),
+                    ScreenshotCaptureOrigins.Manual),
+                cancellationToken));
+        }
+
+        return arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
+        {
+            "latest" => await WriteAsync(_application.GetLatestScreenshotAsync(cancellationToken)),
+            "open-folder" => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
+            _ => InvalidCommand()
+        };
+    }
 
     private async Task<int> AiAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {

@@ -133,6 +133,84 @@ public sealed class SnapshotAnalysisFlowTests
     }
 
     [Fact]
+    public async Task CaptureScreenshotWithoutExplicitMode_UsesPersistedCaptureMode()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = false,
+                ScreenshotCaptureMode = "active-window",
+                ScreenshotDirectory = dataDirectory
+            });
+
+            var capture = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(store, capture, analysis);
+
+            var result = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest(
+                    Mode: null,
+                    Keep: true,
+                    Watermark: false,
+                    CaptureOrigin: ScreenshotCaptureOrigins.Scheduled,
+                    DeferAiAnalysis: true),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(1, capture.CallCount);
+            Assert.Equal("active-window", capture.LastCaptureMode);
+            Assert.Equal(0, analysis.CallCount);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CaptureScreenshot_RejectsUnsupportedExplicitModeBeforeCapture()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = false,
+                ScreenshotCaptureMode = "active-window",
+                ScreenshotDirectory = dataDirectory
+            });
+
+            var capture = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(store, capture, analysis);
+
+            var result = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest("unsupported-mode", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                CancellationToken.None);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("screenshot.mode.invalid", result.Code);
+            Assert.Equal("ScreenshotModeUnsupported", result.MessageKey);
+            var issue = Assert.Single(result.Issues);
+            Assert.Equal("mode", issue.Field);
+            Assert.Equal("unsupported", issue.Code);
+            Assert.Equal("ScreenshotModeUnsupported", issue.MessageKey);
+            Assert.Equal(0, capture.CallCount);
+            Assert.Equal(0, analysis.CallCount);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CaptureScreenshot_RejectsUnsupportedPersistedModelBeforeCapture()
     {
         var dataDirectory = CreateTemporaryDirectory();
@@ -372,11 +450,14 @@ public sealed class SnapshotAnalysisFlowTests
 
         public int CallCount { get; private set; }
 
+        public string? LastCaptureMode { get; private set; }
+
         public ScreenshotCaptureResult Result { get; }
 
         public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin)
         {
             CallCount++;
+            LastCaptureMode = captureMode;
             return Result;
         }
     }
