@@ -23,6 +23,7 @@ alwaysApply: true
 - Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
 - Do not commit credentials, private secrets, machine paths, or secrets.
 - Keep unrelated working-tree changes untouched.
+- Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
 - Exclude generated artifacts (`bin/`, `obj/`, `artifacts/`, `.vs/`) from commits.
 - Prefer explicit, scoped edits and minimal churn.
 - WinUI views/code-behind and Spectre.Console commands/renderers are passive presentation code; they call `ITrackMeUpApplication` and never construct infrastructure services or perform I/O, process, registry, environment, HTTP, capture, hook, or persistence operations.

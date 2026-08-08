@@ -110,7 +110,20 @@ trackmeup.exe -cli tracking start
 trackmeup.exe -cli report today
 trackmeup.exe -cli ai status
 trackmeup.exe -cli retention preview
-pwsh -NoProfile -File .\scripts\test-cli.ps1
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action TestCli
+```
+
+Repository automation uses a single PowerShell 7 entrypoint. Running it without
+arguments opens the interactive control center; explicit `-Action` calls are
+safe for agents and CI-style terminals.
+
+```powershell
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Preflight
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Build -Platform x64 -WarnAsError
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action BuildReports
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
 ```
 
 Screenshots, AI, and retention mutations are guarded by the same privacy and confirmation rules in the app and CLI. API keys are never accepted as command-line arguments.
@@ -139,6 +152,7 @@ OpenAI settings validation checklist: open OpenAI configuration and confirm that
 - `TrackMeUp.Cli/` — PowerShell-facing CLI.
 - `TrackMeUp.Reports.Web/` — source and bundled assets for local reports.
 - `TrackMeUp.*.Tests/` — core, presentation, and CLI tests.
+- `scripts/TrackMeUp.ps1` — unified PowerShell 7 entrypoint for repository automation and the interactive control center.
 - `docs/PRIVACY.md` — plain-language privacy and dependency census.
 - `docs/CLI_IMPLEMENTATION_PLAN.md` — internal engineering notes for the CLI and shared application surface.
 - `store/` — versioned Microsoft Store copy, public links, screenshot inventory, and Partner Center publishing notes.

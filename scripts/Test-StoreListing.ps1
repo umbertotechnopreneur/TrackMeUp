@@ -92,7 +92,7 @@ if (-not [string]::IsNullOrWhiteSpace($listing.publishing.partnerCenterMetadataP
     Assert-Condition -Condition ($metadataPath.StartsWith($repositoryRootPrefix, [StringComparison]::OrdinalIgnoreCase)) -Message 'Partner Center metadata path must stay inside the repository.'
 }
 
-$secretPattern = '(?i)(sk-[A-Za-z0-9]|clientSecret|accessToken|api[_-]?key\s*[:=]\s*["''][^"'']+)
+$secretPattern = "(?i)(sk-[A-Za-z0-9]|clientSecret|accessToken|api[_-]?key\s*[:=]\s*[""'][^""']+)"
 Assert-Condition -Condition ($raw -notmatch $secretPattern) -Message 'Store listing appears to contain a credential or access token.'
 
 Write-Host "Store listing validation passed: $resolvedPath"

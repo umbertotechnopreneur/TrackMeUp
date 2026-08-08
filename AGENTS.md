@@ -7,6 +7,7 @@ These instructions apply to all changes in this repository.
 - This repository is pre-production: do not add backward-compatibility layers for superseded contracts, persisted artifacts, filenames, or APIs unless explicitly requested. Prefer the clean current design and make migrations explicit.
 - Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
 - Preserve unrelated local changes unless explicitly requested.
+- Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
 - Keep WinUI views, code-behind, Spectre commands, prompts, and renderers passive: they may only collect input, bind/render DTOs, and invoke `ITrackMeUpApplication`.
 - Put application behavior, persistence, OS interop, capture, environment access, HTTP, retention, and startup changes behind `TrackMeUp.Core` application services.
 - Do not create a second tracking runtime; use the hashed-installation mutex and same-user named-pipe protocol through the shared facade.
