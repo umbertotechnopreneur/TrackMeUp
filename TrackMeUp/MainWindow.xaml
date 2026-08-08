@@ -75,7 +75,7 @@
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
-                    FontSize="17"
+                    FontSize="19"
                     Glyph="&#xE712;" />
             </Button>
         </Grid>
@@ -412,6 +412,27 @@
                                                        Tag="MenuTitleOptions"
                                                        VerticalAlignment="Center"
                                                        Text="App options"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button
+                                        x:Name="OperationsMenuItem"
+                                        AutomationProperties.Name="Tools and diagnostics"
+                                        Click="OperationsMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                          Glyph="&#xE90F;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="Main.Menu.Operations"
+                                                       VerticalAlignment="Center"
+                                                       Text="Tools and diagnostics"/>
                                         </Grid>
                                     </Button>
                                     <Border MinHeight="44"
@@ -926,40 +947,6 @@
             Background="Transparent"
             Visibility="Collapsed">
             <controls:OperationsControl x:Name="OperationsControl" BackRequested="OperationsControl_BackRequested" />
-        </Border>
-
-        <Border
-            x:Name="AboutPanel"
-            Grid.Row="1"
-            Margin="12"
-            Padding="22"
-            Background="Transparent"
-            Visibility="Collapsed">
-            <ScrollViewer
-                HorizontalScrollBarVisibility="Disabled"
-                HorizontalScrollMode="Disabled"
-                VerticalScrollBarVisibility="Auto"
-                VerticalScrollMode="Auto">
-                <StackPanel Padding="0,0,6,0" Spacing="12">
-                    <Button
-                        MinWidth="44"
-                        MinHeight="44"
-                        Padding="8"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="Torna al player"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
-                        Click="AboutBackButton_Click"
-                        >
-                        <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE72B;" />
-                    </Button>
-                    <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="TRACK ME UP" TextWrapping="Wrap" />
-                    <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="Personal activity player" TextWrapping="Wrap" />
-                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <TextBlock Tag="About.Description" Style="{StaticResource BodyTextBlockStyle}" Text="A local activity player for understanding time, applications and work rhythm. Typed content is never recorded; snapshots and OpenAI are always opt-in." TextWrapping="Wrap" />
-                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="MVP · MIT License" />
-                </StackPanel>
-            </ScrollViewer>
         </Border>
 
         <Border

@@ -129,6 +129,51 @@ public sealed class CliRouterTests
     }
 
     [Fact]
+    public async Task ScreenshotCaptureWithoutMode_ForwardsPersistedDefaultSentinel()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/screenshot", "capture", "--keep"], CancellationToken.None);
+
+        Assert.Equal(0, exitCode);
+        Assert.NotNull(application.LastCaptureRequest);
+        Assert.Null(application.LastCaptureRequest!.Mode);
+    }
+
+    [Fact]
+    public async Task ScreenshotCaptureWithInvalidMode_PropagatesApplicationValidationFailure()
+    {
+        var application = new RecordingApplication
+        {
+            ScreenshotCaptureResponse = OperationResult<ScreenshotCaptureResult>.Failure(
+                "screenshot.mode.invalid",
+                "ScreenshotModeUnsupported",
+                new ValidationIssue("mode", "unsupported", "ScreenshotModeUnsupported"))
+        };
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/screenshot", "capture", "--mode", "unsupported-mode"], CancellationToken.None);
+
+        Assert.Equal(3, exitCode);
+        Assert.NotNull(application.LastCaptureRequest);
+        Assert.Equal("unsupported-mode", application.LastCaptureRequest!.Mode);
+    }
+
+    [Fact]
+    public async Task ScreenshotCaptureWithMissingModeValue_FailsBeforeCallingApplication()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/screenshot", "capture", "--mode"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Null(application.LastCaptureRequest);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
     public async Task SlashCommandHelp_DoesNotCallApplicationFacade()
     {
         var application = new RecordingApplication();
@@ -165,6 +210,8 @@ public sealed class CliRouterTests
         internal int SettingsReads { get; private set; }
         internal int UiOpenCalls { get; private set; }
         internal int TotalCalls { get; private set; }
+        internal CaptureScreenshotRequest? LastCaptureRequest { get; private set; }
+        internal OperationResult<ScreenshotCaptureResult>? ScreenshotCaptureResponse { get; init; }
 
         public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken)
         {
@@ -211,7 +258,15 @@ public sealed class CliRouterTests
         public Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken) => Unsupported<FocusSessionState>();
         public Task<OperationResult<FocusSessionSummary?>> StopFocusSessionAsync(bool summarize, CancellationToken cancellationToken) => Unsupported<FocusSessionSummary?>();
         public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => Unsupported<SystemSnapshot>();
-        public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => Unsupported<ScreenshotCaptureResult>();
+        public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken)
+        {
+            TotalCalls++;
+            LastCaptureRequest = request;
+            return Task.FromResult(ScreenshotCaptureResponse ?? OperationResult<ScreenshotCaptureResult>.Success(
+                "screenshot.captured",
+                "ScreenshotCaptured",
+                new ScreenshotCaptureResult("test-capture", ["test.webp"], ["test.webp"], ScreenshotCaptureOrigins.Manual)));
+        }
         /// <inheritdoc />
         public Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken) => Unsupported<PendingManualScreenshotState>();
         /// <inheritdoc />

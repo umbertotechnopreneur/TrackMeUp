@@ -382,7 +382,15 @@ public sealed partial class ScreenshotWindow : Window
             UiLocalization.Apply(content, _strings);
         }
 
+        ApplyMenuCommandLabel(SaveScreenshotMenuItem, "Screenshots.Menu.Save");
+        ApplyMenuCommandLabel(ShareScreenshotMenuItem, "Screenshots.Menu.Share");
+        ApplyMenuCommandLabel(OpenScreenshotFolderMenuItem, "Screenshots.Menu.OpenFolder");
+        ApplyMenuCommandLabel(DeleteScreenshotMenuItem, "Screenshots.Menu.DeleteScreenshot");
+        ApplyMenuCommandLabel(DeleteSnapshotMenuItem, "Screenshots.Menu.DeleteSnapshot");
+
         var hasSelection = _items.Count > 0;
+        SaveScreenshotMenuItem.IsEnabled = hasSelection;
+        ShareScreenshotMenuItem.IsEnabled = hasSelection;
         DeleteScreenshotMenuItem.IsEnabled = hasSelection;
         DeleteSnapshotMenuItem.IsEnabled = hasSelection;
     }
@@ -394,6 +402,9 @@ public sealed partial class ScreenshotWindow : Window
             flyout.ShowAt(TitleBarMoreButton);
         }
     }
+
+    private void ApplyMenuCommandLabel(Button button, string key) =>
+        AutomationProperties.SetName(button, _strings.Translate(key));
 
     private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarLayout();
 
@@ -431,12 +442,15 @@ public sealed partial class ScreenshotWindow : Window
         {
             await LoadGalleryAsync(_selectedDate);
         }
+
+        ShowActionResult(result, "Screenshots.Action.ScreenshotDeleted");
     }
 
     private async void DeleteSnapshotMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var selected = GetSelectedItem();
-        await _application.DeleteSnapshotAsync(selected.Path, _lifetimeCancellation.Token);
+        var result = await _application.DeleteSnapshotAsync(selected.Path, _lifetimeCancellation.Token);
+        ShowActionResult(result, "Screenshots.Action.SnapshotDeleted");
     }
 
     private async void SaveScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
@@ -461,20 +475,29 @@ public sealed partial class ScreenshotWindow : Window
             return;
         }
 
-        await _application.SaveScreenshotAsync(selected.Path, destination.Path, _lifetimeCancellation.Token);
+        var result = await _application.SaveScreenshotAsync(selected.Path, destination.Path, _lifetimeCancellation.Token);
+        ShowActionResult(result, "Screenshots.Action.Saved");
     }
 
     private async void OpenScreenshotFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        _ = GetSelectedItem();
-        await _application.OpenScreenshotFolderAsync(_lifetimeCancellation.Token);
+        var result = await _application.OpenScreenshotFolderAsync(_lifetimeCancellation.Token);
+        ShowActionResult(result, "Screenshots.Action.FolderOpened");
     }
 
     private async void ShareScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var selected = GetSelectedItem();
         var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64();
-        await _application.ShareScreenshotAsync(selected.Path, windowHandle, _lifetimeCancellation.Token);
+        var result = await _application.ShareScreenshotAsync(selected.Path, windowHandle, _lifetimeCancellation.Token);
+        ShowActionResult(result, "Screenshots.Action.ShareOpened");
+    }
+
+    private void ShowActionResult<T>(OperationResult<T> result, string successKey)
+    {
+        ScreenshotActionInfoBar.Severity = result.Succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+        ScreenshotActionInfoBar.Message = _strings.Translate(result.Succeeded ? successKey : "Screenshots.Action.Failed");
+        ScreenshotActionInfoBar.IsOpen = true;
     }
 
     private ScreenshotGalleryItem GetSelectedItem()

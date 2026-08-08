@@ -244,6 +244,21 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _store.LoadSettings();
+        var mode = request.Mode switch
+        {
+            null => settings.ScreenshotCaptureMode,
+            "all-screens" => "all-screens",
+            "active-window" => "active-window",
+            _ => null
+        };
+        if (mode is null)
+        {
+            return OperationResult<ScreenshotCaptureResult>.Failure(
+                "screenshot.mode.invalid",
+                "ScreenshotModeUnsupported",
+                new ValidationIssue("mode", "unsupported", "ScreenshotModeUnsupported"));
+        }
+
         if (!settings.ScreenshotsEnabled)
         {
             return OperationResult<ScreenshotCaptureResult>.Failure("screenshot.disabled", "ScreenshotsDisabled");
@@ -281,7 +296,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             }
         }
 
-        var mode = request.Mode is "all-screens" or "active-window" ? request.Mode : settings.ScreenshotCaptureMode;
         // Capture happens only after the privacy and enabled-state gates above have succeeded.
         var result = _capture.CaptureByMode(
             settings.ScreenshotDirectory,
@@ -338,7 +352,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         var capture = await CaptureScreenshotAsync(
-            new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: true, ScreenshotCaptureOrigins.Manual, DeferAiAnalysis: true),
+            new CaptureScreenshotRequest(
+                // The player is foreground when its capture button runs, so active-window would capture TrackMeUp itself.
+                Mode: "all-screens",
+                Keep: true,
+                Watermark: true,
+                CaptureOrigin: ScreenshotCaptureOrigins.Manual,
+                DeferAiAnalysis: true),
             cancellationToken);
         if (!capture.Succeeded || capture.Value is not { } captured || captured.StoredScreenshotPaths.FirstOrDefault() is not { } screenshotPath)
         {
@@ -1186,7 +1206,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             {
                 // The retained image is the primary result. AI enrichment is attempted only after local capture succeeds.
                 var scheduledCapture = await CaptureScreenshotAsync(
-                    new CaptureScreenshotRequest("all-screens", true, true, ScreenshotCaptureOrigins.Scheduled, DeferAiAnalysis: true),
+                    new CaptureScreenshotRequest(
+                        Mode: null,
+                        Keep: true,
+                        Watermark: true,
+                        CaptureOrigin: ScreenshotCaptureOrigins.Scheduled,
+                        DeferAiAnalysis: true),
                     CancellationToken.None);
                 if (!scheduledCapture.Succeeded || scheduledCapture.Value is not { } retainedCapture)
                 {

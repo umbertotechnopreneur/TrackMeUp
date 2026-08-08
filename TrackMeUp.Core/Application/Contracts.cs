@@ -25,8 +25,13 @@ public sealed record OperationResult<T>(
 public sealed record StartTrackingRequest(bool SafeMode = false, string? Source = null);
 
 /// <summary>Requests screenshot capture without passing presentation objects into the application layer.</summary>
+/// <param name="Mode">The explicit capture mode, or <see langword="null"/> to use the persisted application setting.</param>
+/// <param name="Keep">Whether retained screenshot artifacts should remain after optional analysis.</param>
+/// <param name="Watermark">Whether the capture may include the configured watermark.</param>
+/// <param name="CaptureOrigin">The stable origin recorded with the capture.</param>
+/// <param name="DeferAiAnalysis">Whether AI analysis must wait for an explicit later request.</param>
 public sealed record CaptureScreenshotRequest(
-    string Mode,
+    string? Mode,
     bool Keep,
     bool Watermark,
     string CaptureOrigin,
