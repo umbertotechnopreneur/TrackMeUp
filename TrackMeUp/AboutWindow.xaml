@@ -9,23 +9,6 @@
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
-        <Grid.Resources>
-            <LinearGradientBrush x:Key="AboutAccentBrush" StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#FFFFB197" Offset="0" />
-                <GradientStop Color="#FFF27553" Offset="1" />
-            </LinearGradientBrush>
-            <Style x:Key="AboutLinkButtonStyle" TargetType="HyperlinkButton">
-                <Setter Property="MinHeight" Value="44" />
-                <Setter Property="Padding" Value="12,9" />
-                <Setter Property="HorizontalAlignment" Value="Stretch" />
-                <Setter Property="HorizontalContentAlignment" Value="Center" />
-                <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="7" />
-            </Style>
-        </Grid.Resources>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
@@ -54,8 +37,10 @@
                 Text="TRACK ME UP" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="28,12,28,24">
+        <Grid Grid.Row="1" Padding="28,10,28,24" RowSpacing="0">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -65,38 +50,27 @@
 
             <Grid x:Name="ProductPanel" ColumnSpacing="18">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="88" />
+                    <ColumnDefinition Width="68" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border
+                <Viewbox
                     x:Name="AboutIcon"
-                    Width="88"
-                    Height="88"
-                    Translation="0,0,12"
-                    Background="{StaticResource AboutAccentBrush}"
-                    BorderBrush="#99FFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="20">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-                    <Viewbox Width="60" Height="48" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Path
-                            Data="M 4,30 L 18,30 L 28,10 L 40,48 L 51,27 L 68,27"
-                            Stroke="White"
-                            StrokeEndLineCap="Round"
-                            StrokeLineJoin="Round"
-                            StrokeStartLineCap="Round"
-                            StrokeThickness="3.2" />
-                    </Viewbox>
-                </Border>
+                    Width="62"
+                    Height="46"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center">
+                    <Path
+                        Data="M 4,30 L 18,30 L 28,10 L 40,48 L 51,27 L 68,27"
+                        Stroke="{ThemeResource SystemControlHighlightAccentBrush}"
+                        StrokeEndLineCap="Round"
+                        StrokeLineJoin="Round"
+                        StrokeStartLineCap="Round"
+                        StrokeThickness="3.2" />
+                </Viewbox>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-                    <TextBlock
-                        FontSize="19"
-                        FontWeight="SemiBold"
-                        Text="TRACK ME UP" />
+                    <TextBlock FontSize="19" FontWeight="SemiBold" Text="TRACK ME UP" />
                     <StackPanel Orientation="Horizontal" Spacing="5">
                         <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
                         <TextBlock x:Name="VersionText" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
@@ -114,52 +88,94 @@
             <Rectangle
                 Grid.Row="1"
                 Height="1"
-                Margin="0,18,0,16"
+                Margin="0,18,0,14"
                 Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-            <Grid x:Name="AboutActions" Grid.Row="2" ColumnSpacing="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <HyperlinkButton
-                    Grid.Column="0"
-                    AutomationProperties.Name="Contact TrackMeUp"
-                    NavigateUri="https://umbertogiacobbi.com"
-                    Style="{StaticResource AboutLinkButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="16" Glyph="&#xE715;" />
-                        <TextBlock Text="Contact us" />
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="14">
+                <Button
+                    x:Name="ContactButton"
+                    Padding="0,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="ContactButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="14" Glyph="&#xE715;" />
+                        <TextBlock Tag="About.Contact" Text="Contact" />
                     </StackPanel>
-                </HyperlinkButton>
-
-                <HyperlinkButton
-                    Grid.Column="1"
-                    AutomationProperties.Name="Open the TrackMeUp GitHub repository"
-                    NavigateUri="https://github.com/umbertotechnopreneur/TrackMeUp"
-                    Style="{StaticResource AboutLinkButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="16" Glyph="&#xE71B;" />
-                        <TextBlock Text="GitHub repository" />
+                </Button>
+                <Button
+                    x:Name="RepositoryButton"
+                    Padding="0,4"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="RepositoryButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="14" Glyph="&#xE71B;" />
+                        <TextBlock Tag="About.Repository" Text="GitHub" />
                     </StackPanel>
-                </HyperlinkButton>
-            </Grid>
+                </Button>
+            </StackPanel>
 
-            <StackPanel Grid.Row="3" VerticalAlignment="Center" Spacing="1">
-                <TextBlock Opacity="0.68" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
-                <HyperlinkButton
-                    x:Name="CreatedByLink"
+            <Rectangle
+                Grid.Row="3"
+                Height="1"
+                Margin="0,14,0,14"
+                Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <StackPanel Grid.Row="4" Spacing="9">
+                <TextBlock Tag="About.Diagnostics" FontSize="15" FontWeight="SemiBold" Text="Diagnostics" />
+                <TextBlock
+                    Tag="About.Diagnostics.Description"
+                    Opacity="0.72"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="Open the current log, or share a bounded copy with private paths and secrets removed."
+                    TextWrapping="WrapWholeWords" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        x:Name="ShowLogButton"
+                        Tag="About.ShowLog"
+                        MinHeight="40"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Click="ShowLogButton_Click"
+                        Content="Show log" />
+                    <Button
+                        x:Name="ShareLogButton"
+                        Tag="About.ShareLog"
+                        Grid.Column="1"
+                        MinHeight="40"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Click="ShareLogButton_Click"
+                        Content="Share log" />
+                </Grid>
+                <InfoBar
+                    x:Name="DiagnosticsInfoBar"
+                    IsClosable="True"
+                    IsOpen="False"
+                    Severity="Informational" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="5" Margin="0,14,0,12" VerticalAlignment="Bottom" Spacing="1">
+                <TextBlock Tag="About.CreatedBy" Opacity="0.68" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
+                <Button
+                    x:Name="CreatedByButton"
                     Padding="0"
                     HorizontalAlignment="Left"
-                    Content="Umberto Giacobbi"
-                    NavigateUri="https://umbertogiacobbi.com" />
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="ContactButton_Click"
+                    Content="Umberto Giacobbi" />
             </StackPanel>
 
             <Button
                 x:Name="CloseButton"
                 Tag="About.Close"
-                Grid.Row="4"
+                Grid.Row="6"
                 MinHeight="44"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center"

@@ -135,6 +135,94 @@ public sealed class SnapshotAnalysisFlowTests
     }
 
     [Fact]
+    public async Task ProviderRateLimit_IsNotMisclassifiedAsInvalidConfiguration()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+
+            var capture = new RecordingCaptureService(dataDirectory);
+            await using var application = CreateApplication(store, capture, new ProviderFailureAnalysisService());
+
+            var captureResult = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                CancellationToken.None);
+            var deferredCapture = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest(
+                    "all-screens",
+                    Keep: true,
+                    Watermark: false,
+                    ScreenshotCaptureOrigins.Manual,
+                    DeferAiAnalysis: true),
+                CancellationToken.None);
+            var deferredAnalysis = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(deferredCapture.Value!, KeepCapture: true),
+                CancellationToken.None);
+            var directResult = await application.AnalyzeCurrentActivityAsync(
+                new AnalyzeCurrentActivityRequest(AllowCapture: false, Origin: "manual"),
+                CancellationToken.None);
+
+            Assert.False(captureResult.Succeeded);
+            Assert.Equal("ai.provider.failed", captureResult.Code);
+            Assert.True(deferredCapture.Succeeded);
+            Assert.False(deferredAnalysis.Succeeded);
+            Assert.Equal("ai.provider.failed", deferredAnalysis.Code);
+            Assert.False(directResult.Succeeded);
+            Assert.Equal("ai.provider.failed", directResult.Code);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DiagnosticsFacade_MapsUnavailableLogAndRejectsArbitraryProductLinks()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var emptyLogDirectory = Path.Combine(dataDirectory, "logs");
+        Directory.CreateDirectory(emptyLogDirectory);
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var capture = new RecordingCaptureService(dataDirectory);
+            var logs = new ApplicationLogService(emptyLogDirectory, Path.Combine(dataDirectory, "exports"));
+            await using var application = CreateApplication(
+                store,
+                capture,
+                new RecordingAnalysisService(store.LoadSettings().InstallationId),
+                logs);
+
+            var open = await application.OpenApplicationLogAsync(CancellationToken.None);
+            var share = await application.ShareApplicationLogAsync(0, CancellationToken.None);
+            var arbitraryLink = await application.OpenProductLinkAsync("https://example.invalid", CancellationToken.None);
+
+            Assert.False(open.Succeeded);
+            Assert.Equal("diagnostics.log.unavailable", open.Code);
+            Assert.False(share.Succeeded);
+            Assert.Equal("diagnostics.log.share.window.invalid", share.Code);
+            Assert.False(arbitraryLink.Succeeded);
+            Assert.Equal("product.link.invalid", arbitraryLink.Code);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task DeferredScheduledCapture_IsRetainedBeforeAiConfigurationIsAvailable()
     {
         var dataDirectory = CreateTemporaryDirectory();
@@ -532,7 +620,8 @@ public sealed class SnapshotAnalysisFlowTests
     private static TrackMeUpApplication CreateApplication(
         LocalStore store,
         IScreenCaptureService capture,
-        IAiAnalysisService analysis)
+        IAiAnalysisService analysis,
+        ApplicationLogService? applicationLogs = null)
     {
         var utilities = new UtilityService();
         return new TrackMeUpApplication(
@@ -543,7 +632,8 @@ public sealed class SnapshotAnalysisFlowTests
             new SystemSnapshotService(),
             analysis,
             new StartupService(),
-            new BuildInformationService());
+            new BuildInformationService(),
+            applicationLogs: applicationLogs);
     }
 
     private static string CreateTemporaryDirectory()
@@ -659,6 +749,32 @@ public sealed class SnapshotAnalysisFlowTests
                 throw;
             }
         }
+    }
+
+    private sealed class ProviderFailureAnalysisService : IAiAnalysisService
+    {
+        private static AiProviderRequestException Failure() => new(
+            "Provider rate limit.",
+            new AiProviderFailure(
+                "http_429.insufficient_quota",
+                429,
+                42,
+                ProviderRequestId: "req_safe_test"));
+
+        public Task<AiAnalysis> AnalyzeCurrentScreenAsync(
+            AnalysisContextSnapshot? activity,
+            bool allowCapture = true,
+            string origin = "manual",
+            CancellationToken cancellationToken = default) =>
+            Task.FromException<AiAnalysis>(Failure());
+
+        public Task<AiAnalysis> AnalyzeCapturedScreenAsync(
+            AnalysisContextSnapshot? activity,
+            ScreenshotCaptureResult captureResult,
+            bool keepCapture,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            Task.FromException<AiAnalysis>(Failure());
     }
 
     private sealed class FailingAnalysisService : IAiAnalysisService

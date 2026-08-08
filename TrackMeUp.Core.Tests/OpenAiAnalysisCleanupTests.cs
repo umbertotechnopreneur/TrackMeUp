@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using TrackMeUp.Services;
 using Xunit;
 
@@ -95,6 +96,50 @@ public sealed class OpenAiAnalysisCleanupTests
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
             Assert.True(decoder.CancellationObserved);
             Assert.All(capture.AllScreenshotPaths, path => Assert.False(File.Exists(path)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ProviderFailure_LogsOnlyStructuredRedactedAttemptMetadata()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        const string apiKey = "sk-test-only-private-secret";
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, apiKey, EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = CreateStore(dataDirectory, openAiEnabled: true);
+            var capture = CreateWatermarkedCapture(dataDirectory);
+            var logger = new RecordingLogger<OpenAiAnalysisService>();
+            var service = new OpenAiAnalysisService(
+                store,
+                new UnexpectedCaptureService(),
+                decoder: new ProviderFailureDecoder(),
+                logger: logger);
+
+            await Assert.ThrowsAsync<AiProviderRequestException>(() => service.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: false,
+                origin: "snapshot.scheduled",
+                CancellationToken.None));
+
+            var log = string.Join(Environment.NewLine, logger.Messages);
+            Assert.Contains("Attempt=", log, StringComparison.Ordinal);
+            Assert.Contains("Correlation=", log, StringComparison.Ordinal);
+            Assert.Contains("Origin=snapshot.scheduled", log, StringComparison.Ordinal);
+            Assert.Contains("HttpStatus=429", log, StringComparison.Ordinal);
+            Assert.Contains("FailureCategory=http_429.insufficient_quota", log, StringComparison.Ordinal);
+            Assert.Contains("ProviderRequestId=req_safe_test", log, StringComparison.Ordinal);
+            Assert.DoesNotContain(apiKey, log, StringComparison.Ordinal);
+            Assert.DoesNotContain(dataDirectory, log, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("input_text", log, StringComparison.Ordinal);
         }
         finally
         {
@@ -196,5 +241,42 @@ public sealed class OpenAiAnalysisCleanupTests
                 throw;
             }
         }
+    }
+
+    private sealed class ProviderFailureDecoder : IAIDecoder
+    {
+        public string Provider => "openai";
+
+        public Task<AiProviderResult> DecodeAsync(
+            string prompt,
+            IReadOnlyList<string> screenshotPaths,
+            AppSettings settings,
+            string apiKey,
+            string correlationId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromException<AiProviderResult>(new AiProviderRequestException(
+                "Provider rate limit.",
+                new AiProviderFailure(
+                    "http_429.insufficient_quota",
+                    429,
+                    87,
+                    ProviderRequestId: "req_safe_test")));
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            Messages.Add(formatter(state, exception));
     }
 }

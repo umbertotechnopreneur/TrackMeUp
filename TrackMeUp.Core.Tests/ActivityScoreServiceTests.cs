@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using TrackMeUp.Services;
 using Xunit;
 
@@ -41,6 +42,20 @@ public sealed class ActivityScoreServiceTests
         inputDriven.RecordSample(Sample(windowEnd, keys: 40, clicks: 8));
 
         Assert.True(inputDriven.GetState(15, windowEnd).CurrentScore > telemetryOnly.GetState(15, windowEnd).CurrentScore);
+    }
+
+    [Fact]
+    public void CalculateIntervalActivityIndex_UsesSharedInputWeightsWithoutInventingHistoricalTelemetry()
+    {
+        var intervalEnd = new DateTimeOffset(2026, 8, 9, 10, 30, 0, TimeSpan.Zero);
+        var samples = Enumerable.Range(0, 15)
+            .Select(index => Sample(intervalEnd.AddMinutes(-index), keys: 10, clicks: 2))
+            .ToArray();
+
+        var index = ActivityScoreService.CalculateIntervalActivityIndex(samples, intervalMinutes: 15);
+
+        // Average input contributes 12.5 points and five active seconds per minute contribute 0.67 points.
+        Assert.Equal(13, index);
     }
 
     private static ActivitySample Sample(DateTimeOffset timestamp, long keys, long clicks) => new(

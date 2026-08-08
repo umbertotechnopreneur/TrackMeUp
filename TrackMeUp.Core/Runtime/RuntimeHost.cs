@@ -216,6 +216,8 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "snapshot.delete" => ToResponse(request, await _application.DeleteSnapshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
                 "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                "diagnostics.log.open" => ToResponse(request, await _application.OpenApplicationLogAsync(cancellationToken)),
+                "diagnostics.log.share" => ToResponse(request, await _application.ShareApplicationLogAsync(ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
                 "notifications.drain" => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
@@ -249,6 +251,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "startup.enable" => ToResponse(request, await _application.SetStartupEnabledAsync(true, cancellationToken)),
                 "startup.disable" => ToResponse(request, await _application.SetStartupEnabledAsync(false, cancellationToken)),
                 "product.get" => ToResponse(request, await _application.GetProductInformationAsync(cancellationToken)),
+                "product.link.open" => ToResponse(request, await _application.OpenProductLinkAsync(ReadString(request.Payload, "linkKey"), cancellationToken)),
                 _ => Failure(request, "command.invalid", "CommandInvalid")
             };
         }
@@ -484,6 +487,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => SendAsync<string>("screenshot.share", new { screenshotPath, windowHandle }, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.open", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.share", new { windowHandle }, cancellationToken);
+    /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", new { directory }, cancellationToken);
@@ -543,6 +550,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) => SendAsync<bool>(enabled ? "startup.enable" : "startup.disable", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken) => SendAsync<ProductInformation>("product.get", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> OpenProductLinkAsync(string linkKey, CancellationToken cancellationToken) => SendAsync<bool>("product.link.open", new { linkKey }, cancellationToken);
     /// <inheritdoc />
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 

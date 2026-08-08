@@ -279,24 +279,31 @@ public sealed class LocalStore
             }
         }
 
-        var items = files
+        var retainedFiles = files
             .GroupBy(file => ScreenshotIdentity(file.Name), StringComparer.OrdinalIgnoreCase)
             .Select(group => group
                 .OrderByDescending(file => IsPreferredStoredArtifact(file.Name))
                 .ThenByDescending(file => file.LastWriteTimeUtc)
                 .First())
             .OrderByDescending(file => file.LastWriteTimeUtc)
+            .ToArray();
+        var analyses = _activity.LoadLatestAiAnalysesForScreenshots(retainedFiles.Select(file => file.FullName));
+        var items = retainedFiles
             .Select(file =>
             {
                 var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
                 var activity = FindScreenshotActivity(capturedAt, settings.ScreenshotIntervalMinutes);
+                analyses.TryGetValue(file.FullName, out var analysis);
                 return new ScreenshotGalleryItem(
                     capturedAt,
                     file.FullName,
                     activity.ForegroundApplication,
                     GetCaptureKind(file.Name),
                     GetCaptureOrigin(file.Name),
-                    activity.SpanLabels);
+                    activity.SpanLabels,
+                    analysis?.Summary,
+                    analysis?.Timestamp,
+                    activity.ActivityIndex);
             })
             .ToArray();
 
@@ -351,10 +358,16 @@ public sealed class LocalStore
 
                     return distinct;
                 });
-        return new ScreenshotActivityContext(foregroundApplication, labels);
+        int? activityIndex = samples.Count == 0
+            ? null
+            : ActivityScoreService.CalculateIntervalActivityIndex(samples, screenshotIntervalMinutes);
+        return new ScreenshotActivityContext(foregroundApplication, labels, activityIndex);
     }
 
-    private sealed record ScreenshotActivityContext(string ForegroundApplication, IReadOnlyList<ActivityLabelSample> SpanLabels);
+    private sealed record ScreenshotActivityContext(
+        string ForegroundApplication,
+        IReadOnlyList<ActivityLabelSample> SpanLabels,
+        int? ActivityIndex);
 
     private static string ScreenshotIdentity(string fileName)
     {
@@ -367,10 +380,21 @@ public sealed class LocalStore
     private static bool IsPreferredStoredArtifact(string fileName) =>
         !Path.GetFileNameWithoutExtension(fileName).EndsWith("-raw", StringComparison.OrdinalIgnoreCase);
 
-    private static string GetCaptureKind(string fileName) =>
-        fileName.Contains("_active-window", StringComparison.OrdinalIgnoreCase)
-            ? "Active window"
-            : "Monitor";
+    private static string GetCaptureKind(string fileName)
+    {
+        var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        if (withoutExtension.Contains("_active-window", StringComparison.OrdinalIgnoreCase))
+        {
+            return "active-window";
+        }
+
+        if (withoutExtension.Contains("_monitor-", StringComparison.OrdinalIgnoreCase))
+        {
+            return "monitor";
+        }
+
+        throw new InvalidDataException($"Screenshot artifact has no valid capture kind: {fileName}");
+    }
 
     private static string GetCaptureOrigin(string fileName)
     {

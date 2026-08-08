@@ -32,6 +32,9 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
     /// <summary>Gets the metadata activity-label history value text element.</summary>
     public TextBlock MetadataSpanLabelsText => MetadataSpanLabelsValueText;
 
+    /// <summary>Gets the metadata activity-index value text element.</summary>
+    public TextBlock MetadataActivityIndexText => MetadataActivityIndexValueText;
+
     /// <summary>Gets the empty-state panel.</summary>
     public Grid EmptyPanel => EmptyGalleryPanel;
 

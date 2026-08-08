@@ -123,5 +123,22 @@ internal static class AiProviderTelemetry
     internal static string EndpointHost(string endpoint) =>
         Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ? uri.Host : "invalid-endpoint";
 
-    internal static string FailureCode(HttpStatusCode statusCode) => $"http_{(int)statusCode}";
+    internal static string FailureCode(HttpStatusCode statusCode, string? providerCode = null)
+    {
+        var transportCode = $"http_{(int)statusCode}";
+        var safeProviderCode = SafeToken(providerCode, 64);
+        return safeProviderCode is null ? transportCode : $"{transportCode}.{safeProviderCode}";
+    }
+
+    internal static string? SafeToken(string? value, int maximumLength)
+    {
+        if (string.IsNullOrWhiteSpace(value) || maximumLength <= 0 || value.Length > maximumLength)
+        {
+            return null;
+        }
+
+        return value.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-' or ':')
+            ? value
+            : null;
+    }
 }

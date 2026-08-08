@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using System.Globalization;
 using TrackMeUp.Application;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 using Windows.Foundation;
 using Windows.Storage.Pickers;
@@ -53,6 +54,8 @@ public sealed partial class ScreenshotWindow : Window
     private TextBlock MetadataOriginValueText => GallerySection.MetadataOriginText;
 
     private TextBlock MetadataSpanLabelsValueText => GallerySection.MetadataSpanLabelsText;
+
+    private TextBlock MetadataActivityIndexValueText => GallerySection.MetadataActivityIndexText;
 
     private Grid EmptyGalleryPanel => GallerySection.EmptyPanel;
 
@@ -276,6 +279,7 @@ public sealed partial class ScreenshotWindow : Window
     {
         SelectedDatePicker.PlaceholderText = _strings.Translate("Screenshots.Date.Placeholder");
         AutomationProperties.SetName(SelectedDatePicker, _strings.Translate("Screenshots.Date"));
+        UpdateDetailsToggleAccessibility();
     }
 
     private void SelectRequestedScreenshot()
@@ -304,6 +308,12 @@ public sealed partial class ScreenshotWindow : Window
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
         CoverFlow.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        DetailsToggleButton.IsEnabled = hasItems;
+        if (!hasItems)
+        {
+            DetailsToggleButton.IsChecked = false;
+            SetDetailsPaneVisibility(isVisible: false);
+        }
         EmptyGalleryText.Text = error ?? (_items.Count == 0 ? "No screenshots for this day." : string.Empty);
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
@@ -345,6 +355,8 @@ public sealed partial class ScreenshotWindow : Window
             MetadataAppValueText.Text = "--";
             MetadataOriginValueText.Text = "--";
             MetadataSpanLabelsValueText.Text = "--";
+            MetadataActivityIndexValueText.Text = "--";
+            DetailsSection.Render(null);
             MetadataPanel.Visibility = Visibility.Collapsed;
             return;
         }
@@ -356,7 +368,33 @@ public sealed partial class ScreenshotWindow : Window
         MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
         MetadataOriginValueText.Text = FormatCaptureOrigin(item.CaptureOrigin);
         MetadataSpanLabelsValueText.Text = FormatSpanLabels(item.SpanLabels, culture);
+        MetadataActivityIndexValueText.Text = item.ActivityIndex?.ToString(culture) ?? "--";
+        DetailsSection.Render(ScreenshotDetailsProjection.Create(
+            item,
+            culture,
+            FormatCaptureKind(item.CaptureKind),
+            MetadataOriginValueText.Text,
+            "--"));
         MetadataPanel.Visibility = Visibility.Visible;
+    }
+
+    private void DetailsToggleButton_Click(object sender, RoutedEventArgs e) =>
+        SetDetailsPaneVisibility(DetailsToggleButton.IsChecked == true);
+
+    private void SetDetailsPaneVisibility(bool isVisible)
+    {
+        DetailsPane.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        UpdateDetailsToggleAccessibility();
+    }
+
+    private void UpdateDetailsToggleAccessibility()
+    {
+        var key = DetailsPane.Visibility == Visibility.Visible
+            ? "Screenshots.Details.Hide"
+            : "Screenshots.Details.Show";
+        var label = _strings.Translate(key);
+        AutomationProperties.SetName(DetailsToggleButton, label);
+        ToolTipService.SetToolTip(DetailsToggleButton, label);
     }
 
     private static string FormatSpanLabels(IReadOnlyList<ActivityLabelSample>? labels, CultureInfo culture) =>
@@ -381,6 +419,17 @@ public sealed partial class ScreenshotWindow : Window
             ScreenshotCaptureOrigins.Manual => _strings.Translate("Screenshots.Origin.Manual"),
             ScreenshotCaptureOrigins.Scheduled => _strings.Translate("Screenshots.Origin.Scheduled"),
             _ => captureOrigin
+        };
+    }
+
+    private string FormatCaptureKind(string captureKind)
+    {
+        var normalizedKind = captureKind.Trim().ToLowerInvariant();
+        return normalizedKind switch
+        {
+            "active-window" => _strings.Translate("Screenshots.CaptureKind.ActiveWindow"),
+            "monitor" => _strings.Translate("Screenshots.CaptureKind.Monitor"),
+            _ => throw new InvalidDataException($"Unsupported screenshot capture kind: {captureKind}")
         };
     }
 
@@ -429,7 +478,9 @@ public sealed partial class ScreenshotWindow : Window
         var scale = xamlRoot.RasterizationScale;
         InputNonClientPointerSource
             .GetForWindowId(_appWindow.Id)
-            .SetRegionRects(NonClientRegionKind.Passthrough, [ElementRect(TitleBarMoreButton, scale)]);
+            .SetRegionRects(
+                NonClientRegionKind.Passthrough,
+                [ElementRect(DetailsToggleButton, scale), ElementRect(TitleBarMoreButton, scale)]);
     }
 
     private static RectInt32 ElementRect(FrameworkElement element, double scale)

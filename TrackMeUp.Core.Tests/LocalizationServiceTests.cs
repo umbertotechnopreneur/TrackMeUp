@@ -61,4 +61,33 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Change key", english.Translate("Options.ApiKeyAction.Change"));
         Assert.Equal("Cambia chiave", italian.Translate("Options.ApiKeyAction.Change"));
     }
+
+    [Fact]
+    public void ScreenshotDetails_DistinguishHistoricalActivityIndexFromLiveScore()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Equal("Activity index", english.Translate("Screenshots.ActivityIndex"));
+        Assert.Equal("Indice attività", italian.Translate("Screenshots.ActivityIndex"));
+        Assert.Equal("Show snapshot details", english.Translate("Screenshots.Details.Show"));
+        Assert.Equal("Nascondi dettagli snapshot", italian.Translate("Screenshots.Details.Hide"));
+        Assert.Equal("Active window", english.Translate("Screenshots.CaptureKind.ActiveWindow"));
+        Assert.Equal("Monitor", english.Translate("Screenshots.CaptureKind.Monitor"));
+        Assert.Equal("Finestra attiva", italian.Translate("Screenshots.CaptureKind.ActiveWindow"));
+        Assert.Equal("Schermo", italian.Translate("Screenshots.CaptureKind.Monitor"));
+    }
+
+    [Fact]
+    public void AboutDiagnostics_AreLocalizedForOpenAndRedactedShareActions()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Equal("Show log", english.Translate("About.ShowLog"));
+        Assert.Equal("Share log", english.Translate("About.ShareLog"));
+        Assert.Equal("Mostra log", italian.Translate("About.ShowLog"));
+        Assert.Equal("Condividi log", italian.Translate("About.ShareLog"));
+        Assert.Contains("segreti", italian.Translate("About.Diagnostics.Description"), StringComparison.Ordinal);
+    }
 }

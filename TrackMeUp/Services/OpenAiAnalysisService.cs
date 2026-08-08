@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace TrackMeUp.Services;
 
@@ -46,6 +48,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
     private readonly SystemSnapshotService _snapshotService;
     private readonly IAIDecoder? _decoder;
     private readonly DeviceContextService _deviceContext;
+    private readonly ILogger<OpenAiAnalysisService> _logger;
 
     /// <summary>
     /// Creates a new AI analysis service.
@@ -55,18 +58,21 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
     /// <param name="snapshotService">Optional system snapshot provider.</param>
     /// <param name="decoder">Optional decoder override for testing.</param>
     /// <param name="deviceContext">Optional device-context provider for time zone, language, and Windows location metadata.</param>
+    /// <param name="logger">Optional structured application logger.</param>
     public OpenAiAnalysisService(
         LocalStore store,
         IScreenCaptureService capture,
         SystemSnapshotService? snapshotService = null,
         IAIDecoder? decoder = null,
-        DeviceContextService? deviceContext = null)
+        DeviceContextService? deviceContext = null,
+        ILogger<OpenAiAnalysisService>? logger = null)
     {
         _store = store;
         _capture = capture;
         _snapshotService = snapshotService ?? new SystemSnapshotService();
         _decoder = decoder;
         _deviceContext = deviceContext ?? new DeviceContextService();
+        _logger = logger ?? NullLogger<OpenAiAnalysisService>.Instance;
     }
 
     /// <summary>
@@ -201,6 +207,18 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             var attemptId = Guid.NewGuid().ToString("N");
             var attemptedAt = DateTimeOffset.UtcNow;
             var profile = AiAnalysisProfileCatalog.Resolve(settings.AiOutputDetail);
+            var attemptToken = CorrelationToken(attemptId);
+            var captureToken = CorrelationToken(captureResult.CaptureId);
+            var endpointHost = AiProviderTelemetry.EndpointHost(settings.AiEndpoint);
+            _logger.LogInformation(
+                "AI analysis attempt started. Attempt={Attempt} Correlation={Correlation} Origin={Origin} Provider={Provider} Model={Model} EndpointHost={EndpointHost} ImageCount={ImageCount}",
+                attemptToken,
+                captureToken,
+                origin,
+                decoder.Provider,
+                settings.Model,
+                endpointHost,
+                captureResult.AnalysisScreenshotPaths.Count);
             // Route un-watermarked capture to model, and keep watermarked files only for local history UX.
             AiProviderResult providerResult;
             try
@@ -215,10 +233,32 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                _logger.LogInformation(
+                    "AI analysis attempt completed. Attempt={Attempt} Correlation={Correlation} Origin={Origin} Provider={Provider} Model={Model} EndpointHost={EndpointHost} Outcome={Outcome}",
+                    attemptToken,
+                    captureToken,
+                    origin,
+                    decoder.Provider,
+                    settings.Model,
+                    endpointHost,
+                    "cancelled");
                 throw;
             }
             catch (AiProviderRequestException exception)
             {
+                _logger.LogWarning(
+                    "AI analysis attempt completed. Attempt={Attempt} Correlation={Correlation} Origin={Origin} Provider={Provider} Model={Model} EndpointHost={EndpointHost} HttpStatus={HttpStatus} FailureCategory={FailureCategory} LatencyMs={LatencyMs} ProviderRequestId={ProviderRequestId} Outcome={Outcome}",
+                    attemptToken,
+                    captureToken,
+                    origin,
+                    decoder.Provider,
+                    settings.Model,
+                    endpointHost,
+                    exception.Failure.HttpStatusCode,
+                    exception.Failure.FailureCode,
+                    exception.Failure.ElapsedMilliseconds,
+                    AiProviderTelemetry.SafeToken(exception.Failure.ProviderRequestId, 80),
+                    "provider_failed");
                 AppendFailedUsageOrThrow(CreateUsageRecord(
                     attemptId,
                     captureResult.CaptureId,
@@ -236,6 +276,19 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             }
             catch (Exception exception)
             {
+                var elapsed = (long)Math.Max(0, (DateTimeOffset.UtcNow - attemptedAt).TotalMilliseconds);
+                _logger.LogWarning(
+                    "AI analysis attempt completed. Attempt={Attempt} Correlation={Correlation} Origin={Origin} Provider={Provider} Model={Model} EndpointHost={EndpointHost} FailureCategory={FailureCategory} LatencyMs={LatencyMs} Outcome={Outcome} ExceptionType={ExceptionType}",
+                    attemptToken,
+                    captureToken,
+                    origin,
+                    decoder.Provider,
+                    settings.Model,
+                    endpointHost,
+                    "unexpected",
+                    elapsed,
+                    "unexpected_failed",
+                    exception.GetType().Name);
                 AppendFailedUsageOrThrow(CreateUsageRecord(
                     attemptId,
                     captureResult.CaptureId,
@@ -247,7 +300,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                     prompt.Length,
                     profile.MaxOutputTokens,
                     null,
-                    new AiProviderFailure("unexpected", null, (long)Math.Max(0, (DateTimeOffset.UtcNow - attemptedAt).TotalMilliseconds))),
+                    new AiProviderFailure("unexpected", null, elapsed)),
                     exception);
                 throw;
             }
@@ -276,7 +329,39 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 profile.MaxOutputTokens,
                 providerResult,
                 null);
-            _store.AppendAiAnalysisAndUsage(usage, result);
+            try
+            {
+                _store.AppendAiAnalysisAndUsage(usage, result);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    "AI analysis attempt persistence failed. Attempt={Attempt} Correlation={Correlation} Origin={Origin} Provider={Provider} Model={Model} EndpointHost={EndpointHost} HttpStatus={HttpStatus} LatencyMs={LatencyMs} Outcome={Outcome} ExceptionType={ExceptionType}",
+                    attemptToken,
+                    captureToken,
+                    origin,
+                    decoder.Provider,
+                    settings.Model,
+                    endpointHost,
+                    providerResult.HttpStatusCode,
+                    providerResult.ElapsedMilliseconds,
+                    "persistence_failed",
+                    exception.GetType().Name);
+                throw;
+            }
+
+            _logger.LogInformation(
+                "AI analysis attempt completed. Attempt={Attempt} Correlation={Correlation} Origin={Origin} Provider={Provider} Model={Model} EndpointHost={EndpointHost} HttpStatus={HttpStatus} LatencyMs={LatencyMs} ProviderRequestId={ProviderRequestId} Outcome={Outcome}",
+                attemptToken,
+                captureToken,
+                origin,
+                decoder.Provider,
+                settings.Model,
+                endpointHost,
+                providerResult.HttpStatusCode,
+                providerResult.ElapsedMilliseconds,
+                AiProviderTelemetry.SafeToken(providerResult.ProviderRequestId, 80),
+                "succeeded");
 
             return result;
         }
@@ -339,6 +424,9 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 persistenceException);
         }
     }
+
+    private static string CorrelationToken(string value) =>
+        string.IsNullOrEmpty(value) ? "unavailable" : value[..Math.Min(12, value.Length)];
 
     private static AiRequestUsageRecord CreateUsageRecord(
         string attemptId,

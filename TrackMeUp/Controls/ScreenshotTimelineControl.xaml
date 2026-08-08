@@ -38,13 +38,33 @@
 				</ResourceDictionary>
 			</ResourceDictionary.ThemeDictionaries>
 
+			<Style x:Key="TimelineNavigationButtonStyle" TargetType="Button">
+				<Setter Property="Width" Value="36" />
+				<Setter Property="Height" Value="36" />
+				<Setter Property="Padding" Value="0" />
+				<Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
+				<Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="CornerRadius" Value="18" />
+				<Setter Property="UseSystemFocusVisuals" Value="True" />
+			</Style>
+
+			<Style x:Key="TimelineItemContainerStyle" TargetType="ListViewItem">
+				<Setter Property="MinWidth" Value="118" />
+				<Setter Property="Margin" Value="3,0" />
+				<Setter Property="Padding" Value="6,5" />
+				<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+				<Setter Property="CornerRadius" Value="10" />
+				<Setter Property="UseSystemFocusVisuals" Value="True" />
+			</Style>
+
 			<DataTemplate x:Key="ScreenshotTimelineItemTemplate">
 				<StackPanel
 					AutomationProperties.Name="{Binding AutomationName}"
 					Spacing="3">
 					<Border
-						Width="104"
-						Height="62"
+						Width="106"
+						Height="64"
 						Padding="2"
 						Background="{ThemeResource ControlFillColorDefaultBrush}"
 						BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -54,7 +74,7 @@
 							x:Name="TimelineImage"
 							DataContextChanged="TimelineImage_DataContextChanged"
 							Loaded="TimelineImage_Loaded"
-							Stretch="UniformToFill"
+							Stretch="Uniform"
 							Unloaded="TimelineImage_Unloaded" />
 					</Border>
 					<StackPanel Orientation="Horizontal" Spacing="4">
@@ -85,32 +105,74 @@
 			Text="Timeline"
 			Visibility="Collapsed" />
 		<Border
-			Padding="32,9"
+			Padding="12,9"
 			HorizontalAlignment="Stretch"
 			Background="{ThemeResource ScreenshotTimelineSurfaceBrush}"
 			BorderBrush="{ThemeResource ScreenshotTimelineBorderBrush}"
 			BorderThickness="0,1,0,0"
 			CornerRadius="0">
-			<ListView
-				x:Name="FilmstripList"
-				IsItemClickEnabled="False"
-				ItemTemplate="{StaticResource ScreenshotTimelineItemTemplate}"
-				SelectionChanged="FilmstripList_SelectionChanged"
-				SelectionMode="Single"
-				ScrollViewer.HorizontalScrollBarVisibility="Auto"
-				ScrollViewer.HorizontalScrollMode="Enabled"
-				ScrollViewer.VerticalScrollBarVisibility="Disabled"
-				ScrollViewer.VerticalScrollMode="Disabled"
-				SingleSelectionFollowsFocus="False"
-				TabNavigation="Once">
-				<ListView.ItemsPanel>
-					<ItemsPanelTemplate>
-						<ItemsStackPanel
-							AreStickyGroupHeadersEnabled="False"
-							Orientation="Horizontal" />
-					</ItemsPanelTemplate>
-				</ListView.ItemsPanel>
-			</ListView>
+			<Grid x:Name="TimelineNavigationRail">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="Auto" />
+				</Grid.ColumnDefinitions>
+				<Button
+					x:Name="PreviousTimelineButton"
+					Margin="0,0,8,0"
+					VerticalAlignment="Center"
+					AutomationProperties.Name="Scroll screenshots left"
+					Click="PreviousTimelineButton_Click"
+					Style="{StaticResource TimelineNavigationButtonStyle}"
+					Visibility="Collapsed">
+					<FontIcon
+						AutomationProperties.AccessibilityView="Raw"
+						FontFamily="Segoe Fluent Icons"
+						FontSize="14"
+						Glyph="&#xE76B;" />
+				</Button>
+				<ListView
+					x:Name="FilmstripList"
+					Grid.Column="1"
+					HorizontalAlignment="Stretch"
+					IsItemClickEnabled="False"
+					ItemContainerStyle="{StaticResource TimelineItemContainerStyle}"
+					ItemTemplate="{StaticResource ScreenshotTimelineItemTemplate}"
+					Loaded="FilmstripList_Loaded"
+					SelectionChanged="FilmstripList_SelectionChanged"
+					SelectionMode="Single"
+					ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+					ScrollViewer.HorizontalScrollMode="Enabled"
+					ScrollViewer.VerticalScrollBarVisibility="Disabled"
+					ScrollViewer.VerticalScrollMode="Disabled"
+					SingleSelectionFollowsFocus="False"
+					SizeChanged="FilmstripList_SizeChanged"
+					TabNavigation="Once"
+					Unloaded="FilmstripList_Unloaded">
+					<ListView.ItemsPanel>
+						<ItemsPanelTemplate>
+							<ItemsStackPanel
+								AreStickyGroupHeadersEnabled="False"
+								Orientation="Horizontal" />
+						</ItemsPanelTemplate>
+					</ListView.ItemsPanel>
+				</ListView>
+				<Button
+					x:Name="NextTimelineButton"
+					Grid.Column="2"
+					Margin="8,0,0,0"
+					VerticalAlignment="Center"
+					AutomationProperties.Name="Scroll screenshots right"
+					Click="NextTimelineButton_Click"
+					Style="{StaticResource TimelineNavigationButtonStyle}"
+					Visibility="Collapsed">
+					<FontIcon
+						AutomationProperties.AccessibilityView="Raw"
+						FontFamily="Segoe Fluent Icons"
+						FontSize="14"
+						Glyph="&#xE76C;" />
+				</Button>
+			</Grid>
 		</Border>
 		<Button
 			x:Name="FilmstripToggleButton"

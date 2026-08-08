@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Globalization;
 using TrackMeUp.Application;
@@ -10,6 +11,7 @@ namespace TrackMeUp.Controls;
 public sealed partial class ScreenshotTimelineControl : UserControl
 {
     private IReadOnlyList<ScreenshotTimelineEntry> _entries = Array.Empty<ScreenshotTimelineEntry>();
+    private ScrollViewer? _timelineScroller;
     private bool _updatingSelection;
 
     /// <summary>Creates the timeline control.</summary>
@@ -62,6 +64,7 @@ public sealed partial class ScreenshotTimelineControl : UserControl
         }
 
         BringSelectionIntoView();
+        QueueNavigationAvailabilityUpdate();
     }
 
     /// <summary>Synchronizes the selected thumbnail with another gallery surface.</summary>
@@ -127,7 +130,122 @@ public sealed partial class ScreenshotTimelineControl : UserControl
             return;
         }
 
-        _ = DispatcherQueue.TryEnqueue(() => FilmstripList.ScrollIntoView(selectedItem, ScrollIntoViewAlignment.Leading));
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            FilmstripList.ScrollIntoView(selectedItem, ScrollIntoViewAlignment.Default);
+            QueueNavigationAvailabilityUpdate();
+        });
+    }
+
+    private void FilmstripList_Loaded(object sender, RoutedEventArgs e)
+    {
+        AttachTimelineScroller();
+        QueueNavigationAvailabilityUpdate();
+    }
+
+    private void FilmstripList_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_timelineScroller is not null)
+        {
+            _timelineScroller.ViewChanged -= TimelineScroller_ViewChanged;
+            _timelineScroller = null;
+        }
+    }
+
+    private void FilmstripList_SizeChanged(object sender, SizeChangedEventArgs e)
+        => QueueNavigationAvailabilityUpdate();
+
+    private void PreviousTimelineButton_Click(object sender, RoutedEventArgs e) => ScrollTimeline(-1);
+
+    private void NextTimelineButton_Click(object sender, RoutedEventArgs e) => ScrollTimeline(1);
+
+    private void ScrollTimeline(int direction)
+    {
+        if (direction is not (-1 or 1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction));
+        }
+
+        AttachTimelineScroller();
+        if (_timelineScroller is not { } scroller)
+        {
+            return;
+        }
+
+        var page = Math.Max(118d, scroller.ViewportWidth * 0.72d);
+        var targetOffset = Math.Clamp(
+            scroller.HorizontalOffset + (direction * page),
+            0d,
+            scroller.ScrollableWidth);
+        scroller.ChangeView(targetOffset, null, null, disableAnimation: false);
+    }
+
+    private void AttachTimelineScroller()
+    {
+        var scroller = FindDescendant<ScrollViewer>(FilmstripList);
+        if (ReferenceEquals(scroller, _timelineScroller))
+        {
+            return;
+        }
+
+        if (_timelineScroller is not null)
+        {
+            _timelineScroller.ViewChanged -= TimelineScroller_ViewChanged;
+        }
+
+        _timelineScroller = scroller;
+        if (_timelineScroller is not null)
+        {
+            _timelineScroller.ViewChanged += TimelineScroller_ViewChanged;
+        }
+    }
+
+    private void TimelineScroller_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+        => UpdateNavigationAvailability();
+
+    private void QueueNavigationAvailabilityUpdate()
+    {
+        if (!DispatcherQueue.TryEnqueue(() =>
+            {
+                AttachTimelineScroller();
+                UpdateNavigationAvailability();
+            }))
+        {
+            UpdateNavigationAvailability();
+        }
+    }
+
+    private void UpdateNavigationAvailability()
+    {
+        var scroller = _timelineScroller;
+        var hasOverflow = scroller is not null
+            && scroller.ExtentWidth > Math.Max(TimelineNavigationRail.ActualWidth, scroller.ViewportWidth) + 0.5d;
+        var visibility = hasOverflow ? Visibility.Visible : Visibility.Collapsed;
+        PreviousTimelineButton.Visibility = visibility;
+        NextTimelineButton.Visibility = visibility;
+        PreviousTimelineButton.IsEnabled = hasOverflow && scroller!.HorizontalOffset > 0.5d;
+        NextTimelineButton.IsEnabled = hasOverflow
+            && scroller!.HorizontalOffset < scroller.ScrollableWidth - 0.5d;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindDescendant<T>(child) is { } nestedMatch)
+            {
+                return nestedMatch;
+            }
+        }
+
+        return null;
     }
 
     private void TimelineImage_Loaded(object sender, RoutedEventArgs e)

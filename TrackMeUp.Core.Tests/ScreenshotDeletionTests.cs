@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
@@ -145,6 +146,39 @@ public sealed class ScreenshotDeletionTests
     }
 
     [Fact]
+    public void ScreenshotGallery_ProjectsStableCaptureKindIdentifiers()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var monitorCapture = CreateCapture(dataDirectory);
+            var activeWindowPath = Path.Combine(
+                dataDirectory,
+                $"{Guid.NewGuid():N}_1.0.0_scheduled_active-window.webp");
+            File.WriteAllBytes(activeWindowPath, [7, 8, 9]);
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            foreach (var path in monitorCapture.AllScreenshotPaths.Append(activeWindowPath))
+            {
+                File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
+            }
+
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+
+            Assert.Equal(
+                "monitor",
+                Assert.Single(gallery.Items, item => item.Path == monitorCapture.StoredScreenshotPaths[0]).CaptureKind);
+            Assert.Equal(
+                "active-window",
+                Assert.Single(gallery.Items, item => item.Path == activeWindowPath).CaptureKind);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void ScreenshotGallery_ShowsDistinctSpanLabelsSampledDuringItsInterval()
     {
         var dataDirectory = CreateTemporaryDirectory();
@@ -178,6 +212,64 @@ public sealed class ScreenshotDeletionTests
         }
     }
 
+    [Fact]
+    public async Task ScreenshotGallery_EnrichesOnlyTheExactCaptureWithPersistedAiMarkdownAndActivityIndex()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotIntervalMinutes = 15
+            });
+            var analyzedCapture = CreateCapture(dataDirectory);
+            var unrelatedCapture = CreateCapture(dataDirectory);
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            foreach (var path in analyzedCapture.AllScreenshotPaths.Concat(unrelatedCapture.AllScreenshotPaths))
+            {
+                File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
+            }
+
+            store.AppendSample(CreateActivitySample(
+                capturedAt.AddMinutes(-1),
+                "Implementation",
+                keyPresses: 300,
+                mouseClicks: 30));
+            var analysisService = new OpenAiAnalysisService(
+                store,
+                new UnexpectedCaptureService(),
+                decoder: new SuccessfulDecoder());
+            var analysis = await analysisService.AnalyzeCapturedScreenAsync(
+                activity: null,
+                analyzedCapture,
+                keepCapture: true,
+                origin: "snapshot.scheduled",
+                CancellationToken.None);
+
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+
+            var analyzedItem = Assert.Single(gallery.Items, item =>
+                string.Equals(item.Path, analyzedCapture.StoredScreenshotPaths[0], StringComparison.OrdinalIgnoreCase));
+            var unrelatedItem = Assert.Single(gallery.Items, item =>
+                string.Equals(item.Path, unrelatedCapture.StoredScreenshotPaths[0], StringComparison.OrdinalIgnoreCase));
+            Assert.Equal("## Activity\n\n- Coding.", analyzedItem.AiDescriptionMarkdown);
+            Assert.Equal(analysis.Timestamp, analyzedItem.AiAnalyzedAt);
+            Assert.True(analyzedItem.ActivityIndex > 0);
+            Assert.Null(unrelatedItem.AiDescriptionMarkdown);
+            Assert.Null(unrelatedItem.AiAnalyzedAt);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
     private static LocalStore CreateStore(string dataDirectory)
     {
         var store = new LocalStore(dataDirectory);
@@ -203,7 +295,11 @@ public sealed class ScreenshotDeletionTests
             ScreenshotCaptureOrigins.Manual);
     }
 
-    private static ActivitySample CreateActivitySample(DateTimeOffset timestamp, string spanLabel) => new(
+    private static ActivitySample CreateActivitySample(
+        DateTimeOffset timestamp,
+        string spanLabel,
+        long keyPresses = 1,
+        long mouseClicks = 1) => new(
         timestamp,
         5,
         "active",
@@ -212,8 +308,8 @@ public sealed class ScreenshotDeletionTests
         "Test",
         "Test",
         "installation",
-        1,
-        1,
+        keyPresses,
+        mouseClicks,
         new Dictionary<string, string> { [ActivityAttributeKeys.SpanLabel] = spanLabel });
 
     private static TrackMeUpApplication CreateApplication(LocalStore store, IAiAnalysisService? analysis = null) =>
@@ -270,7 +366,7 @@ public sealed class ScreenshotDeletionTests
             string correlationId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new AiProviderResult(
-                "analyzed",
+                "## Activity\n\n- Coding.",
                 new AiUsageMetrics(),
                 "response-id",
                 "request-id",

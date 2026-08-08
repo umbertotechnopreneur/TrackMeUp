@@ -3,7 +3,6 @@ using Microsoft.UI.Xaml.Controls;
 namespace TrackMeUp.Controls;
 
 /// <summary>Displays the screenshot page title, counter, and date selector.</summary>
-// No-op change to validate patch path resolution for this code-behind file.
 public sealed partial class ScreenshotHeaderControl : UserControl
 {
     /// <summary>Creates the header control.</summary>

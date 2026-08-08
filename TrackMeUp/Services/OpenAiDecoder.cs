@@ -68,7 +68,7 @@ public sealed class OpenAiDecoder : IAIDecoder
                 throw new AiProviderRequestException(
                     ReadApiError(responseBody) ?? $"OpenAI returned {(int)response.StatusCode}.",
                     new AiProviderFailure(
-                        AiProviderTelemetry.FailureCode(response.StatusCode),
+                        AiProviderTelemetry.FailureCode(response.StatusCode, ReadApiErrorCode(responseBody)),
                         (int)response.StatusCode,
                         timer.ElapsedMilliseconds,
                         providerResponseId,
@@ -253,6 +253,23 @@ public sealed class OpenAiDecoder : IAIDecoder
         {
             using var document = JsonDocument.Parse(json);
             return document.RootElement.GetProperty("error").GetProperty("message").GetString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Reads only the provider's allowlisted machine-readable error token.</summary>
+    internal static string? ReadApiErrorCode(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var error = document.RootElement.GetProperty("error");
+            var code = AiProviderTelemetry.ReadString(error, "code");
+            var type = AiProviderTelemetry.ReadString(error, "type");
+            return AiProviderTelemetry.SafeToken(code, 64) ?? AiProviderTelemetry.SafeToken(type, 64);
         }
         catch
         {

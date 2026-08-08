@@ -25,19 +25,15 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
     private const int PoolSize = ScreenshotCoverFlowProjection.SlotCount;
     private const int VisibleRadius = ScreenshotCoverFlowProjection.VisibleRadius;
     private const int ThumbnailDecodeWidth = 1280;
+    private const double DefaultAspectRatio = 16d / 9d;
     private const double DragActivationDistance = 7d;
     private const double InertiaProjectionSeconds = 0.16d;
     private const double MinimumFlickVelocity = 1.05d;
     private const double SideRevealDurationSeconds = 0.18d;
     private const int MaximumQueuedNavigation = 4;
 
-    private static readonly double[] HorizontalPositionAnchors = [0d, 0.30d, 0.49d, 0.68d];
-    private static readonly double[] ScaleAnchors = [1d, 0.76d, 0.60d, 0.48d];
-    private static readonly double[] YawAnchors = [0d, 56d, 66d, 72d];
-    private static readonly double[] OpacityAnchors = [1d, 0.86d, 0.46d, 0d];
-    private static readonly double[] DepthAnchors = [88d, 30d, -8d, -40d];
-
     private readonly List<CoverSlot> _slots = new(PoolSize);
+    private readonly Dictionary<string, double> _aspectRatios = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _animationTimer;
     private readonly UISettings _uiSettings = new();
     private IReadOnlyList<ScreenshotGalleryItem> _items = Array.Empty<ScreenshotGalleryItem>();
@@ -50,7 +46,8 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
     private double _motionOffset;
     private double _animationFrom;
     private double _animationTo;
-    private double _coverWidth = 640d;
+    private double _maximumCoverWidth = 640d;
+    private double _maximumCoverHeight = 360d;
     private long _animationStartedAt;
     private double _animationDurationSeconds;
     private double _sideRevealProgress = 1d;
@@ -65,6 +62,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
     private double _lastPointerX;
     private long _lastPointerTimestamp;
     private double _velocityStepsPerSecond;
+    private int _transitionDirection;
 
     /// <summary>Creates the seven-slot circular cover-flow surface.</summary>
     public ScreenshotCoverFlowControl()
@@ -124,11 +122,18 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         }
 
         CancelInteraction();
+        var retainedPaths = items.Select(static item => item.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var stalePath in _aspectRatios.Keys.Where(path => !retainedPaths.Contains(path)).ToArray())
+        {
+            _aspectRatios.Remove(stalePath);
+        }
+
         _ring = ScreenshotCoverFlowProjection.Create(items, selectedIndex);
         _items = _ring.Items;
         _selectedIndex = _ring.SelectedIndex ?? 0;
         _selectionBeforeMotion = _selectedIndex;
         _motionOffset = 0d;
+        _transitionDirection = 0;
         _queuedNavigation = 0;
         _pendingTargetIndex = null;
         RebindSlots();
@@ -196,13 +201,14 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
-                Stretch = Stretch.UniformToFill
+                Stretch = Stretch.Uniform
             };
             AutomationProperties.SetAccessibilityView(image, AccessibilityView.Raw);
             var imageFrame = new Border
             {
-                Background = new SolidColorBrush(Colors.Black),
-                CornerRadius = new CornerRadius(15),
+                Background = new SolidColorBrush(Colors.Transparent),
+                Shadow = new ThemeShadow(),
+                Translation = new System.Numerics.Vector3(0f, 0f, 10f),
                 Child = image
             };
             var transform = new CompositeTransform();
@@ -223,6 +229,8 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
                 IsTabStop = offset == 0
             };
             var slot = new CoverSlot(offset, button, image, transform, projection);
+            image.Tag = slot;
+            image.ImageOpened += SlotImage_ImageOpened;
             button.Tag = slot;
             button.Click += Slot_Click;
             SlotsHost.Children.Add(button);
@@ -249,6 +257,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
             {
                 slot.ItemIndex = -1;
                 slot.SourcePath = null;
+                slot.AspectRatio = DefaultAspectRatio;
                 slot.Image.Source = null;
                 slot.Button.Visibility = Visibility.Collapsed;
                 continue;
@@ -259,6 +268,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
             var item = projectedSlot.Item
                 ?? throw new InvalidOperationException("A non-empty cover-flow slot must have an item.");
             slot.ItemIndex = itemIndex;
+            slot.AspectRatio = _aspectRatios.GetValueOrDefault(item.Path, DefaultAspectRatio);
             slot.Button.Visibility = Visibility.Visible;
             if (!string.Equals(slot.SourcePath, item.Path, StringComparison.OrdinalIgnoreCase))
             {
@@ -297,6 +307,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         var item = _items[targetIndex];
         slot.RelativeOffset = stagingOffset;
         slot.ItemIndex = targetIndex;
+        slot.AspectRatio = _aspectRatios.GetValueOrDefault(item.Path, DefaultAspectRatio);
         slot.Button.Visibility = Visibility.Visible;
 
         if (!string.Equals(slot.SourcePath, item.Path, StringComparison.OrdinalIgnoreCase))
@@ -329,9 +340,9 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
     {
         var viewportWidth = Math.Max(1d, InteractionSurface.ActualWidth);
         var animationsEnabled = _uiSettings.AnimationsEnabled;
-        var renderedCoverWidth = animationsEnabled
-            ? _coverWidth
-            : Math.Clamp(viewportWidth * 0.18d, 120d, 260d);
+        var presenterBoundsWidth = animationsEnabled
+            ? _maximumCoverWidth
+            : Math.Min(_maximumCoverWidth, Math.Clamp(viewportWidth * 0.18d, 120d, 260d));
         foreach (var slot in _slots)
         {
             if (slot.ItemIndex < 0)
@@ -340,13 +351,17 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
             }
 
             var relativePosition = slot.RelativeOffset - _motionOffset;
-            var pose = animationsEnabled
-                ? CalculatePose(relativePosition, viewportWidth)
-                : CalculateReducedMotionPose(relativePosition, viewportWidth);
-            slot.Button.Width = renderedCoverWidth;
-            slot.Button.Height = renderedCoverWidth * 9d / 16d;
-            slot.Button.BorderThickness = new Thickness(
-                !animationsEnabled && Math.Abs(relativePosition) < 0.5d ? 3d : 1d);
+            var pose = ScreenshotCoverFlowLayout.CalculatePose(
+                relativePosition,
+                viewportWidth,
+                _transitionDirection,
+                reducedMotion: !animationsEnabled);
+            var presenterSize = ScreenshotCoverFlowLayout.FitPresenter(
+                slot.AspectRatio,
+                presenterBoundsWidth,
+                _maximumCoverHeight);
+            slot.Button.Width = presenterSize.Width;
+            slot.Button.Height = presenterSize.Height;
             slot.Transform.TranslateX = pose.TranslateX;
             slot.Transform.TranslateY = pose.TranslateY;
             slot.Transform.ScaleX = pose.Scale;
@@ -359,29 +374,6 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
                 && Math.Abs(relativePosition) <= VisibleRadius + 0.42d;
             Canvas.SetZIndex(slot.Button, pose.ZIndex);
         }
-    }
-
-    private static CoverPose CalculatePose(double relativePosition, double viewportWidth)
-    {
-        var direction = Math.Sign(relativePosition);
-        var distance = Math.Abs(relativePosition);
-        var translate = direction * InterpolateAnchor(HorizontalPositionAnchors, distance) * viewportWidth;
-        var scale = InterpolateAnchor(ScaleAnchors, distance);
-        var yaw = -direction * InterpolateAnchor(YawAnchors, distance);
-        var opacity = distance >= PoolRadius ? 0d : InterpolateAnchor(OpacityAnchors, distance);
-        var depth = InterpolateAnchor(DepthAnchors, distance);
-        var translateY = Math.Min(distance, VisibleRadius) * 7d;
-        var zIndex = Math.Max(0, 100 - (int)Math.Round(Math.Min(distance, PoolRadius) * 24d));
-        return new CoverPose(translate, translateY, scale, yaw, opacity, depth, zIndex);
-    }
-
-    private static CoverPose CalculateReducedMotionPose(double relativePosition, double viewportWidth)
-    {
-        var distance = Math.Abs(relativePosition);
-        var translate = relativePosition * viewportWidth * 0.205d;
-        var opacity = distance <= VisibleRadius + 0.5d ? 1d : 0d;
-        var zIndex = distance < 0.5d ? 100 : Math.Max(0, 80 - (int)Math.Round(distance * 10d));
-        return new CoverPose(translate, 0d, 1d, 0d, opacity, 0d, zIndex);
     }
 
     private void UpdateSlotInteractivity()
@@ -400,15 +392,6 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
                 slot.Button,
                 slot.IsInteractive ? AccessibilityView.Content : AccessibilityView.Raw);
         }
-    }
-
-    private static double InterpolateAnchor(IReadOnlyList<double> anchors, double distance)
-    {
-        var boundedDistance = Math.Clamp(distance, 0d, PoolRadius);
-        var lowerIndex = Math.Min((int)Math.Floor(boundedDistance), PoolRadius - 1);
-        var upperIndex = Math.Min(lowerIndex + 1, PoolRadius);
-        var fraction = boundedDistance - lowerIndex;
-        return anchors[lowerIndex] + ((anchors[upperIndex] - anchors[lowerIndex]) * fraction);
     }
 
     private void RequestNavigation(int delta)
@@ -435,6 +418,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
     {
         _animationFrom = _motionOffset;
         _animationTo = targetOffset;
+        _transitionDirection = Math.Sign(_animationTo - _animationFrom);
         if (!_uiSettings.AnimationsEnabled || Math.Abs(_animationTo - _animationFrom) < 0.001d)
         {
             _motionOffset = _animationTo;
@@ -491,6 +475,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         }
 
         _motionOffset = 0d;
+        _transitionDirection = 0;
         _sideRevealProgress = pendingTargetIndex is not null && _uiSettings.AnimationsEnabled ? 0d : 1d;
         RebindSlots();
         ApplyLayout();
@@ -627,6 +612,11 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
             1d / 240d,
             (now - _lastPointerTimestamp) / (double)Stopwatch.Frequency);
         var deltaSteps = -((point.Position.X - _lastPointerX) / GetDragPixelsPerItem());
+        if (Math.Abs(deltaSteps) > 0.0001d)
+        {
+            _transitionDirection = Math.Sign(deltaSteps);
+        }
+
         var instantaneousVelocity = deltaSteps / elapsedSeconds;
         _velocityStepsPerSecond = (_velocityStepsPerSecond * 0.68d) + (instantaneousVelocity * 0.32d);
         _motionOffset += deltaSteps;
@@ -702,6 +692,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         _ring = _ring.RebaseSelection(_selectionBeforeMotion);
         _selectedIndex = _ring.SelectedIndex ?? 0;
         _motionOffset = 0d;
+        _transitionDirection = 0;
         RebindSlots();
         ApplyLayout();
         SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
@@ -760,24 +751,38 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
     private void InteractionSurface_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         InteractionSurface.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, e.NewSize.Width, e.NewSize.Height) };
-        var widthBound = Math.Clamp(e.NewSize.Width * 0.58d, 300d, 760d);
-        var heightBound = Math.Max(220d, e.NewSize.Height * 0.86d) * 16d / 9d;
-        _coverWidth = Math.Min(widthBound, heightBound);
-        foreach (var slot in _slots)
-        {
-            var insetWidth = Math.Max(1d, _coverWidth - 10d);
-            var insetHeight = Math.Max(1d, (_coverWidth * 9d / 16d) - 10d);
-            slot.Image.Clip = new RectangleGeometry
-            {
-                Rect = new Rect(0d, 0d, insetWidth, insetHeight)
-            };
-        }
+        _maximumCoverWidth = Math.Clamp(e.NewSize.Width * 0.54d, 300d, 720d);
+        _maximumCoverHeight = Math.Clamp(e.NewSize.Height * 0.82d, 220d, 560d);
 
         ApplyLayout();
     }
 
     private double GetDragPixelsPerItem()
-        => Math.Max(112d, Math.Min(_coverWidth * 0.54d, InteractionSurface.ActualWidth * 0.30d));
+        => Math.Max(112d, Math.Min(_maximumCoverWidth * 0.54d, InteractionSurface.ActualWidth * 0.30d));
+
+    private void SlotImage_ImageOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Image { Tag: CoverSlot slot, Source: BitmapImage bitmap }
+            || slot.SourcePath is not { } sourcePath)
+        {
+            return;
+        }
+
+        if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0)
+        {
+            throw new InvalidDataException($"Screenshot dimensions are unavailable: {sourcePath}");
+        }
+
+        var aspectRatio = bitmap.PixelWidth / (double)bitmap.PixelHeight;
+        _aspectRatios[sourcePath] = aspectRatio;
+        foreach (var candidate in _slots.Where(candidate =>
+                     string.Equals(candidate.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)))
+        {
+            candidate.AspectRatio = aspectRatio;
+        }
+
+        ApplyLayout();
+    }
 
     private bool IsNavigationButtonSource(object source)
     {
@@ -800,6 +805,8 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         var canNavigate = _items.Count > 1;
         PreviousButton.IsEnabled = canNavigate;
         NextButton.IsEnabled = canNavigate;
+        PreviousButton.Visibility = canNavigate ? Visibility.Visible : Visibility.Collapsed;
+        NextButton.Visibility = canNavigate ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void CancelAnimationAtCurrentPosition()
@@ -807,6 +814,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         _animationTimer.Stop();
         _isAnimating = false;
         _isRevealingSides = false;
+        _transitionDirection = 0;
         _sideRevealProgress = 1d;
         _queuedNavigation = 0;
         if (_pendingTargetIndex is not null)
@@ -821,6 +829,7 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
         _animationTimer.Stop();
         _isAnimating = false;
         _isRevealingSides = false;
+        _transitionDirection = 0;
         _sideRevealProgress = 1d;
         _queuedNavigation = 0;
         _pendingTargetIndex = null;
@@ -873,15 +882,8 @@ public sealed partial class ScreenshotCoverFlowControl : UserControl
 
         public string? SourcePath { get; set; }
 
+        public double AspectRatio { get; set; } = DefaultAspectRatio;
+
         public bool IsInteractive { get; set; }
     }
-
-    private readonly record struct CoverPose(
-        double TranslateX,
-        double TranslateY,
-        double Scale,
-        double RotationY,
-        double Opacity,
-        double Depth,
-        int ZIndex);
 }

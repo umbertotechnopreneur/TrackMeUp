@@ -47,13 +47,25 @@ public sealed record AnalyzeCapturedScreenshotRequest(
 public sealed record ScreenshotGalleryRequest(DateOnly Date);
 
 /// <summary>Describes one retained screenshot that can be rendered by a presentation surface.</summary>
+/// <param name="CapturedAt">The capture timestamp stored with the retained screenshot artifact.</param>
+/// <param name="Path">The absolute path of the retained screenshot artifact.</param>
+/// <param name="ForegroundApplication">The closest foreground application observed during the capture interval.</param>
+/// <param name="CaptureKind">The stable capture-kind identifier parsed from the owned artifact name.</param>
+/// <param name="CaptureOrigin">The stable manual or scheduled capture origin.</param>
+/// <param name="SpanLabels">Distinct consecutive activity labels sampled during the capture interval.</param>
+/// <param name="AiDescriptionMarkdown">The newest persisted AI description that references this exact artifact, formatted as Markdown.</param>
+/// <param name="AiAnalyzedAt">The timestamp of the associated AI analysis, or <see langword="null"/> when no successful result exists.</param>
+/// <param name="ActivityIndex">A 0-100 historical interval index based on durable keyboard, click, and active-time samples; CPU and GPU telemetry are not reconstructed.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
     string ForegroundApplication,
     string CaptureKind,
     string CaptureOrigin,
-    IReadOnlyList<ActivityLabelSample>? SpanLabels = null);
+    IReadOnlyList<ActivityLabelSample>? SpanLabels = null,
+    string? AiDescriptionMarkdown = null,
+    DateTimeOffset? AiAnalyzedAt = null,
+    int? ActivityIndex = null);
 
 /// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
 public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);
@@ -277,6 +289,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Requests the Windows Share UI for one retained screenshot.</summary>
     Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken);
 
+    /// <summary>Opens the newest application log with the Windows shell.</summary>
+    Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken);
+
+    /// <summary>Creates a bounded redacted application-log copy and opens the Windows Share UI.</summary>
+    Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken);
+
     /// <summary>Opens the configured screenshot folder.</summary>
     Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken);
 
@@ -366,4 +384,7 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets safe product links and metadata.</summary>
     Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken);
+
+    /// <summary>Opens one allowlisted product link selected by semantic key.</summary>
+    Task<OperationResult<bool>> OpenProductLinkAsync(string linkKey, CancellationToken cancellationToken);
 }

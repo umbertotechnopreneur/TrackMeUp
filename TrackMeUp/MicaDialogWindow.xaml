@@ -4,97 +4,110 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="TrackMeUp">
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
     <Grid
         x:Name="RootGrid"
         Background="Transparent"
+        KeyDown="RootGrid_KeyDown"
         Loaded="RootGrid_Loaded">
-        <Border
-            Margin="12"
-            Background="{ThemeResource LayerFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1"
-            CornerRadius="14">
-            <Grid>
+        <Grid.Resources>
+            <Style x:Key="DialogActionButtonStyle" TargetType="Button">
+                <Setter Property="MinWidth" Value="96" />
+                <Setter Property="MinHeight" Value="34" />
+                <Setter Property="Padding" Value="14,5" />
+                <Setter Property="CornerRadius" Value="5" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+            </Style>
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Rectangle
+            x:Name="AccentVeil"
+            Grid.RowSpan="2"
+            IsHitTestVisible="False" />
+
+        <Grid
+            x:Name="TitleDragRegion"
+            Grid.Row="0"
+            Padding="22,0">
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="12"
+                FontWeight="SemiBold"
+                CharacterSpacing="150"
+                Text="TRACK ME UP" />
+        </Grid>
+
+        <Grid
+            x:Name="DialogBody"
+            Grid.Row="1"
+            Padding="24,10,24,22"
+            ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="44" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border
+                x:Name="AccentIconSurface"
+                Width="40"
+                Height="40"
+                VerticalAlignment="Top"
+                CornerRadius="20">
+                <FontIcon
+                    x:Name="SeverityIcon"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontSize="20" />
+            </Border>
+
+            <Grid Grid.Column="1" RowSpacing="12">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="44" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-
-                <Grid
-                    x:Name="TitleDragRegion"
-                    Grid.Row="0"
-                    Padding="20,0">
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        CharacterSpacing="150"
-                        Text="TRACK ME UP" />
-                </Grid>
-
-                <Grid
+                <TextBlock
+                    x:Name="DialogTitleText"
+                    AutomationProperties.LiveSetting="Assertive"
+                    FontSize="20"
+                    FontWeight="SemiBold"
+                    TextWrapping="Wrap" />
+                <ScrollViewer
+                    x:Name="MessageScrollViewer"
                     Grid.Row="1"
-                    Padding="22,10,22,20"
-                    ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="44" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border
-                        x:Name="AccentIconSurface"
-                        Width="40"
-                        Height="40"
-                        VerticalAlignment="Top"
-                        CornerRadius="20">
-                        <FontIcon
-                            x:Name="SeverityIcon"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="20" />
-                    </Border>
-
-                    <Grid Grid.Column="1" RowSpacing="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock
-                            x:Name="DialogTitleText"
-                            AutomationProperties.LiveSetting="Assertive"
-                            FontSize="20"
-                            FontWeight="SemiBold"
-                            TextWrapping="Wrap" />
-                        <ScrollViewer
-                            Grid.Row="1"
-                            HorizontalScrollBarVisibility="Disabled"
-                            HorizontalScrollMode="Disabled"
-                            VerticalScrollBarVisibility="Auto"
-                            VerticalScrollMode="Auto">
-                            <TextBlock
-                                x:Name="DialogMessageText"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                LineHeight="21"
-                                TextWrapping="WrapWholeWords" />
-                        </ScrollViewer>
-                        <StackPanel
-                            Grid.Row="2"
-                            HorizontalAlignment="Right"
-                            Orientation="Horizontal"
-                            Spacing="8">
-                            <Button
-                                x:Name="CancelButton"
-                                MinWidth="96"
-                                Click="CancelButton_Click"
-                                Visibility="Collapsed" />
-                            <Button
-                                x:Name="PrimaryButton"
-                                MinWidth="96"
-                                Click="PrimaryButton_Click" />
-                        </StackPanel>
-                    </Grid>
-                </Grid>
+                    HorizontalScrollBarVisibility="Disabled"
+                    HorizontalScrollMode="Disabled"
+                    VerticalScrollBarVisibility="Hidden"
+                    VerticalScrollMode="Disabled">
+                    <TextBlock
+                        x:Name="DialogMessageText"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        IsTextSelectionEnabled="True"
+                        LineHeight="21"
+                        TextWrapping="WrapWholeWords" />
+                </ScrollViewer>
+                <StackPanel
+                    Grid.Row="2"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        x:Name="CancelButton"
+                        Click="CancelButton_Click"
+                        Style="{StaticResource DialogActionButtonStyle}"
+                        Visibility="Collapsed" />
+                    <Button
+                        x:Name="PrimaryButton"
+                        Click="PrimaryButton_Click"
+                        Style="{StaticResource DialogActionButtonStyle}" />
+                </StackPanel>
             </Grid>
-        </Border>
+        </Grid>
     </Grid>
 </Window>

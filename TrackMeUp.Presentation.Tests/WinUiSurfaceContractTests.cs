@@ -31,15 +31,26 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "Expander");
-        Assert.Contains(about.Descendants(), element => HasName(element, "AboutIcon") && element.Attribute("CornerRadius")?.Value == "20");
-        Assert.Contains(about.Descendants(), element => HasName(element, "CreatedByLink") && element.Attribute("Content")?.Value == "Umberto Giacobbi");
+        Assert.Contains(about.Descendants(), element => HasName(element, "AboutIcon") && element.Name.LocalName == "Viewbox");
+        Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName is "ThemeShadow" or "LinearGradientBrush");
+        Assert.Contains(about.Descendants(), element => HasName(element, "CreatedByButton") && element.Attribute("Content")?.Value == "Umberto Giacobbi");
+        Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "HyperlinkButton" || element.Attribute("NavigateUri") is not null);
+        Assert.Contains(about.Descendants(), element => HasName(element, "ShowLogButton"));
+        Assert.Contains(about.Descendants(), element => HasName(element, "ShareLogButton"));
+        Assert.Contains(about.Descendants(), element => HasName(element, "DiagnosticsInfoBar"));
         Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Stretch");
         Assert.DoesNotContain(about.Descendants(), element => element.Attribute("Text")?.Value == "•••");
         Assert.Contains("private const int LogicalWindowWidth = 430;", aboutSource, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowHeight = 450;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowHeight = 520;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("_application.OpenApplicationLogAsync", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("_application.ShareApplicationLogAsync", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("_application.OpenProductLinkAsync", aboutSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.IO", aboutSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Process.", aboutSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Environment.", aboutSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -213,6 +224,33 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ShowActionResult(result", source, StringComparison.Ordinal);
         Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
         Assert.Contains("DeleteSnapshotAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScreenshotWindow_UsesFlatToggleableDetailsPaneWithSafeMarkdownSurface()
+    {
+        var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
+        var gallery = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml"));
+        var details = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var detailsToggle = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsToggleButton"));
+        var detailsPane = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsPane"));
+        var timeline = screenshotWindow.Descendants().Single(element => HasName(element, "TimelineSection"));
+
+        Assert.Contains(screenshotWindow.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Equal("ToggleButton", detailsToggle.Name.LocalName);
+        Assert.Equal("DetailsToggleButton_Click", detailsToggle.Attribute("Click")?.Value);
+        Assert.Equal("Collapsed", detailsPane.Attribute("Visibility")?.Value);
+        Assert.Equal("2", detailsPane.Attribute("Grid.RowSpan")?.Value);
+        Assert.Equal("Transparent", detailsPane.Attribute("Background")?.Value);
+        Assert.Equal("1,0,0,0", detailsPane.Attribute("BorderThickness")?.Value);
+        Assert.Equal("2", timeline.Attribute("Grid.ColumnSpan")?.Value);
+        Assert.Contains("ElementRect(DetailsToggleButton, scale)", source, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotDetailsProjection.Create", source, StringComparison.Ordinal);
+        Assert.Contains(gallery.Descendants(), element => HasName(element, "MetadataActivityIndexValueText"));
+        Assert.DoesNotContain(gallery.Descendants(), element => element.Attribute("Style")?.Value.Contains("ScreenshotMetadataPillStyle", StringComparison.Ordinal) == true);
+        Assert.Contains(details.Descendants(), element => HasName(element, "AiMarkdownHost"));
+        Assert.DoesNotContain(details.Descendants(), element => element.Name.LocalName is "WebView2" or "Hyperlink" or "HyperlinkButton");
     }
 
     [Fact]

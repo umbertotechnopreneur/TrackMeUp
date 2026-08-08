@@ -7,6 +7,16 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class AiPromptAndPayloadTests
 {
+    [Theory]
+    [InlineData("{\"error\":{\"code\":\"insufficient_quota\",\"type\":\"requests\"}}", "insufficient_quota")]
+    [InlineData("{\"error\":{\"code\":\"rate_limit_exceeded\",\"type\":\"requests\"}}", "rate_limit_exceeded")]
+    [InlineData("{\"error\":{\"code\":\"unsafe markup\",\"type\":\"rate_limit_error\"}}", "rate_limit_error")]
+    [InlineData("{\"error\":{\"code\":\"<script>\",\"type\":\"also unsafe\"}}", null)]
+    public void OpenAiErrorCode_OnlyReturnsAllowlistedMachineTokens(string response, string? expected)
+    {
+        Assert.Equal(expected, OpenAiDecoder.ReadApiErrorCode(response));
+    }
+
     [Fact]
     public void Profiles_HaveDeterministicBudgetsAndDetailLevels()
     {

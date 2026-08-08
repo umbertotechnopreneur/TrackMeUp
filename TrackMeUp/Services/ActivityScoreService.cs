@@ -84,6 +84,38 @@ public sealed class ActivityScoreService
         }
     }
 
+    /// <summary>
+    /// Calculates a durable interval activity index using the same input and active-time weights as the live score.
+    /// </summary>
+    /// <remarks>
+    /// Historical CPU and GPU telemetry is intentionally omitted because it is not persisted in the activity store.
+    /// </remarks>
+    internal static int CalculateIntervalActivityIndex(IEnumerable<ActivitySample> samples, int intervalMinutes)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        var normalizedIntervalMinutes = Math.Max(1, intervalMinutes);
+        var keyPresses = 0L;
+        var mouseClicks = 0L;
+        var activeSeconds = 0L;
+        foreach (var sample in samples)
+        {
+            keyPresses = checked(keyPresses + sample.KeyPresses);
+            mouseClicks = checked(mouseClicks + sample.MouseClicks);
+            if (string.Equals(sample.State, "active", StringComparison.OrdinalIgnoreCase))
+            {
+                activeSeconds = checked(activeSeconds + sample.DurationSeconds);
+            }
+        }
+
+        var maximumActiveSeconds = checked(normalizedIntervalMinutes * 60L);
+        return CalculateScore(
+            keyPresses / (double)normalizedIntervalMinutes,
+            mouseClicks / (double)normalizedIntervalMinutes,
+            Math.Clamp(activeSeconds / (double)maximumActiveSeconds, 0d, 1d),
+            cpuUsagePercent: 0,
+            gpuUsagePercent: null);
+    }
+
     private MinuteAggregate GetOrCreate(DateTimeOffset minuteUtc)
     {
         if (_minutes.TryGetValue(minuteUtc, out var aggregate))
@@ -126,13 +158,25 @@ public sealed class ActivityScoreService
         return new ActivityScoreInterval(keys, clicks);
     }
 
-    private static int CalculateScore(MinuteAggregate aggregate)
+    private static int CalculateScore(MinuteAggregate aggregate) => CalculateScore(
+        aggregate.KeyPresses,
+        aggregate.MouseClicks,
+        aggregate.ActiveSeconds > 0 ? 1d : 0d,
+        aggregate.CpuUsagePercent,
+        aggregate.GpuUsagePercent);
+
+    private static int CalculateScore(
+        double keyPresses,
+        double mouseClicks,
+        double activeRatio,
+        int cpuUsagePercent,
+        int? gpuUsagePercent)
     {
         // Input is deliberately dominant; CPU and GPU together can add at most six points.
-        var inputContribution = Math.Min(86d, (aggregate.KeyPresses * 0.55d) + (aggregate.MouseClicks * 3.5d));
-        var activeContribution = aggregate.ActiveSeconds > 0 ? 8d : 0d;
-        var cpuContribution = aggregate.CpuUsagePercent * 0.04d;
-        var gpuContribution = (aggregate.GpuUsagePercent ?? 0) * 0.02d;
+        var inputContribution = Math.Min(86d, (keyPresses * 0.55d) + (mouseClicks * 3.5d));
+        var activeContribution = Math.Clamp(activeRatio, 0d, 1d) * 8d;
+        var cpuContribution = Math.Clamp(cpuUsagePercent, 0, 100) * 0.04d;
+        var gpuContribution = Math.Clamp(gpuUsagePercent ?? 0, 0, 100) * 0.02d;
         return (int)Math.Round(Math.Clamp(inputContribution + activeContribution + cpuContribution + gpuContribution, 0d, 100d));
     }
 

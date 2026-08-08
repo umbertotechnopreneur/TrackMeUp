@@ -9,23 +9,23 @@
 	UseSystemFocusVisuals="True">
 	<UserControl.Resources>
 		<Style x:Key="CoverFlowSlotButtonStyle" TargetType="Button">
-			<Setter Property="Padding" Value="5" />
+			<Setter Property="Padding" Value="0" />
 			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 			<Setter Property="VerticalContentAlignment" Value="Stretch" />
-			<Setter Property="Background" Value="{ThemeResource ControlFillColorSecondaryBrush}" />
-			<Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
-			<Setter Property="BorderThickness" Value="1" />
-			<Setter Property="CornerRadius" Value="20" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="CornerRadius" Value="0" />
 			<Setter Property="UseSystemFocusVisuals" Value="True" />
 		</Style>
 		<Style x:Key="CoverFlowNavigationButtonStyle" TargetType="Button">
-			<Setter Property="Width" Value="52" />
-			<Setter Property="Height" Value="52" />
+			<Setter Property="Width" Value="46" />
+			<Setter Property="Height" Value="46" />
 			<Setter Property="Padding" Value="0" />
 			<Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
 			<Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
 			<Setter Property="BorderThickness" Value="1" />
-			<Setter Property="CornerRadius" Value="26" />
+			<Setter Property="CornerRadius" Value="23" />
 			<Setter Property="UseSystemFocusVisuals" Value="True" />
 		</Style>
 	</UserControl.Resources>
@@ -40,11 +40,11 @@
 			VerticalAlignment="Stretch" />
 		<Button
 			x:Name="PreviousButton"
-			Margin="22,0,0,0"
+			Margin="16,0,0,0"
 			HorizontalAlignment="Left"
 			VerticalAlignment="Center"
 			AutomationProperties.Name="Previous screenshot"
-			Canvas.ZIndex="200"
+			Canvas.ZIndex="20000"
 			Click="PreviousButton_Click"
 			Style="{StaticResource CoverFlowNavigationButtonStyle}">
 			<FontIcon
@@ -55,11 +55,11 @@
 		</Button>
 		<Button
 			x:Name="NextButton"
-			Margin="0,0,22,0"
+			Margin="0,0,16,0"
 			HorizontalAlignment="Right"
 			VerticalAlignment="Center"
 			AutomationProperties.Name="Next screenshot"
-			Canvas.ZIndex="200"
+			Canvas.ZIndex="20000"
 			Click="NextButton_Click"
 			Style="{StaticResource CoverFlowNavigationButtonStyle}">
 			<FontIcon

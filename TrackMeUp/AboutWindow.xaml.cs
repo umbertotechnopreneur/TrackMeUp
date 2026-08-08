@@ -2,21 +2,23 @@ using System;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using Windows.Graphics;
 using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
-/// <summary>Displays immutable about information and uses declarative links for external navigation.</summary>
+/// <summary>Displays product information and delegates diagnostics actions to the application facade.</summary>
 public sealed partial class AboutWindow : Window
 {
     private const int LogicalWindowWidth = 430;
-    private const int LogicalWindowHeight = 450;
+    private const int LogicalWindowHeight = 520;
     private const int LogicalScreenMargin = 22;
     private readonly AppWindow _appWindow;
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
     private double _rasterizationScale = 1d;
     private XamlRoot? _xamlRoot;
 
@@ -41,6 +43,7 @@ public sealed partial class AboutWindow : Window
 
     private void AboutWindow_Closed(object sender, WindowEventArgs args)
     {
+        _lifetimeCancellation.Cancel();
         if (_xamlRoot is not null)
         {
             _xamlRoot.Changed -= XamlRoot_Changed;
@@ -58,14 +61,114 @@ public sealed partial class AboutWindow : Window
         ResizeForLogicalContent();
         UpdateTitleBarInsets();
 
-        var result = await _application.GetProductInformationAsync(CancellationToken.None);
-        if (!result.Succeeded || result.Value is null)
+        try
         {
-            throw new InvalidOperationException($"Build information is unavailable ({result.Code}).");
-        }
+            var result = await _application.GetProductInformationAsync(_lifetimeCancellation.Token);
+            if (!result.Succeeded || result.Value is null)
+            {
+                throw new InvalidOperationException($"Build information is unavailable ({result.Code}).");
+            }
 
-        var product = result.Value;
-        VersionText.Text = product.Build.SemVer;
+            VersionText.Text = result.Value.Build.SemVer;
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // The window is closing; no presentation update is required.
+        }
+    }
+
+    private async void ShowLogButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RunDiagnosticsActionAsync(
+            cancellationToken => _application.OpenApplicationLogAsync(cancellationToken),
+            "About.LogOpened");
+    }
+
+    private async void ShareLogButton_Click(object sender, RoutedEventArgs e)
+    {
+        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64();
+        await RunDiagnosticsActionAsync(
+            cancellationToken => _application.ShareApplicationLogAsync(windowHandle, cancellationToken),
+            "About.LogShared");
+    }
+
+    private async void ContactButton_Click(object sender, RoutedEventArgs e) =>
+        await RunProductLinkActionAsync("author");
+
+    private async void RepositoryButton_Click(object sender, RoutedEventArgs e) =>
+        await RunProductLinkActionAsync("repository");
+
+    private async Task RunProductLinkActionAsync(string linkKey)
+    {
+        ContactButton.IsEnabled = false;
+        RepositoryButton.IsEnabled = false;
+        CreatedByButton.IsEnabled = false;
+        try
+        {
+            var result = await _application.OpenProductLinkAsync(linkKey, _lifetimeCancellation.Token);
+            if (!result.Succeeded)
+            {
+                DiagnosticsInfoBar.Title = _strings.Translate("About.LinkFailed");
+                DiagnosticsInfoBar.Message = _strings.Translate("About.LinkFailed.Description");
+                DiagnosticsInfoBar.Severity = InfoBarSeverity.Error;
+                DiagnosticsInfoBar.IsOpen = true;
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // The window is closing; no presentation update is required.
+        }
+        catch (Exception)
+        {
+            DiagnosticsInfoBar.Title = _strings.Translate("About.LinkFailed");
+            DiagnosticsInfoBar.Message = _strings.Translate("About.LinkFailed.Description");
+            DiagnosticsInfoBar.Severity = InfoBarSeverity.Error;
+            DiagnosticsInfoBar.IsOpen = true;
+        }
+        finally
+        {
+            if (!_lifetimeCancellation.IsCancellationRequested)
+            {
+                ContactButton.IsEnabled = true;
+                RepositoryButton.IsEnabled = true;
+                CreatedByButton.IsEnabled = true;
+            }
+        }
+    }
+
+    private async Task RunDiagnosticsActionAsync(
+        Func<CancellationToken, Task<OperationResult<bool>>> action,
+        string successKey)
+    {
+        ShowLogButton.IsEnabled = false;
+        ShareLogButton.IsEnabled = false;
+        try
+        {
+            var result = await action(_lifetimeCancellation.Token);
+            DiagnosticsInfoBar.Title = _strings.Translate(result.Succeeded ? successKey : "About.LogFailed");
+            DiagnosticsInfoBar.Message = result.Succeeded ? string.Empty : _strings.Translate("About.LogFailed.Description");
+            DiagnosticsInfoBar.Severity = result.Succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+            DiagnosticsInfoBar.IsOpen = true;
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // The window is closing; no presentation update is required.
+        }
+        catch (Exception)
+        {
+            DiagnosticsInfoBar.Title = _strings.Translate("About.LogFailed");
+            DiagnosticsInfoBar.Message = _strings.Translate("About.LogFailed.Description");
+            DiagnosticsInfoBar.Severity = InfoBarSeverity.Error;
+            DiagnosticsInfoBar.IsOpen = true;
+        }
+        finally
+        {
+            if (!_lifetimeCancellation.IsCancellationRequested)
+            {
+                ShowLogButton.IsEnabled = true;
+                ShareLogButton.IsEnabled = true;
+            }
+        }
     }
 
     private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();

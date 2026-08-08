@@ -11,6 +11,7 @@ namespace TrackMeUp.Runtime;
 internal static class LoggingBootstrapper
 {
     private const int RetainedFileCount = 7;
+    private static readonly TimeSpan RetainedFileTime = TimeSpan.FromDays(7);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
     private static readonly Regex WindowsPath = new(@"\b[a-z]:\\[^\r\n]*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private static readonly Regex SecretAssignment = new(@"\b(?:api[_-]?key|token|secret|authorization|dsn)\b\s*[:=]\s*\S+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
@@ -35,6 +36,7 @@ internal static class LoggingBootstrapper
                     Path.Combine(resolved.LogDirectory, "trackmeup-.log"),
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: RetainedFileCount,
+                    retainedFileTimeLimit: RetainedFileTime,
                     shared: true,
                     flushToDiskInterval: TimeSpan.FromSeconds(1));
                 fileLoggingEnabled = true;

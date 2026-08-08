@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
@@ -12,6 +13,8 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class ScheduledSnapshotStateTests
 {
+    private const string TestApiKeyVariable = "TRACKMEUP_SCHEDULED_OPENAI_APIKEY";
+
     [Fact]
     public async Task EmptyActiveHours_DisableCountdownUntilAWorkingPeriodIsConfigured()
     {
@@ -97,6 +100,72 @@ public sealed class ScheduledSnapshotStateTests
         }
     }
 
+    [Fact]
+    public async Task DueTimer_CapturesAnalyzesPersistsAndProjectsTheSameScheduledSnapshot()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotIntervalMinutes = 1,
+                ScreenshotDirectory = dataDirectory,
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable
+            });
+            var utilities = new UtilityService();
+            var capture = new ScheduledCaptureService(dataDirectory);
+            var analysis = new OpenAiAnalysisService(
+                store,
+                capture,
+                decoder: new SuccessfulDecoder());
+            await using var application = new TrackMeUpApplication(
+                store,
+                utilities,
+                new TrackingDomainService(store, utilities),
+                capture,
+                new SystemSnapshotService(),
+                analysis,
+                new StartupService(),
+                new BuildInformationService());
+            var started = await application.StartTrackingAsync(new StartTrackingRequest(), CancellationToken.None);
+            Assert.True(started.Succeeded);
+
+            var deadline = typeof(TrackMeUpApplication).GetField(
+                "_nextScheduledSnapshotAt",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Scheduled snapshot deadline field was not found.");
+            deadline.SetValue(application, DateTimeOffset.Now.AddSeconds(-1));
+            var timerProcessor = typeof(TrackMeUpApplication).GetMethod(
+                "ProcessScheduledSnapshotAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Scheduled snapshot processor was not found.");
+            await (Task)(timerProcessor.Invoke(application, null)
+                ?? throw new InvalidOperationException("Scheduled snapshot processor returned no task."));
+
+            var persisted = store.LoadLatestAnalysis();
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(DateTime.Today));
+            var galleryItem = Assert.Single(gallery.Items);
+            Assert.Equal(1, capture.CallCount);
+            Assert.Equal(ScreenshotCaptureOrigins.Scheduled, capture.LastOrigin);
+            Assert.NotNull(persisted);
+            Assert.Equal(capture.Result.CaptureId, persisted!.CorrelationId);
+            Assert.Equal("snapshot.scheduled", persisted.Origin);
+            Assert.Equal(capture.Result.StoredScreenshotPaths[0], persisted.ScreenshotPaths);
+            Assert.Equal("## Activity\n\n- Scheduled work.", galleryItem.AiDescriptionMarkdown);
+            Assert.Equal(persisted.Timestamp, galleryItem.AiAnalyzedAt);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            await DeleteTemporaryDirectoryAsync(dataDirectory);
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
@@ -118,5 +187,58 @@ public sealed class ScheduledSnapshotStateTests
                 await Task.Delay(TimeSpan.FromMilliseconds(50));
             }
         }
+    }
+
+    private sealed class ScheduledCaptureService : IScreenCaptureService
+    {
+        public ScheduledCaptureService(string directory)
+        {
+            var captureId = Guid.NewGuid().ToString("N");
+            var rawPath = Path.Combine(directory, $"{captureId}_1.0.0_scheduled_monitor-1-raw.webp");
+            var storedPath = Path.Combine(directory, $"{captureId}_1.0.0_scheduled_monitor-1.webp");
+            File.WriteAllBytes(rawPath, [1, 2, 3]);
+            File.WriteAllBytes(storedPath, [4, 5, 6]);
+            Result = new ScreenshotCaptureResult(
+                captureId,
+                [rawPath],
+                [storedPath],
+                ScreenshotCaptureOrigins.Scheduled);
+        }
+
+        public int CallCount { get; private set; }
+
+        public string? LastOrigin { get; private set; }
+
+        public ScreenshotCaptureResult Result { get; }
+
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin)
+        {
+            CallCount++;
+            LastOrigin = captureOrigin;
+            return Result;
+        }
+    }
+
+    private sealed class SuccessfulDecoder : IAIDecoder
+    {
+        public string Provider => "openai";
+
+        public Task<AiProviderResult> DecodeAsync(
+            string prompt,
+            IReadOnlyList<string> screenshotPaths,
+            AppSettings settings,
+            string apiKey,
+            string correlationId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AiProviderResult(
+                "## Activity\n\n- Scheduled work.",
+                new AiUsageMetrics(),
+                "response-id",
+                "request-id",
+                settings.Model,
+                "completed",
+                200,
+                1,
+                null));
     }
 }

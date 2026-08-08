@@ -279,6 +279,8 @@ public sealed class CliRouterTests
         public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
         public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => Unsupported<string>();
+        public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => Unsupported<bool>();
+        public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken) => Unsupported<IReadOnlyList<ApplicationNotification>>();
@@ -335,6 +337,7 @@ public sealed class CliRouterTests
         }
         public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken) => Unsupported<ProductInformation>();
+        public Task<OperationResult<bool>> OpenProductLinkAsync(string linkKey, CancellationToken cancellationToken) => Unsupported<bool>();
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         private static Task<OperationResult<T>> Success<T>(T value, string code) => Task.FromResult(OperationResult<T>.Success(code, code, value));

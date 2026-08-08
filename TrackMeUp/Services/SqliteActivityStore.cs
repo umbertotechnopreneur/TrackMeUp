@@ -224,17 +224,52 @@ internal sealed class SqliteActivityStore
             return null;
         }
 
-        return new AiAnalysis(
-            new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
-            reader.GetString(2),
-            reader.GetString(3),
-            reader.GetString(4),
-            reader.GetString(5),
-            ReadNullableString(reader, 6),
-            Snapshot: null,
-            CorrelationId: reader.GetString(0),
-            Origin: reader.GetString(7),
-            InformationalSchedule: ReadNullableString(reader, 8));
+        return ReadAiAnalysis(reader);
+    }
+
+    /// <summary>Loads the newest successful analysis that references each requested screenshot path.</summary>
+    internal IReadOnlyDictionary<string, AiAnalysis> LoadLatestAiAnalysesForScreenshots(IEnumerable<string> screenshotPaths)
+    {
+        ArgumentNullException.ThrowIfNull(screenshotPaths);
+        var requestedPaths = screenshotPaths
+            .Select(Path.GetFullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var analyses = new Dictionary<string, AiAnalysis>(StringComparer.OrdinalIgnoreCase);
+        if (requestedPaths.Count == 0)
+        {
+            return analyses;
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT correlation_id, timestamp_utc_ticks, application, context, summary, installation_id,
+                   screenshot_paths, origin, informational_schedule
+            FROM ai_analysis_results
+            WHERE screenshot_paths IS NOT NULL
+            ORDER BY timestamp_utc_ticks DESC, correlation_id DESC;
+            """;
+        using var reader = command.ExecuteReader();
+        while (analyses.Count < requestedPaths.Count && reader.Read())
+        {
+            var referencedPaths = EnumerateScreenshotPaths(ReadNullableString(reader, 6))
+                .Select(Path.GetFullPath)
+                .Where(requestedPaths.Contains)
+                .Where(path => !analyses.ContainsKey(path))
+                .ToArray();
+            if (referencedPaths.Length == 0)
+            {
+                continue;
+            }
+
+            var analysis = ReadAiAnalysis(reader);
+            foreach (var referencedPath in referencedPaths)
+            {
+                analyses.Add(referencedPath, analysis);
+            }
+        }
+
+        return analyses;
     }
 
     /// <summary>Deletes snapshot-analysis records that reference one retained screenshot capture.</summary>
@@ -287,9 +322,13 @@ internal sealed class SqliteActivityStore
 
     private static bool ContainsScreenshotPath(string? screenshotPaths, string normalizedPath)
     {
-        return screenshotPaths?.Split(';', StringSplitOptions.RemoveEmptyEntries)
+        return EnumerateScreenshotPaths(screenshotPaths)
             .Any(path => string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase)) == true;
     }
+
+    private static IEnumerable<string> EnumerateScreenshotPaths(string? screenshotPaths) =>
+        screenshotPaths?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        ?? Array.Empty<string>();
 
     /// <summary>Streams activity and AI usage from one SQLite read transaction and therefore one database snapshot.</summary>
     internal void VisitReportData(
@@ -899,6 +938,18 @@ internal sealed class SqliteActivityStore
     }
 
     private static decimal? FromMicroUsd(long? amount) => amount.HasValue ? amount.Value / 1_000_000m : null;
+
+    private static AiAnalysis ReadAiAnalysis(SqliteDataReader reader) => new(
+        new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
+        reader.GetString(2),
+        reader.GetString(3),
+        reader.GetString(4),
+        reader.GetString(5),
+        ReadNullableString(reader, 6),
+        Snapshot: null,
+        CorrelationId: reader.GetString(0),
+        Origin: reader.GetString(7),
+        InformationalSchedule: ReadNullableString(reader, 8));
 
     private static long? ReadNullableLong(SqliteDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? null : reader.GetInt64(ordinal);
 

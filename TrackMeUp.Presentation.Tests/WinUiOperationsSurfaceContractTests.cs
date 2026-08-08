@@ -9,6 +9,27 @@ namespace TrackMeUp.Presentation.Tests;
 /// <summary>Guards complete, passive access to operational use cases from the WinUI frontend.</summary>
 public sealed class WinUiOperationsSurfaceContractTests
 {
+    /// <summary>Guards the passive About diagnostics surface and its shared-runtime route.</summary>
+    [Fact]
+    public void AboutDiagnostics_UseFacadeRuntimeAndRedactedShareInfrastructure()
+    {
+        var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
+        var runtime = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
+        var logs = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "ApplicationLogService.cs"));
+
+        Assert.Contains("_application.OpenApplicationLogAsync", about, StringComparison.Ordinal);
+        Assert.Contains("_application.ShareApplicationLogAsync", about, StringComparison.Ordinal);
+        Assert.Contains("_application.OpenProductLinkAsync", about, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.IO", about, StringComparison.Ordinal);
+        Assert.DoesNotContain("Process.", about, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics.log.open\"", runtime, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics.log.share\"", runtime, StringComparison.Ordinal);
+        Assert.Contains("\"product.link.open\"", runtime, StringComparison.Ordinal);
+        Assert.Contains("MaximumSharedSourceBytes", logs, StringComparison.Ordinal);
+        Assert.Contains("CreateRedactedExport", logs, StringComparison.Ordinal);
+        Assert.Contains("RedactForSharing", logs, StringComparison.Ordinal);
+    }
+
     /// <summary>Ensures the dense operational surface remains integrated and usable at narrow widths.</summary>
     [Fact]
     public void OperationsSurface_IsIntegratedScrollableAndAdaptive()
@@ -106,16 +127,46 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("SemaphoreSlim", service, StringComparison.Ordinal);
         Assert.Contains("AccentColor", service, StringComparison.Ordinal);
         Assert.Contains("return await ShowAsync(owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
-        Assert.Contains("SystemBackdrop = new MicaBackdrop();", dialog, StringComparison.Ordinal);
+        Assert.Contains(dialogXaml.Descendants(), element =>
+            element.Name.LocalName == "MicaBackdrop" && element.Attribute("Kind")?.Value == "BaseAlt");
+        Assert.Contains(dialogXaml.Descendants(), element =>
+            HasName(element, "RootGrid") && element.Attribute("Background")?.Value == "Transparent");
+        Assert.DoesNotContain(dialogXaml.Descendants(), element =>
+            element.Name.LocalName == "Border"
+            && element.Attribute("Background")?.Value?.Contains("LayerFillColorDefaultBrush", StringComparison.Ordinal) == true);
+        Assert.Contains(dialogXaml.Descendants(), element =>
+            element.Name.LocalName == "Rectangle"
+            && HasName(element, "AccentVeil")
+            && element.Attribute("IsHitTestVisible")?.Value == "False");
+        Assert.Contains("ExtendsContentIntoTitleBar = true;", dialog, StringComparison.Ordinal);
         Assert.Contains("Closed += (_, _) => _completion.TrySetResult(MicaDialogResult.Cancel);", dialog, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName", dialog, StringComparison.Ordinal);
-        Assert.Contains(dialogXaml.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.Contains(dialogXaml.Descendants(), element =>
+            element.Name.LocalName == "ScrollViewer"
+            && HasName(element, "MessageScrollViewer")
+            && element.Attribute("VerticalScrollBarVisibility")?.Value == "Hidden"
+            && element.Attribute("VerticalScrollMode")?.Value == "Disabled");
+        Assert.Contains(dialogXaml.Descendants(), element =>
+            HasName(element, "DialogMessageText") && element.Attribute("IsTextSelectionEnabled")?.Value == "True");
+        Assert.Contains("MessageScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;", dialog, StringComparison.Ordinal);
+        Assert.Contains("DialogBody.Measure", dialog, StringComparison.Ordinal);
+        Assert.Contains("LogicalMaximumHeight", dialog, StringComparison.Ordinal);
+        Assert.DoesNotContain("LogicalInformationHeight", dialog, StringComparison.Ordinal);
+        Assert.DoesNotContain("LogicalConfirmationHeight", dialog, StringComparison.Ordinal);
+        Assert.Contains("GetContrastingForeground", dialog, StringComparison.Ordinal);
+        Assert.Contains("AccentVeil.Fill = CreateAccentVeil(accent, theme);", dialog, StringComparison.Ordinal);
+        Assert.Contains("new RadialGradientBrush", dialog, StringComparison.Ordinal);
+        Assert.Contains("ElementTheme.Dark => (byte)30", dialog, StringComparison.Ordinal);
+        Assert.Contains("VirtualKey.Escape", dialog, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element => element.Attribute("AutomationProperties.LiveSetting")?.Value == "Assertive");
         Assert.Contains("DrainApplicationNotificationsAsync", main, StringComparison.Ordinal);
         Assert.Contains("Enabled: true, HasKey: false", main, StringComparison.Ordinal);
         Assert.Contains("private readonly MicaDialogService _dialogs = new();", app, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ConfirmAsync(", schedule, StringComparison.Ordinal);
     }
+
+    private static bool HasName(XElement element, string value)
+        => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == value);
 
     private static string RepositoryFile(params string[] pathSegments)
     {

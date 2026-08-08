@@ -130,13 +130,13 @@
 				<Setter Property="AutomationProperties.AccessibilityView" Value="Raw" />
 			</Style>
 
-			<Style x:Key="ScreenshotMetadataPillStyle" TargetType="Border">
-				<Setter Property="Height" Value="52" />
-				<Setter Property="Padding" Value="16,0" />
-				<Setter Property="Background" Value="{ThemeResource ScreenshotMetadataBackgroundBrush}" />
-				<Setter Property="BorderBrush" Value="{ThemeResource ScreenshotMetadataBorderBrush}" />
-				<Setter Property="BorderThickness" Value="1" />
-				<Setter Property="CornerRadius" Value="26" />
+			<Style x:Key="ScreenshotMetadataSegmentStyle" TargetType="Border">
+				<Setter Property="MinHeight" Value="40" />
+				<Setter Property="Padding" Value="12,0" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+				<Setter Property="BorderThickness" Value="0,0,1,0" />
+				<Setter Property="CornerRadius" Value="0" />
 			</Style>
 		</ResourceDictionary>
 	</UserControl.Resources>
@@ -155,23 +155,24 @@
 		<Border
 			x:Name="MetadataPanel"
 			Grid.Row="1"
-			MaxWidth="884"
-			Margin="32,14,32,0"
+			MaxWidth="980"
+			Margin="16,12,16,0"
 			HorizontalAlignment="Stretch"
 			Background="Transparent"
 			BorderBrush="Transparent"
 			BorderThickness="0"
 			Visibility="Collapsed">
-			<Grid RowSpacing="8">
-				<Grid ColumnSpacing="40">
+			<Grid RowSpacing="6">
+				<Grid>
 					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="1.35*" />
-						<ColumnDefinition Width="1*" />
-						<ColumnDefinition Width="1.53*" />
-						<ColumnDefinition Width="1.07*" />
+						<ColumnDefinition Width="1.2*" />
+						<ColumnDefinition Width="0.75*" />
+						<ColumnDefinition Width="1.15*" />
+						<ColumnDefinition Width="0.9*" />
+						<ColumnDefinition Width="0.72*" />
 					</Grid.ColumnDefinitions>
-				<Border Style="{StaticResource ScreenshotMetadataPillStyle}">
-					<Grid HorizontalAlignment="Center" ColumnSpacing="12">
+				<Border Style="{StaticResource ScreenshotMetadataSegmentStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="9">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="Auto" />
 							<ColumnDefinition Width="Auto" />
@@ -181,8 +182,8 @@
 						<TextBlock x:Name="MetadataDateValueText" Grid.Column="1" MaxWidth="148" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
 					</Grid>
 				</Border>
-				<Border Grid.Column="1" Style="{StaticResource ScreenshotMetadataPillStyle}">
-					<Grid HorizontalAlignment="Center" ColumnSpacing="12">
+				<Border Grid.Column="1" Style="{StaticResource ScreenshotMetadataSegmentStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="9">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="Auto" />
 							<ColumnDefinition Width="Auto" />
@@ -192,8 +193,8 @@
 						<TextBlock x:Name="MetadataTimeValueText" Grid.Column="1" MaxWidth="94" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
 					</Grid>
 				</Border>
-				<Border Grid.Column="2" Style="{StaticResource ScreenshotMetadataPillStyle}">
-					<Grid HorizontalAlignment="Center" ColumnSpacing="12">
+				<Border Grid.Column="2" Style="{StaticResource ScreenshotMetadataSegmentStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="9">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="Auto" />
 							<ColumnDefinition Width="Auto" />
@@ -203,8 +204,8 @@
 						<TextBlock x:Name="MetadataAppValueText" Grid.Column="1" MaxWidth="176" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
 					</Grid>
 				</Border>
-				<Border Grid.Column="3" Style="{StaticResource ScreenshotMetadataPillStyle}">
-					<Grid HorizontalAlignment="Center" ColumnSpacing="12">
+				<Border Grid.Column="3" Style="{StaticResource ScreenshotMetadataSegmentStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="9">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="Auto" />
 							<ColumnDefinition Width="Auto" />
@@ -214,9 +215,20 @@
 						<TextBlock x:Name="MetadataOriginValueText" Grid.Column="1" MaxWidth="105" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
 					</Grid>
 				</Border>
+				<Border Grid.Column="4" BorderThickness="0" Style="{StaticResource ScreenshotMetadataSegmentStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="9">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<FontIcon VerticalAlignment="Center" Glyph="&#xE9D9;" Style="{StaticResource ScreenshotInfoIconStyle}" />
+						<TextBlock Grid.Column="1" Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.ActivityIndex" Text="Activity index" Visibility="Collapsed" />
+						<TextBlock x:Name="MetadataActivityIndexValueText" Grid.Column="1" MaxWidth="54" VerticalAlignment="Center" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
+					</Grid>
+				</Border>
 				</Grid>
-				<Border Grid.Row="1" Style="{StaticResource ScreenshotMetadataPillStyle}">
-					<Grid HorizontalAlignment="Left" ColumnSpacing="12">
+				<Border Grid.Row="1" BorderThickness="0" Style="{StaticResource ScreenshotMetadataSegmentStyle}">
+					<Grid HorizontalAlignment="Left" ColumnSpacing="9">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="Auto" />
 							<ColumnDefinition Width="Auto" />
@@ -230,16 +242,11 @@
 		</Border>
 
 		<Grid x:Name="EmptyGalleryPanel" Grid.RowSpan="2" Background="Transparent" Visibility="Collapsed">
-				<Border
-					MaxWidth="360"
-					Padding="24,20"
-					HorizontalAlignment="Center"
-					VerticalAlignment="Center"
-					Background="{ThemeResource ScreenshotMetadataBackgroundBrush}"
-					BorderBrush="{ThemeResource ScreenshotMetadataBorderBrush}"
-					BorderThickness="1"
-					CornerRadius="16">
-					<StackPanel HorizontalAlignment="Center" Spacing="10">
+					<StackPanel
+						MaxWidth="360"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Spacing="10">
 						<FontIcon
 							HorizontalAlignment="Center"
 							FontFamily="Segoe Fluent Icons"
@@ -253,7 +260,6 @@
 							Text="No screenshots for this day."
 							TextAlignment="Center" />
 					</StackPanel>
-				</Border>
 		</Grid>
 
 		<ProgressRing

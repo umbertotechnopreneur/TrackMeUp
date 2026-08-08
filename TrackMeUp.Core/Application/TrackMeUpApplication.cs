@@ -23,8 +23,29 @@ public static class TrackMeUpApplicationFactory
         var deviceContext = new DeviceContextService();
         var buildInformation = new BuildInformationService();
         var aiModelCatalog = AiModelCatalog.LoadDefault();
-        var analysis = new OpenAiAnalysisService(store, capture, snapshot, deviceContext: deviceContext);
-        return new TrackMeUpApplication(store, utilities, tracking, capture, snapshot, analysis, new StartupService(), buildInformation, logger, observability, deviceContext, new ScreenshotShareService(), new WindowStateService(store), aiModelCatalog);
+        var fileShare = new WindowsFileShareService();
+        var analysis = new OpenAiAnalysisService(
+            store,
+            capture,
+            snapshot,
+            deviceContext: deviceContext,
+            logger: loggerFactory?.CreateLogger<OpenAiAnalysisService>());
+        return new TrackMeUpApplication(
+            store,
+            utilities,
+            tracking,
+            capture,
+            snapshot,
+            analysis,
+            new StartupService(),
+            buildInformation,
+            logger,
+            observability,
+            deviceContext,
+            new ScreenshotShareService(fileShare),
+            new WindowStateService(store),
+            aiModelCatalog,
+            new ApplicationLogService(fileShare: fileShare));
     }
 }
 
@@ -39,6 +60,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly DeviceContextService _deviceContext;
     private readonly IAiAnalysisService _analysis;
     private readonly ScreenshotShareService _screenshotShare;
+    private readonly ApplicationLogService _applicationLogs;
     private readonly WindowStateService _windowState;
     private readonly StartupService _startup;
     private readonly BuildInformationService _buildInformation;
@@ -60,6 +82,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private DateTimeOffset? _nextActivityScoreTelemetryAt;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private const int MaximumPendingNotifications = 32;
+    private const string ProductRepositoryUrl = "https://github.com/umbertotechnopreneur/TrackMeUp";
+    private const string ProductAuthorUrl = "https://umbertogiacobbi.com";
     private bool _disposed;
 
     /// <summary>Initializes an application facade with infrastructure owned by the runtime host.</summary>
@@ -77,7 +101,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         DeviceContextService? deviceContext = null,
         ScreenshotShareService? screenshotShare = null,
         WindowStateService? windowState = null,
-        AiModelCatalog? aiModelCatalog = null)
+        AiModelCatalog? aiModelCatalog = null,
+        ApplicationLogService? applicationLogs = null)
     {
         _store = store;
         _utilities = utilities;
@@ -86,6 +111,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _snapshot = snapshot;
         _deviceContext = deviceContext ?? new DeviceContextService();
         _screenshotShare = screenshotShare ?? new ScreenshotShareService();
+        _applicationLogs = applicationLogs ?? new ApplicationLogService();
         _windowState = windowState ?? new WindowStateService(store);
         _analysis = analysis;
         _startup = startup;
@@ -115,7 +141,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "notifications", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "notifications", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -327,6 +353,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             {
                 return OperationResult<ScreenshotCaptureResult>.Failure("operation.cancelled", "OperationCancelled");
             }
+            catch (AiProviderRequestException exception)
+            {
+                LogAiProviderFailure("screenshot.capture", exception);
+                EnqueueAiAnalysisFailure("ai.provider.failed");
+                return OperationResult<ScreenshotCaptureResult>.Failure("ai.provider.failed", "AiProviderFailed");
+            }
             catch (InvalidOperationException)
             {
                 EnqueueAiAnalysisFailure("ai.configuration.invalid");
@@ -472,6 +504,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             catch (OperationCanceledException)
             {
                 return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
+            }
+            catch (AiProviderRequestException exception)
+            {
+                LogAiProviderFailure("screenshot.analyze", exception);
+                return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
             }
             catch (InvalidOperationException)
             {
@@ -629,6 +666,58 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
+    public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            _ = _applicationLogs.OpenLatestLog();
+            _logger.LogInformation("Application log opened through the diagnostics facade.");
+            return Task.FromResult(OperationResult<bool>.Success("diagnostics.log.opened", "ApplicationLogOpened", true));
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+                UnauthorizedAccessException or
+                InvalidOperationException or
+                NotSupportedException or
+                System.Runtime.InteropServices.COMException or
+                System.ComponentModel.Win32Exception)
+        {
+            _logger.LogWarning("Application log could not be opened. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return Task.FromResult(OperationResult<bool>.Failure("diagnostics.log.unavailable", "ApplicationLogUnavailable"));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (windowHandle == 0)
+        {
+            return Task.FromResult(OperationResult<bool>.Failure("diagnostics.log.share.window.invalid", "ApplicationLogShareWindowInvalid"));
+        }
+
+        try
+        {
+            _ = _applicationLogs.ShareLatestRedactedLog(new IntPtr(windowHandle));
+            _logger.LogInformation("Redacted application log prepared for sharing.");
+            return Task.FromResult(OperationResult<bool>.Success("diagnostics.log.share.opened", "ApplicationLogShareOpened", true));
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+                UnauthorizedAccessException or
+                InvalidOperationException or
+                ArgumentException or
+                NotSupportedException or
+                System.Runtime.InteropServices.COMException or
+                System.ComponentModel.Win32Exception)
+        {
+            _logger.LogWarning("Redacted application log could not be shared. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return Task.FromResult(OperationResult<bool>.Failure("diagnostics.log.unavailable", "ApplicationLogUnavailable"));
+        }
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => OpenFolderAsync(_store.LoadSettings().ScreenshotDirectory, "screenshot.folder.opened", "ScreenshotFolderOpened", cancellationToken);
 
     /// <inheritdoc />
@@ -752,6 +841,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         catch (OperationCanceledException)
         {
             return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
+        }
+        catch (AiProviderRequestException exception)
+        {
+            LogAiProviderFailure("ai.analyze", exception);
+            return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
         }
         catch (InvalidOperationException)
         {
@@ -1067,10 +1161,45 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         var info = new ProductInformation(
             "TrackMeUp",
             "MIT",
-            "https://github.com/umbertotechnopreneur/TrackMeUp",
-            "https://umbertogiacobbi.com",
+            ProductRepositoryUrl,
+            ProductAuthorUrl,
             _buildInformation.Load());
         return Task.FromResult(OperationResult<ProductInformation>.Success("product.loaded", "ProductInformationLoaded", info));
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> OpenProductLinkAsync(string linkKey, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var target = linkKey switch
+        {
+            "author" => ProductAuthorUrl,
+            "repository" => ProductRepositoryUrl,
+            _ => null
+        };
+        if (target is null)
+        {
+            return Task.FromResult(OperationResult<bool>.Failure(
+                "product.link.invalid",
+                "ProductLinkInvalid",
+                new ValidationIssue("linkKey", "unsupported", "ProductLinkInvalid")));
+        }
+
+        try
+        {
+            _ = Process.Start(new ProcessStartInfo { FileName = target, UseShellExecute = true })
+                ?? throw new InvalidOperationException("Windows did not open the product link.");
+            _logger.LogInformation("Product link opened. Link={Link}", linkKey);
+            return Task.FromResult(OperationResult<bool>.Success("product.link.opened", "ProductLinkOpened", true));
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or
+                NotSupportedException or
+                System.ComponentModel.Win32Exception)
+        {
+            _logger.LogWarning("Product link could not be opened. Link={Link} ExceptionType={ExceptionType}", linkKey, exception.GetType().Name);
+            return Task.FromResult(OperationResult<bool>.Failure("product.link.unavailable", "ProductLinkUnavailable"));
+        }
     }
 
     /// <inheritdoc />
@@ -1188,6 +1317,17 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         await CaptureActivityScoreTelemetryIfDueAsync();
         await ProcessScheduledSnapshotAsync();
+    }
+
+    private void LogAiProviderFailure(string operation, AiProviderRequestException exception)
+    {
+        _logger.LogWarning(
+            "AI provider request failed at the application boundary. Operation={Operation} HttpStatus={HttpStatus} FailureCategory={FailureCategory} LatencyMs={LatencyMs} ProviderRequestId={ProviderRequestId}",
+            operation,
+            exception.Failure.HttpStatusCode,
+            exception.Failure.FailureCode,
+            exception.Failure.ElapsedMilliseconds,
+            AiProviderTelemetry.SafeToken(exception.Failure.ProviderRequestId, 80));
     }
 
     /// <summary>Captures one telemetry point per minute while tracking so the live score includes CPU and GPU activity.</summary>
