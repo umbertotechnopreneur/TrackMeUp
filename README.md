@@ -124,6 +124,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Build -Platform x64 -WarnA
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action BuildReports
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
 ```
 
 Screenshots, AI, and retention mutations are guarded by the same privacy and confirmation rules in the app and CLI. API keys are never accepted as command-line arguments.

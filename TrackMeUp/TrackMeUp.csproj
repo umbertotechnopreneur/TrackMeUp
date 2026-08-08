@@ -47,7 +47,7 @@
   </ItemGroup>
 
   <Target Name="GenerateTrackMeUpBuildInformation" BeforeTargets="PrepareForBuild">
-    <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\New-BuildInfo.ps1&quot; -VersionStatePath &quot;$(MSBuildProjectDirectory)\build-version.json&quot; -OutputPath &quot;$(TrackMeUpBuildInfoPath)&quot; -PackageManifestPath &quot;$(MSBuildProjectDirectory)\Package.appxmanifest&quot; -Configuration &quot;$(Configuration)&quot; -Platform &quot;$(Platform)&quot; -RuntimeIdentifier &quot;$(RuntimeIdentifier)&quot;" />
+    <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\TrackMeUp.ps1&quot; -Action BuildInfo -VersionStatePath &quot;$(MSBuildProjectDirectory)\build-version.json&quot; -OutputPath &quot;$(TrackMeUpBuildInfoPath)&quot; -PackageManifestPath &quot;$(MSBuildProjectDirectory)\Package.appxmanifest&quot; -Configuration &quot;$(Configuration)&quot; -Platform &quot;$(Platform)&quot; -RuntimeIdentifier &quot;$(RuntimeIdentifier)&quot;" />
   </Target>
 
   <ItemGroup>

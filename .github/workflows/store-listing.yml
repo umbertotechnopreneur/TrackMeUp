@@ -6,14 +6,14 @@ on:
       - main
     paths:
       - 'store/**'
-      - 'scripts/Test-StoreListing.ps1'
+      - 'scripts/TrackMeUp.ps1'
       - '.github/workflows/store-listing.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'store/**'
-      - 'scripts/Test-StoreListing.ps1'
+      - 'scripts/TrackMeUp.ps1'
       - '.github/workflows/store-listing.yml'
   workflow_dispatch:
     inputs:
@@ -36,7 +36,7 @@ jobs:
 
       - name: Validate listing source
         shell: pwsh
-        run: .\scripts\Test-StoreListing.ps1 -Path .\store\listing.json
+        run: .\scripts\TrackMeUp.ps1 -Action ValidateStoreListing -ListingPath .\store\listing.json
 
   publish:
     name: publish Store metadata

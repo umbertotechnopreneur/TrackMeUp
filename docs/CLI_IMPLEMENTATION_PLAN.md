@@ -88,7 +88,7 @@ TrackMeUp.sln
 ├── TrackMeUp.Presentation.Tests/
 ├── TrackMeUp.Cli.Tests/
 └── scripts/
-    └── test-cli.ps1
+    └── TrackMeUp.ps1
 ```
 
 Keep the existing `TrackMeUp` namespace where practical to minimize migration risk. New namespaces should follow folder responsibility, for example `TrackMeUp.Application`, `TrackMeUp.Runtime.Ipc`, and `TrackMeUp.Cli.Rendering`.
@@ -504,7 +504,7 @@ Create:
 | `TrackMeUp.Core.Tests/*` | Domain/application/runtime tests |
 | `TrackMeUp.Presentation.Tests/*` | View-model tests |
 | `TrackMeUp.Cli.Tests/*` | Parser, renderer, console, and IPC tests |
-| `scripts/test-cli.ps1` | Supported-shell smoke tests |
+| `scripts/TrackMeUp.ps1` | Supported-shell smoke tests and repository automation entrypoint |
 
 Modify:
 
@@ -629,7 +629,7 @@ CLI tests:
 PowerShell 7 smoke script:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\test-cli.ps1
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action TestCli
 ```
 
 The script must verify:
