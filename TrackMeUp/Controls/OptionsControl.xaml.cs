@@ -49,6 +49,10 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
         ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
         AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
+        AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
+        AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
+        AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
+        AutomationProperties.SetName(WatermarkSwitch, T("Options.Watermark.Header"));
         UpdateApiKeyPresentation();
         UpdateScreenshotModeHint();
         NotifyLayoutChanged();
@@ -142,6 +146,15 @@ public sealed partial class OptionsControl : UserControl
         NotifyLayoutChanged();
     }
 
+    /// <summary>Keeps the host window measurement synchronized with the API-key expander.</summary>
+    private void ApiKeyExpander_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Height - e.PreviousSize.Height) > 0.5)
+        {
+            NotifyLayoutChanged();
+        }
+    }
+
     /// <summary>Opens the configured screen-capture folder through the shared application facade.</summary>
     private async void OpenScreenshotFolderButton_Click(object sender, RoutedEventArgs e)
     {
@@ -169,8 +182,16 @@ public sealed partial class OptionsControl : UserControl
         ApiKeyBox.Password = string.Empty;
         var result = await _aiState.SetSecretAsync(keyName, secret, CancellationToken.None);
         secret = string.Empty;
-        StatusText.Text = result.Succeeded
+        var keyReady = result.Succeeded && _aiState.CanEnable;
+        if (keyReady)
+        {
+            ApiKeyExpander.IsExpanded = false;
+        }
+
+        StatusText.Text = keyReady
             ? T("ApiKeySaved")
+            : result.Succeeded
+                ? T("Options.ApiKeyStatus.Invalid")
             : result.Code == "ai.key.stored_status_unavailable"
                 ? T("Options.ApiKeyStatus.RefreshFailed")
                 : T("Options.ApiKeyError");
@@ -261,14 +282,6 @@ public sealed partial class OptionsControl : UserControl
         {
             StatusText.Text = T("Options.SaveError");
         }
-    }
-
-    /// <summary>Forwards report generation to the application facade.</summary>
-    private async void ExportReportButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_application is null) return;
-        var result = await _application.GenerateTodayReportAsync(null, false, CancellationToken.None);
-        StatusText.Text = result.Succeeded ? $"{T("ReportCreated")}: {result.Value}" : T("Options.ReportError");
     }
 
     /// <summary>Applies provider defaults as presentation convenience only.</summary>
@@ -412,17 +425,22 @@ public sealed partial class OptionsControl : UserControl
                     ? T("Options.OpenAi.KeyRequired")
                     : string.Empty);
 
-        var (messageKey, glyph) = _aiState switch
+        var (messageKey, glyph, visualState, actionKey) = _aiState switch
         {
-            null => ("Options.ApiKeyStatus.Unavailable", "\uE946"),
-            { IsStatusUnavailable: true } => ("Options.ApiKeyStatus.Unavailable", "\uE946"),
-            { CanEnable: true } => ("Options.ApiKeyStatus.Set", "\uE73E"),
-            { HasKey: false } => ("Options.ApiKeyStatus.Missing", "\uE946"),
-            _ => ("Options.ApiKeyStatus.Invalid", "\uE783")
+            null => ("Options.ApiKeyStatus.Unavailable", "\uE7BA", "ApiKeyNeedsAttention", "Options.ApiKeyAction.Set"),
+            { IsStatusUnavailable: true } => ("Options.ApiKeyStatus.Unavailable", "\uE7BA", "ApiKeyNeedsAttention", "Options.ApiKeyAction.Set"),
+            { CanEnable: true } => ("Options.ApiKeyStatus.Set", "\uE73E", "ApiKeyReady", "Options.ApiKeyAction.Change"),
+            { HasKey: false } => ("Options.ApiKeyStatus.Missing", "\uE7BA", "ApiKeyNeedsAttention", "Options.ApiKeyAction.Set"),
+            _ => ("Options.ApiKeyStatus.Invalid", "\uE7BA", "ApiKeyNeedsAttention", "Options.ApiKeyAction.Set")
         };
 
+        var actionLabel = T(actionKey);
         ApiKeyStatusIcon.Glyph = glyph;
         ApiKeyStatusText.Text = T(messageKey);
+        ApiKeyActionText.Text = actionLabel;
+        AutomationProperties.SetName(ApiKeyExpander, actionLabel);
+        AutomationProperties.SetHelpText(ApiKeyExpander, ApiKeyStatusText.Text);
+        VisualStateManager.GoToState(this, visualState, false);
         NotifyLayoutChanged();
     }
 

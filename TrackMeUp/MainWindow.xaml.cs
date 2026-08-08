@@ -28,7 +28,7 @@ public sealed partial class MainWindow : Window
 {
     #region Fields
 
-    private const int LogicalWindowWidth = 430;
+    private const int LogicalWindowWidth = 450;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
     private readonly ITrackMeUpApplication _application;
@@ -37,9 +37,11 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly AppWindow _appWindow;
     private readonly MainWindowLayoutState _layoutState = new();
+    private readonly MicaDialogService _dialogs;
+    private readonly TaskCompletionSource _rootLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private RectInt32 _currentWorkArea;
     private LocalizationService _strings = new("system");
     private bool _updatingMenuState;
-    private int _logicalHeight;
     private double _rasterizationScale = 1d;
     private DateTimeOffset _windowResizeAnimationStartedAt;
     private SizeInt32 _windowResizeAnimationStartSize;
@@ -55,6 +57,8 @@ public sealed partial class MainWindow : Window
     private bool _screenshotsEnabled;
     private const int PendingSnapshotDeleteSeconds = 30;
     private bool _pendingSnapshotDeleteInProgress;
+    private bool _startupAiWarningShown;
+    private int _notificationDrainInProgress;
     #endregion
 
     /// <summary>Gets the single observable AI state shared by the player menu and options surface.</summary>
@@ -79,9 +83,10 @@ public sealed partial class MainWindow : Window
     #region Initialization
 
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
-    public MainWindow(ITrackMeUpApplication application, LaunchOptions options)
+    internal MainWindow(ITrackMeUpApplication application, LaunchOptions options, MicaDialogService dialogs)
     {
         _application = application;
+        _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _viewModel = new MainViewModel(application);
         AiState = new AiApplicationState(application);
         InitializeComponent();
@@ -91,6 +96,8 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _currentWorkArea = CurrentWorkArea();
+        _appWindow.Changed += AppWindow_Changed;
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
@@ -108,7 +115,7 @@ public sealed partial class MainWindow : Window
         OptionsControl.Initialize(application, AiState);
         OptionsControl.SettingsSaved += ApplySettings;
         OptionsControl.LayoutChanged += OptionsControl_LayoutChanged;
-        OperationsControl.Initialize(application);
+        OperationsControl.Initialize(application, _dialogs, this);
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
@@ -124,23 +131,21 @@ public sealed partial class MainWindow : Window
 
     private async Task InitializeAsync(LaunchOptions options)
     {
-        var settings = await _application.GetSettingsAsync(CancellationToken.None);
-        if (settings.Succeeded && settings.Value is not null)
+        var initialization = await _viewModel.InitializeAsync(options, CancellationToken.None);
+        if (initialization.Succeeded && initialization.Value is not null)
         {
-            ApplySettings(settings.Value with
-            {
-                UiLanguage = options.Language ?? settings.Value.UiLanguage,
-                Theme = options.Theme ?? settings.Value.Theme,
-                FlyoutPosition = options.Position ?? settings.Value.FlyoutPosition
-            });
+            ApplySettings(initialization.Value.Settings);
+            UpdatePlayer(initialization.Value.Dashboard);
+        }
+        else
+        {
+            // If launch initialization fails, keep the player usable and let the normal dashboard read expose runtime state.
+            await RefreshDashboardAsync();
         }
 
-        if (options.StartTracking && !options.Paused)
-        {
-            await _viewModel.ToggleTrackingAsync(CancellationToken.None);
-        }
-
-        await RefreshDashboardAsync();
+        await _rootLoaded.Task;
+        await ShowStartupAiWarningAsync();
+        await DrainApplicationNotificationsAsync();
     }
 
     #endregion
@@ -151,6 +156,71 @@ public sealed partial class MainWindow : Window
         if (state.Succeeded && state.Value is not null)
         {
             UpdatePlayer(state.Value);
+        }
+
+        await DrainApplicationNotificationsAsync();
+    }
+
+    private async Task ShowStartupAiWarningAsync()
+    {
+        if (_startupAiWarningShown)
+        {
+            return;
+        }
+
+        var status = await AiState.LoadAsync(CancellationToken.None);
+        if (status is not { Succeeded: true, Value: { Enabled: true, HasKey: false } aiStatus })
+        {
+            return;
+        }
+
+        _startupAiWarningShown = true;
+        await _dialogs.ShowInformativeAsync(
+            this,
+            MicaDialogRequest.Informative(
+                T("Dialog.AiKeyMissing.Title"),
+                string.Format(CultureInfo.CurrentCulture, T("Dialog.AiKeyMissing.Message"), aiStatus.KeyVariable),
+                MicaDialogSeverity.Warning,
+                T("Dialog.Ok")),
+            RootGrid.RequestedTheme);
+    }
+
+    private async Task DrainApplicationNotificationsAsync()
+    {
+        if (Interlocked.Exchange(ref _notificationDrainInProgress, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _application.DrainApplicationNotificationsAsync(CancellationToken.None);
+            if (!result.Succeeded || result.Value is null)
+            {
+                return;
+            }
+
+            foreach (var notification in result.Value)
+            {
+                var severity = notification.Severity switch
+                {
+                    ApplicationNotificationSeverity.Error => MicaDialogSeverity.Error,
+                    ApplicationNotificationSeverity.Warning => MicaDialogSeverity.Warning,
+                    _ => MicaDialogSeverity.Information
+                };
+                await _dialogs.ShowInformativeAsync(
+                    this,
+                    MicaDialogRequest.Informative(
+                        T(notification.TitleKey),
+                        T(notification.MessageKey),
+                        severity,
+                        T("Dialog.Ok")),
+                    RootGrid.RequestedTheme);
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _notificationDrainInProgress, 0);
         }
     }
 
@@ -210,7 +280,8 @@ public sealed partial class MainWindow : Window
             settingsResult.Value.ActiveHours,
             settingsResult.Value.ScreenshotIntervalMinutes,
             _theme,
-            settingsResult.Value.UiLanguage);
+            settingsResult.Value.UiLanguage,
+            _dialogs);
         scheduleWindow.ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed;
         scheduleWindow.Closed += ScheduleWindow_Closed;
         _scheduleWindow = scheduleWindow;
@@ -304,7 +375,11 @@ public sealed partial class MainWindow : Window
         TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
         TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
 
-        var passthroughRects = new List<RectInt32> { ElementRect(TitleBarMoreButton, scale) };
+        var passthroughRects = new List<RectInt32>
+        {
+            ElementRect(TitleBarMoreButton, scale),
+            ElementRect(TitleBarReportButton, scale)
+        };
         if (TitleBarBackButton.Visibility == Visibility.Visible)
         {
             passthroughRects.Add(ElementRect(TitleBarBackButton, scale));
@@ -375,8 +450,13 @@ public sealed partial class MainWindow : Window
     private void ReportsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        ReportsRequested?.Invoke(this, EventArgs.Empty);
+        RequestReports();
     }
+
+    /// <summary>Opens reports directly from the first-class title-bar command.</summary>
+    private void TitleBarReportButton_Click(object sender, RoutedEventArgs e) => RequestReports();
+
+    private void RequestReports() => ReportsRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Forwards gallery-window activation to the application composition root.</summary>
     private void ScreenshotsMenuItem_Click(object sender, RoutedEventArgs e)
@@ -835,6 +915,9 @@ public sealed partial class MainWindow : Window
         _scheduleWindow?.ApplyTheme(_theme);
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
+        var reportsLabel = T("Reports.Title");
+        AutomationProperties.SetName(TitleBarReportButton, reportsLabel);
+        ToolTipService.SetToolTip(TitleBarReportButton, reportsLabel);
         UpdateActivityScoreAccessibility();
         UpdateDetailsAccessibility();
         UpdateOpenAiMenuAccessibility();
@@ -907,6 +990,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Starts the player entrance fade.</summary>
     private void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
+        _rootLoaded.TrySetResult();
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
             _xamlRoot = xamlRoot;
@@ -926,6 +1010,25 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        ResizeForCurrentLayout(animate: false);
+        ApplyFlyoutPosition(_position);
+    }
+
+    /// <summary>Reapplies the smart height limit when the flyout crosses onto another display.</summary>
+    private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (!args.DidPositionChange)
+        {
+            return;
+        }
+
+        var workArea = CurrentWorkArea();
+        if (workArea.Equals(_currentWorkArea))
+        {
+            return;
+        }
+
+        _currentWorkArea = workArea;
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
     }
@@ -951,7 +1054,6 @@ public sealed partial class MainWindow : Window
     /// <summary>Interpolates the compact player height after a visible layout change.</summary>
     private void AnimateResizeForLogicalContent(int logicalHeight)
     {
-        _logicalHeight = logicalHeight;
         _windowResizeAnimationStartSize = _appWindow.Size;
         _windowResizeAnimationTargetSize = GetPhysicalWindowSize(logicalHeight);
         if (_windowResizeAnimationStartSize.Height == _windowResizeAnimationTargetSize.Height)
@@ -986,23 +1088,24 @@ public sealed partial class MainWindow : Window
     /// <summary>Calculates the physical AppWindow size for one logical content height.</summary>
     private SizeInt32 GetPhysicalWindowSize(int logicalHeight)
     {
-        _logicalHeight = logicalHeight;
         var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale);
         _rasterizationScale = scale;
 
-        var workArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var workArea = CurrentWorkArea();
+        _currentWorkArea = workArea;
         var physicalMargin = (int)Math.Ceiling(LogicalScreenMargin * scale);
         var availableWidth = Math.Max(1, workArea.Width - (physicalMargin * 2));
         var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
+        var boundedLogicalHeight = Math.Min(logicalHeight, _layoutState.ResolveLogicalHeight(availableHeight / scale));
         var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
-        var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(logicalHeight * scale));
+        var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(boundedLogicalHeight * scale));
         return new SizeInt32(physicalWidth, physicalHeight);
     }
 
     /// <summary>Places the player at the selected visual anchor.</summary>
     private void ApplyFlyoutPosition(string position)
     {
-        var area = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var area = CurrentWorkArea();
         var margin = (int)Math.Ceiling(LogicalScreenMargin * _rasterizationScale);
         var x = position switch
         {
@@ -1014,6 +1117,9 @@ public sealed partial class MainWindow : Window
         _appWindow.Move(new PointInt32(x, y));
     }
 
+    private RectInt32 CurrentWorkArea() =>
+        DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         if (_xamlRoot is not null)
@@ -1023,6 +1129,8 @@ public sealed partial class MainWindow : Window
 
         _refreshTimer.Stop();
         _windowResizeAnimationTimer.Stop();
+        _dialogs.CloseActive();
+        _appWindow.Changed -= AppWindow_Changed;
 
         if (_scheduleWindow is not null)
         {

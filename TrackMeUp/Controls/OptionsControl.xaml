@@ -17,6 +17,18 @@
                     </VisualState.StateTriggers>
                 </VisualState>
             </VisualStateGroup>
+            <VisualStateGroup x:Name="ApiKeyStates">
+                <VisualState x:Name="ApiKeyNeedsAttention">
+                    <VisualState.Setters>
+                        <Setter Target="ApiKeyStatusIcon.Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="ApiKeyReady">
+                    <VisualState.Setters>
+                        <Setter Target="ApiKeyStatusIcon.Foreground" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
@@ -255,32 +267,98 @@
                             <ComboBoxItem Content="Español" Tag="es" />
                             <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
                         </ComboBox>
-                        <ToggleSwitch x:Name="StartWithWindowsSwitch" Tag="Options.StartWithWindows" Header="Start with Windows" OffContent="Off" OnContent="On" />
-                        <ToggleSwitch x:Name="StartTrackingOnLaunchSwitch" Tag="Options.StartTracking" Header="Start tracking on launch" OffContent="Wait for Play" OnContent="Start immediately" />
-                        <ToggleSwitch x:Name="ScreenshotsEnabledSwitch" Tag="Options.SnapshotsEnabled" Header="Allow screen captures" OffContent="Off" OnContent="On" />
+
+                        <Border Height="1" Margin="0,4,0,0" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <StackPanel Spacing="2">
+                            <TextBlock Tag="Options.Section.Startup" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Startup" />
+                            <TextBlock
+                                Tag="Options.Section.Startup.Description"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Choose how TrackMeUp behaves after Windows sign-in."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Grid MinHeight="44" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Tag="Options.StartWithWindows.Header" Text="Start with Windows" TextWrapping="Wrap" />
+                            <ToggleSwitch
+                                x:Name="StartWithWindowsSwitch"
+                                Grid.Column="1"
+                                MinWidth="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Start with Windows"
+                                OffContent=""
+                                OnContent="" />
+                        </Grid>
+                        <Grid MinHeight="44" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Tag="Options.StartTracking.Header" Text="Start tracking on launch" TextWrapping="Wrap" />
+                            <ToggleSwitch
+                                x:Name="StartTrackingOnLaunchSwitch"
+                                Grid.Column="1"
+                                MinWidth="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Start tracking on launch"
+                                OffContent=""
+                                OnContent="" />
+                        </Grid>
+
+                        <Border Height="1" Margin="0,4,0,0" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <StackPanel Spacing="2">
+                            <TextBlock Tag="Options.Section.Snapshots" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Screen captures" />
+                            <TextBlock
+                                Tag="Options.Section.Snapshots.Description"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Choose when screen captures are made and how long they stay here."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Grid MinHeight="44" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Tag="Options.SnapshotsEnabled.Header" Text="Allow screen captures" TextWrapping="Wrap" />
+                            <ToggleSwitch
+                                x:Name="ScreenshotsEnabledSwitch"
+                                Grid.Column="1"
+                                MinWidth="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Allow screen captures"
+                                OffContent=""
+                                OnContent="" />
+                        </Grid>
                         <ComboBox x:Name="ScreenshotModeBox" Tag="Options.SnapshotMode" HorizontalAlignment="Stretch" Header="What to capture" SelectionChanged="ScreenshotModeBox_SelectionChanged">
                             <ComboBoxItem Content="All displays" Tag="all-screens" />
                             <ComboBoxItem Content="Active window" Tag="active-window" />
                         </ComboBox>
                         <TextBox x:Name="ScreenshotModeHintBox" Tag="Options.SnapshotResult" Header="Result" IsReadOnly="True" IsTabStop="False" TextWrapping="Wrap" />
-                        <ToggleSwitch x:Name="WatermarkSwitch" Tag="Options.Watermark" Header="Screen-capture label" OffContent="None" OnContent="Add host, date and ID" />
+                        <Grid MinHeight="44" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Tag="Options.Watermark.Header" Text="Screen-capture label" TextWrapping="Wrap" />
+                            <ToggleSwitch
+                                x:Name="WatermarkSwitch"
+                                Grid.Column="1"
+                                MinWidth="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Screen-capture label"
+                                OffContent=""
+                                OnContent="" />
+                        </Grid>
                     </StackPanel>
-
-                    <Button
-                        Margin="0,14,0,0"
-                        Tag="Options.ExportReport"
-                        HorizontalAlignment="Stretch"
-                        Click="ExportReportButton_Click"
-                        Content="Export HTML report">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
-                                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE9F9;" />
-                                    <TextBlock VerticalAlignment="Center" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
@@ -315,45 +393,65 @@
                             Toggled="OpenAiEnabledSwitch_Toggled" />
                     </Grid>
 
-                    <PasswordBox
-                        x:Name="ApiKeyBox"
-                        Margin="0,10,0,0"
-                        Tag="Options.ApiKey"
-                        Header="API key"
-                        PasswordRevealMode="Peek"
-                        PlaceholderText="Used from Windows; not copied by TrackMeUp" />
-                    <Button
-                        Margin="0,8,0,0"
-                        Tag="Options.SaveApiKey"
-                        HorizontalAlignment="Stretch"
-                        Click="SetApiKeyButton_Click"
-                        Content="Set key for this PC" />
-                    <TextBlock
-                        Margin="0,5,0,0"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Tag="Options.AiKeyStorageHint"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="Stored only in your Windows user environment."
-                        TextWrapping="Wrap" />
                     <StackPanel
-                        Margin="0,7,0,0"
+                        Margin="0,8,0,0"
                         Orientation="Horizontal"
-                        Spacing="6">
+                        Spacing="8">
                         <FontIcon
                             x:Name="ApiKeyStatusIcon"
+                            VerticalAlignment="Center"
                             AutomationProperties.AccessibilityView="Raw"
                             FontFamily="Segoe Fluent Icons"
-                            FontSize="12"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Glyph="&#xE946;" />
+                            FontSize="16"
+                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                            Glyph="&#xE7BA;" />
                         <TextBlock
                             x:Name="ApiKeyStatusText"
+                            VerticalAlignment="Center"
                             AutomationProperties.LiveSetting="Polite"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
                             Text="API key status unavailable."
                             TextWrapping="Wrap" />
                     </StackPanel>
+
+                    <Expander
+                        x:Name="ApiKeyExpander"
+                        Margin="0,6,0,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        AutomationProperties.Name="Set key"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="0"
+                        SizeChanged="ApiKeyExpander_SizeChanged">
+                        <Expander.Header>
+                            <TextBlock
+                                x:Name="ApiKeyActionText"
+                                Style="{StaticResource BodyTextBlockStyle}"
+                                Text="Set key" />
+                        </Expander.Header>
+                        <StackPanel Padding="0,2,0,6" Spacing="0">
+                            <PasswordBox
+                                x:Name="ApiKeyBox"
+                                Tag="Options.ApiKey"
+                                Header="API key"
+                                PasswordRevealMode="Peek"
+                                PlaceholderText="Used from Windows; not copied by TrackMeUp" />
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Tag="Options.AiKeyStorageHint"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Stored only in your Windows user environment."
+                                TextWrapping="Wrap" />
+                            <Button
+                                Margin="0,8,0,0"
+                                Tag="Options.SaveApiKey"
+                                HorizontalAlignment="Stretch"
+                                Click="SetApiKeyButton_Click"
+                                Content="Set key for this PC" />
+                        </StackPanel>
+                    </Expander>
 
                     <ComboBox
                         x:Name="ModelBox"

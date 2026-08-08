@@ -15,14 +15,21 @@ public sealed partial class ScheduleWindow : Window
     private const int LogicalWindowHeight = 700;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
+    private readonly MicaDialogService _dialogs;
     private LocalizationService _strings;
 
     /// <summary>Occurs after the user confirms a valid screenshot schedule.</summary>
     public event EventHandler<ScheduleConfigurationEventArgs>? ScheduleConfirmed;
 
     /// <summary>Creates a detached schedule editor with the supplied working hours, interval and theme.</summary>
-    public ScheduleWindow(IReadOnlyList<ActiveHoursDay>? activeHours, int intervalMinutes, string theme, string uiLanguage)
+    internal ScheduleWindow(
+        IReadOnlyList<ActiveHoursDay>? activeHours,
+        int intervalMinutes,
+        string theme,
+        string uiLanguage,
+        MicaDialogService dialogs)
     {
+        _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _strings = new LocalizationService(uiLanguage);
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
@@ -84,18 +91,14 @@ public sealed partial class ScheduleWindow : Window
 
     private async Task<bool> ConfirmReplacementAsync(string titleKey, string messageKey)
     {
-        var xamlRoot = RootGrid.XamlRoot
-            ?? throw new InvalidOperationException("The schedule window must be loaded before showing a confirmation dialog.");
-        var dialog = new ContentDialog
-        {
-            XamlRoot = xamlRoot,
-            Title = _strings.Translate(titleKey),
-            Content = _strings.Translate(messageKey),
-            PrimaryButtonText = _strings.Translate("Schedule.Apply"),
-            CloseButtonText = _strings.Translate("Schedule.Cancel"),
-            DefaultButton = ContentDialogButton.Close
-        };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        return await _dialogs.ConfirmAsync(
+            this,
+            MicaDialogRequest.Confirmation(
+                _strings.Translate(titleKey),
+                _strings.Translate(messageKey),
+                _strings.Translate("Schedule.Apply"),
+                _strings.Translate("Schedule.Cancel")),
+            RootGrid.RequestedTheme);
     }
 
     private void ResizeAndCenter()

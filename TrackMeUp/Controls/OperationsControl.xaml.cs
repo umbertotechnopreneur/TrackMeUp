@@ -14,6 +14,8 @@ namespace TrackMeUp.Controls;
 public sealed partial class OperationsControl : UserControl
 {
     private ITrackMeUpApplication? _application;
+    private MicaDialogService? _dialogs;
+    private Window? _ownerWindow;
     private LocalizationService _strings = new("system");
     private bool _operationInProgress;
     private bool _retentionConfirmationOpen;
@@ -32,9 +34,18 @@ public sealed partial class OperationsControl : UserControl
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
-    public void Initialize(ITrackMeUpApplication application) => _application = application ?? throw new ArgumentNullException(nameof(application));
+    internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow)
+    {
+        _application = application ?? throw new ArgumentNullException(nameof(application));
+        _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
+        _ownerWindow = ownerWindow ?? throw new ArgumentNullException(nameof(ownerWindow));
+    }
 
     private ITrackMeUpApplication Application => _application ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
+
+    private MicaDialogService Dialogs => _dialogs ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
+
+    private Window OwnerWindow => _ownerWindow ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private void BackButton_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
 
@@ -277,19 +288,17 @@ public sealed partial class OperationsControl : UserControl
             }
 
             RenderRetentionPreview(preview, executed: false);
-            var dialog = new ContentDialog
-            {
-                Title = L("Confirm data cleanup", "Conferma pulizia dati"),
-                Content = L(
-                    $"Permanently delete the {preview.FileCount} items ({FormatBytes(preview.TotalBytes)}) listed in the preview?",
-                    $"Eliminare definitivamente {preview.FileCount} elementi ({FormatBytes(preview.TotalBytes)}) elencati nell'anteprima?"),
-                PrimaryButtonText = L("Delete items", "Elimina elementi"),
-                CloseButtonText = L("Cancel", "Annulla"),
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = XamlRoot
-            };
-
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            var confirmed = await Dialogs.ConfirmAsync(
+                OwnerWindow,
+                MicaDialogRequest.Confirmation(
+                    L("Confirm data cleanup", "Conferma pulizia dati"),
+                    L(
+                        $"Permanently delete the {preview.FileCount} items ({FormatBytes(preview.TotalBytes)}) listed in the preview?",
+                        $"Eliminare definitivamente {preview.FileCount} elementi ({FormatBytes(preview.TotalBytes)}) elencati nell'anteprima?"),
+                    L("Delete items", "Elimina elementi"),
+                    L("Cancel", "Annulla")),
+                RequestedTheme);
+            if (!confirmed)
             {
                 ShowStatus(L("Cleanup cancelled", "Pulizia annullata"), L("No items were deleted.", "Nessun elemento è stato eliminato."), InfoBarSeverity.Informational);
                 return;

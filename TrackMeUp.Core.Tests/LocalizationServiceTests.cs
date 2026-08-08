@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Collections.Generic;
+using System;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -45,5 +46,19 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Chiave API impostata e pronta.", italian.Translate("Options.ApiKeyStatus.Set"));
         Assert.Equal("Chiave API non impostata.", italian.Translate("Options.ApiKeyStatus.Missing"));
         Assert.Equal("Lo stato della chiave API non è disponibile.", italian.Translate("Options.ApiKeyStatus.Unavailable"));
+    }
+
+    [Fact]
+    public void DialogMessages_AreLocalizedWithoutEmbeddingSecretValues()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Contains("environment variable {0}", english.Translate("Dialog.AiKeyMissing.Message"), StringComparison.Ordinal);
+        Assert.Contains("variabile di ambiente {0}", italian.Translate("Dialog.AiKeyMissing.Message"), StringComparison.Ordinal);
+        Assert.Equal("Frame analysis unavailable", english.Translate("Dialog.AiAnalysisFailed.Title"));
+        Assert.Equal("Analisi del frame non disponibile", italian.Translate("Dialog.AiAnalysisFailed.Title"));
+        Assert.Equal("Change key", english.Translate("Options.ApiKeyAction.Change"));
+        Assert.Equal("Cambia chiave", italian.Translate("Options.ApiKeyAction.Change"));
     }
 }

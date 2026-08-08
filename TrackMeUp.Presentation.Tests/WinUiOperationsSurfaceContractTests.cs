@@ -68,10 +68,53 @@ public sealed class WinUiOperationsSurfaceContractTests
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
 
-        Assert.Contains("new ContentDialog", source, StringComparison.Ordinal);
-        Assert.Contains("DefaultButton = ContentDialogButton.Close", source, StringComparison.Ordinal);
-        Assert.Contains("dialog.ShowAsync() != ContentDialogResult.Primary", source, StringComparison.Ordinal);
+        Assert.Contains("Dialogs.ConfirmAsync(", source, StringComparison.Ordinal);
+        Assert.Contains("MicaDialogRequest.Confirmation(", source, StringComparison.Ordinal);
+        Assert.Contains("if (!confirmed)", source, StringComparison.Ordinal);
         Assert.Contains("new RetentionRequest(Execute: true, Confirmed: true)", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Prevents view code from bypassing the single queued dialog engine.</summary>
+    [Fact]
+    public void WindowViews_DoNotConstructAdHocSystemOrContentDialogs()
+    {
+        var trackMeUpDirectory = Path.GetDirectoryName(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"))!;
+        var sources = Directory.EnumerateFiles(trackMeUpDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
+                           !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+
+        foreach (var path in sources)
+        {
+            var source = File.ReadAllText(path);
+            Assert.DoesNotContain("new ContentDialog", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("MessageBox.Show", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new MessageDialog", source, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Guards the Mica, safe-cancel and cross-process notification contracts.</summary>
+    [Fact]
+    public void DialogEngine_IsMicaQueuedAccessibleAndFacadeBacked()
+    {
+        var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
+        var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
+        var dialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml"));
+        var main = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var app = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
+
+        Assert.Contains("SemaphoreSlim", service, StringComparison.Ordinal);
+        Assert.Contains("AccentColor", service, StringComparison.Ordinal);
+        Assert.Contains("return await ShowAsync(owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
+        Assert.Contains("SystemBackdrop = new MicaBackdrop();", dialog, StringComparison.Ordinal);
+        Assert.Contains("Closed += (_, _) => _completion.TrySetResult(MicaDialogResult.Cancel);", dialog, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName", dialog, StringComparison.Ordinal);
+        Assert.Contains(dialogXaml.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.Contains(dialogXaml.Descendants(), element => element.Attribute("AutomationProperties.LiveSetting")?.Value == "Assertive");
+        Assert.Contains("DrainApplicationNotificationsAsync", main, StringComparison.Ordinal);
+        Assert.Contains("Enabled: true, HasKey: false", main, StringComparison.Ordinal);
+        Assert.Contains("private readonly MicaDialogService _dialogs = new();", app, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.ConfirmAsync(", schedule, StringComparison.Ordinal);
     }
 
     private static string RepositoryFile(params string[] pathSegments)

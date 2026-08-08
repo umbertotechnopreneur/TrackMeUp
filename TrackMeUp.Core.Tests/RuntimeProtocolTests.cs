@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
@@ -132,6 +133,23 @@ public sealed class RuntimeProtocolTests
         Assert.Equal(["auto", "low"], model.SupportedThinkingEfforts);
     }
 
+    [Fact]
+    public async Task ApplicationNotifications_RoundTripThroughTheSharedRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, NotificationRuntimeProxy>();
+        var installationId = $"notification-runtime-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+
+        var result = await client.DrainApplicationNotificationsAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        var notification = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(result.Value));
+        Assert.Equal(ApplicationNotificationSeverity.Error, notification.Severity);
+        Assert.Equal("Dialog.AiAnalysisFailed.Message", notification.MessageKey);
+    }
+
     public class ConcurrentRuntimeProxy : DispatchProxy
     {
         public TaskCompletionSource<bool> ReportStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -181,6 +199,30 @@ public sealed class RuntimeProtocolTests
                         new AiModelCatalogSnapshot(
                             1,
                             [new AiModelDescriptor("gpt-test", ["gpt-test-alias"], "Test", "Test model", "#123456", ["auto", "low"], true, "general", false)]))),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+    }
+
+    public class NotificationRuntimeProxy : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.DrainApplicationNotificationsAsync) => Task.FromResult(
+                    OperationResult<IReadOnlyList<ApplicationNotification>>.Success(
+                        "notifications.drained",
+                        "ApplicationNotificationsDrained",
+                        [new ApplicationNotification(
+                            Guid.Parse("638ba5bb-5074-44f5-85da-da172add83d1"),
+                            new DateTimeOffset(2026, 8, 9, 0, 0, 0, TimeSpan.Zero),
+                            ApplicationNotificationSeverity.Error,
+                            "Dialog.AiAnalysisFailed.Title",
+                            "Dialog.AiAnalysisFailed.Message",
+                            "ai.provider.failed")])),
                 nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
                 "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
                 _ => throw new NotSupportedException(targetMethod?.Name)

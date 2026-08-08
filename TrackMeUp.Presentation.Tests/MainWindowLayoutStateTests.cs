@@ -36,4 +36,18 @@ public sealed class MainWindowLayoutStateTests
         Assert.Equal(489, state.RecordMeasuredHeight(0));
         Assert.Equal(489, state.RecordMeasuredHeight(double.NaN));
     }
+
+    [Fact]
+    public void ResolveLogicalHeight_CapsOptionsAndStillFitsSmallerDisplays()
+    {
+        var state = new MainWindowLayoutState();
+        state.RecordMeasuredHeight(1400);
+
+        state.ShowSurface(MainWindowSurface.Options);
+        Assert.Equal(760, state.ResolveLogicalHeight(1200));
+        Assert.Equal(620, state.ResolveLogicalHeight(620));
+
+        state.ShowSurface(MainWindowSurface.Player);
+        Assert.Equal(1200, state.ResolveLogicalHeight(1200));
+    }
 }

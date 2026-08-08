@@ -159,6 +159,28 @@ public sealed record RetentionStatus(int DataRetentionDays, int ScreenshotRetent
 /// <summary>Describes safe, non-secret AI configuration state.</summary>
 public sealed record AiStatus(bool Enabled, string Provider, string Model, string Endpoint, string KeyVariable, bool HasKey, bool CanEnable, AnalysisCostGate CostGate);
 
+/// <summary>Classifies a non-secret notification that an application frontend may present.</summary>
+public enum ApplicationNotificationSeverity
+{
+    /// <summary>Provides neutral product information.</summary>
+    Information,
+
+    /// <summary>Highlights a recoverable configuration or runtime condition.</summary>
+    Warning,
+
+    /// <summary>Reports an operation that could not complete.</summary>
+    Error
+}
+
+/// <summary>Describes one localized, non-secret notification emitted by the shared runtime.</summary>
+public sealed record ApplicationNotification(
+    Guid Id,
+    DateTimeOffset CreatedAt,
+    ApplicationNotificationSeverity Severity,
+    string TitleKey,
+    string MessageKey,
+    string Code);
+
 /// <summary>Provides product metadata and safe external links.</summary>
 public sealed record BuildInformation(
     int SchemaVersion,
@@ -263,6 +285,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets safe AI status.</summary>
     Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken);
+
+    /// <summary>Atomically takes pending user-facing notifications from the shared runtime.</summary>
+    Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken);
 
     /// <summary>Gets the validated model catalog available to presentation clients.</summary>
     Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken);

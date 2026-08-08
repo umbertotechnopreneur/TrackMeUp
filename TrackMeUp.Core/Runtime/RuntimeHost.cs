@@ -217,6 +217,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
                 "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
+                "notifications.drain" => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
                 "ai.models" => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
                 "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
@@ -486,6 +487,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", new { directory }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<ApplicationNotification>>("notifications.drain", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken) => SendAsync<AiStatus>("ai.status", null, cancellationToken);
     /// <inheritdoc />

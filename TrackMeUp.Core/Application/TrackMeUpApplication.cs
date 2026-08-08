@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
@@ -46,6 +47,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
+    private readonly ConcurrentQueue<ApplicationNotification> _notifications = new();
     private readonly Timer _scheduledSnapshotTimer;
     private FocusSessionState _focus = new(null, false, null, TimeSpan.Zero, 0, 0, 0, 0, null);
     private DateTimeOffset? _nextScheduledSnapshotAt;
@@ -57,6 +59,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly object _activityScoreTelemetryGate = new();
     private DateTimeOffset? _nextActivityScoreTelemetryAt;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
+    private const int MaximumPendingNotifications = 32;
     private bool _disposed;
 
     /// <summary>Initializes an application facade with infrastructure owned by the runtime host.</summary>
@@ -112,7 +115,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "notifications", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -326,11 +329,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             }
             catch (InvalidOperationException)
             {
+                EnqueueAiAnalysisFailure("ai.configuration.invalid");
                 return OperationResult<ScreenshotCaptureResult>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
             }
             catch (Exception exception)
             {
                 _logger.LogWarning("Snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                EnqueueAiAnalysisFailure("ai.provider.failed");
                 return OperationResult<ScreenshotCaptureResult>.Failure("ai.provider.failed", "AiProviderFailed");
             }
         }
@@ -410,70 +415,100 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
+    public async Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken)
     {
-        if (request.Capture is null)
+        var aiEnabledForAnalysis = false;
+        var operation = await MutateAsync(async () =>
         {
-            return OperationResult<AiAnalysis>.Failure("ai.capture.invalid", "AiConfigurationInvalid");
+            if (request.Capture is null)
+            {
+                return OperationResult<AiAnalysis>.Failure("ai.capture.invalid", "AiConfigurationInvalid");
+            }
+
+            var settings = _store.LoadSettings();
+            if (!settings.OpenAiEnabled)
+            {
+                return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
+            }
+
+            aiEnabledForAnalysis = true;
+
+            if (IsCurrentContextPrivate(settings))
+            {
+                return OperationResult<AiAnalysis>.Failure("privacy.blocked", "PrivacyBlocked");
+            }
+
+            if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
+            {
+                return OperationResult<AiAnalysis>.Failure(
+                    "ai.configuration.invalid",
+                    "AiConfigurationInvalid",
+                    validationIssue!);
+            }
+
+            if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
+            {
+                _store.SaveSettings(validatedSettings);
+            }
+
+            settings = validatedSettings;
+            var gate = BuildCostGate(settings);
+            if (!gate.Allowed)
+            {
+                return OperationResult<AiAnalysis>.Failure("ai.cost_guardrail", "AiCostGuardrail");
+            }
+
+            try
+            {
+                var origin = NormalizeAnalysisOrigin(request.Origin);
+                var result = await _analysis.AnalyzeCapturedScreenAsync(
+                    _tracking.LatestAnalysisContext,
+                    request.Capture,
+                    request.KeepCapture,
+                    origin,
+                    cancellationToken);
+                return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
+            }
+            catch (OperationCanceledException)
+            {
+                return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
+            }
+            catch (InvalidOperationException)
+            {
+                return OperationResult<AiAnalysis>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
+            }
+            catch (Exception exception)
+            {
+                // Provider/network errors remain stable to callers; the capture service owns cleanup behavior.
+                _logger.LogWarning("Deferred snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
+            }
+        }, cancellationToken);
+
+        if (!operation.Succeeded && aiEnabledForAnalysis && ShouldNotifyAiAnalysisFailure(operation.Code))
+        {
+            // The queue is the cross-process fallback: a connected UI drains it, while headless runtimes only retain bounded notices.
+            EnqueueAiAnalysisFailure(operation.Code);
         }
 
-        var settings = _store.LoadSettings();
-        if (!settings.OpenAiEnabled)
+        return operation;
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var drained = new List<ApplicationNotification>(MaximumPendingNotifications);
+        while (drained.Count < MaximumPendingNotifications && _notifications.TryDequeue(out var notification))
         {
-            return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
+            drained.Add(notification);
         }
 
-        if (IsCurrentContextPrivate(settings))
-        {
-            return OperationResult<AiAnalysis>.Failure("privacy.blocked", "PrivacyBlocked");
-        }
-
-        if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
-        {
-            return OperationResult<AiAnalysis>.Failure(
-                "ai.configuration.invalid",
-                "AiConfigurationInvalid",
-                validationIssue!);
-        }
-
-        if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
-        {
-            _store.SaveSettings(validatedSettings);
-        }
-
-        settings = validatedSettings;
-        var gate = BuildCostGate(settings);
-        if (!gate.Allowed)
-        {
-            return OperationResult<AiAnalysis>.Failure("ai.cost_guardrail", "AiCostGuardrail");
-        }
-
-        try
-        {
-            var origin = NormalizeAnalysisOrigin(request.Origin);
-            var result = await _analysis.AnalyzeCapturedScreenAsync(
-                _tracking.LatestAnalysisContext,
-                request.Capture,
-                request.KeepCapture,
-                origin,
-                cancellationToken);
-            return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
-        }
-        catch (OperationCanceledException)
-        {
-            return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
-        }
-        catch (InvalidOperationException)
-        {
-            return OperationResult<AiAnalysis>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
-        }
-        catch (Exception exception)
-        {
-            // Provider/network errors remain stable to callers; the capture service owns cleanup behavior.
-            _logger.LogWarning("Deferred snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
-            return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
-        }
-    }, cancellationToken);
+        return Task.FromResult(OperationResult<IReadOnlyList<ApplicationNotification>>.Success(
+            "notifications.drained",
+            "ApplicationNotificationsDrained",
+            drained));
+    }
 
     /// <inheritdoc />
     public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken)
@@ -1300,6 +1335,25 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         var canEnable = AiApiKeyPolicy.LooksPlausible(settings.AiProvider, settings.AiApiKeyName, key);
         key = string.Empty;
         return new AiStatus(settings.OpenAiEnabled, settings.AiProvider, settings.Model, settings.AiEndpoint, settings.AiApiKeyName, hasKey, canEnable, BuildCostGate(settings));
+    }
+
+    private static bool ShouldNotifyAiAnalysisFailure(string code) =>
+        code is not "operation.cancelled" and not "privacy.blocked" and not "ai.disabled";
+
+    private void EnqueueAiAnalysisFailure(string code)
+    {
+        while (_notifications.Count >= MaximumPendingNotifications && _notifications.TryDequeue(out _))
+        {
+            // Oldest notifications are discarded first so a headless runtime remains memory-bounded.
+        }
+
+        _notifications.Enqueue(new ApplicationNotification(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            ApplicationNotificationSeverity.Error,
+            "Dialog.AiAnalysisFailed.Title",
+            "Dialog.AiAnalysisFailed.Message",
+            code));
     }
 
     private AnalysisCostGate BuildCostGate(AppSettings settings)

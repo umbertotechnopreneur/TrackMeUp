@@ -1,8 +1,12 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using TrackMeUp.Application;
+using TrackMeUp.Runtime;
 
 namespace TrackMeUp.Presentation;
+
+/// <summary>Contains the persisted presentation settings and dashboard resolved for the first main-window frame.</summary>
+public sealed record MainWindowStartupState(AppSettings Settings, DashboardState Dashboard);
 
 /// <summary>Provides minimal observable state without depending on XAML or Spectre.Console.</summary>
 public abstract class ViewModelBase : INotifyPropertyChanged
@@ -39,6 +43,52 @@ public sealed class MainViewModel : ViewModelBase
 
     /// <summary>Gets the latest recorded session.</summary>
     public LastSessionState? LastSession { get => _lastSession; private set => Set(ref _lastSession, value); }
+
+    /// <summary>Loads launch settings and applies the centralized automatic-tracking policy before the first dashboard render.</summary>
+    public async Task<OperationResult<MainWindowStartupState>> InitializeAsync(
+        LaunchOptions options,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var settingsResult = await _application.GetSettingsAsync(cancellationToken);
+        if (!settingsResult.Succeeded || settingsResult.Value is null)
+        {
+            return new OperationResult<MainWindowStartupState>(
+                false,
+                settingsResult.Code,
+                settingsResult.MessageKey,
+                null,
+                settingsResult.Issues);
+        }
+
+        var effectiveSettings = settingsResult.Value with
+        {
+            UiLanguage = options.Language ?? settingsResult.Value.UiLanguage,
+            Theme = options.Theme ?? settingsResult.Value.Theme,
+            FlyoutPosition = options.Position ?? settingsResult.Value.FlyoutPosition
+        };
+        var dashboardResult = TrackingStartupPolicy.ShouldStart(options, effectiveSettings)
+            ? await _application.StartTrackingAsync(
+                new StartTrackingRequest(options.SafeMode, "winui.launch"),
+                cancellationToken)
+            : await _application.GetDashboardAsync(cancellationToken);
+        if (!dashboardResult.Succeeded || dashboardResult.Value is null)
+        {
+            return new OperationResult<MainWindowStartupState>(
+                false,
+                dashboardResult.Code,
+                dashboardResult.MessageKey,
+                null,
+                dashboardResult.Issues);
+        }
+
+        Dashboard = dashboardResult.Value;
+        return OperationResult<MainWindowStartupState>.Success(
+            "main.initialized",
+            "MainWindowInitialized",
+            new MainWindowStartupState(effectiveSettings, dashboardResult.Value));
+    }
 
     /// <summary>Loads player data.</summary>
     public async Task<OperationResult<DashboardState>> RefreshAsync(CancellationToken cancellationToken)

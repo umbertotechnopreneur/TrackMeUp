@@ -20,6 +20,7 @@ public partial class App : Microsoft.UI.Xaml.Application
 {
     private readonly ServiceProvider _services;
     private readonly ILogger<App> _logger;
+    private readonly MicaDialogService _dialogs = new();
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
     private ScreenshotWindow? _screenshotsWindow;
@@ -80,7 +81,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _reportsOnly = false;
         var application = StartOrConnectRuntime();
-        _window = new MainWindow(application, options);
+        _window = new MainWindow(application, options, _dialogs);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.ReportsRequested += MainWindow_ReportsRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
@@ -257,7 +258,20 @@ public partial class App : Microsoft.UI.Xaml.Application
     private void StartBackgroundRuntime(LaunchOptions options)
     {
         var application = StartOrConnectRuntime();
-        if (ReferenceEquals(application, _runtimeApplication) && options.StartTracking && !options.Paused)
+        if (!ReferenceEquals(application, _runtimeApplication))
+        {
+            return;
+        }
+
+        var settings = application.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult();
+        if (!settings.Succeeded || settings.Value is null)
+        {
+            // A headless launch cannot present recovery UI, so leave tracking paused and record the explicit failure.
+            _logger.LogWarning("Background startup settings could not be loaded. Code={Code}", settings.Code);
+            return;
+        }
+
+        if (TrackingStartupPolicy.ShouldStart(options, settings.Value))
         {
             _ = application.StartTrackingAsync(new StartTrackingRequest(options.SafeMode, "background"), CancellationToken.None);
         }

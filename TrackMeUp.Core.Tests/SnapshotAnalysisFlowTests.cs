@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
@@ -170,6 +172,79 @@ public sealed class SnapshotAnalysisFlowTests
         finally
         {
             Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FailedFrameAnalysis_QueuesOneRedactedErrorNotification()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+            var capture = new RecordingCaptureService(dataDirectory);
+            await using var application = CreateApplication(store, capture, new FailingAnalysisService());
+
+            var result = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(capture.Result, KeepCapture: true),
+                CancellationToken.None);
+            var notifications = await application.DrainApplicationNotificationsAsync(CancellationToken.None);
+            var drainedAgain = await application.DrainApplicationNotificationsAsync(CancellationToken.None);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("ai.provider.failed", result.Code);
+            var notification = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(notifications.Value));
+            Assert.Equal(ApplicationNotificationSeverity.Error, notification.Severity);
+            Assert.Equal("Dialog.AiAnalysisFailed.Title", notification.TitleKey);
+            Assert.Equal("Dialog.AiAnalysisFailed.Message", notification.MessageKey);
+            Assert.Equal("ai.provider.failed", notification.Code);
+            Assert.DoesNotContain("sk-test", notification.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(drainedAgain.Value));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DisabledAi_DoesNotQueueFrameAnalysisNotifications()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = false,
+                ScreenshotDirectory = dataDirectory
+            });
+            var capture = new RecordingCaptureService(dataDirectory);
+            await using var application = CreateApplication(store, capture, new FailingAnalysisService());
+
+            var result = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(capture.Result, KeepCapture: true),
+                CancellationToken.None);
+            var notifications = await application.DrainApplicationNotificationsAsync(CancellationToken.None);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("ai.disabled", result.Code);
+            Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(notifications.Value));
+        }
+        finally
+        {
             Directory.Delete(dataDirectory, recursive: true);
         }
     }
@@ -584,5 +659,23 @@ public sealed class SnapshotAnalysisFlowTests
                 throw;
             }
         }
+    }
+
+    private sealed class FailingAnalysisService : IAiAnalysisService
+    {
+        public Task<AiAnalysis> AnalyzeCurrentScreenAsync(
+            AnalysisContextSnapshot? activity,
+            bool allowCapture = true,
+            string origin = "manual",
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException("Test-only provider failure.");
+
+        public Task<AiAnalysis> AnalyzeCapturedScreenAsync(
+            AnalysisContextSnapshot? activity,
+            ScreenshotCaptureResult captureResult,
+            bool keepCapture,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException("Test-only provider failure.");
     }
 }

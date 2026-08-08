@@ -21,6 +21,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
             </Grid.ColumnDefinitions>
             <Button
@@ -59,7 +60,6 @@
                 Grid.Column="4"
                 Width="46"
                 Height="40"
-                Margin="0,0,8,0"
                 Padding="6,0,6,7"
                 AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Apri menu applicazione"
@@ -77,6 +77,27 @@
                     FontFamily="Segoe Fluent Icons"
                     FontSize="19"
                     Glyph="&#xE712;" />
+            </Button>
+            <Button
+                x:Name="TitleBarReportButton"
+                Grid.Column="5"
+                Width="40"
+                Height="40"
+                Margin="0,0,8,0"
+                Padding="8"
+                AllowFocusOnInteraction="False"
+                AutomationProperties.Name="Reports"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="TitleBarReportButton_Click"
+                IsTabStop="False"
+                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                ToolTipService.ToolTip="Reports">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="17"
+                    Glyph="&#xE9F9;" />
             </Button>
         </Grid>
 
@@ -994,7 +1015,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Border Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                            <Grid Grid.Row="1" Margin="0,6,0,0">
+                            <Grid Grid.Row="1" Margin="0,6,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />

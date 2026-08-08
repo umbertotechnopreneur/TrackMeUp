@@ -36,6 +36,7 @@ public enum MainWindowLayoutSection
 public sealed class MainWindowLayoutState
 {
     private const int InitialLogicalHeight = 304;
+    private const int PreferredOptionsLogicalHeight = 760;
 
     /// <summary>Gets the currently active top-level surface.</summary>
     public MainWindowSurface Surface { get; private set; } = MainWindowSurface.Player;
@@ -122,6 +123,23 @@ public sealed class MainWindowLayoutState
 
         LogicalHeight = checked((int)Math.Ceiling(measuredHeight));
         return LogicalHeight;
+    }
+
+    /// <summary>Constrains the measured height to the current display and the preferred compact height of the active surface.</summary>
+    /// <param name="availableLogicalHeight">Usable display height in WinUI logical pixels after outer margins.</param>
+    /// <returns>The logical window height to apply.</returns>
+    public int ResolveLogicalHeight(double availableLogicalHeight)
+    {
+        if (double.IsNaN(availableLogicalHeight) || double.IsInfinity(availableLogicalHeight) || availableLogicalHeight <= 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(availableLogicalHeight));
+        }
+
+        var displayLimit = Math.Max(1, checked((int)Math.Floor(availableLogicalHeight)));
+        var surfaceLimit = Surface == MainWindowSurface.Options
+            ? Math.Min(displayLimit, PreferredOptionsLogicalHeight)
+            : displayLimit;
+        return Math.Min(LogicalHeight, surfaceLimit);
     }
 
     private bool IsSectionVisible(MainWindowLayoutSection section) => section switch
