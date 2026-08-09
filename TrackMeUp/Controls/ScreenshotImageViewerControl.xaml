@@ -7,21 +7,6 @@
     AutomationProperties.Name="Screenshot viewer">
     <UserControl.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#D9FFFFFF" />
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#F2FFFFFF" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#D9161A21" />
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#52FFFFFF" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#D9FFFFFF" />
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#F2FFFFFF" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
-
             <Style x:Key="ScreenshotZoomButtonStyle" TargetType="Button">
                 <Setter Property="Width" Value="36" />
                 <Setter Property="Height" Value="36" />
@@ -69,6 +54,7 @@
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     AutomationProperties.Name="No screenshot selected"
+                    ImageOpened="ScreenshotImage_ImageOpened"
                     Stretch="Uniform" />
             </Grid>
         </ScrollViewer>
@@ -79,8 +65,8 @@
             Padding="6"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Background="{ThemeResource ScreenshotViewerRailBrush}"
-            BorderBrush="{ThemeResource ScreenshotViewerRailBorderBrush}"
+            Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
             BorderThickness="1"
             CornerRadius="25">
             <StackPanel Orientation="Horizontal" Spacing="3">

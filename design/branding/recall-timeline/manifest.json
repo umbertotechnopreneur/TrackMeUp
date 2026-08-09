@@ -1,0 +1,100 @@
+{
+  "concept": "Recall Timeline",
+  "status": "selected direction, refined",
+  "wordmark": {
+    "text": "TrackMeUp",
+    "font": "Bahnschrift SemiBold",
+    "accent": "Up in coral"
+  },
+  "format": "PNG truecolor RGBA, 8 bits per channel, embedded sRGB profile",
+  "outputs": [
+    {
+      "file": "output/trackmeup-recall-timeline-art-theme-dark-master-3840x1280.png",
+      "width": 3840,
+      "height": 1280,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "d0bafb1db95279f1cd1788399e5f2a40ae78d5ff4f697f1a65a72e34b3798383"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-art-theme-light-master-3840x1280.png",
+      "width": 3840,
+      "height": 1280,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "5cf3e6e4a300bd8e7d90ab7a2a878f9d3a698e840219b1f84dd887098aa4bf84"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-banner-theme-dark-master-3840x1280.png",
+      "width": 3840,
+      "height": 1280,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "a7ba481d45588c5dd19322e600ad9f3094fb38b11636d320d6854c09476b2d09"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-banner-theme-dark-readme-2400x800.png",
+      "width": 2400,
+      "height": 800,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "a5a8f2181f7552be05f9e24182e6e994e253e510f075e001165ceda565bde426"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-banner-theme-light-master-3840x1280.png",
+      "width": 3840,
+      "height": 1280,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "5c287c45dc452702303214f9ff4e6448b432d7bfc726bd57dfd5141957c60428"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-banner-theme-light-readme-2400x800.png",
+      "width": 2400,
+      "height": 800,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "f90ac024483b47ab0d8b38c2ee6507cc1b38384713a4f75e07e36099f3231c5e"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-mark-theme-dark-1024x1024.png",
+      "width": 1024,
+      "height": 1024,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "4248f3ae5be96f850dda6b898f4b2b0b55e7aadc46e555d00926be562dc180e1"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-mark-theme-light-1024x1024.png",
+      "width": 1024,
+      "height": 1024,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "27f7614881729830b09154877c0296b2b43f759632b216eab9cdfa803b4c2d51"
+    },
+    {
+      "file": "output/trackmeup-recall-timeline-theme-pair-preview-2400x1600.png",
+      "width": 2400,
+      "height": 1600,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "09156ce1896f4de1a80a77bc98934bb9f1599761f840ad6f1fc3736a2e9ef535"
+    },
+    {
+      "file": "output/trackmeup-wordmark-for-theme-dark-transparent-2400x600.png",
+      "width": 2400,
+      "height": 600,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "81f8d6dba179372c4204e1537b56157d6f70dc76f7ce0c2163db0eaf8b284f64"
+    },
+    {
+      "file": "output/trackmeup-wordmark-for-theme-light-transparent-2400x600.png",
+      "width": 2400,
+      "height": 600,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "748c9441fbf23a15517e60908b531c5df152e7f5774cddeca484ed82df2a1f84"
+    }
+  ]
+}

@@ -195,8 +195,10 @@ internal sealed partial class AiPricingDialogWindow : Window
 
     private static TextBlock CreatePriceCell(string value) => new()
     {
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
         HorizontalAlignment = HorizontalAlignment.Right,
         IsTextSelectionEnabled = true,
+        Margin = new Thickness(0, 0, 6, 0),
         Text = value,
         TextAlignment = TextAlignment.Right,
         TextTrimming = TextTrimming.CharacterEllipsis,

@@ -428,6 +428,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel x:Name="CaptureActionsPanel"
                                     Orientation="Horizontal"
@@ -559,6 +560,33 @@
                                 Text="Pronto a misurare il tuo tempo"
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel
+                            x:Name="AiMonthlySpendPanel"
+                            Grid.Column="2"
+                            Margin="8,0,0,0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Spacing="1"
+                            Visibility="Collapsed">
+                            <TextBlock
+                                HorizontalAlignment="Right"
+                                CharacterSpacing="70"
+                                FontSize="9"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="MONTHLY AI SPEND" />
+                            <TextBlock
+                                x:Name="AiMonthlySpendText"
+                                HorizontalAlignment="Right"
+                                FontSize="36"
+                                FontWeight="Light"
+                                Text="$0.0" />
+                            <TextBlock
+                                x:Name="AiMonthlySpendRangeText"
+                                HorizontalAlignment="Right"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="" />
                         </StackPanel>
                         </Grid>
                     </Grid>

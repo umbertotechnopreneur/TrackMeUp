@@ -8,7 +8,10 @@
         <ResourceDictionary>
             <Style x:Key="ScreenshotMetadataChipStyle"
                    BasedOn="{StaticResource SurfaceChipStyle}"
-                   TargetType="Border" />
+                   TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource AcrylicInAppFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+            </Style>
 
             <Style x:Key="ScreenshotMetadataIconStyle"
                    BasedOn="{StaticResource SurfaceChipIconStyle}"
@@ -32,6 +35,7 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
             ColumnSpacing="26"
+            IsHitTestVisible="False"
             Visibility="Collapsed">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220" />

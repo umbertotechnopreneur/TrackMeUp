@@ -50,7 +50,7 @@ The domain and persistence types are already mostly UI-independent. Existing reu
 - HTML report generation.
 - Settings, environment-variable API-key lookup, local JSONL history, startup registration, localization, and installation identity.
 
-The data model already includes focus-session, retention, digest, privacy, plugin, and cost-guardrail fields. Not every capability currently has a complete application-service entry point. The implementation must finish those entry points before exposing the matching CLI command.
+The data model includes retention, digest, privacy, plugin, and cost-guardrail fields. Every exposed capability must have a complete application-service entry point before it is surfaced in the CLI.
 
 ## 4. Dependency versions
 
@@ -119,7 +119,6 @@ Required operation groups:
 | Runtime | health, version, installation identity, capabilities |
 | Tracking | start, pause, toggle, current dashboard, watch state |
 | Sessions | last session, today's summary, recent activity |
-| Focus | start with objective, status, stop, optional AI summary |
 | System | capture current CPU/GPU/memory/network/disk snapshot |
 | Screenshots | capture, latest, storage path, open storage folder |
 | AI | status, configure non-secret settings, analyze now, cost gate |
@@ -144,7 +143,7 @@ public sealed record OperationResult<T>(
 
 `MessageKey` is localizable. `Code` is stable, English, and suitable for JSON/automation. Never make CLI logic depend on translated text.
 
-Create explicit request DTOs such as `StartTrackingRequest`, `CaptureScreenshotRequest`, `AnalyzeCurrentActivityRequest`, `SettingsPatch`, `RetentionRequest`, and `StartFocusSessionRequest`. Do not pass control instances, Spectre settings objects, or XAML types into the application layer.
+Create explicit request DTOs such as `StartTrackingRequest`, `CaptureScreenshotRequest`, `AnalyzeCurrentActivityRequest`, `SettingsPatch`, and `RetentionRequest`. Do not pass control instances, Spectre settings objects, or XAML types into the application layer.
 
 ## 7. Passive WinUI design
 
@@ -156,7 +155,6 @@ Create UI-neutral view models in `TrackMeUp.Presentation`:
 | `OptionsViewModel` | Editable settings snapshot, validation, save command |
 | `AiConfigurationViewModel` | Provider/model/endpoint/key-variable status and secret-set command |
 | `AboutViewModel` | Version, author, links, license, close command |
-| `FocusSessionViewModel` | Objective, active state, elapsed state, finish command |
 | `PrivacyViewModel` | Privacy rule list and edit commands |
 | `ReportViewModel` | Generate/open report commands and progress state |
 
@@ -296,9 +294,6 @@ trackmeup -cli tracking pause
 trackmeup -cli tracking toggle
 trackmeup -cli session last
 trackmeup -cli session today
-trackmeup -cli focus start --objective <text>
-trackmeup -cli focus status
-trackmeup -cli focus stop [--summarize]
 trackmeup -cli system snapshot [--watch]
 trackmeup -cli screenshot capture [--mode <all-screens|active-window>] [--keep] [--watermark]
 trackmeup -cli screenshot latest
@@ -360,7 +355,6 @@ Command names and option names remain English in every locale. Descriptions, pro
 | Options inspect | `config list`, `config get` | typed settings query and shared public-key catalog |
 | Start with Windows | `startup enable`, `startup disable` | startup use case |
 | Generate report | `report today`, `report digest` | report use case |
-| Focus objective/session | `focus start`, `focus status`, `focus stop` | focus use case |
 | Privacy zones | `privacy ...` | privacy-rule use case |
 | Retention | `retention ...` | retention use case |
 | Detailed app providers | `plugins ...` | plugin registry use case |
@@ -368,9 +362,9 @@ Command names and option names remain English in every locale. Descriptions, pro
 
 ### 13.1 Current parity audit
 
-The CLI now routes every operation currently exposed by `ITrackMeUpApplication`: runtime health; tracking and dashboard; session and focus state; system snapshot; screenshots; AI; reports; privacy; retention; plugins; public settings; startup; and product information. All current WinUI mutations and queries therefore have a CLI equivalent. Slash-prefixed and conventional command forms reach the same dispatcher and the same facade calls.
+The CLI now routes every operation currently exposed by `ITrackMeUpApplication`: runtime health; tracking and dashboard; session state; system snapshot; screenshots; AI; reports; privacy; retention; plugins; public settings; startup; and product information. All current WinUI mutations and queries therefore have a CLI equivalent. Slash-prefixed and conventional command forms reach the same dispatcher and the same facade calls.
 
-Strict bidirectional feature parity is not yet complete because the current WinUI surface does not provide controls for several facade capabilities already available in the CLI: focus sessions, privacy-rule management, retention preview/run, plugin management, system snapshots, manual AI analysis, and dated digest generation. These are WinUI presentation gaps; duplicating their behavior in CLI presentation code is not an acceptable workaround.
+Strict bidirectional feature parity is not yet complete because the current WinUI surface does not provide controls for several facade capabilities already available in the CLI: privacy-rule management, retention preview/run, plugin management, system snapshots, manual AI analysis, and dated digest generation. These are WinUI presentation gaps; duplicating their behavior in CLI presentation code is not an acceptable workaround.
 
 One existing architecture exception also remains outside the command facade: `open ui` activates a process directly, and runtime connection/startup is owned by the CLI bootstrap. Moving those paths behind a Core runtime coordinator or an explicit activation operation is required before the CLI presentation layer is fully passive.
 
@@ -392,7 +386,6 @@ Use the widget set deliberately. A renderer receives DTOs and returns Spectre re
 | `Status` and spinners | Runtime startup, AI analysis, health checks, one-off snapshots |
 | `SelectionPrompt` | Main interactive menu, provider selection, theme/language selection |
 | `MultiSelectionPrompt` | Plugin and privacy-rule batch configuration |
-| `TextPrompt` | Focus objective, paths, numeric limits, secret API-key input |
 | `Live` | Tracking dashboard and system snapshot watch modes |
 | `Rule`, `Markup`, `FigletText` | Branded sectioning and startup identity |
 
@@ -425,7 +418,7 @@ Initial layout:
   ⌨  1,842 keys     🖱  391 clicks     ⚡ 74% intensity
   CPU 18% · GPU 7% · RAM 15.5/31.9 GB · ↓ 1.4 MB/s ↑ 92 KB/s
 
-  [1] Status       [2] Start/Pause     [3] Focus
+  [1] Status       [2] Start/Pause
   [4] Analyze      [5] Report          [6] Screenshots
   [7] Privacy      [8] Settings        [9] Diagnostics
 
@@ -434,7 +427,7 @@ Initial layout:
 
 Interactive commands may be entered as normal command text or selected from prompts. Support `help`, `clear`, `status`, `exit`, and the same nested commands as one-shot mode. Do not build a second command parser for the REPL. Tokenize the line, then invoke the same Spectre command app used by one-shot mode.
 
-Do not persist interactive command history in the MVP. This avoids retaining focus objectives, document names, paths, or accidental secrets.
+Do not persist interactive command history in the MVP. This avoids retaining document names, paths, or accidental secrets.
 
 The startup animation lasts at most 700 ms and is skipped with `--no-animation`, redirected output, JSON mode, or reduced-motion configuration. Long operations use real progress. No artificial waiting is allowed.
 
@@ -557,9 +550,9 @@ Implement status, session, system snapshot, plugins list/show, config list/get, 
 
 Acceptance: renderers are deterministic under `Spectre.Console.Testing`; JSON is valid and ANSI-free.
 
-### Phase 6: Tracking and focus commands
+### Phase 6: Tracking commands
 
-Implement tracking and focus mutations through IPC. Publish state-change events to both frontends.
+Implement tracking mutations through IPC. Publish state-change events to both frontends.
 
 Acceptance: starting or pausing from CLI updates the open UI and its status toast; tracking persists after one-shot CLI exit through the background host.
 

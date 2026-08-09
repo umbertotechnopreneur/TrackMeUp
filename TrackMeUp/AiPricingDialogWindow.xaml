@@ -26,6 +26,8 @@
                    TargetType="TextBlock">
                 <Setter Property="FontSize"
                         Value="22"/>
+                <Setter Property="FontFamily"
+                        Value="Consolas"/>
                 <Setter Property="FontWeight"
                         Value="SemiBold"/>
                 <Setter Property="TextTrimming"
@@ -75,20 +77,15 @@
                     <ColumnDefinition Width="38" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Border
+                <FontIcon
                     Width="38"
                     Height="38"
-                    Background="{ThemeResource SurfaceChipBackgroundBrush}"
-                    BorderBrush="{ThemeResource SurfaceChipBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="14">
-                    <FontIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="20"
-                        Foreground="#FF7D9FF8"
-                        Glyph="&#xE9D2;"/>
-                </Border>
+                    VerticalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="20"
+                    Foreground="#FF7D9FF8"
+                    Glyph="&#xE9D2;"/>
                 <StackPanel
                     Grid.Column="1"
                     Spacing="3">
@@ -119,78 +116,30 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Border Style="{StaticResource SurfacePillCardStyle}">
-                    <StackPanel Spacing="4">
-                        <TextBlock
-                            x:Name="EstimatedTodayLabel"
-                            Style="{StaticResource SummaryLabelStyle}" />
-                        <TextBlock
-                            x:Name="EstimatedTodayValue"
-                            Style="{StaticResource SummaryValueStyle}" />
-                    </StackPanel>
-                </Border>
-                <Border
-                    Grid.Column="1"
-                    Style="{StaticResource SurfacePillCardStyle}">
-                    <StackPanel Spacing="4">
-                        <TextBlock
-                            x:Name="EstimatedRequestsLabel"
-                            Style="{StaticResource SummaryLabelStyle}" />
-                        <TextBlock
-                            x:Name="EstimatedRequestsValue"
-                            Style="{StaticResource SummaryValueStyle}" />
-                    </StackPanel>
-                </Border>
-                <Border
-                    Grid.Column="2"
-                    Style="{StaticResource SurfacePillCardStyle}">
-                    <StackPanel Spacing="4">
-                        <TextBlock
-                            x:Name="TodayTokensLabel"
-                            Style="{StaticResource SummaryLabelStyle}" />
-                        <TextBlock
-                            x:Name="TodayTokensValue"
-                            Style="{StaticResource SummaryValueStyle}" />
-                    </StackPanel>
-                </Border>
-                <Border
-                    Grid.Row="1"
-                    Style="{StaticResource SurfacePillCardStyle}">
-                    <StackPanel Spacing="4">
-                        <TextBlock
-                            x:Name="LastSyncLabel"
-                            Style="{StaticResource SummaryLabelStyle}" />
-                        <TextBlock
-                            x:Name="LastSyncValue"
-                            Style="{StaticResource SummaryValueStyle}" />
-                    </StackPanel>
-                </Border>
-                <Border
-                    Grid.Row="1"
-                    Grid.Column="1"
-                    Style="{StaticResource SurfacePillCardStyle}">
-                    <StackPanel Spacing="4">
-                        <TextBlock
-                            x:Name="DisplayedModelsLabel"
-                            Style="{StaticResource SummaryLabelStyle}" />
-                        <TextBlock
-                            x:Name="DisplayedModelsValue"
-                            Style="{StaticResource SummaryValueStyle}" />
-                    </StackPanel>
-                </Border>
-                <Border
-                    Grid.Row="1"
-                    Grid.Column="2"
-                    Style="{StaticResource SurfacePillCardStyle}">
-                    <StackPanel Spacing="4">
-                        <TextBlock
-                            x:Name="ReportedCostLabel"
-                            Style="{StaticResource SummaryLabelStyle}" />
-                        <TextBlock
-                            x:Name="ReportedCostValue"
-                            Style="{StaticResource SummaryValueStyle}" />
-                    </StackPanel>
-                </Border>
+                <StackPanel Margin="0,4,0,4" Spacing="4">
+                    <TextBlock x:Name="EstimatedTodayLabel" Style="{StaticResource SummaryLabelStyle}" />
+                    <TextBlock x:Name="EstimatedTodayValue" Style="{StaticResource SummaryValueStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,4,0,4" Spacing="4">
+                    <TextBlock x:Name="EstimatedRequestsLabel" Style="{StaticResource SummaryLabelStyle}" />
+                    <TextBlock x:Name="EstimatedRequestsValue" Style="{StaticResource SummaryValueStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,4,0,4" Spacing="4">
+                    <TextBlock x:Name="TodayTokensLabel" Style="{StaticResource SummaryLabelStyle}" />
+                    <TextBlock x:Name="TodayTokensValue" Style="{StaticResource SummaryValueStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Margin="0,4,0,4" Spacing="4">
+                    <TextBlock x:Name="LastSyncLabel" Style="{StaticResource SummaryLabelStyle}" />
+                    <TextBlock x:Name="LastSyncValue" Style="{StaticResource SummaryValueStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,4,0,4" Spacing="4">
+                    <TextBlock x:Name="DisplayedModelsLabel" Style="{StaticResource SummaryLabelStyle}" />
+                    <TextBlock x:Name="DisplayedModelsValue" Style="{StaticResource SummaryValueStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,4,0,4" Spacing="4">
+                    <TextBlock x:Name="ReportedCostLabel" Style="{StaticResource SummaryLabelStyle}" />
+                    <TextBlock x:Name="ReportedCostValue" Style="{StaticResource SummaryValueStyle}" />
+                </StackPanel>
             </Grid>
 
             <Border

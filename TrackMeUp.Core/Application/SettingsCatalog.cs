@@ -78,7 +78,6 @@ public static class SettingsCatalog
         Integer("retention.data_days", "Days to retain completed local activity files."),
         Boolean("digest.enabled", "Enable daily digest generation."),
         Text("digest.directory", "Optional daily digest output directory.", "path"),
-        Boolean("focus.summary_enabled", "Generate a summary when a focus session stops."),
         Boolean("plugins.word.enabled", "Enable safe Microsoft Word context details."),
         Boolean("plugins.excel.enabled", "Enable safe Microsoft Excel context details."),
         Boolean("plugins.vscode.enabled", "Enable safe Visual Studio Code context details."),
@@ -132,7 +131,6 @@ public static class SettingsCatalog
             "retention.data_days" => settings.DataRetentionDays,
             "digest.enabled" => settings.DailyDigestEnabled,
             "digest.directory" => settings.DailyDigestDirectory,
-            "focus.summary_enabled" => settings.FocusSessionSummaryEnabled,
             "plugins.word.enabled" => settings.EnableWordDetailPlugin,
             "plugins.excel.enabled" => settings.EnableExcelDetailPlugin,
             "plugins.vscode.enabled" => settings.EnableVsCodeDetailPlugin,
@@ -243,7 +241,6 @@ public static class SettingsCatalog
                 case "retention.data_days" when TryInteger(value, 0, 3650, out var dataDays): current = current with { DataRetentionDays = dataDays }; break;
                 case "digest.enabled" when TryBoolean(value, out var digestEnabled): current = current with { DailyDigestEnabled = digestEnabled }; break;
                 case "digest.directory" when TryDirectory(value, allowEmpty: true, out var digestDirectory): current = current with { DailyDigestDirectory = digestDirectory }; break;
-                case "focus.summary_enabled" when TryBoolean(value, out var focusSummary): current = current with { FocusSessionSummaryEnabled = focusSummary }; break;
                 case "plugins.word.enabled" when TryBoolean(value, out var word): current = current with { EnableWordDetailPlugin = word }; break;
                 case "plugins.excel.enabled" when TryBoolean(value, out var excel): current = current with { EnableExcelDetailPlugin = excel }; break;
                 case "plugins.vscode.enabled" when TryBoolean(value, out var vscode): current = current with { EnableVsCodeDetailPlugin = vscode }; break;

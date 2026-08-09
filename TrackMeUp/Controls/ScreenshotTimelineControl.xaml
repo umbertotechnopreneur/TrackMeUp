@@ -68,7 +68,7 @@
         <Border
             Padding="24,11,24,14"
             HorizontalAlignment="Stretch"
-            Background="Transparent"
+            Background="{ThemeResource AcrylicInAppFillColorBaseBrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0">
             <Grid x:Name="TimelineNavigationRail">
@@ -95,6 +95,7 @@
                     x:Name="FilmstripList"
                     Grid.Column="1"
                     HorizontalAlignment="Stretch"
+                    Background="Transparent"
                     IsItemClickEnabled="False"
                     ItemContainerStyle="{StaticResource TimelineItemContainerStyle}"
                     ItemTemplate="{StaticResource ScreenshotTimelineItemTemplate}"

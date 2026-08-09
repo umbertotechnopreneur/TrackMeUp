@@ -19,7 +19,14 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var timelineSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml.cs"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
         var imageScroller = viewer.Descendants().Single(element => HasName(element, "ImageScroller"));
+        var screenshotImage = viewer.Descendants().Single(element => HasName(element, "ScreenshotImage"));
+        var zoomRail = viewer.Descendants().Single(element => HasName(element, "ZoomRail"));
         var metadataPanel = gallery.Descendants().Single(element => HasName(element, "MetadataPanel"));
+        var metadataChipStyle = gallery.Descendants().Single(element =>
+            element.Name.LocalName == "Style" && HasKey(element, "ScreenshotMetadataChipStyle"));
+        var filmstripSurface = timeline.Descendants().Single(element =>
+            element.Name.LocalName == "Border"
+            && element.Attribute("Background")?.Value == "{ThemeResource AcrylicInAppFillColorBaseBrush}");
         var gallerySection = window.Descendants().Single(element => HasName(element, "GallerySection"));
 
         Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotImageViewerControl");
@@ -31,8 +38,10 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("Auto", imageScroller.Attribute("HorizontalScrollMode")?.Value);
         Assert.Equal("Hidden", imageScroller.Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Equal("Auto", imageScroller.Attribute("VerticalScrollMode")?.Value);
-        Assert.Contains(viewer.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
+        Assert.Equal("Uniform", screenshotImage.Attribute("Stretch")?.Value);
+        Assert.Equal("ScreenshotImage_ImageOpened", screenshotImage.Attribute("ImageOpened")?.Value);
         Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomRail") && element.Attribute("VerticalAlignment")?.Value == "Bottom");
+        Assert.Equal("{ThemeResource AcrylicInAppFillColorDefaultBrush}", zoomRail.Attribute("Background")?.Value);
         Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomOutButton"));
         Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomResetButton"));
         Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomPercentText"));
@@ -48,6 +57,12 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
         Assert.DoesNotContain(timeline.Descendants(), element => HasName(element, "FilmstripPanel"));
         Assert.Equal("Bottom", metadataPanel.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("False", metadataPanel.Attribute("IsHitTestVisible")?.Value);
+        Assert.Contains(metadataChipStyle.Descendants(), element =>
+            element.Name.LocalName == "Setter"
+            && element.Attribute("Property")?.Value == "Background"
+            && element.Attribute("Value")?.Value == "{ThemeResource AcrylicInAppFillColorDefaultBrush}");
+        Assert.NotNull(filmstripSurface);
         Assert.Equal("3", gallerySection.Attribute("Grid.RowSpan")?.Value);
         Assert.Contains(window.Descendants(), element =>
             HasName(element, "TimelineSection") && element.Attribute("Margin")?.Value == "0");
@@ -55,6 +70,13 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("public event EventHandler? SaveRequested", viewerSource, StringComparison.Ordinal);
         Assert.Contains("ImageScroller.ChangeView", viewerSource, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("bitmap.PixelWidth", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("var coverScale = Math.Max", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("PointerDeviceType.Mouse", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ImageScroller.CapturePointer(e.Pointer)", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ImageScroller.ReleasePointerCapture(e.Pointer)", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("_dragStartHorizontalOffset - (point.Position.X - _dragStartPosition.X)", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ImageScroller.ChangeView(horizontalOffset, verticalOffset, null, disableAnimation: true)", viewerSource, StringComparison.Ordinal);
         Assert.Contains("FindDescendant<ScrollViewer>", timelineSource, StringComparison.Ordinal);
         Assert.Contains("scroller.ExtentWidth", timelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CoverFlow.SelectedIndexChanged", windowSource, StringComparison.Ordinal);
@@ -65,6 +87,9 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
 
     private static bool HasName(XElement element, string value)
         => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == value);
+
+    private static bool HasKey(XElement element, string value)
+        => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == value);
 
     private static string RepositoryFile(params string[] segments)
     {

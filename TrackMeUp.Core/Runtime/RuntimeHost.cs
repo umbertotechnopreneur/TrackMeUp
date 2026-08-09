@@ -204,9 +204,6 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
                 "search.rebuild.v1" => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
-                "focus.start" => ToResponse(request, await _application.StartFocusSessionAsync(Read<StartFocusSessionRequest>(request.Payload) ?? new StartFocusSessionRequest(string.Empty), cancellationToken)),
-                "focus.status" => ToResponse(request, await _application.GetFocusSessionAsync(cancellationToken)),
-                "focus.stop" => ToResponse(request, await _application.StopFocusSessionAsync(ReadBool(request.Payload, "summarize"), cancellationToken)),
                 "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
                 "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
                 "screenshot.manual.capture" => ToResponse(request, await _application.CaptureManualScreenshotAsync(cancellationToken)),
@@ -476,12 +473,6 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
         SendAsync<ReportSnapshot>("report.query.v1", query, cancellationToken, ReportQueryTimeout);
-    /// <inheritdoc />
-    public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => SendAsync<FocusSessionState>("focus.start", request, cancellationToken);
-    /// <inheritdoc />
-    public Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken) => SendAsync<FocusSessionState>("focus.status", null, cancellationToken);
-    /// <inheritdoc />
-    public Task<OperationResult<FocusSessionSummary?>> StopFocusSessionAsync(bool summarize, CancellationToken cancellationToken) => SendAsync<FocusSessionSummary?>("focus.stop", new { summarize }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => SendAsync<SystemSnapshot>("system.snapshot", null, cancellationToken);
     /// <inheritdoc />

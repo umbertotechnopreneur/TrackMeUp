@@ -170,22 +170,6 @@
                     <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                     <StackPanel Spacing="10">
                         <StackPanel Spacing="2">
-                            <TextBlock Tag="Operations.Focus" Style="{StaticResource SubtitleTextBlockStyle}" Text="Focus session" />
-                            <TextBlock Tag="Operations.Focus.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Start, inspect or stop a measured focus session." TextWrapping="Wrap" />
-                        </StackPanel>
-                        <TextBox x:Name="FocusObjectiveBox" Tag="Operations.FocusObjective" Header="Objective" PlaceholderText="For example: finish the review" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Tag="Operations.Start" Click="StartFocusButton_Click" Content="Start" />
-                            <Button Tag="Operations.Status" Click="FocusStatusButton_Click" Content="Status" />
-                            <Button Tag="Operations.Stop" Click="StopFocusButton_Click" Content="Stop" />
-                        </StackPanel>
-                        <CheckBox x:Name="SummarizeFocusBox" Tag="Operations.Summarize" Content="Generate a summary when stopping" IsChecked="True" />
-                        <TextBlock x:Name="FocusStatusText" Tag="Operations.Initial.Focus" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Text="No focus session is active." TextWrapping="Wrap" />
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="10">
-                        <StackPanel Spacing="2">
                             <TextBlock Tag="Operations.Reports" Style="{StaticResource SubtitleTextBlockStyle}" Text="Reports and digest" />
                             <TextBlock Tag="Operations.Reports.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Generate local reports from the current data store." TextWrapping="Wrap" />
                         </StackPanel>

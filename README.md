@@ -6,95 +6,77 @@
 
 [![Build](https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml)
 
-TrackMeUp is a local Windows tool for making workdays easier to understand and easier to remember.
+TrackMeUp is a local Windows app that helps you remember what happened during your workday.
 
-We use it internally — I use it myself first — to put some order into the day: what was open, when work was active, which applications were involved, and what a session was about. It is also built around a very ordinary memory problem:
+If you have ever thought, "I know I saw it today, but where was it?", TrackMeUp is built for exactly that moment.
 
-> “I saw a page with a blue-and-red image and a big white headline, but I cannot remember the address.”
+## Quick Navigation
 
-TrackMeUp keeps a local timeline and can, when explicitly enabled, turn a screen capture into a short description. That description can help reconstruct the context later. It cannot invent a URL that was never visible: browser titles are available, while reliable page addresses require a future opt-in browser integration.
+- [What You Get](#what-you-get)
+- [Privacy and Control](#privacy-and-control)
+- [AI Provider and Screenshots](#ai-provider-and-screenshots)
+- [Quick Start](#quick-start)
+- [Open-Source Governance Docs](#open-source-governance-docs)
+- [Repository Map](#repository-map)
 
-## A working product, not an MVP
+## What You Get
 
-This is not an MVP or a throwaway demo. TrackMeUp is a working internal product with a desktop interface, reports, retention controls, optional AI analysis, a PowerShell CLI, localization, tests, and two Windows distribution paths. It is still evolving, but the product is already useful today and its important behavior is documented below.
+TrackMeUp focuses on practical day recall, not productivity theater.
 
-## What TrackMeUp does
+- A local timeline of active and idle work periods.
+- Application and window context to reconstruct sessions.
+- Optional screenshots for visual memory.
+- Optional AI descriptions for faster context recall.
+- Daily and trend reports, available locally.
+- A desktop UI plus a PowerShell CLI.
 
-- Builds a quiet local timeline of active and idle time, applications, window context, key-press counts, and mouse-click counts. It never records what was typed.
-- Shows the current state in a small Windows player and a taskbar control. The player stays visible whenever the app starts, including when the taskbar control cannot attach.
-- Provides local reports for days, time patterns, trends, and applications.
-- Supports focus sessions and local HTML reports.
-- Adds extra context for selected applications such as Word, Excel, Visual Studio Code, and browsers. These details can be switched off individually.
-- Offers optional screen captures and optional AI descriptions of the current context.
-- Lets you configure an in-player snapshot interval and edit weekly working hours in a 30-minute grid. New installations default to every day, 00:00-24:00. Working hours are stored locally and used to gate scheduled snapshots; clearing every block disables the timer until hours are configured again.
-- Provides a PowerShell 7 CLI for status, tracking, reports, AI, privacy rules, and retention.
-- Keeps the report interface bundled with the app. Reports do not need a local web server or a TrackMeUp cloud account.
+It does not record what you typed.
 
-## Privacy in plain language
+## Why People Use It
 
-TrackMeUp is local by default. There is no TrackMeUp server receiving your activity, no hidden account, and no silent upload of your workday.
+- To resume interrupted tasks faster.
+- To rebuild context before meetings.
+- To remember browser/page moments when title memory is stronger than URL memory.
+- To keep workday evidence local on the same PC.
 
-You control the features that can create or send sensitive material:
+TrackMeUp is already a working product used internally, and now prepared for open-source collaboration.
 
-- **Screen captures:** off by default. When off, TrackMeUp does not create a screenshot for analysis.
-- **Capture cleanup:** a manual snapshot can be deleted from the player for 30 seconds after capture; the screenshot gallery also exposes separate screenshot and snapshot-analysis deletion commands in its ellipsis menu.
-- **AI analysis:** off by default. When off, no AI service is contacted.
-- **Snapshot analysis:** scheduled snapshots are retained locally first and are then offered to AI when it is enabled and configured. Missing keys, cost limits, or provider errors do not remove or hide the retained snapshot. A manual player snapshot waits through the 30-second deletion window; if it is deleted, no AI request is made, and if it remains, the exact retained capture is analyzed once the window expires.
-- **Location:** off by default. When enabled, location comes from the Windows Location service and is included only in an AI request.
-- **Privacy rules:** can block an application, a window title, or a context hint before capture and before an AI request.
-- **Retention:** controls how long local activity, AI results, and retained screenshots remain on this PC.
+## Privacy and Control
 
-The activity database, reports, diagnostic logs, and retained screenshots are local files. Their default locations are under the current Windows user profile; screenshot and report folders can be changed explicitly in the app settings. App options includes a visible link to the configured folder that contains retained snapshots and any local debug-image artifacts. Transient screenshots are deleted after analysis when screenshot retention is off, including the normal failure and cancellation paths.
+TrackMeUp is local-first by default.
 
-Read the complete, source-backed data-flow and dependency census in [docs/PRIVACY.md](docs/PRIVACY.md).
+- No TrackMeUp cloud account is required.
+- No hidden sync pipeline uploads your activity.
+- Screenshots are off by default.
+- AI analysis is off by default.
+- Location sharing is off by default.
 
-## Your OpenAI key stays yours
+You can configure privacy rules to block capture or analysis for selected apps, titles, or context hints.
 
-OpenAI is the default AI integration. TrackMeUp uses your own OpenAI API key from the Windows environment on this PC.
+Retention is configurable for activity, analysis records, and screenshots, so data lifecycle stays under your control.
 
-The key is not copied into TrackMeUp settings, SQLite, reports, logs, command arguments, command history, or local IPC diagnostics. TrackMeUp has no server through which the key is routed. When AI analysis is enabled and TrackMeUp captures a permitted snapshot, the key is used in the direct HTTPS request to OpenAI — it is authentication for that request, not a TrackMeUp credential.
+For the full data-flow and dependency inventory, read [docs/PRIVACY.md](docs/PRIVACY.md).
 
-You can set the key from the app or with the hidden-input CLI prompt:
+## AI Provider and Screenshots
 
-```powershell
-trackmeup.exe -cli ai key set
-```
+Screenshots and AI are separate choices. You can use either, both, or neither.
 
-OpenRouter and Anthropic are supported as explicit alternatives. Choosing one uses that service's own key and endpoint; the same local-key rule applies.
+Common setups:
 
-## Open source means no surprises
+1. Activity tracking only.
+2. Local screenshots without AI requests.
+3. AI analysis on captured screenshots.
+4. Full disable for both features.
 
-The code is public under the [MIT license](LICENSE). The capture rules, AI request adapters, storage, retention, diagnostics, and optional Sentry integration are all in this repository. You can inspect what is installed and what can make a network request instead of trusting a vague “privacy-first” label.
+AI requests are sent directly to the selected AI provider when enabled.
 
-The dependency census names the direct libraries and their role, including:
+Keys stay local and are never accepted via command-line arguments.
 
-- **Serilog and its console/file sinks:** local diagnostics; no remote destination by themselves.
-- **Sentry.Extensions.Logging:** optional remote error reporting, disabled unless `TRACKMEUP_SENTRY_DSN` is configured. Default PII is disabled and user/request/server identity is stripped before sending.
-- **Microsoft.Data.Sqlite and SQLitePCLRaw:** local activity, analysis, and sanitized AI-usage records.
-- **SkiaSharp and System.Drawing.Common:** local image capture, conversion, and watermarking.
-- **System.Management and PerformanceCounter:** local Windows/system measurements.
-- **Spectre.Console:** the optional PowerShell CLI surface.
-- **Vue, Vuetify, ECharts, and Vite:** the bundled offline reports interface.
+OpenAI is the default integration, with explicit alternatives such as OpenRouter and Anthropic.
 
-This is a short summary, not a substitute for the [full inventory](docs/PRIVACY.md) or the project files themselves.
+## Quick Start
 
-## AI and screenshots: full control
-
-Screenshots and AI are separate choices. You can:
-
-1. track activity without taking screenshots;
-2. capture local snapshots without contacting an AI service by leaving AI analysis disabled;
-3. analyze every captured snapshot without retaining the image locally;
-4. disable both features completely;
-5. add privacy rules that block capture and analysis for sensitive work.
-
-AI requests may contain the current application/window context, selected system information, and a screenshot only when the relevant settings allow it. The request goes directly to the AI service selected in the app. TrackMeUp stores small local records of request counts and timing for cost and troubleshooting; it does not store prompts, images, authorization headers, or keys in those records.
-
-AI output is an aid for recall, not a source of truth. The built-in prompts ask the model to separate observation from inference and avoid reproducing secrets or private text.
-
-## Quick start
-
-The supported development and CLI shell is PowerShell 7:
+The supported shell for development and CLI automation is PowerShell 7.
 
 ```powershell
 pwsh -NoProfile -Command "dotnet restore .\TrackMeUp.slnx"
@@ -110,12 +92,11 @@ trackmeup.exe -cli tracking start
 trackmeup.exe -cli report today
 trackmeup.exe -cli ai status
 trackmeup.exe -cli retention preview
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action TestCli
 ```
 
-Repository automation uses a single PowerShell 7 entrypoint. Running it without
-arguments opens the interactive control center; explicit `-Action` calls are
-safe for agents and CI-style terminals.
+## Repository Automation
+
+Use the shared PowerShell 7 entrypoint:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1
@@ -127,65 +108,34 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
 ```
 
-Screenshots, AI, and retention mutations are guarded by the same privacy and confirmation rules in the app and CLI. API keys are never accepted as command-line arguments.
+Screenshot viewer validation checklist: open 16:9, portrait, and ultrawide captures and confirm that the selected image covers the active viewport at 100%, starts centered, and exposes its overflow with a left-button drag. Zoom to 500% and confirm that click-drag, wheel, touch, and trackpad navigation remain usable with hidden scrollbars. In light, dark, and high-contrast themes, and with Windows transparency effects disabled, confirm that the zoom rail, metadata chips, and full-width filmstrip remain readable over the image through native Acrylic or its system fallback.
 
-Screenshot gallery validation checklist: retain captures on two different days, restart the app, open the gallery twice and confirm that only one window is activated, then open it from the `Wayback Machine` flyout entry and confirm that the most recent retained day is selected with its captures visible. Select another day with the floating WinUI calendar, verify that the large light-weight long date updates, confirm that a manual capture is labeled `Manuale` while an automatic capture is labeled `Pianificato`, and use the App options link to open the configured snapshot and debug-image folder. From the title-bar menu, confirm that Save, Share, and Open folder are available before the separated delete actions; with an empty day selected, Save, Share, Delete, and the details toggle must be disabled while Open folder remains available. In light and dark themes, confirm that Desktop Acrylic remains visible across the complete window with no full-window veil, bloom, opaque content surface, or decorative card wrappers. Confirm that the main surface shows one selected screenshot only, with no carousel side previews, and that the screenshot fits without cropping at 100% zoom while the bottom zoom controls clearly show the current percentage and can inspect the image up to 500%. Confirm that the viewer save icon opens the same export flow as the title-bar Save action. Confirm that exactly three compact translucent metadata chips match the reference hierarchy and show date, time, and foreground application as one-line icon/value pairs. Open the keyboard-accessible details toggle to the right of the ellipsis and confirm that the transparent divider-led sidebar follows the selected screenshot, shows app, capture type, origin, span labels, and activity index as flat rows, and renders an available AI description as inert headings, paragraphs, and lists without clickable links or HTML; captures without an analysis must show the explicit empty state. With 0, 1, 2, 6, and at least 500 captures, select screenshots repeatedly from the virtualized full-window-width filmstrip and confirm synchronized screenshot, metadata, details, selected thumbnail, no image flash, and no growing working set after repeated navigation. Include 16:9, ultrawide/multi-monitor, and portrait captures and confirm every screenshot remains fully visible at reset zoom without cropping or a decorative frame. Confirm that the filmstrip is separated only by a subtle full-width top divider, keeps the selected thumbnail visible, and exposes enabled left/right paging arrows only when its content overflows. Disable Windows animation effects and confirm that selection and keyboard focus remain visible.
+## Open-Source Governance Docs
 
-Zoom overlay validation checklist: zoom above 100%, confirm that neither scroll indicator is drawn while wheel, touch, or trackpad panning remains available, and confirm that the screenshot continues underneath the overlaid date, zoom rail, metadata chips, and filmstrip controls.
+This repository includes open-source governance and contribution policies tailored for TrackMeUp:
 
-Main-window secondary-surface validation checklist: open App options and Tools and status on 1080p and 4K displays, including 150% scaling, and confirm that both use the same compact capped height, remain inside the current work area, scroll their content internally, and expose one back action in the shared title bar without a duplicate page header. In light and dark themes, confirm that Desktop Acrylic remains visibly translucent behind the complete main surface.
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [SUPPORT.md](SUPPORT.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [AI_CONTRIBUTION_POLICY.md](AI_CONTRIBUTION_POLICY.md)
+- [IP_PROVENANCE.md](IP_PROVENANCE.md)
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- [NOTICE.md](NOTICE.md)
+- [PUBLICATION_CHECKLIST.md](PUBLICATION_CHECKLIST.md)
 
-Global scrollbar validation checklist: in every scrollable window and panel, keep the pointer outside the scroll container and confirm that its scrollbars fade out; move the pointer inside that specific container and confirm that only its descendant scrollbars fade in smoothly and remain usable.
+## Repository Map
 
-Local search and OCR validation checklist: open search from both the title-bar icon and the overflow menu, then reopen it and confirm the existing centered Desktop Acrylic window is activated instead of creating a duplicate. Search terms from screenshot metadata, raw OCR, corrected OCR, and AI summaries with synonyms and typing-error tolerance enabled, and confirm that no more than 20 rows are rendered with an aspect-filled screenshot preview and local capture date; selecting a row must open the same capture in the screenshot inspector. In App options, open Search and OCR, change the search language and disable synonyms or typing-error tolerance, save, and confirm the next query reflects those choices without disabling local search. Rebuild the derived index and confirm the indexed-document count is reported. With OCR off, capture a screenshot and confirm no OCR image read or text snapshot occurs; enable OCR with an installed Windows language, restart TrackMeUp, capture again, and confirm raw text is searchable. With AI off, confirm raw OCR remains local; with AI on, confirm one separate OCR-correction request stores corrected text and a structured summary while the normal screenshot-analysis context remains free of raw OCR.
-
-About and diagnostic-log validation checklist: open About in light, dark, and high-contrast themes and confirm the centered Desktop Acrylic surface uses whitespace and dividers without a card wall or decorative icon shadow. Confirm the compact footer keeps the author on the left and the Close button aligned on the right. `Show log` must open the newest file from the existing Serilog daily rolling pipeline. `Share log` must invoke the Windows Share UI with a separate bounded support copy whose API keys, bearer values, local and UNC paths, and full identifiers are redacted while safe AI attempt, correlation, origin, provider/model, endpoint host, HTTP status (including 429), latency, failure category, and outcome fields remain useful. Confirm raw logs are never changed by export, shared exports are pruned, and rolling application logs older than seven days are removed even when fewer than seven files exist.
-
-Capture deletion validation checklist: take a manual snapshot from the player, confirm that the trash action remains beside the snapshot action, the 30-second progress countdown spans the status area below the running state and timer, and the snapshot action stays disabled until that countdown ends or the pending capture is deleted. Delete it before the countdown expires, confirm that no AI request was made, and confirm that the latest-session preview no longer shows it. Repeat without deleting, close the player if desired, wait for the countdown to expire, and confirm that the same capture is analyzed exactly once. In the screenshot gallery ellipsis menu, confirm that Delete screenshot removes the image artifacts while Delete snapshot removes the associated local snapshot-analysis record.
-
-Window-state validation checklist: close and reopen each detached window on a multi-monitor setup, confirm that its saved size is restored but every new opening is centered in the applicable display work area, then disconnect or resize that display and confirm that the centered bounds remain inside the current work area. Reopen the compact player separately and confirm that its fixed size and configured player position are not overridden by detached-window geometry.
-
-Main-window layout validation checklist: in the 450-DIP-wide compact player, confirm that the ellipsis precedes the Reports action in the title bar, then expand and collapse Activity and Last session in every combination. Trigger the pending snapshot deletion panel and an outside-active-hours warning; each change must resize the window so the last visible row, including both Local time and UTC, stays fully inside the lower border. Open App options and repeat while switching between General and AI configuration and expanding either Advanced section. The window must re-measure visible content, retain its configured flyout anchor, and use its vertical scrollbar only when the display work area limits the measured height.
-
-Smart settings and startup validation checklist: open App options on displays with different work-area heights and expand Advanced options; the window must stop at the smaller of 760 logical pixels or the current display work area while the options body remains scrollable and Save options stays visible. Enable Start tracking on launch, restart normally, and verify the first resolved dashboard state is running; repeat with `--paused` and verify the explicit pause wins. Confirm the report icon immediately to the right of the title-bar ellipsis opens the dedicated reports window and that no report-export button remains in App options.
-
-Taskbar-control validation checklist: launch the unpackaged x64 app and confirm that the player window remains visible while the logo, play/pause glyph, and recording indicator appear immediately in the taskbar; launch it again to confirm the same startup behavior, restart Explorer and confirm that the control returns, then repeat at 100%, 125%, and 150% display scaling.
-
-Notification-area validation checklist: choose `Minimize to notification area` from the player overflow menu and confirm that the main window no longer has a taskbar button while its TrackMeUp icon remains in the Windows notification area. Single-click that icon to restore and foreground the existing player, then click it again to hide the same player. Right-click the icon and confirm that the native menu has a dynamic Show/Hide main window command plus Close app; Close app must remove the tray icon and shut down the runtime cleanly. Enable Windows startup, sign in again, and confirm the app starts directly in the notification area without first showing a taskbar button.
-
-Player overflow validation checklist: open the overflow menu from the always-visible Fluent menu icon in light and dark themes, confirm that it floats upward as an Acrylic popup outside the window rather than covering or scrolling inside the player surface, and confirm that the compact top level exposes Activity, Capture, Settings and tools, and AI provider submenus followed by Minimize to notification area and About. Verify that each former command is reachable in its logical submenu and that the AI provider wording stays vendor-agnostic except for genuinely provider-specific pricing. Open Tools and diagnostics and confirm that its focus, privacy, retention, plugin, capture, and report operations are reachable, then return to the player. Confirm that Reports lands on today while Captured moments lands on the most recent retained capture day, and that both still allow filtering afterward; toggle screen capture off and on, reopen the menu, and confirm that the persisted switch state matches the app options page. In the screenshot gallery, open its Fluent menu and confirm that it also floats as a popup outside the gallery window.
-
-Player activity-trend validation checklist: use the player with less than 24 hours of retained monitoring history and confirm that no activity line is shown. After persisted samples cover a full trailing 24-hour window, confirm that the line appears and each point reflects the active-time percentage for its respective hour.
-
-Scheduling validation checklist: on a fresh settings store, confirm that all 48 half-hour blocks are selected for every day. Open Snapshot schedule and confirm that it appears in a separate window matching the active app theme. Set an interval and confirm that the player displays the next-snapshot countdown. Pause tracking and confirm that the countdown freezes; resume tracking and confirm that it continues from the frozen value. Apply the 09:00-18:00 preset, confirm the overwrite dialog, and verify that Monday-Friday are selected while weekends are cleared; repeat with Clear all and its confirmation. Save hours that exclude the current time, including a configured break, and confirm that the compact outside-hours banner appears and its Configure hours link reopens Snapshot schedule; include the current time again and confirm that the banner disappears. Save the empty schedule and confirm that the countdown disappears and the same outside-hours banner remains visible. Select contiguous 30-minute blocks and leave a gap inside them; reopen the schedule window and confirm that the selected blocks and the gap are restored as active time and a break. Confirm that snapshots occur only inside selected working hours and never during a configured break. With AI enabled but its key unavailable, confirm that an eligible scheduled screenshot is still retained and appears after restarting the app. Confirm that the optional screen capture occurs only when enabled and its normal privacy checks pass. Set capture mode to Active window and verify that a scheduled snapshot uses only the active window; repeat with All displays. From the CLI, omit `--mode` and confirm that the saved choice is used, then pass an unsupported mode or omit its value and confirm that capture fails without producing an artifact. The player capture button intentionally keeps all-display capture because clicking it makes TrackMeUp itself the foreground window.
-
-OpenAI settings validation checklist: open OpenAI configuration and confirm that the model is selected from the catalog-backed combo box, the selected model shows its name, key, description, availability, and accent color, and the thinking-effort choices update to match that model. Confirm that no analysis-interval or duplicate privacy callout is shown. With no key, confirm that the page reports that the key is not set and both OpenAI toggles are disabled; enter an unrecognized value and confirm that it is rejected; set a plausible `sk-` key and confirm that the page reports it as ready, both toggles unlock, and changing either toggle immediately updates the other. With screenshots and AI enabled, capture one manual player snapshot, confirm that no analysis starts during its 30-second delete window, then confirm that exactly one analysis uses that same captured file after the window expires; disable AI and confirm that snapshots remain local and are not analyzed.
-
-AI pricing validation checklist: delete or age the cached OpenAI pricing table, start TrackMeUp, wait for the daily pricing refresh, then generate a report containing OpenAI requests and confirm the AI telemetry card shows estimated cost, estimated request count, and the pricing last-updated timestamp while provider-reported costs remain separate.
-
-Dialog validation checklist: start the app with an AI provider enabled and its configured environment variable empty, and confirm that one localized warning Acrylic window names the variable without exposing a secret. Force a provider failure after a retained frame capture and confirm that the shared runtime delivers one localized error dialog to both in-process and named-pipe UI modes while keeping the screenshot. Verify that Desktop Acrylic remains visible across the full information, warning, and error windows in light, dark, and high-contrast themes, with no opaque card nested over it and an accessible contrasting primary action. A short title and message must produce a compact centered dialog without a scrollbar or scroll arrows; a long custom title and message must grow up to the current monitor work area and only then expose message scrolling without clipping the actions. From AI provider settings, run Test connection and confirm that the centered console types the exact text-only prompt first, keeps the timeout visible while waiting, and then types either the selected provider response or a vendor-agnostic failure. Open the schedule preset and retention cleanup confirmations, verify that all dialogs are serialized through the same Acrylic engine, and confirm that Cancel, Escape, Alt+F4, or closing the window never applies the destructive action while the explicit primary button does.
-
-## Repository map
-
-- `TrackMeUp/` — Windows desktop app and composition root.
-- `TrackMeUp.Core/` — shared application behavior, persistence, capture, AI adapters, and runtime ownership.
-- `TrackMeUp.Presentation/` — UI-neutral models used by the desktop surfaces.
-- `TrackMeUp.Cli/` — PowerShell-facing CLI.
-- `TrackMeUp.Reports.Web/` — source and bundled assets for local reports.
-- `TrackMeUp.*.Tests/` — core, presentation, and CLI tests.
-- `scripts/TrackMeUp.ps1` — unified PowerShell 7 entrypoint for repository automation and the interactive control center.
-- `docs/PRIVACY.md` — plain-language privacy and dependency census.
-- `docs/CLI_IMPLEMENTATION_PLAN.md` — internal engineering notes for the CLI and shared application surface.
-- `store/` — versioned Microsoft Store copy, public links, screenshot inventory, and Partner Center publishing notes.
-
-## Distribution
-
-The same sources support:
-
-- **MSIX**, with Windows package identity and an app execution alias.
-- **Unpackaged Windows builds**, including self-contained x86, x64, and ARM64 publish profiles.
-
-For contributor-facing architecture rules, build matrices, and implementation details, see [AGENTS.md](AGENTS.md) and [docs/CLI_IMPLEMENTATION_PLAN.md](docs/CLI_IMPLEMENTATION_PLAN.md).
+- `TrackMeUp/` - Windows desktop app and composition root.
+- `TrackMeUp.Core/` - application behavior, persistence, capture, AI adapters, runtime ownership.
+- `TrackMeUp.Presentation/` - UI-neutral models for desktop surfaces.
+- `TrackMeUp.Cli/` - PowerShell-facing CLI.
+- `TrackMeUp.Reports.Web/` - local reports web assets.
+- `TrackMeUp.*.Tests/` - test projects.
+- `scripts/TrackMeUp.ps1` - shared automation entrypoint.
+- `docs/PRIVACY.md` - privacy and dependency census.
+- `docs/CLI_IMPLEMENTATION_PLAN.md` - internal CLI engineering notes.
+- `store/` - Store copy and release support material.
 
 ## License
 

@@ -129,7 +129,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly SemaphoreSlim _mutations = new(1, 1);
     private readonly ConcurrentQueue<ApplicationNotification> _notifications = new();
     private readonly Timer _scheduledSnapshotTimer;
-    private FocusSessionState _focus = new(null, false, null, TimeSpan.Zero, 0, 0, 0, 0, null);
     private DateTimeOffset? _nextScheduledSnapshotAt;
     private TimeSpan? _pausedScheduledSnapshotRemaining;
     private ScreenshotCaptureResult? _pendingManualScreenshotCapture;
@@ -214,7 +213,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -279,47 +278,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         // Large SQLite scans run off the presentation/pipe thread and observe cancellation once per row.
         return await Task.Run(() => _reports.Build(query, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
-
-    /// <inheritdoc />
-    public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
-    {
-        var objective = request.Objective?.Trim();
-        if (string.IsNullOrWhiteSpace(objective))
-        {
-            return OperationResult<FocusSessionState>.Failure("focus.objective.required", "FocusObjectiveRequired", new ValidationIssue("objective", "required", "FocusObjectiveRequired"));
-        }
-
-        if (_focus.IsActive)
-        {
-            return OperationResult<FocusSessionState>.Failure("focus.already_active", "FocusAlreadyActive", new ValidationIssue("focus", "already_active", "FocusAlreadyActive"));
-        }
-
-        _focus = new FocusSessionState(objective, true, DateTimeOffset.Now, TimeSpan.Zero, 0, 0, 0, 0, null);
-        await Task.CompletedTask;
-        return OperationResult<FocusSessionState>.Success("focus.started", "FocusStarted", _focus);
-    }, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<FocusSessionState>.Success("focus.status.loaded", "FocusStatusLoaded", UpdateFocusState()));
-    }
-
-    /// <inheritdoc />
-    public Task<OperationResult<FocusSessionSummary?>> StopFocusSessionAsync(bool summarize, CancellationToken cancellationToken) => MutateAsync(async () =>
-    {
-        var state = UpdateFocusState();
-        if (!state.IsActive || state.StartedAt is null || string.IsNullOrWhiteSpace(state.Objective))
-        {
-            return OperationResult<FocusSessionSummary?>.Failure("focus.not_active", "FocusNotActive", new ValidationIssue("focus", "not_active", "FocusNotActive"));
-        }
-
-        var summary = new FocusSessionSummary(state.StartedAt.Value, DateTimeOffset.Now, state.Objective, state.ActiveSeconds, state.IdleSeconds, state.KeyPresses, state.MouseClicks, state.PrimaryApplication);
-        _focus = new FocusSessionState(null, false, null, TimeSpan.Zero, 0, 0, 0, 0, null);
-        await Task.CompletedTask;
-        return OperationResult<FocusSessionSummary?>.Success("focus.stopped", summarize ? "FocusStoppedWithSummary" : "FocusStopped", summarize ? summary : null);
-    }, cancellationToken);
 
     /// <inheritdoc />
     public async Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken)
@@ -917,7 +875,19 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                     report.Issues.ToArray());
             }
 
+            var monthStart = new DateOnly(today.Year, today.Month, 1);
+            var monthEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+            var monthReport = _reports.Build(new ReportQuery(monthStart, today, TimeZoneInfo.Local.Id), cancellationToken);
+            if (!monthReport.Succeeded || monthReport.Value is null)
+            {
+                return OperationResult<AiPricingOverview>.Failure(
+                    monthReport.Code,
+                    monthReport.MessageKey,
+                    monthReport.Issues.ToArray());
+            }
+
             var usage = report.Value.AiUsage;
+            var monthUsage = monthReport.Value.AiUsage;
             var overview = new AiPricingOverview(
                 _store.GetLatestAiModelPricingRetrievedAt(AiPricingProviders.OpenAi),
                 prices.Count,
@@ -929,6 +899,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 usage.InputTokens,
                 usage.OutputTokens,
                 usage.TotalTokens,
+                monthStart,
+                monthEnd,
+                monthUsage.EstimatedCostUsd,
+                monthUsage.ActualCostUsd,
                 displayedRows);
             return OperationResult<AiPricingOverview>.Success("ai.pricing.loaded", "AiPricingLoaded", overview);
         }, cancellationToken).ConfigureAwait(false);
@@ -1848,27 +1822,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         var projected = settings.OpenAiDailyCostUsd + settings.EstimatedCostPerAnalysisUsd;
         var allowed = count < settings.OpenAiDailyLimit;
         return new AnalysisCostGate(allowed, allowed ? null : "daily_limit", settings.EstimatedCostPerAnalysisUsd, count, projected);
-    }
-
-    private FocusSessionState UpdateFocusState()
-    {
-        if (!_focus.IsActive || _focus.StartedAt is null)
-        {
-            return _focus;
-        }
-
-        var today = _store.GetTodaySummary();
-        var last = _tracking.LoadLastSessionState();
-        _focus = _focus with
-        {
-            Elapsed = DateTimeOffset.Now - _focus.StartedAt.Value,
-            ActiveSeconds = today.ActiveSeconds,
-            IdleSeconds = today.IdleSeconds,
-            KeyPresses = today.KeyPresses,
-            MouseClicks = today.MouseClicks,
-            PrimaryApplication = last?.Application
-        };
-        return _focus;
     }
 
     private bool IsCurrentContextPrivate(AppSettings settings)

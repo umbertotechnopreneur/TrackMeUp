@@ -158,21 +158,6 @@ public sealed class AboutViewModel
     public Task<OperationResult<ProductInformation>> LoadAsync(CancellationToken cancellationToken) => _application.GetProductInformationAsync(cancellationToken);
 }
 
-/// <summary>Provides focus-session actions.</summary>
-public sealed class FocusSessionViewModel
-{
-    private readonly ITrackMeUpApplication _application;
-
-    /// <summary>Initializes the focus-session view model.</summary>
-    public FocusSessionViewModel(ITrackMeUpApplication application) => _application = application;
-
-    /// <summary>Starts a focus session.</summary>
-    public Task<OperationResult<FocusSessionState>> StartAsync(string objective, CancellationToken cancellationToken) => _application.StartFocusSessionAsync(new StartFocusSessionRequest(objective), cancellationToken);
-
-    /// <summary>Stops a focus session.</summary>
-    public Task<OperationResult<FocusSessionSummary?>> StopAsync(bool summarize, CancellationToken cancellationToken) => _application.StopFocusSessionAsync(summarize, cancellationToken);
-}
-
 /// <summary>Provides privacy-rule operations.</summary>
 public sealed class PrivacyViewModel
 {

@@ -146,41 +146,6 @@ public sealed partial class OperationsControl : UserControl
         }
     }
 
-    private async void StartFocusButton_Click(object sender, RoutedEventArgs e)
-    {
-        var request = new StartFocusSessionRequest(FocusObjectiveBox.Text);
-        var result = await ExecuteAsync((application, token) => application.StartFocusSessionAsync(request, token));
-        if (result is { Succeeded: true, Value: { } state })
-        {
-            RenderFocusState(state);
-        }
-    }
-
-    private async void FocusStatusButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.GetFocusSessionAsync(token));
-        if (result is { Succeeded: true, Value: { } state })
-        {
-            RenderFocusState(state);
-        }
-    }
-
-    private async void StopFocusButton_Click(object sender, RoutedEventArgs e)
-    {
-        var summarize = SummarizeFocusBox.IsChecked == true;
-        var result = await ExecuteAsync((application, token) => application.StopFocusSessionAsync(summarize, token));
-        if (result is not { Succeeded: true })
-        {
-            return;
-        }
-
-        FocusStatusText.Text = result.Value is { } summary
-            ? L(
-                $"Finished: {summary.Objective}\n{summary.StartedAt:t}–{summary.EndedAt:t} · active {FormatDuration(summary.ActiveSeconds)} · idle {FormatDuration(summary.IdleSeconds)} · primary app {summary.PrimaryApplication ?? "n/a"}",
-                $"Terminata: {summary.Objective}\n{summary.StartedAt:t}–{summary.EndedAt:t} · attivo {FormatDuration(summary.ActiveSeconds)} · inattivo {FormatDuration(summary.IdleSeconds)} · app principale {summary.PrimaryApplication ?? "n/d"}")
-            : L("Focus session ended without a summary.", "Sessione focus terminata senza riepilogo.");
-    }
-
     private async void TodayReportButton_Click(object sender, RoutedEventArgs e)
     {
         var open = OpenGeneratedReportBox.IsChecked == true;
@@ -281,15 +246,6 @@ public sealed partial class OperationsControl : UserControl
         }
     }
 
-    private void RenderFocusState(FocusSessionState state)
-    {
-        FocusStatusText.Text = state.IsActive
-            ? L(
-                $"Active: {state.Objective}\nDuration {state.Elapsed:hh\\:mm\\:ss} · active {FormatDuration(state.ActiveSeconds)} · idle {FormatDuration(state.IdleSeconds)} · primary app {state.PrimaryApplication ?? "n/a"}",
-                $"Attiva: {state.Objective}\nDurata {state.Elapsed:hh\\:mm\\:ss} · attivo {FormatDuration(state.ActiveSeconds)} · inattivo {FormatDuration(state.IdleSeconds)} · app principale {state.PrimaryApplication ?? "n/d"}")
-            : L("No focus session is active.", "Nessuna sessione focus attiva.");
-    }
-
     private void ShowStatus(string title, string message, InfoBarSeverity severity)
     {
         switch (severity)
@@ -320,8 +276,6 @@ public sealed partial class OperationsControl : UserControl
     private static string FormatPercent(int? value) => value is null ? "n/d" : $"{value}%";
 
     private static string FormatTemperature(int? value) => value is null ? "n/d" : $"{value} °C";
-
-    private static string FormatDuration(long seconds) => TimeSpan.FromSeconds(Math.Max(0, seconds)).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
 
     private static string FormatMemory(long megabytes) => megabytes >= 1024
         ? $"{megabytes / 1024d:0.0} GB"

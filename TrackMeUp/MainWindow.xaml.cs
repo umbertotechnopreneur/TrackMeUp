@@ -63,6 +63,8 @@ public sealed partial class MainWindow : Window
     private bool _pendingSnapshotDeleteInProgress;
     private bool _startupAiWarningShown;
     private int _notificationDrainInProgress;
+    private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
+    private int _aiSpendRefreshInProgress;
     #endregion
 
     /// <summary>Gets the single observable AI state shared by the player menu and options surface.</summary>
@@ -85,10 +87,10 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the user requests the retained screenshot gallery.</summary>
     public event EventHandler<ScreenshotPreviewRequestedEventArgs>? ScreenshotsRequested;
 
-    #endregion
-
     /// <summary>Occurs when the notification-area context menu requests an orderly application exit.</summary>
     public event EventHandler? ExitRequested;
+
+    #endregion
 
     #region Initialization
 
@@ -182,7 +184,47 @@ public sealed partial class MainWindow : Window
             UpdatePlayer(state.Value);
         }
 
+        await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync();
+    }
+
+    /// <summary>Refreshes the month-to-date AI spend at a bounded cadence while the integration is active.</summary>
+    private async Task RefreshAiMonthlySpendAsync()
+    {
+        if (!AiState.Enabled)
+        {
+            AiMonthlySpendPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (DateTimeOffset.Now < _nextAiSpendRefreshAt || Interlocked.Exchange(ref _aiSpendRefreshInProgress, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _application.GetAiPricingOverviewAsync(CancellationToken.None);
+            if (result.Succeeded && result.Value is not null)
+            {
+                UpdateAiMonthlySpend(result.Value);
+                _nextAiSpendRefreshAt = DateTimeOffset.Now.AddMinutes(1);
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _aiSpendRefreshInProgress, 0);
+        }
+    }
+
+    /// <summary>Renders the current local calendar-month AI spend using actual provider cost when available.</summary>
+    private void UpdateAiMonthlySpend(AiPricingOverview overview)
+    {
+        var cost = overview.ActualCostCurrentMonthUsd ?? overview.EstimatedCostCurrentMonthUsd ?? 0m;
+        AiMonthlySpendText.Text = "$" + cost.ToString("0.0", CultureInfo.InvariantCulture);
+        var range = $"{overview.CurrentMonthStart:dd/MM}-{overview.CurrentMonthEnd:dd/MM}";
+        AiMonthlySpendRangeText.Text = range;
+        AiMonthlySpendPanel.Visibility = Visibility.Visible;
     }
 
     private async Task ShowStartupAiWarningAsync()
@@ -1069,6 +1111,14 @@ public sealed partial class MainWindow : Window
             or nameof(AiApplicationState.IsStatusUnavailable))
         {
             UpdateOpenAiMenuAccessibility();
+            if (e.PropertyName == nameof(AiApplicationState.Enabled))
+            {
+                _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
+                if (!AiState.Enabled)
+                {
+                    AiMonthlySpendPanel.Visibility = Visibility.Collapsed;
+                }
+            }
         }
     }
 
@@ -1076,6 +1126,8 @@ public sealed partial class MainWindow : Window
     private async void OptionsControl_AiConnectionTestRequested(object? sender, EventArgs e)
     {
         await _dialogs.ShowAiConnectionTestAsync(_application, this, RootGrid.RequestedTheme);
+        _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
+        await RefreshAiMonthlySpendAsync();
     }
 
     private void UpdateOpenAiMenuAccessibility()

@@ -257,9 +257,6 @@ public sealed class CliRouterTests
         public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) => Unsupported<SearchResponse>();
         public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();
-        public Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken) => Unsupported<FocusSessionState>();
-        public Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken) => Unsupported<FocusSessionState>();
-        public Task<OperationResult<FocusSessionSummary?>> StopFocusSessionAsync(bool summarize, CancellationToken cancellationToken) => Unsupported<FocusSessionSummary?>();
         public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => Unsupported<SystemSnapshot>();
         public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken)
         {

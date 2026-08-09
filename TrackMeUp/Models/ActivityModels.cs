@@ -111,7 +111,6 @@ public sealed record AppSettings(
     decimal EstimatedCostPerScreenshotUsd = 0.003m,
     bool ShowCostGuardrailInStatus = true,
     string LastDailyDigestDate = "",
-    bool FocusSessionSummaryEnabled = true,
     bool StartTrackingOnLaunch = false,
     bool TaskbarWidgetVisible = false,
     string TaskbarWidgetPosition = TaskbarWidgetPositions.Left,
@@ -139,27 +138,6 @@ public sealed record ApplicationSummary(string Application, long ActiveSeconds);
 public sealed record DailySummary(long ActiveSeconds, long IdleSeconds, long KeyPresses, long MouseClicks, IReadOnlyList<ApplicationSummary> Applications);
 
 public sealed record DailyActivityWindow(string Application, string Context, long ActiveSeconds);
-
-public sealed record FocusSessionState(
-    string? Objective,
-    bool IsActive,
-    DateTimeOffset? StartedAt,
-    TimeSpan Elapsed,
-    long ActiveSeconds,
-    long IdleSeconds,
-    long KeyPresses,
-    long MouseClicks,
-    string? PrimaryApplication);
-
-public sealed record FocusSessionSummary(
-    DateTimeOffset StartedAt,
-    DateTimeOffset EndedAt,
-    string Objective,
-    long ActiveSeconds,
-    long IdleSeconds,
-    long KeyPresses,
-    long MouseClicks,
-    string? PrimaryApplication);
 
 public sealed record AnalysisCostGate(
     bool Allowed,

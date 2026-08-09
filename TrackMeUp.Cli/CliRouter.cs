@@ -51,7 +51,6 @@ public sealed class CliRouter
             "runtime" => await RuntimeAsync(arguments, cancellationToken),
             "tracking" => await TrackingAsync(arguments, cancellationToken),
             "session" => await SessionAsync(arguments, cancellationToken),
-            "focus" => await FocusAsync(arguments, cancellationToken),
             "system" => await SystemAsync(arguments, cancellationToken),
             "screenshot" => await ScreenshotAsync(arguments, cancellationToken),
             "ai" => await AiAsync(arguments, cancellationToken),
@@ -110,13 +109,6 @@ public sealed class CliRouter
         _ => InvalidCommand()
     };
 
-    private async Task<int> FocusAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
-    {
-        "start" => await WriteAsync(_application.StartFocusSessionAsync(new StartFocusSessionRequest(ReadOption(arguments, "--objective") ?? string.Empty), cancellationToken)),
-        "status" => await WriteAsync(_application.GetFocusSessionAsync(cancellationToken)),
-        "stop" => await WriteAsync(_application.StopFocusSessionAsync(arguments.Contains("--summarize", StringComparer.OrdinalIgnoreCase), cancellationToken)),
-        _ => InvalidCommand()
-    };
 
     private async Task<int> SystemAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {

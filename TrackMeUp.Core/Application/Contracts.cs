@@ -219,9 +219,6 @@ public sealed record SettingsPatch(IReadOnlyDictionary<string, string?> Values);
 /// <summary>Requests a retention preview or confirmed cleanup.</summary>
 public sealed record RetentionRequest(bool Execute, bool Confirmed);
 
-/// <summary>Requests the start of a focus session.</summary>
-public sealed record StartFocusSessionRequest(string Objective);
-
 /// <summary>Requests a dated daily digest without exposing presentation-specific arguments.</summary>
 public sealed record GenerateDailyDigestRequest(DateOnly Date, bool Open);
 
@@ -259,7 +256,7 @@ public sealed record AiStatus(bool Enabled, string Provider, string Model, strin
 /// <summary>Contains a simplified cached provider price for presentation surfaces.</summary>
 public sealed record AiPricingCostRow(string Model, decimal InputUsdPerMillionTokens, decimal OutputUsdPerMillionTokens);
 
-/// <summary>Contains simplified provider pricing and local estimated usage costs.</summary>
+/// <summary>Contains simplified provider pricing plus daily and month-to-date local usage costs.</summary>
 public sealed record AiPricingOverview(
     DateTimeOffset? LastSynchronizedAt,
     int PriceRowCount,
@@ -271,6 +268,10 @@ public sealed record AiPricingOverview(
     long TodayInputTokens,
     long TodayOutputTokens,
     long TodayTotalTokens,
+    DateOnly CurrentMonthStart,
+    DateOnly CurrentMonthEnd,
+    decimal? EstimatedCostCurrentMonthUsd,
+    decimal? ActualCostCurrentMonthUsd,
     IReadOnlyList<AiPricingCostRow> Models);
 
 /// <summary>Contains the safe, displayable output of an explicit AI connection check.</summary>
@@ -363,15 +364,6 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Gets a privacy-safe aggregate report for an inclusive local-date range.</summary>
     Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken);
 
-    /// <summary>Starts a focus session.</summary>
-    Task<OperationResult<FocusSessionState>> StartFocusSessionAsync(StartFocusSessionRequest request, CancellationToken cancellationToken);
-
-    /// <summary>Gets the current focus-session state.</summary>
-    Task<OperationResult<FocusSessionState>> GetFocusSessionAsync(CancellationToken cancellationToken);
-
-    /// <summary>Stops the current focus session.</summary>
-    Task<OperationResult<FocusSessionSummary?>> StopFocusSessionAsync(bool summarize, CancellationToken cancellationToken);
-
     /// <summary>Captures a current system snapshot.</summary>
     Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken);
 
@@ -423,7 +415,7 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Gets safe AI status.</summary>
     Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken);
 
-    /// <summary>Gets simplified cached OpenAI pricing and today's local estimated usage cost.</summary>
+    /// <summary>Gets simplified cached OpenAI pricing plus daily and month-to-date local usage cost.</summary>
     Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken);
 
     /// <summary>Sends a minimal non-image prompt to verify the persisted AI connection.</summary>
