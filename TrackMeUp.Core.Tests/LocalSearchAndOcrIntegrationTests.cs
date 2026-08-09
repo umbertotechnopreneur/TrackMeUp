@@ -158,7 +158,9 @@ public sealed class LocalSearchAndOcrIntegrationTests
             Assert.Contains(screenshot.Hits, hit =>
                 hit.Document.Kind == "screenshot"
                 && hit.Document.OcrRawText == "Fattura marzo 2026"
-                && hit.Document.OcrStructuredSummary?.Contains("scadenza", StringComparison.OrdinalIgnoreCase) == true);
+                && hit.Document.OcrStructuredSummary?.Contains("scadenza", StringComparison.OrdinalIgnoreCase) == true
+                && hit.Document.AttributesRaw.TryGetValue(SearchAttributeKeys.MouseClicks, out var clicks)
+                && clicks == "1");
         }
         finally
         {

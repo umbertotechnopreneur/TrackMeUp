@@ -60,7 +60,7 @@ public sealed class WindowStateService
             WindowStateKeys.Reports => new(720, 520),
             WindowStateKeys.Screenshots => new(760, 540),
             WindowStateKeys.About => new(360, 420),
-            WindowStateKeys.Search => new(420, 360),
+            WindowStateKeys.Search => new(780, 520),
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.AiPricing => new(620, 430),

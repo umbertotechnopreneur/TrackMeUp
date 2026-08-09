@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10" IgnorableNamespaces="uap desktop rescap systemai">
-  <Identity Name="824b187b-e347-4efa-9275-d4c169a4eb9e" Publisher="CN=umber" Version="1.0.335.0" />
+  <Identity Name="824b187b-e347-4efa-9275-d4c169a4eb9e" Publisher="CN=umber" Version="1.0.339.0" />
   <mp:PhoneIdentity PhoneProductId="824b187b-e347-4efa-9275-d4c169a4eb9e" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>TrackMeUp</DisplayName>

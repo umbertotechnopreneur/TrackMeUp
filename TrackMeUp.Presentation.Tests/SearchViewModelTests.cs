@@ -33,6 +33,10 @@ public sealed class SearchViewModelTests
         Assert.Equal(@"C:\captures\meeting.png", item.ScreenshotPath);
         Assert.StartsWith("file:///C:/captures/meeting.png", item.ScreenshotUri, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("2026", item.CapturedAtDisplay, StringComparison.Ordinal);
+        Assert.Equal("Teams · Project review", item.ActiveWindowDisplay);
+        Assert.Equal("riunione", item.Query);
+        Assert.Contains("riunione", item.TextSnippet, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("42 click · CPU — · GPU —", item.TelemetryDisplay);
         Assert.Equal(23, viewModel.TotalCount);
     }
 
@@ -57,6 +61,10 @@ public sealed class SearchViewModelTests
                                 Kind = "screenshot",
                                 Timestamp = new DateTimeOffset(2026, 8, 9, 9, 30, 0, TimeSpan.Zero),
                                 Application = "Teams",
+                                WindowTitle = "Project review",
+                                OcrRawText = "Appunti della riunione di progetto",
+                                AttributesRaw = ImmutableDictionary<string, string?>.Empty
+                                    .Add(SearchAttributeKeys.MouseClicks, "42"),
                                 CapturePath = @"C:\captures\meeting.png"
                             },
                             Score = 4.5f

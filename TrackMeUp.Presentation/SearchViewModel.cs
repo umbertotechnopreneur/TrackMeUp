@@ -13,7 +13,10 @@ public sealed record ScreenshotSearchResult(
     string CapturedAtDisplay,
     string Application,
     string WindowTitle,
+    string ActiveWindowDisplay,
     string TextSnippet,
+    string Query,
+    string TelemetryDisplay,
     float Score);
 
 /// <summary>Executes bounded screenshot queries through the shared application facade.</summary>
@@ -172,15 +175,62 @@ public sealed class SearchViewModel : ViewModelBase
             throw new InvalidDataException("A screenshot search hit must contain an absolute local capture path.");
         }
 
+        var application = string.IsNullOrWhiteSpace(document.Application) ? "TrackMeUp" : document.Application;
+        var windowTitle = string.IsNullOrWhiteSpace(document.WindowTitle) ? "—" : document.WindowTitle;
+        var localTimestamp = document.Timestamp.ToLocalTime();
+        var mouseClicks = ReadNonNegativeInt64(document, SearchAttributeKeys.MouseClicks);
+        var cpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.CpuUsagePercent);
+        var gpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.GpuUsagePercent);
         return new ScreenshotSearchResult(
             document.CapturePath,
             screenshotUri.AbsoluteUri,
             document.Timestamp,
-            document.Timestamp.ToLocalTime().ToString("g", culture),
-            string.IsNullOrWhiteSpace(document.Application) ? "TrackMeUp" : document.Application,
-            string.IsNullOrWhiteSpace(document.WindowTitle) ? "—" : document.WindowTitle,
+            $"{localTimestamp.ToString("d MMM yyyy", culture)} · {localTimestamp.ToString("t", culture)}",
+            application,
+            windowTitle,
+            windowTitle == "—" ? application : $"{application} · {windowTitle}",
             BuildSnippet(document, query),
+            query,
+            FormatTelemetry(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture),
             hit.Score);
+    }
+
+    private static long? ReadNonNegativeInt64(SearchDocument document, string key)
+    {
+        if (!document.AttributesRaw.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        if (!long.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || value < 0)
+        {
+            throw new InvalidDataException($"Search document '{document.Id}' has an invalid '{key}' attribute.");
+        }
+
+        return value;
+    }
+
+    private static int? ReadPercentage(SearchDocument document, string key)
+    {
+        if (!document.AttributesRaw.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || value is < 0 or > 100)
+        {
+            throw new InvalidDataException($"Search document '{document.Id}' has an invalid '{key}' attribute.");
+        }
+
+        return value;
+    }
+
+    private static string FormatTelemetry(long? mouseClicks, int? cpuUsagePercent, int? gpuUsagePercent, CultureInfo culture)
+    {
+        var clicks = mouseClicks?.ToString("N0", culture) ?? "—";
+        var cpu = cpuUsagePercent is { } cpuUsage ? $"{cpuUsage}%" : "—";
+        var gpu = gpuUsagePercent is { } gpuUsage ? $"{gpuUsage}%" : "—";
+        return $"{clicks} click · CPU {cpu} · GPU {gpu}";
     }
 
     private static string BuildSnippet(SearchDocument document, string query)

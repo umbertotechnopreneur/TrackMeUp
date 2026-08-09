@@ -12,15 +12,24 @@ public sealed class SearchSurfaceContractTests
     public void FloatingSearchWindow_UsesAcrylicAndBoundedScreenshotResults()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "SearchWindow.xaml"));
+        var resultControl = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "SearchResultItemControl.xaml"));
+        var resultControlSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "SearchResultItemControl.xaml.cs"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
+        var placementSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
         var viewModelSource = File.ReadAllText(RepositoryFile("TrackMeUp.Presentation", "SearchViewModel.cs"));
         var list = window.Descendants().Single(element => HasName(element, "SearchResultsList"));
 
         Assert.Equal("Window", window.Root?.Name.LocalName);
         Assert.Contains(window.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Equal("True", list.Attribute("IsItemClickEnabled")?.Value);
-        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Source")?.Value == "{Binding ScreenshotUri}");
+        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "SearchResultItemControl");
+        Assert.Contains(resultControl.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Source")?.Value == "{Binding ScreenshotUri}");
+        Assert.Contains(resultControl.Descendants(), element => element.Name.LocalName == "ThemeShadow");
+        Assert.Contains("SnippetText.TextHighlighters", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsAlwaysOnTop = true;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.RequestedTheme = ElementTheme.Light;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("CursorDisplayHeightRatio = 0.78d", windowSource, StringComparison.Ordinal);
+        Assert.Contains("ResizeAndCenterOnCursorDisplay", placementSource, StringComparison.Ordinal);
         Assert.Contains("public const int MaximumResults = 20;", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("Kinds = ImmutableHashSet.Create(StringComparer.Ordinal, \"screenshot\")", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("IncludeTextContent = true", viewModelSource, StringComparison.Ordinal);

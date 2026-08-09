@@ -406,7 +406,8 @@ public sealed class LocalStore
                     textSnapshot,
                     activity.ForegroundWindowTitle,
                     GetScreenIndex(file.Name),
-                    GetScreenName(file.Name));
+                    GetScreenName(file.Name),
+                    activity.MouseClicks);
             })
             .ToArray();
 
@@ -489,14 +490,18 @@ public sealed class LocalStore
         int? activityIndex = samples.Count == 0
             ? null
             : ActivityScoreService.CalculateIntervalActivityIndex(samples, screenshotIntervalMinutes);
-        return new ScreenshotActivityContext(foregroundApplication, labels, activityIndex, foregroundWindowTitle);
+        long? mouseClicks = samples.Count == 0
+            ? null
+            : samples.Aggregate(0L, (total, sample) => checked(total + sample.MouseClicks));
+        return new ScreenshotActivityContext(foregroundApplication, labels, activityIndex, foregroundWindowTitle, mouseClicks);
     }
 
     private sealed record ScreenshotActivityContext(
         string ForegroundApplication,
         IReadOnlyList<ActivityLabelSample> SpanLabels,
         int? ActivityIndex,
-        string? ForegroundWindowTitle = null);
+        string? ForegroundWindowTitle,
+        long? MouseClicks);
 
     private static string ScreenshotIdentity(string fileName)
     {

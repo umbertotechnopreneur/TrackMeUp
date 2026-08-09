@@ -100,11 +100,29 @@ internal sealed class WindowPlacementService : IDisposable
         CenterInWorkArea(area);
     }
 
-    internal void CenterOnCursorDisplay(FrameworkElement root)
+    internal void ResizeAndCenterOnCursorDisplay(FrameworkElement root, double widthRatio, double heightRatio)
     {
         ArgumentNullException.ThrowIfNull(root);
+        if (widthRatio is <= 0d or > 1d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(widthRatio));
+        }
+
+        if (heightRatio is <= 0d or > 1d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(heightRatio));
+        }
+
+        // Re-resolve the pointer display for every activation so monitor choice and DPI follow the user's current context.
         var area = CursorWorkArea();
-        KeepCurrentBoundsInWorkArea(root, area);
+        var scale = ResolveScale(root);
+        var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
+        var availableWidth = Math.Max(1, area.Width - (margin * 2));
+        var availableHeight = Math.Max(1, area.Height - (margin * 2));
+        var minimumSize = UpdateMinimumSize(scale, area);
+        var width = Math.Clamp((int)Math.Round(area.Width * widthRatio), minimumSize.Width, availableWidth);
+        var height = Math.Clamp((int)Math.Round(area.Height * heightRatio), minimumSize.Height, availableHeight);
+        _appWindow.Resize(new SizeInt32(width, height));
         CenterInWorkArea(area);
     }
 

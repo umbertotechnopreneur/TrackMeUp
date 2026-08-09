@@ -2,6 +2,19 @@ using System.Collections.Immutable;
 
 namespace TrackMeUp.Search;
 
+/// <summary>Names optional structured attributes shared by local-search producers and consumers.</summary>
+public static class SearchAttributeKeys
+{
+    /// <summary>Stores the number of mouse clicks observed in the screenshot capture interval.</summary>
+    public const string MouseClicks = "activity.mouse-clicks";
+
+    /// <summary>Stores CPU utilization when a capture-time telemetry source is available.</summary>
+    public const string CpuUsagePercent = "telemetry.cpu-usage-percent";
+
+    /// <summary>Stores GPU utilization when a capture-time telemetry source is available.</summary>
+    public const string GpuUsagePercent = "telemetry.gpu-usage-percent";
+}
+
 /// <summary>
 /// Represents every searchable value associated with an activity or screenshot.
 /// </summary>

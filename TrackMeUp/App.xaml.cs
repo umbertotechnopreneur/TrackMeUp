@@ -175,7 +175,7 @@ public partial class App : Microsoft.UI.Xaml.Application
                 throw new InvalidOperationException($"Search window settings are unavailable ({settings.Code}).");
             }
 
-            _searchWindow = new SearchWindow(application, settings.Value.Theme, settings.Value.UiLanguage);
+            _searchWindow = new SearchWindow(application, settings.Value.UiLanguage);
             _searchWindow.ScreenshotRequested += SearchWindow_ScreenshotRequested;
             _searchWindow.Closed += SearchWindow_Closed;
             _searchWindow.Activate();

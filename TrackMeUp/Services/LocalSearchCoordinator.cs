@@ -164,7 +164,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 Language = text?.Ocr.LanguageTag ?? defaultLanguage,
                 Application = item.ForegroundApplication,
                 WindowTitle = item.ForegroundWindowTitle,
-                AttributesRaw = BuildOcrAttributes(null, text, item.ActivityIndex),
+                AttributesRaw = BuildOcrAttributes(null, text, item.ActivityIndex, item.MouseClicks),
                 SpanLabels = (item.SpanLabels ?? Array.Empty<ActivityLabelSample>())
                     .Select(label => label.Label)
                     .Where(label => !string.IsNullOrWhiteSpace(label))
@@ -192,7 +192,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 Kind = "screenshot-text",
                 Timestamp = text.Ocr.ExtractedAt,
                 Language = text.AiRefinement?.LanguageTag ?? text.Ocr.LanguageTag ?? defaultLanguage,
-                AttributesRaw = BuildOcrAttributes(captureId, text, null),
+                AttributesRaw = BuildOcrAttributes(captureId, text, null, null),
                 CapturePath = text.SourceScreenshotPath,
                 OcrRawText = text.Ocr.RawText,
                 OcrCorrectedText = text.AiRefinement?.CorrectedText,
@@ -222,7 +222,8 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     private static ImmutableDictionary<string, string?> BuildOcrAttributes(
         string? captureId,
         ScreenshotTextSnapshot? text,
-        int? activityIndex)
+        int? activityIndex,
+        long? mouseClicks)
     {
         var attributes = ImmutableDictionary.CreateBuilder<string, string?>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(captureId))
@@ -233,6 +234,11 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         if (activityIndex is not null)
         {
             attributes["activity.index"] = activityIndex.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (mouseClicks is not null)
+        {
+            attributes[SearchAttributeKeys.MouseClicks] = mouseClicks.Value.ToString(CultureInfo.InvariantCulture);
         }
 
         if (text is null)

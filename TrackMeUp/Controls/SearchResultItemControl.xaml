@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.SearchResultItemControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    HorizontalAlignment="Stretch"
+    HorizontalContentAlignment="Stretch">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="SearchResultAccentBrush" Color="#FFFF8C78" />
+        <SolidColorBrush x:Key="SearchResultHighlightBrush" Color="#FFFFC7BA" />
+        <SolidColorBrush x:Key="SearchResultHighlightTextBrush" Color="#FF2E1712" />
+    </UserControl.Resources>
+
+    <Border
+        MinHeight="230"
+        Padding="14,14,18,16"
+        AutomationProperties.Name="{Binding ActiveWindowDisplay}"
+        Background="Transparent"
+        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+        BorderThickness="0,0,0,1">
+        <Grid ColumnSpacing="28">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="13*" />
+                <ColumnDefinition Width="8*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Height="200"
+                VerticalAlignment="Center"
+                Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                CornerRadius="8"
+                Translation="0,0,18">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <Grid>
+                    <FontIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="30"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Glyph="&#xEB9F;" />
+                    <Image
+                        AutomationProperties.AccessibilityView="Raw"
+                        Source="{Binding ScreenshotUri}"
+                        Stretch="UniformToFill" />
+                </Grid>
+            </Border>
+
+            <Grid
+                Grid.Column="1"
+                MinWidth="250"
+                VerticalAlignment="Center"
+                ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Width="3"
+                    Height="72"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource SearchResultAccentBrush}"
+                    CornerRadius="2" />
+
+                <Grid Grid.Column="1" RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        x:Name="SnippetText"
+                        MaxLines="3"
+                        FontSize="17"
+                        LineHeight="24"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="WrapWholeWords" />
+
+                    <StackPanel Grid.Row="1" Spacing="4">
+                        <TextBlock
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding CapturedAtDisplay}"
+                            TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ActiveWindowDisplay}"
+                            TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding TelemetryDisplay}"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <FontIcon
+                Grid.Column="2"
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                AutomationProperties.AccessibilityView="Raw"
+                FontFamily="Segoe Fluent Icons"
+                FontSize="18"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Glyph="&#xE76C;" />
+        </Grid>
+    </Border>
+</UserControl>

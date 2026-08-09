@@ -12,12 +12,14 @@ using Windows.Graphics;
 
 namespace TrackMeUp;
 
-/// <summary>Displays a bounded, always-on-top Mica surface for local screenshot search.</summary>
+/// <summary>Displays a light, always-on-top Acrylic surface for local screenshot search.</summary>
 public sealed partial class SearchWindow : Window
 {
-    private const int LogicalWindowWidth = 620;
-    private const int LogicalWindowHeight = 620;
+    private const int LogicalWindowWidth = 1000;
+    private const int LogicalWindowHeight = 720;
     private const int LogicalScreenMargin = 22;
+    private const double CursorDisplayWidthRatio = 0.82d;
+    private const double CursorDisplayHeightRatio = 0.78d;
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(700);
     private readonly SearchViewModel _viewModel;
     private readonly LocalizationService _strings;
@@ -29,8 +31,8 @@ public sealed partial class SearchWindow : Window
     private CancellationTokenSource? _debounceCancellation;
     private XamlRoot? _xamlRoot;
 
-    /// <summary>Creates the floating local-search window with an explicit theme and language.</summary>
-    public SearchWindow(ITrackMeUpApplication application, string theme, string language)
+    /// <summary>Creates the fixed-light floating local-search window in the requested language.</summary>
+    public SearchWindow(ITrackMeUpApplication application, string language)
     {
         ArgumentNullException.ThrowIfNull(application);
         _viewModel = new SearchViewModel(application);
@@ -38,12 +40,7 @@ public sealed partial class SearchWindow : Window
         _culture = CultureInfo.GetCultureInfo(_strings.Language);
         InitializeComponent();
         RootGrid.DataContext = _viewModel;
-        RootGrid.RequestedTheme = theme switch
-        {
-            "light" => ElementTheme.Light,
-            "dark" => ElementTheme.Dark,
-            _ => ElementTheme.Default
-        };
+        RootGrid.RequestedTheme = ElementTheme.Light;
         UiLocalization.Apply(RootGrid, _strings);
         Title = _strings.Translate("Search.Title");
         QueryBox.PlaceholderText = _strings.Translate("Search.Placeholder");
@@ -71,7 +68,7 @@ public sealed partial class SearchWindow : Window
     /// <summary>Activates the existing search window centered on the monitor containing the pointer.</summary>
     public void ActivateAtCursor()
     {
-        _placement.CenterOnCursorDisplay(RootGrid);
+        _placement.ResizeAndCenterOnCursorDisplay(RootGrid, CursorDisplayWidthRatio, CursorDisplayHeightRatio);
         Activate();
         FocusQuery();
     }
@@ -86,6 +83,7 @@ public sealed partial class SearchWindow : Window
 
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token, centerOnCursorDisplay: true);
+        _placement.ResizeAndCenterOnCursorDisplay(RootGrid, CursorDisplayWidthRatio, CursorDisplayHeightRatio);
         UpdateTitleBarInsets();
         FocusQuery();
     }
@@ -270,6 +268,10 @@ public sealed partial class SearchWindow : Window
             _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.ButtonForegroundColor = Colors.Black;
+            _appWindow.TitleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(150, 0, 0, 0);
+            _appWindow.TitleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(22, 0, 0, 0);
+            _appWindow.TitleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(36, 0, 0, 0);
         }
     }
 

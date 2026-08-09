@@ -123,6 +123,7 @@ public sealed record ScreenshotTextSnapshot(
 /// <param name="ForegroundWindowTitle">The closest foreground window title observed during the capture interval.</param>
 /// <param name="ScreenIndex">The one-based monitor index parsed from the retained artifact name, or <see langword="null"/> for active-window captures.</param>
 /// <param name="ScreenName">A stable display label derived from <paramref name="ScreenIndex"/> when available.</param>
+/// <param name="MouseClicks">The number of durable mouse clicks observed during the capture interval, or <see langword="null"/> when no activity samples overlap it.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
@@ -136,7 +137,8 @@ public sealed record ScreenshotGalleryItem(
     ScreenshotTextSnapshot? TextSnapshot = null,
     string? ForegroundWindowTitle = null,
     int? ScreenIndex = null,
-    string? ScreenName = null);
+    string? ScreenName = null,
+    long? MouseClicks = null);
 
 /// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
 public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);
