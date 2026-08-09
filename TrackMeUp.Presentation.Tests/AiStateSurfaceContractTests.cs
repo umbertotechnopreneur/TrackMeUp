@@ -20,7 +20,7 @@ public sealed class AiStateSurfaceContractTests
         var statusText = options.Descendants().Single(element => HasName(element, "ApiKeyStatusText"));
         var statusIcon = options.Descendants().Single(element => HasName(element, "ApiKeyStatusIcon"));
 
-        Assert.Equal("{x:Bind AiState.Enabled, Mode=OneWay}", menuToggle.Attribute("IsOn")?.Value);
+        Assert.Equal("{x:Bind AiState.Enabled, Mode=OneWay}", menuToggle.Attribute("IsChecked")?.Value);
         Assert.Equal("{x:Bind AiState.CanToggle, Mode=OneWay}", menuToggle.Attribute("IsEnabled")?.Value);
         Assert.Equal("{Binding Enabled, Mode=OneWay}", optionsToggle.Attribute("IsOn")?.Value);
         Assert.Equal("{Binding CanToggle, Mode=OneWay}", optionsToggle.Attribute("IsEnabled")?.Value);

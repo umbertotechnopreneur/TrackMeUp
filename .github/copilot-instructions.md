@@ -21,11 +21,14 @@ alwaysApply: true
 - Avoid PowerShell quoting errors: prefer `pwsh -NoProfile -File <script.ps1>` for scripts and `pwsh -NoProfile -Command '<single-quoted command>'` for short commands; pass arguments as arrays or explicit parameters, do not build nested shell strings, and escape embedded quotes for the receiving command instead of relying on PowerShell interpolation.
 - This repository is pre-production: do not add backward-compatibility layers for superseded contracts, persisted artifacts, filenames, or APIs unless explicitly requested. Prefer the clean current design and make migrations explicit.
 - Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
+- Do not preserve legacy code or superseded contracts for compatibility. Remove obsolete code paths, adapters, fallbacks, and persisted settings when a feature is replaced; unsupported legacy input must fail fast.
 - Do not commit credentials, private secrets, machine paths, or secrets.
 - Keep unrelated working-tree changes untouched.
 - Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
 - Exclude generated artifacts (`bin/`, `obj/`, `artifacts/`, `.vs/`) from commits.
 - Prefer explicit, scoped edits and minimal churn.
+- Be economical with verification: run checks primarily once the task is complete, not after every intermediate step. Repeat or add an earlier check only when it is needed to diagnose a failure, unblock the work, or prevent a risky mistake.
+- Keep product wording vendor-agnostic: user-facing shared AI features must say "AI provider" ("provider AI" in Italian). Name OpenAI, OpenRouter, Anthropic, or another vendor only when the UI refers to a selected provider or genuinely vendor-specific behavior such as its endpoint, model, or pricing.
 - WinUI views/code-behind and Spectre.Console commands/renderers are passive presentation code; they call `ITrackMeUpApplication` and never construct infrastructure services or perform I/O, process, registry, environment, HTTP, capture, hook, or persistence operations.
 - Keep runtime ownership singular through the hashed-installation mutex and same-user versioned named pipe. All persistence mutations stay serialized in the application layer.
 - Never place API keys in command arguments, settings, history, logs, redacted IPC diagnostics, or test snapshots. Use the environment-variable secret flow.

@@ -12,8 +12,8 @@ namespace TrackMeUp;
 /// <summary>Displays product information and delegates diagnostics actions to the application facade.</summary>
 public sealed partial class AboutWindow : Window
 {
-    private const int LogicalWindowWidth = 430;
-    private const int LogicalWindowHeight = 520;
+    private const int LogicalWindowWidth = 500;
+    private const int LogicalWindowHeight = 460;
     private const int LogicalScreenMargin = 22;
     private readonly AppWindow _appWindow;
     private readonly WindowPlacementService _placement;
@@ -33,7 +33,7 @@ public sealed partial class AboutWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.About, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
+        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.About, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += AboutWindow_Closed;
@@ -62,7 +62,7 @@ public sealed partial class AboutWindow : Window
         }
 
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateTitleBarInsets();
 
         try

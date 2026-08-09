@@ -12,7 +12,7 @@ using Windows.UI;
 
 namespace TrackMeUp;
 
-/// <summary>Renders one queued TrackMeUp Mica dialog without owning product behavior.</summary>
+/// <summary>Renders one queued TrackMeUp acrylic dialog without owning product behavior.</summary>
 internal sealed partial class MicaDialogWindow : Window
 {
     private const int LogicalWidth = 430;
@@ -48,7 +48,7 @@ internal sealed partial class MicaDialogWindow : Window
         SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
-        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Dialog, LogicalWidth, LogicalMinimumHeight, LogicalScreenMargin, centerDefault: false);
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Dialog, LogicalWidth, LogicalMinimumHeight, LogicalScreenMargin, ownerAppWindow.Id);
         SetWindowOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -85,7 +85,7 @@ internal sealed partial class MicaDialogWindow : Window
         Closed += (_, _) => _completion.TrySetResult(_result);
     }
 
-    /// <summary>Activates the detached Mica surface and completes after its explicit action or closure.</summary>
+    /// <summary>Activates the detached acrylic surface and completes after its explicit action or closure.</summary>
     internal Task<MicaDialogResult> ShowAsync()
     {
         SetWindowPos(_windowHandle, HwndTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
@@ -118,15 +118,7 @@ internal sealed partial class MicaDialogWindow : Window
         height = Math.Max(1, height);
         _appWindow.Resize(new SizeInt32(width, height));
 
-        var ownerBounds = new RectInt32(
-            _ownerAppWindow.Position.X,
-            _ownerAppWindow.Position.Y,
-            _ownerAppWindow.Size.Width,
-            _ownerAppWindow.Size.Height);
-        var x = Math.Clamp(ownerBounds.X + ((ownerBounds.Width - width) / 2), area.X, Math.Max(area.X, area.X + area.Width - width));
-        var y = Math.Clamp(ownerBounds.Y + ((ownerBounds.Height - height) / 2), area.Y, Math.Max(area.Y, area.Y + area.Height - height));
-        _appWindow.Move(new PointInt32(x, y));
-        await _placement.RestoreOrKeepCurrentAsync(RootGrid, CancellationToken.None);
+        await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
         (_isConfirmation ? CancelButton : PrimaryButton).Focus(FocusState.Programmatic);
     }
 

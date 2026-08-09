@@ -273,6 +273,16 @@ public sealed record AiPricingOverview(
     long TodayTotalTokens,
     IReadOnlyList<AiPricingCostRow> Models);
 
+/// <summary>Contains the safe, displayable output of an explicit AI connection check.</summary>
+public sealed record AiConnectionTestResult(string Provider, string Model, string Output, long ElapsedMilliseconds);
+
+/// <summary>Defines the non-secret text exchanged by the AI provider connection probe.</summary>
+public static class AiConnectionTestProtocol
+{
+    /// <summary>Gets the exact prompt sent by the bounded text-only connection probe.</summary>
+    public const string Prompt = "Reply with exactly: TrackMeUp connection confirmed.";
+}
+
 /// <summary>Classifies a non-secret notification that an application frontend may present.</summary>
 public enum ApplicationNotificationSeverity
 {
@@ -415,6 +425,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets simplified cached OpenAI pricing and today's local estimated usage cost.</summary>
     Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken);
+
+    /// <summary>Sends a minimal non-image prompt to verify the persisted AI connection.</summary>
+    Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken);
 
     /// <summary>Atomically takes pending user-facing notifications from the shared runtime.</summary>
     Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken);

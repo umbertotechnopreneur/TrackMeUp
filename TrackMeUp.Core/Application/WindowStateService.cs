@@ -29,6 +29,7 @@ public static class WindowStateKeys
 
     /// <summary>Identifies the simplified AI pricing dialog window.</summary>
     public const string AiPricing = "ai-pricing";
+    public const string AiConnectionTest = "ai-connection-test";
 }
 
 /// <summary>Persists and restores native top-level window placement.</summary>
@@ -63,6 +64,7 @@ public sealed class WindowStateService
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.AiPricing => new(620, 430),
+            WindowStateKeys.AiConnectionTest => new(480, 300),
             _ => new(320, 240)
         };
     }

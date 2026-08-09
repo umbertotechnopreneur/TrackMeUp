@@ -9,7 +9,7 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class SearchSurfaceContractTests
 {
     [Fact]
-    public void FloatingSearchWindow_UsesMicaAndBoundedScreenshotResults()
+    public void FloatingSearchWindow_UsesAcrylicAndBoundedScreenshotResults()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "SearchWindow.xaml"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
@@ -17,7 +17,7 @@ public sealed class SearchSurfaceContractTests
         var list = window.Descendants().Single(element => HasName(element, "SearchResultsList"));
 
         Assert.Equal("Window", window.Root?.Name.LocalName);
-        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "MicaBackdrop" && element.Attribute("Kind")?.Value == "BaseAlt");
+        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Equal("True", list.Attribute("IsItemClickEnabled")?.Value);
         Assert.Contains(window.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Source")?.Value == "{Binding ScreenshotUri}");
         Assert.Contains("presenter.IsAlwaysOnTop = true;", windowSource, StringComparison.Ordinal);

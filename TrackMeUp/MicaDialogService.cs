@@ -77,7 +77,7 @@ internal sealed class MicaDialogService
         return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;
     }
 
-    /// <summary>Shows simplified OpenAI pricing and locally estimated costs in the shared Mica dialog queue.</summary>
+    /// <summary>Shows provider-specific pricing and locally estimated costs in the shared acrylic dialog queue.</summary>
     internal async Task ShowPricingAsync(
         ITrackMeUpApplication application,
         Window owner,
@@ -89,6 +89,53 @@ internal sealed class MicaDialogService
         ArgumentNullException.ThrowIfNull(overview);
         ArgumentNullException.ThrowIfNull(strings);
         await ShowPricingWindowAsync(application, owner, overview, theme, strings);
+    }
+
+    /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
+    internal async Task ShowAiConnectionTestAsync(ITrackMeUpApplication application, Window owner, ElementTheme theme)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(owner);
+        await _queue.WaitAsync();
+        var ownerContent = owner.Content as UIElement;
+        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
+        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+        AiConnectionTestDialogWindow? dialog = null;
+        List<IntPtr>? disabledPeerWindows = null;
+        try
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            if (ownerContent is not null)
+            {
+                ownerContent.IsHitTestVisible = false;
+            }
+
+            var ownerAppWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(ownerHandle));
+            dialog = new AiConnectionTestDialogWindow(application, theme, ownerAppWindow, ownerHandle);
+            _activeWindow = dialog;
+            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
+            await dialog.ShowAsync();
+        }
+        finally
+        {
+            _activeWindow = null;
+            dialog?.DisposePlacement();
+            if (disabledPeerWindows is not null)
+            {
+                RestoreDialogPeerWindows(disabledPeerWindows);
+            }
+
+            if (ownerContent is not null)
+            {
+                ownerContent.IsHitTestVisible = ownerWasInteractive;
+            }
+
+            _queue.Release();
+        }
     }
 
     /// <summary>Closes the current dialog during application shutdown.</summary>

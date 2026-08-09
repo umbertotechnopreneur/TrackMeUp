@@ -42,7 +42,7 @@ public sealed partial class ScheduleWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Schedule, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Schedule, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ApplyTheme(theme);
         ApplyLanguage(uiLanguage);
         IntervalNumberBox.Value = intervalMinutes is >= 1 and <= 1440 ? intervalMinutes : 5;
@@ -81,7 +81,7 @@ public sealed partial class ScheduleWindow : Window
         }
 
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => Close();

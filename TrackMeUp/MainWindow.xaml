@@ -253,374 +253,135 @@
 
                     <Button
                         x:Name="MoreButton"
-                        AutomationProperties.Name="Menu applicazione"
+                        AutomationProperties.Name="Application menu"
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Visibility="Collapsed">
-                            <FontIcon
-                                AutomationProperties.AccessibilityView="Raw"
-                                FontFamily="Segoe Fluent Icons"
-                                FontSize="15"
-                                Glyph="&#xE712;" />
-                            <Button.Flyout>
-                            <Flyout Opened="MoreMenu_Opened"
-                                    Placement="TopEdgeAlignedRight"
-                                    ShouldConstrainToRootBounds="False">
-                                <Flyout.SystemBackdrop>
-                                        <DesktopAcrylicBackdrop />
-                                    </Flyout.SystemBackdrop>
-                                    <Flyout.FlyoutPresenterStyle>
-                                        <Style TargetType="FlyoutPresenter">
-                                            <Setter Property="Padding" Value="10" />
-                                            <Setter Property="CornerRadius" Value="12" />
-                                        </Style>
-                                    </Flyout.FlyoutPresenterStyle>
-                                <StackPanel Width="252"
-                                            Spacing="2">
-                                    <StackPanel.Resources>
-                                        <Style x:Key="OverflowMenuButtonStyle"
-                                               TargetType="Button">
-                                            <Setter Property="MinHeight"
-                                                    Value="40"/>
-                                            <Setter Property="Padding"
-                                                    Value="10,6"/>
-                                            <Setter Property="HorizontalAlignment"
-                                                    Value="Stretch"/>
-                                            <Setter Property="HorizontalContentAlignment"
-                                                    Value="Left"/>
-                                            <Setter Property="Background"
-                                                    Value="Transparent"/>
-                                            <Setter Property="BorderBrush"
-                                                    Value="Transparent"/>
-                                            <Setter Property="BorderThickness"
-                                                    Value="0"/>
-                                            <Setter Property="CornerRadius"
-                                                    Value="10"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="MenuItemSurface"
-                                                                Background="{TemplateBinding Background}"
-                                                                BorderBrush="{TemplateBinding BorderBrush}"
-                                                                BorderThickness="{TemplateBinding BorderThickness}"
-                                                                CornerRadius="{TemplateBinding CornerRadius}">
-                                                            <VisualStateManager.VisualStateGroups>
-                                                                <VisualStateGroup x:Name="CommonStates">
-                                                                    <VisualState x:Name="Normal"/>
-                                                                    <VisualState x:Name="PointerOver">
-                                                                        <Storyboard>
-                                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="MenuItemSurface"
-                                                                                                           Storyboard.TargetProperty="Background">
-                                                                                <DiscreteObjectKeyFrame KeyTime="0"
-                                                                                                        Value="#0DFFFFFF"/>
-                                                                            </ObjectAnimationUsingKeyFrames>
-                                                                        </Storyboard>
-                                                                    </VisualState>
-                                                                    <VisualState x:Name="Pressed">
-                                                                        <Storyboard>
-                                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="MenuItemSurface"
-                                                                                                           Storyboard.TargetProperty="Background">
-                                                                                <DiscreteObjectKeyFrame KeyTime="0"
-                                                                                                        Value="#18FFFFFF"/>
-                                                                            </ObjectAnimationUsingKeyFrames>
-                                                                        </Storyboard>
-                                                                    </VisualState>
-                                                                    <VisualState x:Name="Disabled">
-                                                                        <Storyboard>
-                                                                            <DoubleAnimation Storyboard.TargetName="MenuItemSurface"
-                                                                                             Storyboard.TargetProperty="Opacity"
-                                                                                             To="0.45"
-                                                                                             Duration="0"/>
-                                                                        </Storyboard>
-                                                                    </VisualState>
-                                                                </VisualStateGroup>
-                                                            </VisualStateManager.VisualStateGroups>
-                                                            <ContentPresenter Content="{TemplateBinding Content}"
-                                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                                              ContentTransitions="{TemplateBinding ContentTransitions}"
-                                                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                                              Padding="{TemplateBinding Padding}"/>
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                        <Style x:Key="OverflowMenuIconChipStyle"
-                                               TargetType="Border">
-                                            <Setter Property="Width"
-                                                    Value="22"/>
-                                            <Setter Property="Height"
-                                                    Value="22"/>
-                                            <Setter Property="CornerRadius"
-                                                    Value="0"/>
-                                            <Setter Property="Padding"
-                                                    Value="0"/>
-                                            <Setter Property="Background"
-                                                    Value="Transparent"/>
-                                            <Setter Property="BorderBrush"
-                                                    Value="Transparent"/>
-                                            <Setter Property="BorderThickness"
-                                                    Value="0"/>
-                                        </Style>
-                                        <Style x:Key="OverflowMenuIconStyle"
-                                               TargetType="FontIcon">
-                                            <Setter Property="FontFamily"
-                                                    Value="Segoe Fluent Icons"/>
-                                            <Setter Property="FontSize"
-                                                    Value="15"/>
-                                            <Setter Property="HorizontalAlignment"
-                                                    Value="Center"/>
-                                            <Setter Property="VerticalAlignment"
-                                                    Value="Center"/>
-                                            <Setter Property="AutomationProperties.AccessibilityView"
-                                                    Value="Raw"/>
-                                        </Style>
-                                    </StackPanel.Resources>
-                                    <Button
-                                        x:Name="SearchMenuItem"
-                                        AutomationProperties.Name="Search captured moments"
-                                        Click="SearchMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FFDB8D72"
-                                                          Glyph="&#xE721;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="Search.Title"
-                                                       VerticalAlignment="Center"
-                                                       Text="Search captured moments"/>
-                                        </Grid>
-                                    </Button>
-                                    <Button
-                                        AutomationProperties.Name="Open reports"
-                                        Click="ReportsMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FF7D9FF8"
-                                                          Glyph="&#xE787;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="Reports.Title"
-                                                       VerticalAlignment="Center"
-                                                       Text="Reports"/>
-                                        </Grid>
-                                    </Button>
-                                    <Button
-                                        AutomationProperties.Name="Open captured moments"
-                                        Click="ScreenshotsMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FF71CBB7"
-                                                          Glyph="&#xE722;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="Screenshots.Caption"
-                                                       VerticalAlignment="Center"
-                                                       Text="Captured moments"/>
-                                        </Grid>
-                                    </Button>
-                                    <Button
-                                        AutomationProperties.Name="Open snapshot schedule"
-                                        Click="ScheduleScreenshotMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FF85A8DB"
-                                                          Glyph="&#xE823;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="Schedule.Snapshots"
-                                                       VerticalAlignment="Center"
-                                                       Text="Snapshot schedule"/>
-                                        </Grid>
-                                    </Button>
-                                    <Button
-                                        AutomationProperties.Name="App options"
-                                        Click="OptionsMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FFE5B06A"
-                                                          Glyph="&#xE713;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="MenuTitleOptions"
-                                                       VerticalAlignment="Center"
-                                                       Text="App options"/>
-                                        </Grid>
-                                    </Button>
-                                    <Button
-                                        x:Name="OperationsMenuItem"
-                                        AutomationProperties.Name="Tools and diagnostics"
-                                        Click="OperationsMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                          Glyph="&#xE90F;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="Main.Menu.Operations"
-                                                       VerticalAlignment="Center"
-                                                       Text="Tools and diagnostics"/>
-                                        </Grid>
-                                    </Button>
-                                    <Border MinHeight="44"
-                                            Padding="10,4"
-                                            CornerRadius="6">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FFA97BEA"
-                                                          Glyph="&#xE945;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="MenuToggleOpenAi"
-                                                       VerticalAlignment="Center"
-                                                       Text="OpenAI integration"/>
-                                            <ToggleSwitch x:Name="OpenAiMenuToggle"
-                                                          Grid.Column="2"
-                                                          MinWidth="0"
-                                                          IsEnabled="{x:Bind AiState.CanToggle, Mode=OneWay}"
-                                                          IsOn="{x:Bind AiState.Enabled, Mode=OneWay}"
-                                                          OffContent=""
-                                                          OnContent=""
-                                                          Toggled="OpenAiMenuToggle_Toggled"/>
-                                        </Grid>
-                                    </Border>
-                                    <Button
+                        <FontIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="15"
+                            Glyph="&#xE712;" />
+                        <Button.Flyout>
+                            <MenuFlyout
+                                x:Name="MainMenuFlyout"
+                                Opened="MoreMenu_Opened"
+                                Placement="TopEdgeAlignedRight"
+                                ShouldConstrainToRootBounds="False">
+                                <MenuFlyout.SystemBackdrop>
+                                    <DesktopAcrylicBackdrop />
+                                </MenuFlyout.SystemBackdrop>
+                                <MenuFlyout.MenuFlyoutPresenterStyle>
+                                    <Style TargetType="MenuFlyoutPresenter">
+                                        <Setter Property="MinWidth" Value="224" />
+                                        <Setter Property="CornerRadius" Value="12" />
+                                    </Style>
+                                </MenuFlyout.MenuFlyoutPresenterStyle>
+
+                                <MenuFlyoutSubItem x:Name="ActivityMenu" Tag="Main.Menu.Activity" Text="Activity">
+                                    <MenuFlyoutSubItem.Icon>
+                                        <FontIcon Glyph="&#xE81C;" />
+                                    </MenuFlyoutSubItem.Icon>
+                                    <MenuFlyoutItem x:Name="SearchMenuItem" Tag="Search.Title" Text="Search captured moments" Click="SearchMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FFDB8D72" Glyph="&#xE721;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem x:Name="ReportsMenuItem" Tag="Reports.Title" Text="Reports" Click="ReportsMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem x:Name="ScreenshotsMenuItem" Tag="Screenshots.Caption" Text="Captured moments" Click="ScreenshotsMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FF71CBB7" Glyph="&#xE722;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyoutSubItem>
+
+                                <MenuFlyoutSubItem x:Name="CaptureMenu" Tag="Main.Menu.Capture" Text="Capture">
+                                    <MenuFlyoutSubItem.Icon>
+                                        <FontIcon Glyph="&#xE7ED;" />
+                                    </MenuFlyoutSubItem.Icon>
+                                    <MenuFlyoutItem x:Name="ScheduleMenuItem" Tag="Schedule.Snapshots" Text="Snapshot schedule" Click="ScheduleScreenshotMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FF85A8DB" Glyph="&#xE823;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <ToggleMenuFlyoutItem
+                                        x:Name="ScreenshotsMenuToggle"
+                                        Tag="MenuToggleScreenshot"
+                                        Text="Screen capture"
+                                        Click="ScreenshotsMenuToggle_Click">
+                                        <ToggleMenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
+                                        </ToggleMenuFlyoutItem.Icon>
+                                    </ToggleMenuFlyoutItem>
+                                </MenuFlyoutSubItem>
+
+                                <MenuFlyoutSubItem x:Name="SettingsMenu" Tag="Main.Menu.Settings" Text="Settings and tools">
+                                    <MenuFlyoutSubItem.Icon>
+                                        <FontIcon Glyph="&#xE713;" />
+                                    </MenuFlyoutSubItem.Icon>
+                                    <MenuFlyoutItem x:Name="OptionsMenuItem" Tag="MenuTitleOptions" Text="App options" Click="OptionsMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FFE5B06A" Glyph="&#xE713;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem x:Name="OperationsMenuItem" Tag="Main.Menu.Operations" Text="Tools and diagnostics" Click="OperationsMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE90F;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyoutSubItem>
+
+                                <MenuFlyoutSubItem x:Name="AiProviderMenu" Tag="Main.Menu.AiProvider" Text="AI provider">
+                                    <MenuFlyoutSubItem.Icon>
+                                        <FontIcon Foreground="#FFA97BEA" Glyph="&#xE945;" />
+                                    </MenuFlyoutSubItem.Icon>
+                                    <ToggleMenuFlyoutItem
+                                        x:Name="OpenAiMenuToggle"
+                                        Tag="MenuToggleOpenAi"
+                                        Text="AI provider"
+                                        IsChecked="{x:Bind AiState.Enabled, Mode=OneWay}"
+                                        IsEnabled="{x:Bind AiState.CanToggle, Mode=OneWay}"
+                                        Click="OpenAiMenuToggle_Click">
+                                        <ToggleMenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FFA97BEA" Glyph="&#xE945;" />
+                                        </ToggleMenuFlyoutItem.Icon>
+                                    </ToggleMenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         x:Name="AiPricingMenuItem"
-                                        AutomationProperties.Name="OpenAI costs"
+                                        Tag="AiPricing.MenuTitle"
+                                        Text="OpenAI costs"
                                         Click="AiPricingMenuItem_Click"
-                                        IsEnabled="False"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FF7D9FF8"
-                                                          Glyph="&#xE9D2;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="AiPricing.MenuTitle"
-                                                       VerticalAlignment="Center"
-                                                       Text="OpenAI costs"/>
-                                        </Grid>
-                                    </Button>
-                                    <Border MinHeight="44"
-                                            Padding="10,4"
-                                            CornerRadius="6">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FFE88F6B"
-                                                          Glyph="&#xE7ED;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="MenuToggleScreenshot"
-                                                       VerticalAlignment="Center"
-                                                       Text="Screenshot"/>
-                                            <ToggleSwitch x:Name="ScreenshotsMenuToggle"
-                                                          Grid.Column="2"
-                                                          MinWidth="0"
-                                                          OffContent=""
-                                                          OnContent=""
-                                                          Toggled="ScreenshotsMenuToggle_Toggled"/>
-                                        </Grid>
-                                    </Border>
-                                    <Button
-                                        x:Name="MinimizeToTrayMenuItem"
-                                        AutomationProperties.Name="Minimize to notification area"
-                                        Click="MinimizeToTrayMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FF85A8DB"
-                                                          Glyph="&#xE921;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="Main.Menu.MinimizeToTray"
-                                                       VerticalAlignment="Center"
-                                                       Text="Minimize to notification area"/>
-                                        </Grid>
-                                    </Button>
-                                    <Border Height="1"
-                                            Margin="0,5"
-                                            Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-                                    <Button
-                                        AutomationProperties.Name="About"
-                                        Click="AboutMenuItem_Click"
-                                        Style="{StaticResource OverflowMenuButtonStyle}">
-                                        <Grid ColumnSpacing="12">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
-                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
-                                                          Foreground="#FF85A8DB"
-                                                          Glyph="&#xE946;"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1"
-                                                       Tag="MenuTitleAbout"
-                                                       VerticalAlignment="Center"
-                                                       Text="About"/>
-                                        </Grid>
-                                    </Button>
-                                </StackPanel>
-                            </Flyout>
+                                        IsEnabled="False">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE9D2;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyoutSubItem>
+
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem
+                                    x:Name="MinimizeToTrayMenuItem"
+                                    Tag="Main.Menu.MinimizeToTray"
+                                    Text="Minimize to notification area"
+                                    Click="MinimizeToTrayMenuItem_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Foreground="#FF85A8DB" Glyph="&#xE921;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    x:Name="AboutMenuItem"
+                                    Tag="MenuTitleAbout"
+                                    Text="About"
+                                    Click="AboutMenuItem_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Foreground="#FF85A8DB" Glyph="&#xE946;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
                         </Button.Flyout>
                     </Button>
 

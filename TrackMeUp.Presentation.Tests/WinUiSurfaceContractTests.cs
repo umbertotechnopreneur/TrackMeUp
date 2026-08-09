@@ -38,10 +38,10 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(about.Descendants(), element => HasName(element, "ShowLogButton"));
         Assert.Contains(about.Descendants(), element => HasName(element, "ShareLogButton"));
         Assert.Contains(about.Descendants(), element => HasName(element, "DiagnosticsInfoBar"));
-        Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Stretch");
+        Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Right");
         Assert.DoesNotContain(about.Descendants(), element => element.Attribute("Text")?.Value == "•••");
-        Assert.Contains("private const int LogicalWindowWidth = 430;", aboutSource, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowHeight = 520;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowWidth = 500;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowHeight = 460;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", aboutSource, StringComparison.Ordinal);
@@ -137,10 +137,10 @@ public sealed class WinUiSurfaceContractTests
         var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
         var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
-        var menu = player.Descendants().Single(element => element.Name.LocalName == "Flyout" && element.Attribute("Opened")?.Value == "MoreMenu_Opened");
+        var menu = player.Descendants().Single(element => element.Name.LocalName == "MenuFlyout" && element.Attribute("Opened")?.Value == "MoreMenu_Opened");
         var menuTags = menu
             .Descendants()
-            .Where(element => element.Name.LocalName == "TextBlock" && element.Attribute("Tag") is not null)
+            .Where(element => element.Attribute("Tag") is not null)
             .Select(element => element.Attribute("Tag")!.Value)
             .ToArray();
 
@@ -175,10 +175,11 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE74D");
         Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("TakeScreenshotButton.IsEnabled = true;", mainSource, StringComparison.Ordinal);
-        Assert.Equal(8, menu.Descendants().Count(element => element.Name.LocalName == "Button"));
-        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
+        Assert.Equal(4, menu.Descendants().Count(element => element.Name.LocalName == "MenuFlyoutSubItem"));
+        Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleMenuFlyoutItem"));
+        Assert.DoesNotContain(menu.Descendants(), element => element.Name.LocalName == "Button");
         Assert.Equal(
-            ["Search.Title", "Reports.Title", "Screenshots.Caption", "Schedule.Snapshots", "MenuTitleOptions", "Main.Menu.Operations", "MenuToggleOpenAi", "AiPricing.MenuTitle", "MenuToggleScreenshot", "MenuTitleAbout"],
+            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ElementRect(TitleBarReportButton, scale)", mainSource, StringComparison.Ordinal);
@@ -186,7 +187,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ShowPanel(OperationsPanel, MainWindowSurface.Operations);", mainSource, StringComparison.Ordinal);
         Assert.Contains("TitleBarBackButton.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("OperationsControl_BackRequested", mainSource, StringComparison.Ordinal);
-        Assert.Contains("ApplyOverflowCommandLabel(OperationsMenuItem, T(\"Main.Menu.Operations\"));", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ApplyMainMenuLabels();", mainSource, StringComparison.Ordinal);
         Assert.Contains("AiPricingMenuItem.IsEnabled = IsOpenAiPricingAvailable(result.Value);", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
         Assert.Contains("CaptureManualScreenshotAsync", mainSource, StringComparison.Ordinal);
@@ -197,7 +198,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
-        Assert.DoesNotContain(player.Descendants(), element => element.Name.LocalName == "ToggleMenuFlyoutItem");
+        Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ToggleMenuFlyoutItem");
     }
 
     [Fact]
@@ -290,7 +291,7 @@ public sealed class WinUiSurfaceContractTests
         var scheduleSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
 
         Assert.Equal("Window", schedule.Root?.Name.LocalName);
-        Assert.Contains(schedule.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Contains(schedule.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(schedule.Descendants(), element => HasName(element, "WorkingHoursEditor"));
         Assert.Contains("settingsResult.Value.ScreenshotIntervalMinutes", mainSource, StringComparison.Ordinal);
         Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
@@ -329,6 +330,8 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Contains("RestoreWindowStateAsync", placement, StringComparison.Ordinal);
         Assert.Contains("SaveWindowStateAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("RestoreAndCenterAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("OpeningWorkArea()", placement, StringComparison.Ordinal);
         Assert.Contains("KeepCurrentBoundsInWorkArea", placement, StringComparison.Ordinal);
         Assert.Contains("WindowStateService.GetMinimumSize(_windowKey)", placement, StringComparison.Ordinal);
         Assert.Contains("WmGetMinMaxInfo = 0x0024", placement, StringComparison.Ordinal);
@@ -418,7 +421,7 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void NativeWindows_ExposeTitleBarsAndMicaWithoutOpaquePanelCards()
+    public void NativeWindows_ExposeTitleBarsAndAcrylicWithoutOpaquePanelCards()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var reports = XDocument.Load(RepositoryFile("TrackMeUp", "ReportsWindow.xaml"));
@@ -429,17 +432,39 @@ public sealed class WinUiSurfaceContractTests
             .Descendants()
             .Single(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "HighContrast"));
 
-        var playerUsesMica = player.Descendants().Any(element => element.Name.LocalName == "MicaBackdrop")
-            || mainSource.Contains("SystemBackdrop = new MicaBackdrop", StringComparison.Ordinal);
-        Assert.True(playerUsesMica, "MainWindow must use MicaBackdrop in XAML or assign it in code-behind.");
-        Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
-        Assert.Contains(about.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop", mainSource, StringComparison.Ordinal);
+        Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        Assert.Contains(about.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains("SetTitleBar(DragRegion)", mainSource, StringComparison.Ordinal);
         Assert.Contains("SetTitleBar(TitleBarDragRegion)", reportsSource, StringComparison.Ordinal);
         Assert.DoesNotContain(player.Descendants(), element => element.Attribute("Background")?.Value.Contains("FlyoutSurfaceBrush", StringComparison.Ordinal) == true);
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentBrush"));
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentTextBrush"));
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentGlyphBrush"));
+    }
+
+    [Fact]
+    public void ScrollBars_UseGlobalPointerScopedFadeBehavior()
+    {
+        var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
+        var behavior = File.ReadAllText(RepositoryFile("TrackMeUp", "ScrollBarRevealBehavior.cs"));
+        var scrollViewerStyle = app.Descendants().Single(element =>
+            element.Name.LocalName == "Style" && element.Attribute("TargetType")?.Value == "ScrollViewer");
+        var scrollBarStyle = app.Descendants().Single(element =>
+            element.Name.LocalName == "Style" && element.Attribute("TargetType")?.Value == "ScrollBar");
+
+        Assert.Contains(scrollViewerStyle.Descendants(), element =>
+            element.Name.LocalName == "Setter"
+            && element.Attribute("Property")?.Value == "local:ScrollBarRevealBehavior.IsEnabled"
+            && element.Attribute("Value")?.Value == "True");
+        Assert.Contains(scrollBarStyle.Descendants(), element =>
+            element.Name.LocalName == "Setter"
+            && element.Attribute("Property")?.Value == "Opacity"
+            && element.Attribute("Value")?.Value == "0");
+        Assert.Contains("scrollViewer.PointerEntered += ScrollViewer_PointerEntered", behavior, StringComparison.Ordinal);
+        Assert.Contains("scrollViewer.PointerExited += ScrollViewer_PointerExited", behavior, StringComparison.Ordinal);
+        Assert.Contains("new DoubleAnimation", behavior, StringComparison.Ordinal);
+        Assert.Contains("DescendantScrollBars(scrollViewer)", behavior, StringComparison.Ordinal);
     }
 
     [Fact]

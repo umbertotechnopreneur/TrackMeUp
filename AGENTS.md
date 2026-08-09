@@ -4,8 +4,11 @@ These instructions apply to all changes in this repository.
 
 - Read this file and `.github/copilot-instructions.md` before editing.
 - Keep changes scoped, minimal, and reviewable.
+- Be economical with verification: run checks primarily once the task is complete, not after every intermediate step. Repeat or add an earlier check only when it is needed to diagnose a failure, unblock the work, or prevent a risky mistake.
+- Keep product wording vendor-agnostic: user-facing shared AI features must say "AI provider" ("provider AI" in Italian). Name OpenAI, OpenRouter, Anthropic, or another vendor only when the UI refers to a selected provider or genuinely vendor-specific behavior such as its endpoint, model, or pricing.
 - This repository is pre-production: do not add backward-compatibility layers for superseded contracts, persisted artifacts, filenames, or APIs unless explicitly requested. Prefer the clean current design and make migrations explicit.
 - Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
+- Do not preserve legacy code or superseded contracts for compatibility. Remove obsolete code paths, adapters, fallbacks, and persisted settings when a feature is replaced; unsupported legacy input must fail fast.
 - Preserve unrelated local changes unless explicitly requested.
 - Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
 - Keep WinUI views, code-behind, Spectre commands, prompts, and renderers passive: they may only collect input, bind/render DTOs, and invoke `ITrackMeUpApplication`.

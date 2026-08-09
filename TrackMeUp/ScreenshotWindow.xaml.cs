@@ -94,7 +94,7 @@ public sealed partial class ScreenshotWindow : Window
         InitializeComponent();
         WireViewEvents();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Screenshots, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
+        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Screenshots, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
@@ -146,7 +146,7 @@ public sealed partial class ScreenshotWindow : Window
 
         _placement.ApplyDefaultBounds(RootGrid);
         UpdateTitleBarLayout();
-        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
 
         if (_initialized)
         {

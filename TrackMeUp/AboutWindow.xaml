@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="About TrackMeUp">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="Base" />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
@@ -37,9 +37,8 @@
                 Text="TRACK ME UP" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="28,10,28,24" RowSpacing="0">
+        <Grid Grid.Row="1" Padding="32,12,32,28" RowSpacing="0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -48,16 +47,16 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid x:Name="ProductPanel" ColumnSpacing="18">
+            <Grid x:Name="ProductPanel" ColumnSpacing="20">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="68" />
+                    <ColumnDefinition Width="72" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <Viewbox
                     x:Name="AboutIcon"
-                    Width="62"
-                    Height="46"
+                    Width="64"
+                    Height="48"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center">
                     <Path
@@ -69,8 +68,8 @@
                         StrokeThickness="3.2" />
                 </Viewbox>
 
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-                    <TextBlock FontSize="19" FontWeight="SemiBold" Text="TRACK ME UP" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock FontSize="24" FontWeight="SemiBold" Text="TRACK ME UP" />
                     <StackPanel Orientation="Horizontal" Spacing="5">
                         <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
                         <TextBlock x:Name="VersionText" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
@@ -88,13 +87,13 @@
             <Rectangle
                 Grid.Row="1"
                 Height="1"
-                Margin="0,18,0,14"
+                Margin="0,20,0,14"
                 Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="14">
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="18">
                 <Button
                     x:Name="ContactButton"
-                    Padding="0,4"
+                    Padding="0,5"
                     Background="Transparent"
                     BorderThickness="0"
                     Click="ContactButton_Click">
@@ -105,7 +104,7 @@
                 </Button>
                 <Button
                     x:Name="RepositoryButton"
-                    Padding="0,4"
+                    Padding="0,5"
                     Background="Transparent"
                     BorderThickness="0"
                     Click="RepositoryButton_Click">
@@ -116,43 +115,32 @@
                 </Button>
             </StackPanel>
 
-            <Rectangle
-                Grid.Row="3"
-                Height="1"
-                Margin="0,14,0,14"
-                Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-            <StackPanel Grid.Row="4" Spacing="9">
-                <TextBlock Tag="About.Diagnostics" FontSize="15" FontWeight="SemiBold" Text="Diagnostics" />
+            <StackPanel Grid.Row="3" Margin="0,18,0,0" Spacing="9">
+                <TextBlock Tag="About.Diagnostics" FontSize="17" FontWeight="SemiBold" Text="Diagnostics" />
                 <TextBlock
                     Tag="About.Diagnostics.Description"
                     Opacity="0.72"
                     Style="{StaticResource CaptionTextBlockStyle}"
                     Text="Open the current log, or share a bounded copy with private paths and secrets removed."
                     TextWrapping="WrapWholeWords" />
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button
                         x:Name="ShowLogButton"
                         Tag="About.ShowLog"
-                        MinHeight="40"
-                        HorizontalAlignment="Stretch"
+                        MinWidth="132"
+                        MinHeight="38"
                         HorizontalContentAlignment="Center"
                         Click="ShowLogButton_Click"
                         Content="Show log" />
                     <Button
                         x:Name="ShareLogButton"
                         Tag="About.ShareLog"
-                        Grid.Column="1"
-                        MinHeight="40"
-                        HorizontalAlignment="Stretch"
+                        MinWidth="132"
+                        MinHeight="38"
                         HorizontalContentAlignment="Center"
                         Click="ShareLogButton_Click"
                         Content="Share log" />
-                </Grid>
+                </StackPanel>
                 <InfoBar
                     x:Name="DiagnosticsInfoBar"
                     IsClosable="True"
@@ -160,27 +148,33 @@
                     Severity="Informational" />
             </StackPanel>
 
-            <StackPanel Grid.Row="5" Margin="0,14,0,12" VerticalAlignment="Bottom" Spacing="1">
-                <TextBlock Tag="About.CreatedBy" Opacity="0.68" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
+            <Grid Grid.Row="5" Margin="0,24,0,0" ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Spacing="1">
+                    <TextBlock Tag="About.CreatedBy" Opacity="0.68" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
+                    <Button
+                        x:Name="CreatedByButton"
+                        Padding="0"
+                        HorizontalAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="ContactButton_Click"
+                        Content="Umberto Giacobbi" />
+                </StackPanel>
                 <Button
-                    x:Name="CreatedByButton"
-                    Padding="0"
-                    HorizontalAlignment="Left"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="ContactButton_Click"
-                    Content="Umberto Giacobbi" />
-            </StackPanel>
-
-            <Button
-                x:Name="CloseButton"
-                Tag="About.Close"
-                Grid.Row="6"
-                MinHeight="44"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center"
-                Click="CloseButton_Click"
-                Content="Close" />
+                    x:Name="CloseButton"
+                    Tag="About.Close"
+                    Grid.Column="1"
+                    MinWidth="112"
+                    MinHeight="40"
+                    HorizontalAlignment="Right"
+                    HorizontalContentAlignment="Center"
+                    Click="CloseButton_Click"
+                    Content="Close" />
+            </Grid>
         </Grid>
     </Grid>
 </Window>

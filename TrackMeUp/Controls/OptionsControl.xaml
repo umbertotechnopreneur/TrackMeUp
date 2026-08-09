@@ -525,13 +525,13 @@
                             VerticalAlignment="Center"
                             Tag="Options.OpenAi.Header"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="OpenAI integration"
+                            Text="AI provider"
                             TextWrapping="Wrap" />
                         <ToggleSwitch
                             x:Name="OpenAiEnabledSwitch"
                             Grid.Column="1"
                             VerticalAlignment="Center"
-                            AutomationProperties.Name="OpenAI integration"
+                            AutomationProperties.Name="AI provider"
                             IsEnabled="{Binding CanToggle, Mode=OneWay}"
                             IsOn="{Binding Enabled, Mode=OneWay}"
                             OffContent=""
@@ -749,13 +749,26 @@
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0">
             <StackPanel Spacing="6">
-                <Button
-                    x:Name="SaveOptionsButton"
-                    Tag="Options.Save"
-                    HorizontalAlignment="Stretch"
-                    Click="SaveButton_Click"
-                    Content="Save options"
-                    Style="{StaticResource AccentButtonStyle}" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        x:Name="SaveOptionsButton"
+                        Tag="Options.Save"
+                        HorizontalAlignment="Stretch"
+                        Click="SaveButton_Click"
+                        Content="Save options"
+                        Style="{StaticResource AccentButtonStyle}" />
+                    <Button
+                        x:Name="TestConnectionButton"
+                        Grid.Column="1"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Test AI connection"
+                        Click="TestConnectionButton_Click"
+                        Content="Test connection" />
+                </Grid>
                 <TextBlock
                     x:Name="StatusText"
                     AutomationProperties.LiveSetting="Polite"

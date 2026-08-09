@@ -102,9 +102,9 @@ public sealed partial class MainWindow : Window
         AiState = new AiApplicationState(application);
         InitializeComponent();
         AiState.PropertyChanged += AiState_PropertyChanged;
-        UpdateOpenAiMenuAccessibility();
-        SystemBackdrop = new MicaBackdrop();
         _trayIcon.ExitRequested += TrayIcon_ExitRequested;
+        UpdateOpenAiMenuAccessibility();
+        SystemBackdrop = new DesktopAcrylicBackdrop();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
@@ -128,6 +128,7 @@ public sealed partial class MainWindow : Window
         OptionsControl.Initialize(application, AiState);
         OptionsControl.SettingsSaved += ApplySettings;
         OptionsControl.LayoutChanged += OptionsControl_LayoutChanged;
+        OptionsControl.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
         OperationsControl.Initialize(application, _dialogs, this);
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
@@ -365,7 +366,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Shows the shared overflow flyout from its title-bar command.</summary>
     private void TitleBarMoreButton_Click(object sender, RoutedEventArgs e)
     {
-        if (MoreButton.Flyout is Flyout flyout)
+        if (MoreButton.Flyout is MenuFlyout flyout)
         {
             flyout.ShowAt(TitleBarMoreButton);
         }
@@ -442,18 +443,10 @@ public sealed partial class MainWindow : Window
     /// <summary>Loads persisted settings into presentation-only flyout controls.</summary>
     private async void MoreMenu_Opened(object sender, object e)
     {
-        if (MoreButton.Flyout is Flyout flyout && flyout.Content is DependencyObject content)
-        {
-            UiLocalization.Apply(content, _strings);
-        }
-
+        ApplyMainMenuLabels();
         var settingsTask = _application.GetSettingsAsync(CancellationToken.None);
         var aiStateTask = AiState.LoadAsync(CancellationToken.None);
         await Task.WhenAll(settingsTask, aiStateTask);
-        ApplyOverflowCommandLabel(OperationsMenuItem, T("Main.Menu.Operations"));
-        ApplyOverflowCommandLabel(SearchMenuItem, T("Search.Title"));
-        ApplyOverflowCommandLabel(AiPricingMenuItem, T("AiPricing.MenuTitle"));
-        ApplyOverflowCommandLabel(MinimizeToTrayMenuItem, T("Main.Menu.MinimizeToTray"));
         AiPricingMenuItem.IsEnabled = false;
         var result = await settingsTask;
         if (!result.Succeeded || result.Value is null)
@@ -466,7 +459,7 @@ public sealed partial class MainWindow : Window
         _screenshotsEnabled = result.Value.ScreenshotsEnabled;
         UpdateScreenshotCaptureStatus();
         _updatingMenuState = true;
-        ScreenshotsMenuToggle.IsOn = result.Value.ScreenshotsEnabled;
+        ScreenshotsMenuToggle.IsChecked = result.Value.ScreenshotsEnabled;
         _updatingMenuState = false;
 
     }
@@ -578,18 +571,18 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Forwards the AI-toggle value to the application facade.</summary>
-    private async void OpenAiMenuToggle_Toggled(object sender, RoutedEventArgs e)
+    private async void OpenAiMenuToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (_updatingMenuState || OpenAiMenuToggle.IsOn == AiState.Enabled)
+        if (_updatingMenuState || OpenAiMenuToggle.IsChecked == AiState.Enabled)
         {
             return;
         }
 
-        var result = await AiState.SetEnabledAsync(OpenAiMenuToggle.IsOn, CancellationToken.None);
+        var result = await AiState.SetEnabledAsync(OpenAiMenuToggle.IsChecked, CancellationToken.None);
         if (!result.Succeeded)
         {
             _updatingMenuState = true;
-            OpenAiMenuToggle.IsOn = AiState.Enabled;
+            OpenAiMenuToggle.IsChecked = AiState.Enabled;
             _updatingMenuState = false;
             AiPricingMenuItem.IsEnabled = _menuSettings is not null && IsOpenAiPricingAvailable(_menuSettings);
             return;
@@ -604,14 +597,14 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Forwards the screenshot-capture toggle to the validated settings application service.</summary>
-    private async void ScreenshotsMenuToggle_Toggled(object sender, RoutedEventArgs e)
+    private async void ScreenshotsMenuToggle_Click(object sender, RoutedEventArgs e)
     {
         if (_updatingMenuState)
         {
             return;
         }
 
-        var requestedValue = ScreenshotsMenuToggle.IsOn;
+        var requestedValue = ScreenshotsMenuToggle.IsChecked;
         var result = await _application.PatchSettingsAsync(
             new SettingsPatch(new Dictionary<string, string?>
             {
@@ -627,15 +620,28 @@ public sealed partial class MainWindow : Window
         }
 
         _updatingMenuState = true;
-        ScreenshotsMenuToggle.IsOn = !requestedValue;
+        ScreenshotsMenuToggle.IsChecked = !requestedValue;
         _updatingMenuState = false;
     }
 
-    /// <summary>Localizes a compact icon command without replacing its visual content.</summary>
-    private static void ApplyOverflowCommandLabel(Button button, string label)
+    /// <summary>Localizes the logical menu groups and commands without coupling them to one AI vendor.</summary>
+    private void ApplyMainMenuLabels()
     {
-        AutomationProperties.SetName(button, label);
-        ToolTipService.SetToolTip(button, label);
+        ActivityMenu.Text = T("Main.Menu.Activity");
+        CaptureMenu.Text = T("Main.Menu.Capture");
+        SettingsMenu.Text = T("Main.Menu.Settings");
+        AiProviderMenu.Text = T("Main.Menu.AiProvider");
+        SearchMenuItem.Text = T("Search.Title");
+        ReportsMenuItem.Text = T("Reports.Title");
+        ScreenshotsMenuItem.Text = T("Screenshots.Caption");
+        ScheduleMenuItem.Text = T("Schedule.Snapshots");
+        ScreenshotsMenuToggle.Text = T("MenuToggleScreenshot");
+        OptionsMenuItem.Text = T("MenuTitleOptions");
+        OperationsMenuItem.Text = T("Main.Menu.Operations");
+        OpenAiMenuToggle.Text = T("MenuToggleOpenAi");
+        AiPricingMenuItem.Text = T("AiPricing.MenuTitle");
+        MinimizeToTrayMenuItem.Text = T("Main.Menu.MinimizeToTray");
+        AboutMenuItem.Text = T("MenuTitleAbout");
     }
 
     private static bool IsOpenAiPricingAvailable(AppSettings settings) =>
@@ -1064,6 +1070,12 @@ public sealed partial class MainWindow : Window
         {
             UpdateOpenAiMenuAccessibility();
         }
+    }
+
+    /// <summary>Shows the queued topmost connection-test dialog requested by the passive options surface.</summary>
+    private async void OptionsControl_AiConnectionTestRequested(object? sender, EventArgs e)
+    {
+        await _dialogs.ShowAiConnectionTestAsync(_application, this, RootGrid.RequestedTheme);
     }
 
     private void UpdateOpenAiMenuAccessibility()

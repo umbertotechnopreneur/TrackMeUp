@@ -225,6 +225,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "notifications.drain" => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
                 "ai.pricing.overview" => ToResponse(request, await _application.GetAiPricingOverviewAsync(cancellationToken)),
+                "ai.connection.test" => ToResponse(request, await _application.TestAiConnectionAsync(cancellationToken)),
                 "ai.models" => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
                 "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
                 "ai.disable" => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
@@ -519,6 +520,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken) => SendAsync<AiStatus>("ai.status", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => SendAsync<AiPricingOverview>("ai.pricing.overview", null, cancellationToken, ReportQueryTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken) => SendAsync<AiConnectionTestResult>("ai.connection.test", null, cancellationToken, TimeSpan.FromSeconds(35));
     /// <inheritdoc />
     public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => SendAsync<AiModelCatalogSnapshot>("ai.models", null, cancellationToken);
     /// <inheritdoc />

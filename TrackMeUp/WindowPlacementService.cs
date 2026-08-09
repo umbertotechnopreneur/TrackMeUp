@@ -1,3 +1,4 @@
+using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
@@ -21,9 +22,9 @@ internal sealed class WindowPlacementService : IDisposable
     private readonly int _logicalDefaultHeight;
     private readonly int _logicalScreenMargin;
     private readonly WindowMinimumSize _logicalMinimumSize;
+    private readonly WindowId _displayAnchorId;
     private readonly NativeWindowSubclassProc _subclassProc;
     private readonly nuint _subclassId;
-    private readonly bool _centerDefault;
     private bool _restoreAttempted;
     private bool _subclassInstalled;
     private bool _disposed;
@@ -38,7 +39,7 @@ internal sealed class WindowPlacementService : IDisposable
         int logicalDefaultWidth,
         int logicalDefaultHeight,
         int logicalScreenMargin,
-        bool centerDefault)
+        WindowId? displayAnchorId = null)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _window = window ?? throw new ArgumentNullException(nameof(window));
@@ -49,9 +50,9 @@ internal sealed class WindowPlacementService : IDisposable
         _logicalDefaultHeight = logicalDefaultHeight > 0 ? logicalDefaultHeight : throw new ArgumentOutOfRangeException(nameof(logicalDefaultHeight));
         _logicalScreenMargin = logicalScreenMargin >= 0 ? logicalScreenMargin : throw new ArgumentOutOfRangeException(nameof(logicalScreenMargin));
         _logicalMinimumSize = WindowStateService.GetMinimumSize(_windowKey);
+        _displayAnchorId = displayAnchorId ?? _appWindow.Id;
         _subclassProc = WindowSubclassProc;
         _subclassId = (nuint)Interlocked.Increment(ref s_nextSubclassId);
-        _centerDefault = centerDefault;
         InstallMinimumSizeSubclass();
     }
 
@@ -61,7 +62,7 @@ internal sealed class WindowPlacementService : IDisposable
     {
         ArgumentNullException.ThrowIfNull(root);
         var scale = ResolveScale(root);
-        var area = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var area = OpeningWorkArea();
         var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
         var availableWidth = Math.Max(1, area.Width - (margin * 2));
         var availableHeight = Math.Max(1, area.Height - (margin * 2));
@@ -69,16 +70,10 @@ internal sealed class WindowPlacementService : IDisposable
         var width = Math.Min(availableWidth, Math.Max(minimumSize.Width, (int)Math.Ceiling(_logicalDefaultWidth * scale)));
         var height = Math.Min(availableHeight, Math.Max(minimumSize.Height, (int)Math.Ceiling(_logicalDefaultHeight * scale)));
         _appWindow.Resize(new SizeInt32(width, height));
-        if (_centerDefault)
-        {
-            CenterInWorkArea(area);
-            return;
-        }
-
-        KeepCurrentBoundsInWorkArea(root);
+        CenterInWorkArea(area);
     }
 
-    internal async Task RestoreOrKeepCurrentAsync(FrameworkElement root, CancellationToken cancellationToken)
+    internal async Task RestoreAndCenterAsync(FrameworkElement root, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(root);
         if (_restoreAttempted)
@@ -96,7 +91,9 @@ internal sealed class WindowPlacementService : IDisposable
             throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
         }
 
-        KeepCurrentBoundsInWorkArea(root);
+        var area = OpeningWorkArea();
+        KeepCurrentBoundsInWorkArea(root, area);
+        CenterInWorkArea(area);
     }
 
     internal async Task SaveAsync(CancellationToken cancellationToken)
@@ -114,8 +111,13 @@ internal sealed class WindowPlacementService : IDisposable
     internal void KeepCurrentBoundsInWorkArea(FrameworkElement root)
     {
         ArgumentNullException.ThrowIfNull(root);
-        var scale = ResolveScale(root);
         var area = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        KeepCurrentBoundsInWorkArea(root, area);
+    }
+
+    private void KeepCurrentBoundsInWorkArea(FrameworkElement root, RectInt32 area)
+    {
+        var scale = ResolveScale(root);
         var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
         var availableWidth = Math.Max(1, area.Width - (margin * 2));
         var availableHeight = Math.Max(1, area.Height - (margin * 2));
@@ -178,6 +180,9 @@ internal sealed class WindowPlacementService : IDisposable
             workArea.X + Math.Max(0, (workArea.Width - _appWindow.Size.Width) / 2),
             workArea.Y + Math.Max(0, (workArea.Height - _appWindow.Size.Height) / 2)));
     }
+
+    private RectInt32 OpeningWorkArea() =>
+        DisplayArea.GetFromWindowId(_displayAnchorId, DisplayAreaFallback.Primary).WorkArea;
 
     private void InstallMinimumSizeSubclass()
     {

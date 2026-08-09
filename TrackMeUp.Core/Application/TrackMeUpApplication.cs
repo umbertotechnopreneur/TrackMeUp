@@ -935,6 +935,60 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public async Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var settings = _store.LoadSettings();
+        if (!TryValidateOpenAiConfiguration(settings, requireImageInput: false, out var validatedSettings, out var validationIssue))
+        {
+            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.configuration.invalid", "AiConnectionTestConfigurationInvalid", validationIssue!);
+        }
+
+        var apiKey = _store.LoadApiKey(validatedSettings.AiApiKeyName);
+        if (!AiApiKeyPolicy.LooksPlausible(validatedSettings.AiProvider, validatedSettings.AiApiKeyName, apiKey))
+        {
+            return OperationResult<AiConnectionTestResult>.Failure(
+                "ai.connection.key.missing",
+                "AiConnectionTestKeyMissing",
+                new ValidationIssue("ai.key_variable", "required", "AiConnectionTestKeyMissing"));
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            // This intentionally uses a tiny text-only request: no screen or device data leaves this PC during a connection check.
+            var providerResult = await AIDecoderFactory.Create(validatedSettings).DecodeAsync(
+                AiConnectionTestProtocol.Prompt,
+                Array.Empty<string>(),
+                validatedSettings,
+                apiKey!,
+                Guid.NewGuid().ToString("N"),
+                cancellationToken).ConfigureAwait(false);
+            stopwatch.Stop();
+            return OperationResult<AiConnectionTestResult>.Success(
+                "ai.connection.succeeded",
+                "AiConnectionTestSucceeded",
+                new AiConnectionTestResult(validatedSettings.AiProvider, validatedSettings.Model, providerResult.Text, stopwatch.ElapsedMilliseconds));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (AiProviderRequestException exception)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning("AI connection test failed. Provider={Provider} Model={Model} FailureCategory={FailureCategory} HttpStatus={HttpStatus}", validatedSettings.AiProvider, validatedSettings.Model, exception.Failure.FailureCode, exception.Failure.HttpStatusCode);
+            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.failed", "AiConnectionTestFailed");
+        }
+        catch (Exception exception)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning("AI connection test failed unexpectedly. Provider={Provider} Model={Model} ExceptionType={ExceptionType}", validatedSettings.AiProvider, validatedSettings.Model, exception.GetType().Name);
+            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.failed", "AiConnectionTestFailed");
+        }
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

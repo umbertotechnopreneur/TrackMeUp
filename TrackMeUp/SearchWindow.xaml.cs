@@ -49,7 +49,7 @@ public sealed partial class SearchWindow : Window
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += SearchWindow_Closed;
@@ -70,7 +70,7 @@ public sealed partial class SearchWindow : Window
         }
 
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateTitleBarInsets();
         FocusQuery();
     }

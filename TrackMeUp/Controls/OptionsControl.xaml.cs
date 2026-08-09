@@ -36,6 +36,9 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Occurs after visible option content changes and the host may need to re-measure its window.</summary>
     public event EventHandler? LayoutChanged;
 
+    /// <summary>Occurs when the user requests a real, bounded test of the saved AI connection.</summary>
+    public event EventHandler? AiConnectionTestRequested;
+
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
     {
@@ -334,6 +337,9 @@ public sealed partial class OptionsControl : UserControl
             StatusText.Text = T("Options.SaveError");
         }
     }
+
+    /// <summary>Forwards the explicit connection-test intent to the owning Mica dialog coordinator.</summary>
+    private void TestConnectionButton_Click(object sender, RoutedEventArgs e) => AiConnectionTestRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Applies provider defaults as presentation convenience only.</summary>
     private void AiProviderBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

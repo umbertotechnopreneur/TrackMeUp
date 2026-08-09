@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="TrackMeUp">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="BaseAlt" />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
     <Grid
         x:Name="RootGrid"

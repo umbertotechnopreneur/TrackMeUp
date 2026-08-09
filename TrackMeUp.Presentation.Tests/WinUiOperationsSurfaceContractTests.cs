@@ -113,13 +113,15 @@ public sealed class WinUiOperationsSurfaceContractTests
         }
     }
 
-    /// <summary>Guards the Mica, safe-cancel and cross-process notification contracts.</summary>
+    /// <summary>Guards the Acrylic, safe-cancel and cross-process notification contracts.</summary>
     [Fact]
-    public void DialogEngine_IsMicaQueuedAccessibleAndFacadeBacked()
+    public void DialogEngine_IsAcrylicQueuedAccessibleAndFacadeBacked()
     {
         var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
         var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
         var dialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml"));
+        var connectionDialog = File.ReadAllText(RepositoryFile("TrackMeUp", "AiConnectionTestDialogWindow.xaml.cs"));
+        var connectionDialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "AiConnectionTestDialogWindow.xaml"));
         var main = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var app = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
@@ -134,7 +136,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
         Assert.DoesNotContain("SavePlacementAsync", service, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element =>
-            element.Name.LocalName == "MicaBackdrop" && element.Attribute("Kind")?.Value == "BaseAlt");
+            element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(dialogXaml.Descendants(), element =>
             HasName(element, "RootGrid") && element.Attribute("Background")?.Value == "Transparent");
         Assert.DoesNotContain(dialogXaml.Descendants(), element =>
@@ -156,7 +158,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("HwndTopMost", dialog, StringComparison.Ordinal);
         Assert.Contains("SetWindowPos(_windowHandle, HwndTopMost", dialog, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
-        Assert.Contains("await _placement.RestoreOrKeepCurrentAsync(RootGrid, CancellationToken.None);", dialog, StringComparison.Ordinal);
+        Assert.Contains("await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);", dialog, StringComparison.Ordinal);
         Assert.Contains("Closed += (_, _) => _completion.TrySetResult(_result);", dialog, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName", dialog, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element =>
@@ -183,6 +185,12 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("Enabled: true, HasKey: false", main, StringComparison.Ordinal);
         Assert.Contains("private readonly MicaDialogService _dialogs = new();", app, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ConfirmAsync(", schedule, StringComparison.Ordinal);
+        Assert.Contains(connectionDialogXaml.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        Assert.Contains(connectionDialogXaml.Descendants(), element => HasName(element, "TerminalScrollViewer"));
+        Assert.Contains(connectionDialogXaml.Descendants(), element => HasName(element, "TerminalText") && element.Attribute("FontFamily")?.Value == "Cascadia Mono");
+        Assert.Contains("AiConnectionTestProtocol.Prompt", connectionDialog, StringComparison.Ordinal);
+        Assert.Contains("AppendTerminalAsync", connectionDialog, StringComparison.Ordinal);
+        Assert.Contains("RestoreAndCenterAsync", connectionDialog, StringComparison.Ordinal);
     }
 
     private static bool HasName(XElement element, string value)

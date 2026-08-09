@@ -20,6 +20,12 @@
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <Style TargetType="ScrollViewer">
+                <Setter Property="local:ScrollBarRevealBehavior.IsEnabled" Value="True" />
+            </Style>
+            <Style TargetType="ScrollBar">
+                <Setter Property="Opacity" Value="0" />
+            </Style>
             <!-- Other app resources here -->
         </ResourceDictionary>
     </Application.Resources>

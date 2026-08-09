@@ -6,7 +6,7 @@
     xmlns:controls="using:TrackMeUp.Controls"
     Title="Snapshot schedule">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="Base" />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">

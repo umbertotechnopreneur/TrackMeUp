@@ -10,11 +10,11 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class ReportsSurfaceContractTests
 {
     [Fact]
-    public void ReportsWindow_ProvidesMicaHeaderFiltersAndWebView()
+    public void ReportsWindow_ProvidesAcrylicHeaderFiltersAndWebView()
     {
         var reports = XDocument.Load(RepositoryFile("TrackMeUp", "ReportsWindow.xaml"));
 
-        Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "WebView2");
         Assert.Contains(reports.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarDragRegion"));
         Assert.Contains(reports.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "RefreshReportButton"));

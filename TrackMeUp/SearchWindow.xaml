@@ -6,7 +6,7 @@
     xmlns:presentation="using:TrackMeUp.Presentation"
     Title="Search captured moments">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="BaseAlt" />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
