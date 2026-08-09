@@ -41,6 +41,7 @@ public sealed partial class MainWindow : Window
     private readonly AppWindow _appWindow;
     private readonly MainWindowLayoutState _layoutState = new();
     private readonly MicaDialogService _dialogs;
+    private readonly TrayIconService _trayIcon;
     private readonly TaskCompletionSource _rootLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RectInt32 _currentWorkArea;
     private LocalizationService _strings = new("system");
@@ -89,10 +90,11 @@ public sealed partial class MainWindow : Window
     #region Initialization
 
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
-    internal MainWindow(ITrackMeUpApplication application, LaunchOptions options, MicaDialogService dialogs)
+    internal MainWindow(ITrackMeUpApplication application, LaunchOptions options, MicaDialogService dialogs, TrayIconService trayIcon)
     {
         _application = application;
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
+        _trayIcon = trayIcon ?? throw new ArgumentNullException(nameof(trayIcon));
         _viewModel = new MainViewModel(application);
         AiState = new AiApplicationState(application);
         InitializeComponent();
@@ -447,6 +449,7 @@ public sealed partial class MainWindow : Window
         ApplyOverflowCommandLabel(OperationsMenuItem, T("Main.Menu.Operations"));
         ApplyOverflowCommandLabel(SearchMenuItem, T("Search.Title"));
         ApplyOverflowCommandLabel(AiPricingMenuItem, T("AiPricing.MenuTitle"));
+        ApplyOverflowCommandLabel(MinimizeToTrayMenuItem, T("Main.Menu.MinimizeToTray"));
         AiPricingMenuItem.IsEnabled = false;
         var result = await settingsTask;
         if (!result.Succeeded || result.Value is null)
@@ -507,6 +510,28 @@ public sealed partial class MainWindow : Window
     {
         MoreButton.Flyout.Hide();
         ShowPanel(OperationsPanel, MainWindowSurface.Operations);
+    }
+
+    /// <summary>Hides the player from the taskbar while retaining its notification-area activation icon.</summary>
+    private async void MinimizeToTrayMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        try
+        {
+            HideToNotificationArea();
+        }
+        catch (Exception)
+        {
+            await _dialogs.ShowInformativeAsync(
+                _application,
+                this,
+                MicaDialogRequest.Informative(
+                    T("Tray.UnavailableTitle"),
+                    T("Tray.UnavailableMessage"),
+                    MicaDialogSeverity.Error,
+                    T("Dialog.Ok")),
+                RootGrid.RequestedTheme);
+        }
     }
 
     /// <summary>Shows simplified OpenAI pricing and local estimated usage costs.</summary>
@@ -1081,6 +1106,17 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
+    /// <summary>Starts the Windows-sign-in instance in the notification area without first creating a taskbar button.</summary>
+    internal void StartMinimizedToNotificationArea() => HideToNotificationArea();
+
+    private void HideToNotificationArea()
+    {
+        _trayIcon.HideToNotificationArea(
+            WinRT.Interop.WindowNative.GetWindowHandle(this),
+            System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "TrackMeUpIcon.ico"),
+            "TrackMeUp");
+    }
+
     /// <summary>Starts the player entrance fade.</summary>
     private void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
@@ -1232,6 +1268,7 @@ public sealed partial class MainWindow : Window
         _windowResizeAnimationTimer.Stop();
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
+        _trayIcon.Dispose();
 
         if (_scheduleWindow is not null)
         {

@@ -83,14 +83,31 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _reportsOnly = false;
         var application = StartOrConnectRuntime();
-        _window = new MainWindow(application, options, _dialogs);
+        var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
+        _window = new MainWindow(application, options, _dialogs, trayIcon);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.ReportsRequested += MainWindow_ReportsRequested;
         _window.SearchRequested += MainWindow_SearchRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.Closed += MainWindow_Closed;
-        _window.Activate();
+        if (options.StartWithWindows)
+        {
+            try
+            {
+                _window.StartMinimizedToNotificationArea();
+            }
+            catch (Exception exception)
+            {
+                // If Explorer rejects the tray icon at sign-in, keep the application reachable instead of leaving a hidden window without an activation path.
+                _logger.LogError(exception, "Windows-sign-in startup could not initialize the notification-area icon.");
+                _window.Activate();
+            }
+        }
+        else
+        {
+            _window.Activate();
+        }
 
         var settings = application.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult().Value;
         if (settings is null)

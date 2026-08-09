@@ -575,6 +575,27 @@
                                                           Toggled="ScreenshotsMenuToggle_Toggled"/>
                                         </Grid>
                                     </Border>
+                                    <Button
+                                        x:Name="MinimizeToTrayMenuItem"
+                                        AutomationProperties.Name="Minimize to notification area"
+                                        Click="MinimizeToTrayMenuItem_Click"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FF85A8DB"
+                                                          Glyph="&#xE921;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="Main.Menu.MinimizeToTray"
+                                                       VerticalAlignment="Center"
+                                                       Text="Minimize to notification area"/>
+                                        </Grid>
+                                    </Button>
                                     <Border Height="1"
                                             Margin="0,5"
                                             Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>

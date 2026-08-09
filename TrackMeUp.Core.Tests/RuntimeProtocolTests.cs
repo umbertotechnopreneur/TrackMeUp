@@ -43,6 +43,15 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public void LaunchOptions_WindowsStartupSwitchRequestsNotificationAreaLaunch()
+    {
+        var options = LaunchOptions.Parse(["--start-with-windows"]);
+
+        Assert.True(options.StartWithWindows);
+        Assert.Empty(options.RemainingArguments);
+    }
+
+    [Fact]
     public void LaunchOptions_ReportsPreservesThemeOverrideForTheNativeShell()
     {
         var options = LaunchOptions.Parse(["reports", "--theme", "dark"]);

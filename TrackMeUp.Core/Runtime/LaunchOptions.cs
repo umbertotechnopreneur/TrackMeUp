@@ -26,6 +26,7 @@ public sealed record LaunchOptions(
     string? Theme,
     string? Position,
     bool SafeMode,
+    bool StartWithWindows,
     bool NoSplash,
     IReadOnlyList<string> RemainingArguments)
 {
@@ -40,6 +41,7 @@ public sealed record LaunchOptions(
         string? theme = null;
         string? position = null;
         var safeMode = false;
+        var startWithWindows = false;
         var noSplash = false;
         var remaining = new List<string>();
         for (var index = 0; index < arguments.Count; index++)
@@ -58,6 +60,7 @@ public sealed record LaunchOptions(
                 case "--start-tracking": startTracking = true; break;
                 case "--paused": paused = true; break;
                 case "--safe-mode": safeMode = true; break;
+                case "--start-with-windows": startWithWindows = true; break;
                 case "--no-splash": noSplash = true; break;
                 case "--language" when index + 1 < arguments.Count: language = arguments[++index]; break;
                 case "--theme" when index + 1 < arguments.Count: theme = arguments[++index]; break;
@@ -72,6 +75,6 @@ public sealed record LaunchOptions(
             mode = LaunchMode.Cli;
         }
 
-        return new LaunchOptions(mode, startTracking, paused, language, theme, position, safeMode, noSplash, remaining);
+        return new LaunchOptions(mode, startTracking, paused, language, theme, position, safeMode, startWithWindows, noSplash, remaining);
     }
 }
