@@ -19,7 +19,7 @@ The `source/` images preserve the selected generated artwork. `render_assets.py`
 
 ## GitHub README integration
 
-After owner approval, the root README can use automatic light/dark selection:
+The root README uses automatic light/dark selection:
 
 ```html
 <picture>
@@ -29,7 +29,7 @@ After owner approval, the root README can use automatic light/dark selection:
 </picture>
 ```
 
-The repository root README is intentionally not changed by this asset pass.
+Keep both referenced README banners in place when reorganizing or regenerating the branding assets.
 
 ## Rebuild
 

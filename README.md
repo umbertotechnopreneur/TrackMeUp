@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="TrackMeUp/Assets/TrackMeUpSquare150Logo.png" alt="TrackMeUp app icon" width="150" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/branding/recall-timeline/output/trackmeup-recall-timeline-banner-theme-dark-readme-2400x800.png" />
+    <source media="(prefers-color-scheme: light)" srcset="design/branding/recall-timeline/output/trackmeup-recall-timeline-banner-theme-light-readme-2400x800.png" />
+    <img src="design/branding/recall-timeline/output/trackmeup-recall-timeline-banner-theme-light-readme-2400x800.png" alt="TrackMeUp retrieves a page from an earlier moment in a visual workday timeline" width="100%" />
+  </picture>
 </p>
 
 # TrackMeUp
