@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
+using Microsoft.UI.Xaml.Input;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
 using TrackMeUp.Presentation;
@@ -519,6 +520,11 @@ public sealed partial class MainWindow : Window
     private void OptionsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
+        ShowOptionsPanel();
+    }
+
+    private void ShowOptionsPanel()
+    {
         ShowPanel(OptionsPanel, MainWindowSurface.Options);
     }
 
@@ -545,6 +551,29 @@ public sealed partial class MainWindow : Window
     private void TitleBarSearchButton_Click(object sender, RoutedEventArgs e) => RequestSearch();
 
     private void RequestSearch() => SearchRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Routes the small set of primary window shortcuts to the same passive commands as the menu.</summary>
+    private void MainKeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        switch (sender.Key)
+        {
+            case Windows.System.VirtualKey.P:
+                RequestSearch();
+                break;
+            case Windows.System.VirtualKey.R:
+                RequestReports();
+                break;
+            case Windows.System.VirtualKey.G:
+                RequestScreenshotGallery();
+                break;
+            case Windows.System.VirtualKey.O:
+                ShowOptionsPanel();
+                break;
+        }
+    }
+
+    private void RequestScreenshotGallery() => ScreenshotGalleryRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Forwards gallery-window activation to the application composition root.</summary>
     private void ScreenshotsMenuItem_Click(object sender, RoutedEventArgs e)

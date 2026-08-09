@@ -153,6 +153,16 @@ public sealed record SearchRequest
     public int? Limit { get; init; }
 }
 
+/// <summary>Describes a prefix request against the separate local suggestion index.</summary>
+public sealed record SearchSuggestionRequest
+{
+    /// <summary>Gets the partial text entered by the user.</summary>
+    public string Text { get; init; } = string.Empty;
+
+    /// <summary>Gets the maximum number of suggestions to return.</summary>
+    public int Limit { get; init; } = 8;
+}
+
 /// <summary>
 /// Represents one ranked local-search match.
 /// </summary>

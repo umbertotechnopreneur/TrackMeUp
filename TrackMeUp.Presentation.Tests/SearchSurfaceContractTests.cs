@@ -23,7 +23,10 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("presenter.IsAlwaysOnTop = true;", windowSource, StringComparison.Ordinal);
         Assert.Contains("public const int MaximumResults = 20;", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("Kinds = ImmutableHashSet.Create(StringComparer.Ordinal, \"screenshot\")", viewModelSource, StringComparison.Ordinal);
-        Assert.Contains("IncludeTextContent = false", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("IncludeTextContent = true", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("MinimumQueryLength = 3", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("SearchDebounce", windowSource, StringComparison.Ordinal);
+        Assert.Contains("ItemsStackPanel", window.ToString(), StringComparison.Ordinal);
         Assert.Contains("Limit = MaximumResults", viewModelSource, StringComparison.Ordinal);
     }
 

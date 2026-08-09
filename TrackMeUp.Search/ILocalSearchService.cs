@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace TrackMeUp.Search;
 
 /// <summary>
@@ -33,4 +35,11 @@ public interface ILocalSearchService : IAsyncDisposable
     /// <param name="cancellationToken">A token observed before the synchronous Lucene read begins.</param>
     /// <returns>The matching page and total count.</returns>
     Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns prefix suggestions from the separate, incrementally maintained suggestion index.
+    /// </summary>
+    /// <param name="request">The partial query and result limit.</param>
+    /// <param name="cancellationToken">A token observed before the synchronous Lucene read begins.</param>
+    Task<ImmutableArray<string>> SuggestAsync(SearchSuggestionRequest request, CancellationToken cancellationToken = default);
 }

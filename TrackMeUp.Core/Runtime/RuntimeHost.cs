@@ -203,6 +203,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "session.last" => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
+                "search.suggest.v1" => await DispatchSearchSuggestionsAsync(request, cancellationToken),
                 "search.rebuild.v1" => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
                 "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
                 "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
@@ -285,6 +286,14 @@ public sealed class RuntimeHost : IAsyncDisposable
         return searchRequest is null
             ? Failure(request, "search.query.invalid", "SearchQueryInvalid")
             : ToResponse(request, await _application.SearchAsync(searchRequest, cancellationToken));
+    }
+
+    private async Task<RuntimeResponseEnvelope> DispatchSearchSuggestionsAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var suggestionRequest = Read<SearchSuggestionRequest>(request.Payload);
+        return suggestionRequest is null
+            ? Failure(request, "search.suggestions.invalid", "SearchQueryInvalid")
+            : ToResponse(request, await _application.GetSearchSuggestionsAsync(suggestionRequest, cancellationToken));
     }
 
     private async Task<RuntimeResponseEnvelope> DispatchScreenshotCaptureAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
@@ -467,6 +476,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
         SendAsync<SearchResponse>("search.query.v1", request, cancellationToken, SearchTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<IReadOnlyList<string>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) =>
+        SendAsync<IReadOnlyList<string>>("search.suggest.v1", request, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) =>
         SendAsync<int>("search.rebuild.v1", null, cancellationToken, SearchTimeout);

@@ -7,6 +7,40 @@ namespace TrackMeUp.Search.Tests;
 public sealed class LocalSearchServiceTests
 {
     [Fact]
+    public async Task SuggestAsync_UsesSeparateInfixIndexForThreeCharacterQueries()
+    {
+        await using var harness = new SearchHarness();
+        await harness.Service.RebuildAsync(
+        [
+            CreateDocument("suggestion-one") with
+            {
+                Application = "Visual Studio Code",
+                WindowTitle = "SearchWindow.xaml",
+                OcrRawText = "Planning the next release"
+            },
+            CreateDocument("suggestion-two") with
+            {
+                Application = "Microsoft Teams",
+                WindowTitle = "Release planning"
+            }
+        ]);
+
+        var suggestions = await harness.Service.SuggestAsync(new SearchSuggestionRequest
+        {
+            Text = "vis",
+            Limit = 8
+        });
+
+        Assert.Contains(suggestions, suggestion =>
+            string.Equals(suggestion, "Visual Studio Code", StringComparison.OrdinalIgnoreCase));
+        await Assert.ThrowsAsync<ArgumentException>(() => harness.Service.SuggestAsync(new SearchSuggestionRequest
+        {
+            Text = "vi",
+            Limit = 8
+        }));
+    }
+
+    [Fact]
     public async Task SearchAsync_SearchesEveryRawFieldWithoutAiDescription()
     {
         await using var harness = new SearchHarness();

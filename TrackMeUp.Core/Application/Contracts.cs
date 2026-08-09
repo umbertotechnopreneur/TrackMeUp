@@ -358,6 +358,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Searches every locally available activity, screenshot, OCR, and AI text field.</summary>
     Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Returns type-ahead suggestions from the separate local suggestion index.</summary>
+    Task<OperationResult<IReadOnlyList<string>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken);
+
     /// <summary>Rebuilds the mandatory local search index from durable source data.</summary>
     Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken);
 

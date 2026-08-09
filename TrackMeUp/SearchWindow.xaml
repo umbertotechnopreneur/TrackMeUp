@@ -64,6 +64,7 @@
                     x:Name="QueryBox"
                     Tag="Search.Placeholder"
                     AutomationProperties.Name="Search captured moments"
+                    GotFocus="QueryBox_GotFocus"
                     PlaceholderText="Search captured moments"
                     QuerySubmitted="QueryBox_QuerySubmitted"
                     TextChanged="QueryBox_TextChanged">
@@ -108,6 +109,11 @@
                     ItemsSource="{Binding Results, Mode=OneWay}"
                     SelectionMode="None"
                     Visibility="Collapsed">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsStackPanel />
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -118,7 +124,7 @@
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="presentation:ScreenshotSearchResult">
                             <Border
-                                MinHeight="92"
+                                MinHeight="124"
                                 Padding="8"
                                 Background="{ThemeResource ControlFillColorSecondaryBrush}"
                                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
@@ -126,13 +132,13 @@
                                 CornerRadius="6">
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="136" />
+                                        <ColumnDefinition Width="176" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Border
                                         Width="136"
-                                        Height="76"
+                                        Height="106"
                                         Background="{ThemeResource ControlFillColorTertiaryBrush}"
                                         CornerRadius="5">
                                         <Grid>
@@ -160,6 +166,16 @@
                                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                             Style="{StaticResource CaptionTextBlockStyle}"
                                             Text="{x:Bind Application, Mode=OneTime}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind WindowTitle, Mode=OneTime}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            MaxLines="2"
+                                            Text="{x:Bind TextSnippet, Mode=OneTime}"
+                                            TextWrapping="WrapWholeWords"
                                             TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <FontIcon

@@ -6,6 +6,12 @@
     xmlns:controls="using:TrackMeUp.Controls"
     Title="TrackMeUp">
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="P" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
+            <KeyboardAccelerator Key="R" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
+            <KeyboardAccelerator Key="G" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
+            <KeyboardAccelerator Key="O" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
+        </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
@@ -282,17 +288,32 @@
                                     <MenuFlyoutSubItem.Icon>
                                         <FontIcon Glyph="&#xE81C;" />
                                     </MenuFlyoutSubItem.Icon>
-                                    <MenuFlyoutItem x:Name="SearchMenuItem" Tag="Search.Title" Text="Search captured moments" Click="SearchMenuItem_Click">
+                                    <MenuFlyoutItem
+                                        x:Name="SearchMenuItem"
+                                        Tag="Search.Title"
+                                        Text="Search captured moments"
+                                        KeyboardAcceleratorTextOverride="Ctrl+Shift+P"
+                                        Click="SearchMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FFDB8D72" Glyph="&#xE721;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
-                                    <MenuFlyoutItem x:Name="ReportsMenuItem" Tag="Reports.Title" Text="Reports" Click="ReportsMenuItem_Click">
+                                    <MenuFlyoutItem
+                                        x:Name="ReportsMenuItem"
+                                        Tag="Reports.Title"
+                                        Text="Reports"
+                                        KeyboardAcceleratorTextOverride="Ctrl+Shift+R"
+                                        Click="ReportsMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
-                                    <MenuFlyoutItem x:Name="ScreenshotsMenuItem" Tag="Screenshots.Caption" Text="Captured moments" Click="ScreenshotsMenuItem_Click">
+                                    <MenuFlyoutItem
+                                        x:Name="ScreenshotsMenuItem"
+                                        Tag="Screenshots.Caption"
+                                        Text="Captured moments"
+                                        KeyboardAcceleratorTextOverride="Ctrl+Shift+G"
+                                        Click="ScreenshotsMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FF71CBB7" Glyph="&#xE722;" />
                                         </MenuFlyoutItem.Icon>
@@ -323,7 +344,12 @@
                                     <MenuFlyoutSubItem.Icon>
                                         <FontIcon Glyph="&#xE713;" />
                                     </MenuFlyoutSubItem.Icon>
-                                    <MenuFlyoutItem x:Name="OptionsMenuItem" Tag="MenuTitleOptions" Text="App options" Click="OptionsMenuItem_Click">
+                                    <MenuFlyoutItem
+                                        x:Name="OptionsMenuItem"
+                                        Tag="MenuTitleOptions"
+                                        Text="App options"
+                                        KeyboardAcceleratorTextOverride="Ctrl+Shift+O"
+                                        Click="OptionsMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FFE5B06A" Glyph="&#xE713;" />
                                         </MenuFlyoutItem.Icon>

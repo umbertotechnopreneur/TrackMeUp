@@ -4,6 +4,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
@@ -17,6 +18,7 @@ public sealed partial class SearchWindow : Window
     private const int LogicalWindowWidth = 620;
     private const int LogicalWindowHeight = 620;
     private const int LogicalScreenMargin = 22;
+    private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(700);
     private readonly SearchViewModel _viewModel;
     private readonly LocalizationService _strings;
     private readonly CultureInfo _culture;
@@ -24,6 +26,7 @@ public sealed partial class SearchWindow : Window
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private CancellationTokenSource? _queryCancellation;
+    private CancellationTokenSource? _debounceCancellation;
     private XamlRoot? _xamlRoot;
 
     /// <summary>Creates the floating local-search window with an explicit theme and language.</summary>
@@ -59,7 +62,19 @@ public sealed partial class SearchWindow : Window
     public event EventHandler<ScreenshotPreviewRequestedEventArgs>? ScreenshotRequested;
 
     /// <summary>Moves keyboard focus to the query field when an existing window is reactivated.</summary>
-    public void FocusQuery() => QueryBox.Focus(FocusState.Programmatic);
+    public void FocusQuery()
+    {
+        QueryBox.Focus(FocusState.Programmatic);
+        SelectAllQueryText();
+    }
+
+    /// <summary>Activates the existing search window centered on the monitor containing the pointer.</summary>
+    public void ActivateAtCursor()
+    {
+        _placement.CenterOnCursorDisplay(RootGrid);
+        Activate();
+        FocusQuery();
+    }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
@@ -70,22 +85,73 @@ public sealed partial class SearchWindow : Window
         }
 
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token, centerOnCursorDisplay: true);
         UpdateTitleBarInsets();
         FocusQuery();
     }
 
-    private void QueryBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) =>
+    private void QueryBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        if (args.QueryText.Trim().Length < SearchViewModel.MinimumQueryLength)
+        {
+            return;
+        }
+
+        CancelDebounce();
         _ = ExecuteSearchAsync(args.QueryText);
+    }
 
     private void QueryBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput
-            && string.IsNullOrWhiteSpace(sender.Text))
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            return;
+        }
+
+        CancelDebounce();
+        QueryBox.ItemsSource = null;
+        var query = sender.Text.Trim();
+        if (query.Length < SearchViewModel.MinimumQueryLength)
         {
             _queryCancellation?.Cancel();
             _viewModel.Clear();
+            SearchProgressRing.IsActive = false;
             UpdateResultState(hasExecutedQuery: false);
+            return;
+        }
+
+        _debounceCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        var cancellationToken = _debounceCancellation.Token;
+        _ = DebounceSearchAsync(query, cancellationToken);
+        _ = UpdateSuggestionsAsync(query, cancellationToken);
+    }
+
+    private async Task DebounceSearchAsync(string query, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounce, cancellationToken);
+            await ExecuteSearchAsync(query);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A newer keystroke owns the next debounce window.
+        }
+    }
+
+    private async Task UpdateSuggestionsAsync(string query, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _viewModel.SuggestAsync(query, cancellationToken);
+            if (!cancellationToken.IsCancellationRequested && result.Succeeded)
+            {
+                QueryBox.ItemsSource = result.Value?.ToArray() ?? Array.Empty<string>();
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A newer keystroke owns the next suggestion request.
         }
     }
 
@@ -97,7 +163,6 @@ public sealed partial class SearchWindow : Window
         var cancellationToken = _queryCancellation.Token;
         SearchInfoBar.IsOpen = false;
         SearchProgressRing.IsActive = true;
-        QueryBox.IsEnabled = false;
         try
         {
             var result = await _viewModel.SearchAsync(query, _culture, cancellationToken);
@@ -126,7 +191,6 @@ public sealed partial class SearchWindow : Window
             if (!cancellationToken.IsCancellationRequested)
             {
                 SearchProgressRing.IsActive = false;
-                QueryBox.IsEnabled = true;
                 FocusQuery();
             }
         }
@@ -153,6 +217,43 @@ public sealed partial class SearchWindow : Window
                 this,
                 new ScreenshotPreviewRequestedEventArgs(result.ScreenshotPath, result.CapturedAt));
         }
+    }
+
+    private void QueryBox_GotFocus(object sender, RoutedEventArgs e) => SelectAllQueryText();
+
+    private void SelectAllQueryText()
+    {
+        if (FindDescendant<TextBox>(QueryBox) is { } textBox)
+        {
+            textBox.SelectAll();
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindDescendant<T>(child) is { } descendant)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
+    }
+
+    private void CancelDebounce()
+    {
+        _debounceCancellation?.Cancel();
+        _debounceCancellation?.Dispose();
+        _debounceCancellation = null;
     }
 
     private void ConfigureWindowBehavior()
@@ -201,6 +302,7 @@ public sealed partial class SearchWindow : Window
         await _placement.SaveAsync(CancellationToken.None);
         _placement.Dispose();
         _lifetimeCancellation.Cancel();
+        CancelDebounce();
         _queryCancellation?.Cancel();
         _queryCancellation?.Dispose();
         _lifetimeCancellation.Dispose();

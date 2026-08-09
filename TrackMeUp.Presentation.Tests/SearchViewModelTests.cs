@@ -27,7 +27,7 @@ public sealed class SearchViewModelTests
         var request = Assert.IsType<SearchRequest>(proxy.Request);
         Assert.Equal(SearchViewModel.MaximumResults, request.Limit);
         Assert.Equal(0, request.Offset);
-        Assert.False(request.IncludeTextContent);
+        Assert.True(request.IncludeTextContent);
         Assert.Equal(["screenshot"], request.Kinds.ToArray());
         var item = Assert.Single(viewModel.Results);
         Assert.Equal(@"C:\captures\meeting.png", item.ScreenshotPath);

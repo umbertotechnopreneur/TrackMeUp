@@ -12,6 +12,8 @@ public sealed record ScreenshotSearchResult(
     DateTimeOffset CapturedAt,
     string CapturedAtDisplay,
     string Application,
+    string WindowTitle,
+    string TextSnippet,
     float Score);
 
 /// <summary>Executes bounded screenshot queries through the shared application facade.</summary>
@@ -24,6 +26,12 @@ public sealed class SearchViewModel : ViewModelBase
 
     /// <summary>Gets the maximum number of screenshot rows rendered by the floating window.</summary>
     public const int MaximumResults = 20;
+
+    /// <summary>Gets the minimum query length used by the live search surface.</summary>
+    public const int MinimumQueryLength = 3;
+
+    /// <summary>Gets the maximum number of type-ahead suggestions shown by the search surface.</summary>
+    public const int MaximumSuggestions = 8;
 
     /// <summary>Creates a local-search presentation model.</summary>
     public SearchViewModel(ITrackMeUpApplication application) =>
@@ -73,15 +81,25 @@ public sealed class SearchViewModel : ViewModelBase
                 Results);
         }
 
+        var query = text.Trim();
+        if (query.Length < MinimumQueryLength)
+        {
+            Clear();
+            return OperationResult<IReadOnlyList<ScreenshotSearchResult>>.Success(
+                "search.query.too-short",
+                "SearchQueryTooShort",
+                Results);
+        }
+
         IsSearching = true;
         try
         {
             var response = await _application.SearchAsync(
                 new SearchRequest
                 {
-                    Text = text.Trim(),
+                    Text = query,
                     Kinds = ImmutableHashSet.Create(StringComparer.Ordinal, "screenshot"),
-                    IncludeTextContent = false,
+                    IncludeTextContent = true,
                     Offset = 0,
                     Limit = MaximumResults
                 },
@@ -99,7 +117,7 @@ public sealed class SearchViewModel : ViewModelBase
             }
 
             var projected = response.Value.Hits
-                .Select(hit => Project(hit, culture))
+                .Select(hit => Project(hit, culture, query))
                 .ToArray();
             if (projected.Length > MaximumResults)
             {
@@ -119,7 +137,31 @@ public sealed class SearchViewModel : ViewModelBase
         }
     }
 
-    private static ScreenshotSearchResult Project(SearchHit hit, CultureInfo culture)
+    /// <summary>Gets prefix and infix suggestions from the local suggestion index.</summary>
+    public async Task<OperationResult<IReadOnlyList<string>>> SuggestAsync(
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var query = text.Trim();
+        if (query.Length < MinimumQueryLength)
+        {
+            return OperationResult<IReadOnlyList<string>>.Success(
+                "search.suggestions.cleared",
+                "SearchQueryCleared",
+                Array.Empty<string>());
+        }
+
+        var response = await _application.GetSearchSuggestionsAsync(
+            new SearchSuggestionRequest
+            {
+                Text = query,
+                Limit = MaximumSuggestions
+            },
+            cancellationToken);
+        return response;
+    }
+
+    private static ScreenshotSearchResult Project(SearchHit hit, CultureInfo culture, string query)
     {
         var document = hit.Document;
         if (!string.Equals(document.Kind, "screenshot", StringComparison.Ordinal)
@@ -136,6 +178,42 @@ public sealed class SearchViewModel : ViewModelBase
             document.Timestamp,
             document.Timestamp.ToLocalTime().ToString("g", culture),
             string.IsNullOrWhiteSpace(document.Application) ? "TrackMeUp" : document.Application,
+            string.IsNullOrWhiteSpace(document.WindowTitle) ? "—" : document.WindowTitle,
+            BuildSnippet(document, query),
             hit.Score);
+    }
+
+    private static string BuildSnippet(SearchDocument document, string query)
+    {
+        var candidates = new[]
+        {
+            document.OcrCorrectedText,
+            document.OcrRawText,
+            document.OcrStructuredSummary,
+            document.AiDescription,
+            document.Context,
+            document.WindowTitle
+        };
+        var source = candidates.FirstOrDefault(value =>
+            !string.IsNullOrWhiteSpace(value)
+            && value.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+            ?? candidates.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return "—";
+        }
+
+        var compact = string.Join(' ', source.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var matchIndex = compact.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        if (matchIndex < 0 || compact.Length <= 180)
+        {
+            return compact.Length <= 180 ? compact : $"{compact[..180].TrimEnd()}…";
+        }
+
+        const int radius = 78;
+        var start = Math.Max(0, matchIndex - radius);
+        var length = Math.Min(180, compact.Length - start);
+        var snippet = compact.Substring(start, length).Trim();
+        return $"{(start > 0 ? "…" : string.Empty)}{snippet}{(start + length < compact.Length ? "…" : string.Empty)}";
     }
 }

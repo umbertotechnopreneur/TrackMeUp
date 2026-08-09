@@ -1,7 +1,10 @@
 using System.Collections.Immutable;
 using System.Runtime.ExceptionServices;
+using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
 using Lucene.Net.Search;
+using Lucene.Net.Search.Suggest;
+using Lucene.Net.Search.Suggest.Analyzing;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
 using TrackMeUp.Search.Internal;
@@ -19,6 +22,8 @@ public sealed class LocalSearchService : ILocalSearchService
     private readonly LanguageAnalyzerCatalog _analyzers;
     private readonly SynonymCatalog _synonyms;
     private readonly FSDirectory _directory;
+    private readonly StandardAnalyzer _suggestionAnalyzer;
+    private readonly AnalyzingInfixSuggester _suggester;
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private IndexWriter _writer;
     private Exception? _fault;
@@ -29,6 +34,9 @@ public sealed class LocalSearchService : ILocalSearchService
 
     /// <summary>Gets the versioned directory name created below <see cref="SearchOptions.IndexRootPath"/>.</summary>
     public const string IndexDirectoryName = "lucene-v1";
+
+    /// <summary>Gets the private directory name used by the infix suggestion index.</summary>
+    public const string SuggestionIndexDirectoryName = "suggestions-v1";
 
     /// <summary>
     /// Initializes a local search service and exclusively opens its Lucene writer.
@@ -42,6 +50,9 @@ public sealed class LocalSearchService : ILocalSearchService
 
         LanguageAnalyzerCatalog? analyzers = null;
         FSDirectory? directory = null;
+        FSDirectory? suggestionDirectory = null;
+        StandardAnalyzer? suggestionAnalyzer = null;
+        AnalyzingInfixSuggester? suggester = null;
         IndexWriter? writer = null;
         try
         {
@@ -65,11 +76,25 @@ public sealed class LocalSearchService : ILocalSearchService
             _directory = directory;
             _writer = writer;
             _synonyms = new SynonymCatalog(options);
+
+            var suggestionPath = Path.Combine(rootPath, SuggestionIndexDirectoryName);
+            System.IO.Directory.CreateDirectory(suggestionPath);
+            suggestionDirectory = FSDirectory.Open(new DirectoryInfo(suggestionPath));
+            suggestionAnalyzer = new StandardAnalyzer(Version);
+            suggester = new AnalyzingInfixSuggester(Version, suggestionDirectory, suggestionAnalyzer);
+            _suggestionAnalyzer = suggestionAnalyzer;
+            _suggester = suggester;
         }
         catch
         {
             writer?.Rollback();
             directory?.Dispose();
+            if (suggester is null)
+            {
+                suggestionDirectory?.Dispose();
+            }
+
+            suggestionAnalyzer?.Dispose();
             analyzers?.Dispose();
             _operationGate.Dispose();
             throw;
@@ -91,6 +116,7 @@ public sealed class LocalSearchService : ILocalSearchService
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
             CommitWrite(() => _writer.UpdateDocument(new Term(SearchFields.IdKey, document.Id), luceneDocument));
+            RebuildSuggestionsFromMainIndex();
         }
         finally
         {
@@ -109,6 +135,7 @@ public sealed class LocalSearchService : ILocalSearchService
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
             CommitWrite(() => _writer.DeleteDocuments(new Term(SearchFields.IdKey, id)));
+            RebuildSuggestionsFromMainIndex();
         }
         finally
         {
@@ -123,6 +150,7 @@ public sealed class LocalSearchService : ILocalSearchService
     {
         ArgumentNullException.ThrowIfNull(documents);
 
+        var sourceDocuments = new List<SearchDocument>();
         var prepared = new List<Lucene.Net.Documents.Document>();
         var identifiers = new HashSet<string>(StringComparer.Ordinal);
         foreach (var document in documents)
@@ -136,6 +164,7 @@ public sealed class LocalSearchService : ILocalSearchService
                     nameof(documents));
             }
 
+            sourceDocuments.Add(document);
             prepared.Add(SearchDocumentMapper.ToLucene(document));
         }
 
@@ -152,6 +181,7 @@ public sealed class LocalSearchService : ILocalSearchService
                     _writer.AddDocument(document);
                 }
             });
+            RebuildSuggestions(sourceDocuments);
         }
         finally
         {
@@ -202,6 +232,31 @@ public sealed class LocalSearchService : ILocalSearchService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<ImmutableArray<string>> SuggestAsync(
+        SearchSuggestionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var limit = SearchValidation.ValidateSuggestionRequest(request, _options);
+
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfUnavailable();
+            cancellationToken.ThrowIfCancellationRequested();
+            return _suggester
+                .DoLookup(request.Text.Trim(), limit, allTermsRequired: false, doHighlight: false)
+                .Select(result => result.Key)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToImmutableArray();
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
+    }
+
     /// <summary>
     /// Closes the exclusive writer and directory after any active operation completes.
     /// </summary>
@@ -218,6 +273,8 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             _writer.Dispose();
             _directory.Dispose();
+            _suggester.Dispose();
+            _suggestionAnalyzer.Dispose();
             _analyzers.Dispose();
         }
         finally
@@ -268,6 +325,147 @@ public sealed class LocalSearchService : ILocalSearchService
             [SchemaCommitKey] = IndexSchemaVersion.ToString(),
         });
         writer.Commit();
+    }
+
+    private void RebuildSuggestions(IEnumerable<SearchDocument> documents)
+    {
+        _suggester.Build(new SuggestionInputEnumerator(BuildSuggestionEntries(documents)));
+        _suggester.Refresh();
+    }
+
+    private void RebuildSuggestionsFromMainIndex()
+    {
+        using var reader = DirectoryReader.Open(_directory);
+        if (reader.NumDocs == 0)
+        {
+            RebuildSuggestions(Array.Empty<SearchDocument>());
+            return;
+        }
+
+        var searcher = new IndexSearcher(reader);
+        var topDocuments = searcher.Search(new MatchAllDocsQuery(), reader.NumDocs);
+        var documents = topDocuments.ScoreDocs
+            .Select(scoreDocument => SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc)))
+            .ToArray();
+        RebuildSuggestions(documents);
+    }
+
+    private static IReadOnlyList<SuggestionEntry> BuildSuggestionEntries(IEnumerable<SearchDocument> documents)
+    {
+        var entries = new Dictionary<string, SuggestionEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var document in documents)
+        {
+            foreach (var (value, weight) in EnumerateSuggestionValues(document))
+            {
+                var text = value.Trim();
+                if (text.Length < 3)
+                {
+                    continue;
+                }
+
+                text = text.Length > 180 ? text[..180].TrimEnd() : text;
+                var key = TextNormalization.ForAnalysis(text);
+                if (key.Length < 3)
+                {
+                    continue;
+                }
+
+                if (entries.TryGetValue(key, out var existing))
+                {
+                    entries[key] = existing with { Weight = Math.Min(long.MaxValue, existing.Weight + weight) };
+                }
+                else
+                {
+                    entries[key] = new SuggestionEntry(text, weight);
+                }
+            }
+        }
+
+        return entries.Values
+            .OrderByDescending(entry => entry.Weight)
+            .ThenBy(entry => entry.Text, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IEnumerable<(string Value, long Weight)> EnumerateSuggestionValues(SearchDocument document)
+    {
+        foreach (var value in new[]
+        {
+            document.Application,
+            document.ProcessName,
+            document.Context,
+            document.WindowTitle,
+            document.CaptureKind,
+            document.CaptureOrigin,
+            document.OcrRawText,
+            document.OcrCorrectedText,
+            document.OcrStructuredSummary,
+            document.AiDescription
+        })
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                yield return (value, 1);
+            }
+        }
+
+        foreach (var label in document.SpanLabels)
+        {
+            if (!string.IsNullOrWhiteSpace(label))
+            {
+                yield return (label, 2);
+            }
+        }
+
+        foreach (var pair in document.AttributesRaw)
+        {
+            if (!string.IsNullOrWhiteSpace(pair.Key))
+            {
+                yield return (pair.Key, 1);
+            }
+
+            if (!string.IsNullOrWhiteSpace(pair.Value))
+            {
+                yield return (pair.Value, 1);
+            }
+        }
+    }
+
+    private sealed record SuggestionEntry(string Text, long Weight);
+
+    private sealed class SuggestionInputEnumerator(IReadOnlyList<SuggestionEntry> entries) : IInputEnumerator
+    {
+        private readonly IEnumerator<SuggestionEntry> _entries = entries.GetEnumerator();
+
+        public BytesRef Current { get; private set; } = null!;
+
+        public long Weight { get; private set; }
+
+        public BytesRef? Payload => null;
+
+        public bool HasPayloads => false;
+
+        public ICollection<BytesRef>? Contexts => null;
+
+        public bool HasContexts => false;
+
+        public IComparer<BytesRef>? Comparer => null;
+
+        public bool MoveNext()
+        {
+            if (!_entries.MoveNext())
+            {
+                return false;
+            }
+
+            Current = new BytesRef(_entries.Current.Text);
+            Weight = _entries.Current.Weight;
+            return true;
+        }
+
+        public void Reset() => throw new NotSupportedException();
+
+        public void Dispose() => _entries.Dispose();
     }
 
     private void CommitWrite(Action mutation)

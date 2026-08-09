@@ -1,6 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading;
 using TrackMeUp.Application;
@@ -73,7 +74,10 @@ internal sealed class WindowPlacementService : IDisposable
         CenterInWorkArea(area);
     }
 
-    internal async Task RestoreAndCenterAsync(FrameworkElement root, CancellationToken cancellationToken)
+    internal async Task RestoreAndCenterAsync(
+        FrameworkElement root,
+        CancellationToken cancellationToken,
+        bool centerOnCursorDisplay = false)
     {
         ArgumentNullException.ThrowIfNull(root);
         if (_restoreAttempted)
@@ -91,7 +95,15 @@ internal sealed class WindowPlacementService : IDisposable
             throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
         }
 
-        var area = OpeningWorkArea();
+        var area = centerOnCursorDisplay ? CursorWorkArea() : OpeningWorkArea();
+        KeepCurrentBoundsInWorkArea(root, area);
+        CenterInWorkArea(area);
+    }
+
+    internal void CenterOnCursorDisplay(FrameworkElement root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        var area = CursorWorkArea();
         KeepCurrentBoundsInWorkArea(root, area);
         CenterInWorkArea(area);
     }
@@ -184,6 +196,19 @@ internal sealed class WindowPlacementService : IDisposable
     private RectInt32 OpeningWorkArea() =>
         DisplayArea.GetFromWindowId(_displayAnchorId, DisplayAreaFallback.Primary).WorkArea;
 
+    private static RectInt32 CursorWorkArea()
+    {
+        if (!GetCursorPos(out var cursorPosition))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not locate the pointer display.");
+        }
+
+        // The cursor point is resolved before the window is activated, so multi-monitor launches follow the user's current display.
+        return DisplayArea.GetFromPoint(
+            new PointInt32(cursorPosition.X, cursorPosition.Y),
+            DisplayAreaFallback.Primary).WorkArea;
+    }
+
     private void InstallMinimumSizeSubclass()
     {
         if (_subclassInstalled)
@@ -239,6 +264,10 @@ internal sealed class WindowPlacementService : IDisposable
     [DllImport("Comctl32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool RemoveWindowSubclass(IntPtr hWnd, NativeWindowSubclassProc pfnSubclass, nuint uIdSubclass);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
 
     [DllImport("Comctl32.dll", SetLastError = true)]
     private static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);

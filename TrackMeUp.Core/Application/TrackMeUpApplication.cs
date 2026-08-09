@@ -213,7 +213,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.suggest.v1", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -607,6 +607,37 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             _logger.LogWarning("Local search failed. ExceptionType={ExceptionType}", exception.GetType().Name);
             return OperationResult<SearchResponse>.Failure("search.failed", "SearchFailed");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<IReadOnlyList<string>>> GetSearchSuggestionsAsync(
+        SearchSuggestionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var suggestions = await _search.SuggestAsync(request, cancellationToken).ConfigureAwait(false);
+            return OperationResult<IReadOnlyList<string>>.Success(
+                "search.suggestions.completed",
+                "SearchSuggestionsCompleted",
+                suggestions);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ArgumentException)
+        {
+            return OperationResult<IReadOnlyList<string>>.Failure(
+                "search.suggestions.invalid",
+                "SearchQueryInvalid",
+                new ValidationIssue("query", "invalid", "SearchQueryInvalid"));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning("Local search suggestions failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<IReadOnlyList<string>>.Failure("search.suggestions.failed", "SearchFailed");
         }
     }
 

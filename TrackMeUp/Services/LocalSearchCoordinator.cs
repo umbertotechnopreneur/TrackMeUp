@@ -40,6 +40,17 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         return await _search.SearchAsync(query, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Ensures current durable data is indexed, then returns local query suggestions.</summary>
+    internal async Task<IReadOnlyList<string>> SuggestAsync(
+        SearchSuggestionRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ThrowIfDisposed();
+        await EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
+        return await _search.SuggestAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Replaces the complete derived index and returns the number of indexed documents.</summary>
     internal async Task<int> RebuildAsync(CancellationToken cancellationToken)
     {
@@ -152,6 +163,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 Timestamp = item.CapturedAt,
                 Language = text?.Ocr.LanguageTag ?? defaultLanguage,
                 Application = item.ForegroundApplication,
+                WindowTitle = item.ForegroundWindowTitle,
                 AttributesRaw = BuildOcrAttributes(null, text, item.ActivityIndex),
                 SpanLabels = (item.SpanLabels ?? Array.Empty<ActivityLabelSample>())
                     .Select(label => label.Label)

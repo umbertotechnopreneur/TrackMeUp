@@ -157,8 +157,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         if (_searchWindow is not null)
         {
-            _searchWindow.Activate();
-            _searchWindow.FocusQuery();
+            _searchWindow.ActivateAtCursor();
             return;
         }
 
