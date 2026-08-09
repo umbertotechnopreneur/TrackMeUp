@@ -224,6 +224,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
                 "notifications.drain" => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
+                "ai.pricing.overview" => ToResponse(request, await _application.GetAiPricingOverviewAsync(cancellationToken)),
                 "ai.models" => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
                 "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
                 "ai.disable" => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
@@ -516,6 +517,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<ApplicationNotification>>("notifications.drain", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken) => SendAsync<AiStatus>("ai.status", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => SendAsync<AiPricingOverview>("ai.pricing.overview", null, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
     public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => SendAsync<AiModelCatalogSnapshot>("ai.models", null, cancellationToken);
     /// <inheritdoc />

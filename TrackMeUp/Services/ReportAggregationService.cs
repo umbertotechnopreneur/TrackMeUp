@@ -8,7 +8,7 @@ public sealed class ReportAggregationService
     /// <summary>Gets the maximum inclusive local-date range accepted by a report query.</summary>
     public const int MaximumRangeDays = 366;
 
-    private const int ContractVersion = 2;
+    private const int ContractVersion = 3;
     private const int DefaultApplicationLimit = 12;
     private readonly LocalStore _store;
 
@@ -92,7 +92,7 @@ public sealed class ReportAggregationService
 
         cancellationToken.ThrowIfCancellationRequested();
         var aggregation = new AggregationState(query.From, dayCount, timeZoneResult.TimeZone, fromUtc, toUtc);
-        var aiUsage = new AiUsageAccumulator();
+        var aiUsage = new AiUsageAccumulator(new AiTokenCostEstimator(_store.ListAiModelPricing(AiPricingProviders.OpenAi)));
 
         // Both forward-only readers share one SQLite read transaction; no raw activity sample crosses this boundary.
         _store.VisitReportData(
@@ -500,7 +500,7 @@ public sealed class ReportAggregationService
                 MidpointRounding.AwayFromZero));
     }
 
-    private sealed class AiUsageAccumulator
+    private sealed class AiUsageAccumulator(AiTokenCostEstimator estimator)
     {
         private readonly Dictionary<string, AiUsageSliceAccumulator> _providers = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AiUsageSliceAccumulator> _origins = new(StringComparer.OrdinalIgnoreCase);
@@ -515,6 +515,9 @@ public sealed class ReportAggregationService
         private long _thinkingTokens;
         private decimal _actualCostUsd;
         private int _actualCostRequestCount;
+        private decimal _estimatedCostUsd;
+        private int _estimatedCostRequestCount;
+        private DateTimeOffset? _estimatedCostPricingUpdatedAt;
 
         internal void Add(AiRequestUsageRecord request)
         {
@@ -523,6 +526,7 @@ public sealed class ReportAggregationService
             var outputTokens = request.Usage.OutputTokens ?? 0;
             var totalTokens = request.Usage.TotalTokens ?? checked(inputTokens + outputTokens);
             var actualCostUsd = request.Usage.ReportedCostUsd;
+            var estimate = estimator.Estimate(request);
 
             checked
             {
@@ -550,10 +554,21 @@ public sealed class ReportAggregationService
                     _actualCostUsd += actualCostUsd.Value;
                     _actualCostRequestCount++;
                 }
+
+                if (estimate is not null)
+                {
+                    _estimatedCostUsd += estimate.CostUsd;
+                    _estimatedCostRequestCount++;
+                    if (_estimatedCostPricingUpdatedAt is null
+                        || estimate.PricingUpdatedAt > _estimatedCostPricingUpdatedAt.Value)
+                    {
+                        _estimatedCostPricingUpdatedAt = estimate.PricingUpdatedAt;
+                    }
+                }
             }
 
-            AddSlice(_providers, NormalizeLabel(request.Provider), inputTokens, outputTokens, totalTokens, actualCostUsd);
-            AddSlice(_origins, NormalizeLabel(request.Origin), inputTokens, outputTokens, totalTokens, actualCostUsd);
+            AddSlice(_providers, NormalizeLabel(request.Provider), inputTokens, outputTokens, totalTokens, actualCostUsd, estimate?.CostUsd);
+            AddSlice(_origins, NormalizeLabel(request.Origin), inputTokens, outputTokens, totalTokens, actualCostUsd, estimate?.CostUsd);
         }
 
         internal AiUsageSummary Build() => _requestCount == 0
@@ -570,6 +585,9 @@ public sealed class ReportAggregationService
                 _thinkingTokens,
                 _actualCostRequestCount == 0 ? null : _actualCostUsd,
                 _actualCostRequestCount,
+                _estimatedCostRequestCount == 0 ? null : _estimatedCostUsd,
+                _estimatedCostRequestCount,
+                _estimatedCostPricingUpdatedAt,
                 BuildSlices(_providers),
                 BuildSlices(_origins));
 
@@ -579,7 +597,8 @@ public sealed class ReportAggregationService
             long inputTokens,
             long outputTokens,
             long totalTokens,
-            decimal? actualCostUsd)
+            decimal? actualCostUsd,
+            decimal? estimatedCostUsd)
         {
             if (!slices.TryGetValue(label, out var slice))
             {
@@ -587,7 +606,7 @@ public sealed class ReportAggregationService
                 slices.Add(label, slice);
             }
 
-            slice.Add(inputTokens, outputTokens, totalTokens, actualCostUsd);
+            slice.Add(inputTokens, outputTokens, totalTokens, actualCostUsd, estimatedCostUsd);
         }
 
         private static IReadOnlyList<AiUsageSlice> BuildSlices(
@@ -610,10 +629,121 @@ public sealed class ReportAggregationService
         }
     }
 
+    private sealed class AiTokenCostEstimator
+    {
+        private readonly Dictionary<string, AiModelPricing> _prices;
+
+        internal AiTokenCostEstimator(IEnumerable<AiModelPricing> prices)
+        {
+            _prices = prices
+                .Where(price =>
+                    string.Equals(price.Provider, AiPricingProviders.OpenAi, StringComparison.Ordinal)
+                    && string.Equals(price.ServiceTier, AiPricingServiceTiers.Standard, StringComparison.Ordinal)
+                    && string.Equals(price.ContextWindow, AiPricingContextWindows.Short, StringComparison.Ordinal))
+                .GroupBy(price => price.Model, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        }
+
+        internal AiCostEstimate? Estimate(AiRequestUsageRecord request)
+        {
+            if (!request.Success
+                || !string.Equals(request.Provider, AiPricingProviders.OpenAi, StringComparison.OrdinalIgnoreCase)
+                || !TryResolvePrice(request, out var price))
+            {
+                return null;
+            }
+
+            var inputTokens = request.Usage.InputTokens ?? 0;
+            var outputTokens = request.Usage.OutputTokens ?? 0;
+            var cachedInputTokens = request.Usage.CachedInputTokens
+                ?? request.Usage.CacheReadInputTokens
+                ?? 0;
+            var cacheWriteTokens = request.Usage.CacheWriteTokens ?? 0;
+            var uncachedInputTokens = Math.Max(0, inputTokens - cachedInputTokens - cacheWriteTokens);
+            if (inputTokens == 0 && outputTokens == 0)
+            {
+                return null;
+            }
+
+            if ((cachedInputTokens > 0 && !price.CachedInputUsdPerMillionTokens.HasValue)
+                || (cacheWriteTokens > 0 && !price.CacheWriteUsdPerMillionTokens.HasValue))
+            {
+                return null;
+            }
+
+            var costUsd =
+                CalculateTokenCost(uncachedInputTokens, price.InputUsdPerMillionTokens)
+                + CalculateTokenCost(cachedInputTokens, price.CachedInputUsdPerMillionTokens ?? 0m)
+                + CalculateTokenCost(cacheWriteTokens, price.CacheWriteUsdPerMillionTokens ?? 0m)
+                + CalculateTokenCost(outputTokens, price.OutputUsdPerMillionTokens);
+            return new AiCostEstimate(costUsd, price.SourceRetrievedAt);
+        }
+
+        private bool TryResolvePrice(AiRequestUsageRecord request, out AiModelPricing price)
+        {
+            var model = string.IsNullOrWhiteSpace(request.ReturnedModel)
+                ? request.RequestedModel
+                : request.ReturnedModel;
+            model = model.Trim();
+            if (_prices.TryGetValue(model, out var exactPrice))
+            {
+                price = exactPrice;
+                return true;
+            }
+
+            if (TryStripDateSuffix(model, out var baseModel)
+                && _prices.TryGetValue(baseModel, out var basePrice))
+            {
+                price = basePrice;
+                return true;
+            }
+
+            price = default!;
+            return false;
+        }
+
+        private static bool TryStripDateSuffix(string model, out string baseModel)
+        {
+            baseModel = model;
+            if (model.Length <= 11)
+            {
+                return false;
+            }
+
+            var suffix = model[^11..];
+            if (suffix[0] != '-'
+                || !IsFourDigits(suffix.AsSpan(1, 4))
+                || suffix[5] != '-'
+                || !IsTwoDigits(suffix.AsSpan(6, 2))
+                || suffix[8] != '-'
+                || !IsTwoDigits(suffix.AsSpan(9, 2)))
+            {
+                return false;
+            }
+
+            baseModel = model[..^11];
+            return baseModel.Length > 0;
+        }
+
+        private static bool IsFourDigits(ReadOnlySpan<char> value) =>
+            value.Length == 4 && value[0] is >= '0' and <= '9' && value[1] is >= '0' and <= '9'
+                && value[2] is >= '0' and <= '9' && value[3] is >= '0' and <= '9';
+
+        private static bool IsTwoDigits(ReadOnlySpan<char> value) =>
+            value.Length == 2 && value[0] is >= '0' and <= '9' && value[1] is >= '0' and <= '9';
+
+        private static decimal CalculateTokenCost(long tokens, decimal usdPerMillionTokens) =>
+            tokens <= 0 ? 0m : tokens * usdPerMillionTokens / 1_000_000m;
+    }
+
+    private sealed record AiCostEstimate(decimal CostUsd, DateTimeOffset PricingUpdatedAt);
+
     private sealed class AiUsageSliceAccumulator(string label)
     {
         private decimal _actualCostUsd;
         private int _actualCostRequestCount;
+        private decimal _estimatedCostUsd;
+        private int _estimatedCostRequestCount;
 
         internal string Label { get; } = label;
 
@@ -629,7 +759,8 @@ public sealed class ReportAggregationService
             long inputTokens,
             long outputTokens,
             long totalTokens,
-            decimal? actualCostUsd)
+            decimal? actualCostUsd,
+            decimal? estimatedCostUsd)
         {
             checked
             {
@@ -642,6 +773,12 @@ public sealed class ReportAggregationService
                     _actualCostUsd += actualCostUsd.Value;
                     _actualCostRequestCount++;
                 }
+
+                if (estimatedCostUsd.HasValue)
+                {
+                    _estimatedCostUsd += estimatedCostUsd.Value;
+                    _estimatedCostRequestCount++;
+                }
             }
         }
 
@@ -651,6 +788,7 @@ public sealed class ReportAggregationService
             InputTokens,
             OutputTokens,
             TotalTokens,
-            _actualCostRequestCount == 0 ? null : _actualCostUsd);
+            _actualCostRequestCount == 0 ? null : _actualCostUsd,
+            _estimatedCostRequestCount == 0 ? null : _estimatedCostUsd);
     }
 }

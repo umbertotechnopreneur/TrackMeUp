@@ -36,7 +36,7 @@ public enum MainWindowLayoutSection
 public sealed class MainWindowLayoutState
 {
     private const int InitialLogicalHeight = 304;
-    private const int PreferredOptionsLogicalHeight = 760;
+    private const int PreferredSecondarySurfaceLogicalHeight = 760;
 
     /// <summary>Gets the currently active top-level surface.</summary>
     public MainWindowSurface Surface { get; private set; } = MainWindowSurface.Player;
@@ -136,9 +136,9 @@ public sealed class MainWindowLayoutState
         }
 
         var displayLimit = Math.Max(1, checked((int)Math.Floor(availableLogicalHeight)));
-        var surfaceLimit = Surface == MainWindowSurface.Options
-            ? Math.Min(displayLimit, PreferredOptionsLogicalHeight)
-            : displayLimit;
+        var surfaceLimit = Surface == MainWindowSurface.Player
+            ? displayLimit
+            : Math.Min(displayLimit, PreferredSecondarySurfaceLogicalHeight);
         return Math.Min(LogicalHeight, surfaceLimit);
     }
 

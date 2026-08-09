@@ -37,6 +37,9 @@ public static class TrackMeUpApplicationFactory
         var ocrRefinement = new OpenAiOcrRefinementService(
             store,
             logger: loggerFactory?.CreateLogger<OpenAiOcrRefinementService>());
+        var pricingRefresh = new OpenAiPricingRefreshService(
+            store,
+            loggerFactory?.CreateLogger<OpenAiPricingRefreshService>());
         var localSearch = CreateLocalSearchService(store);
         var analysis = new OpenAiAnalysisService(
             store,
@@ -63,7 +66,8 @@ public static class TrackMeUpApplicationFactory
             screenshotOcr,
             ocrRefinement,
             loggerFactory?.CreateLogger<ScreenshotTextExtractionCoordinator>(),
-            localSearch);
+            localSearch,
+            pricingRefresh);
     }
 
     private static ILocalSearchService CreateLocalSearchService(LocalStore store)
@@ -119,6 +123,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly BuildInformationService _buildInformation;
     private readonly AiModelCatalogSnapshot _aiModelCatalog;
     private readonly ReportAggregationService _reports;
+    private readonly OpenAiPricingRefreshService? _pricingRefresh;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -159,7 +164,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         IScreenshotOcrService? screenshotOcr = null,
         IAiOcrRefinementService? ocrRefinement = null,
         ILogger<ScreenshotTextExtractionCoordinator>? screenshotTextLogger = null,
-        ILocalSearchService? localSearch = null)
+        ILocalSearchService? localSearch = null,
+        OpenAiPricingRefreshService? pricingRefresh = null)
     {
         _store = store;
         _utilities = utilities;
@@ -183,6 +189,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _buildInformation = buildInformation;
         _aiModelCatalog = (aiModelCatalog ?? AiModelCatalog.LoadDefault()).Snapshot;
         _reports = new ReportAggregationService(store);
+        _pricingRefresh = pricingRefresh;
+        _pricingRefresh?.Start();
         _logger = logger ?? NullLogger<TrackMeUpApplication>.Instance;
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
@@ -206,7 +214,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "focus", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -870,6 +878,63 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public async Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await Task.Run(() =>
+        {
+            var settings = _store.LoadSettings();
+            if (!settings.OpenAiEnabled ||
+                !string.Equals(settings.AiProvider, AiPricingProviders.OpenAi, StringComparison.OrdinalIgnoreCase))
+            {
+                return OperationResult<AiPricingOverview>.Failure(
+                    "ai.pricing.disabled",
+                    "AiPricingDisabled",
+                    new ValidationIssue("ai.provider", "openai_required", "AiPricingOpenAiRequired"));
+            }
+
+            var prices = _store.ListAiModelPricing(AiPricingProviders.OpenAi);
+            var displayedRows = prices
+                .Where(price =>
+                    string.Equals(price.ServiceTier, AiPricingServiceTiers.Standard, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(price.ContextWindow, AiPricingContextWindows.Short, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(price => price.Model, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .OrderBy(price => price.Model, StringComparer.OrdinalIgnoreCase)
+                .Select(price => new AiPricingCostRow(
+                    price.Model,
+                    price.InputUsdPerMillionTokens,
+                    price.OutputUsdPerMillionTokens))
+                .ToArray();
+
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var report = _reports.Build(new ReportQuery(today, today, TimeZoneInfo.Local.Id), cancellationToken);
+            if (!report.Succeeded || report.Value is null)
+            {
+                return OperationResult<AiPricingOverview>.Failure(
+                    report.Code,
+                    report.MessageKey,
+                    report.Issues.ToArray());
+            }
+
+            var usage = report.Value.AiUsage;
+            var overview = new AiPricingOverview(
+                _store.GetLatestAiModelPricingRetrievedAt(AiPricingProviders.OpenAi),
+                prices.Count,
+                displayedRows.Length,
+                usage.EstimatedCostUsd,
+                usage.EstimatedCostRequestCount,
+                usage.ActualCostUsd,
+                usage.ActualCostRequestCount,
+                usage.InputTokens,
+                usage.OutputTokens,
+                usage.TotalTokens,
+                displayedRows);
+            return OperationResult<AiPricingOverview>.Success("ai.pricing.loaded", "AiPricingLoaded", overview);
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1385,6 +1450,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _scheduledSnapshotTimer.Dispose();
         _tracking.DashboardStateChanged -= OnDashboardStateChanged;
         _tracking.TrackingStateChanged -= OnTrackingStateChanged;
+        _pricingRefresh?.Dispose();
         _tracking.Dispose();
         await _search.DisposeAsync().ConfigureAwait(false);
         _mutations.Dispose();

@@ -26,6 +26,9 @@ public static class WindowStateKeys
 
     /// <summary>Identifies the reusable message dialog window.</summary>
     public const string Dialog = "dialog";
+
+    /// <summary>Identifies the simplified AI pricing dialog window.</summary>
+    public const string AiPricing = "ai-pricing";
 }
 
 /// <summary>Persists and restores native top-level window placement.</summary>
@@ -59,6 +62,7 @@ public sealed class WindowStateService
             WindowStateKeys.Search => new(420, 360),
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.Dialog => new(320, 196),
+            WindowStateKeys.AiPricing => new(620, 430),
             _ => new(320, 240)
         };
     }

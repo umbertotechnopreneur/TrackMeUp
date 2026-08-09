@@ -6,206 +6,62 @@
     xmlns:controls="using:TrackMeUp.Controls">
     <UserControl.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Light">
-                    <LinearGradientBrush x:Key="ScreenshotMetadataBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#CCFFFFFF" Offset="0" />
-                        <GradientStop Color="#73EAF4FF" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotMetadataBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#F2FFFFFF" Offset="0" />
-                        <GradientStop Color="#80FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="ScreenshotAccentBrush" Color="#FF4E8DEB" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Dark">
-                    <LinearGradientBrush x:Key="ScreenshotMetadataBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#7318273A" Offset="0" />
-                        <GradientStop Color="#4D101C2A" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotMetadataBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#59FFFFFF" Offset="0" />
-                        <GradientStop Color="#26FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="ScreenshotAccentBrush" Color="#FFFFA45E" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Default">
-                    <LinearGradientBrush x:Key="ScreenshotMetadataBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#CCFFFFFF" Offset="0" />
-                        <GradientStop Color="#73EAF4FF" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotMetadataBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#F2FFFFFF" Offset="0" />
-                        <GradientStop Color="#80FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="ScreenshotAccentBrush" Color="#FF4E8DEB" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
+            <Style x:Key="ScreenshotMetadataChipStyle"
+                   BasedOn="{StaticResource SurfaceChipStyle}"
+                   TargetType="Border" />
 
-            <Style
-                x:Key="ScreenshotInfoLabelTextStyle"
-                BasedOn="{StaticResource CaptionTextBlockStyle}"
-                TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="11" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="LineHeight" Value="14" />
-                <Setter Property="CharacterSpacing" Value="45" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
-                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            </Style>
+            <Style x:Key="ScreenshotMetadataIconStyle"
+                   BasedOn="{StaticResource SurfaceChipIconStyle}"
+                   TargetType="FontIcon" />
 
-            <Style x:Key="ScreenshotInfoValueTextStyle" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="14" />
-                <Setter Property="FontWeight" Value="Normal" />
-                <Setter Property="LineHeight" Value="20" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
-                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-                <Setter Property="MaxLines" Value="1" />
-            </Style>
-
-            <Style x:Key="ScreenshotInfoIconStyle" TargetType="FontIcon">
-                <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
-                <Setter Property="FontSize" Value="17" />
-                <Setter Property="Foreground" Value="{ThemeResource ScreenshotAccentBrush}" />
-                <Setter Property="AutomationProperties.AccessibilityView" Value="Raw" />
-            </Style>
-
-            <Style x:Key="ScreenshotMetadataPillStyle" TargetType="Border">
-                <Setter Property="MinHeight" Value="56" />
-                <Setter Property="Padding" Value="16,8" />
-                <Setter Property="Background" Value="{ThemeResource ScreenshotMetadataBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource ScreenshotMetadataBorderBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="18" />
-            </Style>
+            <Style x:Key="ScreenshotMetadataValueStyle"
+                   BasedOn="{StaticResource SurfaceChipTextStyle}"
+                   TargetType="TextBlock" />
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid x:Name="GallerySurface" MinHeight="526" Background="Transparent">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
+    <Grid x:Name="GallerySurface" MinHeight="500" Background="Transparent">
         <controls:ScreenshotImageViewerControl
             x:Name="ImageViewer"
-            Grid.Row="0"
-            MinHeight="420" />
+            MinHeight="400" />
 
-        <Border
+        <Grid
             x:Name="MetadataPanel"
-            Grid.Row="1"
-            MaxWidth="980"
-            Margin="16,14,16,0"
-            HorizontalAlignment="Stretch"
-            Background="Transparent"
-            BorderBrush="Transparent"
-            BorderThickness="0"
+            MaxWidth="760"
+            Margin="0,0,0,130"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            ColumnSpacing="26"
             Visibility="Collapsed">
-            <Grid RowSpacing="10">
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.18*" />
-                        <ColumnDefinition Width="0.86*" />
-                        <ColumnDefinition Width="1.26*" />
-                        <ColumnDefinition Width="1.02*" />
-                        <ColumnDefinition Width="0.72*" />
-                    </Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="220" />
+            </Grid.ColumnDefinitions>
 
-                    <Border Style="{StaticResource ScreenshotMetadataPillStyle}">
-                        <Grid ColumnSpacing="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon VerticalAlignment="Center" Glyph="&#xE787;" Style="{StaticResource ScreenshotInfoIconStyle}" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.DateLabel" Text="Date" />
-                                <TextBlock x:Name="MetadataDateValueText" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+            <Border Style="{StaticResource ScreenshotMetadataChipStyle}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="11">
+                    <FontIcon Glyph="&#xE787;" Style="{StaticResource ScreenshotMetadataIconStyle}" />
+                    <TextBlock x:Name="MetadataDateValueText" Style="{StaticResource ScreenshotMetadataValueStyle}" Text="--" />
+                </StackPanel>
+            </Border>
 
-                    <Border Grid.Column="1" Style="{StaticResource ScreenshotMetadataPillStyle}">
-                        <Grid ColumnSpacing="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon VerticalAlignment="Center" Glyph="&#xE823;" Style="{StaticResource ScreenshotInfoIconStyle}" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.TimeLabel" Text="Time" />
-                                <TextBlock x:Name="MetadataTimeValueText" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+            <Border Grid.Column="1" Style="{StaticResource ScreenshotMetadataChipStyle}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="11">
+                    <FontIcon Glyph="&#xE823;" Style="{StaticResource ScreenshotMetadataIconStyle}" />
+                    <TextBlock x:Name="MetadataTimeValueText" Style="{StaticResource ScreenshotMetadataValueStyle}" Text="--" />
+                </StackPanel>
+            </Border>
 
-                    <Border Grid.Column="2" Style="{StaticResource ScreenshotMetadataPillStyle}">
-                        <Grid ColumnSpacing="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon VerticalAlignment="Center" Glyph="&#xE7F4;" Style="{StaticResource ScreenshotInfoIconStyle}" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.ApplicationLabel" Text="Foreground app" />
-                                <TextBlock x:Name="MetadataAppValueText" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+            <Border Grid.Column="2" Style="{StaticResource ScreenshotMetadataChipStyle}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="11">
+                    <FontIcon Glyph="&#xE7F4;" Style="{StaticResource ScreenshotMetadataIconStyle}" />
+                    <TextBlock x:Name="MetadataAppValueText" Style="{StaticResource ScreenshotMetadataValueStyle}" Text="--" />
+                </StackPanel>
+            </Border>
+        </Grid>
 
-                    <Border Grid.Column="3" Style="{StaticResource ScreenshotMetadataPillStyle}">
-                        <Grid ColumnSpacing="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon VerticalAlignment="Center" Glyph="&#xE7C3;" Style="{StaticResource ScreenshotInfoIconStyle}" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.OriginLabel" Text="Origin" />
-                                <TextBlock x:Name="MetadataOriginValueText" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Grid.Column="4" Style="{StaticResource ScreenshotMetadataPillStyle}">
-                        <Grid ColumnSpacing="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon VerticalAlignment="Center" Glyph="&#xE9D9;" Style="{StaticResource ScreenshotInfoIconStyle}" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.ActivityIndex" Text="Activity index" />
-                                <TextBlock x:Name="MetadataActivityIndexValueText" Style="{StaticResource ScreenshotInfoValueTextStyle}" Text="--" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </Grid>
-
-                <Border Grid.Row="1" Style="{StaticResource ScreenshotMetadataPillStyle}">
-                    <Grid ColumnSpacing="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <FontIcon VerticalAlignment="Center" Glyph="&#xE8A9;" Style="{StaticResource ScreenshotInfoIconStyle}" />
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Style="{StaticResource ScreenshotInfoLabelTextStyle}" Tag="Screenshots.SpanLabels" Text="Span labels" />
-                            <TextBlock
-                                x:Name="MetadataSpanLabelsValueText"
-                                Style="{StaticResource ScreenshotInfoValueTextStyle}"
-                                Text="--"
-                                TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
-            </Grid>
-        </Border>
-
-        <Grid x:Name="EmptyGalleryPanel" Grid.RowSpan="2" Background="Transparent" Visibility="Collapsed">
+        <Grid x:Name="EmptyGalleryPanel" Background="Transparent" Visibility="Collapsed">
             <StackPanel
                 MaxWidth="360"
                 HorizontalAlignment="Center"
@@ -228,7 +84,6 @@
 
         <ProgressRing
             x:Name="GalleryProgressRing"
-            Grid.RowSpan="2"
             Width="30"
             Height="30"
             HorizontalAlignment="Center"

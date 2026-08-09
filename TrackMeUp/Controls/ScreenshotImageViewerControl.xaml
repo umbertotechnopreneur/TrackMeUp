@@ -9,111 +9,81 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <LinearGradientBrush x:Key="ScreenshotViewerFrameBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#73FFFFFF" Offset="0" />
-                        <GradientStop Color="#33DDEEFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotViewerBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#F2FFFFFF" Offset="0" />
-                        <GradientStop Color="#80FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#CCFFFFFF" />
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#D9FFFFFF" />
+                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#D9FFFFFF" />
+                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#F2FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <LinearGradientBrush x:Key="ScreenshotViewerFrameBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#59131C2A" Offset="0" />
-                        <GradientStop Color="#33112E4F" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotViewerBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#59FFFFFF" Offset="0" />
-                        <GradientStop Color="#26FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#CC101722" />
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#40FFFFFF" />
+                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#D9161A21" />
+                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#52FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
-                    <LinearGradientBrush x:Key="ScreenshotViewerFrameBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#73FFFFFF" Offset="0" />
-                        <GradientStop Color="#33DDEEFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotViewerBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#F2FFFFFF" Offset="0" />
-                        <GradientStop Color="#80FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#CCFFFFFF" />
-                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#D9FFFFFF" />
+                    <SolidColorBrush x:Key="ScreenshotViewerRailBrush" Color="#D9FFFFFF" />
+                    <SolidColorBrush x:Key="ScreenshotViewerRailBorderBrush" Color="#F2FFFFFF" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
             <Style x:Key="ScreenshotZoomButtonStyle" TargetType="Button">
-                <Setter Property="Width" Value="34" />
-                <Setter Property="Height" Value="34" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="CornerRadius" Value="18" />
                 <Setter Property="UseSystemFocusVisuals" Value="True" />
             </Style>
 
-            <Style x:Key="ScreenshotZoomTextButtonStyle" TargetType="Button">
-                <Setter Property="MinWidth" Value="52" />
-                <Setter Property="Height" Value="34" />
-                <Setter Property="Padding" Value="10,0" />
-                <Setter Property="Background" Value="Transparent" />
+            <Style x:Key="ScreenshotZoomPercentButtonStyle" TargetType="Button">
+                <Setter Property="MinWidth" Value="64" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="Background" Value="{ThemeResource ControlFillColorSecondaryBrush}" />
                 <Setter Property="BorderBrush" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="CornerRadius" Value="18" />
                 <Setter Property="UseSystemFocusVisuals" Value="True" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid x:Name="ViewerRoot" Background="Transparent">
-        <Border
-            x:Name="ViewerFrame"
-            Padding="8"
-            Background="{ThemeResource ScreenshotViewerFrameBrush}"
-            BorderBrush="{ThemeResource ScreenshotViewerBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="18">
-            <ScrollViewer
-                x:Name="ImageScroller"
-                HorizontalScrollBarVisibility="Auto"
-                HorizontalScrollMode="Auto"
-                MaxZoomFactor="5"
-                MinZoomFactor="1"
-                SizeChanged="ImageScroller_SizeChanged"
-                VerticalScrollBarVisibility="Auto"
-                VerticalScrollMode="Auto"
-                ViewChanged="ImageScroller_ViewChanged"
-                ZoomMode="Enabled">
-                <Grid
-                    x:Name="ImageHost"
-                    MinWidth="1"
-                    MinHeight="1">
-                    <Image
-                        x:Name="ScreenshotImage"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        AutomationProperties.Name="No screenshot selected"
-                        Stretch="Uniform" />
-                </Grid>
-            </ScrollViewer>
-        </Border>
+        <ScrollViewer
+            x:Name="ImageScroller"
+            Background="Transparent"
+            HorizontalScrollBarVisibility="Hidden"
+            HorizontalScrollMode="Auto"
+            MaxZoomFactor="5"
+            MinZoomFactor="1"
+            SizeChanged="ImageScroller_SizeChanged"
+            VerticalScrollBarVisibility="Hidden"
+            VerticalScrollMode="Auto"
+            ViewChanged="ImageScroller_ViewChanged"
+            ZoomMode="Enabled">
+            <Grid
+                x:Name="ImageHost"
+                MinWidth="1"
+                MinHeight="1"
+                Background="Transparent">
+                <Image
+                    x:Name="ScreenshotImage"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    AutomationProperties.Name="No screenshot selected"
+                    Stretch="Uniform" />
+            </Grid>
+        </ScrollViewer>
 
         <Border
             x:Name="ZoomRail"
-            Margin="0,16,0,0"
-            Padding="7"
+            Margin="0,0,0,190"
+            Padding="6"
             HorizontalAlignment="Center"
-            VerticalAlignment="Top"
+            VerticalAlignment="Bottom"
             Background="{ThemeResource ScreenshotViewerRailBrush}"
             BorderBrush="{ThemeResource ScreenshotViewerRailBorderBrush}"
             BorderThickness="1"
-            CornerRadius="22">
-            <StackPanel Orientation="Horizontal" Spacing="4">
+            CornerRadius="25">
+            <StackPanel Orientation="Horizontal" Spacing="3">
                 <Button
                     x:Name="ZoomOutButton"
                     AutomationProperties.Name="Zoom out"
@@ -126,27 +96,14 @@
                         FontSize="15"
                         Glyph="&#xE71F;" />
                 </Button>
-                <Border
-                    MinWidth="58"
-                    Height="34"
-                    Padding="10,0"
-                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                    CornerRadius="17">
-                    <TextBlock
-                        x:Name="ZoomPercentText"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        Text="100%" />
-                </Border>
                 <Button
                     x:Name="ZoomResetButton"
                     AutomationProperties.Name="Reset zoom to 100 percent"
                     Click="ZoomResetButton_Click"
-                    Style="{StaticResource ScreenshotZoomTextButtonStyle}"
+                    Style="{StaticResource ScreenshotZoomPercentButtonStyle}"
                     ToolTipService.ToolTip="Reset zoom to 100%">
                     <TextBlock
+                        x:Name="ZoomPercentText"
                         FontSize="12"
                         FontWeight="SemiBold"
                         Text="100%" />
@@ -166,7 +123,7 @@
                 <Border
                     Width="1"
                     Height="22"
-                    Margin="4,0"
+                    Margin="5,0"
                     VerticalAlignment="Center"
                     Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                 <Button

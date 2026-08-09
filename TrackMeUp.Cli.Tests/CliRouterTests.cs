@@ -293,6 +293,7 @@ public sealed class CliRouterTests
             AiStatusReads++;
             return Success(new AiStatus(false, "openai", "gpt-5.6", "https://api.openai.com/v1/responses", "OPENAI_API_KEY", false, false, new AnalysisCostGate(true, null, 0m, 0, 0m)), "ai.status.loaded");
         }
+        public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => Unsupported<AiPricingOverview>();
         public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => Unsupported<AiModelCatalogSnapshot>();
         public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => Unsupported<AiStatus>();
         public Task<OperationResult<AppSettings>> ConfigureAiAsync(SettingsPatch patch, CancellationToken cancellationToken)

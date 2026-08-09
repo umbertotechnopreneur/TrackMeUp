@@ -3,6 +3,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 using Windows.UI;
 
 namespace TrackMeUp;
@@ -47,7 +48,7 @@ internal sealed record MicaDialogRequest(
 internal sealed class MicaDialogService
 {
     private readonly SemaphoreSlim _queue = new(1, 1);
-    private MicaDialogWindow? _activeWindow;
+    private Window? _activeWindow;
     private bool _isShuttingDown;
 
     /// <summary>Shows a one-button informative dialog and waits for acknowledgement or dismissal.</summary>
@@ -74,6 +75,20 @@ internal sealed class MicaDialogService
         }
 
         return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;
+    }
+
+    /// <summary>Shows simplified OpenAI pricing and locally estimated costs in the shared Mica dialog queue.</summary>
+    internal async Task ShowPricingAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        AiPricingOverview overview,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(overview);
+        ArgumentNullException.ThrowIfNull(strings);
+        await ShowPricingWindowAsync(application, owner, overview, theme, strings);
     }
 
     /// <summary>Closes the current dialog during application shutdown.</summary>
@@ -113,6 +128,57 @@ internal sealed class MicaDialogService
 
             var result = await dialog.ShowAsync();
             return result;
+        }
+        finally
+        {
+            _activeWindow = null;
+            dialog?.DisposePlacement();
+            if (disabledPeerWindows is not null)
+            {
+                RestoreDialogPeerWindows(disabledPeerWindows);
+            }
+
+            if (ownerContent is not null)
+            {
+                ownerContent.IsHitTestVisible = ownerWasInteractive;
+            }
+
+            _queue.Release();
+        }
+    }
+
+    private async Task ShowPricingWindowAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        AiPricingOverview overview,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        await _queue.WaitAsync();
+        var ownerContent = owner.Content as UIElement;
+        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
+        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+        AiPricingDialogWindow? dialog = null;
+        List<IntPtr>? disabledPeerWindows = null;
+        try
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            if (ownerContent is not null)
+            {
+                ownerContent.IsHitTestVisible = false;
+            }
+
+            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
+            var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
+            dialog = new AiPricingDialogWindow(application, overview, theme, strings, ownerAppWindow, ownerHandle);
+            _activeWindow = dialog;
+            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
+            await dialog.ShowAsync();
         }
         finally
         {

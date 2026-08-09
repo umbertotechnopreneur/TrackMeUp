@@ -15,7 +15,7 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
     public ScreenshotImageViewerControl Viewer => ImageViewer;
 
     /// <summary>Gets the metadata summary panel.</summary>
-    public Border MetadataContainer => MetadataPanel;
+    public Grid MetadataContainer => MetadataPanel;
 
     /// <summary>Gets the metadata date value text element.</summary>
     public TextBlock MetadataDateText => MetadataDateValueText;
@@ -25,15 +25,6 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
 
     /// <summary>Gets the metadata foreground-app value text element.</summary>
     public TextBlock MetadataApplicationText => MetadataAppValueText;
-
-    /// <summary>Gets the metadata origin value text element.</summary>
-    public TextBlock MetadataOriginText => MetadataOriginValueText;
-
-    /// <summary>Gets the metadata activity-label history value text element.</summary>
-    public TextBlock MetadataSpanLabelsText => MetadataSpanLabelsValueText;
-
-    /// <summary>Gets the metadata activity-index value text element.</summary>
-    public TextBlock MetadataActivityIndexText => MetadataActivityIndexValueText;
 
     /// <summary>Gets the empty-state panel.</summary>
     public Grid EmptyPanel => EmptyGalleryPanel;

@@ -47,7 +47,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
     }
 
     [Fact]
-    public void ActivitySchema_MigratesValidatedVersionThreeToVersionFour()
+    public void ActivitySchema_MigratesValidatedVersionThreeToCurrentVersion()
     {
         var dataDirectory = CreateDataDirectory();
         try
@@ -59,6 +59,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 connection.Open();
                 using var command = connection.CreateCommand();
                 command.CommandText = """
+                    DROP TABLE ai_model_pricing;
                     DROP INDEX ix_screenshot_text_snapshots_capture;
                     DROP TABLE screenshot_text_snapshots;
                     PRAGMA user_version = 3;
@@ -72,10 +73,15 @@ public sealed class LocalSearchAndOcrIntegrationTests
             migrated.Open();
             using var version = migrated.CreateCommand();
             version.CommandText = "PRAGMA user_version;";
-            Assert.Equal(4L, Convert.ToInt64(version.ExecuteScalar()));
-            using var table = migrated.CreateCommand();
-            table.CommandText = "SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name = 'screenshot_text_snapshots';";
-            Assert.Equal(1L, Convert.ToInt64(table.ExecuteScalar()));
+            Assert.Equal(5L, Convert.ToInt64(version.ExecuteScalar()));
+            using var tables = migrated.CreateCommand();
+            tables.CommandText = """
+                SELECT COUNT(*)
+                FROM sqlite_schema
+                WHERE type = 'table'
+                  AND name IN ('screenshot_text_snapshots', 'ai_model_pricing');
+                """;
+            Assert.Equal(2L, Convert.ToInt64(tables.ExecuteScalar()));
         }
         finally
         {

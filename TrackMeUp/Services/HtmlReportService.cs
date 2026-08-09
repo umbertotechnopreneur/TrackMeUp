@@ -66,11 +66,21 @@ public sealed class HtmlReportService
             return "<section><h2>Utilizzo AI</h2><p>Nessuna richiesta AI nel periodo.</p></section>";
         }
 
-        var cost = usage.ActualCostUsd.HasValue
+        var actualCost = usage.ActualCostUsd.HasValue
             ? $"${usage.ActualCostUsd.Value:0.######} ({usage.ActualCostRequestCount} richieste con costo restituito dal provider)"
             : "non restituito dal provider";
+        var pricingUpdatedAt = usage.EstimatedCostPricingUpdatedAt?.UtcDateTime.ToString(
+            "yyyy-MM-dd HH:mm",
+            System.Globalization.CultureInfo.InvariantCulture)
+            ?? "n/d";
+        var estimatedCost = usage.EstimatedCostUsd.HasValue
+            ? $"${usage.EstimatedCostUsd.Value:0.######} ({usage.EstimatedCostRequestCount} richieste stimate, prezzi aggiornati {pricingUpdatedAt} UTC)"
+            : "non stimabile con il listino locale";
         var providers = string.Join(Environment.NewLine, usage.ByProvider.Select(provider =>
-            $"<tr><td>{WebUtility.HtmlEncode(provider.Label)}</td><td>{provider.RequestCount:N0}</td><td>{provider.TotalTokens:N0}</td><td>{(provider.ActualCostUsd.HasValue ? "$" + provider.ActualCostUsd.Value.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) : "n/d")}</td></tr>"));
-        return $"<section><h2>Utilizzo AI</h2>Richieste: <strong>{usage.RequestCount:N0}</strong> ({usage.SuccessfulRequestCount:N0} riuscite, {usage.FailedRequestCount:N0} non riuscite)<br>Token: <strong>{usage.TotalTokens:N0}</strong> (input {usage.InputTokens:N0}, output {usage.OutputTokens:N0})<br>Costo effettivo: <strong>{cost}</strong><table><tr><th>Provider</th><th>Richieste</th><th>Token</th><th>Costo effettivo</th></tr>{providers}</table></section>";
+            $"<tr><td>{WebUtility.HtmlEncode(provider.Label)}</td><td>{provider.RequestCount:N0}</td><td>{provider.TotalTokens:N0}</td><td>{FormatCost(provider.ActualCostUsd)}</td><td>{FormatCost(provider.EstimatedCostUsd)}</td></tr>"));
+        return $"<section><h2>Utilizzo AI</h2>Richieste: <strong>{usage.RequestCount:N0}</strong> ({usage.SuccessfulRequestCount:N0} riuscite, {usage.FailedRequestCount:N0} non riuscite)<br>Token: <strong>{usage.TotalTokens:N0}</strong> (input {usage.InputTokens:N0}, output {usage.OutputTokens:N0})<br>Costo effettivo: <strong>{actualCost}</strong><br>Costo stimato: <strong>{estimatedCost}</strong><table><tr><th>Provider</th><th>Richieste</th><th>Token</th><th>Costo effettivo</th><th>Costo stimato</th></tr>{providers}</table></section>";
     }
+
+    private static string FormatCost(decimal? value) =>
+        value.HasValue ? "$" + value.Value.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) : "n/d";
 }

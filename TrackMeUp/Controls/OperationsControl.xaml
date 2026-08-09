@@ -8,28 +8,26 @@
     d:DesignHeight="720"
     d:DesignWidth="420"
     mc:Ignorable="d">
-    <Grid x:Name="RootLayout" RowSpacing="12">
+    <Grid x:Name="RootLayout">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid ColumnSpacing="12">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <Button Width="40" Height="40" Padding="8" VerticalAlignment="Top" AutomationProperties.Name="Back" Background="Transparent" BorderBrush="Transparent" Click="BackButton_Click">
-                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE72B;" />
-            </Button>
-            <StackPanel Grid.Column="1" Spacing="2">
-                <TextBlock Tag="Operations.Title" Style="{StaticResource TitleTextBlockStyle}" Text="Tools and diagnostics" TextWrapping="Wrap" />
-                <TextBlock Tag="Operations.Subtitle" Style="{StaticResource BodyTextBlockStyle}" Text="All operations use the shared app runtime." TextWrapping="Wrap" />
-            </StackPanel>
-            <ProgressRing x:Name="OperationProgress" Grid.Column="2" Width="24" Height="24" VerticalAlignment="Center" AutomationProperties.Name="Operation in progress" IsActive="False" />
+        <Grid>
+            <InfoBar x:Name="OperationInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
+            <ProgressRing
+                x:Name="OperationProgress"
+                Width="24"
+                Height="24"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                AutomationProperties.Name="Operation in progress"
+                IsActive="False"
+                Visibility="Collapsed" />
         </Grid>
 
-        <InfoBar x:Name="OperationInfoBar" Grid.Row="1" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
-
-        <ScrollViewer x:Name="OperationsScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
+        <ScrollViewer x:Name="OperationsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
             <Grid x:Name="OperationsBody" Padding="0,0,8,20" RowSpacing="24">
                 <VisualStateManager.VisualStateGroups>
                     <VisualStateGroup x:Name="WidthStates">

@@ -7,18 +7,12 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ScreenshotDetailChipBrush" Color="#99FFFFFF" />
-                    <SolidColorBrush x:Key="ScreenshotDetailChipBorderBrush" Color="#CCFFFFFF" />
                     <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FF4E8DEB" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="ScreenshotDetailChipBrush" Color="#59101824" />
-                    <SolidColorBrush x:Key="ScreenshotDetailChipBorderBrush" Color="#33FFFFFF" />
                     <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FFFFA45E" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="ScreenshotDetailChipBrush" Color="#99FFFFFF" />
-                    <SolidColorBrush x:Key="ScreenshotDetailChipBorderBrush" Color="#CCFFFFFF" />
                     <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FF4E8DEB" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
@@ -47,13 +41,13 @@
                 <Setter Property="IsTextSelectionEnabled" Value="True" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
-            <Style x:Key="ScreenshotDetailChipStyle" TargetType="Border">
-                <Setter Property="MinHeight" Value="62" />
-                <Setter Property="Padding" Value="12,10" />
-                <Setter Property="Background" Value="{ThemeResource ScreenshotDetailChipBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource ScreenshotDetailChipBorderBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="12" />
+            <Style x:Key="ScreenshotDetailRowStyle" TargetType="Border">
+                <Setter Property="MinHeight" Value="56" />
+                <Setter Property="Padding" Value="0,10" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="CornerRadius" Value="0" />
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
@@ -78,7 +72,7 @@
                     TextTrimming="CharacterEllipsis" />
             </StackPanel>
 
-            <Border Style="{StaticResource ScreenshotDetailChipStyle}">
+            <Border Style="{StaticResource ScreenshotDetailRowStyle}">
                 <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -132,28 +126,28 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Style="{StaticResource ScreenshotDetailChipStyle}">
+                    <Border Style="{StaticResource ScreenshotDetailRowStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.ApplicationLabel" Text="FOREGROUND APP" />
                             <TextBlock x:Name="ApplicationValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Column="1" Style="{StaticResource ScreenshotDetailChipStyle}">
+                    <Border Grid.Column="1" Style="{StaticResource ScreenshotDetailRowStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.CaptureKind" Text="CAPTURE" />
                             <TextBlock x:Name="CaptureKindValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="1" Style="{StaticResource ScreenshotDetailChipStyle}">
+                    <Border Grid.Row="1" Style="{StaticResource ScreenshotDetailRowStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.OriginLabel" Text="ORIGIN" />
                             <TextBlock x:Name="OriginValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ScreenshotDetailChipStyle}">
+                    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ScreenshotDetailRowStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.SpanLabels" Text="ACTIVITY LABELS" />
                             <TextBlock x:Name="ActivityLabelsValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />

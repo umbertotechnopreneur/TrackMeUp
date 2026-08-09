@@ -40,21 +40,17 @@ public sealed partial class ScreenshotWindow : Window
 
     private TextBlock GalleryCountText => HeaderSection.CountText;
 
+    private TextBlock ExtendedDateText => HeaderSection.DisplayDateText;
+
     private Controls.ScreenshotImageViewerControl ScreenshotViewer => GallerySection.Viewer;
 
-    private Border MetadataPanel => GallerySection.MetadataContainer;
+    private Grid MetadataPanel => GallerySection.MetadataContainer;
 
     private TextBlock MetadataDateValueText => GallerySection.MetadataDateText;
 
     private TextBlock MetadataTimeValueText => GallerySection.MetadataTimeText;
 
     private TextBlock MetadataAppValueText => GallerySection.MetadataApplicationText;
-
-    private TextBlock MetadataOriginValueText => GallerySection.MetadataOriginText;
-
-    private TextBlock MetadataSpanLabelsValueText => GallerySection.MetadataSpanLabelsText;
-
-    private TextBlock MetadataActivityIndexValueText => GallerySection.MetadataActivityIndexText;
 
     private Grid EmptyGalleryPanel => GallerySection.EmptyPanel;
 
@@ -256,6 +252,7 @@ public sealed partial class ScreenshotWindow : Window
     private void SetSelectedDate(DateOnly date)
     {
         _selectedDate = date;
+        UpdateDisplayedDate();
         _settingSelectedDate = true;
         try
         {
@@ -271,7 +268,14 @@ public sealed partial class ScreenshotWindow : Window
     {
         SelectedDatePicker.PlaceholderText = _strings.Translate("Screenshots.Date.Placeholder");
         AutomationProperties.SetName(SelectedDatePicker, _strings.Translate("Screenshots.Date"));
+        UpdateDisplayedDate();
         UpdateDetailsToggleAccessibility();
+    }
+
+    private void UpdateDisplayedDate()
+    {
+        var culture = CultureInfo.GetCultureInfo(_strings.Language);
+        ExtendedDateText.Text = _selectedDate.ToDateTime(TimeOnly.MinValue).ToString("D", culture);
     }
 
     private void SelectRequestedScreenshot()
@@ -347,9 +351,6 @@ public sealed partial class ScreenshotWindow : Window
             MetadataDateValueText.Text = "--";
             MetadataTimeValueText.Text = "--";
             MetadataAppValueText.Text = "--";
-            MetadataOriginValueText.Text = "--";
-            MetadataSpanLabelsValueText.Text = "--";
-            MetadataActivityIndexValueText.Text = "--";
             DetailsSection.Render(null);
             MetadataPanel.Visibility = Visibility.Collapsed;
             return;
@@ -360,14 +361,12 @@ public sealed partial class ScreenshotWindow : Window
         MetadataDateValueText.Text = FormatMetadataDate(localTime, culture);
         MetadataTimeValueText.Text = localTime.ToString("t", culture);
         MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
-        MetadataOriginValueText.Text = FormatCaptureOrigin(item.CaptureOrigin);
-        MetadataSpanLabelsValueText.Text = FormatSpanLabels(item.SpanLabels, culture);
-        MetadataActivityIndexValueText.Text = item.ActivityIndex?.ToString(culture) ?? "--";
+        var captureOrigin = FormatCaptureOrigin(item.CaptureOrigin);
         DetailsSection.Render(ScreenshotDetailsProjection.Create(
             item,
             culture,
             FormatCaptureKind(item.CaptureKind),
-            MetadataOriginValueText.Text,
+            captureOrigin,
             "--"));
         MetadataPanel.Visibility = Visibility.Visible;
     }
@@ -390,11 +389,6 @@ public sealed partial class ScreenshotWindow : Window
         AutomationProperties.SetName(DetailsToggleButton, label);
         ToolTipService.SetToolTip(DetailsToggleButton, label);
     }
-
-    private static string FormatSpanLabels(IReadOnlyList<ActivityLabelSample>? labels, CultureInfo culture) =>
-        labels is not { Count: > 0 }
-            ? "--"
-            : string.Join("  ·  ", labels.Select(label => $"{label.SampledAt.ToLocalTime().ToString("t", culture)} {label.Label}"));
 
     private static string FormatMetadataDate(DateTimeOffset capturedAt, CultureInfo culture)
     {

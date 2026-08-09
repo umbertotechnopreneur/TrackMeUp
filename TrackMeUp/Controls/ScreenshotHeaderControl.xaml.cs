@@ -13,4 +13,10 @@ public sealed partial class ScreenshotHeaderControl : UserControl
 
     /// <summary>Gets the text element that displays the screenshot count.</summary>
     public TextBlock CountText => GalleryCountText;
+
+    /// <summary>Gets the large text element that displays the selected date.</summary>
+    public TextBlock DisplayDateText => ExtendedDateText;
+
+    private void OpenDatePickerButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) =>
+        SelectedDatePicker.IsCalendarOpen = true;
 }

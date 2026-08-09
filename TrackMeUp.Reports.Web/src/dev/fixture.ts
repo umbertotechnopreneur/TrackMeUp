@@ -82,14 +82,17 @@ const aiUsage: AiUsageSummary = {
   thinkingTokens: 0,
   actualCostUsd: 0.1274,
   actualCostRequestCount: 9,
+  estimatedCostUsd: 0.07152,
+  estimatedCostRequestCount: 5,
+  estimatedCostPricingUpdatedAt: '2026-08-05T08:30:00Z',
   byProvider: [
-    { label: 'openrouter', requestCount: 9, inputTokens: 24200, outputTokens: 3850, totalTokens: 28050, actualCostUsd: 0.1274 },
-    { label: 'openai', requestCount: 5, inputTokens: 14040, outputTokens: 2160, totalTokens: 16200, actualCostUsd: null },
+    { label: 'openrouter', requestCount: 9, inputTokens: 24200, outputTokens: 3850, totalTokens: 28050, actualCostUsd: 0.1274, estimatedCostUsd: null },
+    { label: 'openai', requestCount: 5, inputTokens: 14040, outputTokens: 2160, totalTokens: 16200, actualCostUsd: null, estimatedCostUsd: 0.07152 },
   ],
   byOrigin: [
-    { label: 'winui.operations', requestCount: 8, inputTokens: 22000, outputTokens: 3410, totalTokens: 25410, actualCostUsd: 0.082 },
-    { label: 'snapshot.scheduled', requestCount: 5, inputTokens: 13240, outputTokens: 2100, totalTokens: 15340, actualCostUsd: 0.0454 },
-    { label: 'cli.ai', requestCount: 1, inputTokens: 3000, outputTokens: 500, totalTokens: 3500, actualCostUsd: null },
+    { label: 'winui.operations', requestCount: 8, inputTokens: 22000, outputTokens: 3410, totalTokens: 25410, actualCostUsd: 0.082, estimatedCostUsd: 0.04118 },
+    { label: 'snapshot.scheduled', requestCount: 5, inputTokens: 13240, outputTokens: 2100, totalTokens: 15340, actualCostUsd: 0.0454, estimatedCostUsd: 0.03034 },
+    { label: 'cli.ai', requestCount: 1, inputTokens: 3000, outputTokens: 500, totalTokens: 3500, actualCostUsd: null, estimatedCostUsd: null },
   ],
 }
 
@@ -117,7 +120,7 @@ export function buildDevelopmentEnvelope(): ReportEnvelope {
     type: 'report.snapshot',
     view: 'calendar',
     snapshot: {
-      contractVersion: 2,
+      contractVersion: 3,
       range: {
         from: '2026-07-23',
         toInclusive: '2026-08-05',

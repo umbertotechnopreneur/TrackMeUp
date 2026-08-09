@@ -134,6 +134,27 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task AiPricingOverview_RoundTripsThroughTheRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, PricingRuntimeProxy>();
+        var installationId = $"pricing-runtime-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+
+        var result = await client.GetAiPricingOverviewAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Value);
+        Assert.Equal(1, result.Value.DisplayedModelCount);
+        Assert.Equal(0.0003m, result.Value.EstimatedCostTodayUsd);
+        var row = Assert.Single(result.Value.Models);
+        Assert.Equal("gpt-test", row.Model);
+        Assert.Equal(1.25m, row.InputUsdPerMillionTokens);
+        Assert.Equal(10m, row.OutputUsdPerMillionTokens);
+    }
+
+    [Fact]
     public async Task ApplicationNotifications_RoundTripThroughTheSharedRuntimeFacade()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, NotificationRuntimeProxy>();
@@ -199,6 +220,35 @@ public sealed class RuntimeProtocolTests
                         new AiModelCatalogSnapshot(
                             1,
                             [new AiModelDescriptor("gpt-test", ["gpt-test-alias"], "Test", "Test model", "#123456", ["auto", "low"], true, "general", false)]))),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+    }
+
+    public class PricingRuntimeProxy : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetAiPricingOverviewAsync) => Task.FromResult(
+                    OperationResult<AiPricingOverview>.Success(
+                        "ai.pricing.loaded",
+                        "AiPricingLoaded",
+                        new AiPricingOverview(
+                            new DateTimeOffset(2026, 8, 9, 0, 0, 0, TimeSpan.Zero),
+                            1,
+                            1,
+                            0.0003m,
+                            1,
+                            null,
+                            0,
+                            100,
+                            20,
+                            120,
+                            [new AiPricingCostRow("gpt-test", 1.25m, 10m)]))),
                 nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
                 "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
                 _ => throw new NotSupportedException(targetMethod?.Name)

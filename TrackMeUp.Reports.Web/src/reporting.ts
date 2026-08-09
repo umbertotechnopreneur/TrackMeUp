@@ -74,6 +74,7 @@ export interface AiUsageSlice {
   outputTokens: number
   totalTokens: number
   actualCostUsd: number | null
+  estimatedCostUsd: number | null
 }
 
 export interface AiUsageSummary {
@@ -88,6 +89,9 @@ export interface AiUsageSummary {
   thinkingTokens: number
   actualCostUsd: number | null
   actualCostRequestCount: number
+  estimatedCostUsd: number | null
+  estimatedCostRequestCount: number
+  estimatedCostPricingUpdatedAt: string | null
   byProvider: AiUsageSlice[]
   byOrigin: AiUsageSlice[]
 }
@@ -222,6 +226,7 @@ const isAiUsageSlice = (value: unknown): value is AiUsageSlice => {
     && value.label.length <= 256
     && hasNumericFields(value, ['requestCount', 'inputTokens', 'outputTokens', 'totalTokens'])
     && isNullableNonNegative(value.actualCostUsd)
+    && isNullableNonNegative(value.estimatedCostUsd)
 }
 
 const isAiUsage = (value: unknown): value is AiUsageSummary => {
@@ -237,10 +242,14 @@ const isAiUsage = (value: unknown): value is AiUsageSummary => {
     'reasoningTokens',
     'thinkingTokens',
     'actualCostRequestCount',
+    'estimatedCostRequestCount',
   ])
     && (value.successfulRequestCount as number) + (value.failedRequestCount as number) === (value.requestCount as number)
     && (value.actualCostRequestCount as number) <= (value.requestCount as number)
+    && (value.estimatedCostRequestCount as number) <= (value.requestCount as number)
     && isNullableNonNegative(value.actualCostUsd)
+    && isNullableNonNegative(value.estimatedCostUsd)
+    && isNullableDateTimeText(value.estimatedCostPricingUpdatedAt)
     && Array.isArray(value.byProvider)
     && value.byProvider.every(isAiUsageSlice)
     && Array.isArray(value.byOrigin)
@@ -262,7 +271,7 @@ export function validateReportEnvelope(value: unknown): EnvelopeValidationResult
     return { error: tr('The report does not contain a valid snapshot.', 'Il report non contiene uno snapshot valido.') }
   }
 
-  if (snapshot.contractVersion !== 2) {
+  if (snapshot.contractVersion !== 3) {
     return { error: tr('The report version is not compatible with this application.', 'La versione del report non è compatibile con questa applicazione.') }
   }
 

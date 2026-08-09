@@ -23,9 +23,6 @@ public sealed partial class OperationsControl : UserControl
     /// <summary>Creates the passive operational surface.</summary>
     public OperationsControl() => InitializeComponent();
 
-    /// <summary>Occurs when the user asks to return to the compact player.</summary>
-    public event EventHandler? BackRequested;
-
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
     {
@@ -46,8 +43,6 @@ public sealed partial class OperationsControl : UserControl
     private MicaDialogService Dialogs => _dialogs ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private Window OwnerWindow => _ownerWindow ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
-
-    private void BackButton_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke(this, EventArgs.Empty);
 
     private async void RuntimeHealthButton_Click(object sender, RoutedEventArgs e)
     {
@@ -363,6 +358,7 @@ public sealed partial class OperationsControl : UserControl
         _operationInProgress = true;
         OperationsScroll.IsEnabled = false;
         OperationProgress.IsActive = true;
+        OperationProgress.Visibility = Visibility.Visible;
         try
         {
             var result = await operation(Application, CancellationToken.None);
@@ -393,6 +389,7 @@ public sealed partial class OperationsControl : UserControl
         finally
         {
             OperationProgress.IsActive = false;
+            OperationProgress.Visibility = Visibility.Collapsed;
             OperationsScroll.IsEnabled = true;
             _operationInProgress = false;
         }

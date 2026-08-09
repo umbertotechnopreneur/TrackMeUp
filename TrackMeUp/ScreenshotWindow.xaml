@@ -6,90 +6,12 @@
     xmlns:controls="using:TrackMeUp.Controls"
     Title="Captured moments">
     <Window.SystemBackdrop>
-        <MicaBackdrop Kind="Base" />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.Resources>
             <ResourceDictionary>
-                <ResourceDictionary.ThemeDictionaries>
-                    <ResourceDictionary x:Key="Light">
-                        <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#48FFFFFF" Offset="0" />
-                            <GradientStop Color="#20EDF7FF" Offset="0.52" />
-                            <GradientStop Color="#3DFFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                        <RadialGradientBrush
-							x:Key="ScreenshotBackdropBloomBrush"
-							Center="0.60,0.38"
-							GradientOrigin="0.60,0.38"
-							RadiusX="0.62"
-							RadiusY="0.82">
-							<GradientStop Color="#4674B8FF" Offset="0" />
-							<GradientStop Color="#2464A7EF" Offset="0.48" />
-							<GradientStop Color="#0064A7EF" Offset="1" />
-						</RadialGradientBrush>
-                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#CCFFFFFF" Offset="0" />
-                            <GradientStop Color="#73EAF4FF" Offset="1" />
-                        </LinearGradientBrush>
-                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#F2FFFFFF" Offset="0" />
-                            <GradientStop Color="#73FFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                    </ResourceDictionary>
-                    <ResourceDictionary x:Key="Dark">
-                        <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#3D020914" Offset="0" />
-                            <GradientStop Color="#22081322" Offset="0.52" />
-                            <GradientStop Color="#30020A16" Offset="1" />
-                        </LinearGradientBrush>
-                        <RadialGradientBrush
-							x:Key="ScreenshotBackdropBloomBrush"
-							Center="0.60,0.38"
-							GradientOrigin="0.60,0.38"
-							RadiusX="0.62"
-							RadiusY="0.82">
-							<GradientStop Color="#4D1F6FC4" Offset="0" />
-							<GradientStop Color="#26124F96" Offset="0.48" />
-							<GradientStop Color="#00124F96" Offset="1" />
-						</RadialGradientBrush>
-                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#D9141C28" Offset="0" />
-                            <GradientStop Color="#99101A27" Offset="1" />
-                        </LinearGradientBrush>
-                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#59FFFFFF" Offset="0" />
-                            <GradientStop Color="#26FFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                    </ResourceDictionary>
-                    <ResourceDictionary x:Key="Default">
-                        <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#48FFFFFF" Offset="0" />
-                            <GradientStop Color="#20EDF7FF" Offset="0.52" />
-                            <GradientStop Color="#3DFFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                        <RadialGradientBrush
-							x:Key="ScreenshotBackdropBloomBrush"
-							Center="0.60,0.38"
-							GradientOrigin="0.60,0.38"
-							RadiusX="0.62"
-							RadiusY="0.82">
-							<GradientStop Color="#4674B8FF" Offset="0" />
-							<GradientStop Color="#2464A7EF" Offset="0.48" />
-							<GradientStop Color="#0064A7EF" Offset="1" />
-						</RadialGradientBrush>
-                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#CCFFFFFF" Offset="0" />
-                            <GradientStop Color="#73EAF4FF" Offset="1" />
-                        </LinearGradientBrush>
-                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#F2FFFFFF" Offset="0" />
-                            <GradientStop Color="#73FFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                    </ResourceDictionary>
-                </ResourceDictionary.ThemeDictionaries>
-
                 <Style x:Key="ScreenshotTitleTextStyle" TargetType="TextBlock">
                     <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
                     <Setter Property="FontSize" Value="15" />
@@ -111,17 +33,6 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-
-        <Rectangle
-            Grid.ColumnSpan="2"
-            Grid.RowSpan="5"
-			Fill="{ThemeResource ScreenshotBackdropVeilBrush}"
-            IsHitTestVisible="False" />
-		<Rectangle
-			Grid.ColumnSpan="2"
-			Grid.RowSpan="5"
-			Fill="{ThemeResource ScreenshotBackdropBloomBrush}"
-			IsHitTestVisible="False" />
 
         <Border
             x:Name="TitleBarDragRegion"
@@ -269,21 +180,8 @@
                                     </Setter>
                                 </Style>
                                 <Style x:Key="ScreenshotOverflowIconChipStyle"
+                                       BasedOn="{StaticResource SurfaceIconChipStyle}"
                                        TargetType="Border">
-                                    <Setter Property="Width"
-                                            Value="22"/>
-                                    <Setter Property="Height"
-                                            Value="22"/>
-                                    <Setter Property="CornerRadius"
-                                            Value="0"/>
-                                    <Setter Property="Padding"
-                                            Value="0"/>
-                                    <Setter Property="Background"
-                                            Value="Transparent"/>
-                                    <Setter Property="BorderBrush"
-                                            Value="Transparent"/>
-                                    <Setter Property="BorderThickness"
-                                            Value="0"/>
                                 </Style>
                                 <Style x:Key="ScreenshotOverflowIconStyle"
                                        TargetType="FontIcon">
@@ -436,33 +334,34 @@
             IsClosable="True"
             IsOpen="False" />
 
+        <controls:ScreenshotGalleryViewControl
+            x:Name="GallerySection"
+            Grid.Row="2"
+            Grid.RowSpan="3"
+            Margin="0" />
+
         <controls:ScreenshotHeaderControl
             x:Name="HeaderSection"
             Grid.Row="2"
-            Margin="32,16,32,0" />
-
-        <controls:ScreenshotGalleryViewControl
-            x:Name="GallerySection"
-            Grid.Row="3"
-            Margin="32,16,32,10" />
+            Margin="40,18,40,0" />
 
         <controls:ScreenshotTimelineControl
             x:Name="TimelineSection"
             Grid.Row="4"
             Grid.ColumnSpan="2"
-            Margin="32,0,32,22" />
+            Margin="0" />
 
         <Border
             x:Name="DetailsPane"
             Grid.Row="2"
             Grid.RowSpan="2"
             Grid.Column="1"
-            Width="340"
-            Margin="0,16,24,20"
-            Background="{ThemeResource ScreenshotDetailsPaneBackgroundBrush}"
-            BorderBrush="{ThemeResource ScreenshotDetailsPaneBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="18"
+            Width="360"
+            Margin="0,12,0,12"
+            Background="Transparent"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="1,0,0,0"
+            CornerRadius="0"
             Visibility="Collapsed">
             <Border.Transitions>
                 <TransitionCollection>

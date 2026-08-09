@@ -256,6 +256,23 @@ public sealed record RetentionStatus(int DataRetentionDays, int ScreenshotRetent
 /// <summary>Describes safe, non-secret AI configuration state.</summary>
 public sealed record AiStatus(bool Enabled, string Provider, string Model, string Endpoint, string KeyVariable, bool HasKey, bool CanEnable, AnalysisCostGate CostGate);
 
+/// <summary>Contains a simplified cached provider price for presentation surfaces.</summary>
+public sealed record AiPricingCostRow(string Model, decimal InputUsdPerMillionTokens, decimal OutputUsdPerMillionTokens);
+
+/// <summary>Contains simplified provider pricing and local estimated usage costs.</summary>
+public sealed record AiPricingOverview(
+    DateTimeOffset? LastSynchronizedAt,
+    int PriceRowCount,
+    int DisplayedModelCount,
+    decimal? EstimatedCostTodayUsd,
+    int EstimatedCostTodayRequestCount,
+    decimal? ActualCostTodayUsd,
+    int ActualCostTodayRequestCount,
+    long TodayInputTokens,
+    long TodayOutputTokens,
+    long TodayTotalTokens,
+    IReadOnlyList<AiPricingCostRow> Models);
+
 /// <summary>Classifies a non-secret notification that an application frontend may present.</summary>
 public enum ApplicationNotificationSeverity
 {
@@ -395,6 +412,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets safe AI status.</summary>
     Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets simplified cached OpenAI pricing and today's local estimated usage cost.</summary>
+    Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken);
 
     /// <summary>Atomically takes pending user-facing notifications from the shared runtime.</summary>
     Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken);

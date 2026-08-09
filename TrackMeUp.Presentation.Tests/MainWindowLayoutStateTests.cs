@@ -38,12 +38,16 @@ public sealed class MainWindowLayoutStateTests
     }
 
     [Fact]
-    public void ResolveLogicalHeight_CapsOptionsAndStillFitsSmallerDisplays()
+    public void ResolveLogicalHeight_CapsSecondarySurfacesAndStillFitsSmallerDisplays()
     {
         var state = new MainWindowLayoutState();
         state.RecordMeasuredHeight(1400);
 
         state.ShowSurface(MainWindowSurface.Options);
+        Assert.Equal(760, state.ResolveLogicalHeight(1200));
+        Assert.Equal(620, state.ResolveLogicalHeight(620));
+
+        state.ShowSurface(MainWindowSurface.Operations);
         Assert.Equal(760, state.ResolveLogicalHeight(1200));
         Assert.Equal(620, state.ResolveLogicalHeight(620));
 

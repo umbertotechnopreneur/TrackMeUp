@@ -142,6 +142,18 @@ public sealed class LocalStore
     /// <summary>Persists one sanitized standalone AI request-usage record in SQLite.</summary>
     internal void AppendAiUsage(AiRequestUsageRecord usage) => _activity.AppendStandaloneAiRequest(usage);
 
+    /// <summary>Replaces the cached AI pricing rows for one provider.</summary>
+    internal void ReplaceAiModelPricing(string provider, IReadOnlyList<AiModelPricing> prices) =>
+        _activity.ReplaceAiModelPricing(provider, prices);
+
+    /// <summary>Lists cached AI model prices for one provider.</summary>
+    internal IReadOnlyList<AiModelPricing> ListAiModelPricing(string provider) =>
+        _activity.ListAiModelPricing(provider);
+
+    /// <summary>Gets the newest cached AI pricing timestamp for one provider.</summary>
+    internal DateTimeOffset? GetLatestAiModelPricingRetrievedAt(string provider) =>
+        _activity.GetLatestAiModelPricingRetrievedAt(provider);
+
     /// <summary>Persists provider usage and the corresponding analysis in one SQLite transaction.</summary>
     internal void AppendAiAnalysisAndUsage(AiRequestUsageRecord usage, AiAnalysis analysis)
     {

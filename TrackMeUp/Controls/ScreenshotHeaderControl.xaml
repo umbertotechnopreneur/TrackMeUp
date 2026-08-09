@@ -1,89 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-	x:Class="TrackMeUp.Controls.ScreenshotHeaderControl"
-	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-	<UserControl.Resources>
-		<ResourceDictionary>
-			<ResourceDictionary.ThemeDictionaries>
-				<ResourceDictionary x:Key="Light">
-					<LinearGradientBrush x:Key="ScreenshotHeaderControlBrush" StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#40FFFFFF" Offset="0" />
-						<GradientStop Color="#18EAF4FF" Offset="1" />
-					</LinearGradientBrush>
-					<LinearGradientBrush x:Key="ScreenshotHeaderControlBorderBrush" StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#8CFFFFFF" Offset="0" />
-						<GradientStop Color="#3DFFFFFF" Offset="1" />
-					</LinearGradientBrush>
-					<SolidColorBrush x:Key="ScreenshotHeaderAccentBrush" Color="#FF4E8DEB" />
-				</ResourceDictionary>
-				<ResourceDictionary x:Key="Dark">
-					<LinearGradientBrush x:Key="ScreenshotHeaderControlBrush" StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#66162335" Offset="0" />
-						<GradientStop Color="#4013355D" Offset="1" />
-					</LinearGradientBrush>
-					<LinearGradientBrush x:Key="ScreenshotHeaderControlBorderBrush" StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#66FFFFFF" Offset="0" />
-						<GradientStop Color="#2BFFFFFF" Offset="1" />
-					</LinearGradientBrush>
-					<SolidColorBrush x:Key="ScreenshotHeaderAccentBrush" Color="#FF4E8DEB" />
-				</ResourceDictionary>
-				<ResourceDictionary x:Key="Default">
-					<LinearGradientBrush x:Key="ScreenshotHeaderControlBrush" StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#40FFFFFF" Offset="0" />
-						<GradientStop Color="#18EAF4FF" Offset="1" />
-					</LinearGradientBrush>
-					<LinearGradientBrush x:Key="ScreenshotHeaderControlBorderBrush" StartPoint="0,0" EndPoint="1,1">
-						<GradientStop Color="#8CFFFFFF" Offset="0" />
-						<GradientStop Color="#3DFFFFFF" Offset="1" />
-					</LinearGradientBrush>
-					<SolidColorBrush x:Key="ScreenshotHeaderAccentBrush" Color="#FF4E8DEB" />
-				</ResourceDictionary>
-			</ResourceDictionary.ThemeDictionaries>
-		</ResourceDictionary>
-	</UserControl.Resources>
-	<Grid MinHeight="36" VerticalAlignment="Center" ColumnSpacing="20">
-		<Grid.ColumnDefinitions>
-			<ColumnDefinition Width="*" />
-			<ColumnDefinition Width="Auto" />
-		</Grid.ColumnDefinitions>
+    x:Class="TrackMeUp.Controls.ScreenshotHeaderControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid MinHeight="86" VerticalAlignment="Center" ColumnSpacing="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
 
-		<StackPanel
-			VerticalAlignment="Center"
-			Orientation="Horizontal"
-			Spacing="8">
-			<FontIcon
-				AutomationProperties.AccessibilityView="Raw"
-				FontFamily="Segoe Fluent Icons"
-				FontSize="13"
-				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-				Glyph="&#xE8B9;" />
-			<TextBlock
-				x:Name="GalleryCountText"
-				VerticalAlignment="Center"
-				FontFamily="{ThemeResource ContentControlThemeFontFamily}"
-				FontSize="12"
-				FontWeight="Medium"
-				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-				LineHeight="16"
-				Text="0 captures" />
-		</StackPanel>
+        <StackPanel VerticalAlignment="Center" Spacing="5">
+            <TextBlock
+                x:Name="ExtendedDateText"
+                FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+                FontSize="34"
+                FontWeight="Light"
+                LineHeight="42"
+                MaxLines="1"
+                Text="Sunday, 9 August 2026"
+                TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="7">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Glyph="&#xE8B9;" />
+                <TextBlock
+                    x:Name="GalleryCountText"
+                    VerticalAlignment="Center"
+                    FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+                    FontSize="12"
+                    FontWeight="Normal"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    LineHeight="16"
+                    Text="0 captures" />
+            </StackPanel>
+        </StackPanel>
 
-		<CalendarDatePicker
-			x:Name="SelectedDatePicker"
-			Grid.Column="1"
-			Width="220"
-			Height="36"
-			VerticalAlignment="Center"
-			AutomationProperties.Name="Screenshot date"
-			Background="{ThemeResource ControlFillColorDefaultBrush}"
-			BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-			CornerRadius="6"
-			DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
-			FontFamily="{ThemeResource ContentControlThemeFontFamily}"
-			FontSize="13"
-			FontWeight="Medium"
-			HorizontalContentAlignment="Left"
-			PlaceholderText="Select a day" />
-	</Grid>
+        <Grid Grid.Column="1" Width="42" Height="42" VerticalAlignment="Center">
+            <CalendarDatePicker
+                x:Name="SelectedDatePicker"
+                Width="1"
+                Height="1"
+                MinWidth="0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                AutomationProperties.Name="Screenshot date"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
+                IsTabStop="False"
+                Opacity="0"
+                PlaceholderText="Select a day" />
+            <Button
+                Width="42"
+                Height="42"
+                Padding="0"
+                AutomationProperties.Name="Choose screenshot date"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="OpenDatePickerButton_Click"
+                CornerRadius="21"
+                ToolTipService.ToolTip="Choose date">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="17"
+                    Glyph="&#xE787;" />
+            </Button>
+        </Grid>
+    </Grid>
 </UserControl>

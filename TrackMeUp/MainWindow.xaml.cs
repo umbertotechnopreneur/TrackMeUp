@@ -446,6 +446,8 @@ public sealed partial class MainWindow : Window
         await Task.WhenAll(settingsTask, aiStateTask);
         ApplyOverflowCommandLabel(OperationsMenuItem, T("Main.Menu.Operations"));
         ApplyOverflowCommandLabel(SearchMenuItem, T("Search.Title"));
+        ApplyOverflowCommandLabel(AiPricingMenuItem, T("AiPricing.MenuTitle"));
+        AiPricingMenuItem.IsEnabled = false;
         var result = await settingsTask;
         if (!result.Succeeded || result.Value is null)
         {
@@ -453,6 +455,7 @@ public sealed partial class MainWindow : Window
         }
 
         _menuSettings = result.Value;
+        AiPricingMenuItem.IsEnabled = IsOpenAiPricingAvailable(result.Value);
         _screenshotsEnabled = result.Value.ScreenshotsEnabled;
         UpdateScreenshotCaptureStatus();
         _updatingMenuState = true;
@@ -506,6 +509,36 @@ public sealed partial class MainWindow : Window
         ShowPanel(OperationsPanel, MainWindowSurface.Operations);
     }
 
+    /// <summary>Shows simplified OpenAI pricing and local estimated usage costs.</summary>
+    private async void AiPricingMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        AiPricingMenuItem.IsEnabled = false;
+        try
+        {
+            var result = await _application.GetAiPricingOverviewAsync(CancellationToken.None);
+            if (result.Succeeded && result.Value is not null)
+            {
+                await _dialogs.ShowPricingAsync(_application, this, result.Value, RootGrid.RequestedTheme, _strings);
+                return;
+            }
+
+            await _dialogs.ShowInformativeAsync(
+                _application,
+                this,
+                MicaDialogRequest.Informative(
+                    T("AiPricing.UnavailableTitle"),
+                    T("AiPricing.UnavailableMessage"),
+                    MicaDialogSeverity.Warning,
+                    T("Dialog.Ok")),
+                RootGrid.RequestedTheme);
+        }
+        finally
+        {
+            AiPricingMenuItem.IsEnabled = _menuSettings is not null && IsOpenAiPricingAvailable(_menuSettings);
+        }
+    }
+
     /// <summary>Shows the passive About view.</summary>
     private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -529,7 +562,16 @@ public sealed partial class MainWindow : Window
             _updatingMenuState = true;
             OpenAiMenuToggle.IsOn = AiState.Enabled;
             _updatingMenuState = false;
+            AiPricingMenuItem.IsEnabled = _menuSettings is not null && IsOpenAiPricingAvailable(_menuSettings);
+            return;
         }
+
+        if (_menuSettings is not null)
+        {
+            _menuSettings = _menuSettings with { OpenAiEnabled = AiState.Enabled };
+        }
+
+        AiPricingMenuItem.IsEnabled = _menuSettings is not null && IsOpenAiPricingAvailable(_menuSettings);
     }
 
     /// <summary>Forwards the screenshot-capture toggle to the validated settings application service.</summary>
@@ -566,6 +608,10 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(button, label);
         ToolTipService.SetToolTip(button, label);
     }
+
+    private static bool IsOpenAiPricingAvailable(AppSettings settings) =>
+        settings.OpenAiEnabled &&
+        string.Equals(settings.AiProvider, "openai", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Shows or hides the presentation-only latest-session panel.</summary>
     private async void DetailsButton_Click(object sender, RoutedEventArgs e)
@@ -625,9 +671,6 @@ public sealed partial class MainWindow : Window
     /// <summary>Returns from options to the player panel.</summary>
     private void OptionsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
 
-    /// <summary>Returns from operational tools to the player panel.</summary>
-    private void OperationsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
-
     /// <summary>Re-measures the options surface after one of its nested sections changes visibility.</summary>
     private void OptionsControl_LayoutChanged(object? sender, EventArgs e)
     {
@@ -645,7 +688,7 @@ public sealed partial class MainWindow : Window
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(surface);
-        TitleBarBackButton.Visibility = ReferenceEquals(panel, OptionsPanel) ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarBackButton.Visibility = Visibility.Visible;
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(panel);
@@ -1004,6 +1047,12 @@ public sealed partial class MainWindow : Window
                 : !AiState.CanEnable && !AiState.Enabled
                     ? T("Options.OpenAi.KeyRequired")
                     : string.Empty);
+        AutomationProperties.SetName(AiPricingMenuItem, T("AiPricing.MenuTitle"));
+        AutomationProperties.SetHelpText(
+            AiPricingMenuItem,
+            AiState.Enabled
+                ? string.Empty
+                : T("AiPricing.DisabledHint"));
     }
 
     private void UpdateActiveHoursAvailability(bool isWithinActiveHours)

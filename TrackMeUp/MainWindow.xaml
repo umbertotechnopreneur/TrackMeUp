@@ -527,6 +527,28 @@
                                                           Toggled="OpenAiMenuToggle_Toggled"/>
                                         </Grid>
                                     </Border>
+                                    <Button
+                                        x:Name="AiPricingMenuItem"
+                                        AutomationProperties.Name="OpenAI costs"
+                                        Click="AiPricingMenuItem_Click"
+                                        IsEnabled="False"
+                                        Style="{StaticResource OverflowMenuButtonStyle}">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Style="{StaticResource OverflowMenuIconChipStyle}">
+                                                <FontIcon Style="{StaticResource OverflowMenuIconStyle}"
+                                                          Foreground="#FF7D9FF8"
+                                                          Glyph="&#xE9D2;"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Tag="AiPricing.MenuTitle"
+                                                       VerticalAlignment="Center"
+                                                       Text="OpenAI costs"/>
+                                        </Grid>
+                                    </Button>
                                     <Border MinHeight="44"
                                             Padding="10,4"
                                             CornerRadius="6">
@@ -1105,7 +1127,7 @@
             Padding="16"
             Background="Transparent"
             Visibility="Collapsed">
-            <controls:OperationsControl x:Name="OperationsControl" BackRequested="OperationsControl_BackRequested" />
+            <controls:OperationsControl x:Name="OperationsControl" />
         </Border>
 
         <Border

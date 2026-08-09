@@ -10,7 +10,7 @@ namespace TrackMeUp.Services;
 internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
     private const long FixedEstimatedRowBytes = 96;
     private static readonly SchemaColumn[] ExpectedActivityColumns =
     [
@@ -57,6 +57,21 @@ internal sealed class SqliteActivityStore
         new("updated_utc_ticks", "INTEGER", true, 0)
     ];
 
+    private static readonly SchemaColumn[] ExpectedAiModelPricingColumns =
+    [
+        new("provider", "TEXT", true, 1),
+        new("model", "TEXT", true, 2),
+        new("service_tier", "TEXT", true, 3),
+        new("context_window", "TEXT", true, 4),
+        new("currency", "TEXT", true, 0),
+        new("input_microusd_per_million", "INTEGER", true, 0),
+        new("cached_input_microusd_per_million", "INTEGER", false, 0),
+        new("cache_write_microusd_per_million", "INTEGER", false, 0),
+        new("output_microusd_per_million", "INTEGER", true, 0),
+        new("source_url", "TEXT", true, 0),
+        new("source_retrieved_utc_ticks", "INTEGER", true, 0)
+    ];
+
     private static readonly HashSet<string> ExpectedActivityIndexes =
     [
         "ix_activity_samples_start",
@@ -83,6 +98,11 @@ internal sealed class SqliteActivityStore
         "ix_screenshot_text_snapshots_capture"
     ];
 
+    private static readonly HashSet<string> ExpectedAiModelPricingIndexes =
+    [
+        "sqlite_autoindex_ai_model_pricing_1"
+    ];
+
     private static readonly HashSet<string> ExpectedVersion3ApplicationSchemaObjects =
     [
         "activity_samples",
@@ -101,11 +121,17 @@ internal sealed class SqliteActivityStore
         "ai_analysis_search_config"
     ];
 
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    private static readonly HashSet<string> ExpectedVersion4ApplicationSchemaObjects =
     [
         .. ExpectedVersion3ApplicationSchemaObjects,
         "screenshot_text_snapshots",
         "ix_screenshot_text_snapshots_capture"
+    ];
+
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    [
+        .. ExpectedVersion4ApplicationSchemaObjects,
+        "ai_model_pricing"
     ];
 
     private readonly string _databasePath;
@@ -307,6 +333,120 @@ internal sealed class SqliteActivityStore
         var results = new List<AiRequestUsageRecord>();
         VisitAiUsage(fromUtc, toUtc, CancellationToken.None, results.Add);
         return results;
+    }
+
+    /// <summary>Replaces every cached AI pricing row for one provider inside a single transaction.</summary>
+    internal void ReplaceAiModelPricing(string provider, IReadOnlyList<AiModelPricing> prices)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            throw new ArgumentException("AI pricing provider is required.", nameof(provider));
+        }
+
+        ArgumentNullException.ThrowIfNull(prices);
+        if (prices.Count == 0)
+        {
+            throw new ArgumentException("AI pricing refresh must contain at least one row.", nameof(prices));
+        }
+
+        var normalizedProvider = provider.Trim().ToLowerInvariant();
+        foreach (var price in prices)
+        {
+            ValidateAiModelPricing(normalizedProvider, price);
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var delete = connection.CreateCommand();
+        delete.Transaction = transaction;
+        delete.CommandText = "DELETE FROM ai_model_pricing WHERE provider = $provider;";
+        delete.Parameters.AddWithValue("$provider", normalizedProvider);
+        delete.ExecuteNonQuery();
+
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = """
+            INSERT INTO ai_model_pricing (
+                provider, model, service_tier, context_window, currency, input_microusd_per_million,
+                cached_input_microusd_per_million, cache_write_microusd_per_million,
+                output_microusd_per_million, source_url, source_retrieved_utc_ticks)
+            VALUES (
+                $provider, $model, $serviceTier, $contextWindow, $currency, $input,
+                $cachedInput, $cacheWrite, $output, $sourceUrl, $sourceRetrievedAt);
+            """;
+        var providerParameter = insert.Parameters.Add("$provider", SqliteType.Text);
+        var modelParameter = insert.Parameters.Add("$model", SqliteType.Text);
+        var serviceTierParameter = insert.Parameters.Add("$serviceTier", SqliteType.Text);
+        var contextWindowParameter = insert.Parameters.Add("$contextWindow", SqliteType.Text);
+        var currencyParameter = insert.Parameters.Add("$currency", SqliteType.Text);
+        var inputParameter = insert.Parameters.Add("$input", SqliteType.Integer);
+        var cachedInputParameter = insert.Parameters.Add("$cachedInput", SqliteType.Integer);
+        var cacheWriteParameter = insert.Parameters.Add("$cacheWrite", SqliteType.Integer);
+        var outputParameter = insert.Parameters.Add("$output", SqliteType.Integer);
+        var sourceUrlParameter = insert.Parameters.Add("$sourceUrl", SqliteType.Text);
+        var sourceRetrievedAtParameter = insert.Parameters.Add("$sourceRetrievedAt", SqliteType.Integer);
+
+        foreach (var price in prices)
+        {
+            providerParameter.Value = normalizedProvider;
+            modelParameter.Value = price.Model.Trim();
+            serviceTierParameter.Value = price.ServiceTier.Trim().ToLowerInvariant();
+            contextWindowParameter.Value = price.ContextWindow.Trim().ToLowerInvariant();
+            currencyParameter.Value = price.Currency.Trim().ToLowerInvariant();
+            inputParameter.Value = ToMicroUsd(price.InputUsdPerMillionTokens)!.Value;
+            cachedInputParameter.Value = ToDbValue(ToMicroUsd(price.CachedInputUsdPerMillionTokens));
+            cacheWriteParameter.Value = ToDbValue(ToMicroUsd(price.CacheWriteUsdPerMillionTokens));
+            outputParameter.Value = ToMicroUsd(price.OutputUsdPerMillionTokens)!.Value;
+            sourceUrlParameter.Value = price.SourceUrl.Trim();
+            sourceRetrievedAtParameter.Value = price.SourceRetrievedAt.UtcDateTime.Ticks;
+            insert.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>Lists the cached AI model pricing rows for one provider.</summary>
+    internal IReadOnlyList<AiModelPricing> ListAiModelPricing(string provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            throw new ArgumentException("AI pricing provider is required.", nameof(provider));
+        }
+
+        var results = new List<AiModelPricing>();
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT provider, model, service_tier, context_window, currency, input_microusd_per_million,
+                   cached_input_microusd_per_million, cache_write_microusd_per_million,
+                   output_microusd_per_million, source_url, source_retrieved_utc_ticks
+            FROM ai_model_pricing
+            WHERE provider = $provider
+            ORDER BY provider, model, service_tier, context_window;
+            """;
+        command.Parameters.AddWithValue("$provider", provider.Trim().ToLowerInvariant());
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            results.Add(ReadAiModelPricing(reader));
+        }
+
+        return results;
+    }
+
+    /// <summary>Gets the newest retrieved-at timestamp for one cached AI pricing provider.</summary>
+    internal DateTimeOffset? GetLatestAiModelPricingRetrievedAt(string provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            throw new ArgumentException("AI pricing provider is required.", nameof(provider));
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT MAX(source_retrieved_utc_ticks) FROM ai_model_pricing WHERE provider = $provider;";
+        command.Parameters.AddWithValue("$provider", provider.Trim().ToLowerInvariant());
+        return ReadScalarNullableLong(command) is { } ticks ? new DateTimeOffset(ticks, TimeSpan.Zero) : null;
     }
 
     /// <summary>Counts successful analysis results in a half-open UTC interval.</summary>
@@ -778,6 +918,14 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
+            if (version == 4)
+            {
+                // Version 4 is validated before adding the local pricing cache table.
+                ValidateVersion4Schema(connection);
+                MigrateVersion4To5(connection);
+                version = ReadSchemaVersion(connection);
+            }
+
             if (version != SchemaVersion)
             {
                 throw new InvalidOperationException($"Unsupported activity database schema version {version}; expected {SchemaVersion}.");
@@ -809,7 +957,7 @@ internal sealed class SqliteActivityStore
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
     }
@@ -824,6 +972,16 @@ internal sealed class SqliteActivityStore
         transaction.Commit();
     }
 
+    private static void MigrateVersion4To5(SqliteConnection connection)
+    {
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = AiPricingSchemaSql + "PRAGMA user_version = 5;";
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
     private static void ValidateVersion3Schema(SqliteConnection connection)
     {
         ValidateBaseSchema(connection);
@@ -834,11 +992,45 @@ internal sealed class SqliteActivityStore
         }
     }
 
+    private static void ValidateVersion4Schema(SqliteConnection connection)
+    {
+        ValidateBaseSchema(connection);
+        ValidateScreenshotTextSchema(connection);
+        var schemaObjects = ReadApplicationSchemaObjects(connection);
+        if (!schemaObjects.SetEquals(ExpectedVersion4ApplicationSchemaObjects))
+        {
+            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
+        }
+    }
+
     private static void ValidateSchema(SqliteConnection connection)
     {
         ValidateBaseSchema(connection);
-        ValidateCreateStatement(connection, "screenshot_text_snapshots", ScreenshotTextSchemaSql);
+        ValidateScreenshotTextSchema(connection);
+        ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
 
+        var actualAiModelPricingColumns = ReadColumns(connection, "ai_model_pricing");
+        if (!actualAiModelPricingColumns.SequenceEqual(ExpectedAiModelPricingColumns))
+        {
+            throw new InvalidOperationException("The AI pricing schema does not match the supported schema.");
+        }
+
+        var aiModelPricingIndexes = ReadIndexes(connection, "ai_model_pricing");
+        if (!aiModelPricingIndexes.SetEquals(ExpectedAiModelPricingIndexes))
+        {
+            throw new InvalidOperationException("The AI pricing indexes do not match the supported schema.");
+        }
+
+        var schemaObjects = ReadApplicationSchemaObjects(connection);
+        if (!schemaObjects.SetEquals(ExpectedApplicationSchemaObjects))
+        {
+            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
+        }
+    }
+
+    private static void ValidateScreenshotTextSchema(SqliteConnection connection)
+    {
+        ValidateCreateStatement(connection, "screenshot_text_snapshots", ScreenshotTextSchemaSql);
         var actualScreenshotTextColumns = ReadColumns(connection, "screenshot_text_snapshots");
         if (!actualScreenshotTextColumns.SequenceEqual(ExpectedScreenshotTextSnapshotColumns))
         {
@@ -849,12 +1041,6 @@ internal sealed class SqliteActivityStore
         if (!screenshotTextIndexes.SetEquals(ExpectedScreenshotTextSnapshotIndexes))
         {
             throw new InvalidOperationException("The screenshot text snapshot indexes do not match the supported schema.");
-        }
-
-        var schemaObjects = ReadApplicationSchemaObjects(connection);
-        if (!schemaObjects.SetEquals(ExpectedApplicationSchemaObjects))
-        {
-            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
         }
     }
 
@@ -1073,6 +1259,23 @@ internal sealed class SqliteActivityStore
         }
     }
 
+    private static void ValidateAiModelPricing(string provider, AiModelPricing price)
+    {
+        if (!string.Equals(price.Provider, provider, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(price.Model)
+            || string.IsNullOrWhiteSpace(price.ServiceTier)
+            || string.IsNullOrWhiteSpace(price.ContextWindow)
+            || !string.Equals(price.Currency, "usd", StringComparison.OrdinalIgnoreCase)
+            || price.InputUsdPerMillionTokens < 0m
+            || price.CachedInputUsdPerMillionTokens is < 0m
+            || price.CacheWriteUsdPerMillionTokens is < 0m
+            || price.OutputUsdPerMillionTokens < 0m
+            || string.IsNullOrWhiteSpace(price.SourceUrl))
+        {
+            throw new ArgumentException("AI pricing row contains invalid required metadata.", nameof(price));
+        }
+    }
+
     private static AiRequestUsageRecord ReadAiRequestUsage(SqliteDataReader reader)
     {
         var usage = new AiUsageMetrics(
@@ -1089,6 +1292,19 @@ internal sealed class SqliteActivityStore
             reader.GetInt32(16), reader.GetInt32(17), usage, ReadNullableString(reader, 29), reader.GetInt32(30) == 1,
             ReadNullableString(reader, 31));
     }
+
+    private static AiModelPricing ReadAiModelPricing(SqliteDataReader reader) => new(
+        reader.GetString(0),
+        reader.GetString(1),
+        reader.GetString(2),
+        reader.GetString(3),
+        reader.GetString(4),
+        FromMicroUsd(reader.GetInt64(5))!.Value,
+        FromMicroUsd(ReadNullableLong(reader, 6)),
+        FromMicroUsd(ReadNullableLong(reader, 7)),
+        FromMicroUsd(reader.GetInt64(8))!.Value,
+        reader.GetString(9),
+        new DateTimeOffset(reader.GetInt64(10), TimeSpan.Zero));
 
     private ActivitySample ReadSample(SqliteDataReader reader)
     {
@@ -1128,6 +1344,8 @@ internal sealed class SqliteActivityStore
     private static void Add(SqliteCommand command, string name, object? value) =>
         command.Parameters.AddWithValue(name, value ?? DBNull.Value);
 
+    private static object ToDbValue(long? value) => value.HasValue ? value.Value : DBNull.Value;
+
     private static long? ToMicroUsd(decimal? amount)
     {
         if (!amount.HasValue)
@@ -1144,6 +1362,12 @@ internal sealed class SqliteActivityStore
     }
 
     private static decimal? FromMicroUsd(long? amount) => amount.HasValue ? amount.Value / 1_000_000m : null;
+
+    private static long? ReadScalarNullableLong(SqliteCommand command)
+    {
+        var value = command.ExecuteScalar();
+        return value is null || value == DBNull.Value ? null : Convert.ToInt64(value);
+    }
 
     private static AiAnalysis ReadAiAnalysis(SqliteDataReader reader) => new(
         new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
@@ -1274,6 +1498,23 @@ internal sealed class SqliteActivityStore
         );
         CREATE INDEX ix_screenshot_text_snapshots_capture
             ON screenshot_text_snapshots (capture_id, artifact_identity);
+        """;
+
+    private const string AiPricingSchemaSql = """
+        CREATE TABLE ai_model_pricing (
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            service_tier TEXT NOT NULL,
+            context_window TEXT NOT NULL,
+            currency TEXT NOT NULL CHECK (currency = 'usd'),
+            input_microusd_per_million INTEGER NOT NULL CHECK (input_microusd_per_million >= 0),
+            cached_input_microusd_per_million INTEGER NULL CHECK (cached_input_microusd_per_million >= 0),
+            cache_write_microusd_per_million INTEGER NULL CHECK (cache_write_microusd_per_million >= 0),
+            output_microusd_per_million INTEGER NOT NULL CHECK (output_microusd_per_million >= 0),
+            source_url TEXT NOT NULL,
+            source_retrieved_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY (provider, model, service_tier, context_window)
+        );
         """;
 
     private readonly record struct SchemaColumn(string Name, string Type, bool NotNull, int PrimaryKeyOrder);
