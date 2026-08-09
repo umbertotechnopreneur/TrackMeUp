@@ -39,6 +39,9 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Occurs when the user requests a real, bounded test of the saved AI connection.</summary>
     public event EventHandler? AiConnectionTestRequested;
 
+    /// <summary>Occurs when the user requests one focused local-data or operations surface.</summary>
+    internal event Action<OperationsSection>? OperationsSectionRequested;
+
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
     {
@@ -61,6 +64,16 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
         AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
         AutomationProperties.SetName(RebuildSearchIndexButton, T("Options.Search.Rebuild"));
+        AutomationProperties.SetName(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Action"));
+        AutomationProperties.SetHelpText(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Description"));
+        AutomationProperties.SetName(ReportsOperationsLink, T("Options.Navigation.Reports.Action"));
+        AutomationProperties.SetHelpText(ReportsOperationsLink, T("Options.Navigation.Reports.Description"));
+        AutomationProperties.SetName(PrivacyOperationsLink, T("Options.Navigation.Privacy.Action"));
+        AutomationProperties.SetHelpText(PrivacyOperationsLink, T("Options.Navigation.Privacy.Description"));
+        AutomationProperties.SetName(RetentionOperationsLink, T("Options.Navigation.Retention.Action"));
+        AutomationProperties.SetHelpText(RetentionOperationsLink, T("Options.Navigation.Retention.Description"));
+        AutomationProperties.SetName(PluginsOperationsLink, T("Options.Navigation.Plugins.Action"));
+        AutomationProperties.SetHelpText(PluginsOperationsLink, T("Options.Navigation.Plugins.Description"));
         UpdateApiKeyPresentation();
         UpdateScreenshotModeHint();
         NotifyLayoutChanged();
@@ -140,6 +153,21 @@ public sealed partial class OptionsControl : UserControl
         SearchOptionsView.Visibility = Visibility.Visible;
         NotifyLayoutChanged();
     }
+
+    private void SnapshotAiOperationsLink_Click(object sender, RoutedEventArgs e) =>
+        OperationsSectionRequested?.Invoke(OperationsSection.SnapshotAi);
+
+    private void ReportsOperationsLink_Click(object sender, RoutedEventArgs e) =>
+        OperationsSectionRequested?.Invoke(OperationsSection.Reports);
+
+    private void PrivacyOperationsLink_Click(object sender, RoutedEventArgs e) =>
+        OperationsSectionRequested?.Invoke(OperationsSection.Privacy);
+
+    private void RetentionOperationsLink_Click(object sender, RoutedEventArgs e) =>
+        OperationsSectionRequested?.Invoke(OperationsSection.Retention);
+
+    private void PluginsOperationsLink_Click(object sender, RoutedEventArgs e) =>
+        OperationsSectionRequested?.Invoke(OperationsSection.Plugins);
 
     private void OcrEnabledSwitch_Toggled(object sender, RoutedEventArgs e) =>
         OcrLanguageBox.IsEnabled = OcrEnabledSwitch.IsOn;

@@ -114,6 +114,8 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 
 Screenshot viewer validation checklist: open 16:9, portrait, and ultrawide captures and confirm that the selected image covers the active viewport at 100%, starts centered, and exposes its overflow with a left-button drag. Zoom to 500% and confirm that click-drag, wheel, touch, and trackpad navigation remain usable with hidden scrollbars. In light, dark, and high-contrast themes, and with Windows transparency effects disabled, confirm that the zoom rail, metadata chips, and full-width filmstrip remain readable over the image through native Acrylic or its system fallback.
 
+Settings tools navigation checklist: from App options, open each of the five local-data links and confirm that screen captures and AI, reports, privacy, data retention, and app details each appear as a separate scrollable page. Confirm that Privacy is presented as a title and description followed by a textual link with a right chevron, and that Back returns directly to App options. When Tools and diagnostics is opened from the main menu, open one focused page and confirm that Back first returns to the tools overview and then to the player.
+
 ## Open-Source Governance Docs
 
 This repository includes open-source governance and contribution policies tailored for TrackMeUp:

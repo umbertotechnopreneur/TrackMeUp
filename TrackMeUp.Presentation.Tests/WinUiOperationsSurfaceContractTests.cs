@@ -30,12 +30,15 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("RedactForSharing", logs, StringComparison.Ordinal);
     }
 
-    /// <summary>Ensures the dense operational surface remains integrated and usable at narrow widths.</summary>
+    /// <summary>Ensures operational tools are separate, reachable from settings, and usable at narrow widths.</summary>
     [Fact]
-    public void OperationsSurface_IsIntegratedScrollableAndAdaptive()
+    public void OperationsSurface_UsesFocusedPagesAndSettingsNavigation()
     {
         var mainWindow = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
+        var snapshots = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "SnapshotAiOperationsControl.xaml"));
+        var reports = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml"));
         var privacy = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml"));
         var retention = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
         var plugins = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PluginOperationsControl.xaml"));
@@ -44,11 +47,31 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "InfoBar");
-        Assert.Equal(3, operations.Descendants().Count(element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true));
+        Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true);
         Assert.Contains(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
         Assert.Contains(operations.Descendants(), element => HasName(element, "SystemDisksList"));
-        Assert.All(new[] { privacy, retention, plugins }, document => Assert.Contains(document.Descendants(), element => element.Name.LocalName == "InfoBar"));
-        Assert.All(new[] { privacy, retention, plugins }, document => Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true));
+
+        var settingsLinks = options.Descendants()
+            .Where(element => element.Name.LocalName == "HyperlinkButton" && element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "Name" && attribute.Value.EndsWith("OperationsLink", StringComparison.Ordinal)))
+            .ToArray();
+        Assert.True(settingsLinks.Length >= 3);
+        Assert.All(new[] { "SnapshotAiOperationsLink", "ReportsOperationsLink", "PrivacyOperationsLink", "RetentionOperationsLink", "PluginsOperationsLink" },
+            name => Assert.Contains(settingsLinks, element => HasName(element, name)));
+
+        var privacyLink = settingsLinks.Single(element => HasName(element, "PrivacyOperationsLink"));
+        Assert.Contains(options.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Navigation.Privacy.Title");
+        Assert.Contains(options.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Navigation.Privacy.Description");
+        Assert.Contains(privacyLink.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Navigation.Privacy.Action");
+        Assert.Contains(privacyLink.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE76C");
+
+        Assert.All(new[] { snapshots, reports, privacy, retention, plugins }, document =>
+        {
+            Assert.Contains(document.Descendants(), element => element.Name.LocalName == "InfoBar");
+            Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true);
+        });
+        Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection" },
+            name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
     }
 
     /// <summary>Ensures every requested operation remains delegated through the shared facade.</summary>
@@ -58,6 +81,8 @@ public sealed class WinUiOperationsSurfaceContractTests
         var sources = new[]
         {
             "OperationsControl.xaml.cs",
+            "SnapshotAiOperationsControl.xaml.cs",
+            "ReportsOperationsControl.xaml.cs",
             "PrivacyOperationsControl.xaml.cs",
             "RetentionOperationsControl.xaml.cs",
             "PluginOperationsControl.xaml.cs"

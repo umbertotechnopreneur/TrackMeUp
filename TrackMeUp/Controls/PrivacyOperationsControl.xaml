@@ -21,8 +21,8 @@
 
         <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="12">
             <StackPanel Spacing="4">
-                <TextBlock Tag="Operations.Privacy" Style="{StaticResource SubtitleTextBlockStyle}" Text="Privacy" />
-                <TextBlock Tag="Operations.Privacy.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Define local rules that prevent sensitive app, window, or context details from being captured." TextWrapping="Wrap" />
+                <TextBlock Tag="Operations.Privacy" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Privacy" />
+                <TextBlock Tag="Operations.Privacy.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Create local rules that exclude matching app names, window titles, or context details before TrackMeUp stores the context or shares it with an AI provider. Review existing rules and test whether the current context would be skipped." TextWrapping="Wrap" />
             </StackPanel>
 
             <ComboBox x:Name="PrivacyRuleTypeBox" Tag="Operations.PrivacyType" HorizontalAlignment="Stretch" Header="Rule type" SelectedIndex="0">

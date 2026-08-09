@@ -90,4 +90,95 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Condividi log", italian.Translate("About.ShareLog"));
         Assert.Contains("segreti", italian.Translate("About.Diagnostics.Description"), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void OperationsDescriptions_AreDetailedInEnglishAndItalian()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+        (string Key, string English, string Italian)[] descriptions =
+        [
+            ("Operations.Runtime.Description", "Review the TrackMeUp runtime, protocol and capabilities, logging status, and a current snapshot of CPU, GPU, memory, network, and local storage. These diagnostics are read from this PC.", "Controlla il runtime di TrackMeUp, il protocollo e le funzionalità, lo stato dei log e una fotografia attuale di CPU, GPU, memoria, rete e archiviazione locale. Questi dati diagnostici vengono letti da questo PC."),
+            ("Operations.SnapshotAi.Description", "Capture all displays or the active window, choose whether to keep and label the images, inspect the latest capture, or ask the configured AI provider to describe the current context. A new capture is created for analysis only when you allow it.", "Cattura tutti gli schermi o la finestra attiva, scegli se conservare ed etichettare le immagini, controlla l'ultima cattura oppure chiedi al provider AI configurato di descrivere il contesto corrente. Una nuova cattura per l'analisi viene creata solo quando lo consenti."),
+            ("Operations.Reports.Description", "Create today's report or a digest for a selected date from activity already stored on this PC. Open the generated file automatically or browse the reports folder.", "Crea il report di oggi o il digest di una data scelta usando l'attività già salvata su questo PC. Apri automaticamente il file generato oppure consulta la cartella dei report."),
+            ("Operations.Privacy.Description", "Create local rules that exclude matching app names, window titles, or context details before TrackMeUp stores the context or shares it with an AI provider. Review existing rules and test whether the current context would be skipped.", "Crea regole locali che escludono nomi di app, titoli di finestre o dettagli di contesto corrispondenti prima che TrackMeUp salvi il contesto o lo condivida con un provider AI. Controlla le regole esistenti e verifica se il contesto corrente verrebbe ignorato."),
+            ("Operations.Retention.Description", "Review how long activity data and screen captures remain on this PC. Preview exactly which records and files are eligible for cleanup; deletion always requires your explicit confirmation.", "Controlla per quanto tempo dati di attività e catture schermo restano su questo PC. Visualizza in anteprima quali record e file possono essere rimossi: l'eliminazione richiede sempre una conferma esplicita."),
+            ("Operations.Plugins.Description", "Enable or disable local, app-specific context enrichers. Each plugin can add details from a supported app; disabling it stops that enrichment while core activity tracking continues.", "Abilita o disabilita gli arricchimenti locali del contesto specifici per app. Ogni plugin può aggiungere dettagli da un'app supportata; disabilitarlo interrompe quell'arricchimento senza fermare il monitoraggio attività di base.")
+        ];
+
+        Assert.All(descriptions, description =>
+        {
+            Assert.Equal(description.English, english.Translate(description.Key));
+            Assert.Equal(description.Italian, italian.Translate(description.Key));
+        });
+    }
+
+    [Fact]
+    public void OperationsNavigation_IsLocalizedAndVendorAgnostic()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+        (string Key, string English, string Italian)[] navigation =
+        [
+            ("Options.Operations.Section", "Tools and data controls", "Strumenti e controllo dei dati"),
+            ("Options.Operations.Description", "Open dedicated pages for screen captures and AI provider actions, reports, privacy rules, data retention, and context plugins.", "Apri pagine dedicate alle catture schermo e alle azioni del provider AI, ai report, alle regole di privacy, alla conservazione dei dati e ai plugin di contesto."),
+            ("Options.Navigation.SnapshotAi.Title", "Screen captures and AI provider", "Catture schermo e provider AI"),
+            ("Options.Navigation.SnapshotAi.Description", "Capture the current screen, inspect saved images, or request a description from the configured AI provider.", "Cattura lo schermo corrente, controlla le immagini salvate o richiedi una descrizione al provider AI configurato."),
+            ("Options.Navigation.SnapshotAi.Action", "Open capture and analysis tools", "Apri gli strumenti di cattura e analisi"),
+            ("Options.Navigation.Reports.Title", "Reports and digests", "Report e digest"),
+            ("Options.Navigation.Reports.Description", "Create local reports from activity already stored on this PC.", "Crea report locali usando l'attività già salvata su questo PC."),
+            ("Options.Navigation.Reports.Action", "Open report tools", "Apri gli strumenti per i report"),
+            ("Options.Navigation.Privacy.Title", "Privacy rules", "Regole di privacy"),
+            ("Options.Navigation.Privacy.Description", "Choose which apps, window titles, and context details TrackMeUp must ignore before storing or sharing context.", "Scegli quali app, titoli di finestra e dettagli di contesto TrackMeUp deve ignorare prima di salvare o condividere il contesto."),
+            ("Options.Navigation.Privacy.Action", "Manage privacy rules", "Gestisci le regole di privacy"),
+            ("Options.Navigation.Retention.Title", "Data retention", "Conservazione dei dati"),
+            ("Options.Navigation.Retention.Description", "Review how long local activity and screen captures are kept and preview cleanup before confirming it.", "Controlla per quanto tempo attività e catture schermo restano sul PC e visualizza in anteprima la pulizia prima di confermarla."),
+            ("Options.Navigation.Retention.Action", "Manage data retention", "Gestisci la conservazione dei dati"),
+            ("Options.Navigation.Plugins.Title", "Context plugins", "Plugin di contesto"),
+            ("Options.Navigation.Plugins.Description", "Manage local, app-specific details without changing core activity tracking.", "Gestisci dettagli locali specifici per app senza modificare il monitoraggio attività di base."),
+            ("Options.Navigation.Plugins.Action", "Manage context plugins", "Gestisci i plugin di contesto")
+        ];
+
+        Assert.All(navigation, item =>
+        {
+            Assert.Equal(item.English, english.Translate(item.Key));
+            Assert.Equal(item.Italian, italian.Translate(item.Key));
+        });
+
+        string[] providerCopyKeys =
+        [
+            "Options.Operations.Description",
+            "Options.Navigation.SnapshotAi.Title",
+            "Options.Navigation.SnapshotAi.Description",
+            "Operations.SnapshotAi.Description",
+            "Operations.Privacy.Description"
+        ];
+        string[] vendorNames = ["OpenAI", "OpenRouter", "Anthropic"];
+
+        Assert.All(providerCopyKeys, key =>
+        {
+            var englishCopy = english.Translate(key);
+            var italianCopy = italian.Translate(key);
+            Assert.Contains("AI provider", englishCopy, StringComparison.Ordinal);
+            Assert.Contains("provider AI", italianCopy, StringComparison.Ordinal);
+            Assert.All(vendorNames, vendor =>
+            {
+                Assert.DoesNotContain(vendor, englishCopy, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain(vendor, italianCopy, StringComparison.OrdinalIgnoreCase);
+            });
+        });
+
+        string[] obsoleteSectionKeys =
+        [
+            "Operations.Section.Privacy",
+            "Operations.Section.Retention",
+            "Operations.Section.Plugins"
+        ];
+
+        Assert.All(obsoleteSectionKeys, key =>
+        {
+            Assert.Equal(key, english.Translate(key));
+            Assert.Equal(key, italian.Translate(key));
+        });
+    }
 }

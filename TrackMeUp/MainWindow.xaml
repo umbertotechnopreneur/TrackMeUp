@@ -937,7 +937,10 @@
             Padding="16"
             Background="Transparent"
             Visibility="Collapsed">
-            <controls:OperationsControl x:Name="OperationsControl" />
+            <controls:OperationsControl
+                x:Name="OperationsControl"
+                BackRequested="OperationsControl_BackRequested"
+                LayoutChanged="OperationsControl_LayoutChanged" />
         </Border>
 
         <Border

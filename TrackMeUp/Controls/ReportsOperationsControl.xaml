@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.ReportsOperationsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="470"
+    d:DesignWidth="520"
+    mc:Ignorable="d">
+    <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <InfoBar x:Name="StatusInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
+            <ProgressRing x:Name="Progress" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
+        </Grid>
+
+        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="14">
+            <StackPanel Spacing="4">
+                <TextBlock Tag="Operations.Reports" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Reports" />
+                <TextBlock
+                    Tag="Operations.Reports.Description"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="Create today's report or a digest for a selected date from activity already stored on this PC, then open the generated file or its folder."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <CheckBox x:Name="OpenGeneratedReportBox" Tag="Operations.OpenGenerated" Content="Open the report after generation" />
+            <Button Tag="Operations.TodayReport" Click="TodayReportButton_Click" Content="Generate today's report" HorizontalAlignment="Left" />
+            <CalendarDatePicker x:Name="DigestDatePicker" Tag="Operations.DigestDate" HorizontalAlignment="Stretch" Header="Digest date" PlaceholderText="Select a date" />
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Tag="Operations.GenerateDigest" Click="DigestButton_Click" Content="Generate digest" HorizontalAlignment="Stretch" />
+                <Button Tag="Operations.OpenFolder" Grid.Column="1" Click="OpenReportsFolderButton_Click" Content="Open folder" HorizontalAlignment="Stretch" />
+            </Grid>
+            <TextBlock x:Name="ReportResultText" Tag="Operations.Initial.Report" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="No report generated." TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</UserControl>

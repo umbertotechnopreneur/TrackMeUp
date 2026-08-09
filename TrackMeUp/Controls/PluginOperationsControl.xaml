@@ -21,8 +21,8 @@
 
         <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="12">
             <StackPanel Spacing="4">
-                <TextBlock Tag="Operations.Plugins" Style="{StaticResource SubtitleTextBlockStyle}" Text="Context plugins" />
-                <TextBlock Tag="Operations.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Manage local app-specific context enrichers without changing core activity tracking." TextWrapping="Wrap" />
+                <TextBlock Tag="Operations.Plugins" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="App details" />
+                <TextBlock Tag="Operations.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Enable or disable local, app-specific context enrichers. Each plugin can add details from a supported app; disabling it stops that enrichment while core activity tracking continues." TextWrapping="Wrap" />
             </StackPanel>
 
             <Grid ColumnSpacing="8">

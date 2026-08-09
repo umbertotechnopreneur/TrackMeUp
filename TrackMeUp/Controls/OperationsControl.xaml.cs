@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -17,18 +18,33 @@ public sealed partial class OperationsControl : UserControl
     private MicaDialogService? _dialogs;
     private LocalizationService _strings = new("system");
     private bool _operationInProgress;
+    private bool _returnToOverviewOnBack;
+    private Control? _lastLandingLink;
 
     /// <summary>Creates the passive operational surface.</summary>
     public OperationsControl() => InitializeComponent();
+
+    /// <summary>Occurs when back navigation is requested from the tools landing page.</summary>
+    public event EventHandler? BackRequested;
+
+    /// <summary>Occurs after the visible operational page changes and the host may need to re-measure.</summary>
+    public event EventHandler? LayoutChanged;
 
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        SnapshotAiSection.ApplyLanguage(language);
+        ReportsSection.ApplyLanguage(language);
         PrivacySection.ApplyLanguage(language);
         RetentionSection.ApplyLanguage(language);
         PluginsSection.ApplyLanguage(language);
+        ApplyNavigationAccessibility(OpenSnapshotAiLink, "Options.Navigation.SnapshotAi.Action", "Options.Navigation.SnapshotAi.Description");
+        ApplyNavigationAccessibility(OpenReportsLink, "Options.Navigation.Reports.Action", "Options.Navigation.Reports.Description");
+        ApplyNavigationAccessibility(OpenPrivacyLink, "Options.Navigation.Privacy.Action", "Options.Navigation.Privacy.Description");
+        ApplyNavigationAccessibility(OpenRetentionLink, "Options.Navigation.Retention.Action", "Options.Navigation.Retention.Description");
+        ApplyNavigationAccessibility(OpenPluginsLink, "Options.Navigation.Plugins.Action", "Options.Navigation.Plugins.Description");
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
@@ -37,10 +53,42 @@ public sealed partial class OperationsControl : UserControl
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         ArgumentNullException.ThrowIfNull(ownerWindow);
+        SnapshotAiSection.Initialize(application, dialogs, ownerWindow);
+        ReportsSection.Initialize(application, dialogs, ownerWindow);
         PrivacySection.Initialize(application, dialogs, ownerWindow);
         RetentionSection.Initialize(application, dialogs, ownerWindow);
         PluginsSection.Initialize(application, dialogs, ownerWindow);
     }
+
+    /// <summary>Returns to the landing page for local tool navigation, or to the surface that opened a direct settings link.</summary>
+    public void NavigateBack()
+    {
+        if (DetailScroll.Visibility == Visibility.Visible && _returnToOverviewOnBack)
+        {
+            ShowOverview(restoreFocus: true);
+            return;
+        }
+
+        BackRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Shows a focused operational page without executing any operation.</summary>
+    internal void NavigateTo(OperationsSection section, bool returnToOverview = true)
+    {
+        _returnToOverviewOnBack = returnToOverview;
+        OperationsScroll.Visibility = Visibility.Collapsed;
+        DetailScroll.Visibility = Visibility.Visible;
+        SnapshotAiSection.Visibility = section == OperationsSection.SnapshotAi ? Visibility.Visible : Visibility.Collapsed;
+        ReportsSection.Visibility = section == OperationsSection.Reports ? Visibility.Visible : Visibility.Collapsed;
+        PrivacySection.Visibility = section == OperationsSection.Privacy ? Visibility.Visible : Visibility.Collapsed;
+        RetentionSection.Visibility = section == OperationsSection.Retention ? Visibility.Visible : Visibility.Collapsed;
+        PluginsSection.Visibility = section == OperationsSection.Plugins ? Visibility.Visible : Visibility.Collapsed;
+        DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
+        NotifyLayoutChanged();
+    }
+
+    /// <summary>Shows the tools landing page without changing application state.</summary>
+    internal void ShowOverview() => ShowOverview(restoreFocus: false);
 
     private ITrackMeUpApplication Application => _application ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
@@ -100,103 +148,47 @@ public sealed partial class OperationsControl : UserControl
                 $"{disk.Drive,-4} {FormatBytes(disk.FreeBytes)} liberi / {FormatBytes(disk.TotalBytes)}")).ToArray();
     }
 
-    private async void CaptureScreenshotButton_Click(object sender, RoutedEventArgs e)
+    private void OpenSnapshotAiLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.SnapshotAi, sender);
+
+    private void OpenReportsLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Reports, sender);
+
+    private void OpenPrivacyLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Privacy, sender);
+
+    private void OpenRetentionLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Retention, sender);
+
+    private void OpenPluginsLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Plugins, sender);
+
+    private void OpenSection(OperationsSection section, object sender)
     {
-        var request = new CaptureScreenshotRequest(
-            SelectedTag(ScreenshotModeBox, "all-screens"),
-            KeepScreenshotBox.IsChecked == true,
-            WatermarkScreenshotBox.IsChecked == true,
-            ScreenshotCaptureOrigins.Manual);
-        var result = await ExecuteAsync((application, token) => application.CaptureScreenshotAsync(request, token));
-        if (result is { Succeeded: true, Value: { } capture })
+        _lastLandingLink = sender as Control;
+        NavigateTo(section);
+    }
+
+    private void ShowOverview(bool restoreFocus)
+    {
+        _returnToOverviewOnBack = false;
+        SnapshotAiSection.Visibility = Visibility.Collapsed;
+        ReportsSection.Visibility = Visibility.Collapsed;
+        PrivacySection.Visibility = Visibility.Collapsed;
+        RetentionSection.Visibility = Visibility.Collapsed;
+        PluginsSection.Visibility = Visibility.Collapsed;
+        DetailScroll.Visibility = Visibility.Collapsed;
+        OperationsScroll.Visibility = Visibility.Visible;
+        OperationsScroll.ChangeView(null, 0, null, disableAnimation: true);
+        NotifyLayoutChanged();
+        if (restoreFocus)
         {
-            ScreenshotResultText.Text = L(
-                $"Snapshot {capture.CaptureId}: {capture.AnalysisScreenshotPaths.Count} analysis files, {capture.StoredScreenshotPaths.Count} retained.\n{string.Join("\n", capture.AllScreenshotPaths)}",
-                $"Snapshot {capture.CaptureId}: {capture.AnalysisScreenshotPaths.Count} file per analisi, {capture.StoredScreenshotPaths.Count} conservati.\n{string.Join("\n", capture.AllScreenshotPaths)}");
+            _lastLandingLink?.Focus(FocusState.Programmatic);
         }
     }
 
-    private async void LatestScreenshotButton_Click(object sender, RoutedEventArgs e)
+    private void ApplyNavigationAccessibility(Control link, string actionKey, string descriptionKey)
     {
-        var result = await ExecuteAsync((application, token) => application.GetLatestScreenshotAsync(token));
-        if (result is { Succeeded: true })
-        {
-            ScreenshotResultText.Text = string.IsNullOrWhiteSpace(result.Value)
-                ? L("No retained snapshot.", "Nessuno snapshot conservato.")
-                : L($"Latest snapshot:\n{result.Value}", $"Ultimo snapshot:\n{result.Value}");
-        }
+        AutomationProperties.SetName(link, _strings.Translate(actionKey));
+        AutomationProperties.SetHelpText(link, _strings.Translate(descriptionKey));
     }
 
-    private async void OpenScreenshotFolderButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.OpenScreenshotFolderAsync(token));
-        if (result is { Succeeded: true, Value: { } path })
-        {
-            ScreenshotResultText.Text = L($"Snapshot folder opened:\n{path}", $"Cartella snapshot aperta:\n{path}");
-        }
-    }
-
-    private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
-    {
-        var request = new AnalyzeCurrentActivityRequest(AllowAiCaptureBox.IsChecked == true, "winui.operations");
-        var result = await ExecuteAsync((application, token) => application.AnalyzeCurrentActivityAsync(request, token));
-        if (result is { Succeeded: true, Value: { } analysis })
-        {
-            AiAnalysisText.Text = $"{analysis.Application} · {analysis.Context}\n{analysis.Summary}";
-        }
-    }
-
-    private async void TodayReportButton_Click(object sender, RoutedEventArgs e)
-    {
-        var open = OpenGeneratedReportBox.IsChecked == true;
-        var result = await ExecuteAsync((application, token) => application.GenerateTodayReportAsync(null, open, token));
-        if (result is { Succeeded: true, Value: { } path })
-        {
-            ReportResultText.Text = L($"Today's report:\n{path}", $"Report di oggi:\n{path}");
-        }
-    }
-
-    private async void DigestButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (DigestDatePicker.Date is not { } selectedDate)
-        {
-            ShowStatus(L("Date required", "Data richiesta"), L("Select the digest date.", "Seleziona la data del digest."), InfoBarSeverity.Warning);
-            return;
-        }
-
-        var date = DateOnly.FromDateTime(selectedDate.DateTime);
-        var open = OpenGeneratedReportBox.IsChecked == true;
-        var result = await ExecuteAsync((application, token) => application.GenerateDailyDigestAsync(date, open, token));
-        if (result is { Succeeded: true, Value: { } path })
-        {
-            ReportResultText.Text = $"Digest {date:yyyy-MM-dd}:\n{path}";
-        }
-    }
-
-    private async void OpenReportsFolderButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.OpenReportsFolderAsync(token));
-        if (result is { Succeeded: true, Value: { } path })
-        {
-            ReportResultText.Text = L($"Reports folder opened:\n{path}", $"Cartella report aperta:\n{path}");
-        }
-    }
-
-    private void PrivacySectionButton_Click(object sender, RoutedEventArgs e) => ShowOperationsSection(OperationsSubsection.Privacy);
-
-    private void RetentionSectionButton_Click(object sender, RoutedEventArgs e) => ShowOperationsSection(OperationsSubsection.Retention);
-
-    private void PluginsSectionButton_Click(object sender, RoutedEventArgs e) => ShowOperationsSection(OperationsSubsection.Plugins);
-
-    private void ShowOperationsSection(OperationsSubsection subsection)
-    {
-        PrivacySectionButton.IsChecked = subsection == OperationsSubsection.Privacy;
-        RetentionSectionButton.IsChecked = subsection == OperationsSubsection.Retention;
-        PluginsSectionButton.IsChecked = subsection == OperationsSubsection.Plugins;
-        PrivacySection.Visibility = subsection == OperationsSubsection.Privacy ? Visibility.Visible : Visibility.Collapsed;
-        RetentionSection.Visibility = subsection == OperationsSubsection.Retention ? Visibility.Visible : Visibility.Collapsed;
-        PluginsSection.Visibility = subsection == OperationsSubsection.Plugins ? Visibility.Visible : Visibility.Collapsed;
-    }
+    private void NotifyLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
 
     private async Task<OperationResult<T>?> ExecuteAsync<T>(Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation)
     {
@@ -265,8 +257,6 @@ public sealed partial class OperationsControl : UserControl
         }
     }
 
-    private static string SelectedTag(ComboBox comboBox, string fallback) => comboBox.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
-
     private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
 
     private string YesNo(bool value) => value ? L("yes", "sì") : L("no", "no");
@@ -294,12 +284,5 @@ public sealed partial class OperationsControl : UserControl
         }
 
         return $"{value:0.#} {units[unit]}";
-    }
-
-    private enum OperationsSubsection
-    {
-        Privacy,
-        Retention,
-        Plugins
     }
 }

@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using TrackMeUp.Application;
+using TrackMeUp.Controls;
 using TrackMeUp.Presentation;
 using TrackMeUp.Runtime;
 using TrackMeUp.Services;
@@ -65,6 +66,7 @@ public sealed partial class MainWindow : Window
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
     private int _aiSpendRefreshInProgress;
+    private MainWindowSurface _operationsReturnSurface = MainWindowSurface.Player;
     #endregion
 
     /// <summary>Gets the single observable AI state shared by the player menu and options surface.</summary>
@@ -131,6 +133,7 @@ public sealed partial class MainWindow : Window
         OptionsControl.SettingsSaved += ApplySettings;
         OptionsControl.LayoutChanged += OptionsControl_LayoutChanged;
         OptionsControl.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
+        OptionsControl.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
         OperationsControl.Initialize(application, _dialogs, this);
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
@@ -417,6 +420,12 @@ public sealed partial class MainWindow : Window
     /// <summary>Delegates compact settings navigation to the active passive view.</summary>
     private void TitleBarBackButton_Click(object sender, RoutedEventArgs e)
     {
+        if (OperationsPanel.Visibility == Visibility.Visible)
+        {
+            OperationsControl.NavigateBack();
+            return;
+        }
+
         if (OptionsPanel.Visibility == Visibility.Visible)
         {
             OptionsControl.NavigateBack();
@@ -548,6 +557,8 @@ public sealed partial class MainWindow : Window
     private void OperationsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
+        _operationsReturnSurface = MainWindowSurface.Player;
+        OperationsControl.ShowOverview();
         ShowPanel(OperationsPanel, MainWindowSurface.Operations);
     }
 
@@ -748,10 +759,41 @@ public sealed partial class MainWindow : Window
     /// <summary>Returns from options to the player panel.</summary>
     private void OptionsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
 
+    /// <summary>Opens one operational detail requested from the settings overview.</summary>
+    private void OptionsControl_OperationsSectionRequested(OperationsSection section)
+    {
+        _operationsReturnSurface = MainWindowSurface.Options;
+        OperationsControl.NavigateTo(section, returnToOverview: false);
+        ShowPanel(OperationsPanel, MainWindowSurface.Operations);
+    }
+
+    /// <summary>Returns from the operations landing page to the surface that opened it.</summary>
+    private void OperationsControl_BackRequested(object sender, EventArgs e)
+    {
+        var returnSurface = _operationsReturnSurface;
+        _operationsReturnSurface = MainWindowSurface.Player;
+        if (returnSurface == MainWindowSurface.Options)
+        {
+            ShowPanel(OptionsPanel, MainWindowSurface.Options);
+            return;
+        }
+
+        ShowPlayer();
+    }
+
     /// <summary>Re-measures the options surface after one of its nested sections changes visibility.</summary>
     private void OptionsControl_LayoutChanged(object? sender, EventArgs e)
     {
         if (_layoutState.Surface == MainWindowSurface.Options)
+        {
+            ResizeForCurrentLayout(animate: true);
+        }
+    }
+
+    /// <summary>Re-measures the operations surface after its landing or detail view changes.</summary>
+    private void OperationsControl_LayoutChanged(object? sender, EventArgs e)
+    {
+        if (_layoutState.Surface == MainWindowSurface.Operations)
         {
             ResizeForCurrentLayout(animate: true);
         }

@@ -21,8 +21,8 @@
 
         <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="14">
             <StackPanel Spacing="4">
-                <TextBlock Tag="Operations.Retention" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" />
-                <TextBlock Tag="Operations.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Review how long local activity and snapshots are kept, preview eligible items, and explicitly confirm cleanup." TextWrapping="Wrap" />
+                <TextBlock Tag="Operations.Retention" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" />
+                <TextBlock Tag="Operations.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Review how long activity data and screen captures remain on this PC. Preview exactly which records and files are eligible for cleanup; deletion always requires your explicit confirmation." TextWrapping="Wrap" />
             </StackPanel>
 
             <Grid ColumnSpacing="8">

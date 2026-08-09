@@ -186,7 +186,10 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ElementRect(TitleBarSearchButton, scale)", mainSource, StringComparison.Ordinal);
         Assert.Contains("ShowPanel(OperationsPanel, MainWindowSurface.Operations);", mainSource, StringComparison.Ordinal);
         Assert.Contains("TitleBarBackButton.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("OperationsControl_BackRequested", mainSource, StringComparison.Ordinal);
+        Assert.Contains("OperationsControl.NavigateBack();", mainSource, StringComparison.Ordinal);
+        Assert.Contains("OperationsControl_BackRequested", mainSource, StringComparison.Ordinal);
+        Assert.Contains("OptionsControl.OperationsSectionRequested", mainSource, StringComparison.Ordinal);
+        Assert.Contains("OperationsControl.NavigateTo(section, returnToOverview: false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ApplyMainMenuLabels();", mainSource, StringComparison.Ordinal);
         Assert.Contains("AiPricingMenuItem.IsEnabled = IsOpenAiPricingAvailable(result.Value);", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
