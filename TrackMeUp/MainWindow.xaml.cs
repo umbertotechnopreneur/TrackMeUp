@@ -87,6 +87,9 @@ public sealed partial class MainWindow : Window
 
     #endregion
 
+    /// <summary>Occurs when the notification-area context menu requests an orderly application exit.</summary>
+    public event EventHandler? ExitRequested;
+
     #region Initialization
 
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
@@ -101,6 +104,7 @@ public sealed partial class MainWindow : Window
         AiState.PropertyChanged += AiState_PropertyChanged;
         UpdateOpenAiMenuAccessibility();
         SystemBackdrop = new MicaBackdrop();
+        _trayIcon.ExitRequested += TrayIcon_ExitRequested;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
@@ -1114,7 +1118,17 @@ public sealed partial class MainWindow : Window
         _trayIcon.HideToNotificationArea(
             WinRT.Interop.WindowNative.GetWindowHandle(this),
             System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "TrackMeUpIcon.ico"),
-            "TrackMeUp");
+            "TrackMeUp",
+            new TrayIconMenuLabels(
+                T("Tray.ShowMainWindow"),
+                T("Tray.HideMainWindow"),
+                T("Tray.CloseApplication")));
+    }
+
+    /// <summary>Forwards the native context-menu exit request to the application composition root after the current window callback completes.</summary>
+    private void TrayIcon_ExitRequested(object? sender, EventArgs e)
+    {
+        _ = DispatcherQueue.TryEnqueue(() => ExitRequested?.Invoke(this, EventArgs.Empty));
     }
 
     /// <summary>Starts the player entrance fade.</summary>
@@ -1268,6 +1282,7 @@ public sealed partial class MainWindow : Window
         _windowResizeAnimationTimer.Stop();
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
+        _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
 
         if (_scheduleWindow is not null)

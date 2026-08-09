@@ -90,6 +90,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.SearchRequested += MainWindow_SearchRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
+        _window.ExitRequested += MainWindow_ExitRequested;
         _window.Closed += MainWindow_Closed;
         if (options.StartWithWindows)
         {
@@ -135,6 +136,8 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private async void MainWindow_ScreenshotsRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
+
+    private void MainWindow_ExitRequested(object? sender, EventArgs eventArgs) => _window?.Close();
 
     private void ShowReportsWindow(ITrackMeUpApplication application, string? launchTheme)
     {
@@ -247,6 +250,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SearchRequested -= MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotsRequested -= MainWindow_ScreenshotsRequested;
+            _window.ExitRequested -= MainWindow_ExitRequested;
             _window.Closed -= MainWindow_Closed;
             _window = null;
         }

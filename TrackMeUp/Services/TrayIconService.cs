@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace TrackMeUp.Services;
 
+/// <summary>Provides localized labels for the two commands in the notification-area context menu.</summary>
+public sealed record TrayIconMenuLabels(string ShowMainWindow, string HideMainWindow, string CloseApplication);
+
 /// <summary>Owns the notification-area icon that can hide and restore one top-level TrackMeUp window.</summary>
 public sealed class TrayIconService : IDisposable
 {
@@ -16,8 +19,17 @@ public sealed class TrayIconService : IDisposable
     private const uint NotificationIconVersion4 = 4;
     private const uint TrayCallbackMessage = 0x8000 + 0x350;
     private const uint LeftButtonUpMessage = 0x0202;
+    private const uint RightButtonUpMessage = 0x0205;
     private const uint ImageIcon = 1;
     private const uint LoadImageFromFile = 0x0010;
+    private const uint MenuString = 0x0000;
+    private const uint TrackPopupMenuReturnCommand = 0x0100;
+    private const uint TrackPopupMenuNoNotify = 0x0080;
+    private const uint TrackPopupMenuRightButton = 0x0002;
+    private const uint TrackPopupMenuWorkArea = 0x10000;
+    private const uint MenuCommandToggleWindow = 1;
+    private const uint MenuCommandCloseApplication = 2;
+    private const uint NullWindowMessage = 0;
     private const int ShowWindowHide = 0;
     private const int ShowWindowNormal = 1;
     private static readonly UIntPtr SubclassId = new(1);
@@ -26,6 +38,7 @@ public sealed class TrayIconService : IDisposable
     private GCHandle _selfHandle;
     private IntPtr _windowHandle;
     private IntPtr _iconHandle;
+    private TrayIconMenuLabels? _menuLabels;
     private bool _iconRegistered;
     private bool _disposed;
 
@@ -35,11 +48,14 @@ public sealed class TrayIconService : IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <summary>Occurs after the user explicitly selects Close app in the notification-area context menu.</summary>
+    public event EventHandler? ExitRequested;
+
     /// <summary>Registers the notification-area icon if necessary, then hides the main window from the taskbar.</summary>
-    public void HideToNotificationArea(IntPtr windowHandle, string iconPath, string toolTip)
+    public void HideToNotificationArea(IntPtr windowHandle, string iconPath, string toolTip, TrayIconMenuLabels menuLabels)
     {
         ThrowIfDisposed();
-        EnsureAttached(windowHandle, iconPath, toolTip);
+        EnsureAttached(windowHandle, iconPath, toolTip, menuLabels);
 
         // Hiding the real top-level window removes its taskbar button while leaving its message queue available for the tray callback.
         _ = ShowWindow(_windowHandle, ShowWindowHide);
@@ -82,9 +98,10 @@ public sealed class TrayIconService : IDisposable
         }
 
         _windowHandle = IntPtr.Zero;
+        _menuLabels = null;
     }
 
-    private void EnsureAttached(IntPtr windowHandle, string iconPath, string toolTip)
+    private void EnsureAttached(IntPtr windowHandle, string iconPath, string toolTip, TrayIconMenuLabels menuLabels)
     {
         if (windowHandle == IntPtr.Zero)
         {
@@ -101,6 +118,14 @@ public sealed class TrayIconService : IDisposable
             throw new ArgumentException("The notification-area tooltip is required.", nameof(toolTip));
         }
 
+        ArgumentNullException.ThrowIfNull(menuLabels);
+        if (string.IsNullOrWhiteSpace(menuLabels.ShowMainWindow)
+            || string.IsNullOrWhiteSpace(menuLabels.HideMainWindow)
+            || string.IsNullOrWhiteSpace(menuLabels.CloseApplication))
+        {
+            throw new ArgumentException("Every notification-area context-menu label is required.", nameof(menuLabels));
+        }
+
         if (_iconRegistered)
         {
             if (_windowHandle != windowHandle)
@@ -108,6 +133,7 @@ public sealed class TrayIconService : IDisposable
                 throw new InvalidOperationException("The notification-area icon is already attached to a different window.");
             }
 
+            _menuLabels = menuLabels;
             return;
         }
 
@@ -117,6 +143,7 @@ public sealed class TrayIconService : IDisposable
         }
 
         _windowHandle = windowHandle;
+        _menuLabels = menuLabels;
         _selfHandle = GCHandle.Alloc(this);
         try
         {
@@ -180,6 +207,7 @@ public sealed class TrayIconService : IDisposable
         }
 
         _windowHandle = IntPtr.Zero;
+        _menuLabels = null;
     }
 
     private void ToggleMainWindowVisibility()
@@ -198,6 +226,60 @@ public sealed class TrayIconService : IDisposable
         // Restoring the same native window preserves the active WinUI surface and places it in the foreground after a tray click.
         _ = ShowWindow(_windowHandle, ShowWindowNormal);
         _ = SetForegroundWindow(_windowHandle);
+    }
+
+    private void ShowContextMenu()
+    {
+        if (_disposed || _windowHandle == IntPtr.Zero || _menuLabels is null)
+        {
+            return;
+        }
+
+        var menu = CreatePopupMenu();
+        if (menu == IntPtr.Zero)
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not create its notification-area context menu.");
+        }
+
+        try
+        {
+            var toggleText = IsWindowVisible(_windowHandle)
+                ? _menuLabels.HideMainWindow
+                : _menuLabels.ShowMainWindow;
+            if (!AppendMenu(menu, MenuString, new UIntPtr(MenuCommandToggleWindow), toggleText)
+                || !AppendMenu(menu, MenuString, new UIntPtr(MenuCommandCloseApplication), _menuLabels.CloseApplication))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not populate its notification-area context menu.");
+            }
+
+            if (!GetCursorPos(out var cursorPosition))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not position its notification-area context menu.");
+            }
+
+            // Windows requires the owner to be foreground before a tray popup so outside clicks dismiss it correctly.
+            _ = SetForegroundWindow(_windowHandle);
+            var command = TrackPopupMenuEx(
+                menu,
+                TrackPopupMenuReturnCommand | TrackPopupMenuNoNotify | TrackPopupMenuRightButton | TrackPopupMenuWorkArea,
+                cursorPosition.X,
+                cursorPosition.Y,
+                _windowHandle,
+                IntPtr.Zero);
+            if (command == MenuCommandToggleWindow)
+            {
+                ToggleMainWindowVisibility();
+            }
+            else if (command == MenuCommandCloseApplication)
+            {
+                ExitRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        finally
+        {
+            _ = DestroyMenu(menu);
+            _ = PostMessage(_windowHandle, NullWindowMessage, IntPtr.Zero, IntPtr.Zero);
+        }
     }
 
     private NotifyIconData CreateNotificationData(string toolTip = "") => new()
@@ -229,10 +311,16 @@ public sealed class TrayIconService : IDisposable
             try
             {
                 var activationMessage = (uint)lParam.ToInt64() & 0xFFFF;
-                if (GCHandle.FromIntPtr(referenceData).Target is TrayIconService service
-                    && activationMessage == LeftButtonUpMessage)
+                if (GCHandle.FromIntPtr(referenceData).Target is TrayIconService service)
                 {
-                    service.ToggleMainWindowVisibility();
+                    if (activationMessage == LeftButtonUpMessage)
+                    {
+                        service.ToggleMainWindowVisibility();
+                    }
+                    else if (activationMessage == RightButtonUpMessage)
+                    {
+                        service.ShowContextMenu();
+                    }
                 }
             }
             catch (Exception exception)
@@ -288,6 +376,13 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+    }
+
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate IntPtr SubclassProcDelegate(
         IntPtr windowHandle,
@@ -319,6 +414,28 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr CreatePopupMenu();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AppendMenu(IntPtr menuHandle, uint flags, UIntPtr itemId, string text);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint TrackPopupMenuEx(IntPtr menuHandle, uint flags, int x, int y, IntPtr ownerWindowHandle, IntPtr parameters);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyMenu(IntPtr menuHandle);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr windowHandle, uint message, IntPtr wParam, IntPtr lParam);
 
     [DllImport("comctl32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
