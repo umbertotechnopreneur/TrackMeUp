@@ -3,11 +3,30 @@
     x:Class="TrackMeUp.Controls.OperationsControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TrackMeUp.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     d:DesignHeight="720"
     d:DesignWidth="420"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="OperationsMetricLabelStyle" TargetType="TextBlock">
+            <Setter Property="CharacterSpacing" Value="80" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="OperationsMetricValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="FontWeight" Value="SemiLight" />
+            <Setter Property="IsTextSelectionEnabled" Value="True" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="OperationsMetricDetailStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Resources>
     <Grid x:Name="RootLayout">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -28,7 +47,7 @@
         </Grid>
 
         <ScrollViewer x:Name="OperationsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
-            <Grid x:Name="OperationsBody" Padding="0,0,8,20" RowSpacing="24">
+            <Grid x:Name="OperationsBody" Padding="0,0,28,20" RowSpacing="24">
                 <VisualStateManager.VisualStateGroups>
                     <VisualStateGroup x:Name="WidthStates">
                         <VisualState x:Name="Narrow"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers></VisualState>
@@ -56,9 +75,71 @@
                             <Button Tag="Operations.Health" AutomationProperties.Name="Health" Click="RuntimeHealthButton_Click" Content="Health" />
                             <Button Tag="Operations.SystemSnapshot" AutomationProperties.Name="System snapshot" Click="SystemSnapshotButton_Click" Content="System snapshot" />
                         </StackPanel>
-                        <TextBlock x:Name="RuntimeHealthText" Tag="Operations.Initial.Health" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Text="Health not acquired yet." TextWrapping="Wrap" />
-                        <TextBlock x:Name="ObservabilityHealthText" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap" />
-                        <TextBlock x:Name="SystemSnapshotText" Tag="Operations.Initial.SystemSnapshot" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Text="System snapshot not acquired yet." TextWrapping="Wrap" />
+                        <TextBlock x:Name="RuntimeHealthEmptyText" Tag="Operations.Initial.Health" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Health not acquired yet." TextWrapping="Wrap" />
+                        <StackPanel x:Name="RuntimeHealthSummary" Spacing="14" Visibility="Collapsed">
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2">
+                                    <TextBlock Tag="Operations.Runtime.Version" Style="{StaticResource OperationsMetricLabelStyle}" Text="VERSION" />
+                                    <TextBlock x:Name="RuntimeVersionValue" Style="{StaticResource OperationsMetricValueStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock Tag="Operations.Runtime.Protocol" Style="{StaticResource OperationsMetricLabelStyle}" Text="PROTOCOL" />
+                                    <TextBlock x:Name="RuntimeProtocolValue" Style="{StaticResource OperationsMetricValueStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <TextBlock Tag="Operations.Runtime.Role" Style="{StaticResource OperationsMetricLabelStyle}" Text="ROLE" />
+                                    <TextBlock x:Name="RuntimeRoleValue" Style="{StaticResource OperationsMetricValueStyle}" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Spacing="6">
+                                <TextBlock Tag="Operations.Runtime.Capabilities" Style="{StaticResource OperationsMetricLabelStyle}" Text="CAPABILITIES" />
+                                <ItemsControl x:Name="RuntimeCapabilitiesList">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Margin="0,0,14,6" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <Border Height="1" Opacity="0.6" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <StackPanel Spacing="8">
+                                <TextBlock Tag="Operations.Runtime.Observability" Style="{StaticResource OperationsMetricLabelStyle}" Text="OBSERVABILITY" />
+                                <Grid ColumnSpacing="18" RowSpacing="10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                    <StackPanel Spacing="1"><TextBlock Tag="Operations.Runtime.Console" Style="{StaticResource OperationsMetricDetailStyle}" Text="Console logging" /><TextBlock x:Name="RuntimeConsoleValue" FontWeight="SemiBold" /></StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="1"><TextBlock Tag="Operations.Runtime.File" Style="{StaticResource OperationsMetricDetailStyle}" Text="File logging" /><TextBlock x:Name="RuntimeFileValue" FontWeight="SemiBold" /></StackPanel>
+                                    <StackPanel Grid.Row="1" Spacing="1"><TextBlock Text="Sentry" Style="{StaticResource OperationsMetricDetailStyle}" /><TextBlock x:Name="RuntimeSentryValue" FontWeight="SemiBold" TextWrapping="Wrap" /></StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Spacing="1"><TextBlock Tag="Operations.Runtime.DefaultPii" Style="{StaticResource OperationsMetricDetailStyle}" Text="Default PII" /><TextBlock x:Name="RuntimePiiValue" FontWeight="SemiBold" /></StackPanel>
+                                </Grid>
+                                <TextBlock x:Name="ObservabilityUnavailableText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock x:Name="SystemSnapshotEmptyText" Tag="Operations.Initial.SystemSnapshot" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="System snapshot not acquired yet." TextWrapping="Wrap" />
+                        <StackPanel x:Name="SystemSnapshotSummary" Spacing="12" Visibility="Collapsed">
+                            <TextBlock Tag="Operations.System.Live" Style="{StaticResource OperationsMetricLabelStyle}" Text="LIVE SYSTEM" />
+                            <Grid ColumnSpacing="18" RowSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <StackPanel Spacing="1"><TextBlock Text="CPU" Style="{StaticResource OperationsMetricDetailStyle}" /><TextBlock x:Name="SystemCpuValue" Style="{StaticResource OperationsMetricValueStyle}" /><TextBlock x:Name="SystemCpuDetail" Style="{StaticResource OperationsMetricDetailStyle}" /></StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="1"><TextBlock Text="GPU" Style="{StaticResource OperationsMetricDetailStyle}" /><TextBlock x:Name="SystemGpuValue" Style="{StaticResource OperationsMetricValueStyle}" /><TextBlock x:Name="SystemGpuDetail" Style="{StaticResource OperationsMetricDetailStyle}" /></StackPanel>
+                                <StackPanel Grid.Row="1" Spacing="1"><TextBlock Tag="Operations.System.Memory" Style="{StaticResource OperationsMetricDetailStyle}" Text="Memory" /><TextBlock x:Name="SystemMemoryValue" FontSize="17" FontWeight="SemiLight" IsTextSelectionEnabled="True" TextWrapping="Wrap" /></StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="1"><TextBlock Tag="Operations.System.Network" Style="{StaticResource OperationsMetricDetailStyle}" Text="Network" /><TextBlock x:Name="SystemNetworkValue" FontSize="15" FontWeight="SemiLight" IsTextSelectionEnabled="True" TextWrapping="Wrap" /></StackPanel>
+                            </Grid>
+                            <StackPanel Spacing="6">
+                                <TextBlock Tag="Operations.System.Storage" Style="{StaticResource OperationsMetricLabelStyle}" Text="STORAGE" />
+                                <ItemsControl x:Name="SystemDisksList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate><TextBlock Margin="0,1" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
 
                     <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
@@ -119,67 +200,16 @@
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel x:Name="SecondarySections" Grid.Row="1" Spacing="24">
-                    <StackPanel Spacing="10">
-                        <StackPanel Spacing="2">
-                            <TextBlock Tag="Operations.Privacy" Style="{StaticResource SubtitleTextBlockStyle}" Text="Privacy" />
-                            <TextBlock Tag="Operations.Privacy.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Block sensitive processes, window titles or context hints." TextWrapping="Wrap" />
-                        </StackPanel>
-                        <ComboBox x:Name="PrivacyRuleTypeBox" Tag="Operations.PrivacyType" HorizontalAlignment="Stretch" Header="Rule type" SelectedIndex="0">
-                            <ComboBoxItem Content="Process" Tag="process" />
-                            <ComboBoxItem Content="Window title" Tag="title" />
-                            <ComboBoxItem Content="Context" Tag="hint" />
-                        </ComboBox>
-                        <TextBox x:Name="PrivacyRuleValueBox" Tag="Operations.PrivacyValue" Header="Value" PlaceholderText="Value to block" />
-                        <Grid ColumnSpacing="8" RowSpacing="8">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                            <Button Tag="Operations.Add" Click="AddPrivacyRuleButton_Click" Content="Add" HorizontalAlignment="Stretch" />
-                            <Button Tag="Operations.Refresh" Grid.Column="1" Click="ListPrivacyRulesButton_Click" Content="Refresh" HorizontalAlignment="Stretch" />
-                            <Button Tag="Operations.Remove" Grid.Row="1" Click="RemovePrivacyRuleButton_Click" Content="Remove selected" HorizontalAlignment="Stretch" />
-                            <Button Tag="Operations.TestContext" Grid.Row="1" Grid.Column="1" Click="TestPrivacyButton_Click" Content="Test context" HorizontalAlignment="Stretch" />
-                        </Grid>
-                        <ListView x:Name="PrivacyRulesList" Height="148" AutomationProperties.Name="Configured privacy rules" SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate><StackPanel Padding="2,4"><TextBlock FontWeight="SemiBold" Text="{Binding Type}" /><TextBlock Text="{Binding Value}" TextWrapping="Wrap" /><TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{Binding Id}" TextTrimming="CharacterEllipsis" /></StackPanel></DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                        <TextBlock x:Name="PrivacyTestText" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap" />
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="10">
-                        <StackPanel Spacing="2">
-                            <TextBlock Tag="Operations.Retention" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" />
-                            <TextBlock Tag="Operations.Retention.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Review the policy before running a confirmed cleanup." TextWrapping="Wrap" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Tag="Operations.Status" Click="RetentionStatusButton_Click" Content="Status" />
-                            <Button Tag="Operations.Preview" Click="RetentionPreviewButton_Click" Content="Preview" />
-                            <Button Tag="Operations.Run" Click="RunRetentionButton_Click" Content="Run" />
-                        </StackPanel>
-                        <TextBlock x:Name="RetentionStatusText" Tag="Operations.Initial.Retention" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Text="Policy not loaded yet." TextWrapping="Wrap" />
-                        <TextBlock x:Name="RetentionPreviewText" Tag="Operations.Initial.RetentionPreview" IsTextSelectionEnabled="True" Style="{StaticResource BodyTextBlockStyle}" Text="Preview not calculated yet." TextWrapping="Wrap" />
-                        <ListView x:Name="RetentionPathsList" Height="120" AutomationProperties.Name="Cleanup candidates" SelectionMode="None" />
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="10">
-                        <StackPanel Spacing="2">
-                            <TextBlock Tag="Operations.Plugins" Style="{StaticResource SubtitleTextBlockStyle}" Text="Context plugins" />
-                            <TextBlock Tag="Operations.Plugins.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Enable or disable supported application context providers." TextWrapping="Wrap" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Tag="Operations.Refresh" Click="ListPluginsButton_Click" Content="Refresh" />
-                            <Button Tag="Operations.Enable" Click="EnablePluginButton_Click" Content="Enable" />
-                            <Button Tag="Operations.Disable" Click="DisablePluginButton_Click" Content="Disable" />
-                        </StackPanel>
-                        <ListView x:Name="PluginsList" Height="190" AutomationProperties.Name="Configured plugins" SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate><StackPanel Padding="2,4"><TextBlock FontWeight="SemiBold" Text="{Binding Name}" /><TextBlock Text="{Binding Description}" TextWrapping="Wrap" /><TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{Binding Enabled}" /></StackPanel></DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </StackPanel>
+                <StackPanel x:Name="SecondarySections" Grid.Row="1" Spacing="16">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <ToggleButton x:Name="PrivacySectionButton" Tag="Operations.Section.Privacy" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" IsChecked="True" Click="PrivacySectionButton_Click" Content="Privacy" />
+                        <ToggleButton x:Name="RetentionSectionButton" Tag="Operations.Section.Retention" Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="RetentionSectionButton_Click" Content="Data retention" />
+                        <ToggleButton x:Name="PluginsSectionButton" Tag="Operations.Section.Plugins" Grid.Column="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="PluginsSectionButton_Click" Content="Plugins" />
+                    </Grid>
+                    <controls:PrivacyOperationsControl x:Name="PrivacySection" />
+                    <controls:RetentionOperationsControl x:Name="RetentionSection" Visibility="Collapsed" />
+                    <controls:PluginOperationsControl x:Name="PluginsSection" Visibility="Collapsed" />
                 </StackPanel>
             </Grid>
         </ScrollViewer>

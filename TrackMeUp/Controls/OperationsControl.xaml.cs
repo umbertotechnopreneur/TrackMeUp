@@ -15,10 +15,8 @@ public sealed partial class OperationsControl : UserControl
 {
     private ITrackMeUpApplication? _application;
     private MicaDialogService? _dialogs;
-    private Window? _ownerWindow;
     private LocalizationService _strings = new("system");
     private bool _operationInProgress;
-    private bool _retentionConfirmationOpen;
 
     /// <summary>Creates the passive operational surface.</summary>
     public OperationsControl() => InitializeComponent();
@@ -28,6 +26,9 @@ public sealed partial class OperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        PrivacySection.ApplyLanguage(language);
+        RetentionSection.ApplyLanguage(language);
+        PluginsSection.ApplyLanguage(language);
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
@@ -35,14 +36,15 @@ public sealed partial class OperationsControl : UserControl
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
-        _ownerWindow = ownerWindow ?? throw new ArgumentNullException(nameof(ownerWindow));
+        ArgumentNullException.ThrowIfNull(ownerWindow);
+        PrivacySection.Initialize(application, dialogs, ownerWindow);
+        RetentionSection.Initialize(application, dialogs, ownerWindow);
+        PluginsSection.Initialize(application, dialogs, ownerWindow);
     }
 
     private ITrackMeUpApplication Application => _application ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private MicaDialogService Dialogs => _dialogs ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
-
-    private Window OwnerWindow => _ownerWindow ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private async void RuntimeHealthButton_Click(object sender, RoutedEventArgs e)
     {
@@ -52,14 +54,27 @@ public sealed partial class OperationsControl : UserControl
             return;
         }
 
-        RuntimeHealthText.Text = L(
-            $"Version {health.ProductVersion} · protocol {health.ProtocolVersion} · owner: {YesNo(health.IsRuntimeOwner)}\nCapabilities: {string.Join(", ", health.Capabilities)}",
-            $"Versione {health.ProductVersion} · protocollo {health.ProtocolVersion} · owner: {YesNo(health.IsRuntimeOwner)}\nCapacità: {string.Join(", ", health.Capabilities)}");
-        ObservabilityHealthText.Text = health.Observability is { } observability
-            ? L(
-                $"Console logging: {EnabledDisabled(observability.ConsoleLoggingEnabled)} · file: {EnabledDisabled(observability.FileLoggingEnabled)} · Sentry: {observability.SentryStatus} · default PII: {YesNo(observability.SendsDefaultPii)}",
-                $"Logging console: {EnabledDisabled(observability.ConsoleLoggingEnabled)} · file: {EnabledDisabled(observability.FileLoggingEnabled)} · Sentry: {observability.SentryStatus} · PII predefiniti: {YesNo(observability.SendsDefaultPii)}")
-            : L("Logging and Sentry diagnostics are not exposed by the current runtime.", "Diagnostica di logging e Sentry non esposta dal runtime corrente.");
+        RuntimeHealthEmptyText.Visibility = Visibility.Collapsed;
+        RuntimeHealthSummary.Visibility = Visibility.Visible;
+        RuntimeVersionValue.Text = health.ProductVersion;
+        RuntimeProtocolValue.Text = health.ProtocolVersion.ToString(CultureInfo.InvariantCulture);
+        RuntimeRoleValue.Text = health.IsRuntimeOwner ? L("Owner", "Proprietario") : L("Client", "Client");
+        RuntimeCapabilitiesList.ItemsSource = health.Capabilities.OrderBy(capability => capability, StringComparer.OrdinalIgnoreCase).ToArray();
+
+        if (health.Observability is { } observability)
+        {
+            RuntimeConsoleValue.Text = EnabledDisabled(observability.ConsoleLoggingEnabled);
+            RuntimeFileValue.Text = EnabledDisabled(observability.FileLoggingEnabled);
+            RuntimeSentryValue.Text = observability.SentryStatus;
+            RuntimePiiValue.Text = YesNo(observability.SendsDefaultPii);
+            ObservabilityUnavailableText.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            RuntimeConsoleValue.Text = RuntimeFileValue.Text = RuntimeSentryValue.Text = RuntimePiiValue.Text = "—";
+            ObservabilityUnavailableText.Text = L("Logging and remote diagnostics are not exposed by the current runtime.", "Il runtime corrente non espone logging e diagnostica remota.");
+            ObservabilityUnavailableText.Visibility = Visibility.Visible;
+        }
     }
 
     private async void SystemSnapshotButton_Click(object sender, RoutedEventArgs e)
@@ -70,14 +85,19 @@ public sealed partial class OperationsControl : UserControl
             return;
         }
 
-        var disks = snapshot.Disks.Count == 0
-            ? L("no disks available", "nessun disco disponibile")
-            : string.Join(" · ", snapshot.Disks.Select(disk => L(
-                $"{disk.Drive} {FormatBytes(disk.FreeBytes)} free / {FormatBytes(disk.TotalBytes)}",
-                $"{disk.Drive} {FormatBytes(disk.FreeBytes)} liberi / {FormatBytes(disk.TotalBytes)}")));
-        SystemSnapshotText.Text = L(
-            $"CPU {snapshot.CpuUsagePercent}% ({FormatTemperature(snapshot.CpuTemperatureCelsius)}) · GPU {FormatPercent(snapshot.GpuUsagePercent)} ({FormatTemperature(snapshot.GpuTemperatureCelsius)})\nMemory {snapshot.MemoryUsedMb:N0}/{snapshot.MemoryTotalMb:N0} MB · network ↑ {FormatBytes(snapshot.Network.UploadBytesPerSecond)}/s ↓ {FormatBytes(snapshot.Network.DownloadBytesPerSecond)}/s\n{disks}",
-            $"CPU {snapshot.CpuUsagePercent}% ({FormatTemperature(snapshot.CpuTemperatureCelsius)}) · GPU {FormatPercent(snapshot.GpuUsagePercent)} ({FormatTemperature(snapshot.GpuTemperatureCelsius)})\nMemoria {snapshot.MemoryUsedMb:N0}/{snapshot.MemoryTotalMb:N0} MB · rete ↑ {FormatBytes(snapshot.Network.UploadBytesPerSecond)}/s ↓ {FormatBytes(snapshot.Network.DownloadBytesPerSecond)}/s\n{disks}");
+        SystemSnapshotEmptyText.Visibility = Visibility.Collapsed;
+        SystemSnapshotSummary.Visibility = Visibility.Visible;
+        SystemCpuValue.Text = $"{snapshot.CpuUsagePercent}%";
+        SystemCpuDetail.Text = FormatTemperature(snapshot.CpuTemperatureCelsius);
+        SystemGpuValue.Text = FormatPercent(snapshot.GpuUsagePercent);
+        SystemGpuDetail.Text = FormatTemperature(snapshot.GpuTemperatureCelsius);
+        SystemMemoryValue.Text = $"{FormatMemory(snapshot.MemoryUsedMb)} / {FormatMemory(snapshot.MemoryTotalMb)}";
+        SystemNetworkValue.Text = $"↑ {FormatBytes(snapshot.Network.UploadBytesPerSecond)}/s\n↓ {FormatBytes(snapshot.Network.DownloadBytesPerSecond)}/s";
+        SystemDisksList.ItemsSource = snapshot.Disks.Count == 0
+            ? [L("No local storage volumes reported", "Nessun volume locale rilevato")]
+            : snapshot.Disks.Select(disk => L(
+                $"{disk.Drive,-4} {FormatBytes(disk.FreeBytes)} free / {FormatBytes(disk.TotalBytes)}",
+                $"{disk.Drive,-4} {FormatBytes(disk.FreeBytes)} liberi / {FormatBytes(disk.TotalBytes)}")).ToArray();
     }
 
     private async void CaptureScreenshotButton_Click(object sender, RoutedEventArgs e)
@@ -197,154 +217,20 @@ public sealed partial class OperationsControl : UserControl
         }
     }
 
-    private async void AddPrivacyRuleButton_Click(object sender, RoutedEventArgs e)
+    private void PrivacySectionButton_Click(object sender, RoutedEventArgs e) => ShowOperationsSection(OperationsSubsection.Privacy);
+
+    private void RetentionSectionButton_Click(object sender, RoutedEventArgs e) => ShowOperationsSection(OperationsSubsection.Retention);
+
+    private void PluginsSectionButton_Click(object sender, RoutedEventArgs e) => ShowOperationsSection(OperationsSubsection.Plugins);
+
+    private void ShowOperationsSection(OperationsSubsection subsection)
     {
-        var type = SelectedTag(PrivacyRuleTypeBox, "process");
-        var result = await ExecuteAsync((application, token) => application.AddPrivacyRuleAsync(type, PrivacyRuleValueBox.Text, token));
-        if (result is { Succeeded: true })
-        {
-            PrivacyRuleValueBox.Text = string.Empty;
-            await RefreshPrivacyRulesAsync();
-        }
-    }
-
-    private async void ListPrivacyRulesButton_Click(object sender, RoutedEventArgs e) => await RefreshPrivacyRulesAsync();
-
-    private async Task RefreshPrivacyRulesAsync()
-    {
-        var result = await ExecuteAsync((application, token) => application.GetPrivacyRulesAsync(token));
-        if (result is { Succeeded: true, Value: { } rules })
-        {
-            PrivacyRulesList.ItemsSource = rules.ToArray();
-        }
-    }
-
-    private async void RemovePrivacyRuleButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (PrivacyRulesList.SelectedItem is not PrivacyRule rule)
-        {
-            ShowStatus(L("Selection required", "Selezione richiesta"), L("Select the privacy rule to remove.", "Seleziona la regola privacy da rimuovere."), InfoBarSeverity.Warning);
-            return;
-        }
-
-        var result = await ExecuteAsync((application, token) => application.RemovePrivacyRuleAsync(rule.Id, token));
-        if (result is { Succeeded: true })
-        {
-            await RefreshPrivacyRulesAsync();
-        }
-    }
-
-    private async void TestPrivacyButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.TestCurrentPrivacyAsync(token));
-        if (result is { Succeeded: true, Value: { } blocked })
-        {
-            PrivacyTestText.Text = blocked
-                ? L("The current context is blocked by privacy rules.", "Il contesto corrente è bloccato dalle regole privacy.")
-                : L("The current context is not blocked.", "Il contesto corrente non è bloccato.");
-        }
-    }
-
-    private async void RetentionStatusButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.GetRetentionStatusAsync(token));
-        if (result is { Succeeded: true, Value: { } status })
-        {
-            RetentionStatusText.Text = L(
-                $"Data: {status.DataRetentionDays} days · snapshots: {status.ScreenshotRetentionDays} days\n{status.ScreenshotDirectory}",
-                $"Dati: {status.DataRetentionDays} giorni · snapshot: {status.ScreenshotRetentionDays} giorni\n{status.ScreenshotDirectory}");
-        }
-    }
-
-    private async void RetentionPreviewButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.PreviewRetentionAsync(token));
-        if (result is { Succeeded: true, Value: { } preview })
-        {
-            RenderRetentionPreview(preview, executed: false);
-        }
-    }
-
-    private async void RunRetentionButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_retentionConfirmationOpen)
-        {
-            ShowStatus(L("Confirmation already open", "Conferma già aperta"), L("Complete or cancel the current cleanup confirmation.", "Completa o annulla la conferma di pulizia corrente."), InfoBarSeverity.Warning);
-            return;
-        }
-
-        _retentionConfirmationOpen = true;
-        try
-        {
-            var previewResult = await ExecuteAsync((application, token) => application.PreviewRetentionAsync(token));
-            if (previewResult is not { Succeeded: true, Value: { } preview })
-            {
-                return;
-            }
-
-            RenderRetentionPreview(preview, executed: false);
-            var confirmed = await Dialogs.ConfirmAsync(
-                Application,
-                OwnerWindow,
-                MicaDialogRequest.Confirmation(
-                    L("Confirm data cleanup", "Conferma pulizia dati"),
-                    L(
-                        $"Permanently delete the {preview.FileCount} items ({FormatBytes(preview.TotalBytes)}) listed in the preview?",
-                        $"Eliminare definitivamente {preview.FileCount} elementi ({FormatBytes(preview.TotalBytes)}) elencati nell'anteprima?"),
-                    L("Delete items", "Elimina elementi"),
-                    L("Cancel", "Annulla")),
-                RequestedTheme);
-            if (!confirmed)
-            {
-                ShowStatus(L("Cleanup cancelled", "Pulizia annullata"), L("No items were deleted.", "Nessun elemento è stato eliminato."), InfoBarSeverity.Informational);
-                return;
-            }
-
-            var runResult = await ExecuteAsync((application, token) => application.RunRetentionAsync(new RetentionRequest(Execute: true, Confirmed: true), token));
-            if (runResult is { Succeeded: true, Value: { } deleted })
-            {
-                RenderRetentionPreview(deleted, executed: true);
-            }
-        }
-        catch (Exception)
-        {
-            // A dialog-host failure leaves retention untouched and the rest of the surface available.
-            ShowStatus(L("Confirmation unavailable", "Conferma non disponibile"), L("Cleanup was not started.", "La pulizia non è stata avviata."), InfoBarSeverity.Error);
-        }
-        finally
-        {
-            _retentionConfirmationOpen = false;
-        }
-    }
-
-    private async void ListPluginsButton_Click(object sender, RoutedEventArgs e) => await RefreshPluginsAsync();
-
-    private async Task RefreshPluginsAsync()
-    {
-        var result = await ExecuteAsync((application, token) => application.GetPluginsAsync(token));
-        if (result is { Succeeded: true, Value: { } plugins })
-        {
-            PluginsList.ItemsSource = plugins.ToArray();
-        }
-    }
-
-    private async void EnablePluginButton_Click(object sender, RoutedEventArgs e) => await SetSelectedPluginAsync(enabled: true);
-
-    private async void DisablePluginButton_Click(object sender, RoutedEventArgs e) => await SetSelectedPluginAsync(enabled: false);
-
-    private async Task SetSelectedPluginAsync(bool enabled)
-    {
-        if (PluginsList.SelectedItem is not PluginInfo plugin)
-        {
-            ShowStatus(L("Selection required", "Selezione richiesta"), L("Select the plugin to change.", "Seleziona il plugin da modificare."), InfoBarSeverity.Warning);
-            return;
-        }
-
-        var result = await ExecuteAsync((application, token) => application.SetPluginEnabledAsync(plugin.Id, enabled, token));
-        if (result is { Succeeded: true })
-        {
-            await RefreshPluginsAsync();
-        }
+        PrivacySectionButton.IsChecked = subsection == OperationsSubsection.Privacy;
+        RetentionSectionButton.IsChecked = subsection == OperationsSubsection.Retention;
+        PluginsSectionButton.IsChecked = subsection == OperationsSubsection.Plugins;
+        PrivacySection.Visibility = subsection == OperationsSubsection.Privacy ? Visibility.Visible : Visibility.Collapsed;
+        RetentionSection.Visibility = subsection == OperationsSubsection.Retention ? Visibility.Visible : Visibility.Collapsed;
+        PluginsSection.Visibility = subsection == OperationsSubsection.Plugins ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task<OperationResult<T>?> ExecuteAsync<T>(Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation)
@@ -404,20 +290,23 @@ public sealed partial class OperationsControl : UserControl
             : L("No focus session is active.", "Nessuna sessione focus attiva.");
     }
 
-    private void RenderRetentionPreview(RetentionPreview preview, bool executed)
-    {
-        RetentionPreviewText.Text = executed
-            ? L($"Deleted {preview.FileCount} items ({FormatBytes(preview.TotalBytes)}).", $"Eliminati {preview.FileCount} elementi ({FormatBytes(preview.TotalBytes)}).")
-            : L($"{preview.FileCount} candidate items ({FormatBytes(preview.TotalBytes)}).", $"{preview.FileCount} elementi candidati ({FormatBytes(preview.TotalBytes)}).");
-        RetentionPathsList.ItemsSource = preview.Paths.ToArray();
-    }
-
     private void ShowStatus(string title, string message, InfoBarSeverity severity)
     {
-        OperationInfoBar.Title = title;
-        OperationInfoBar.Message = message;
-        OperationInfoBar.Severity = severity;
-        OperationInfoBar.IsOpen = true;
+        switch (severity)
+        {
+            case InfoBarSeverity.Success:
+                Dialogs.ShowSuccessBanner(OperationInfoBar, title, message);
+                break;
+            case InfoBarSeverity.Error:
+                Dialogs.ShowErrorBanner(OperationInfoBar, title, message);
+                break;
+            case InfoBarSeverity.Warning:
+                Dialogs.ShowWarningBanner(OperationInfoBar, title, message);
+                break;
+            default:
+                Dialogs.ShowInfoBanner(OperationInfoBar, title, message);
+                break;
+        }
     }
 
     private static string SelectedTag(ComboBox comboBox, string fallback) => comboBox.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
@@ -434,6 +323,10 @@ public sealed partial class OperationsControl : UserControl
 
     private static string FormatDuration(long seconds) => TimeSpan.FromSeconds(Math.Max(0, seconds)).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
 
+    private static string FormatMemory(long megabytes) => megabytes >= 1024
+        ? $"{megabytes / 1024d:0.0} GB"
+        : $"{Math.Max(0, megabytes):N0} MB";
+
     private static string FormatBytes(long bytes)
     {
         var size = Math.Max(0, bytes);
@@ -447,5 +340,12 @@ public sealed partial class OperationsControl : UserControl
         }
 
         return $"{value:0.#} {units[unit]}";
+    }
+
+    private enum OperationsSubsection
+    {
+        Privacy,
+        Retention,
+        Plugins
     }
 }

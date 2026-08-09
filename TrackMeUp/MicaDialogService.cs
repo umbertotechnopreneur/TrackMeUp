@@ -1,6 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System.Runtime.InteropServices;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -50,6 +51,27 @@ internal sealed class MicaDialogService
     private readonly SemaphoreSlim _queue = new(1, 1);
     private Window? _activeWindow;
     private bool _isShuttingDown;
+
+    /// <summary>Displays an informational banner in an existing passive host.</summary>
+    internal void ShowInfoBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Informational);
+
+    /// <summary>Displays a success banner in an existing passive host.</summary>
+    internal void ShowSuccessBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Success);
+
+    /// <summary>Displays a warning banner in an existing passive host.</summary>
+    internal void ShowWarningBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Warning);
+
+    /// <summary>Displays an error banner in an existing passive host.</summary>
+    internal void ShowErrorBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Error);
+
+    private static void ShowBanner(InfoBar host, string title, string message, InfoBarSeverity severity)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        host.Title = title;
+        host.Message = message;
+        host.Severity = severity;
+        host.IsOpen = true;
+    }
 
     /// <summary>Shows a one-button informative dialog and waits for acknowledgement or dismissal.</summary>
     internal async Task ShowInformativeAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)

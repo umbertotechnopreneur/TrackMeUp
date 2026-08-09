@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.PluginOperationsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="520"
+    d:DesignWidth="420"
+    mc:Ignorable="d">
+    <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <InfoBar x:Name="StatusInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
+            <ProgressRing x:Name="Progress" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
+        </Grid>
+
+        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="12">
+            <StackPanel Spacing="4">
+                <TextBlock Tag="Operations.Plugins" Style="{StaticResource SubtitleTextBlockStyle}" Text="Context plugins" />
+                <TextBlock Tag="Operations.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Manage local app-specific context enrichers without changing core activity tracking." TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Button Tag="Operations.Refresh" Click="ListPluginsButton_Click" Content="Refresh" HorizontalAlignment="Stretch" />
+                <Button Tag="Operations.Enable" Grid.Column="1" Click="EnablePluginButton_Click" Content="Enable" HorizontalAlignment="Stretch" />
+                <Button Tag="Operations.Disable" Grid.Column="2" Click="DisablePluginButton_Click" Content="Disable" HorizontalAlignment="Stretch" />
+            </Grid>
+            <ListView x:Name="PluginsList" Height="260" AutomationProperties.Name="Configured plugins" SelectionMode="Single">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Padding="2,7" Spacing="3">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                <TextBlock Grid.Column="1" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{Binding Enabled}" />
+                            </Grid>
+                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Description}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </StackPanel>
+    </Grid>
+</UserControl>

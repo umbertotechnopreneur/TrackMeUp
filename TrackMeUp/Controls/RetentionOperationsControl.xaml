@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.RetentionOperationsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="520"
+    d:DesignWidth="420"
+    mc:Ignorable="d">
+    <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <InfoBar x:Name="StatusInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
+            <ProgressRing x:Name="Progress" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
+        </Grid>
+
+        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="14">
+            <StackPanel Spacing="4">
+                <TextBlock Tag="Operations.Retention" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" />
+                <TextBlock Tag="Operations.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Review how long local activity and snapshots are kept, preview eligible items, and explicitly confirm cleanup." TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Button Tag="Operations.Status" Click="RetentionStatusButton_Click" Content="Status" HorizontalAlignment="Stretch" />
+                <Button Tag="Operations.Preview" Grid.Column="1" Click="RetentionPreviewButton_Click" Content="Preview" HorizontalAlignment="Stretch" />
+                <Button Tag="Operations.Run" Grid.Column="2" Click="RunRetentionButton_Click" Content="Run" HorizontalAlignment="Stretch" />
+            </Grid>
+
+            <StackPanel Spacing="5">
+                <TextBlock Tag="Operations.Retention.Policy" CharacterSpacing="80" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="CURRENT POLICY" />
+                <TextBlock x:Name="RetentionStatusText" Tag="Operations.Initial.Retention" IsTextSelectionEnabled="True" Text="Policy not loaded yet." TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Spacing="5">
+                <TextBlock Tag="Operations.Retention.Preview" CharacterSpacing="80" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="CLEANUP PREVIEW" />
+                <TextBlock x:Name="RetentionPreviewText" Tag="Operations.Initial.RetentionPreview" IsTextSelectionEnabled="True" Text="Preview not calculated yet." TextWrapping="Wrap" />
+            </StackPanel>
+            <ListView x:Name="RetentionPathsList" Height="190" AutomationProperties.Name="Cleanup candidates" SelectionMode="None" />
+        </StackPanel>
+    </Grid>
+</UserControl>

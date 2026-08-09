@@ -36,18 +36,33 @@ public sealed class WinUiOperationsSurfaceContractTests
     {
         var mainWindow = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
+        var privacy = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml"));
+        var retention = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
+        var plugins = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PluginOperationsControl.xaml"));
 
         Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "InfoBar");
+        Assert.Equal(3, operations.Descendants().Count(element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true));
+        Assert.Contains(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
+        Assert.Contains(operations.Descendants(), element => HasName(element, "SystemDisksList"));
+        Assert.All(new[] { privacy, retention, plugins }, document => Assert.Contains(document.Descendants(), element => element.Name.LocalName == "InfoBar"));
+        Assert.All(new[] { privacy, retention, plugins }, document => Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true));
     }
 
     /// <summary>Ensures every requested operation remains delegated through the shared facade.</summary>
     [Fact]
     public void OperationsCodeBehind_InvokesCompleteFacadeSurfaceWithoutDirectIo()
     {
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+        var sources = new[]
+        {
+            "OperationsControl.xaml.cs",
+            "PrivacyOperationsControl.xaml.cs",
+            "RetentionOperationsControl.xaml.cs",
+            "PluginOperationsControl.xaml.cs"
+        }.Select(file => File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", file))).ToArray();
+        var source = string.Join(Environment.NewLine, sources);
         string[] requiredFacadeCalls =
         [
             "GetRuntimeHealthAsync",
@@ -87,7 +102,7 @@ public sealed class WinUiOperationsSurfaceContractTests
     [Fact]
     public void RetentionExecution_RequiresExplicitUiAndApplicationConfirmation()
     {
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml.cs"));
 
         Assert.Contains("Dialogs.ConfirmAsync(", source, StringComparison.Ordinal);
         Assert.Contains("MicaDialogRequest.Confirmation(", source, StringComparison.Ordinal);

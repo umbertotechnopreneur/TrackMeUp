@@ -15,9 +15,32 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
+                    <AcrylicBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" TintColor="#F3F1FF" TintOpacity="0.28" TintLuminosityOpacity="0.72" FallbackColor="#EDF7F6FC" />
+                    <AcrylicBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" TintColor="#DDF7E7" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDF5FAF6" />
+                    <AcrylicBrush x:Key="InfoBarWarningSeverityBackgroundBrush" TintColor="#FFF1D5" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDFDF9F0" />
+                    <AcrylicBrush x:Key="InfoBarErrorSeverityBackgroundBrush" TintColor="#FFE5E1" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDFDF5F4" />
+                    <LinearGradientBrush x:Key="InfoBarGlassBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#C8FFFFFF" Offset="0" />
+                        <GradientStop Color="#36737688" Offset="1" />
+                    </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
+                    <AcrylicBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" TintColor="#343247" TintOpacity="0.38" TintLuminosityOpacity="0.34" FallbackColor="#E623222D" />
+                    <AcrylicBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" TintColor="#203D2C" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E6212B25" />
+                    <AcrylicBrush x:Key="InfoBarWarningSeverityBackgroundBrush" TintColor="#493B23" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E62C2921" />
+                    <AcrylicBrush x:Key="InfoBarErrorSeverityBackgroundBrush" TintColor="#472A2A" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E62D2425" />
+                    <LinearGradientBrush x:Key="InfoBarGlassBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#5CFFFFFF" Offset="0" />
+                        <GradientStop Color="#18FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="InfoBarErrorSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="InfoBarGlassBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <Style TargetType="ScrollViewer">
@@ -25,6 +48,17 @@
             </Style>
             <Style TargetType="ScrollBar">
                 <Setter Property="Opacity" Value="0" />
+            </Style>
+            <Style TargetType="InfoBar">
+                <Setter Property="BorderBrush" Value="{ThemeResource InfoBarGlassBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Shadow">
+                    <Setter.Value>
+                        <ThemeShadow />
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="local:InfoBarElevationBehavior.IsEnabled" Value="True" />
             </Style>
             <!-- Other app resources here -->
         </ResourceDictionary>

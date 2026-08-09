@@ -468,6 +468,28 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
+    public void InfoBars_UseGlobalSemanticGlassAndSoftElevation()
+    {
+        var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
+        var infoBarStyle = app.Descendants().Single(element =>
+            element.Name.LocalName == "Style" && element.Attribute("TargetType")?.Value == "InfoBar");
+        var semanticBrushKeys = app.Descendants()
+            .Where(element => element.Name.LocalName == "AcrylicBrush")
+            .SelectMany(element => element.Attributes())
+            .Where(attribute => attribute.Name.LocalName == "Key")
+            .Select(attribute => attribute.Value)
+            .ToArray();
+
+        Assert.Contains("InfoBarInformationalSeverityBackgroundBrush", semanticBrushKeys);
+        Assert.Contains("InfoBarSuccessSeverityBackgroundBrush", semanticBrushKeys);
+        Assert.Contains("InfoBarWarningSeverityBackgroundBrush", semanticBrushKeys);
+        Assert.Contains("InfoBarErrorSeverityBackgroundBrush", semanticBrushKeys);
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "ThemeShadow");
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "CornerRadius" && element.Attribute("Value")?.Value == "12");
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "local:InfoBarElevationBehavior.IsEnabled" && element.Attribute("Value")?.Value == "True");
+    }
+
+    [Fact]
     public void LanguagePicker_OffersSystemModeAndExplicitOverrides()
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
