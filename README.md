@@ -116,6 +116,8 @@ Screenshot viewer validation checklist: open 16:9, portrait, and ultrawide captu
 
 Settings tools navigation checklist: from App options, open each of the five local-data links and confirm that screen captures and AI, reports, privacy, data retention, and app details each appear as a separate scrollable page. Confirm that Privacy is presented as a title and description followed by a textual link with a right chevron, and that Back returns directly to App options. When Tools and diagnostics is opened from the main menu, open one focused page and confirm that Back first returns to the tools overview and then to the player.
 
+Central banner validation checklist: trigger status banners from the tools overview and each focused tools page, then confirm that one fixed frosted banner overlays the scrolling content without moving it. Verify that the 3 px icon-coral line drains smoothly and closes the banner after 10 seconds, that manual close works, and that a second banner restarts the full countdown. Repeat in light, dark, High Contrast, and with Windows transparency effects disabled.
+
 ## Open-Source Governance Docs
 
 This repository includes open-source governance and contribution policies tailored for TrackMeUp:

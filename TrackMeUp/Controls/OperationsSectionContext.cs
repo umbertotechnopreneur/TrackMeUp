@@ -11,7 +11,7 @@ namespace TrackMeUp.Controls;
 /// <summary>Coordinates one passive operations subsection with the shared facade and banner host.</summary>
 internal sealed class OperationsSectionContext
 {
-    private readonly InfoBar _status;
+    private readonly TimedInfoBar _status;
     private readonly ProgressRing _progress;
     private readonly UIElement _interactionRoot;
     private readonly Func<string, string, string> _localize;
@@ -21,7 +21,7 @@ internal sealed class OperationsSectionContext
         ITrackMeUpApplication application,
         MicaDialogService dialogs,
         Window ownerWindow,
-        InfoBar status,
+        TimedInfoBar status,
         ProgressRing progress,
         UIElement interactionRoot,
         Func<string, string, string> localize)

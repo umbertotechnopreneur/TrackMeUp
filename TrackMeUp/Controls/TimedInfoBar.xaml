@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.TimedInfoBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TrackMeUp"
+    Visibility="Collapsed">
+    <Grid x:Name="BannerSurface">
+        <Grid.Shadow>
+            <ThemeShadow />
+        </Grid.Shadow>
+        <InfoBar
+            x:Name="BannerInfoBar"
+            AutomationProperties.LiveSetting="Polite"
+            IsClosable="True"
+            IsOpen="False"
+            local:InfoBarElevationBehavior.IsEnabled="False" />
+        <ProgressBar
+            x:Name="CountdownProgress"
+            Canvas.ZIndex="1"
+            Height="3"
+            Margin="1,0,1,1"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            AutomationProperties.AccessibilityView="Raw"
+            Background="Transparent"
+            Foreground="{ThemeResource BrandCoralBrush}"
+            IsHitTestVisible="False"
+            Maximum="100"
+            Minimum="0"
+            Value="0" />
+    </Grid>
+</UserControl>

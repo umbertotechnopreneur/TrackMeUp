@@ -8,18 +8,10 @@
     d:DesignHeight="520"
     d:DesignWidth="420"
     mc:Ignorable="d">
-    <Grid RowSpacing="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Grid>
+        <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
 
-        <Grid>
-            <InfoBar x:Name="StatusInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
-            <ProgressRing x:Name="Progress" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
-        </Grid>
-
-        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="12">
+        <StackPanel x:Name="SectionBody" Spacing="12">
             <StackPanel Spacing="4">
                 <TextBlock Tag="Operations.Plugins" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="App details" />
                 <TextBlock Tag="Operations.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Enable or disable local, app-specific context enrichers. Each plugin can add details from a supported app; disabling it stops that enrichment while core activity tracking continues." TextWrapping="Wrap" />

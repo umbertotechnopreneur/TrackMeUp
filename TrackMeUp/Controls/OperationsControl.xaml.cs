@@ -53,11 +53,11 @@ public sealed partial class OperationsControl : UserControl
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         ArgumentNullException.ThrowIfNull(ownerWindow);
-        SnapshotAiSection.Initialize(application, dialogs, ownerWindow);
-        ReportsSection.Initialize(application, dialogs, ownerWindow);
-        PrivacySection.Initialize(application, dialogs, ownerWindow);
-        RetentionSection.Initialize(application, dialogs, ownerWindow);
-        PluginsSection.Initialize(application, dialogs, ownerWindow);
+        SnapshotAiSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
+        ReportsSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
+        PrivacySection.Initialize(application, dialogs, ownerWindow, OperationBanner);
+        RetentionSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
+        PluginsSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
     }
 
     /// <summary>Returns to the landing page for local tool navigation, or to the surface that opened a direct settings link.</summary>
@@ -243,16 +243,16 @@ public sealed partial class OperationsControl : UserControl
         switch (severity)
         {
             case InfoBarSeverity.Success:
-                Dialogs.ShowSuccessBanner(OperationInfoBar, title, message);
+                Dialogs.ShowSuccessBanner(OperationBanner, title, message);
                 break;
             case InfoBarSeverity.Error:
-                Dialogs.ShowErrorBanner(OperationInfoBar, title, message);
+                Dialogs.ShowErrorBanner(OperationBanner, title, message);
                 break;
             case InfoBarSeverity.Warning:
-                Dialogs.ShowWarningBanner(OperationInfoBar, title, message);
+                Dialogs.ShowWarningBanner(OperationBanner, title, message);
                 break;
             default:
-                Dialogs.ShowInfoBanner(OperationInfoBar, title, message);
+                Dialogs.ShowInfoBanner(OperationBanner, title, message);
                 break;
         }
     }

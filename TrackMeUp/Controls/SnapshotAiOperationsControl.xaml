@@ -8,18 +8,10 @@
     d:DesignHeight="600"
     d:DesignWidth="520"
     mc:Ignorable="d">
-    <Grid RowSpacing="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Grid>
+        <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
 
-        <Grid>
-            <InfoBar x:Name="StatusInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
-            <ProgressRing x:Name="Progress" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
-        </Grid>
-
-        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="14">
+        <StackPanel x:Name="SectionBody" Spacing="14">
             <StackPanel Spacing="4">
                 <TextBlock Tag="Operations.SnapshotAi" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Screen captures and AI" />
                 <TextBlock

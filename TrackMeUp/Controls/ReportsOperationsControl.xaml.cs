@@ -23,8 +23,8 @@ public sealed partial class ReportsOperationsControl : UserControl
     }
 
     /// <summary>Connects the passive surface to the application facade owned by the composition root.</summary>
-    internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, StatusInfoBar, Progress, SectionBody, L);
+    internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
+        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L);
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("ReportsOperationsControl must be initialized before use.");
 

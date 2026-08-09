@@ -1,9 +1,12 @@
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using TrackMeUp.Application;
+using TrackMeUp.Controls;
 using TrackMeUp.Services;
 using Windows.UI;
 
@@ -48,30 +51,112 @@ internal sealed record MicaDialogRequest(
 /// <summary>Serializes custom Mica dialogs and keeps window views free of ad-hoc dialog construction.</summary>
 internal sealed class MicaDialogService
 {
+    private static readonly TimeSpan BannerProgressInterval = TimeSpan.FromMilliseconds(50);
     private readonly SemaphoreSlim _queue = new(1, 1);
+    private readonly Dictionary<TimedInfoBar, BannerCountdown> _bannerCountdowns = [];
     private Window? _activeWindow;
     private bool _isShuttingDown;
+    private TimeSpan _defaultBannerTimeout = TimeSpan.FromSeconds(10);
+    private long _nextBannerGeneration;
+
+    /// <summary>Gets or sets the timeout used when a banner call does not provide an override.</summary>
+    internal TimeSpan DefaultBannerTimeout
+    {
+        get => _defaultBannerTimeout;
+        set => _defaultBannerTimeout = ValidateBannerTimeout(value, nameof(value));
+    }
 
     /// <summary>Displays an informational banner in an existing passive host.</summary>
-    internal void ShowInfoBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Informational);
+    internal void ShowInfoBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
+        ShowBanner(host, title, message, InfoBarSeverity.Informational, timeout);
 
     /// <summary>Displays a success banner in an existing passive host.</summary>
-    internal void ShowSuccessBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Success);
+    internal void ShowSuccessBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
+        ShowBanner(host, title, message, InfoBarSeverity.Success, timeout);
 
     /// <summary>Displays a warning banner in an existing passive host.</summary>
-    internal void ShowWarningBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Warning);
+    internal void ShowWarningBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
+        ShowBanner(host, title, message, InfoBarSeverity.Warning, timeout);
 
     /// <summary>Displays an error banner in an existing passive host.</summary>
-    internal void ShowErrorBanner(InfoBar host, string title, string message) => ShowBanner(host, title, message, InfoBarSeverity.Error);
+    internal void ShowErrorBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
+        ShowBanner(host, title, message, InfoBarSeverity.Error, timeout);
 
-    private static void ShowBanner(InfoBar host, string title, string message, InfoBarSeverity severity)
+    private void ShowBanner(TimedInfoBar host, string title, string message, InfoBarSeverity severity, TimeSpan? timeout)
     {
         ArgumentNullException.ThrowIfNull(host);
-        host.Title = title;
-        host.Message = message;
-        host.Severity = severity;
-        host.IsOpen = true;
+        if (!host.DispatcherQueue.HasThreadAccess)
+        {
+            // Banner state is UI-thread owned; cross-thread calls fail fast because there is no safe visual fallback.
+            throw new InvalidOperationException("Banners must be shown from their host UI thread.");
+        }
+
+        var duration = ValidateBannerTimeout(timeout ?? DefaultBannerTimeout, nameof(timeout));
+        StopBannerCountdown(host);
+        host.Dismissed -= BannerHost_Dismissed;
+        host.Dismissed += BannerHost_Dismissed;
+        host.Present(title, message, severity);
+
+        var timer = host.DispatcherQueue.CreateTimer();
+        timer.Interval = BannerProgressInterval;
+        timer.IsRepeating = true;
+        var generation = ++_nextBannerGeneration;
+        _bannerCountdowns[host] = new BannerCountdown(timer, Stopwatch.GetTimestamp(), duration, generation);
+        timer.Tick += (_, _) => UpdateBannerCountdown(host, generation);
+        timer.Start();
     }
+
+    private void UpdateBannerCountdown(TimedInfoBar host, long generation)
+    {
+        if (!_bannerCountdowns.TryGetValue(host, out var countdown) || countdown.Generation != generation)
+        {
+            return;
+        }
+
+        // Monotonic elapsed time ignores wall-clock corrections; replaced generations make queued ticks no-ops.
+        var elapsed = Stopwatch.GetElapsedTime(countdown.StartedTimestamp);
+        var remainingRatio = Math.Clamp(1d - (elapsed.TotalMilliseconds / countdown.Duration.TotalMilliseconds), 0d, 1d);
+        host.CountdownIndicator.Value = host.CountdownIndicator.Maximum * remainingRatio;
+        if (remainingRatio > 0d)
+        {
+            return;
+        }
+
+        StopBannerCountdown(host);
+        host.Dismiss();
+    }
+
+    private void BannerHost_Dismissed(object? sender, EventArgs e)
+    {
+        if (sender is TimedInfoBar host)
+        {
+            StopBannerCountdown(host);
+        }
+    }
+
+    private void StopBannerCountdown(TimedInfoBar host)
+    {
+        if (_bannerCountdowns.Remove(host, out var countdown))
+        {
+            countdown.Timer.Stop();
+        }
+    }
+
+    private static TimeSpan ValidateBannerTimeout(TimeSpan timeout, string parameterName)
+    {
+        if (timeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, timeout, "Banner timeout must be greater than zero.");
+        }
+
+        return timeout;
+    }
+
+    private sealed record BannerCountdown(
+        DispatcherQueueTimer Timer,
+        long StartedTimestamp,
+        TimeSpan Duration,
+        long Generation);
 
     /// <summary>Shows a one-button informative dialog and waits for acknowledgement or dismissal.</summary>
     internal async Task ShowInformativeAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)

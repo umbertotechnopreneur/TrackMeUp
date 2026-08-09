@@ -28,25 +28,7 @@
         </Style>
     </UserControl.Resources>
     <Grid x:Name="RootLayout">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <Grid>
-            <InfoBar x:Name="OperationInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
-            <ProgressRing
-                x:Name="OperationProgress"
-                Width="24"
-                Height="24"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                AutomationProperties.Name="Operation in progress"
-                IsActive="False"
-                Visibility="Collapsed" />
-        </Grid>
-
-        <ScrollViewer x:Name="OperationsScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
+        <ScrollViewer x:Name="OperationsScroll" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
             <Grid x:Name="OperationsBody" Padding="0,0,28,20" RowSpacing="24">
                 <VisualStateManager.VisualStateGroups>
                     <VisualStateGroup x:Name="WidthStates">
@@ -212,7 +194,7 @@
             </Grid>
         </ScrollViewer>
 
-        <ScrollViewer x:Name="DetailScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto" Visibility="Collapsed">
+        <ScrollViewer x:Name="DetailScroll" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto" Visibility="Collapsed">
             <Grid Padding="0,0,18,12">
                 <controls:SnapshotAiOperationsControl x:Name="SnapshotAiSection" Visibility="Collapsed" />
                 <controls:ReportsOperationsControl x:Name="ReportsSection" Visibility="Collapsed" />
@@ -221,5 +203,23 @@
                 <controls:PluginOperationsControl x:Name="PluginsSection" Visibility="Collapsed" />
             </Grid>
         </ScrollViewer>
+
+        <controls:TimedInfoBar
+            x:Name="OperationBanner"
+            Canvas.ZIndex="100"
+            Margin="0,0,18,0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top" />
+        <ProgressRing
+            x:Name="OperationProgress"
+            Canvas.ZIndex="101"
+            Width="24"
+            Height="24"
+            Margin="0,12,48,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            AutomationProperties.Name="Operation in progress"
+            IsActive="False"
+            Visibility="Collapsed" />
     </Grid>
 </UserControl>

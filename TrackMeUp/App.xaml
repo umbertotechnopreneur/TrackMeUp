@@ -15,6 +15,7 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
+                    <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
                     <AcrylicBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" TintColor="#F3F1FF" TintOpacity="0.28" TintLuminosityOpacity="0.72" FallbackColor="#EDF7F6FC" />
                     <AcrylicBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" TintColor="#DDF7E7" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDF5FAF6" />
                     <AcrylicBrush x:Key="InfoBarWarningSeverityBackgroundBrush" TintColor="#FFF1D5" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDFDF9F0" />
@@ -26,6 +27,7 @@
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
+                    <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
                     <AcrylicBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" TintColor="#343247" TintOpacity="0.38" TintLuminosityOpacity="0.34" FallbackColor="#E623222D" />
                     <AcrylicBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" TintColor="#203D2C" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E6212B25" />
                     <AcrylicBrush x:Key="InfoBarWarningSeverityBackgroundBrush" TintColor="#493B23" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E62C2921" />
@@ -36,6 +38,7 @@
                     </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="BrandCoralBrush" ResourceKey="SystemColorHighlightColorBrush" />
                     <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />

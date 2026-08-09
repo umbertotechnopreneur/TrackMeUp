@@ -46,7 +46,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
-        Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "InfoBar");
+        Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar" && HasName(element, "OperationBanner"));
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true);
         Assert.Contains(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
         Assert.Contains(operations.Descendants(), element => HasName(element, "SystemDisksList"));
@@ -67,11 +67,58 @@ public sealed class WinUiOperationsSurfaceContractTests
 
         Assert.All(new[] { snapshots, reports, privacy, retention, plugins }, document =>
         {
-            Assert.Contains(document.Descendants(), element => element.Name.LocalName == "InfoBar");
+            Assert.DoesNotContain(document.Descendants(), element => element.Name.LocalName == "InfoBar");
             Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true);
         });
         Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
+    }
+
+    /// <summary>Guards the shared overlay, frosted material, configurable timeout, and coral countdown.</summary>
+    [Fact]
+    public void CentralBanners_UseOneTimedFrostedOverlay()
+    {
+        var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
+        var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
+        var banner = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "TimedInfoBar.xaml"));
+        var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
+        var operationsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+
+        var overlay = operations.Descendants().Single(element => element.Name.LocalName == "TimedInfoBar");
+        Assert.True(HasName(overlay, "OperationBanner"));
+        Assert.Equal("Top", overlay.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("100", overlay.Attributes().Single(attribute => attribute.Name.LocalName == "Canvas.ZIndex").Value);
+        Assert.True(overlay.Parent is { } parent && HasName(parent, "RootLayout"));
+        Assert.All(operations.Descendants().Where(element => element.Name.LocalName == "ScrollViewer"),
+            scrollViewer => Assert.DoesNotContain(scrollViewer.Attributes(), attribute => attribute.Name.LocalName == "Grid.Row"));
+
+        Assert.Single(banner.Descendants(), element => element.Name.LocalName == "InfoBar");
+        var progress = banner.Descendants().Single(element => element.Name.LocalName == "ProgressBar");
+        Assert.Equal("3", progress.Attribute("Height")?.Value);
+        Assert.Equal("Transparent", progress.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource BrandCoralBrush}", progress.Attribute("Foreground")?.Value);
+        Assert.Equal("Raw", progress.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
+
+        var coralBrushes = app.Descendants()
+            .Where(element => element.Name.LocalName == "SolidColorBrush" &&
+                              element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "BrandCoralBrush"))
+            .ToArray();
+        Assert.Equal(2, coralBrushes.Length);
+        Assert.All(coralBrushes, brush => Assert.Equal("#FFF9665B", brush.Attribute("Color")?.Value));
+        Assert.Contains(app.Descendants(), element =>
+            element.Name.LocalName == "StaticResource" &&
+            element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "BrandCoralBrush") &&
+            element.Attribute("ResourceKey")?.Value == "SystemColorHighlightColorBrush");
+
+        Assert.Contains("TimeSpan.FromSeconds(10)", service, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan? timeout = null", service, StringComparison.Ordinal);
+        Assert.Contains("ValidateBannerTimeout", service, StringComparison.Ordinal);
+        Assert.Contains("DispatcherQueueTimer", service, StringComparison.Ordinal);
+        Assert.Contains("Stopwatch.GetElapsedTime", service, StringComparison.Ordinal);
+        Assert.Contains("host.DispatcherQueue.HasThreadAccess", service, StringComparison.Ordinal);
+        Assert.Contains("host.Dismissed", service, StringComparison.Ordinal);
+        Assert.Contains("countdown.Generation != generation", service, StringComparison.Ordinal);
+        Assert.Equal(5, CountOccurrences(operationsSource, "ownerWindow, OperationBanner"));
     }
 
     /// <summary>Ensures every requested operation remains delegated through the shared facade.</summary>
@@ -232,6 +279,17 @@ public sealed class WinUiOperationsSurfaceContractTests
 
     private static bool HasName(XElement element, string value)
         => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == value);
+
+    private static int CountOccurrences(string source, string value)
+    {
+        var count = 0;
+        for (var offset = 0; (offset = source.IndexOf(value, offset, StringComparison.Ordinal)) >= 0; offset += value.Length)
+        {
+            count++;
+        }
+
+        return count;
+    }
 
     private static string RepositoryFile(params string[] pathSegments)
     {

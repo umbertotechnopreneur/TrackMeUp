@@ -8,18 +8,10 @@
     d:DesignHeight="520"
     d:DesignWidth="420"
     mc:Ignorable="d">
-    <Grid RowSpacing="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Grid>
+        <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
 
-        <Grid>
-            <InfoBar x:Name="StatusInfoBar" AutomationProperties.LiveSetting="Polite" IsClosable="True" IsOpen="False" />
-            <ProgressRing x:Name="Progress" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
-        </Grid>
-
-        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="14">
+        <StackPanel x:Name="SectionBody" Spacing="14">
             <StackPanel Spacing="4">
                 <TextBlock Tag="Operations.Retention" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" />
                 <TextBlock Tag="Operations.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Review how long activity data and screen captures remain on this PC. Preview exactly which records and files are eligible for cleanup; deletion always requires your explicit confirmation." TextWrapping="Wrap" />
