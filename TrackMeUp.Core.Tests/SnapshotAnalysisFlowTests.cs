@@ -281,7 +281,7 @@ public sealed class SnapshotAnalysisFlowTests
                 ScreenshotDirectory = dataDirectory
             });
             var capture = new RecordingCaptureService(dataDirectory);
-            await using var application = CreateApplication(store, capture, new FailingAnalysisService());
+            await using var application = CreateApplication(store, capture, new ProviderFailureAnalysisService());
 
             var result = await application.AnalyzeCapturedScreenshotAsync(
                 new AnalyzeCapturedScreenshotRequest(capture.Result, KeepCapture: true),
@@ -296,6 +296,11 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.Equal("Dialog.AiAnalysisFailed.Title", notification.TitleKey);
             Assert.Equal("Dialog.AiAnalysisFailed.Message", notification.MessageKey);
             Assert.Equal("ai.provider.failed", notification.Code);
+            Assert.NotNull(notification.Detail);
+            Assert.Contains("HTTP status: 429", notification.Detail, StringComparison.Ordinal);
+            Assert.Contains("Failure: http_429.insufficient_quota", notification.Detail, StringComparison.Ordinal);
+            Assert.Contains("Latency: 42 ms", notification.Detail, StringComparison.Ordinal);
+            Assert.Contains("Provider request id: req_safe_test", notification.Detail, StringComparison.Ordinal);
             Assert.DoesNotContain("sk-test", notification.ToString(), StringComparison.OrdinalIgnoreCase);
             Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(drainedAgain.Value));
         }

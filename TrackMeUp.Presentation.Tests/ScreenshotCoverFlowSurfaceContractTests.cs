@@ -9,18 +9,30 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class ScreenshotCoverFlowSurfaceContractTests
 {
     [Fact]
-    public void ScreenshotGallery_UsesARecycledCoverFlowAndVirtualizedTimeline()
+    public void ScreenshotGallery_UsesSingleZoomableViewerAndVirtualizedTimeline()
     {
         var gallery = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml"));
+        var viewer = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml"));
         var timeline = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml"));
-        var coverFlow = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotCoverFlowControl.xaml"));
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
-        var coverFlowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotCoverFlowControl.xaml.cs"));
+        var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
         var timelineSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml.cs"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
 
-        Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotCoverFlowControl");
+        Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotImageViewerControl");
+        Assert.DoesNotContain(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotCoverFlowControl");
         Assert.DoesNotContain(gallery.Descendants(), element => HasName(element, "PreviousPreviewFrame") || HasName(element, "NextPreviewFrame"));
+        Assert.Contains(viewer.Descendants(), element => element.Name.LocalName == "ScrollViewer" && element.Attribute("ZoomMode")?.Value == "Enabled");
+        Assert.Contains(viewer.Descendants(), element => element.Name.LocalName == "ScrollViewer" && element.Attribute("MaxZoomFactor")?.Value == "5");
+        Assert.Contains(viewer.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomRail") && element.Attribute("VerticalAlignment")?.Value == "Top");
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomOutButton"));
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomResetButton"));
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomPercentText"));
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomInButton"));
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "SaveButton"));
+        Assert.Contains(viewer.Descendants(), element => HasName(element, "SaveButton")
+            && element.Descendants().Any(child => child.Name.LocalName == "FontIcon" && child.Attribute("Glyph")?.Value == "\uE74E"));
         Assert.Contains(timeline.Descendants(), element => element.Name.LocalName == "ListView" && HasName(element, "FilmstripList"));
         Assert.Contains(timeline.Descendants(), element => element.Name.LocalName == "ItemsStackPanel" && element.Attribute("Orientation")?.Value == "Horizontal");
         Assert.Contains(timeline.Descendants(), element => HasName(element, "PreviousTimelineButton"));
@@ -29,29 +41,15 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
         Assert.DoesNotContain(timeline.Descendants(), element => HasName(element, "FilmstripPanel"));
         Assert.Contains(window.Descendants(), element =>
-            HasName(element, "TimelineSection") && element.Attribute("Margin")?.Value == "0,0,0,20");
-        Assert.Contains(coverFlow.Descendants(), element => HasName(element, "PreviousButton"));
-        Assert.Contains(coverFlow.Descendants(), element => HasName(element, "NextButton"));
-        Assert.Contains(coverFlow.Descendants(), element =>
-            element.Name.LocalName == "Style"
-            && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "CoverFlowSlotButtonStyle")
-            && element.Elements().Any(setter =>
-                setter.Attribute("Property")?.Value == "BorderThickness"
-                && setter.Attribute("Value")?.Value == "0"));
-        Assert.Contains("ScreenshotCoverFlowProjection.StagingRadius", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("public int RealizedItemCount", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("MoveToIndex", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("PointerWheelChangedEvent", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("AnimationsEnabled", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("Stretch = Stretch.Uniform", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotCoverFlowLayout.FitPresenter", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("ImageOpened += SlotImage_ImageOpened", coverFlowSource, StringComparison.Ordinal);
-        Assert.Contains("Shadow = new ThemeShadow()", coverFlowSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("Stretch.UniformToFill", coverFlowSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("slot.Image.Clip", coverFlowSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("CornerRadius = new CornerRadius", coverFlowSource, StringComparison.Ordinal);
+            HasName(element, "TimelineSection") && element.Attribute("Margin")?.Value == "32,0,32,22");
+        Assert.Contains("public void SetItem(ScreenshotGalleryItem? item", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? SaveRequested", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ImageScroller.ChangeView", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage", viewerSource, StringComparison.Ordinal);
         Assert.Contains("FindDescendant<ScrollViewer>", timelineSource, StringComparison.Ordinal);
         Assert.Contains("scroller.ExtentWidth", timelineSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("CoverFlow.SelectedIndexChanged", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("MoveToIndex", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FilmstripPanel.Children.Clear", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("new BitmapImage", windowSource, StringComparison.Ordinal);
     }

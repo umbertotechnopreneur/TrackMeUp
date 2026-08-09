@@ -218,6 +218,8 @@ public sealed class WinUiSurfaceContractTests
             ["Screenshots.Menu.Save", "Screenshots.Menu.Share", "Screenshots.Menu.OpenFolder", "Screenshots.Menu.DeleteScreenshot", "Screenshots.Menu.DeleteSnapshot"],
             menuTags);
         Assert.Contains("SaveScreenshotMenuItem_Click", source, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotViewer.SaveRequested += ScreenshotViewer_SaveRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("await SaveSelectedScreenshotAsync();", source, StringComparison.Ordinal);
         Assert.Contains("ShareScreenshotMenuItem_Click", source, StringComparison.Ordinal);
         Assert.Contains("OpenScreenshotFolderMenuItem_Click", source, StringComparison.Ordinal);
         Assert.Contains("SaveScreenshotMenuItem.IsEnabled = hasSelection;", source, StringComparison.Ordinal);
@@ -238,6 +240,7 @@ public sealed class WinUiSurfaceContractTests
         var gallery = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml"));
         var details = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var moreButton = screenshotWindow.Descendants().Single(element => HasName(element, "TitleBarMoreButton"));
         var detailsToggle = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsToggleButton"));
         var detailsPane = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsPane"));
         var timeline = screenshotWindow.Descendants().Single(element => HasName(element, "TimelineSection"));
@@ -245,16 +248,21 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(screenshotWindow.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
         Assert.Equal("ToggleButton", detailsToggle.Name.LocalName);
         Assert.Equal("DetailsToggleButton_Click", detailsToggle.Attribute("Click")?.Value);
+        Assert.Equal("0,0,54,0", moreButton.Attribute("Margin")?.Value);
+        Assert.Equal("0,0,8,0", detailsToggle.Attribute("Margin")?.Value);
         Assert.Equal("Collapsed", detailsPane.Attribute("Visibility")?.Value);
         Assert.Equal("2", detailsPane.Attribute("Grid.RowSpan")?.Value);
-        Assert.Equal("Transparent", detailsPane.Attribute("Background")?.Value);
-        Assert.Equal("1,0,0,0", detailsPane.Attribute("BorderThickness")?.Value);
+        Assert.Equal("{ThemeResource ScreenshotDetailsPaneBackgroundBrush}", detailsPane.Attribute("Background")?.Value);
+        Assert.Equal("1", detailsPane.Attribute("BorderThickness")?.Value);
+        Assert.Equal("18", detailsPane.Attribute("CornerRadius")?.Value);
         Assert.Equal("2", timeline.Attribute("Grid.ColumnSpan")?.Value);
         Assert.Contains("ElementRect(DetailsToggleButton, scale)", source, StringComparison.Ordinal);
         Assert.Contains("ScreenshotDetailsProjection.Create", source, StringComparison.Ordinal);
+        Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotImageViewerControl");
         Assert.Contains(gallery.Descendants(), element => HasName(element, "MetadataActivityIndexValueText"));
-        Assert.DoesNotContain(gallery.Descendants(), element => element.Attribute("Style")?.Value.Contains("ScreenshotMetadataPillStyle", StringComparison.Ordinal) == true);
+        Assert.Contains(gallery.Descendants(), element => element.Attribute("Style")?.Value.Contains("ScreenshotMetadataPillStyle", StringComparison.Ordinal) == true);
         Assert.Contains(details.Descendants(), element => HasName(element, "AiMarkdownHost"));
+        Assert.Contains(details.Descendants(), element => element.Attribute("Style")?.Value.Contains("ScreenshotDetailChipStyle", StringComparison.Ordinal) == true);
         Assert.DoesNotContain(details.Descendants(), element => element.Name.LocalName is "WebView2" or "Hyperlink" or "HyperlinkButton");
     }
 
@@ -292,6 +300,38 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
+    public void DetachedWindowsAndDialogs_UseSharedWindowPlacementService()
+    {
+        var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
+        var reports = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
+        var screenshots = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var search = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
+        var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
+        var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
+        var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
+        var core = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "WindowStateService.cs"));
+
+        Assert.Contains("RestoreWindowStateAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("SaveWindowStateAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("KeepCurrentBoundsInWorkArea", placement, StringComparison.Ordinal);
+        Assert.Contains("WindowStateService.GetMinimumSize(_windowKey)", placement, StringComparison.Ordinal);
+        Assert.Contains("WmGetMinMaxInfo = 0x0024", placement, StringComparison.Ordinal);
+        Assert.Contains("SetWindowSubclass(_windowHandle, _subclassProc, _subclassId, 0)", placement, StringComparison.Ordinal);
+        Assert.Contains("RemoveWindowSubclass(_windowHandle, _subclassProc, _subclassId)", placement, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Reports", reports, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Screenshots", screenshots, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Search", search, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.About", about, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Schedule", schedule, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Screenshots => new(760, 540)", core, StringComparison.Ordinal);
+        Assert.Contains("_placement.Dispose();", reports, StringComparison.Ordinal);
+        Assert.Contains("_placement.Dispose();", screenshots, StringComparison.Ordinal);
+        Assert.DoesNotContain("private void ResizeForLogicalContent()", screenshots, StringComparison.Ordinal);
+        Assert.DoesNotContain("private void ResizeForLogicalContent()", reports, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ExpandedPlayer_ShowsSnapshotPlaceholderAndSeparatedLocalUtcClock()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
@@ -301,6 +341,7 @@ public sealed class WinUiSurfaceContractTests
         var clockRow = localTime.Parent ?? throw new InvalidOperationException("Local and UTC clocks must have a layout row.");
         var placeholder = player.Descendants().Single(element => HasName(element, "ScreenshotPlaceholderImage"));
         var previewButton = player.Descendants().Single(element => HasName(element, "ScreenshotPreviewButton"));
+        var previewSurface = player.Descendants().Single(element => HasName(element, "ScreenshotPreviewSurface"));
         var screenshotStatus = player.Descendants().Single(element => HasName(element, "ScreenshotStatusText"));
         var openOverlay = player.Descendants().Single(element => HasName(element, "ScreenshotOpenOverlay"));
 
@@ -310,13 +351,22 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("11", localTime.Attribute("FontSize")?.Value);
         Assert.Equal("11", utcTime.Attribute("FontSize")?.Value);
         Assert.Equal("ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png", placeholder.Attribute("Source")?.Value);
-        Assert.Equal("104", previewButton.Attribute("Width")?.Value);
+        Assert.Equal("132", previewButton.Attribute("Width")?.Value);
         Assert.Equal("92", previewButton.Attribute("Height")?.Value);
+        Assert.Equal("0", previewButton.Attribute("BorderThickness")?.Value);
+        Assert.Equal("124", previewSurface.Attribute("Width")?.Value);
+        Assert.Equal("78", previewSurface.Attribute("Height")?.Value);
+        Assert.Equal("0,0,20", previewSurface.Attribute("Translation")?.Value);
+        Assert.Null(previewSurface.Attribute("BorderBrush"));
+        Assert.Null(previewSurface.Attribute("BorderThickness"));
+        Assert.Contains(previewSurface.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Equal("ScreenshotPreviewButton_PointerEntered", previewButton.Attribute("PointerEntered")?.Value);
         Assert.Equal("ScreenshotPreviewButton_PointerExited", previewButton.Attribute("PointerExited")?.Value);
         Assert.Equal("Screenshot.Status.Off", screenshotStatus.Attribute("Tag")?.Value);
         Assert.Null(screenshotStatus.Attribute("Visibility"));
         Assert.Equal("0", openOverlay.Attribute("Opacity")?.Value);
+        Assert.Null(openOverlay.Attribute("BorderBrush"));
+        Assert.Null(openOverlay.Attribute("BorderThickness"));
         Assert.Contains("LocalTimeText.Text = $\"Local time {state.LocalTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
         Assert.Contains("UtcTimeText.Text = $\"UTC {state.UtcTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
@@ -326,6 +376,9 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
         Assert.Contains("RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowWidth = 450;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int DwmWindowAttributeBorderColor = 34;", source, StringComparison.Ordinal);
+        Assert.Contains("private const uint DwmColorNone = 0xFFFFFFFE;", source, StringComparison.Ordinal);
+        Assert.Contains("DwmSetWindowAttribute(", source, StringComparison.Ordinal);
         Assert.Contains("_layoutState.ResolveLogicalHeight(availableHeight / scale)", source, StringComparison.Ordinal);
     }
 

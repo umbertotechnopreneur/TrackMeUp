@@ -1,6 +1,8 @@
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using System.Runtime.InteropServices;
+using TrackMeUp.Application;
 using Windows.UI;
 
 namespace TrackMeUp;
@@ -49,27 +51,29 @@ internal sealed class MicaDialogService
     private bool _isShuttingDown;
 
     /// <summary>Shows a one-button informative dialog and waits for acknowledgement or dismissal.</summary>
-    internal async Task ShowInformativeAsync(Window owner, MicaDialogRequest request, ElementTheme theme)
+    internal async Task ShowInformativeAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
     {
+        ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(request);
         if (request.CancelButtonText is not null)
         {
             throw new ArgumentException("An informative dialog cannot define a cancel button.", nameof(request));
         }
 
-        _ = await ShowAsync(owner, request, theme);
+        _ = await ShowAsync(application, owner, request, theme);
     }
 
     /// <summary>Shows a confirmation whose close path and secondary action both return <see langword="false"/>.</summary>
-    internal async Task<bool> ConfirmAsync(Window owner, MicaDialogRequest request, ElementTheme theme)
+    internal async Task<bool> ConfirmAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
     {
+        ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.CancelButtonText))
         {
             throw new ArgumentException("A confirmation dialog requires cancel text.", nameof(request));
         }
 
-        return await ShowAsync(owner, request, theme) == MicaDialogResult.Primary;
+        return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;
     }
 
     /// <summary>Closes the current dialog during application shutdown.</summary>
@@ -79,13 +83,16 @@ internal sealed class MicaDialogService
         _activeWindow?.Close();
     }
 
-    private async Task<MicaDialogResult> ShowAsync(Window owner, MicaDialogRequest request, ElementTheme theme)
+    private async Task<MicaDialogResult> ShowAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
     {
         ArgumentNullException.ThrowIfNull(owner);
         Validate(request);
         await _queue.WaitAsync();
         var ownerContent = owner.Content as UIElement;
         var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
+        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+        MicaDialogWindow? dialog = null;
+        List<IntPtr>? disabledPeerWindows = null;
         try
         {
             if (_isShuttingDown)
@@ -98,15 +105,24 @@ internal sealed class MicaDialogService
                 ownerContent.IsHitTestVisible = false;
             }
 
-            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(owner));
+            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
             var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
-            var dialog = new MicaDialogWindow(request, theme, ownerAppWindow);
+            dialog = new MicaDialogWindow(application, request, theme, ownerAppWindow, ownerHandle);
             _activeWindow = dialog;
-            return await dialog.ShowAsync();
+            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
+
+            var result = await dialog.ShowAsync();
+            return result;
         }
         finally
         {
             _activeWindow = null;
+            dialog?.DisposePlacement();
+            if (disabledPeerWindows is not null)
+            {
+                RestoreDialogPeerWindows(disabledPeerWindows);
+            }
+
             if (ownerContent is not null)
             {
                 ownerContent.IsHitTestVisible = ownerWasInteractive;
@@ -126,6 +142,55 @@ internal sealed class MicaDialogService
             throw new ArgumentException("Dialog title, message and primary button text are required.", nameof(request));
         }
     }
+
+    private static List<IntPtr> DisableDialogPeerWindows(IntPtr dialogHandle)
+    {
+        var disabled = new List<IntPtr>();
+        EnumThreadWindows(GetCurrentThreadId(), (windowHandle, _) =>
+        {
+            if (windowHandle == dialogHandle || !IsWindowEnabled(windowHandle))
+            {
+                return true;
+            }
+
+            EnableWindow(windowHandle, false);
+            disabled.Add(windowHandle);
+            return true;
+        }, IntPtr.Zero);
+        return disabled;
+    }
+
+    private static void RestoreDialogPeerWindows(IEnumerable<IntPtr> disabledPeerWindows)
+    {
+        foreach (var windowHandle in disabledPeerWindows)
+        {
+            if (IsWindow(windowHandle))
+            {
+                EnableWindow(windowHandle, true);
+            }
+        }
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumThreadWindows(uint dwThreadId, EnumThreadDelegate lpfn, IntPtr lParam);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowEnabled(IntPtr hWnd);
+
+    private delegate bool EnumThreadDelegate(IntPtr hWnd, IntPtr lParam);
 }
 
 internal enum MicaDialogResult

@@ -289,6 +289,7 @@ public sealed partial class OperationsControl : UserControl
 
             RenderRetentionPreview(preview, executed: false);
             var confirmed = await Dialogs.ConfirmAsync(
+                Application,
                 OwnerWindow,
                 MicaDialogRequest.Confirmation(
                     L("Confirm data cleanup", "Conferma pulizia dati"),

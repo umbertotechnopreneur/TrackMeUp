@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -198,6 +200,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 null,
                 snapshot,
                 scheduleNote);
+            context = ApplyCaptureFocusMetadata(context, captureResult.FocusMetadata);
 
             var prompt = AiPromptCatalog.RenderScreenshotAnalysis(
                 settings.AiOutputDetail,
@@ -393,6 +396,40 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 // Cleanup is best effort: retained history remains valid and provider/persistence errors stay primary.
             }
         }
+    }
+
+    private static AnalysisContextSnapshot ApplyCaptureFocusMetadata(
+        AnalysisContextSnapshot context,
+        ScreenshotFocusMetadata? focus)
+    {
+        if (focus is null)
+        {
+            return context;
+        }
+
+        var attributes = context.Attributes is null
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : new Dictionary<string, string>(context.Attributes, StringComparer.Ordinal);
+        attributes["FocusedScreen"] = focus.ScreenName;
+        attributes["FocusedScreenBounds"] = string.Format(
+            CultureInfo.InvariantCulture,
+            "{0},{1} {2}x{3}",
+            focus.ScreenLeft,
+            focus.ScreenTop,
+            focus.ScreenWidth,
+            focus.ScreenHeight);
+        attributes["FocusedCapture"] = focus.ArtifactStem;
+
+        return context with
+        {
+            Application = string.IsNullOrWhiteSpace(focus.ApplicationName)
+                ? context.Application
+                : focus.ApplicationName,
+            WindowTitle = string.IsNullOrWhiteSpace(focus.WindowTitle)
+                ? context.WindowTitle
+                : focus.WindowTitle,
+            Attributes = attributes
+        };
     }
 
     private string LoadRequiredApiKey(AppSettings settings)

@@ -21,10 +21,10 @@ public sealed partial class SearchWindow : Window
     private readonly LocalizationService _strings;
     private readonly CultureInfo _culture;
     private readonly AppWindow _appWindow;
+    private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private CancellationTokenSource? _queryCancellation;
     private XamlRoot? _xamlRoot;
-    private double _rasterizationScale = 1d;
 
     /// <summary>Creates the floating local-search window with an explicit theme and language.</summary>
     public SearchWindow(ITrackMeUpApplication application, string theme, string language)
@@ -49,8 +49,9 @@ public sealed partial class SearchWindow : Window
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
         ConfigureWindowBehavior();
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
         Closed += SearchWindow_Closed;
     }
 
@@ -60,7 +61,7 @@ public sealed partial class SearchWindow : Window
     /// <summary>Moves keyboard focus to the query field when an existing window is reactivated.</summary>
     public void FocusQuery() => QueryBox.Focus(FocusState.Programmatic);
 
-    private void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
@@ -68,7 +69,8 @@ public sealed partial class SearchWindow : Window
             _xamlRoot.Changed += XamlRoot_Changed;
         }
 
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
+        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateTitleBarInsets();
         FocusQuery();
     }
@@ -170,24 +172,6 @@ public sealed partial class SearchWindow : Window
         }
     }
 
-    private void ResizeForLogicalContent()
-    {
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale);
-        _rasterizationScale = scale;
-        var workArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var physicalMargin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var width = Math.Min(
-            Math.Max(1, workArea.Width - (physicalMargin * 2)),
-            (int)Math.Ceiling(LogicalWindowWidth * scale));
-        var height = Math.Min(
-            Math.Max(1, workArea.Height - (physicalMargin * 2)),
-            (int)Math.Ceiling(LogicalWindowHeight * scale));
-        _appWindow.Resize(new SizeInt32(width, height));
-        _appWindow.Move(new PointInt32(
-            workArea.X + Math.Max(0, (workArea.Width - width) / 2),
-            workArea.Y + Math.Max(0, (workArea.Height - height) / 2)));
-    }
-
     private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
 
     private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
@@ -206,14 +190,16 @@ public sealed partial class SearchWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        if (Math.Abs(sender.RasterizationScale - _rasterizationScale) >= 0.001d)
+        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
-            ResizeForLogicalContent();
+            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
     }
 
-    private void SearchWindow_Closed(object sender, WindowEventArgs args)
+    private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
+        await _placement.SaveAsync(CancellationToken.None);
+        _placement.Dispose();
         _lifetimeCancellation.Cancel();
         _queryCancellation?.Cancel();
         _queryCancellation?.Dispose();

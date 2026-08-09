@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace TrackMeUp.Controls;
 
-/// <summary>Displays screenshot previews, navigation controls, metadata, and loading states.</summary>
+/// <summary>Displays the selected screenshot, metadata chips, and loading states.</summary>
 public sealed partial class ScreenshotGalleryViewControl : UserControl
 {
     /// <summary>Creates the gallery view control.</summary>
@@ -11,8 +11,8 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
     /// <summary>Gets the gallery surface that hosts pointer interactions.</summary>
     public Grid Surface => GallerySurface;
 
-    /// <summary>Gets the circular, recycled screenshot navigation surface.</summary>
-    public ScreenshotCoverFlowControl CoverFlow => CoverFlowView;
+    /// <summary>Gets the single-image zoomable screenshot viewer.</summary>
+    public ScreenshotImageViewerControl Viewer => ImageViewer;
 
     /// <summary>Gets the metadata summary panel.</summary>
     public Border MetadataContainer => MetadataPanel;

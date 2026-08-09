@@ -423,7 +423,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             catch (AiProviderRequestException exception)
             {
                 LogAiProviderFailure("screenshot.capture", exception);
-                EnqueueAiAnalysisFailure("ai.provider.failed");
+                EnqueueAiAnalysisFailure("ai.provider.failed", BuildAiProviderFailureDetail(exception));
                 return OperationResult<ScreenshotCaptureResult>.Failure("ai.provider.failed", "AiProviderFailed");
             }
             catch (InvalidOperationException)
@@ -529,6 +529,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public async Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken)
     {
         var aiEnabledForAnalysis = false;
+        string? aiFailureDetail = null;
         var operation = await MutateAsync(async () =>
         {
             if (request.Capture is null)
@@ -588,6 +589,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             catch (AiProviderRequestException exception)
             {
                 LogAiProviderFailure("screenshot.analyze", exception);
+                aiFailureDetail = BuildAiProviderFailureDetail(exception);
                 return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
             }
             catch (InvalidOperationException)
@@ -610,7 +612,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         if (!operation.Succeeded && aiEnabledForAnalysis && ShouldNotifyAiAnalysisFailure(operation.Code))
         {
             // The queue is the cross-process fallback: a connected UI drains it, while headless runtimes only retain bounded notices.
-            EnqueueAiAnalysisFailure(operation.Code);
+            EnqueueAiAnalysisFailure(operation.Code, aiFailureDetail);
         }
 
         return operation;
@@ -1669,7 +1671,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private static bool ShouldNotifyAiAnalysisFailure(string code) =>
         code is not "operation.cancelled" and not "privacy.blocked" and not "ai.disabled";
 
-    private void EnqueueAiAnalysisFailure(string code)
+    private void EnqueueAiAnalysisFailure(string code, string? detail = null)
     {
         while (_notifications.Count >= MaximumPendingNotifications && _notifications.TryDequeue(out _))
         {
@@ -1682,7 +1684,42 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             ApplicationNotificationSeverity.Error,
             "Dialog.AiAnalysisFailed.Title",
             "Dialog.AiAnalysisFailed.Message",
-            code));
+            code,
+            detail));
+    }
+
+    private static string? BuildAiProviderFailureDetail(AiProviderRequestException exception)
+    {
+        var lines = new List<string>();
+        if (exception.Failure.HttpStatusCode is { } statusCode)
+        {
+            lines.Add($"HTTP status: {statusCode}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(exception.Failure.FailureCode))
+        {
+            lines.Add($"Failure: {exception.Failure.FailureCode}");
+        }
+
+        lines.Add($"Latency: {exception.Failure.ElapsedMilliseconds} ms");
+        if (exception.Failure.ProviderProcessingMilliseconds is { } providerProcessingMilliseconds)
+        {
+            lines.Add($"Provider processing: {providerProcessingMilliseconds} ms");
+        }
+
+        var providerRequestId = AiProviderTelemetry.SafeToken(exception.Failure.ProviderRequestId, 80);
+        if (providerRequestId is not null)
+        {
+            lines.Add($"Provider request id: {providerRequestId}");
+        }
+
+        var providerResponseId = AiProviderTelemetry.SafeToken(exception.Failure.ProviderResponseId, 80);
+        if (providerResponseId is not null)
+        {
+            lines.Add($"Provider response id: {providerResponseId}");
+        }
+
+        return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
     }
 
     private AnalysisCostGate BuildCostGate(AppSettings settings)

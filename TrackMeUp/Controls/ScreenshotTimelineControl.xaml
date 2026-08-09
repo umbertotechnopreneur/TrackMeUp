@@ -105,12 +105,12 @@
 			Text="Timeline"
 			Visibility="Collapsed" />
 		<Border
-			Padding="12,9"
+			Padding="12,10"
 			HorizontalAlignment="Stretch"
 			Background="{ThemeResource ScreenshotTimelineSurfaceBrush}"
 			BorderBrush="{ThemeResource ScreenshotTimelineBorderBrush}"
-			BorderThickness="0,1,0,0"
-			CornerRadius="0">
+			BorderThickness="1"
+			CornerRadius="12">
 			<Grid x:Name="TimelineNavigationRail">
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />

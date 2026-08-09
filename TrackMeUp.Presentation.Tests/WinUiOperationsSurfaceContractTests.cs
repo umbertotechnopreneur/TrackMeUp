@@ -126,7 +126,13 @@ public sealed class WinUiOperationsSurfaceContractTests
 
         Assert.Contains("SemaphoreSlim", service, StringComparison.Ordinal);
         Assert.Contains("AccentColor", service, StringComparison.Ordinal);
-        Assert.Contains("return await ShowAsync(owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
+        Assert.Contains("DisableDialogPeerWindows(dialog.WindowHandle)", service, StringComparison.Ordinal);
+        Assert.Contains("RestoreDialogPeerWindows(disabledPeerWindows)", service, StringComparison.Ordinal);
+        Assert.Contains("EnumThreadWindows", service, StringComparison.Ordinal);
+        Assert.Contains("EnableWindow(windowHandle, false)", service, StringComparison.Ordinal);
+        Assert.Contains("EnableWindow(windowHandle, true)", service, StringComparison.Ordinal);
+        Assert.Contains("return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("SavePlacementAsync", service, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element =>
             element.Name.LocalName == "MicaBackdrop" && element.Attribute("Kind")?.Value == "BaseAlt");
         Assert.Contains(dialogXaml.Descendants(), element =>
@@ -138,8 +144,20 @@ public sealed class WinUiOperationsSurfaceContractTests
             element.Name.LocalName == "Rectangle"
             && HasName(element, "AccentVeil")
             && element.Attribute("IsHitTestVisible")?.Value == "False");
+        Assert.DoesNotContain(dialogXaml.Descendants(), element => HasName(element, "AccentIconSurface"));
+        Assert.Contains(dialogXaml.Descendants(), element =>
+            element.Name.LocalName == "FontIcon"
+            && HasName(element, "SeverityIcon")
+            && element.Attribute("FontSize")?.Value == "30");
+        Assert.DoesNotContain(dialogXaml.Descendants(), element => element.Attribute("Style")?.Value == "{StaticResource DialogActionButtonStyle}");
+        Assert.Contains(dialogXaml.Descendants(), element => HasName(element, "PrimaryButton") && element.Attribute("Style")?.Value == "{StaticResource AccentButtonStyle}");
         Assert.Contains("ExtendsContentIntoTitleBar = true;", dialog, StringComparison.Ordinal);
-        Assert.Contains("Closed += (_, _) => _completion.TrySetResult(MicaDialogResult.Cancel);", dialog, StringComparison.Ordinal);
+        Assert.Contains("SetWindowLongPtr", dialog, StringComparison.Ordinal);
+        Assert.Contains("HwndTopMost", dialog, StringComparison.Ordinal);
+        Assert.Contains("SetWindowPos(_windowHandle, HwndTopMost", dialog, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
+        Assert.Contains("await _placement.RestoreOrKeepCurrentAsync(RootGrid, CancellationToken.None);", dialog, StringComparison.Ordinal);
+        Assert.Contains("Closed += (_, _) => _completion.TrySetResult(_result);", dialog, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName", dialog, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element =>
             element.Name.LocalName == "ScrollViewer"
@@ -153,7 +171,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("LogicalMaximumHeight", dialog, StringComparison.Ordinal);
         Assert.DoesNotContain("LogicalInformationHeight", dialog, StringComparison.Ordinal);
         Assert.DoesNotContain("LogicalConfirmationHeight", dialog, StringComparison.Ordinal);
-        Assert.Contains("GetContrastingForeground", dialog, StringComparison.Ordinal);
+        Assert.Contains("await _placement.SaveAsync(CancellationToken.None);", dialog, StringComparison.Ordinal);
+        Assert.DoesNotContain("PrimaryButton.Background", dialog, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetContrastingForeground", dialog, StringComparison.Ordinal);
         Assert.Contains("AccentVeil.Fill = CreateAccentVeil(accent, theme);", dialog, StringComparison.Ordinal);
         Assert.Contains("new RadialGradientBrush", dialog, StringComparison.Ordinal);
         Assert.Contains("ElementTheme.Dark => (byte)30", dialog, StringComparison.Ordinal);

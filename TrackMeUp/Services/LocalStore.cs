@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -390,7 +391,10 @@ public sealed class LocalStore
                     analysis?.Summary,
                     analysis?.Timestamp,
                     activity.ActivityIndex,
-                    textSnapshot);
+                    textSnapshot,
+                    activity.ForegroundWindowTitle,
+                    GetScreenIndex(file.Name),
+                    GetScreenName(file.Name));
             })
             .ToArray();
 
@@ -439,11 +443,15 @@ public sealed class LocalStore
         var fromUtc = capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
         var toUtc = capturedAt.ToUniversalTime();
         _activity.VisitOverlapping(fromUtc, toUtc, CancellationToken.None, samples.Add);
-        var foregroundApplication = samples
+        var foregroundSample = samples
             .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
-            .Select(sample => sample.Application)
-            .FirstOrDefault(application => !string.IsNullOrWhiteSpace(application))
-            ?? "Desktop";
+            .FirstOrDefault(sample => !string.IsNullOrWhiteSpace(sample.Application) || !string.IsNullOrWhiteSpace(sample.WindowTitle));
+        var foregroundApplication = string.IsNullOrWhiteSpace(foregroundSample?.Application)
+            ? "Desktop"
+            : foregroundSample.Application;
+        var foregroundWindowTitle = string.IsNullOrWhiteSpace(foregroundSample?.WindowTitle)
+            ? null
+            : foregroundSample.WindowTitle;
         var labels = samples
             .OrderBy(sample => sample.Timestamp)
             .Select(sample => new
@@ -469,13 +477,14 @@ public sealed class LocalStore
         int? activityIndex = samples.Count == 0
             ? null
             : ActivityScoreService.CalculateIntervalActivityIndex(samples, screenshotIntervalMinutes);
-        return new ScreenshotActivityContext(foregroundApplication, labels, activityIndex);
+        return new ScreenshotActivityContext(foregroundApplication, labels, activityIndex, foregroundWindowTitle);
     }
 
     private sealed record ScreenshotActivityContext(
         string ForegroundApplication,
         IReadOnlyList<ActivityLabelSample> SpanLabels,
-        int? ActivityIndex);
+        int? ActivityIndex,
+        string? ForegroundWindowTitle = null);
 
     private static string ScreenshotIdentity(string fileName)
     {
@@ -503,6 +512,30 @@ public sealed class LocalStore
 
         throw new InvalidDataException($"Screenshot artifact has no valid capture kind: {fileName}");
     }
+
+    private static int? GetScreenIndex(string fileName)
+    {
+        var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        if (withoutExtension.EndsWith("-raw", StringComparison.OrdinalIgnoreCase))
+        {
+            withoutExtension = withoutExtension[..^4];
+        }
+
+        var marker = "_monitor-";
+        var markerIndex = withoutExtension.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex < 0)
+        {
+            return null;
+        }
+
+        var indexText = withoutExtension[(markerIndex + marker.Length)..];
+        return int.TryParse(indexText, CultureInfo.InvariantCulture, out var index) && index > 0
+            ? index
+            : null;
+    }
+
+    private static string? GetScreenName(string fileName)
+        => GetScreenIndex(fileName) is { } index ? $"Monitor {index}" : null;
 
     private static string GetCaptureOrigin(string fileName)
     {

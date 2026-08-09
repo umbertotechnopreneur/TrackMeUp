@@ -3,8 +3,8 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using TrackMeUp.Application;
 using TrackMeUp.Services;
-using Windows.Graphics;
 
 namespace TrackMeUp;
 
@@ -15,8 +15,12 @@ public sealed partial class ScheduleWindow : Window
     private const int LogicalWindowHeight = 700;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
+    private readonly WindowPlacementService _placement;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private readonly ITrackMeUpApplication _application;
     private readonly MicaDialogService _dialogs;
     private LocalizationService _strings;
+    private XamlRoot? _xamlRoot;
 
     /// <summary>Occurs after the user confirms a valid screenshot schedule.</summary>
     public event EventHandler<ScheduleConfigurationEventArgs>? ScheduleConfirmed;
@@ -27,19 +31,24 @@ public sealed partial class ScheduleWindow : Window
         int intervalMinutes,
         string theme,
         string uiLanguage,
+        ITrackMeUpApplication application,
         MicaDialogService dialogs)
     {
+        ArgumentNullException.ThrowIfNull(application);
+        _application = application;
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _strings = new LocalizationService(uiLanguage);
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Schedule, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
         ApplyTheme(theme);
         ApplyLanguage(uiLanguage);
         IntervalNumberBox.Value = intervalMinutes is >= 1 and <= 1440 ? intervalMinutes : 5;
         WorkingHoursEditor.LoadSchedule(activeHours);
-        ResizeAndCenter();
+        _placement.ApplyDefaultBounds(RootGrid);
+        Closed += ScheduleWindow_Closed;
     }
 
     /// <summary>Applies the active application theme to the detached schedule editor.</summary>
@@ -63,7 +72,17 @@ public sealed partial class ScheduleWindow : Window
         AutomationProperties.SetName(ClearAllHoursButton, _strings.Translate("Schedule.ClearAll.Title"));
     }
 
-    private void RootGrid_Loaded(object sender, RoutedEventArgs e) => ResizeAndCenter();
+    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
+        {
+            _xamlRoot = xamlRoot;
+            _xamlRoot.Changed += XamlRoot_Changed;
+        }
+
+        _placement.ApplyDefaultBounds(RootGrid);
+        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
+    }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => Close();
 
@@ -92,6 +111,7 @@ public sealed partial class ScheduleWindow : Window
     private async Task<bool> ConfirmReplacementAsync(string titleKey, string messageKey)
     {
         return await _dialogs.ConfirmAsync(
+            _application,
             this,
             MicaDialogRequest.Confirmation(
                 _strings.Translate(titleKey),
@@ -101,17 +121,25 @@ public sealed partial class ScheduleWindow : Window
             RootGrid.RequestedTheme);
     }
 
-    private void ResizeAndCenter()
+    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? 1d);
-        var workArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var margin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var width = Math.Min(workArea.Width - (margin * 2), (int)Math.Ceiling(LogicalWindowWidth * scale));
-        var height = Math.Min(workArea.Height - (margin * 2), (int)Math.Ceiling(LogicalWindowHeight * scale));
-        _appWindow.Resize(new SizeInt32(Math.Max(1, width), Math.Max(1, height)));
-        _appWindow.Move(new PointInt32(
-            workArea.X + Math.Max(0, (workArea.Width - _appWindow.Size.Width) / 2),
-            workArea.Y + Math.Max(0, (workArea.Height - _appWindow.Size.Height) / 2)));
+        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
+        {
+            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
+        }
+    }
+
+    private async void ScheduleWindow_Closed(object sender, WindowEventArgs args)
+    {
+        await _placement.SaveAsync(CancellationToken.None);
+        _placement.Dispose();
+        _lifetimeCancellation.Cancel();
+        if (_xamlRoot is not null)
+        {
+            _xamlRoot.Changed -= XamlRoot_Changed;
+        }
+
+        _lifetimeCancellation.Dispose();
     }
 }
 

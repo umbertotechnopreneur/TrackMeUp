@@ -17,6 +17,15 @@ public static class WindowStateKeys
 
     /// <summary>Identifies the about window.</summary>
     public const string About = "about";
+
+    /// <summary>Identifies the local search window.</summary>
+    public const string Search = "search";
+
+    /// <summary>Identifies the screenshot schedule window.</summary>
+    public const string Schedule = "schedule";
+
+    /// <summary>Identifies the reusable message dialog window.</summary>
+    public const string Dialog = "dialog";
 }
 
 /// <summary>Persists and restores native top-level window placement.</summary>
@@ -32,6 +41,26 @@ public sealed class WindowStateService
     public WindowStateService(LocalStore store)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+    }
+
+    /// <summary>Gets the minimum usable logical size for the supplied persisted window key.</summary>
+    public static WindowMinimumSize GetMinimumSize(string windowKey)
+    {
+        if (string.IsNullOrWhiteSpace(windowKey))
+        {
+            throw new ArgumentException("A window key is required.", nameof(windowKey));
+        }
+
+        return windowKey switch
+        {
+            WindowStateKeys.Reports => new(720, 520),
+            WindowStateKeys.Screenshots => new(760, 540),
+            WindowStateKeys.About => new(360, 420),
+            WindowStateKeys.Search => new(420, 360),
+            WindowStateKeys.Schedule => new(620, 480),
+            WindowStateKeys.Dialog => new(320, 196),
+            _ => new(320, 240)
+        };
     }
 
     /// <summary>Reads the native window placement and persists it under the supplied key.</summary>
@@ -72,7 +101,13 @@ public sealed class WindowStateService
         var monitors = EnumerateMonitors();
         var targetMonitor = monitors.FirstOrDefault(candidate => candidate.DeviceName.Equals(savedState.MonitorDeviceName, StringComparison.OrdinalIgnoreCase)) ?? currentMonitor;
         // A removed or renamed monitor is an expected topology change; the documented fallback is the current monitor.
-        var safeState = WindowStateCalculator.ClampToWorkArea(savedState, targetMonitor.WorkArea, targetMonitor.DeviceName);
+        var minimumSize = GetMinimumSize(windowKey);
+        var safeState = WindowStateCalculator.ClampToWorkArea(
+            savedState,
+            targetMonitor.WorkArea,
+            targetMonitor.DeviceName,
+            minimumSize.Width,
+            minimumSize.Height);
         if (!SetWindowPos(handle, IntPtr.Zero, safeState.X, safeState.Y, safeState.Width, safeState.Height, SetWindowPosNoActivate | SetWindowPosNoZOrder | SetWindowPosShowWindow))
         {
             throw new InvalidOperationException($"Unable to restore window bounds (Win32 error {Marshal.GetLastWin32Error()}).");

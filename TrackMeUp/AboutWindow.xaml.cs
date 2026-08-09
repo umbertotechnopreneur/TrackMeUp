@@ -16,10 +16,10 @@ public sealed partial class AboutWindow : Window
     private const int LogicalWindowHeight = 520;
     private const int LogicalScreenMargin = 22;
     private readonly AppWindow _appWindow;
+    private readonly WindowPlacementService _placement;
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
-    private double _rasterizationScale = 1d;
     private XamlRoot? _xamlRoot;
 
     /// <summary>Creates and sizes the compact about window.</summary>
@@ -33,16 +33,19 @@ public sealed partial class AboutWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.About, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
         ConfigureWindowBehavior();
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
         Closed += AboutWindow_Closed;
     }
 
     /// <summary>Forwards the close interaction to the window framework.</summary>
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void AboutWindow_Closed(object sender, WindowEventArgs args)
+    private async void AboutWindow_Closed(object sender, WindowEventArgs args)
     {
+        await _placement.SaveAsync(CancellationToken.None);
+        _placement.Dispose();
         _lifetimeCancellation.Cancel();
         if (_xamlRoot is not null)
         {
@@ -58,7 +61,8 @@ public sealed partial class AboutWindow : Window
             _xamlRoot.Changed += XamlRoot_Changed;
         }
 
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
+        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateTitleBarInsets();
 
         try
@@ -177,25 +181,10 @@ public sealed partial class AboutWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        if (Math.Abs(sender.RasterizationScale - _rasterizationScale) >= 0.001d)
+        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
-            ResizeForLogicalContent();
+            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
-    }
-
-    private void ResizeForLogicalContent()
-    {
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale);
-        _rasterizationScale = scale;
-
-        var workArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var physicalMargin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var availableWidth = Math.Max(1, workArea.Width - (physicalMargin * 2));
-        var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
-        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
-        var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(LogicalWindowHeight * scale));
-        _appWindow.Resize(new SizeInt32(physicalWidth, physicalHeight));
-        CenterWindowInWorkArea(workArea);
     }
 
     private void ConfigureWindowBehavior()
@@ -225,12 +214,5 @@ public sealed partial class AboutWindow : Window
         var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
         TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
         TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
-    }
-
-    private void CenterWindowInWorkArea(RectInt32 workArea)
-    {
-        var x = workArea.X + Math.Max(0, (workArea.Width - _appWindow.Size.Width) / 2);
-        var y = workArea.Y + Math.Max(0, (workArea.Height - _appWindow.Size.Height) / 2);
-        _appWindow.Move(new PointInt32(x, y));
     }
 }

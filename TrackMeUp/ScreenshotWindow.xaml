@@ -29,6 +29,14 @@
 							<GradientStop Color="#2464A7EF" Offset="0.48" />
 							<GradientStop Color="#0064A7EF" Offset="1" />
 						</RadialGradientBrush>
+                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#CCFFFFFF" Offset="0" />
+                            <GradientStop Color="#73EAF4FF" Offset="1" />
+                        </LinearGradientBrush>
+                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#F2FFFFFF" Offset="0" />
+                            <GradientStop Color="#73FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
@@ -46,6 +54,14 @@
 							<GradientStop Color="#26124F96" Offset="0.48" />
 							<GradientStop Color="#00124F96" Offset="1" />
 						</RadialGradientBrush>
+                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#D9141C28" Offset="0" />
+                            <GradientStop Color="#99101A27" Offset="1" />
+                        </LinearGradientBrush>
+                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#59FFFFFF" Offset="0" />
+                            <GradientStop Color="#26FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Default">
                         <LinearGradientBrush x:Key="ScreenshotBackdropVeilBrush" StartPoint="0,0" EndPoint="1,1">
@@ -63,6 +79,14 @@
 							<GradientStop Color="#2464A7EF" Offset="0.48" />
 							<GradientStop Color="#0064A7EF" Offset="1" />
 						</RadialGradientBrush>
+                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#CCFFFFFF" Offset="0" />
+                            <GradientStop Color="#73EAF4FF" Offset="1" />
+                        </LinearGradientBrush>
+                        <LinearGradientBrush x:Key="ScreenshotDetailsPaneBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#F2FFFFFF" Offset="0" />
+                            <GradientStop Color="#73FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
                     </ResourceDictionary>
                 </ResourceDictionary.ThemeDictionaries>
 
@@ -120,7 +144,7 @@
                     x:Name="DetailsToggleButton"
                     Width="40"
                     Height="40"
-                    Margin="0,0,54,0"
+                    Margin="0,0,8,0"
                     Padding="8"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
@@ -143,7 +167,7 @@
                     x:Name="TitleBarMoreButton"
                     Width="46"
                     Height="40"
-                    Margin="0,0,8,0"
+                    Margin="0,0,54,0"
                     Padding="6,0,6,7"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
@@ -426,18 +450,19 @@
             x:Name="TimelineSection"
             Grid.Row="4"
             Grid.ColumnSpan="2"
-            Margin="0,0,0,20" />
+            Margin="32,0,32,22" />
 
         <Border
             x:Name="DetailsPane"
             Grid.Row="2"
             Grid.RowSpan="2"
             Grid.Column="1"
-            Width="318"
+            Width="340"
             Margin="0,16,24,20"
-            Background="Transparent"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-            BorderThickness="1,0,0,0"
+            Background="{ThemeResource ScreenshotDetailsPaneBackgroundBrush}"
+            BorderBrush="{ThemeResource ScreenshotDetailsPaneBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="18"
             Visibility="Collapsed">
             <Border.Transitions>
                 <TransitionCollection>

@@ -165,12 +165,14 @@ public sealed class ScreenshotDeletionTests
 
             var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
 
-            Assert.Equal(
-                "monitor",
-                Assert.Single(gallery.Items, item => item.Path == monitorCapture.StoredScreenshotPaths[0]).CaptureKind);
-            Assert.Equal(
-                "active-window",
-                Assert.Single(gallery.Items, item => item.Path == activeWindowPath).CaptureKind);
+            var monitorItem = Assert.Single(gallery.Items, item => item.Path == monitorCapture.StoredScreenshotPaths[0]);
+            var activeWindowItem = Assert.Single(gallery.Items, item => item.Path == activeWindowPath);
+            Assert.Equal("monitor", monitorItem.CaptureKind);
+            Assert.Equal(1, monitorItem.ScreenIndex);
+            Assert.Equal("Monitor 1", monitorItem.ScreenName);
+            Assert.Equal("active-window", activeWindowItem.CaptureKind);
+            Assert.Null(activeWindowItem.ScreenIndex);
+            Assert.Null(activeWindowItem.ScreenName);
         }
         finally
         {
@@ -200,11 +202,14 @@ public sealed class ScreenshotDeletionTests
 
             var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
 
-            var labels = Assert.Single(gallery.Items).SpanLabels;
+            var item = Assert.Single(gallery.Items);
+            var labels = item.SpanLabels;
             Assert.Collection(
                 labels!,
                 label => Assert.Equal("Planning", label.Label),
                 label => Assert.Equal("Implementation", label.Label));
+            Assert.Equal("Test", item.ForegroundApplication);
+            Assert.Equal("Test", item.ForegroundWindowTitle);
         }
         finally
         {

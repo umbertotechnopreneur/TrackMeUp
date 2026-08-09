@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -7,8 +8,10 @@ using System.Drawing.Text;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using SkiaSharp;
+using TrackMeUp.Providers;
 
 namespace TrackMeUp.Services;
 
@@ -80,31 +83,44 @@ public sealed class ScreenCaptureService : IScreenCaptureService
     {
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         Directory.CreateDirectory(directory);
-        var displays = new List<NativeMethods.Rect>();
-        NativeMethods.MonitorEnumProc callback = (IntPtr monitor, IntPtr deviceContext, ref NativeMethods.Rect rect, IntPtr data) =>
-        {
-            displays.Add(rect);
-            return true;
-        };
-        NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+        var displays = EnumerateDisplays();
+        var foreground = CaptureForegroundTarget();
+        var focusedDisplay = ResolveFocusedDisplay(displays, foreground.WindowBounds);
+        var focusMetadata = CreateFocusMetadata(focusedDisplay, foreground, focusedDisplay.Stem);
+        var captureOrder = displays
+            .Where(display => display.Index != focusedDisplay.Index)
+            .Append(focusedDisplay);
 
         var storage = new List<string>(displays.Count);
         var analysis = new List<string>(displays.Count);
-        for (var index = 0; index < displays.Count; index++)
+        foreach (var display in captureOrder)
         {
             var paths = CaptureRect(
                 directory,
-                displays[index],
-                $"monitor-{index + 1}",
+                display.Bounds,
+                display.Stem,
                 captureId,
                 includeWatermark,
-                $"Monitor {index + 1}",
+                display.Name,
                 validatedOrigin);
-            storage.AddRange(paths.Stored);
+
+            if (display.Index == focusedDisplay.Index)
+            {
+                analysis.InsertRange(0, paths.Analysis);
+                storage.InsertRange(0, paths.Stored);
+                continue;
+            }
+
             analysis.AddRange(paths.Analysis);
+            storage.AddRange(paths.Stored);
         }
 
-        return new ScreenshotCaptureResult(captureId, analysis.AsReadOnly(), storage.AsReadOnly(), validatedOrigin);
+        return new ScreenshotCaptureResult(
+            captureId,
+            analysis.AsReadOnly(),
+            storage.AsReadOnly(),
+            validatedOrigin,
+            FocusMetadata: focusMetadata);
     }
 
     /// <summary>
@@ -114,26 +130,159 @@ public sealed class ScreenCaptureService : IScreenCaptureService
     {
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         Directory.CreateDirectory(directory);
+        var foreground = CaptureForegroundTarget();
+        var focusedDisplay = ResolveFocusedDisplay(EnumerateDisplays(), foreground.WindowBounds);
+        var focusMetadata = CreateFocusMetadata(focusedDisplay, foreground, "active-window");
+        var paths = CaptureRect(
+            directory,
+            foreground.WindowBounds,
+            "active-window",
+            captureId,
+            includeWatermark,
+            "Active window",
+            validatedOrigin);
+        return new ScreenshotCaptureResult(
+            captureId,
+            paths.Analysis,
+            paths.Stored,
+            validatedOrigin,
+            FocusMetadata: focusMetadata);
+    }
+
+    /// <summary>Returns the zero-based display index that contains the largest foreground-window area.</summary>
+    /// <param name="displays">Physical display bounds returned by Windows monitor enumeration.</param>
+    /// <param name="windowBounds">Physical foreground window bounds.</param>
+    /// <returns>The index of the display with the largest intersection.</returns>
+    internal static int SelectFocusedDisplayIndex(IReadOnlyList<NativeMethods.Rect> displays, NativeMethods.Rect windowBounds)
+    {
+        if (displays.Count == 0)
+        {
+            throw new ArgumentException("At least one display is required to resolve the focused screen.", nameof(displays));
+        }
+
+        var bestDisplayIndex = 0;
+        var bestArea = -1L;
+        for (var index = 0; index < displays.Count; index++)
+        {
+            var area = IntersectionArea(displays[index], windowBounds);
+            if (area > bestArea)
+            {
+                bestDisplayIndex = index;
+                bestArea = area;
+            }
+        }
+
+        return bestDisplayIndex;
+    }
+
+    private static IReadOnlyList<CaptureDisplay> EnumerateDisplays()
+    {
+        var displays = new List<CaptureDisplay>();
+        NativeMethods.MonitorEnumProc callback = (IntPtr monitor, IntPtr deviceContext, ref NativeMethods.Rect rect, IntPtr data) =>
+        {
+            displays.Add(new CaptureDisplay(displays.Count + 1, rect));
+            return true;
+        };
+
+        if (!NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero) || displays.Count == 0)
+        {
+            // Without monitor bounds the snapshot cannot name or prioritize the focused screen.
+            throw new InvalidOperationException("Unable to enumerate display bounds for screenshot capture.");
+        }
+
+        return displays;
+    }
+
+    private static CaptureDisplay ResolveFocusedDisplay(IReadOnlyList<CaptureDisplay> displays, NativeMethods.Rect windowBounds)
+    {
+        var selectedIndex = SelectFocusedDisplayIndex(displays.Select(display => display.Bounds).ToArray(), windowBounds);
+        return displays[selectedIndex];
+    }
+
+    private static ForegroundCaptureTarget CaptureForegroundTarget()
+    {
         var window = NativeMethods.GetForegroundWindow();
         if (window == IntPtr.Zero)
         {
             throw new InvalidOperationException("No active foreground window found.");
         }
 
-        if (!NativeMethods.GetWindowRect(window, out var rect))
+        if (!NativeMethods.GetWindowRect(window, out var bounds))
         {
             throw new InvalidOperationException("Unable to read active window bounds.");
         }
 
-        var width = rect.Right - rect.Left;
-        var height = rect.Bottom - rect.Top;
+        var width = bounds.Right - bounds.Left;
+        var height = bounds.Bottom - bounds.Top;
         if (width <= 0 || height <= 0)
         {
             throw new InvalidOperationException("Invalid active window size.");
         }
 
-        var paths = CaptureRect(directory, rect, "active-window", captureId, includeWatermark, "Active window", validatedOrigin);
-        return new ScreenshotCaptureResult(captureId, paths.Analysis, paths.Stored, validatedOrigin);
+        var processName = ReadProcessName(window);
+        var title = ReadWindowTitle(window);
+        var context = new ActivityContextProviderRegistry().Resolve(new ForegroundWindowInfo(processName, title));
+        return new ForegroundCaptureTarget(window, bounds, context.Application, title);
+    }
+
+    private static string ReadProcessName(IntPtr window)
+    {
+        NativeMethods.GetWindowThreadProcessId(window, out var processId);
+        if (processId == 0)
+        {
+            return "System";
+        }
+
+        try
+        {
+            using var process = Process.GetProcessById((int)processId);
+            return string.IsNullOrWhiteSpace(process.ProcessName) ? "System" : process.ProcessName;
+        }
+        catch (ArgumentException)
+        {
+            return "System";
+        }
+        catch (InvalidOperationException)
+        {
+            return "System";
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return "System";
+        }
+    }
+
+    private static string ReadWindowTitle(IntPtr window)
+    {
+        var builder = new StringBuilder(512);
+        var length = NativeMethods.GetWindowText(window, builder, builder.Capacity);
+        return length <= 0 ? string.Empty : builder.ToString().Trim();
+    }
+
+    private static ScreenshotFocusMetadata CreateFocusMetadata(
+        CaptureDisplay display,
+        ForegroundCaptureTarget foreground,
+        string artifactStem)
+        => new(
+            display.Name,
+            display.Index,
+            display.Bounds.Left,
+            display.Bounds.Top,
+            display.Bounds.Right - display.Bounds.Left,
+            display.Bounds.Bottom - display.Bounds.Top,
+            foreground.ApplicationName,
+            foreground.WindowTitle,
+            artifactStem);
+
+    private static long IntersectionArea(NativeMethods.Rect first, NativeMethods.Rect second)
+    {
+        var left = Math.Max(first.Left, second.Left);
+        var top = Math.Max(first.Top, second.Top);
+        var right = Math.Min(first.Right, second.Right);
+        var bottom = Math.Min(first.Bottom, second.Bottom);
+        var width = Math.Max(0, right - left);
+        var height = Math.Max(0, bottom - top);
+        return (long)width * height;
     }
 
     private (IReadOnlyList<string> Analysis, IReadOnlyList<string> Stored) CaptureRect(
@@ -282,7 +431,8 @@ public sealed record ScreenshotCaptureResult(
     IReadOnlyList<string> AnalysisScreenshotPaths,
     IReadOnlyList<string> StoredScreenshotPaths,
     string CaptureOrigin,
-    IReadOnlyList<TrackMeUp.Application.ScreenshotTextSnapshot>? TextSnapshots = null)
+    IReadOnlyList<TrackMeUp.Application.ScreenshotTextSnapshot>? TextSnapshots = null,
+    ScreenshotFocusMetadata? FocusMetadata = null)
 {
     /// <summary>
     /// Returns all generated files, used for retention and cleanup.
@@ -290,3 +440,37 @@ public sealed record ScreenshotCaptureResult(
     public IReadOnlyList<string> AllScreenshotPaths
         => AnalysisScreenshotPaths.Concat(StoredScreenshotPaths).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 }
+
+/// <summary>Describes the screen and foreground app associated with one screenshot pass.</summary>
+/// <param name="ScreenName">Stable display label resolved during monitor enumeration.</param>
+/// <param name="ScreenIndex">One-based display index resolved during monitor enumeration.</param>
+/// <param name="ScreenLeft">Physical left edge of the focused display.</param>
+/// <param name="ScreenTop">Physical top edge of the focused display.</param>
+/// <param name="ScreenWidth">Physical focused display width.</param>
+/// <param name="ScreenHeight">Physical focused display height.</param>
+/// <param name="ApplicationName">Foreground application name resolved from process metadata.</param>
+/// <param name="WindowTitle">Foreground window titlebar text captured at snapshot time.</param>
+/// <param name="ArtifactStem">Artifact stem that should represent the focused target in the capture result.</param>
+public sealed record ScreenshotFocusMetadata(
+    string ScreenName,
+    int ScreenIndex,
+    int ScreenLeft,
+    int ScreenTop,
+    int ScreenWidth,
+    int ScreenHeight,
+    string ApplicationName,
+    string WindowTitle,
+    string ArtifactStem);
+
+internal readonly record struct CaptureDisplay(int Index, NativeMethods.Rect Bounds)
+{
+    internal string Stem => $"monitor-{Index}";
+
+    internal string Name => $"Monitor {Index}";
+}
+
+internal sealed record ForegroundCaptureTarget(
+    IntPtr WindowHandle,
+    NativeMethods.Rect WindowBounds,
+    string ApplicationName,
+    string WindowTitle);

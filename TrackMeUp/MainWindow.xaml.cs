@@ -1,6 +1,7 @@
 #region Using directives
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
@@ -31,6 +32,8 @@ public sealed partial class MainWindow : Window
     private const int LogicalWindowWidth = 450;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
+    private const int DwmWindowAttributeBorderColor = 34;
+    private const uint DwmColorNone = 0xFFFFFFFE;
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DispatcherQueueTimer _refreshTimer;
@@ -113,6 +116,7 @@ public sealed partial class MainWindow : Window
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
         }
+        ApplyBorderlessPlayerWindow();
         ResizeForLogicalContent(_layoutState.LogicalHeight);
 
         OptionsControl.Initialize(application, AiState);
@@ -130,6 +134,16 @@ public sealed partial class MainWindow : Window
 
         _ = InitializeAsync(options);
         Closed += MainWindow_Closed;
+    }
+
+    private void ApplyBorderlessPlayerWindow()
+    {
+        var color = DwmColorNone;
+        _ = DwmSetWindowAttribute(
+            WinRT.Interop.WindowNative.GetWindowHandle(this),
+            DwmWindowAttributeBorderColor,
+            ref color,
+            Marshal.SizeOf<uint>());
     }
 
     private async Task InitializeAsync(LaunchOptions options)
@@ -179,6 +193,7 @@ public sealed partial class MainWindow : Window
 
         _startupAiWarningShown = true;
         await _dialogs.ShowInformativeAsync(
+            _application,
             this,
             MicaDialogRequest.Informative(
                 T("Dialog.AiKeyMissing.Title"),
@@ -212,10 +227,11 @@ public sealed partial class MainWindow : Window
                     _ => MicaDialogSeverity.Information
                 };
                 await _dialogs.ShowInformativeAsync(
+                    _application,
                     this,
                     MicaDialogRequest.Informative(
                         T(notification.TitleKey),
-                        T(notification.MessageKey),
+                        FormatNotificationMessage(notification),
                         severity,
                         T("Dialog.Ok")),
                     RootGrid.RequestedTheme);
@@ -284,6 +300,7 @@ public sealed partial class MainWindow : Window
             settingsResult.Value.ScreenshotIntervalMinutes,
             _theme,
             settingsResult.Value.UiLanguage,
+            _application,
             _dialogs);
         scheduleWindow.ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed;
         scheduleWindow.Closed += ScheduleWindow_Closed;
@@ -1000,6 +1017,14 @@ public sealed partial class MainWindow : Window
 
     private string T(string key) => _strings.Translate(key);
 
+    private string FormatNotificationMessage(ApplicationNotification notification)
+    {
+        var message = T(notification.MessageKey);
+        return string.IsNullOrWhiteSpace(notification.Detail)
+            ? message
+            : $"{message}{Environment.NewLine}{Environment.NewLine}{notification.Detail}";
+    }
+
     /// <summary>Shows and positions the player when requested from the taskbar control.</summary>
     public void ShowFlyout()
     {
@@ -1139,6 +1164,13 @@ public sealed partial class MainWindow : Window
 
     private RectInt32 CurrentWorkArea() =>
         DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(
+        IntPtr window,
+        int attribute,
+        ref uint attributeValue,
+        int attributeSize);
 
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {

@@ -23,6 +23,7 @@ public sealed partial class ScreenshotWindow : Window
 
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
+    private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly string? _launchTheme;
     private CancellationTokenSource? _galleryCancellation;
@@ -30,10 +31,8 @@ public sealed partial class ScreenshotWindow : Window
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
     private LocalizationService _strings = new("system");
     private XamlRoot? _xamlRoot;
-    private double _rasterizationScale = 1d;
     private string _theme = "system";
     private bool _initialized;
-    private bool _windowStateRestored;
     private bool _settingSelectedDate;
     private string? _requestedScreenshotPath;
 
@@ -41,7 +40,7 @@ public sealed partial class ScreenshotWindow : Window
 
     private TextBlock GalleryCountText => HeaderSection.CountText;
 
-    private Controls.ScreenshotCoverFlowControl CoverFlow => GallerySection.CoverFlow;
+    private Controls.ScreenshotImageViewerControl ScreenshotViewer => GallerySection.Viewer;
 
     private Border MetadataPanel => GallerySection.MetadataContainer;
 
@@ -99,12 +98,13 @@ public sealed partial class ScreenshotWindow : Window
         InitializeComponent();
         WireViewEvents();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Screenshots, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         SetSelectedDate(_selectedDate);
         ApplyTheme(_theme);
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
         UpdateTitleBarLayout();
         Closed += ScreenshotWindow_Closed;
     }
@@ -112,7 +112,7 @@ public sealed partial class ScreenshotWindow : Window
     private void WireViewEvents()
     {
         SelectedDatePicker.DateChanged += SelectedDatePicker_DateChanged;
-        CoverFlow.SelectedIndexChanged += CoverFlow_SelectedIndexChanged;
+        ScreenshotViewer.SaveRequested += ScreenshotViewer_SaveRequested;
         TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
         FilmstripToggleButton.Click += FilmstripToggleButton_Click;
     }
@@ -148,17 +148,9 @@ public sealed partial class ScreenshotWindow : Window
             _xamlRoot.Changed += XamlRoot_Changed;
         }
 
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
         UpdateTitleBarLayout();
-        if (!_windowStateRestored)
-        {
-            _windowStateRestored = true;
-            var windowState = await _application.RestoreWindowStateAsync(WindowStateKeys.Screenshots, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), _lifetimeCancellation.Token);
-            if (!windowState.Succeeded)
-            {
-                throw new InvalidOperationException($"Window state could not be restored ({windowState.Code}).");
-            }
-        }
+        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
 
         if (_initialized)
         {
@@ -306,7 +298,7 @@ public sealed partial class ScreenshotWindow : Window
         var hasItems = _items.Count > 0;
         GalleryCountText.Text = hasItems ? $"{_items.Count} captures" : "0 captures";
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
-        CoverFlow.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        ScreenshotViewer.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         DetailsToggleButton.IsEnabled = hasItems;
         if (!hasItems)
@@ -317,24 +309,11 @@ public sealed partial class ScreenshotWindow : Window
         EmptyGalleryText.Text = error ?? (_items.Count == 0 ? "No screenshots for this day." : string.Empty);
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
-        CoverFlow.SetItems(_items, _selectedIndex);
         TimelineSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
-        RenderMetadata(hasItems ? _items[_selectedIndex] : null);
+        RenderSelectedScreenshot();
     }
 
     private int _selectedIndex;
-
-    private void CoverFlow_SelectedIndexChanged(object? sender, EventArgs e)
-    {
-        if (_items.Count == 0 || CoverFlow.SelectedIndex < 0 || CoverFlow.SelectedIndex >= _items.Count)
-        {
-            return;
-        }
-
-        _selectedIndex = CoverFlow.SelectedIndex;
-        TimelineSection.SetSelectedIndex(_selectedIndex);
-        RenderMetadata(_items[_selectedIndex]);
-    }
 
     private void TimelineSection_SelectedIndexChanged(int selectedIndex)
     {
@@ -343,7 +322,22 @@ public sealed partial class ScreenshotWindow : Window
             return;
         }
 
-        CoverFlow.MoveToIndex(selectedIndex);
+        _selectedIndex = selectedIndex;
+        RenderSelectedScreenshot();
+    }
+
+    private void RenderSelectedScreenshot()
+    {
+        if (_items.Count == 0)
+        {
+            ScreenshotViewer.SetItem(null, -1, 0, _strings.Language);
+            RenderMetadata(null);
+            return;
+        }
+
+        var selected = _items[_selectedIndex];
+        ScreenshotViewer.SetItem(selected, _selectedIndex, _items.Count, _strings.Language);
+        RenderMetadata(selected);
     }
 
     private void RenderMetadata(ScreenshotGalleryItem? item)
@@ -513,7 +507,13 @@ public sealed partial class ScreenshotWindow : Window
         ShowActionResult(result, "Screenshots.Action.SnapshotDeleted");
     }
 
-    private async void SaveScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void SaveScreenshotMenuItem_Click(object sender, RoutedEventArgs e) =>
+        await SaveSelectedScreenshotAsync();
+
+    private async void ScreenshotViewer_SaveRequested(object? sender, EventArgs e) =>
+        await SaveSelectedScreenshotAsync();
+
+    private async Task SaveSelectedScreenshotAsync()
     {
         var selected = GetSelectedItem();
         var extension = Path.GetExtension(selected.Path) ?? string.Empty;
@@ -629,32 +629,18 @@ public sealed partial class ScreenshotWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        if (Math.Abs(sender.RasterizationScale - _rasterizationScale) >= 0.001d)
+        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
-            ResizeForLogicalContent();
+            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
 
         UpdateTitleBarLayout();
     }
 
-    private void ResizeForLogicalContent()
-    {
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale);
-        _rasterizationScale = scale;
-        var workArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var physicalMargin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var physicalWidth = Math.Min(Math.Max(1, workArea.Width - (physicalMargin * 2)), (int)Math.Ceiling(LogicalWindowWidth * scale));
-        var physicalHeight = Math.Min(Math.Max(1, workArea.Height - (physicalMargin * 2)), (int)Math.Ceiling(LogicalWindowHeight * scale));
-        _appWindow.Resize(new SizeInt32(physicalWidth, physicalHeight));
-    }
-
     private async void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
     {
-        var windowState = await _application.SaveWindowStateAsync(WindowStateKeys.Screenshots, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
-        if (!windowState.Succeeded)
-        {
-            throw new InvalidOperationException($"Window state could not be saved ({windowState.Code}).");
-        }
+        await _placement.SaveAsync(CancellationToken.None);
+        _placement.Dispose();
 
         _lifetimeCancellation.Cancel();
         _galleryCancellation?.Cancel();

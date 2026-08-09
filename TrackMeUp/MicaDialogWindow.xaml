@@ -12,15 +12,6 @@
         Background="Transparent"
         KeyDown="RootGrid_KeyDown"
         Loaded="RootGrid_Loaded">
-        <Grid.Resources>
-            <Style x:Key="DialogActionButtonStyle" TargetType="Button">
-                <Setter Property="MinWidth" Value="96" />
-                <Setter Property="MinHeight" Value="34" />
-                <Setter Property="Padding" Value="14,5" />
-                <Setter Property="CornerRadius" Value="5" />
-                <Setter Property="UseSystemFocusVisuals" Value="True" />
-            </Style>
-        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="44" />
             <RowDefinition Height="Auto" />
@@ -47,24 +38,19 @@
             x:Name="DialogBody"
             Grid.Row="1"
             Padding="24,10,24,22"
-            ColumnSpacing="16">
+            ColumnSpacing="18">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="44" />
+                <ColumnDefinition Width="36" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Border
-                x:Name="AccentIconSurface"
-                Width="40"
-                Height="40"
+            <FontIcon
+                x:Name="SeverityIcon"
+                Width="36"
+                Height="36"
+                HorizontalAlignment="Center"
                 VerticalAlignment="Top"
-                CornerRadius="20">
-                <FontIcon
-                    x:Name="SeverityIcon"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    AutomationProperties.AccessibilityView="Raw"
-                    FontSize="20" />
-            </Border>
+                AutomationProperties.AccessibilityView="Raw"
+                FontSize="30" />
 
             <Grid Grid.Column="1" RowSpacing="12">
                 <Grid.RowDefinitions>
@@ -100,12 +86,13 @@
                     <Button
                         x:Name="CancelButton"
                         Click="CancelButton_Click"
-                        Style="{StaticResource DialogActionButtonStyle}"
+                        MinWidth="88"
                         Visibility="Collapsed" />
                     <Button
                         x:Name="PrimaryButton"
                         Click="PrimaryButton_Click"
-                        Style="{StaticResource DialogActionButtonStyle}" />
+                        MinWidth="88"
+                        Style="{StaticResource AccentButtonStyle}" />
                 </StackPanel>
             </Grid>
         </Grid>

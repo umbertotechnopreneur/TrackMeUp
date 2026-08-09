@@ -30,20 +30,19 @@ public sealed partial class ReportsWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly ReportViewModel _viewModel;
     private readonly AppWindow _appWindow;
+    private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly string? _launchTheme;
     private CancellationTokenSource? _refreshCancellation;
     private TaskCompletionSource<bool>? _frontendReadyCompletion;
     private bool _webReady;
     private bool _initializing;
-    private double _rasterizationScale = 1d;
     private XamlRoot? _xamlRoot;
     private string _reportTheme = "system";
     private string _reportLanguage = "en";
     private ReportRangeKey? _cachedRange;
     private ReportSnapshot? _cachedSnapshot;
     private DateTimeOffset _cachedAtUtc;
-    private bool _windowStateRestored;
 
     /// <summary>Creates a reports window backed by the shared application facade.</summary>
     public ReportsWindow(ITrackMeUpApplication application, string? launchTheme = null)
@@ -53,6 +52,7 @@ public sealed partial class ReportsWindow : Window
         _launchTheme = launchTheme;
         InitializeComponent();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Reports, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, centerDefault: true);
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
@@ -63,7 +63,7 @@ public sealed partial class ReportsWindow : Window
         CustomToPicker.Date = new DateTimeOffset(today);
         RangeComboBox.SelectedIndex = 0;
         ViewComboBox.SelectedIndex = 0;
-        ResizeForLogicalContent();
+        _placement.ApplyDefaultBounds(RootGrid);
         Closed += ReportsWindow_Closed;
     }
 
@@ -82,16 +82,8 @@ public sealed partial class ReportsWindow : Window
             _xamlRoot.Changed += XamlRoot_Changed;
         }
 
-        ResizeForLogicalContent();
-        if (!_windowStateRestored)
-        {
-            _windowStateRestored = true;
-            var windowState = await _application.RestoreWindowStateAsync(WindowStateKeys.Reports, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), _lifetimeCancellation.Token);
-            if (!windowState.Succeeded)
-            {
-                throw new InvalidOperationException($"Window state could not be restored ({windowState.Code}).");
-            }
-        }
+        _placement.ApplyDefaultBounds(RootGrid);
+        await _placement.RestoreOrKeepCurrentAsync(RootGrid, _lifetimeCancellation.Token);
 
         if (_initializing || _webReady)
         {
@@ -586,11 +578,8 @@ public sealed partial class ReportsWindow : Window
 
     private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
     {
-        var windowState = await _application.SaveWindowStateAsync(WindowStateKeys.Reports, WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64(), CancellationToken.None);
-        if (!windowState.Succeeded)
-        {
-            throw new InvalidOperationException($"Window state could not be saved ({windowState.Code}).");
-        }
+        await _placement.SaveAsync(CancellationToken.None);
+        _placement.Dispose();
 
         _lifetimeCancellation.Cancel();
         _refreshCancellation?.Cancel();
@@ -616,21 +605,10 @@ public sealed partial class ReportsWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
-        if (Math.Abs(sender.RasterizationScale - _rasterizationScale) >= 0.001d)
+        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
-            ResizeForLogicalContent();
+            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
-    }
-
-    private void ResizeForLogicalContent()
-    {
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale);
-        _rasterizationScale = scale;
-        var workArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var physicalMargin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var physicalWidth = Math.Min(Math.Max(1, workArea.Width - (physicalMargin * 2)), (int)Math.Ceiling(LogicalWindowWidth * scale));
-        var physicalHeight = Math.Min(Math.Max(1, workArea.Height - (physicalMargin * 2)), (int)Math.Ceiling(LogicalWindowHeight * scale));
-        _appWindow.Resize(new SizeInt32(physicalWidth, physicalHeight));
     }
 
     private readonly record struct ReportRangeKey(DateOnly From, DateOnly ToInclusive, string TimeZoneId);

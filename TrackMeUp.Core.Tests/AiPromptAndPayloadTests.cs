@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using TrackMeUp.Services;
 using Xunit;
@@ -41,13 +42,19 @@ public sealed class AiPromptAndPayloadTests
             "TrackMeUp",
             "AiPromptCatalog.cs",
             "active",
-            null);
+            new Dictionary<string, string>
+            {
+                ["FocusedScreen"] = "Monitor 2",
+                ["FocusedCapture"] = "monitor-2"
+            });
 
         var prompt = AiPromptCatalog.RenderScreenshotAnalysis("balanced", context);
 
         Assert.Contains("## Visible data", prompt, StringComparison.Ordinal);
         Assert.Contains("application=Visual Studio", prompt, StringComparison.Ordinal);
         Assert.Contains("detail=TrackMeUp", prompt, StringComparison.Ordinal);
+        Assert.Contains("focused_screen=Monitor 2", prompt, StringComparison.Ordinal);
+        Assert.Contains("focused_capture=monitor-2", prompt, StringComparison.Ordinal);
         Assert.Contains("1024", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("{{LOCAL_CONTEXT}}", prompt, StringComparison.Ordinal);
     }

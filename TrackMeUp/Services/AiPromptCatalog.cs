@@ -118,7 +118,35 @@ internal static partial class AiPromptCatalog
             context.Add($"informational_schedule={Sanitize(schedule)}");
         }
 
+        if (activity?.Attributes is not null)
+        {
+            foreach (var attribute in activity.Attributes.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+            {
+                context.Add($"{ToPromptKey(attribute.Key)}={Sanitize(attribute.Value)}");
+            }
+        }
+
         return string.Join(Environment.NewLine, context);
+    }
+
+    private static string ToPromptKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return "attribute";
+        }
+
+        return string.Concat(key.Select((character, index) =>
+        {
+            if (char.IsUpper(character))
+            {
+                return index == 0
+                    ? char.ToLowerInvariant(character).ToString()
+                    : $"_{char.ToLowerInvariant(character)}";
+            }
+
+            return char.IsLetterOrDigit(character) ? character.ToString() : "_";
+        }));
     }
 
     private static string BuildSnapshotSummary(SystemSnapshot? snapshot)

@@ -120,6 +120,9 @@ public sealed record ScreenshotTextSnapshot(
 /// <param name="AiAnalyzedAt">The timestamp of the associated AI analysis, or <see langword="null"/> when no successful result exists.</param>
 /// <param name="ActivityIndex">A 0-100 historical interval index based on durable keyboard, click, and active-time samples; CPU and GPU telemetry are not reconstructed.</param>
 /// <param name="TextSnapshot">The local OCR snapshot and optional AI refinement associated with this artifact.</param>
+/// <param name="ForegroundWindowTitle">The closest foreground window title observed during the capture interval.</param>
+/// <param name="ScreenIndex">The one-based monitor index parsed from the retained artifact name, or <see langword="null"/> for active-window captures.</param>
+/// <param name="ScreenName">A stable display label derived from <paramref name="ScreenIndex"/> when available.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
@@ -130,7 +133,10 @@ public sealed record ScreenshotGalleryItem(
     string? AiDescriptionMarkdown = null,
     DateTimeOffset? AiAnalyzedAt = null,
     int? ActivityIndex = null,
-    ScreenshotTextSnapshot? TextSnapshot = null);
+    ScreenshotTextSnapshot? TextSnapshot = null,
+    string? ForegroundWindowTitle = null,
+    int? ScreenIndex = null,
+    string? ScreenName = null);
 
 /// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
 public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);
@@ -148,6 +154,9 @@ public sealed record WindowState(
     int Height,
     string MonitorDeviceName);
 
+/// <summary>Defines the minimum usable logical dimensions for a window surface.</summary>
+public readonly record struct WindowMinimumSize(int Width, int Height);
+
 /// <summary>Describes a monitor work area in physical pixels.</summary>
 public readonly record struct WindowWorkArea(int X, int Y, int Width, int Height)
 {
@@ -161,8 +170,13 @@ public readonly record struct WindowWorkArea(int X, int Y, int Width, int Height
 /// <summary>Calculates safe window bounds without depending on a windowing API.</summary>
 public static class WindowStateCalculator
 {
-    /// <summary>Clamps a saved placement to the supplied monitor work area.</summary>
-    public static WindowState ClampToWorkArea(WindowState state, WindowWorkArea workArea, string monitorDeviceName)
+    /// <summary>Clamps a saved placement to the supplied monitor work area and minimum usable size.</summary>
+    public static WindowState ClampToWorkArea(
+        WindowState state,
+        WindowWorkArea workArea,
+        string monitorDeviceName,
+        int minimumWidth = 1,
+        int minimumHeight = 1)
     {
         ArgumentNullException.ThrowIfNull(state);
         if (workArea.Width <= 0 || workArea.Height <= 0)
@@ -170,13 +184,19 @@ public static class WindowStateCalculator
             throw new ArgumentOutOfRangeException(nameof(workArea), "A monitor work area must have positive dimensions.");
         }
 
-        if (state.Width <= 0 || state.Height <= 0 || string.IsNullOrWhiteSpace(state.MonitorDeviceName))
+        if (state.Width <= 0 ||
+            state.Height <= 0 ||
+            minimumWidth <= 0 ||
+            minimumHeight <= 0 ||
+            string.IsNullOrWhiteSpace(state.MonitorDeviceName))
         {
             throw new InvalidOperationException("Persisted window state is invalid.");
         }
 
-        var width = Math.Min(state.Width, workArea.Width);
-        var height = Math.Min(state.Height, workArea.Height);
+        var boundedMinimumWidth = Math.Min(minimumWidth, workArea.Width);
+        var boundedMinimumHeight = Math.Min(minimumHeight, workArea.Height);
+        var width = Math.Clamp(state.Width, boundedMinimumWidth, workArea.Width);
+        var height = Math.Clamp(state.Height, boundedMinimumHeight, workArea.Height);
         var x = Math.Clamp(state.X, workArea.X, workArea.Right - width);
         var y = Math.Clamp(state.Y, workArea.Y, workArea.Bottom - height);
         return state with
@@ -256,7 +276,8 @@ public sealed record ApplicationNotification(
     ApplicationNotificationSeverity Severity,
     string TitleKey,
     string MessageKey,
-    string Code);
+    string Code,
+    string? Detail = null);
 
 /// <summary>Provides product metadata and safe external links.</summary>
 public sealed record BuildInformation(
