@@ -4,13 +4,13 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using System.Globalization;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
-using Windows.Foundation;
 using Windows.Storage.Pickers;
-using Windows.Graphics;
+using Windows.System;
 
 namespace TrackMeUp;
 
@@ -20,9 +20,14 @@ public sealed partial class ScreenshotWindow : Window
     private const int LogicalWindowWidth = 1180;
     private const int LogicalWindowHeight = 820;
     private const int LogicalScreenMargin = 24;
+    private const double DefaultDetailsPaneWidth = 360d;
+    private const double MinimumDetailsPaneWidth = 300d;
+    private const double MaximumDetailsPaneWidthRatio = 0.5d;
+    private const double DetailsPaneKeyboardResizeStep = 16d;
 
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
+    private readonly MicaDialogService _dialogs = new();
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly string? _launchTheme;
@@ -34,6 +39,9 @@ public sealed partial class ScreenshotWindow : Window
     private string _theme = "system";
     private bool _initialized;
     private bool _settingSelectedDate;
+    private uint? _detailsResizePointerId;
+    private double _detailsResizeStartPointerX;
+    private double _detailsResizeStartWidth;
     private string? _requestedScreenshotPath;
 
     private CalendarDatePicker SelectedDatePicker => HeaderSection.DatePicker;
@@ -101,7 +109,6 @@ public sealed partial class ScreenshotWindow : Window
         SetSelectedDate(_selectedDate);
         ApplyTheme(_theme);
         _placement.ApplyDefaultBounds(RootGrid);
-        UpdateTitleBarLayout();
         Closed += ScreenshotWindow_Closed;
     }
 
@@ -109,6 +116,11 @@ public sealed partial class ScreenshotWindow : Window
     {
         SelectedDatePicker.DateChanged += SelectedDatePicker_DateChanged;
         ScreenshotViewer.SaveRequested += ScreenshotViewer_SaveRequested;
+        ScreenshotViewer.ShareRequested += ScreenshotViewer_ShareRequested;
+        ScreenshotViewer.OpenFolderRequested += ScreenshotViewer_OpenFolderRequested;
+        ScreenshotViewer.DeleteScreenshotRequested += ScreenshotViewer_DeleteScreenshotRequested;
+        ScreenshotViewer.DeleteSnapshotRequested += ScreenshotViewer_DeleteSnapshotRequested;
+        ScreenshotViewer.DetailsVisibilityRequested += ScreenshotViewer_DetailsVisibilityRequested;
         TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
         FilmstripToggleButton.Click += FilmstripToggleButton_Click;
     }
@@ -145,7 +157,6 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         _placement.ApplyDefaultBounds(RootGrid);
-        UpdateTitleBarLayout();
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
 
         if (_initialized)
@@ -270,6 +281,7 @@ public sealed partial class ScreenshotWindow : Window
         AutomationProperties.SetName(SelectedDatePicker, _strings.Translate("Screenshots.Date"));
         UpdateDisplayedDate();
         UpdateDetailsToggleAccessibility();
+        UpdateFilmstripToggleAccessibility();
     }
 
     private void UpdateDisplayedDate()
@@ -304,10 +316,8 @@ public sealed partial class ScreenshotWindow : Window
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
         ScreenshotViewer.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
-        DetailsToggleButton.IsEnabled = hasItems;
         if (!hasItems)
         {
-            DetailsToggleButton.IsChecked = false;
             SetDetailsPaneVisibility(isVisible: false);
         }
         EmptyGalleryText.Text = error ?? (_items.Count == 0 ? "No screenshots for this day." : string.Empty);
@@ -315,6 +325,7 @@ public sealed partial class ScreenshotWindow : Window
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
         TimelineSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
         RenderSelectedScreenshot();
+        UpdateDetailsToggleAccessibility();
     }
 
     private int _selectedIndex;
@@ -371,12 +382,17 @@ public sealed partial class ScreenshotWindow : Window
         MetadataPanel.Visibility = Visibility.Visible;
     }
 
-    private void DetailsToggleButton_Click(object sender, RoutedEventArgs e) =>
-        SetDetailsPaneVisibility(DetailsToggleButton.IsChecked == true);
+    private void ScreenshotViewer_DetailsVisibilityRequested(bool isVisible) =>
+        SetDetailsPaneVisibility(isVisible);
 
     private void SetDetailsPaneVisibility(bool isVisible)
     {
         DetailsPane.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (isVisible)
+        {
+            SetDetailsPaneWidth(double.IsNaN(DetailsPane.Width) ? DefaultDetailsPaneWidth : DetailsPane.Width);
+        }
+
         UpdateDetailsToggleAccessibility();
     }
 
@@ -386,8 +402,87 @@ public sealed partial class ScreenshotWindow : Window
             ? "Screenshots.Details.Hide"
             : "Screenshots.Details.Show";
         var label = _strings.Translate(key);
-        AutomationProperties.SetName(DetailsToggleButton, label);
-        ToolTipService.SetToolTip(DetailsToggleButton, label);
+        ScreenshotViewer.SetDetailsState(_items.Count > 0, DetailsPane.Visibility == Visibility.Visible, label);
+    }
+
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (DetailsPane.Visibility == Visibility.Visible)
+        {
+            SetDetailsPaneWidth(DetailsPane.Width);
+        }
+    }
+
+    private void DetailsResizeGrip_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(RootGrid);
+        if (sender is not Controls.HorizontalResizeGrip grip
+            || (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse && !point.Properties.IsLeftButtonPressed)
+            || !grip.CapturePointer(e.Pointer))
+        {
+            return;
+        }
+
+        _detailsResizePointerId = e.Pointer.PointerId;
+        _detailsResizeStartPointerX = point.Position.X;
+        _detailsResizeStartWidth = DetailsPane.Width;
+        e.Handled = true;
+    }
+
+    private void DetailsResizeGrip_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (_detailsResizePointerId != e.Pointer.PointerId)
+        {
+            return;
+        }
+
+        var currentPointerX = e.GetCurrentPoint(RootGrid).Position.X;
+        SetDetailsPaneWidth(_detailsResizeStartWidth + (_detailsResizeStartPointerX - currentPointerX));
+        e.Handled = true;
+    }
+
+    private void DetailsResizeGrip_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_detailsResizePointerId != e.Pointer.PointerId || sender is not Controls.HorizontalResizeGrip grip)
+        {
+            return;
+        }
+
+        _detailsResizePointerId = null;
+        grip.ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void DetailsResizeGrip_PointerCanceled(object sender, PointerRoutedEventArgs e) =>
+        _detailsResizePointerId = null;
+
+    private void DetailsResizeGrip_PointerCaptureLost(object sender, PointerRoutedEventArgs e) =>
+        _detailsResizePointerId = null;
+
+    private void DetailsResizeGrip_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        var targetWidth = e.Key switch
+        {
+            VirtualKey.Left => DetailsPane.Width + DetailsPaneKeyboardResizeStep,
+            VirtualKey.Right => DetailsPane.Width - DetailsPaneKeyboardResizeStep,
+            VirtualKey.Home => MinimumDetailsPaneWidth,
+            VirtualKey.End => RootGrid.ActualWidth * MaximumDetailsPaneWidthRatio,
+            _ => double.NaN
+        };
+        if (double.IsNaN(targetWidth))
+        {
+            return;
+        }
+
+        SetDetailsPaneWidth(targetWidth);
+        e.Handled = true;
+    }
+
+    private void SetDetailsPaneWidth(double requestedWidth)
+    {
+        var maximumWidth = Math.Max(1d, RootGrid.ActualWidth * MaximumDetailsPaneWidthRatio);
+        var minimumWidth = Math.Min(MinimumDetailsPaneWidth, maximumWidth);
+        DetailsPane.Width = Math.Clamp(requestedWidth, minimumWidth, maximumWidth);
     }
 
     private static string FormatMetadataDate(DateTimeOffset capturedAt, CultureInfo culture)
@@ -421,68 +516,7 @@ public sealed partial class ScreenshotWindow : Window
         };
     }
 
-    private void MoreMenu_Opened(object sender, object e)
-    {
-        if (TitleBarMoreButton.Flyout is Flyout flyout && flyout.Content is DependencyObject content)
-        {
-            UiLocalization.Apply(content, _strings);
-        }
-
-        ApplyMenuCommandLabel(SaveScreenshotMenuItem, "Screenshots.Menu.Save");
-        ApplyMenuCommandLabel(ShareScreenshotMenuItem, "Screenshots.Menu.Share");
-        ApplyMenuCommandLabel(OpenScreenshotFolderMenuItem, "Screenshots.Menu.OpenFolder");
-        ApplyMenuCommandLabel(DeleteScreenshotMenuItem, "Screenshots.Menu.DeleteScreenshot");
-        ApplyMenuCommandLabel(DeleteSnapshotMenuItem, "Screenshots.Menu.DeleteSnapshot");
-
-        var hasSelection = _items.Count > 0;
-        SaveScreenshotMenuItem.IsEnabled = hasSelection;
-        ShareScreenshotMenuItem.IsEnabled = hasSelection;
-        DeleteScreenshotMenuItem.IsEnabled = hasSelection;
-        DeleteSnapshotMenuItem.IsEnabled = hasSelection;
-    }
-
-    private void TitleBarMoreButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (TitleBarMoreButton.Flyout is Flyout flyout)
-        {
-            flyout.ShowAt(TitleBarMoreButton);
-        }
-    }
-
-    private void ApplyMenuCommandLabel(Button button, string key) =>
-        AutomationProperties.SetName(button, _strings.Translate(key));
-
-    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarLayout();
-
-    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarLayout();
-
-    private void UpdateTitleBarLayout()
-    {
-        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = xamlRoot.RasterizationScale;
-        InputNonClientPointerSource
-            .GetForWindowId(_appWindow.Id)
-            .SetRegionRects(
-                NonClientRegionKind.Passthrough,
-                [ElementRect(DetailsToggleButton, scale), ElementRect(TitleBarMoreButton, scale)]);
-    }
-
-    private static RectInt32 ElementRect(FrameworkElement element, double scale)
-    {
-        var transform = element.TransformToVisual(null);
-        var bounds = transform.TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
-        return new RectInt32(
-            (int)Math.Round(bounds.X * scale),
-            (int)Math.Round(bounds.Y * scale),
-            (int)Math.Round(bounds.Width * scale),
-            (int)Math.Round(bounds.Height * scale));
-    }
-
-    private async void DeleteScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void ScreenshotViewer_DeleteScreenshotRequested(object? sender, EventArgs e)
     {
         var selected = GetSelectedItem();
         var result = await _application.DeleteScreenshotAsync(selected.Path, _lifetimeCancellation.Token);
@@ -494,15 +528,12 @@ public sealed partial class ScreenshotWindow : Window
         ShowActionResult(result, "Screenshots.Action.ScreenshotDeleted");
     }
 
-    private async void DeleteSnapshotMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void ScreenshotViewer_DeleteSnapshotRequested(object? sender, EventArgs e)
     {
         var selected = GetSelectedItem();
         var result = await _application.DeleteSnapshotAsync(selected.Path, _lifetimeCancellation.Token);
         ShowActionResult(result, "Screenshots.Action.SnapshotDeleted");
     }
-
-    private async void SaveScreenshotMenuItem_Click(object sender, RoutedEventArgs e) =>
-        await SaveSelectedScreenshotAsync();
 
     private async void ScreenshotViewer_SaveRequested(object? sender, EventArgs e) =>
         await SaveSelectedScreenshotAsync();
@@ -533,13 +564,13 @@ public sealed partial class ScreenshotWindow : Window
         ShowActionResult(result, "Screenshots.Action.Saved");
     }
 
-    private async void OpenScreenshotFolderMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void ScreenshotViewer_OpenFolderRequested(object? sender, EventArgs e)
     {
         var result = await _application.OpenScreenshotFolderAsync(_lifetimeCancellation.Token);
         ShowActionResult(result, "Screenshots.Action.FolderOpened");
     }
 
-    private async void ShareScreenshotMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void ScreenshotViewer_ShareRequested(object? sender, EventArgs e)
     {
         var selected = GetSelectedItem();
         var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64();
@@ -549,9 +580,16 @@ public sealed partial class ScreenshotWindow : Window
 
     private void ShowActionResult<T>(OperationResult<T> result, string successKey)
     {
-        ScreenshotActionInfoBar.Severity = result.Succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Error;
-        ScreenshotActionInfoBar.Message = _strings.Translate(result.Succeeded ? successKey : "Screenshots.Action.Failed");
-        ScreenshotActionInfoBar.IsOpen = true;
+        var title = _strings.Translate("Screenshots.Caption");
+        var message = _strings.Translate(result.Succeeded ? successKey : "Screenshots.Action.Failed");
+        if (result.Succeeded)
+        {
+            _dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);
+        }
+        else
+        {
+            _dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);
+        }
     }
 
     private ScreenshotGalleryItem GetSelectedItem()
@@ -564,7 +602,18 @@ public sealed partial class ScreenshotWindow : Window
         var isExpanded = FilmstripList.Visibility != Visibility.Visible;
         FilmstripList.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
         FilmstripChevronIcon.Glyph = isExpanded ? "\uE70E" : "\uE70D";
-        AutomationProperties.SetName(FilmstripToggleButton, isExpanded ? "Hide screenshot strip" : "Show screenshot strip");
+        UpdateFilmstripToggleAccessibility();
+    }
+
+    private void UpdateFilmstripToggleAccessibility()
+    {
+        var key = FilmstripList.Visibility == Visibility.Visible
+            ? "Screenshots.Timeline.Hide"
+            : "Screenshots.Timeline.Show";
+        var label = _strings.Translate(key);
+        FilmstripToggleButton.Tag = key;
+        AutomationProperties.SetName(FilmstripToggleButton, label);
+        ToolTipService.SetToolTip(FilmstripToggleButton, label);
     }
 
     private void SetLoading(bool isLoading)
@@ -628,7 +677,6 @@ public sealed partial class ScreenshotWindow : Window
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
 
-        UpdateTitleBarLayout();
     }
 
     private async void ScreenshotWindow_Closed(object sender, WindowEventArgs args)

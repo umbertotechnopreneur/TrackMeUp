@@ -13,6 +13,8 @@ public sealed partial class PluginOperationsControl : UserControl
 {
     private LocalizationService _strings = new("system");
     private OperationsSectionContext? _context;
+    private PluginInfo[] _plugins = [];
+    private bool _isApplyingPluginState;
 
     /// <summary>Creates the independent plugin operations surface.</summary>
     public PluginOperationsControl() => InitializeComponent();
@@ -29,33 +31,89 @@ public sealed partial class PluginOperationsControl : UserControl
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("PluginOperationsControl must be initialized before use.");
 
-    private async void ListPluginsButton_Click(object sender, RoutedEventArgs e) => await RefreshPluginsAsync();
-
-    private async Task RefreshPluginsAsync()
+    internal async Task LoadAsync()
     {
-        var result = await Context.ExecuteAsync((application, token) => application.GetPluginsAsync(token));
+        var result = await Context.ExecuteAsync((application, token) => application.GetPluginsAsync(token), showSuccess: false);
         if (result is { Succeeded: true, Value: { } plugins })
         {
-            PluginsList.ItemsSource = plugins.ToArray();
+            ApplyPlugins(plugins.ToArray());
         }
     }
 
-    private async void EnablePluginButton_Click(object sender, RoutedEventArgs e) => await SetSelectedPluginAsync(enabled: true);
-
-    private async void DisablePluginButton_Click(object sender, RoutedEventArgs e) => await SetSelectedPluginAsync(enabled: false);
-
-    private async Task SetSelectedPluginAsync(bool enabled)
+    private async void PluginToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (PluginsList.SelectedItem is not PluginInfo plugin)
+        if (_isApplyingPluginState || sender is not ToggleSwitch toggle || toggle.Tag is not string pluginId)
         {
-            Context.ShowStatus(L("Selection required", "Selezione richiesta"), L("Select the plugin to change.", "Seleziona il plugin da modificare."), InfoBarSeverity.Warning);
             return;
         }
 
-        var result = await Context.ExecuteAsync((application, token) => application.SetPluginEnabledAsync(plugin.Id, enabled, token));
+        var plugin = _plugins.FirstOrDefault(candidate => StringComparer.Ordinal.Equals(candidate.Id, pluginId));
+        if (plugin is null || plugin.Enabled == toggle.IsOn)
+        {
+            // Initial binding and programmatic restoration can raise Toggled; neither is a user mutation.
+            return;
+        }
+
+        var requestedState = toggle.IsOn;
+        var result = await Context.ExecuteAsync(
+            (application, token) => application.SetPluginEnabledAsync(plugin.Id, requestedState, token),
+            showSuccess: false);
+        if (result is { Succeeded: true, Value: { } updatedPlugin } &&
+            StringComparer.Ordinal.Equals(updatedPlugin.Id, plugin.Id) &&
+            updatedPlugin.Enabled == requestedState)
+        {
+            ReplacePlugin(updatedPlugin);
+            Context.ShowStatus(L("Operation completed", "Operazione completata"), result.Code, InfoBarSeverity.Success);
+            return;
+        }
+
+        RestoreToggle(toggle, plugin.Enabled);
         if (result is { Succeeded: true })
         {
-            await RefreshPluginsAsync();
+            Context.ShowStatus(
+                L("Operation failed", "Operazione non completata"),
+                L("The runtime returned an invalid plugin state.", "Il runtime ha restituito uno stato del plugin non valido."),
+                InfoBarSeverity.Error);
+        }
+    }
+
+    private void ApplyPlugins(PluginInfo[] plugins)
+    {
+        _isApplyingPluginState = true;
+        try
+        {
+            _plugins = plugins;
+            PluginsList.ItemsSource = plugins;
+        }
+        finally
+        {
+            _isApplyingPluginState = false;
+        }
+    }
+
+    private void ReplacePlugin(PluginInfo updatedPlugin)
+    {
+        var index = Array.FindIndex(_plugins, plugin => StringComparer.Ordinal.Equals(plugin.Id, updatedPlugin.Id));
+        if (index < 0)
+        {
+            throw new InvalidOperationException("The updated plugin is not present in the loaded plugin collection.");
+        }
+
+        var updatedPlugins = (PluginInfo[])_plugins.Clone();
+        updatedPlugins[index] = updatedPlugin;
+        ApplyPlugins(updatedPlugins);
+    }
+
+    private void RestoreToggle(ToggleSwitch toggle, bool enabled)
+    {
+        _isApplyingPluginState = true;
+        try
+        {
+            toggle.IsOn = enabled;
+        }
+        finally
+        {
+            _isApplyingPluginState = false;
         }
     }
 

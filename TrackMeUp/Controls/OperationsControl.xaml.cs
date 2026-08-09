@@ -85,6 +85,10 @@ public sealed partial class OperationsControl : UserControl
         PluginsSection.Visibility = section == OperationsSection.Plugins ? Visibility.Visible : Visibility.Collapsed;
         DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         NotifyLayoutChanged();
+        if (section == OperationsSection.Plugins)
+        {
+            _ = PluginsSection.LoadAsync();
+        }
     }
 
     /// <summary>Shows the tools landing page without changing application state.</summary>

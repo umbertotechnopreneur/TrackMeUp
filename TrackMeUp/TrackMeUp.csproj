@@ -37,6 +37,18 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\TrackMeUp*.png" />
     <Content Include="Assets\TrackMeUpIcon.ico" />
+    <Content Include="..\design\branding\recall-timeline\output\trackmeup-recall-timeline-banner-theme-dark-readme-2400x800.png">
+      <Link>Assets\TrackMeUpAboutHero.theme-dark.png</Link>
+      <TargetPath>Assets\TrackMeUpAboutHero.theme-dark.png</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\design\branding\recall-timeline\output\trackmeup-recall-timeline-banner-theme-light-readme-2400x800.png">
+      <Link>Assets\TrackMeUpAboutHero.theme-light.png</Link>
+      <TargetPath>Assets\TrackMeUpAboutHero.theme-light.png</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="$(TrackMeUpBuildInfoPath)" Link="BuildInfo.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
     <Content Include="..\TrackMeUp.Reports.Web\dist\**\*">
       <Link>ReportsWeb\%(RecursiveDir)%(Filename)%(Extension)</Link>

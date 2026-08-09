@@ -62,7 +62,8 @@
                 BorderBrush="Transparent"
                 Click="OpenDatePickerButton_Click"
                 CornerRadius="21"
-                ToolTipService.ToolTip="Choose date">
+                Tag="Screenshots.Date.Choose"
+                ToolTipService.ToolTip="Choose screenshot date">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"

@@ -6,11 +6,42 @@
     xmlns:controls="using:TrackMeUp.Controls">
     <UserControl.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <AcrylicBrush
+                        x:Key="ScreenshotMetadataBackdropBrush"
+                        FallbackColor="#EAF7F8FA"
+                        TintColor="#FFFFFFFF"
+                        TintLuminosityOpacity="0.16"
+                        TintOpacity="0.04" />
+                    <LinearGradientBrush x:Key="ScreenshotMetadataBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#A8FFFFFF" Offset="0" />
+                        <GradientStop Color="#28717A84" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <AcrylicBrush
+                        x:Key="ScreenshotMetadataBackdropBrush"
+                        FallbackColor="#EA1B1E24"
+                        TintColor="#FF15191F"
+                        TintLuminosityOpacity="0.12"
+                        TintOpacity="0.09" />
+                    <LinearGradientBrush x:Key="ScreenshotMetadataBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#62FFFFFF" Offset="0" />
+                        <GradientStop Color="#16FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="ScreenshotMetadataBackdropBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ScreenshotMetadataBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
             <Style x:Key="ScreenshotMetadataChipStyle"
                    BasedOn="{StaticResource SurfaceChipStyle}"
                    TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource AcrylicInAppFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                <Setter Property="Background" Value="{ThemeResource ScreenshotMetadataBackdropBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ScreenshotMetadataBorderBrush}" />
             </Style>
 
             <Style x:Key="ScreenshotMetadataIconStyle"
@@ -24,6 +55,24 @@
     </UserControl.Resources>
 
     <Grid x:Name="GallerySurface" MinHeight="500" Background="Transparent">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="OverlayVisibilityStates">
+                <VisualStateGroup.Transitions>
+                    <VisualTransition GeneratedDuration="0:0:0.14" />
+                </VisualStateGroup.Transitions>
+                <VisualState x:Name="OverlayHidden">
+                    <VisualState.Setters>
+                        <Setter Target="MetadataPanel.Opacity" Value="0" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="OverlayVisible">
+                    <VisualState.Setters>
+                        <Setter Target="MetadataPanel.Opacity" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
         <controls:ScreenshotImageViewerControl
             x:Name="ImageViewer"
             MinHeight="400" />
@@ -36,6 +85,7 @@
             VerticalAlignment="Bottom"
             ColumnSpacing="26"
             IsHitTestVisible="False"
+            Opacity="0"
             Visibility="Collapsed">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220" />

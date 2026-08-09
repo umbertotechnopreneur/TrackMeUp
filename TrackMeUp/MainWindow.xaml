@@ -140,6 +140,7 @@
                         <GradientStop Color="#FFE86C4F" Offset="0" />
                         <GradientStop Color="#FFD34D34" Offset="1" />
                     </LinearGradientBrush>
+                    <SolidColorBrush x:Key="PlayerInputBrush" Color="{ThemeResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
                     <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
                     <Style x:Key="CircularActionButtonStyle"
@@ -628,18 +629,18 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE765;" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource PlayerInputBrush}" Glyph="&#xE765;" />
                                 <StackPanel>
                                     <TextBlock Tag="KeysLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="KEYS" />
-                                    <TextBlock x:Name="KeyCountText" FontSize="19" FontWeight="SemiBold" Text="0" />
+                                    <TextBlock x:Name="KeyCountText" FontSize="19" FontWeight="SemiBold" Foreground="{ThemeResource PlayerInputBrush}" Text="0" />
                                 </StackPanel>
                             </StackPanel>
                             <Rectangle Grid.Column="1" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />
                             <StackPanel Grid.Column="2" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE962;" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource PlayerAccentTextBrush}" Glyph="&#xE962;" />
                                 <StackPanel>
                                     <TextBlock Tag="ClicksLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="CLICKS" />
-                                    <TextBlock x:Name="ClickCountText" FontSize="19" FontWeight="SemiBold" Text="0" />
+                                    <TextBlock x:Name="ClickCountText" FontSize="19" FontWeight="SemiBold" Foreground="{ThemeResource PlayerAccentTextBrush}" Text="0" />
                                 </StackPanel>
                             </StackPanel>
                             <Rectangle Grid.Column="3" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />

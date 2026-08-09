@@ -28,22 +28,6 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("SnapshotAiOperationsControl must be initialized before use.");
 
-    private async void CaptureScreenshotButton_Click(object sender, RoutedEventArgs e)
-    {
-        var request = new CaptureScreenshotRequest(
-            SelectedTag(ScreenshotModeBox, "all-screens"),
-            KeepScreenshotBox.IsChecked == true,
-            WatermarkScreenshotBox.IsChecked == true,
-            ScreenshotCaptureOrigins.Manual);
-        var result = await Context.ExecuteAsync((application, token) => application.CaptureScreenshotAsync(request, token));
-        if (result is { Succeeded: true, Value: { } capture })
-        {
-            ScreenshotResultText.Text = L(
-                $"Snapshot {capture.CaptureId}: {capture.AnalysisScreenshotPaths.Count} analysis files, {capture.StoredScreenshotPaths.Count} retained.\n{string.Join("\n", capture.AllScreenshotPaths)}",
-                $"Snapshot {capture.CaptureId}: {capture.AnalysisScreenshotPaths.Count} file per analisi, {capture.StoredScreenshotPaths.Count} conservati.\n{string.Join("\n", capture.AllScreenshotPaths)}");
-        }
-    }
-
     private async void LatestScreenshotButton_Click(object sender, RoutedEventArgs e)
     {
         var result = await Context.ExecuteAsync((application, token) => application.GetLatestScreenshotAsync(token));
@@ -73,8 +57,6 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
             AiAnalysisText.Text = $"{analysis.Application} · {analysis.Context}\n{analysis.Summary}";
         }
     }
-
-    private static string SelectedTag(ComboBox comboBox, string fallback) => comboBox.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
 
     private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
 }

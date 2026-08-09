@@ -27,134 +27,166 @@
             </Grid.ColumnDefinitions>
             <TextBlock
                 Grid.Column="1"
-                Margin="28,0,12,0"
+                Margin="24,0,12,0"
                 VerticalAlignment="Center"
                 AutomationProperties.AccessibilityView="Raw"
-                CharacterSpacing="130"
+                CharacterSpacing="90"
                 FontSize="13"
                 FontWeight="SemiBold"
                 IsHitTestVisible="False"
-                Text="TRACK ME UP" />
+                Text="TRACKMEUP" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="32,12,32,28" RowSpacing="0">
+        <Grid Grid.Row="1" Padding="28,12,28,24" RowSpacing="0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="250" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid x:Name="ProductPanel" ColumnSpacing="20">
+            <Border
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="12">
+                <Image
+                    x:Name="HeroImage"
+                    AutomationProperties.Name="TrackMeUp"
+                    HorizontalAlignment="Stretch"
+                    Stretch="UniformToFill"
+                    VerticalAlignment="Stretch" />
+            </Border>
+
+            <Rectangle
+                Grid.Row="1"
+                Height="1"
+                Margin="0,20,0,20"
+                Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <Grid Grid.Row="2" ColumnSpacing="28">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="72" />
+                    <ColumnDefinition Width="1.08*" />
+                    <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Viewbox
-                    x:Name="AboutIcon"
-                    Width="64"
-                    Height="48"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center">
-                    <Path
-                        Data="M 4,30 L 18,30 L 28,10 L 40,48 L 51,27 L 68,27"
-                        Stroke="{ThemeResource SystemControlHighlightAccentBrush}"
-                        StrokeEndLineCap="Round"
-                        StrokeLineJoin="Round"
-                        StrokeStartLineCap="Round"
-                        StrokeThickness="3.2" />
-                </Viewbox>
-
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                    <TextBlock FontSize="24" FontWeight="SemiBold" Text="TRACK ME UP" />
-                    <StackPanel Orientation="Horizontal" Spacing="5">
-                        <TextBlock Tag="About.Version" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
-                        <TextBlock x:Name="VersionText" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
-                    </StackPanel>
+                <StackPanel Spacing="12">
                     <TextBlock
                         Tag="About.Description"
+                        FontSize="17"
                         MaxLines="3"
                         Opacity="0.82"
                         Text="Simple desktop activity tracking that respects your privacy."
                         TextTrimming="WordEllipsis"
                         TextWrapping="WrapWholeWords" />
+
+                    <Grid ColumnSpacing="18" RowSpacing="5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Tag="About.Version" Opacity="0.62" Style="{StaticResource CaptionTextBlockStyle}" Text="Version" />
+                        <TextBlock x:Name="VersionText" Grid.Column="1" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
+
+                        <TextBlock Grid.Row="1" Tag="About.Built" Opacity="0.62" Style="{StaticResource CaptionTextBlockStyle}" Text="Built" />
+                        <TextBlock x:Name="BuiltAtText" Grid.Row="1" Grid.Column="1" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
+
+                        <TextBlock Grid.Row="2" Tag="About.Commit" Opacity="0.62" Style="{StaticResource CaptionTextBlockStyle}" Text="Git commit" />
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="7">
+                            <TextBlock x:Name="CommitText" FontFamily="Consolas" Style="{StaticResource CaptionTextBlockStyle}" Text="—" />
+                            <TextBlock
+                                x:Name="DirtyIndicator"
+                                Tag="About.Dirty"
+                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="uncommitted changes"
+                                Visibility="Collapsed" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="18">
+                        <Button
+                            x:Name="ContactButton"
+                            Padding="0,5"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="ContactButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon FontSize="15" Glyph="&#xE715;" />
+                                <TextBlock Tag="About.Contact" Text="Contact" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            x:Name="RepositoryButton"
+                            Padding="0,5"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="RepositoryButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon FontSize="15" Glyph="&#xE71B;" />
+                                <TextBlock Tag="About.Repository" Text="GitHub repository" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <Rectangle
+                    Grid.Column="1"
+                    Width="1"
+                    HorizontalAlignment="Center"
+                    Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <StackPanel Grid.Column="2" Spacing="10">
+                    <StackPanel Spacing="5">
+                        <TextBlock Tag="About.Diagnostics" FontSize="20" FontWeight="SemiBold" Text="Diagnostics" />
+                        <TextBlock
+                            Tag="About.Diagnostics.Description"
+                            MaxLines="3"
+                            Opacity="0.72"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Open the current log, or share a bounded copy with private paths and secrets removed."
+                            TextTrimming="WordEllipsis"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            x:Name="ShowLogButton"
+                            Tag="About.ShowLog"
+                            MinWidth="128"
+                            MinHeight="38"
+                            HorizontalContentAlignment="Center"
+                            Click="ShowLogButton_Click"
+                            Content="Show log" />
+                        <Button
+                            x:Name="ShareLogButton"
+                            Tag="About.ShareLog"
+                            MinWidth="128"
+                            MinHeight="38"
+                            HorizontalContentAlignment="Center"
+                            Click="ShareLogButton_Click"
+                            Content="Share log" />
+                    </StackPanel>
+                    <InfoBar
+                        x:Name="DiagnosticsInfoBar"
+                        IsClosable="True"
+                        IsOpen="False"
+                        Severity="Informational" />
                 </StackPanel>
             </Grid>
 
-            <Rectangle
-                Grid.Row="1"
-                Height="1"
-                Margin="0,20,0,14"
-                Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="18">
-                <Button
-                    x:Name="ContactButton"
-                    Padding="0,5"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="ContactButton_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontSize="14" Glyph="&#xE715;" />
-                        <TextBlock Tag="About.Contact" Text="Contact" />
-                    </StackPanel>
-                </Button>
-                <Button
-                    x:Name="RepositoryButton"
-                    Padding="0,5"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Click="RepositoryButton_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontSize="14" Glyph="&#xE71B;" />
-                        <TextBlock Tag="About.Repository" Text="GitHub" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-
-            <StackPanel Grid.Row="3" Margin="0,18,0,0" Spacing="9">
-                <TextBlock Tag="About.Diagnostics" FontSize="17" FontWeight="SemiBold" Text="Diagnostics" />
-                <TextBlock
-                    Tag="About.Diagnostics.Description"
-                    Opacity="0.72"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    Text="Open the current log, or share a bounded copy with private paths and secrets removed."
-                    TextWrapping="WrapWholeWords" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button
-                        x:Name="ShowLogButton"
-                        Tag="About.ShowLog"
-                        MinWidth="132"
-                        MinHeight="38"
-                        HorizontalContentAlignment="Center"
-                        Click="ShowLogButton_Click"
-                        Content="Show log" />
-                    <Button
-                        x:Name="ShareLogButton"
-                        Tag="About.ShareLog"
-                        MinWidth="132"
-                        MinHeight="38"
-                        HorizontalContentAlignment="Center"
-                        Click="ShareLogButton_Click"
-                        Content="Share log" />
-                </StackPanel>
-                <InfoBar
-                    x:Name="DiagnosticsInfoBar"
-                    IsClosable="True"
-                    IsOpen="False"
-                    Severity="Informational" />
-            </StackPanel>
-
-            <Grid Grid.Row="5" Margin="0,24,0,0" ColumnSpacing="16">
+            <Grid Grid.Row="3" Margin="0,22,0,0" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center" Spacing="1">
-                    <TextBlock Tag="About.CreatedBy" Opacity="0.68" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
+                    <TextBlock Tag="About.CreatedBy" Opacity="0.62" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
                     <Button
                         x:Name="CreatedByButton"
                         Padding="0"
@@ -168,12 +200,13 @@
                     x:Name="CloseButton"
                     Tag="About.Close"
                     Grid.Column="1"
-                    MinWidth="112"
+                    MinWidth="120"
                     MinHeight="40"
                     HorizontalAlignment="Right"
                     HorizontalContentAlignment="Center"
                     Click="CloseButton_Click"
-                    Content="Close" />
+                    Content="Close"
+                    Style="{StaticResource AccentButtonStyle}" />
             </Grid>
         </Grid>
     </Grid>

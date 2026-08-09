@@ -30,6 +30,7 @@ alwaysApply: true
 - Be economical with verification: run checks primarily once the task is complete, not after every intermediate step. Repeat or add an earlier check only when it is needed to diagnose a failure, unblock the work, or prevent a risky mistake.
 - Keep product wording vendor-agnostic: user-facing shared AI features must say "AI provider" ("provider AI" in Italian). Name OpenAI, OpenRouter, Anthropic, or another vendor only when the UI refers to a selected provider or genuinely vendor-specific behavior such as its endpoint, model, or pricing.
 - WinUI views/code-behind and Spectre.Console commands/renderers are passive presentation code; they call `ITrackMeUpApplication` and never construct infrastructure services or perform I/O, process, registry, environment, HTTP, capture, hook, or persistence operations.
+- Every icon-only WinUI button or toggle must have a localized tooltip and the same localized accessible name; never rely on the glyph alone.
 - Keep runtime ownership singular through the hashed-installation mutex and same-user versioned named pipe. All persistence mutations stay serialized in the application layer.
 - Never place API keys in command arguments, settings, history, logs, redacted IPC diagnostics, or test snapshots. Use the environment-variable secret flow.
 - For PowerShell scripts, prefer dry runs for destructive actions.

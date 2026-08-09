@@ -9,13 +9,51 @@
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
+    <Grid
+        x:Name="RootGrid"
+        Background="Transparent"
+        Loaded="RootGrid_Loaded"
+        SizeChanged="RootGrid_SizeChanged">
         <Grid.Resources>
             <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <AcrylicBrush
+                            x:Key="ScreenshotSidebarBackdropBrush"
+                            FallbackColor="#EEF5F7F8"
+                            TintColor="#FFF8FBFD"
+                            TintLuminosityOpacity="0.20"
+                            TintOpacity="0.07" />
+                        <LinearGradientBrush x:Key="ScreenshotSidebarBorderBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#9AFFFFFF" Offset="0" />
+                            <GradientStop Color="#28717A84" Offset="1" />
+                        </LinearGradientBrush>
+                        <SolidColorBrush x:Key="ScreenshotSidebarGripBrush" Color="#68717A84" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <AcrylicBrush
+                            x:Key="ScreenshotSidebarBackdropBrush"
+                            FallbackColor="#EE1B1F24"
+                            TintColor="#FF14191F"
+                            TintLuminosityOpacity="0.16"
+                            TintOpacity="0.11" />
+                        <LinearGradientBrush x:Key="ScreenshotSidebarBorderBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#58FFFFFF" Offset="0" />
+                            <GradientStop Color="#16FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                        <SolidColorBrush x:Key="ScreenshotSidebarGripBrush" Color="#54FFFFFF" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <StaticResource x:Key="ScreenshotSidebarBackdropBrush" ResourceKey="SystemColorWindowColorBrush" />
+                        <StaticResource x:Key="ScreenshotSidebarBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                        <StaticResource x:Key="ScreenshotSidebarGripBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+
                 <Style x:Key="ScreenshotTitleTextStyle" TargetType="TextBlock">
                     <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
                     <Setter Property="FontSize" Value="15" />
-					<Setter Property="FontWeight" Value="Normal" />
+                    <Setter Property="FontWeight" Value="Normal" />
                     <Setter Property="LineHeight" Value="20" />
                     <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 </Style>
@@ -38,306 +76,28 @@
             x:Name="TitleBarDragRegion"
             Grid.ColumnSpan="2"
             Height="52"
-            Padding="28,0,226,0"
+            Padding="28,0,180,0"
             Background="Transparent"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-            BorderThickness="0,0,0,1"
-            Loaded="TitleBarDragRegion_Loaded"
-            SizeChanged="TitleBarDragRegion_SizeChanged">
-            <Grid>
-                <TextBlock
-                    VerticalAlignment="Center"
-                    Style="{StaticResource ScreenshotTitleTextStyle}"
-                    Tag="Screenshots.Caption"
-                    Text="Captured moments" />
-
-                <ToggleButton
-                    x:Name="DetailsToggleButton"
-                    Width="40"
-                    Height="40"
-                    Margin="0,0,8,0"
-                    Padding="8"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    AllowFocusOnInteraction="True"
-                    AutomationProperties.Name="Show snapshot details"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="DetailsToggleButton_Click"
-                    CornerRadius="4"
-                    IsTabStop="True"
-                    ToolTipService.ToolTip="Show snapshot details">
-                    <FontIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="17"
-                        Glyph="&#xE8A0;" />
-                </ToggleButton>
-
-                <Button
-                    x:Name="TitleBarMoreButton"
-                    Width="46"
-                    Height="40"
-                    Margin="0,0,54,0"
-                    Padding="6,0,6,7"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="Screenshot actions menu"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="TitleBarMoreButton_Click"
-                    Style="{StaticResource TitleBarOverflowButtonStyle}"
-                    ToolTipService.ToolTip="Menu">
-                <FontIcon
-                    AutomationProperties.AccessibilityView="Raw"
-                    FontFamily="Segoe Fluent Icons"
-                    FontSize="19"
-                    Glyph="&#xE712;"/>
-                <Button.Flyout>
-                    <Flyout Opened="MoreMenu_Opened"
-                            Placement="TopEdgeAlignedRight"
-                            ShouldConstrainToRootBounds="False">
-                        <Flyout.SystemBackdrop>
-                            <DesktopAcrylicBackdrop />
-                        </Flyout.SystemBackdrop>
-                        <Flyout.FlyoutPresenterStyle>
-                            <Style TargetType="FlyoutPresenter">
-                                <Setter Property="Padding"
-                                        Value="10"/>
-                                <Setter Property="CornerRadius"
-                                        Value="12"/>
-                            </Style>
-                        </Flyout.FlyoutPresenterStyle>
-                        <StackPanel Width="252"
-                                    Spacing="2">
-                            <StackPanel.Resources>
-                                <Style x:Key="ScreenshotOverflowMenuButtonStyle"
-                                       TargetType="Button">
-                                    <Setter Property="MinHeight"
-                                            Value="40"/>
-                                    <Setter Property="Padding"
-                                            Value="10,6"/>
-                                    <Setter Property="HorizontalAlignment"
-                                            Value="Stretch"/>
-                                    <Setter Property="HorizontalContentAlignment"
-                                            Value="Left"/>
-                                    <Setter Property="Background"
-                                            Value="Transparent"/>
-                                    <Setter Property="BorderBrush"
-                                            Value="Transparent"/>
-                                    <Setter Property="BorderThickness"
-                                            Value="0"/>
-                                    <Setter Property="CornerRadius"
-                                            Value="10"/>
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="MenuItemSurface"
-                                                        Background="{TemplateBinding Background}"
-                                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                                        CornerRadius="{TemplateBinding CornerRadius}">
-                                                    <VisualStateManager.VisualStateGroups>
-                                                        <VisualStateGroup x:Name="CommonStates">
-                                                            <VisualState x:Name="Normal"/>
-                                                            <VisualState x:Name="PointerOver">
-                                                                <Storyboard>
-                                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="MenuItemSurface"
-                                                                                                   Storyboard.TargetProperty="Background">
-                                                                        <DiscreteObjectKeyFrame KeyTime="0"
-                                                                                                Value="#0DFFFFFF"/>
-                                                                    </ObjectAnimationUsingKeyFrames>
-                                                                </Storyboard>
-                                                            </VisualState>
-                                                            <VisualState x:Name="Pressed">
-                                                                <Storyboard>
-                                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="MenuItemSurface"
-                                                                                                   Storyboard.TargetProperty="Background">
-                                                                        <DiscreteObjectKeyFrame KeyTime="0"
-                                                                                                Value="#18FFFFFF"/>
-                                                                    </ObjectAnimationUsingKeyFrames>
-                                                                </Storyboard>
-                                                            </VisualState>
-                                                            <VisualState x:Name="Disabled">
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetName="MenuItemSurface"
-                                                                                     Storyboard.TargetProperty="Opacity"
-                                                                                     To="0.45"
-                                                                                     Duration="0"/>
-                                                                </Storyboard>
-                                                            </VisualState>
-                                                        </VisualStateGroup>
-                                                    </VisualStateManager.VisualStateGroups>
-                                                    <ContentPresenter Content="{TemplateBinding Content}"
-                                                                      ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                                      ContentTransitions="{TemplateBinding ContentTransitions}"
-                                                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                                      Padding="{TemplateBinding Padding}"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                                <Style x:Key="ScreenshotOverflowIconChipStyle"
-                                       BasedOn="{StaticResource SurfaceIconChipStyle}"
-                                       TargetType="Border">
-                                </Style>
-                                <Style x:Key="ScreenshotOverflowIconStyle"
-                                       TargetType="FontIcon">
-                                    <Setter Property="FontFamily"
-                                            Value="Segoe Fluent Icons"/>
-                                    <Setter Property="FontSize"
-                                            Value="15"/>
-                                    <Setter Property="HorizontalAlignment"
-                                            Value="Center"/>
-                                    <Setter Property="VerticalAlignment"
-                                            Value="Center"/>
-                                    <Setter Property="AutomationProperties.AccessibilityView"
-                                            Value="Raw"/>
-                                </Style>
-                            </StackPanel.Resources>
-                            <Button
-                                x:Name="SaveScreenshotMenuItem"
-                                AutomationProperties.Name="Save selected image"
-                                Click="SaveScreenshotMenuItem_Click"
-                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Style="{StaticResource ScreenshotOverflowIconChipStyle}">
-                                        <FontIcon
-                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Glyph="&#xE74E;"/>
-                                    </Border>
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Tag="Screenshots.Menu.Save"
-                                        VerticalAlignment="Center"
-                                        Text="Save selected image"/>
-                                </Grid>
-                            </Button>
-                            <Button
-                                x:Name="ShareScreenshotMenuItem"
-                                AutomationProperties.Name="Share with another app"
-                                Click="ShareScreenshotMenuItem_Click"
-                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Style="{StaticResource ScreenshotOverflowIconChipStyle}">
-                                        <FontIcon
-                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Glyph="&#xE72D;"/>
-                                    </Border>
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Tag="Screenshots.Menu.Share"
-                                        VerticalAlignment="Center"
-                                        Text="Share with another app"/>
-                                </Grid>
-                            </Button>
-                            <Button
-                                x:Name="OpenScreenshotFolderMenuItem"
-                                AutomationProperties.Name="Open containing folder"
-                                Click="OpenScreenshotFolderMenuItem_Click"
-                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Style="{StaticResource ScreenshotOverflowIconChipStyle}">
-                                        <FontIcon
-                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Glyph="&#xE8B7;"/>
-                                    </Border>
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Tag="Screenshots.Menu.OpenFolder"
-                                        VerticalAlignment="Center"
-                                        Text="Open containing folder"/>
-                                </Grid>
-                            </Button>
-                            <Border
-                                Height="1"
-                                Margin="0,5"
-                                Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-                            <Button
-                                x:Name="DeleteScreenshotMenuItem"
-                                AutomationProperties.Name="Delete screenshot"
-                                Click="DeleteScreenshotMenuItem_Click"
-                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Style="{StaticResource ScreenshotOverflowIconChipStyle}">
-                                        <FontIcon
-                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
-                                            Foreground="#FFE98A5B"
-                                            Glyph="&#xE74D;"/>
-                                    </Border>
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Tag="Screenshots.Menu.DeleteScreenshot"
-                                        VerticalAlignment="Center"
-                                        Text="Delete screenshot"/>
-                                </Grid>
-                            </Button>
-                            <Button
-                                x:Name="DeleteSnapshotMenuItem"
-                                AutomationProperties.Name="Delete snapshot"
-                                Click="DeleteSnapshotMenuItem_Click"
-                                Style="{StaticResource ScreenshotOverflowMenuButtonStyle}">
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Style="{StaticResource ScreenshotOverflowIconChipStyle}">
-                                        <FontIcon
-                                            Style="{StaticResource ScreenshotOverflowIconStyle}"
-                                            Foreground="#FF7FA8D9"
-                                            Glyph="&#xE823;"/>
-                                    </Border>
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        Tag="Screenshots.Menu.DeleteSnapshot"
-                                        VerticalAlignment="Center"
-                                        Text="Delete snapshot"/>
-                                </Grid>
-                            </Button>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-                </Button>
-            </Grid>
+            BorderThickness="0,0,0,1">
+            <TextBlock
+                VerticalAlignment="Center"
+                Style="{StaticResource ScreenshotTitleTextStyle}"
+                Tag="Screenshots.Caption"
+                Text="Captured moments" />
         </Border>
 
-        <InfoBar
-            x:Name="ScreenshotActionInfoBar"
-            Grid.ColumnSpan="2"
+        <controls:TimedInfoBar
+            x:Name="ScreenshotActionBanner"
             Grid.Row="1"
-            Margin="32,8,32,0"
-            AutomationProperties.LiveSetting="Polite"
-            IsClosable="True"
-            IsOpen="False" />
+            Grid.ColumnSpan="2"
+            Margin="32,8,32,0" />
 
         <controls:ScreenshotGalleryViewControl
             x:Name="GallerySection"
             Grid.Row="2"
             Grid.RowSpan="3"
+            Grid.ColumnSpan="2"
             Margin="0" />
 
         <controls:ScreenshotHeaderControl
@@ -358,8 +118,8 @@
             Grid.Column="1"
             Width="360"
             Margin="0,12,0,12"
-            Background="Transparent"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            Background="{ThemeResource ScreenshotSidebarBackdropBrush}"
+            BorderBrush="{ThemeResource ScreenshotSidebarBorderBrush}"
             BorderThickness="1,0,0,0"
             CornerRadius="0"
             Visibility="Collapsed">
@@ -368,7 +128,39 @@
                     <PaneThemeTransition Edge="Right" />
                 </TransitionCollection>
             </Border.Transitions>
-            <controls:ScreenshotDetailsControl x:Name="DetailsSection" />
+            <Grid>
+                <controls:ScreenshotDetailsControl x:Name="DetailsSection" />
+                <controls:HorizontalResizeGrip
+                    x:Name="DetailsResizeGrip"
+                    Width="12"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    AutomationProperties.Name="Resize snapshot details"
+                    Background="Transparent"
+                    IsTabStop="True"
+                    KeyDown="DetailsResizeGrip_KeyDown"
+                    PointerCanceled="DetailsResizeGrip_PointerCanceled"
+                    PointerCaptureLost="DetailsResizeGrip_PointerCaptureLost"
+                    PointerMoved="DetailsResizeGrip_PointerMoved"
+                    PointerPressed="DetailsResizeGrip_PointerPressed"
+                    PointerReleased="DetailsResizeGrip_PointerReleased"
+                    Tag="Screenshots.Details.Resize"
+                    ToolTipService.ToolTip="Resize snapshot details">
+                    <controls:HorizontalResizeGrip.Template>
+                        <ControlTemplate TargetType="controls:HorizontalResizeGrip">
+                            <Grid Background="Transparent">
+                                <Border
+                                    Width="2"
+                                    Height="52"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Background="{ThemeResource ScreenshotSidebarGripBrush}"
+                                    CornerRadius="1" />
+                            </Grid>
+                        </ControlTemplate>
+                    </controls:HorizontalResizeGrip.Template>
+                </controls:HorizontalResizeGrip>
+            </Grid>
         </Border>
     </Grid>
 </Window>

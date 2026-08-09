@@ -64,7 +64,7 @@ public sealed class WindowStateService
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.AiPricing => new(620, 430),
-            WindowStateKeys.AiConnectionTest => new(480, 300),
+            WindowStateKeys.AiConnectionTest => new(480, 480),
             _ => new(320, 240)
         };
     }

@@ -12,6 +12,7 @@ These instructions apply to all changes in this repository.
 - Preserve unrelated local changes unless explicitly requested.
 - Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
 - Keep WinUI views, code-behind, Spectre commands, prompts, and renderers passive: they may only collect input, bind/render DTOs, and invoke `ITrackMeUpApplication`.
+- Every icon-only WinUI button or toggle must have a localized tooltip and the same localized accessible name; never rely on the glyph alone.
 - Put application behavior, persistence, OS interop, capture, environment access, HTTP, retention, and startup changes behind `TrackMeUp.Core` application services.
 - Do not create a second tracking runtime; use the hashed-installation mutex and same-user named-pipe protocol through the shared facade.
 - Do not pass secrets by CLI arguments or persist them in settings, history, IPC diagnostics, or tests.

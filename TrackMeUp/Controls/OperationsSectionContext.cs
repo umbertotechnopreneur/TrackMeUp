@@ -41,7 +41,9 @@ internal sealed class OperationsSectionContext
 
     internal Window OwnerWindow { get; }
 
-    internal async Task<OperationResult<T>?> ExecuteAsync<T>(Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation)
+    internal async Task<OperationResult<T>?> ExecuteAsync<T>(
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        bool showSuccess = true)
     {
         if (_operationInProgress)
         {
@@ -59,7 +61,10 @@ internal sealed class OperationsSectionContext
             var result = await operation(Application, CancellationToken.None);
             if (result.Succeeded)
             {
-                ShowStatus(L("Operation completed", "Operazione completata"), result.Code, InfoBarSeverity.Success);
+                if (showSuccess)
+                {
+                    ShowStatus(L("Operation completed", "Operazione completata"), result.Code, InfoBarSeverity.Success);
+                }
             }
             else
             {

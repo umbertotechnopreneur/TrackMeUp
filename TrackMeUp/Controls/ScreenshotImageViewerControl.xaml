@@ -7,7 +7,49 @@
     AutomationProperties.Name="Screenshot viewer">
     <UserControl.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <AcrylicBrush
+                        x:Key="ScreenshotViewerOverlayBrush"
+                        FallbackColor="#EAF7F8FA"
+                        TintColor="#FFFFFFFF"
+                        TintLuminosityOpacity="0.18"
+                        TintOpacity="0.05" />
+                    <LinearGradientBrush x:Key="ScreenshotViewerOverlayBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#A8FFFFFF" Offset="0" />
+                        <GradientStop Color="#28717A84" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <AcrylicBrush
+                        x:Key="ScreenshotViewerOverlayBrush"
+                        FallbackColor="#EA1B1E24"
+                        TintColor="#FF15191F"
+                        TintLuminosityOpacity="0.14"
+                        TintOpacity="0.10" />
+                    <LinearGradientBrush x:Key="ScreenshotViewerOverlayBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#62FFFFFF" Offset="0" />
+                        <GradientStop Color="#16FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="ScreenshotViewerOverlayBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ScreenshotViewerOverlayBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
             <Style x:Key="ScreenshotZoomButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="18" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+            </Style>
+
+            <Style x:Key="ScreenshotZoomToggleButtonStyle" TargetType="ToggleButton">
                 <Setter Property="Width" Value="36" />
                 <Setter Property="Height" Value="36" />
                 <Setter Property="Padding" Value="0" />
@@ -31,7 +73,33 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid x:Name="ViewerRoot" Background="Transparent">
+    <Grid
+        x:Name="ViewerRoot"
+        Background="Transparent"
+        GotFocus="ViewerRoot_GotFocus"
+        LostFocus="ViewerRoot_LostFocus"
+        PointerEntered="ViewerRoot_PointerEntered"
+        PointerExited="ViewerRoot_PointerExited">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="OverlayVisibilityStates">
+                <VisualStateGroup.Transitions>
+                    <VisualTransition GeneratedDuration="0:0:0.14" />
+                </VisualStateGroup.Transitions>
+                <VisualState x:Name="OverlayHidden">
+                    <VisualState.Setters>
+                        <Setter Target="ZoomRail.Opacity" Value="0" />
+                        <Setter Target="ZoomRail.IsHitTestVisible" Value="False" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="OverlayVisible">
+                    <VisualState.Setters>
+                        <Setter Target="ZoomRail.Opacity" Value="1" />
+                        <Setter Target="ZoomRail.IsHitTestVisible" Value="True" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
         <ScrollViewer
             x:Name="ImageScroller"
             Background="Transparent"
@@ -48,7 +116,8 @@
                 x:Name="ImageHost"
                 MinWidth="1"
                 MinHeight="1"
-                Background="Transparent">
+                Background="Transparent"
+                PointerWheelChanged="ImageHost_PointerWheelChanged">
                 <Image
                     x:Name="ScreenshotImage"
                     HorizontalAlignment="Stretch"
@@ -65,16 +134,20 @@
             Padding="6"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+            Background="{ThemeResource ScreenshotViewerOverlayBrush}"
+            BorderBrush="{ThemeResource ScreenshotViewerOverlayBorderBrush}"
             BorderThickness="1"
-            CornerRadius="25">
+            CornerRadius="25"
+            IsHitTestVisible="False"
+            Opacity="0"
+            PointerWheelChanged="ImageHost_PointerWheelChanged">
             <StackPanel Orientation="Horizontal" Spacing="3">
                 <Button
                     x:Name="ZoomOutButton"
                     AutomationProperties.Name="Zoom out"
                     Click="ZoomOutButton_Click"
                     Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.ZoomOut"
                     ToolTipService.ToolTip="Zoom out">
                     <FontIcon
                         AutomationProperties.AccessibilityView="Raw"
@@ -87,6 +160,7 @@
                     AutomationProperties.Name="Reset zoom to 100 percent"
                     Click="ZoomResetButton_Click"
                     Style="{StaticResource ScreenshotZoomPercentButtonStyle}"
+                    Tag="Screenshots.Toolbar.ZoomReset"
                     ToolTipService.ToolTip="Reset zoom to 100%">
                     <TextBlock
                         x:Name="ZoomPercentText"
@@ -99,6 +173,7 @@
                     AutomationProperties.Name="Zoom in"
                     Click="ZoomInButton_Click"
                     Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.ZoomIn"
                     ToolTipService.ToolTip="Zoom in">
                     <FontIcon
                         AutomationProperties.AccessibilityView="Raw"
@@ -112,17 +187,101 @@
                     Margin="5,0"
                     VerticalAlignment="Center"
                     Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <Button
-                    x:Name="SaveButton"
-                    AutomationProperties.Name="Save screenshot"
-                    Click="SaveButton_Click"
-                    Style="{StaticResource ScreenshotZoomButtonStyle}"
-                    ToolTipService.ToolTip="Save screenshot">
+                <ToggleButton
+                    x:Name="DetailsToggleButton"
+                    AutomationProperties.Name="Show snapshot details"
+                    Click="DetailsToggleButton_Click"
+                    Style="{StaticResource ScreenshotZoomToggleButtonStyle}"
+                    Tag="Screenshots.Details.Show"
+                    ToolTipService.ToolTip="Show snapshot details">
                     <FontIcon
                         AutomationProperties.AccessibilityView="Raw"
                         FontFamily="Segoe Fluent Icons"
                         FontSize="15"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Glyph="&#xE8A0;" />
+                </ToggleButton>
+                <Border
+                    Width="1"
+                    Height="22"
+                    Margin="5,0"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <Button
+                    x:Name="SaveButton"
+                    AutomationProperties.Name="Save selected image"
+                    Click="SaveButton_Click"
+                    Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.Save"
+                    ToolTipService.ToolTip="Save selected image">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="15"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Glyph="&#xE74E;" />
+                </Button>
+                <Button
+                    x:Name="ShareButton"
+                    AutomationProperties.Name="Share with another app"
+                    Click="ShareButton_Click"
+                    Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.Share"
+                    ToolTipService.ToolTip="Share with another app">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="15"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Glyph="&#xE72D;" />
+                </Button>
+                <Button
+                    x:Name="OpenFolderButton"
+                    AutomationProperties.Name="Open containing folder"
+                    Click="OpenFolderButton_Click"
+                    Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.OpenFolder"
+                    ToolTipService.ToolTip="Open containing folder">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="15"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Glyph="&#xE8B7;" />
+                </Button>
+                <Border
+                    Width="1"
+                    Height="22"
+                    Margin="5,0"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <Button
+                    x:Name="DeleteScreenshotButton"
+                    AutomationProperties.Name="Delete screenshot"
+                    Click="DeleteScreenshotButton_Click"
+                    Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.DeleteScreenshot"
+                    ToolTipService.ToolTip="Delete screenshot">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="15"
+                        Foreground="#FFE98A5B"
+                        Glyph="&#xE74D;" />
+                </Button>
+                <Button
+                    x:Name="DeleteSnapshotButton"
+                    AutomationProperties.Name="Delete snapshot"
+                    Click="DeleteSnapshotButton_Click"
+                    Style="{StaticResource ScreenshotZoomButtonStyle}"
+                    Tag="Screenshots.Toolbar.DeleteSnapshot"
+                    ToolTipService.ToolTip="Delete snapshot">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="15"
+                        Foreground="#FF7FA8D9"
+                        Glyph="&#xE823;" />
                 </Button>
             </StackPanel>
         </Border>

@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace TrackMeUp.Controls;
@@ -6,7 +7,12 @@ namespace TrackMeUp.Controls;
 public sealed partial class ScreenshotGalleryViewControl : UserControl
 {
     /// <summary>Creates the gallery view control.</summary>
-    public ScreenshotGalleryViewControl() => InitializeComponent();
+    public ScreenshotGalleryViewControl()
+    {
+        InitializeComponent();
+        ImageViewer.OverlayVisibilityChanged += SetOverlayVisibility;
+        VisualStateManager.GoToState(this, "OverlayHidden", false);
+    }
 
     /// <summary>Gets the gallery surface that hosts pointer interactions.</summary>
     public Grid Surface => GallerySurface;
@@ -34,4 +40,7 @@ public sealed partial class ScreenshotGalleryViewControl : UserControl
 
     /// <summary>Gets the loading indicator.</summary>
     public ProgressRing LoadingRing => GalleryProgressRing;
+
+    private void SetOverlayVisibility(bool isVisible) =>
+        VisualStateManager.GoToState(this, isVisible ? "OverlayVisible" : "OverlayHidden", true);
 }

@@ -1,8 +1,10 @@
 using System;
+using System.Globalization;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using Windows.Graphics;
 using TrackMeUp.Services;
@@ -12,15 +14,18 @@ namespace TrackMeUp;
 /// <summary>Displays product information and delegates diagnostics actions to the application facade.</summary>
 public sealed partial class AboutWindow : Window
 {
-    private const int LogicalWindowWidth = 500;
-    private const int LogicalWindowHeight = 460;
+    private const int LogicalWindowWidth = 940;
+    private const int LogicalWindowHeight = 650;
     private const int LogicalScreenMargin = 22;
+    private const string DarkHeroAsset = "ms-appx:///Assets/TrackMeUpAboutHero.theme-dark.png";
+    private const string LightHeroAsset = "ms-appx:///Assets/TrackMeUpAboutHero.theme-light.png";
     private readonly AppWindow _appWindow;
     private readonly WindowPlacementService _placement;
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private XamlRoot? _xamlRoot;
+    private ElementTheme? _heroTheme;
 
     /// <summary>Creates and sizes the compact about window.</summary>
     public AboutWindow(ITrackMeUpApplication application, string theme, string language)
@@ -29,6 +34,7 @@ public sealed partial class AboutWindow : Window
         _strings = new LocalizationService(language);
         InitializeComponent();
         RootGrid.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         UiLocalization.Apply(RootGrid, _strings);
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
@@ -47,6 +53,7 @@ public sealed partial class AboutWindow : Window
         await _placement.SaveAsync(CancellationToken.None);
         _placement.Dispose();
         _lifetimeCancellation.Cancel();
+        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
         if (_xamlRoot is not null)
         {
             _xamlRoot.Changed -= XamlRoot_Changed;
@@ -64,6 +71,7 @@ public sealed partial class AboutWindow : Window
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateTitleBarInsets();
+        UpdateThemeAssets();
 
         try
         {
@@ -74,6 +82,9 @@ public sealed partial class AboutWindow : Window
             }
 
             VersionText.Text = result.Value.Build.SemVer;
+            BuiltAtText.Text = result.Value.Build.BuiltAtLocal.ToString("d", CultureInfo.GetCultureInfo(_strings.Language));
+            CommitText.Text = result.Value.Build.GitCommitShort;
+            DirtyIndicator.Visibility = result.Value.Build.GitDirty ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
         {
@@ -185,6 +196,20 @@ public sealed partial class AboutWindow : Window
         {
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
+    }
+
+    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args) => UpdateThemeAssets();
+
+    private void UpdateThemeAssets()
+    {
+        var actualTheme = RootGrid.ActualTheme == ElementTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
+        if (_heroTheme == actualTheme)
+        {
+            return;
+        }
+
+        _heroTheme = actualTheme;
+        HeroImage.Source = new BitmapImage(new Uri(actualTheme == ElementTheme.Dark ? DarkHeroAsset : LightHeroAsset));
     }
 
     private void ConfigureWindowBehavior()

@@ -13,7 +13,7 @@ namespace TrackMeUp;
 internal sealed partial class AiConnectionTestDialogWindow : Window
 {
     private const int LogicalWidth = 560;
-    private const int LogicalHeight = 410;
+    private const int LogicalHeight = 480;
     private const int LogicalScreenMargin = 24;
     private static readonly TimeSpan TypeDelay = TimeSpan.FromMilliseconds(14);
     private const uint SwpNoMove = 0x0002;

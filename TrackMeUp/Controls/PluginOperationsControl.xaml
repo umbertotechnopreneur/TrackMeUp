@@ -17,20 +17,21 @@
                 <TextBlock Tag="Operations.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Enable or disable local, app-specific context enrichers. Each plugin can add details from a supported app; disabling it stops that enrichment while core activity tracking continues." TextWrapping="Wrap" />
             </StackPanel>
 
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <Button Tag="Operations.Refresh" Click="ListPluginsButton_Click" Content="Refresh" HorizontalAlignment="Stretch" />
-                <Button Tag="Operations.Enable" Grid.Column="1" Click="EnablePluginButton_Click" Content="Enable" HorizontalAlignment="Stretch" />
-                <Button Tag="Operations.Disable" Grid.Column="2" Click="DisablePluginButton_Click" Content="Disable" HorizontalAlignment="Stretch" />
-            </Grid>
-            <ListView x:Name="PluginsList" Height="260" AutomationProperties.Name="Configured plugins" SelectionMode="Single">
+            <ListView x:Name="PluginsList" Height="260" AutomationProperties.Name="Configured plugins" SelectionMode="None">
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Padding="2,7" Spacing="3">
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
-                                <TextBlock Grid.Column="1" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{Binding Enabled}" />
+                                <ToggleSwitch
+                                    Grid.Column="1"
+                                    AutomationProperties.Name="{Binding Name}"
+                                    IsOn="{Binding Enabled, Mode=OneWay}"
+                                    OffContent=""
+                                    OnContent=""
+                                    Tag="{Binding Id}"
+                                    Toggled="PluginToggle_Toggled" />
                             </Grid>
                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Description}" TextWrapping="Wrap" />
                         </StackPanel>

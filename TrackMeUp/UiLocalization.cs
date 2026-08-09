@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Services;
 
@@ -38,11 +39,7 @@ internal static class UiLocalization
                 SetIfTranslated(strings, key, value => textBlock.Text = value);
                 break;
             case Button button:
-                SetIfTranslated(strings, key, value =>
-                {
-                    button.Content = value;
-                    AutomationProperties.SetName(button, value);
-                });
+                ApplyButtonLabel(button, key, strings);
                 break;
             case CheckBox checkBox:
                 SetIfTranslated(strings, key, value =>
@@ -50,6 +47,9 @@ internal static class UiLocalization
                     checkBox.Content = value;
                     AutomationProperties.SetName(checkBox, value);
                 });
+                break;
+            case ToggleButton toggleButton:
+                ApplyButtonLabel(toggleButton, key, strings);
                 break;
             case ToggleSwitch toggle:
                 SetIfTranslated(strings, $"{key}.Header", value => toggle.Header = value);
@@ -110,7 +110,32 @@ internal static class UiLocalization
                     AutomationProperties.SetName(datePicker, value);
                 });
                 break;
+            case Thumb thumb:
+                SetIfTranslated(strings, key, value =>
+                {
+                    AutomationProperties.SetName(thumb, value);
+                    ToolTipService.SetToolTip(thumb, value);
+                });
+                break;
         }
+    }
+
+    private static void ApplyButtonLabel(ButtonBase button, string key, LocalizationService strings)
+    {
+        SetIfTranslated(strings, key, value =>
+        {
+            if (button.Content is string)
+            {
+                button.Content = value;
+            }
+            else
+            {
+                // Icon-only and visual-content commands retain their content; their label is exposed accessibly.
+                ToolTipService.SetToolTip(button, value);
+            }
+
+            AutomationProperties.SetName(button, value);
+        });
     }
 
     private static void SetIfTranslated(LocalizationService strings, string key, Action<string> setter)

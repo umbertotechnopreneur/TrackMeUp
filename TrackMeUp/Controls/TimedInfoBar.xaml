@@ -5,13 +5,31 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:TrackMeUp"
     Visibility="Collapsed">
-    <Grid x:Name="BannerSurface">
+    <Grid
+        x:Name="BannerSurface"
+        Opacity="0">
         <Grid.Shadow>
             <ThemeShadow />
         </Grid.Shadow>
+        <Border
+            x:Name="FrostedBackdrop"
+            Background="{ThemeResource TimedInfoBarBackdropBrush}"
+            BorderBrush="{ThemeResource TimedInfoBarGlassBorderBrush}"
+            BorderThickness="0.5"
+            CornerRadius="12" />
+        <Border
+            x:Name="FrostedVeil"
+            Background="{ThemeResource TimedInfoBarGlassVeilBrush}"
+            CornerRadius="12"
+            IsHitTestVisible="False" />
         <InfoBar
             x:Name="BannerInfoBar"
             AutomationProperties.LiveSetting="Polite"
+            Background="Transparent"
+            BorderBrush="Transparent"
+            BorderThickness="0"
+            Closing="BannerInfoBar_Closing"
+            CornerRadius="12"
             IsClosable="True"
             IsOpen="False"
             local:InfoBarElevationBehavior.IsEnabled="False" />
