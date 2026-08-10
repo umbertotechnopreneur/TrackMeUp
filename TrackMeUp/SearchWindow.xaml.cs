@@ -1,9 +1,11 @@
 using System.Globalization;
 using Microsoft.UI;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
@@ -20,9 +22,10 @@ public sealed partial class SearchWindow : Window
     private const int CompactLogicalHeight = 140;
     private const int EmptyLogicalHeight = 176;
     private const int ErrorLogicalHeight = 222;
-    private const int ResultsChromeLogicalHeight = 158;
+    private const int ResultsChromeLogicalHeight = 134;
     private const int ResultLogicalHeight = 180;
     private const int LogicalScreenMargin = 22;
+    private const double SearchActivityFadeLogicalLength = 48d;
     private const double CursorDisplayWidthRatio = 0.64d;
     private const double MaximumCursorDisplayHeightRatio = 0.78d;
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(700);
@@ -228,8 +231,13 @@ public sealed partial class SearchWindow : Window
 
     private void BeginSearchActivity()
     {
+        var wasIdle = _activeSearchOperationCount == 0;
         _activeSearchOperationCount++;
-        SearchActivityGlow.Visibility = Visibility.Visible;
+        if (wasIdle)
+        {
+            SearchActivityGlow.Visibility = Visibility.Visible;
+            StartSearchActivityGlowAnimation();
+        }
     }
 
     private void EndSearchActivity()
@@ -242,8 +250,39 @@ public sealed partial class SearchWindow : Window
         _activeSearchOperationCount--;
         if (_activeSearchOperationCount == 0)
         {
+            StopSearchActivityGlowAnimation();
             SearchActivityGlow.Visibility = Visibility.Collapsed;
         }
+    }
+
+    private void SearchActivityGlow_SizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        if (args.NewSize.Width <= 0)
+        {
+            return;
+        }
+
+        var fadeOffset = Math.Min(0.45d, SearchActivityFadeLogicalLength / args.NewSize.Width);
+        SearchActivityLeftFadeStop.Offset = fadeOffset;
+        SearchActivityRightFadeStop.Offset = 1d - fadeOffset;
+    }
+
+    private void StartSearchActivityGlowAnimation()
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(SearchActivitySpectrum);
+        var animation = visual.Compositor.CreateScalarKeyFrameAnimation();
+        animation.InsertKeyFrame(0f, 0.58f);
+        animation.InsertKeyFrame(0.5f, 1f);
+        animation.InsertKeyFrame(1f, 0.58f);
+        animation.Duration = TimeSpan.FromMilliseconds(1500);
+        animation.IterationBehavior = AnimationIterationBehavior.Forever;
+        visual.StartAnimation("Opacity", animation);
+    }
+
+    private void StopSearchActivityGlowAnimation()
+    {
+        ElementCompositionPreview.GetElementVisual(SearchActivitySpectrum).StopAnimation("Opacity");
+        SearchActivitySpectrum.Opacity = 0.72d;
     }
 
     private void UpdateResultState(bool hasExecutedQuery)
@@ -252,12 +291,6 @@ public sealed partial class SearchWindow : Window
         var hasResults = _viewModel.Results.Count > 0;
         SearchResultsList.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
         EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults ? Visibility.Visible : Visibility.Collapsed;
-        ResultCountText.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
-        ResultCountText.Text = string.Format(
-            _culture,
-            _strings.Translate("Search.ResultCount"),
-            _viewModel.Results.Count,
-            _viewModel.TotalCount);
         ResizeForCurrentState();
     }
 
@@ -421,6 +454,7 @@ public sealed partial class SearchWindow : Window
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        StopSearchActivityGlowAnimation();
         SearchActivityGlow.Visibility = Visibility.Collapsed;
         Activated -= SearchWindow_Activated;
         _lifetimeCancellation.Cancel();

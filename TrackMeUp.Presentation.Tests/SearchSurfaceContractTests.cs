@@ -21,6 +21,7 @@ public sealed class SearchSurfaceContractTests
         var queryBox = window.Descendants().Single(element => HasName(element, "QueryBox"));
         var activityBar = window.Descendants().Single(element => HasName(element, "SearchActivityBar"));
         var activityGlow = window.Descendants().Single(element => HasName(element, "SearchActivityGlow"));
+        var activitySpectrum = window.Descendants().Single(element => HasName(element, "SearchActivitySpectrum"));
         var resultThumbnailFrame = resultControl.Descendants().Single(element =>
             element.Name.LocalName == "Border"
             && element.Attribute("Width")?.Value == "260"
@@ -35,19 +36,22 @@ public sealed class SearchSurfaceContractTests
         Assert.Equal("ProgressBar", activityBar.Name.LocalName);
         Assert.Equal("True", activityBar.Attribute("IsIndeterminate")?.Value);
         Assert.Equal("Border", activityGlow.Name.LocalName);
-        Assert.Equal("3", activityGlow.Attribute("Height")?.Value);
+        Assert.Equal("9", activityGlow.Attribute("Height")?.Value);
         Assert.Equal("Collapsed", activityGlow.Attribute("Visibility")?.Value);
-        var activityGradientStops = activityBar.Descendants()
+        Assert.Equal("SearchActivityGlow_SizeChanged", activityGlow.Attribute("SizeChanged")?.Value);
+        Assert.Equal("3", activitySpectrum.Attribute("Height")?.Value);
+        var activityGradientStops = activitySpectrum.Descendants()
             .Where(element => element.Name.LocalName == "GradientStop")
             .ToArray();
         Assert.Equal(7, activityGradientStops.Length);
         Assert.Equal("0", activityGradientStops[0].Attribute("Offset")?.Value);
         Assert.StartsWith("#00", activityGradientStops[0].Attribute("Color")?.Value, StringComparison.Ordinal);
-        Assert.Equal("0.03", activityGradientStops[1].Attribute("Offset")?.Value);
-        Assert.Equal("0.97", activityGradientStops[^2].Attribute("Offset")?.Value);
+        Assert.Equal("SearchActivityLeftFadeStop", activityGradientStops[1].Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value);
+        Assert.Equal("SearchActivityRightFadeStop", activityGradientStops[^2].Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value);
         Assert.Equal("1", activityGradientStops[^1].Attribute("Offset")?.Value);
         Assert.StartsWith("#00", activityGradientStops[^1].Attribute("Color")?.Value, StringComparison.Ordinal);
-        Assert.Contains(activityGlow.Descendants(), element => element.Name.LocalName == "ThemeShadow");
+        Assert.Contains(activitySpectrum.Descendants(), element => element.Name.LocalName == "ThemeShadow");
+        Assert.DoesNotContain(window.Descendants(), element => HasName(element, "ResultCountText"));
         Assert.Contains(queryBox.Descendants(), element => element.Name.LocalName == "Ellipse" && element.Attribute("Fill")?.Value == "{StaticResource SearchSuggestionAccentBrush}");
         Assert.Contains(queryBox.Descendants(), element => element.Attribute("Text")?.Value == "{Binding ConfidenceDisplay}");
         Assert.Equal("True", list.Attribute("IsItemClickEnabled")?.Value);
@@ -89,6 +93,10 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("IncludeTextContent = true", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("MinimumQueryLength = 3", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("SearchDebounce", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SearchActivityFadeLogicalLength = 48d", windowSource, StringComparison.Ordinal);
+        Assert.Contains("StartSearchActivityGlowAnimation();", windowSource, StringComparison.Ordinal);
+        Assert.Contains("StopSearchActivityGlowAnimation();", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Search.ResultCount", windowSource, StringComparison.Ordinal);
         Assert.Equal(2, windowSource.Split("BeginSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, windowSource.Split("EndSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("SearchProgressRing", windowSource, StringComparison.Ordinal);

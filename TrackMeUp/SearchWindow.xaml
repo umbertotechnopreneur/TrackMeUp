@@ -109,34 +109,43 @@
                 </AutoSuggestBox>
                 <Border
                     x:Name="SearchActivityGlow"
-                    Height="3"
+                    Height="9"
                     Margin="12,0,12,-1"
                     VerticalAlignment="Bottom"
-                    CornerRadius="2"
                     IsHitTestVisible="False"
-                    Translation="0,0,8"
+                    SizeChanged="SearchActivityGlow_SizeChanged"
                     Visibility="Collapsed">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-                    <ProgressBar
-                        x:Name="SearchActivityBar"
-                        AutomationProperties.Name="Searching the local index"
-                        Background="Transparent"
-                        CornerRadius="2"
-                        IsIndeterminate="True">
-                        <ProgressBar.Foreground>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Offset="0" Color="#00FF8C78" />
-                                <GradientStop Offset="0.03" Color="#FFFF8C78" />
-                                <GradientStop Offset="0.24" Color="#FFFFC15C" />
-                                <GradientStop Offset="0.5" Color="#FFA56EFF" />
-                                <GradientStop Offset="0.76" Color="#FF4F8DFF" />
-                                <GradientStop Offset="0.97" Color="#FF46D4C8" />
-                                <GradientStop Offset="1" Color="#0046D4C8" />
-                            </LinearGradientBrush>
-                        </ProgressBar.Foreground>
-                    </ProgressBar>
+                    <Grid>
+                        <Border
+                            x:Name="SearchActivitySpectrum"
+                            Height="3"
+                            VerticalAlignment="Center"
+                            CornerRadius="2"
+                            Opacity="0.72"
+                            Translation="0,0,12">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Offset="0" Color="#00FF8C78" />
+                                    <GradientStop x:Name="SearchActivityLeftFadeStop" Offset="0.055" Color="#FFFF8C78" />
+                                    <GradientStop Offset="0.28" Color="#FFFFC15C" />
+                                    <GradientStop Offset="0.5" Color="#FFA56EFF" />
+                                    <GradientStop Offset="0.72" Color="#FF4F8DFF" />
+                                    <GradientStop x:Name="SearchActivityRightFadeStop" Offset="0.945" Color="#FF46D4C8" />
+                                    <GradientStop Offset="1" Color="#0046D4C8" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Shadow>
+                                <ThemeShadow />
+                            </Border.Shadow>
+                        </Border>
+                        <ProgressBar
+                            x:Name="SearchActivityBar"
+                            AutomationProperties.Name="Searching the local index"
+                            IsHitTestVisible="False"
+                            IsIndeterminate="True"
+                            IsTabStop="False"
+                            Opacity="0" />
+                    </Grid>
                 </Border>
             </Grid>
 
@@ -148,17 +157,9 @@
                 Severity="Error" />
 
             <Grid Grid.Row="2">
-                <TextBlock
-                    x:Name="ResultCountText"
-                    Margin="4,0,4,8"
-                    VerticalAlignment="Top"
-                    FontSize="16"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Visibility="Collapsed" />
-
                 <ListView
                     x:Name="SearchResultsList"
-                    Margin="0,24,0,0"
+                    Margin="0"
                     HorizontalContentAlignment="Stretch"
                     IsItemClickEnabled="True"
                     ItemClick="SearchResultsList_ItemClick"
