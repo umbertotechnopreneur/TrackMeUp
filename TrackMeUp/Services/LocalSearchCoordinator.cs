@@ -23,10 +23,21 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     }
 
     /// <summary>Ensures current durable data is indexed, then executes a ranked local query.</summary>
-    internal async Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
+    internal Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Store inspection, index refresh, and Lucene reads contain synchronous work. Enter the
+        // thread pool before any of it can continue inline on a WinUI dispatcher.
+        return Task.Run(() => SearchCoreAsync(request, cancellationToken), cancellationToken);
+    }
+
+    private async Task<SearchResponse> SearchCoreAsync(
+        SearchRequest request,
+        CancellationToken cancellationToken)
+    {
         await EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
         var settings = _store.LoadSettings();
         var query = request with
@@ -41,12 +52,23 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     }
 
     /// <summary>Ensures current durable data is indexed, then returns local query suggestions.</summary>
-    internal async Task<IReadOnlyList<SearchSuggestion>> SuggestAsync(
+    internal Task<IReadOnlyList<SearchSuggestion>> SuggestAsync(
         SearchSuggestionRequest request,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Suggestions share the same synchronous index-refresh path and must never run inline
+        // on the caller's dispatcher, even when every semaphore is immediately available.
+        return Task.Run(() => SuggestCoreAsync(request, cancellationToken), cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<SearchSuggestion>> SuggestCoreAsync(
+        SearchSuggestionRequest request,
+        CancellationToken cancellationToken)
+    {
         await EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
         return await _search.SuggestAsync(request, cancellationToken).ConfigureAwait(false);
     }

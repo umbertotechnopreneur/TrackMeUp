@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
@@ -15,6 +16,31 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class LocalSearchAndOcrIntegrationTests
 {
+    [Fact]
+    public async Task SearchCoordinator_QueuesSearchAndSuggestionsBeforeSynchronousIndexWork()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var service = new ThreadRecordingSearchService();
+            await using var coordinator = new LocalSearchCoordinator(new LocalStore(dataDirectory), service);
+
+            var searchCallerThread = RunOnDedicatedThread(() => coordinator.SearchAsync(
+                new SearchRequest { Text = "snapshot" },
+                CancellationToken.None));
+            var suggestionCallerThread = RunOnDedicatedThread(() => coordinator.SuggestAsync(
+                new SearchSuggestionRequest { Text = "sna" },
+                CancellationToken.None));
+
+            Assert.NotEqual(searchCallerThread, service.SearchThreadId);
+            Assert.NotEqual(suggestionCallerThread, service.SuggestionThreadId);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
     [Fact]
     public void ScreenshotTextSnapshot_RoundTripsThroughSqliteAndGallery()
     {
@@ -395,6 +421,82 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var path = Path.Combine(Path.GetTempPath(), $"TrackMeUp-search-ocr-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private static int RunOnDedicatedThread(Func<Task> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        var callerThreadId = 0;
+        Exception? failure = null;
+        using var completed = new ManualResetEventSlim();
+        var thread = new Thread(() =>
+        {
+            callerThreadId = Environment.CurrentManagedThreadId;
+            try
+            {
+                operation().GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                completed.Set();
+            }
+        })
+        {
+            IsBackground = true
+        };
+        thread.Start();
+        Assert.True(completed.Wait(TimeSpan.FromSeconds(10)), "The queued search operation did not complete.");
+        thread.Join();
+        if (failure is not null)
+        {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+
+        return callerThreadId;
+    }
+
+    private sealed class ThreadRecordingSearchService : ILocalSearchService
+    {
+        internal int SearchThreadId { get; private set; }
+
+        internal int SuggestionThreadId { get; private set; }
+
+        public Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task RebuildAsync(
+            IEnumerable<SearchDocument> documents,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<SearchResponse> SearchAsync(
+            SearchRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            SearchThreadId = Environment.CurrentManagedThreadId;
+            return Task.FromResult(new SearchResponse
+            {
+                TotalCount = 0,
+                Offset = request.Offset
+            });
+        }
+
+        public Task<ImmutableArray<SearchSuggestion>> SuggestAsync(
+            SearchSuggestionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            SuggestionThreadId = Environment.CurrentManagedThreadId;
+            return Task.FromResult(ImmutableArray<SearchSuggestion>.Empty);
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private static void DeleteDataDirectory(string path)

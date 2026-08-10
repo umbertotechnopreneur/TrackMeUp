@@ -107,15 +107,37 @@
                         <KeyboardAccelerator Key="F" Modifiers="Control" />
                     </AutoSuggestBox.KeyboardAccelerators>
                 </AutoSuggestBox>
-                <ProgressRing
-                    x:Name="SearchProgressRing"
-                    Width="18"
-                    Height="18"
-                    Margin="0,0,48,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    IsActive="False"
-                    IsHitTestVisible="False" />
+                <Border
+                    x:Name="SearchActivityGlow"
+                    Height="3"
+                    Margin="12,0,12,-1"
+                    VerticalAlignment="Bottom"
+                    CornerRadius="2"
+                    IsHitTestVisible="False"
+                    Translation="0,0,8"
+                    Visibility="Collapsed">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <ProgressBar
+                        x:Name="SearchActivityBar"
+                        AutomationProperties.Name="Searching the local index"
+                        Background="Transparent"
+                        CornerRadius="2"
+                        IsIndeterminate="True">
+                        <ProgressBar.Foreground>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Offset="0" Color="#00FF8C78" />
+                                <GradientStop Offset="0.03" Color="#FFFF8C78" />
+                                <GradientStop Offset="0.24" Color="#FFFFC15C" />
+                                <GradientStop Offset="0.5" Color="#FFA56EFF" />
+                                <GradientStop Offset="0.76" Color="#FF4F8DFF" />
+                                <GradientStop Offset="0.97" Color="#FF46D4C8" />
+                                <GradientStop Offset="1" Color="#0046D4C8" />
+                            </LinearGradientBrush>
+                        </ProgressBar.Foreground>
+                    </ProgressBar>
+                </Border>
             </Grid>
 
             <InfoBar

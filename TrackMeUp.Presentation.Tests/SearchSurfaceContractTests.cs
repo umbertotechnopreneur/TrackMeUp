@@ -19,6 +19,8 @@ public sealed class SearchSurfaceContractTests
         var viewModelSource = File.ReadAllText(RepositoryFile("TrackMeUp.Presentation", "SearchViewModel.cs"));
         var list = window.Descendants().Single(element => HasName(element, "SearchResultsList"));
         var queryBox = window.Descendants().Single(element => HasName(element, "QueryBox"));
+        var activityBar = window.Descendants().Single(element => HasName(element, "SearchActivityBar"));
+        var activityGlow = window.Descendants().Single(element => HasName(element, "SearchActivityGlow"));
         var resultThumbnailFrame = resultControl.Descendants().Single(element =>
             element.Name.LocalName == "Border"
             && element.Attribute("Width")?.Value == "260"
@@ -30,6 +32,22 @@ public sealed class SearchSurfaceContractTests
         Assert.Equal("48", queryBox.Attribute("MinHeight")?.Value);
         Assert.Equal("Center", queryBox.Attribute("VerticalContentAlignment")?.Value);
         Assert.Equal("Text", queryBox.Attribute("TextMemberPath")?.Value);
+        Assert.Equal("ProgressBar", activityBar.Name.LocalName);
+        Assert.Equal("True", activityBar.Attribute("IsIndeterminate")?.Value);
+        Assert.Equal("Border", activityGlow.Name.LocalName);
+        Assert.Equal("3", activityGlow.Attribute("Height")?.Value);
+        Assert.Equal("Collapsed", activityGlow.Attribute("Visibility")?.Value);
+        var activityGradientStops = activityBar.Descendants()
+            .Where(element => element.Name.LocalName == "GradientStop")
+            .ToArray();
+        Assert.Equal(7, activityGradientStops.Length);
+        Assert.Equal("0", activityGradientStops[0].Attribute("Offset")?.Value);
+        Assert.StartsWith("#00", activityGradientStops[0].Attribute("Color")?.Value, StringComparison.Ordinal);
+        Assert.Equal("0.03", activityGradientStops[1].Attribute("Offset")?.Value);
+        Assert.Equal("0.97", activityGradientStops[^2].Attribute("Offset")?.Value);
+        Assert.Equal("1", activityGradientStops[^1].Attribute("Offset")?.Value);
+        Assert.StartsWith("#00", activityGradientStops[^1].Attribute("Color")?.Value, StringComparison.Ordinal);
+        Assert.Contains(activityGlow.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Contains(queryBox.Descendants(), element => element.Name.LocalName == "Ellipse" && element.Attribute("Fill")?.Value == "{StaticResource SearchSuggestionAccentBrush}");
         Assert.Contains(queryBox.Descendants(), element => element.Attribute("Text")?.Value == "{Binding ConfidenceDisplay}");
         Assert.Equal("True", list.Attribute("IsItemClickEnabled")?.Value);
@@ -48,6 +66,7 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("HoverThumbnailElevation = 18f", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(HoverThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(RestingThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ElementCompositionPreview.SetIsTranslationEnabled", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsAlwaysOnTop = true;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", windowSource, StringComparison.Ordinal);
@@ -70,6 +89,9 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("IncludeTextContent = true", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("MinimumQueryLength = 3", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("SearchDebounce", windowSource, StringComparison.Ordinal);
+        Assert.Equal(2, windowSource.Split("BeginSearchActivity();", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, windowSource.Split("EndSearchActivity();", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("SearchProgressRing", windowSource, StringComparison.Ordinal);
         Assert.Contains("ItemsStackPanel", window.ToString(), StringComparison.Ordinal);
         Assert.Contains("Limit = MaximumResults", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("ToPlainTextPreview", viewModelSource, StringComparison.Ordinal);

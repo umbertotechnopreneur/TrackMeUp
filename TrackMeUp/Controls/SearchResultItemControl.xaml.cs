@@ -2,7 +2,6 @@ using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
-using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Presentation;
@@ -26,7 +25,6 @@ public sealed partial class SearchResultItemControl : UserControl
     public SearchResultItemControl()
     {
         InitializeComponent();
-        ElementCompositionPreview.SetIsTranslationEnabled(SnapshotThumbnailFrame, true);
         SetThumbnailElevation(RestingThumbnailElevation);
     }
 

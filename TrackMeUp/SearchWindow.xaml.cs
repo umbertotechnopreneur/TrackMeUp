@@ -40,6 +40,7 @@ public sealed partial class SearchWindow : Window
     private bool _isActive;
     private bool _closeOnDeactivationQueued;
     private bool _closing;
+    private int _activeSearchOperationCount;
 
     /// <summary>Creates the fixed-light floating local-search window in the requested language.</summary>
     public SearchWindow(ITrackMeUpApplication application, string language)
@@ -55,6 +56,7 @@ public sealed partial class SearchWindow : Window
         Title = _strings.Translate("Search.Title");
         QueryBox.PlaceholderText = _strings.Translate("Search.Placeholder");
         AutomationProperties.SetName(QueryBox, _strings.Translate("Search.Placeholder"));
+        AutomationProperties.SetName(SearchActivityBar, _strings.Translate("Search.Working"));
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(
@@ -134,7 +136,6 @@ public sealed partial class SearchWindow : Window
             _queryCancellation?.Cancel();
             _viewModel.Clear();
             SearchInfoBar.IsOpen = false;
-            SearchProgressRing.IsActive = false;
             UpdateResultState(hasExecutedQuery: false);
             return;
         }
@@ -160,6 +161,7 @@ public sealed partial class SearchWindow : Window
 
     private async Task UpdateSuggestionsAsync(string query, CancellationToken cancellationToken)
     {
+        BeginSearchActivity();
         try
         {
             var result = await _viewModel.SuggestAsync(query, cancellationToken);
@@ -181,6 +183,10 @@ public sealed partial class SearchWindow : Window
         {
             // A newer keystroke owns the next suggestion request.
         }
+        finally
+        {
+            EndSearchActivity();
+        }
     }
 
     private async Task ExecuteSearchAsync(string query)
@@ -190,7 +196,7 @@ public sealed partial class SearchWindow : Window
         _queryCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
         var cancellationToken = _queryCancellation.Token;
         SearchInfoBar.IsOpen = false;
-        SearchProgressRing.IsActive = true;
+        BeginSearchActivity();
         try
         {
             var result = await _viewModel.SearchAsync(query, _culture, cancellationToken);
@@ -216,10 +222,27 @@ public sealed partial class SearchWindow : Window
         }
         finally
         {
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                SearchProgressRing.IsActive = false;
-            }
+            EndSearchActivity();
+        }
+    }
+
+    private void BeginSearchActivity()
+    {
+        _activeSearchOperationCount++;
+        SearchActivityGlow.Visibility = Visibility.Visible;
+    }
+
+    private void EndSearchActivity()
+    {
+        if (_activeSearchOperationCount <= 0)
+        {
+            throw new InvalidOperationException("Search activity tracking became unbalanced.");
+        }
+
+        _activeSearchOperationCount--;
+        if (_activeSearchOperationCount == 0)
+        {
+            SearchActivityGlow.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -398,6 +421,7 @@ public sealed partial class SearchWindow : Window
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        SearchActivityGlow.Visibility = Visibility.Collapsed;
         Activated -= SearchWindow_Activated;
         _lifetimeCancellation.Cancel();
         CancelDebounce();
