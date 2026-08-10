@@ -21,6 +21,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the local search window.</summary>
     public const string Search = "search";
 
+    /// <summary>Identifies the local search-index progress window.</summary>
+    public const string SearchIndexing = "search-indexing";
+
     /// <summary>Identifies the screenshot schedule window.</summary>
     public const string Schedule = "schedule";
 
@@ -60,7 +63,8 @@ public sealed class WindowStateService
             WindowStateKeys.Reports => new(720, 520),
             WindowStateKeys.Screenshots => new(760, 540),
             WindowStateKeys.About => new(360, 420),
-            WindowStateKeys.Search => new(780, 520),
+            WindowStateKeys.Search => new(780, 140),
+            WindowStateKeys.SearchIndexing => new(560, 420),
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.AiPricing => new(620, 430),

@@ -41,7 +41,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     }
 
     /// <summary>Ensures current durable data is indexed, then returns local query suggestions.</summary>
-    internal async Task<IReadOnlyList<string>> SuggestAsync(
+    internal async Task<IReadOnlyList<SearchSuggestion>> SuggestAsync(
         SearchSuggestionRequest request,
         CancellationToken cancellationToken)
     {

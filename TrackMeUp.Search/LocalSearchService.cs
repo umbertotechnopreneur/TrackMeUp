@@ -233,7 +233,7 @@ public sealed class LocalSearchService : ILocalSearchService
     }
 
     /// <inheritdoc />
-    public async Task<ImmutableArray<string>> SuggestAsync(
+    public async Task<ImmutableArray<SearchSuggestion>> SuggestAsync(
         SearchSuggestionRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -244,12 +244,28 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
-            return _suggester
-                .DoLookup(request.Text.Trim(), limit, allTermsRequired: false, doHighlight: false)
-                .Select(result => result.Key)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToImmutableArray();
+            var results = _suggester.DoLookup(
+                request.Text.Trim(),
+                limit,
+                allTermsRequired: false,
+                doHighlight: false);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var suggestions = ImmutableArray.CreateBuilder<SearchSuggestion>(results.Count);
+            foreach (var result in results)
+            {
+                if (string.IsNullOrWhiteSpace(result.Key) || !seen.Add(result.Key))
+                {
+                    continue;
+                }
+
+                suggestions.Add(new SearchSuggestion
+                {
+                    Text = result.Key,
+                    Weight = Math.Max(0, result.Value)
+                });
+            }
+
+            return suggestions.MoveToImmutable();
         }
         finally
         {

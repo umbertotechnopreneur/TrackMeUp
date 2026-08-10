@@ -41,5 +41,5 @@ public interface ILocalSearchService : IAsyncDisposable
     /// </summary>
     /// <param name="request">The partial query and result limit.</param>
     /// <param name="cancellationToken">A token observed before the synchronous Lucene read begins.</param>
-    Task<ImmutableArray<string>> SuggestAsync(SearchSuggestionRequest request, CancellationToken cancellationToken = default);
+    Task<ImmutableArray<SearchSuggestion>> SuggestAsync(SearchSuggestionRequest request, CancellationToken cancellationToken = default);
 }

@@ -176,6 +176,16 @@ public sealed record SearchSuggestionRequest
     public int Limit { get; init; } = 8;
 }
 
+/// <summary>Represents one ranked value returned by the separate local suggestion index.</summary>
+public sealed record SearchSuggestion
+{
+    /// <summary>Gets the original suggestion text stored in the derived index.</summary>
+    public required string Text { get; init; }
+
+    /// <summary>Gets the accumulated Lucene suggestion weight used for local ranking.</summary>
+    public required long Weight { get; init; }
+}
+
 /// <summary>
 /// Represents one ranked local-search match.
 /// </summary>

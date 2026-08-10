@@ -39,113 +39,115 @@
             </StackPanel>
         </Grid>
 
-        <Border
+        <Grid
             Grid.Row="1"
-            Margin="24,18,24,12"
-            Padding="22"
-            Background="Transparent">
-            <Grid RowSpacing="18">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            Margin="32,12,32,16"
+            RowSpacing="14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                <Grid ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="64" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Image
-                        Width="56"
-                        Height="56"
-                        AutomationProperties.Name="Icona TrackMeUp Reports"
-                        Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-                        <TextBlock
-                            Style="{StaticResource SubtitleTextBlockStyle}"
-                            Tag="Reports.Title"
-                            Text="Reports" />
-                        <TextBlock
-                            Style="{StaticResource TitleTextBlockStyle}"
-                            Tag="Reports.Motto"
-                            Text="Turn data into rhythm." />
-                        <TextBlock
-                            Style="{StaticResource BodyTextBlockStyle}"
-                            Tag="Reports.Description"
-                            Text="See when you work, where your time goes and how consistently."
-                            TextWrapping="Wrap" />
-                    </StackPanel>
-                </Grid>
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="48" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image
+                    Width="44"
+                    Height="44"
+                    Margin="0,2,0,0"
+                    VerticalAlignment="Top"
+                    AutomationProperties.Name="Icona TrackMeUp Reports"
+                    Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        Tag="Reports.Title"
+                        Text="Reports" />
+                    <TextBlock
+                        Style="{StaticResource TitleTextBlockStyle}"
+                        Tag="Reports.Motto"
+                        Text="Turn data into rhythm."
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource BodyTextBlockStyle}"
+                        Tag="Reports.Description"
+                        Text="See when you work, where your time goes and how consistently."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
 
-                <Grid Grid.Row="1" ColumnSpacing="14">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="200" />
-                        <ColumnDefinition Width="200" />
-                        <ColumnDefinition Width="190" />
-                        <ColumnDefinition Width="190" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+            <ScrollViewer
+                Grid.Row="1"
+                HorizontalScrollBarVisibility="Auto"
+                HorizontalScrollMode="Auto"
+                VerticalScrollBarVisibility="Disabled"
+                VerticalScrollMode="Disabled">
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="12">
+                    <ComboBox
+                        x:Name="RangeComboBox"
+                        Width="184"
+                        Header="Range"
+                        SelectionChanged="ReportSelection_Changed"
+                        Tag="Reports.Range">
+                        <ComboBoxItem Content="Today" Tag="today" />
+                        <ComboBoxItem Content="7 days" Tag="7" />
+                        <ComboBoxItem Content="30 days" Tag="30" />
+                        <ComboBoxItem Content="90 days" Tag="90" />
+                        <ComboBoxItem Content="This month" Tag="thisMonth" />
+                        <ComboBoxItem Content="Last month" Tag="lastMonth" />
+                        <ComboBoxItem Content="Custom" Tag="custom" />
+                    </ComboBox>
 
-                    <StackPanel Spacing="5">
-                        <ComboBox
-                            x:Name="RangeComboBox"
-                            Tag="Reports.Range"
-                            MinWidth="180"
-                            Header="Range"
-                            SelectionChanged="ReportSelection_Changed">
-                            <ComboBoxItem Content="Today" Tag="today" />
-                            <ComboBoxItem Content="7 days" Tag="7" />
-                            <ComboBoxItem Content="30 days" Tag="30" />
-                            <ComboBoxItem Content="90 days" Tag="90" />
-                            <ComboBoxItem Content="This month" Tag="thisMonth" />
-                            <ComboBoxItem Content="Last month" Tag="lastMonth" />
-                            <ComboBoxItem Content="Custom" Tag="custom" />
-                        </ComboBox>
-                    </StackPanel>
+                    <ComboBox
+                        x:Name="ViewComboBox"
+                        Width="184"
+                        Header="View"
+                        SelectionChanged="ReportSelection_Changed"
+                        Tag="Reports.View">
+                        <ComboBoxItem Content="Calendar" Tag="calendar" />
+                        <ComboBoxItem Content="Time bands" Tag="hourOfWeek" />
+                        <ComboBoxItem Content="Trend" Tag="trend" />
+                        <ComboBoxItem Content="Applications" Tag="applications" />
+                    </ComboBox>
 
-                    <StackPanel Grid.Column="1" Spacing="5">
-                        <ComboBox
-                            x:Name="ViewComboBox"
-                            Tag="Reports.View"
-                            MinWidth="180"
-                            Header="View"
-                            SelectionChanged="ReportSelection_Changed">
-                            <ComboBoxItem Content="Calendar" Tag="calendar" />
-                            <ComboBoxItem Content="Time bands" Tag="hourOfWeek" />
-                            <ComboBoxItem Content="Trend" Tag="trend" />
-                            <ComboBoxItem Content="Applications" Tag="applications" />
-                        </ComboBox>
-                    </StackPanel>
-
-                    <StackPanel x:Name="CustomFromPanel" Grid.Column="2" Spacing="5" Visibility="Collapsed">
+                    <StackPanel
+                        x:Name="CustomFromPanel"
+                        Visibility="Collapsed">
                         <DatePicker
                             x:Name="CustomFromPicker"
-                            Tag="Reports.From"
+                            Width="168"
+                            DateChanged="CustomDatePicker_DateChanged"
                             Header="From"
-                            DateChanged="CustomDatePicker_DateChanged" />
+                            Tag="Reports.From" />
                     </StackPanel>
 
-                    <StackPanel x:Name="CustomToPanel" Grid.Column="3" Spacing="5" Visibility="Collapsed">
+                    <StackPanel
+                        x:Name="CustomToPanel"
+                        Visibility="Collapsed">
                         <DatePicker
                             x:Name="CustomToPicker"
-                            Tag="Reports.To"
+                            Width="168"
+                            DateChanged="CustomDatePicker_DateChanged"
                             Header="To"
-                            DateChanged="CustomDatePicker_DateChanged" />
+                            Tag="Reports.To" />
                     </StackPanel>
 
                     <Button
                         x:Name="RefreshReportButton"
-                        Tag="Reports.Refresh"
-                        Grid.Column="4"
-                        HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         AutomationProperties.Name="Aggiorna il report ignorando la cache"
                         Click="RefreshReportButton_Click"
                         Content="Refresh"
+                        Tag="Reports.Refresh"
                         ToolTipService.ToolTip="Aggiorna report" />
-                </Grid>
-            </Grid>
-        </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
 
         <Border
             Grid.Row="2"

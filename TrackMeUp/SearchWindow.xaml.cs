@@ -15,11 +15,16 @@ namespace TrackMeUp;
 /// <summary>Displays a light, always-on-top Acrylic surface for local screenshot search.</summary>
 public sealed partial class SearchWindow : Window
 {
-    private const int LogicalWindowWidth = 1000;
-    private const int LogicalWindowHeight = 720;
+    private const int LogicalWindowWidth = 960;
+    private const int MaximumLogicalWidth = 960;
+    private const int CompactLogicalHeight = 140;
+    private const int EmptyLogicalHeight = 176;
+    private const int ErrorLogicalHeight = 222;
+    private const int ResultsChromeLogicalHeight = 158;
+    private const int ResultLogicalHeight = 180;
     private const int LogicalScreenMargin = 22;
-    private const double CursorDisplayWidthRatio = 0.82d;
-    private const double CursorDisplayHeightRatio = 0.78d;
+    private const double CursorDisplayWidthRatio = 0.64d;
+    private const double MaximumCursorDisplayHeightRatio = 0.78d;
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(700);
     private readonly SearchViewModel _viewModel;
     private readonly LocalizationService _strings;
@@ -30,6 +35,11 @@ public sealed partial class SearchWindow : Window
     private CancellationTokenSource? _queryCancellation;
     private CancellationTokenSource? _debounceCancellation;
     private XamlRoot? _xamlRoot;
+    private bool _hasExecutedQuery;
+    private bool _hasBeenActivated;
+    private bool _isActive;
+    private bool _closeOnDeactivationQueued;
+    private bool _closing;
 
     /// <summary>Creates the fixed-light floating local-search window in the requested language.</summary>
     public SearchWindow(ITrackMeUpApplication application, string language)
@@ -49,9 +59,10 @@ public sealed partial class SearchWindow : Window
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, CompactLogicalHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
+        Activated += SearchWindow_Activated;
         Closed += SearchWindow_Closed;
     }
 
@@ -68,7 +79,7 @@ public sealed partial class SearchWindow : Window
     /// <summary>Activates the existing search window centered on the monitor containing the pointer.</summary>
     public void ActivateAtCursor()
     {
-        _placement.ResizeAndCenterOnCursorDisplay(RootGrid, CursorDisplayWidthRatio, CursorDisplayHeightRatio);
+        ResizeForCurrentState();
         Activate();
         FocusQuery();
     }
@@ -82,9 +93,18 @@ public sealed partial class SearchWindow : Window
         }
 
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token, centerOnCursorDisplay: true);
-        _placement.ResizeAndCenterOnCursorDisplay(RootGrid, CursorDisplayWidthRatio, CursorDisplayHeightRatio);
+        try
+        {
+            await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token, centerOnCursorDisplay: true);
+        }
+        catch (OperationCanceledException) when (_closing)
+        {
+            return;
+        }
+
+        ResizeForCurrentState();
         UpdateTitleBarInsets();
+        CenterQueryText();
         FocusQuery();
     }
 
@@ -113,6 +133,7 @@ public sealed partial class SearchWindow : Window
         {
             _queryCancellation?.Cancel();
             _viewModel.Clear();
+            SearchInfoBar.IsOpen = false;
             SearchProgressRing.IsActive = false;
             UpdateResultState(hasExecutedQuery: false);
             return;
@@ -144,7 +165,16 @@ public sealed partial class SearchWindow : Window
             var result = await _viewModel.SuggestAsync(query, cancellationToken);
             if (!cancellationToken.IsCancellationRequested && result.Succeeded)
             {
-                QueryBox.ItemsSource = result.Value?.ToArray() ?? Array.Empty<string>();
+                QueryBox.ItemsSource = result.Value?
+                    .Select(suggestion => new SearchSuggestionDisplayItem(
+                        suggestion.Text,
+                        suggestion.ConfidenceDisplay,
+                        string.Format(
+                            _culture,
+                            _strings.Translate("Search.Suggestion.Confidence"),
+                            suggestion.ConfidencePercent)))
+                    .ToArray()
+                    ?? Array.Empty<SearchSuggestionDisplayItem>();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -189,13 +219,13 @@ public sealed partial class SearchWindow : Window
             if (!cancellationToken.IsCancellationRequested)
             {
                 SearchProgressRing.IsActive = false;
-                FocusQuery();
             }
         }
     }
 
     private void UpdateResultState(bool hasExecutedQuery)
     {
+        _hasExecutedQuery = hasExecutedQuery;
         var hasResults = _viewModel.Results.Count > 0;
         SearchResultsList.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
         EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults ? Visibility.Visible : Visibility.Collapsed;
@@ -205,6 +235,25 @@ public sealed partial class SearchWindow : Window
             _strings.Translate("Search.ResultCount"),
             _viewModel.Results.Count,
             _viewModel.TotalCount);
+        ResizeForCurrentState();
+    }
+
+    private void ResizeForCurrentState()
+    {
+        var resultCount = _viewModel.Results.Count;
+        var logicalHeight = resultCount > 0
+            ? checked(ResultsChromeLogicalHeight + (resultCount * ResultLogicalHeight))
+            : SearchInfoBar.IsOpen
+                ? ErrorLogicalHeight
+                : _hasExecutedQuery
+                    ? EmptyLogicalHeight
+                    : CompactLogicalHeight;
+        _placement.ResizeAndCenterOnCursorDisplay(
+            RootGrid,
+            CursorDisplayWidthRatio,
+            MaximumLogicalWidth,
+            logicalHeight,
+            MaximumCursorDisplayHeightRatio);
     }
 
     private void SearchResultsList_ItemClick(object sender, ItemClickEventArgs e)
@@ -217,7 +266,20 @@ public sealed partial class SearchWindow : Window
         }
     }
 
-    private void QueryBox_GotFocus(object sender, RoutedEventArgs e) => SelectAllQueryText();
+    private void QueryBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        CenterQueryText();
+        SelectAllQueryText();
+    }
+
+    private void CenterQueryText()
+    {
+        if (FindDescendant<TextBox>(QueryBox) is { } textBox)
+        {
+            textBox.VerticalContentAlignment = VerticalAlignment.Center;
+            textBox.Padding = new Thickness(textBox.Padding.Left, 0, textBox.Padding.Right, 0);
+        }
+    }
 
     private void SelectAllQueryText()
     {
@@ -259,6 +321,8 @@ public sealed partial class SearchWindow : Window
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = true;
+            presenter.IsResizable = false;
+            presenter.IsMinimizable = false;
             presenter.IsMaximizable = false;
         }
 
@@ -295,17 +359,51 @@ public sealed partial class SearchWindow : Window
     {
         if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
+            ResizeForCurrentState();
+            UpdateTitleBarInsets();
+        }
+    }
+
+    private void SearchWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        _isActive = args.WindowActivationState != WindowActivationState.Deactivated;
+        if (_isActive)
+        {
+            _hasBeenActivated = true;
+            return;
+        }
+
+        if (!_hasBeenActivated || _closing || _closeOnDeactivationQueued)
+        {
+            return;
+        }
+
+        _closeOnDeactivationQueued = true;
+        void CloseIfStillInactive()
+        {
+            _closeOnDeactivationQueued = false;
+            if (!_isActive && !_closing)
+            {
+                _closing = true;
+                Close();
+            }
+        }
+
+        if (!DispatcherQueue.TryEnqueue(CloseIfStillInactive))
+        {
+            CloseIfStillInactive();
         }
     }
 
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
-        await _placement.SaveAsync(CancellationToken.None);
-        _placement.Dispose();
+        _closing = true;
+        Activated -= SearchWindow_Activated;
         _lifetimeCancellation.Cancel();
         CancelDebounce();
         _queryCancellation?.Cancel();
+        await _placement.SaveAsync(CancellationToken.None);
+        _placement.Dispose();
         _queryCancellation?.Dispose();
         _lifetimeCancellation.Dispose();
         if (_xamlRoot is not null)
@@ -314,3 +412,9 @@ public sealed partial class SearchWindow : Window
         }
     }
 }
+
+/// <summary>Contains localized values rendered by one AutoSuggestBox popup row.</summary>
+internal sealed record SearchSuggestionDisplayItem(
+    string Text,
+    string ConfidenceDisplay,
+    string ConfidenceLabel);

@@ -92,6 +92,26 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void SearchIndexingProgress_IsLocalizedInEnglishAndItalian()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Equal("Search snapshots", english.Translate("Search.Title"));
+        Assert.Equal("No matching snapshots", english.Translate("Search.NoResults"));
+        Assert.Equal("Search indexing", english.Translate("SearchIndex.Title"));
+        Assert.Equal("Search results", english.Translate("SearchIndex.Results.Title"));
+        Assert.Equal("Search suggestions", english.Translate("SearchIndex.Suggestions.Title"));
+        Assert.Equal("Cancel", english.Translate("SearchIndex.Cancel"));
+        Assert.Equal("Cerca negli snapshot", italian.Translate("Search.Title"));
+        Assert.Equal("Nessuno snapshot corrispondente", italian.Translate("Search.NoResults"));
+        Assert.Equal("Indicizzazione ricerca", italian.Translate("SearchIndex.Title"));
+        Assert.Equal("Risultati di ricerca", italian.Translate("SearchIndex.Results.Title"));
+        Assert.Equal("Suggerimenti di ricerca", italian.Translate("SearchIndex.Suggestions.Title"));
+        Assert.Equal("Annulla", italian.Translate("SearchIndex.Cancel"));
+    }
+
+    [Fact]
     public void OperationsDescriptions_AreDetailedInEnglishAndItalian()
     {
         var english = new LocalizationService("en");
@@ -99,7 +119,7 @@ public sealed class LocalizationServiceTests
         (string Key, string English, string Italian)[] descriptions =
         [
             ("Operations.Runtime.Description", "Review the TrackMeUp runtime, protocol and capabilities, logging status, and a current snapshot of CPU, GPU, memory, network, and local storage. These diagnostics are read from this PC.", "Controlla il runtime di TrackMeUp, il protocollo e le funzionalità, lo stato dei log e una fotografia attuale di CPU, GPU, memoria, rete e archiviazione locale. Questi dati diagnostici vengono letti da questo PC."),
-            ("Operations.SnapshotAi.Description", "Capture all displays or the active window, choose whether to keep and label the images, inspect the latest capture, or ask the configured AI provider to describe the current context. A new capture is created for analysis only when you allow it.", "Cattura tutti gli schermi o la finestra attiva, scegli se conservare ed etichettare le immagini, controlla l'ultima cattura oppure chiedi al provider AI configurato di descrivere il contesto corrente. Una nuova cattura per l'analisi viene creata solo quando lo consenti."),
+            ("Operations.SnapshotAi.Description", "Inspect the latest retained capture, open the screen-capture folder, or ask the configured AI provider to describe the current context. A new capture is created for analysis only when you allow it.", "Controlla l'ultima cattura conservata, apri la cartella delle catture oppure chiedi al provider AI configurato di descrivere il contesto corrente. Una nuova cattura per l'analisi viene creata solo quando lo consenti."),
             ("Operations.Reports.Description", "Create today's report or a digest for a selected date from activity already stored on this PC. Open the generated file automatically or browse the reports folder.", "Crea il report di oggi o il digest di una data scelta usando l'attività già salvata su questo PC. Apri automaticamente il file generato oppure consulta la cartella dei report."),
             ("Operations.Privacy.Description", "Create local rules that exclude matching app names, window titles, or context details before TrackMeUp stores the context or shares it with an AI provider. Review existing rules and test whether the current context would be skipped.", "Crea regole locali che escludono nomi di app, titoli di finestre o dettagli di contesto corrispondenti prima che TrackMeUp salvi il contesto o lo condivida con un provider AI. Controlla le regole esistenti e verifica se il contesto corrente verrebbe ignorato."),
             ("Operations.Retention.Description", "Review how long activity data and screen captures remain on this PC. Preview exactly which records and files are eligible for cleanup; deletion always requires your explicit confirmation.", "Controlla per quanto tempo dati di attività e catture schermo restano su questo PC. Visualizza in anteprima quali record e file possono essere rimossi: l'eliminazione richiede sempre una conferma esplicita."),

@@ -19,6 +19,13 @@ public sealed record ScreenshotSearchResult(
     string TelemetryDisplay,
     float Score);
 
+/// <summary>Contains one safe, compact suggestion prepared for the command-palette popup.</summary>
+public sealed record SearchSuggestionViewState(string Text, int ConfidencePercent)
+{
+    /// <summary>Gets the concise percentage rendered in the suggestion badge.</summary>
+    public string ConfidenceDisplay => $"{ConfidencePercent}%";
+}
+
 /// <summary>Executes bounded screenshot queries through the shared application facade.</summary>
 public sealed class SearchViewModel : ViewModelBase
 {
@@ -141,17 +148,17 @@ public sealed class SearchViewModel : ViewModelBase
     }
 
     /// <summary>Gets prefix and infix suggestions from the local suggestion index.</summary>
-    public async Task<OperationResult<IReadOnlyList<string>>> SuggestAsync(
+    public async Task<OperationResult<IReadOnlyList<SearchSuggestionViewState>>> SuggestAsync(
         string text,
         CancellationToken cancellationToken)
     {
         var query = text.Trim();
         if (query.Length < MinimumQueryLength)
         {
-            return OperationResult<IReadOnlyList<string>>.Success(
+            return OperationResult<IReadOnlyList<SearchSuggestionViewState>>.Success(
                 "search.suggestions.cleared",
                 "SearchQueryCleared",
-                Array.Empty<string>());
+                Array.Empty<SearchSuggestionViewState>());
         }
 
         var response = await _application.GetSearchSuggestionsAsync(
@@ -161,7 +168,73 @@ public sealed class SearchViewModel : ViewModelBase
                 Limit = MaximumSuggestions
             },
             cancellationToken);
-        return response;
+        if (!response.Succeeded || response.Value is null)
+        {
+            return new OperationResult<IReadOnlyList<SearchSuggestionViewState>>(
+                false,
+                response.Code,
+                response.MessageKey,
+                null,
+                response.Issues);
+        }
+
+        return OperationResult<IReadOnlyList<SearchSuggestionViewState>>.Success(
+            response.Code,
+            response.MessageKey,
+            ProjectSuggestions(response.Value, query));
+    }
+
+    private static IReadOnlyList<SearchSuggestionViewState> ProjectSuggestions(
+        IReadOnlyList<SearchSuggestion> suggestions,
+        string query)
+    {
+        var cleaned = suggestions
+            .Select(suggestion => new
+            {
+                Text = ScreenshotDetailsProjection.ToPlainTextPreview(suggestion.Text),
+                suggestion.Weight
+            })
+            .Where(suggestion => !string.IsNullOrWhiteSpace(suggestion.Text))
+            .GroupBy(suggestion => suggestion.Text, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new
+            {
+                Text = group.First().Text,
+                Weight = group.Max(suggestion => suggestion.Weight)
+            })
+            .OrderByDescending(suggestion => suggestion.Weight)
+            .ThenBy(suggestion => suggestion.Text, StringComparer.OrdinalIgnoreCase)
+            .Take(MaximumSuggestions)
+            .ToArray();
+        if (cleaned.Length == 0)
+        {
+            return Array.Empty<SearchSuggestionViewState>();
+        }
+
+        var maximumWeight = Math.Max(1, cleaned.Max(suggestion => suggestion.Weight));
+        return cleaned
+            .Select((suggestion, index) => new SearchSuggestionViewState(
+                suggestion.Text,
+                CalculateSuggestionConfidence(suggestion.Text, query, suggestion.Weight, maximumWeight, index)))
+            .ToArray();
+    }
+
+    private static int CalculateSuggestionConfidence(
+        string suggestion,
+        string query,
+        long weight,
+        long maximumWeight,
+        int rank)
+    {
+        var matchIndex = suggestion.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        var lexicalScore = matchIndex == 0
+            ? 1d
+            : matchIndex > 0 && !char.IsLetterOrDigit(suggestion[matchIndex - 1])
+                ? 0.9d
+                : 0.78d;
+        var weightScore = Math.Log(Math.Max(0, weight) + 1d) / Math.Log(maximumWeight + 1d);
+        var rankScore = Math.Max(0.35d, 1d - (rank * 0.12d));
+        var confidence = (lexicalScore * 0.55d) + (weightScore * 0.30d) + (rankScore * 0.15d);
+        return Math.Clamp((int)Math.Round(confidence * 100d, MidpointRounding.AwayFromZero), 55, 99);
     }
 
     private static ScreenshotSearchResult Project(SearchHit hit, CultureInfo culture, string query)
@@ -253,7 +326,13 @@ public sealed class SearchViewModel : ViewModelBase
             return "—";
         }
 
-        var compact = string.Join(' ', source.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var plainText = ScreenshotDetailsProjection.ToPlainTextPreview(source, maximumCharacters: 4_000);
+        if (plainText.Length == 0)
+        {
+            return "—";
+        }
+
+        var compact = string.Join(' ', plainText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         var matchIndex = compact.IndexOf(query, StringComparison.OrdinalIgnoreCase);
         if (matchIndex < 0 || compact.Length <= 180)
         {

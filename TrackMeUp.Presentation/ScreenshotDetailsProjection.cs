@@ -135,6 +135,28 @@ public static partial class ScreenshotDetailsProjection
         return result;
     }
 
+    /// <summary>Flattens generated Markdown into one bounded inert preview without formatting syntax or targets.</summary>
+    public static string ToPlainTextPreview(string? markdown, int maximumCharacters = 120)
+    {
+        if (maximumCharacters <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCharacters));
+        }
+
+        var blocks = ParseMarkdown(markdown);
+        if (blocks.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var substantiveBlocks = blocks.Where(block => block.Kind != SafeMarkdownBlockKind.Heading).ToArray();
+        var previewBlocks = substantiveBlocks.Length > 0 ? substantiveBlocks : blocks;
+        var preview = string.Join(' ', previewBlocks.Select(block => block.Text)).Trim();
+        return preview.Length <= maximumCharacters
+            ? preview
+            : string.Concat(preview.AsSpan(0, maximumCharacters).TrimEnd(), "…");
+    }
+
     private static void FlushParagraph(List<SafeMarkdownBlock> result, List<string> paragraph)
     {
         if (paragraph.Count == 0)

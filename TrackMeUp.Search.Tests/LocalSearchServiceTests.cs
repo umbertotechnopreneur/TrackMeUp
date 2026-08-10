@@ -32,7 +32,8 @@ public sealed class LocalSearchServiceTests
         });
 
         Assert.Contains(suggestions, suggestion =>
-            string.Equals(suggestion, "Visual Studio Code", StringComparison.OrdinalIgnoreCase));
+            string.Equals(suggestion.Text, "Visual Studio Code", StringComparison.OrdinalIgnoreCase)
+            && suggestion.Weight > 0);
         await Assert.ThrowsAsync<ArgumentException>(() => harness.Service.SuggestAsync(new SearchSuggestionRequest
         {
             Text = "vi",

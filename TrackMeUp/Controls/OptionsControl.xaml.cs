@@ -39,6 +39,9 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Occurs when the user requests a real, bounded test of the saved AI connection.</summary>
     public event EventHandler? AiConnectionTestRequested;
 
+    /// <summary>Occurs when the user requests the dedicated search-index progress window.</summary>
+    public event EventHandler? SearchIndexingRequested;
+
     /// <summary>Occurs when the user requests one focused local-data or operations surface.</summary>
     internal event Action<OperationsSection>? OperationsSectionRequested;
 
@@ -172,27 +175,9 @@ public sealed partial class OptionsControl : UserControl
     private void OcrEnabledSwitch_Toggled(object sender, RoutedEventArgs e) =>
         OcrLanguageBox.IsEnabled = OcrEnabledSwitch.IsOn;
 
-    /// <summary>Requests a complete rebuild of the reconstructible local search index.</summary>
-    private async void RebuildSearchIndexButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_application is null)
-        {
-            return;
-        }
-
-        RebuildSearchIndexButton.IsEnabled = false;
-        try
-        {
-            var result = await _application.RebuildSearchIndexAsync(CancellationToken.None);
-            StatusText.Text = result.Succeeded
-                ? string.Format(T("Options.Search.RebuildCompleted"), result.Value)
-                : T("Options.Search.RebuildError");
-        }
-        finally
-        {
-            RebuildSearchIndexButton.IsEnabled = true;
-        }
-    }
+    /// <summary>Requests the detached progress surface; the control does not own top-level windows.</summary>
+    private void RebuildSearchIndexButton_Click(object sender, RoutedEventArgs e) =>
+        SearchIndexingRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Maintains a single selected theme in the segmented theme control.</summary>
     private void ThemeButton_Click(object sender, RoutedEventArgs e)

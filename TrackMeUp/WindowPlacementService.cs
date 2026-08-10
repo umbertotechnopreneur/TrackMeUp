@@ -126,6 +126,61 @@ internal sealed class WindowPlacementService : IDisposable
         CenterInWorkArea(area);
     }
 
+    internal void ResizeAndCenterOnCursorDisplay(
+        FrameworkElement root,
+        double widthRatio,
+        int maximumLogicalWidth,
+        int logicalHeight,
+        double maximumHeightRatio)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        if (widthRatio is <= 0d or > 1d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(widthRatio));
+        }
+
+        if (logicalHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(logicalHeight));
+        }
+
+        if (maximumLogicalWidth <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumLogicalWidth));
+        }
+
+        if (maximumHeightRatio is <= 0d or > 1d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumHeightRatio));
+        }
+
+        // Content chooses the desired logical height; the cursor display supplies DPI and a hard work-area ceiling.
+        var area = CursorWorkArea();
+        var scale = ResolveScale(root);
+        var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
+        var availableWidth = Math.Max(1, area.Width - (margin * 2));
+        var availableHeight = Math.Max(1, area.Height - (margin * 2));
+        var minimumSize = UpdateMinimumSize(scale, area);
+        var maximumWidth = Math.Clamp(
+            (int)Math.Ceiling(maximumLogicalWidth * scale),
+            minimumSize.Width,
+            availableWidth);
+        var width = Math.Clamp(
+            Math.Min((int)Math.Round(area.Width * widthRatio), maximumWidth),
+            minimumSize.Width,
+            availableWidth);
+        var maximumHeight = Math.Clamp(
+            (int)Math.Round(area.Height * maximumHeightRatio),
+            minimumSize.Height,
+            availableHeight);
+        var height = Math.Clamp(
+            (int)Math.Ceiling(logicalHeight * scale),
+            minimumSize.Height,
+            maximumHeight);
+        _appWindow.Resize(new SizeInt32(width, height));
+        CenterInWorkArea(area);
+    }
+
     internal async Task SaveAsync(CancellationToken cancellationToken)
     {
         var result = await _application.SaveWindowStateAsync(

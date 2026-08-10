@@ -57,6 +57,7 @@ public sealed partial class MainWindow : Window
     private AppSettings? _menuSettings;
     private AboutWindow? _aboutWindow;
     private ScheduleWindow? _scheduleWindow;
+    private SearchIndexingWindow? _searchIndexingWindow;
     private XamlRoot? _xamlRoot;
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
@@ -135,6 +136,7 @@ public sealed partial class MainWindow : Window
         OptionsControl.LayoutChanged += OptionsControl_LayoutChanged;
         OptionsControl.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
         OptionsControl.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
+        OptionsControl.SearchIndexingRequested += OptionsControl_SearchIndexingRequested;
         OperationsControl.Initialize(application, _dialogs, this);
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
@@ -1139,6 +1141,11 @@ public sealed partial class MainWindow : Window
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         _scheduleWindow?.ApplyTheme(_theme);
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
+        var indexingTheme = RootGrid.RequestedTheme == ElementTheme.Default
+            ? RootGrid.ActualTheme
+            : RootGrid.RequestedTheme;
+        _searchIndexingWindow?.ApplyTheme(indexingTheme);
+        _searchIndexingWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
         var reportsLabel = T("Reports.Title");
         var searchLabel = T("Search.Title");
@@ -1199,6 +1206,39 @@ public sealed partial class MainWindow : Window
         await _dialogs.ShowAiConnectionTestAsync(_application, this, RootGrid.RequestedTheme);
         _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
         await RefreshAiMonthlySpendAsync();
+    }
+
+    /// <summary>Opens or reactivates the owned progress window for the two local search indexes.</summary>
+    private void OptionsControl_SearchIndexingRequested(object? sender, EventArgs e)
+    {
+        if (_searchIndexingWindow is not null)
+        {
+            _searchIndexingWindow.Activate();
+            return;
+        }
+
+        var effectiveTheme = RootGrid.RequestedTheme == ElementTheme.Default
+            ? RootGrid.ActualTheme
+            : RootGrid.RequestedTheme;
+        var indexingWindow = new SearchIndexingWindow(
+            _application,
+            effectiveTheme,
+            _strings.RequestedLanguage,
+            _appWindow,
+            WinRT.Interop.WindowNative.GetWindowHandle(this));
+        indexingWindow.Closed += SearchIndexingWindow_Closed;
+        _searchIndexingWindow = indexingWindow;
+        indexingWindow.Activate();
+    }
+
+    private void SearchIndexingWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (sender is SearchIndexingWindow indexingWindow)
+        {
+            indexingWindow.Closed -= SearchIndexingWindow_Closed;
+        }
+
+        _searchIndexingWindow = null;
     }
 
     private void UpdateOpenAiMenuAccessibility()
@@ -1419,11 +1459,18 @@ public sealed partial class MainWindow : Window
         _appWindow.Changed -= AppWindow_Changed;
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
+        OptionsControl.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
 
         if (_scheduleWindow is not null)
         {
             _scheduleWindow.Close();
             _scheduleWindow = null;
+        }
+
+        if (_searchIndexingWindow is not null)
+        {
+            _searchIndexingWindow.Close();
+            _searchIndexingWindow = null;
         }
     }
 }

@@ -361,7 +361,7 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken);
 
     /// <summary>Returns type-ahead suggestions from the separate local suggestion index.</summary>
-    Task<OperationResult<IReadOnlyList<string>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken);
+    Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken);
 
     /// <summary>Rebuilds the mandatory local search index from durable source data.</summary>
     Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken);

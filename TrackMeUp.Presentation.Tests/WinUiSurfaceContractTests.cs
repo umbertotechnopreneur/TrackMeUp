@@ -382,6 +382,7 @@ public sealed class WinUiSurfaceContractTests
         var search = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
         var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
         var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
+        var searchIndexing = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchIndexingWindow.xaml.cs"));
         var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
         var core = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "WindowStateService.cs"));
 
@@ -399,10 +400,12 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("WindowStateKeys.Search", search, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.About", about, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Schedule", schedule, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.SearchIndexing", searchIndexing, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Screenshots => new(760, 540)", core, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", reports, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", screenshots, StringComparison.Ordinal);
+        Assert.Contains("_placement.Dispose();", searchIndexing, StringComparison.Ordinal);
         Assert.DoesNotContain("private void ResizeForLogicalContent()", screenshots, StringComparison.Ordinal);
         Assert.DoesNotContain("private void ResizeForLogicalContent()", reports, StringComparison.Ordinal);
     }

@@ -29,6 +29,21 @@ public sealed class ScreenshotDetailsProjectionTests
     }
 
     [Fact]
+    public void ToPlainTextPreview_RemovesMarkdownHeadingsFormattingAndTargets()
+    {
+        var preview = ScreenshotDetailsProjection.ToPlainTextPreview("""
+            ## Activity
+
+            The user is listening to **Spotify** while reviewing [liked songs](https://example.test/private).
+            """);
+
+        Assert.Equal("The user is listening to Spotify while reviewing liked songs.", preview);
+        Assert.DoesNotContain("#", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("**", preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("https://", preview, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Create_FormatsOptionalSnapshotDetailsWithoutInventingMissingAiContent()
     {
         var capturedAt = new DateTimeOffset(2026, 8, 9, 2, 21, 0, TimeSpan.Zero);
