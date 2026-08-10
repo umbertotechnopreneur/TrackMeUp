@@ -324,6 +324,8 @@ public sealed class CliRouterTests
         }
         public Task<OperationResult<RetentionPreview>> PreviewRetentionAsync(CancellationToken cancellationToken) => Unsupported<RetentionPreview>();
         public Task<OperationResult<RetentionPreview>> RunRetentionAsync(RetentionRequest request, CancellationToken cancellationToken) => Unsupported<RetentionPreview>();
+
+        public Task<OperationResult<AtomicResetPlan>> PrepareAtomicResetAsync(AtomicResetRequest request, CancellationToken cancellationToken) => Unsupported<AtomicResetPlan>();
         public Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken)
         {
             TotalCalls++;

@@ -16,6 +16,7 @@ public sealed partial class OperationsControl : UserControl
 {
     private ITrackMeUpApplication? _application;
     private MicaDialogService? _dialogs;
+    private Window? _ownerWindow;
     private LocalizationService _strings = new("system");
     private bool _operationInProgress;
     private bool _returnToOverviewOnBack;
@@ -29,6 +30,9 @@ public sealed partial class OperationsControl : UserControl
 
     /// <summary>Occurs after the visible operational page changes and the host may need to re-measure.</summary>
     public event EventHandler? LayoutChanged;
+
+    /// <summary>Occurs after the runtime has accepted both confirmations and prepared the reset plan.</summary>
+    internal event EventHandler<AtomicResetPreparedEventArgs>? AtomicResetPrepared;
 
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
@@ -45,6 +49,8 @@ public sealed partial class OperationsControl : UserControl
         ApplyNavigationAccessibility(OpenPrivacyLink, "Options.Navigation.Privacy.Action", "Options.Navigation.Privacy.Description");
         ApplyNavigationAccessibility(OpenRetentionLink, "Options.Navigation.Retention.Action", "Options.Navigation.Retention.Description");
         ApplyNavigationAccessibility(OpenPluginsLink, "Options.Navigation.Plugins.Action", "Options.Navigation.Plugins.Description");
+        AutomationProperties.SetName(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Action"));
+        AutomationProperties.SetHelpText(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Description"));
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
@@ -52,7 +58,7 @@ public sealed partial class OperationsControl : UserControl
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
-        ArgumentNullException.ThrowIfNull(ownerWindow);
+        _ownerWindow = ownerWindow ?? throw new ArgumentNullException(nameof(ownerWindow));
         SnapshotAiSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
         ReportsSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
         PrivacySection.Initialize(application, dialogs, ownerWindow, OperationBanner);
@@ -97,6 +103,8 @@ public sealed partial class OperationsControl : UserControl
     private ITrackMeUpApplication Application => _application ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private MicaDialogService Dialogs => _dialogs ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
+
+    private Window OwnerWindow => _ownerWindow ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private async void RuntimeHealthButton_Click(object sender, RoutedEventArgs e)
     {
@@ -161,6 +169,53 @@ public sealed partial class OperationsControl : UserControl
     private void OpenRetentionLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Retention, sender);
 
     private void OpenPluginsLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Plugins, sender);
+
+    private async void AtomicNukeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_operationInProgress)
+        {
+            ShowStatus(L("Operation in progress", "Operazione in corso"), L("Wait for the current operation to finish.", "Attendi il completamento dell'operazione corrente."), InfoBarSeverity.Warning);
+            return;
+        }
+
+        var firstConfirmation = await Dialogs.ConfirmAsync(
+            Application,
+            OwnerWindow,
+            MicaDialogRequest.Confirmation(
+                _strings.Translate("Operations.AtomicNuke.First.Title"),
+                _strings.Translate("Operations.AtomicNuke.First.Message"),
+                _strings.Translate("Operations.AtomicNuke.First.Continue"),
+                _strings.Translate("Operations.AtomicNuke.Cancel"),
+                Windows.UI.Color.FromArgb(255, 232, 118, 43)),
+            ActualTheme);
+        if (!firstConfirmation)
+        {
+            return;
+        }
+
+        var finalConfirmation = await Dialogs.ConfirmAsync(
+            Application,
+            OwnerWindow,
+            MicaDialogRequest.Confirmation(
+                _strings.Translate("Operations.AtomicNuke.Second.Title"),
+                _strings.Translate("Operations.AtomicNuke.Second.Message"),
+                _strings.Translate("Operations.AtomicNuke.Second.Confirm"),
+                _strings.Translate("Operations.AtomicNuke.Cancel"),
+                Windows.UI.Color.FromArgb(255, 200, 59, 49)),
+            ActualTheme);
+        if (!finalConfirmation)
+        {
+            return;
+        }
+
+        var result = await ExecuteAsync((application, token) => application.PrepareAtomicResetAsync(
+            new AtomicResetRequest(firstConfirmation, finalConfirmation),
+            token));
+        if (result is { Succeeded: true, Value: { } plan })
+        {
+            AtomicResetPrepared?.Invoke(this, new AtomicResetPreparedEventArgs(plan));
+        }
+    }
 
     private void OpenSection(OperationsSection section, object sender)
     {
@@ -289,4 +344,10 @@ public sealed partial class OperationsControl : UserControl
 
         return $"{value:0.#} {units[unit]}";
     }
+}
+
+/// <summary>Contains the validated reset plan returned by the runtime owner.</summary>
+internal sealed class AtomicResetPreparedEventArgs(AtomicResetPlan plan) : EventArgs
+{
+    internal AtomicResetPlan Plan { get; } = plan;
 }

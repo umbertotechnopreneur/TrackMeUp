@@ -94,6 +94,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the notification-area context menu requests an orderly application exit.</summary>
     public event EventHandler? ExitRequested;
 
+    /// <summary>Occurs after the user confirms and the runtime prepares a complete local-data reset.</summary>
+    internal event EventHandler<AtomicResetPreparedEventArgs>? AtomicResetPrepared;
+
     #endregion
 
     #region Initialization
@@ -138,6 +141,7 @@ public sealed partial class MainWindow : Window
         OptionsControl.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
         OptionsControl.SearchIndexingRequested += OptionsControl_SearchIndexingRequested;
         OperationsControl.Initialize(application, _dialogs, this);
+        OperationsControl.AtomicResetPrepared += OperationsControl_AtomicResetPrepared;
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
@@ -831,6 +835,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void OperationsControl_AtomicResetPrepared(object? sender, AtomicResetPreparedEventArgs e) =>
+        AtomicResetPrepared?.Invoke(this, e);
+
     /// <summary>Shows one top-level panel and measures the visible XAML content before resizing.</summary>
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
@@ -1466,6 +1473,7 @@ public sealed partial class MainWindow : Window
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
         OptionsControl.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
+        OperationsControl.AtomicResetPrepared -= OperationsControl_AtomicResetPrepared;
 
         if (_scheduleWindow is not null)
         {

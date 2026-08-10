@@ -59,6 +59,9 @@ public sealed class LocalStore
     /// <summary>Gets the dedicated directory used by the reconstructible Lucene search index.</summary>
     internal string SearchIndexRootDirectory => Path.Combine(_dataDirectory, "search");
 
+    /// <summary>Gets the absolute root containing all application-owned local data.</summary>
+    internal string DataDirectory => _dataDirectory;
+
     /// <summary>Persists raw local OCR and optional AI refinement for one owned screenshot source.</summary>
     internal void UpsertScreenshotTextSnapshot(string captureId, ScreenshotTextSnapshot snapshot)
     {

@@ -286,6 +286,7 @@ public sealed class WinUiOperationsSurfaceContractTests
             "GetRetentionStatusAsync",
             "PreviewRetentionAsync",
             "RunRetentionAsync",
+            "PrepareAtomicResetAsync",
             "GetPluginsAsync",
             "SetPluginEnabledAsync"
         ];
@@ -310,6 +311,23 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("MicaDialogRequest.Confirmation(", source, StringComparison.Ordinal);
         Assert.Contains("if (!confirmed)", source, StringComparison.Ordinal);
         Assert.Contains("new RetentionRequest(Execute: true, Confirmed: true)", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Guards the two-step warning flow and keeps destructive reset work behind the shared facade.</summary>
+    [Fact]
+    public void AtomicReset_RequiresTwoSharedDialogsAndUsesTheApplicationFacade()
+    {
+        var surface = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+        var button = surface.Descendants().Single(element => HasName(element, "AtomicNukeButton"));
+
+        Assert.Equal("AtomicNukeButton_Click", button.Attribute("Click")?.Value);
+        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.AtomicNuke.Description");
+        Assert.Equal(2, CountOccurrences(source, "Dialogs.ConfirmAsync("));
+        Assert.Contains("new AtomicResetRequest(firstConfirmation, finalConfirmation)", source, StringComparison.Ordinal);
+        Assert.Contains("PrepareAtomicResetAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Directory.Delete", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Process.Start", source, StringComparison.Ordinal);
     }
 
     /// <summary>Prevents view code from bypassing the single queued dialog engine.</summary>

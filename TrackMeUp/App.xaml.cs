@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Dispatching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
 using TrackMeUp.Cli;
+using TrackMeUp.Controls;
 using TrackMeUp.Runtime;
 using TrackMeUp.Services;
 using TaskbarWidgetSurface = TrackMeUp.Taskbar.TaskbarWidgetSurface;
@@ -21,6 +23,8 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly ServiceProvider _services;
     private readonly ILogger<App> _logger;
     private readonly MicaDialogService _dialogs = new();
+    private readonly AtomicResetService _atomicReset = new();
+    private readonly DispatcherQueue _dispatcherQueue;
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
     private ScreenshotWindow? _screenshotsWindow;
@@ -32,10 +36,13 @@ public partial class App : Microsoft.UI.Xaml.Application
     private bool _reportsOnly;
     private bool _searchWindowOpening;
     private int _shutdownStarted;
+    private int _atomicResetStarted;
 
     /// <summary>Initializes the WinUI application object and its logging composition root.</summary>
     public App()
     {
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread()
+            ?? throw new InvalidOperationException("The WinUI dispatcher queue is unavailable.");
         _services = LoggingBootstrapper.CreateServiceProvider();
         _logger = _services.GetRequiredService<ILogger<App>>();
         InitializeComponent();
@@ -91,6 +98,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.ExitRequested += MainWindow_ExitRequested;
+        _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
         _window.Closed += MainWindow_Closed;
         if (options.StartWithWindows)
         {
@@ -250,6 +258,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotsRequested -= MainWindow_ScreenshotsRequested;
             _window.ExitRequested -= MainWindow_ExitRequested;
+            _window.AtomicResetPrepared -= MainWindow_AtomicResetPrepared;
             _window.Closed -= MainWindow_Closed;
             _window = null;
         }
@@ -277,6 +286,11 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
 
         DisposeTaskbarWidget();
+        if (Volatile.Read(ref _atomicResetStarted) != 0)
+        {
+            return;
+        }
+
         await ShutdownRuntimeAsync();
         Exit();
     }
@@ -378,6 +392,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (host.TryStart())
         {
             _logger.LogInformation("Runtime ownership acquired for this installation.");
+            host.AtomicResetPrepared += RuntimeHost_AtomicResetPrepared;
             _runtimeHost = host;
             _runtimeApplication = localApplication;
             _applicationFacade = localApplication;
@@ -402,6 +417,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         // Stop accepting IPC before disposing the one facade that owns tracking and persistence.
         if (_runtimeHost is not null)
         {
+            _runtimeHost.AtomicResetPrepared -= RuntimeHost_AtomicResetPrepared;
             await _runtimeHost.DisposeAsync();
             _runtimeHost = null;
         }
@@ -413,6 +429,54 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
 
         _runtimeApplication = null;
+    }
+
+    private void MainWindow_AtomicResetPrepared(object? sender, AtomicResetPreparedEventArgs e) =>
+        BeginAtomicReset(e.Plan);
+
+    private void RuntimeHost_AtomicResetPrepared(AtomicResetPlan plan)
+    {
+        _ = _dispatcherQueue.TryEnqueue(() => BeginAtomicReset(plan));
+    }
+
+    private void BeginAtomicReset(AtomicResetPlan plan)
+    {
+        if (Interlocked.Exchange(ref _atomicResetStarted, 1) != 0)
+        {
+            return;
+        }
+
+        _ = CompleteAtomicResetAsync(plan, ownsRuntime: _runtimeHost is not null);
+    }
+
+    private async Task CompleteAtomicResetAsync(AtomicResetPlan plan, bool ownsRuntime)
+    {
+        try
+        {
+            _window?.Close();
+            if (ownsRuntime)
+            {
+                // A remote frontend receives the response first and gets a short window to release its log sink.
+                await Task.Delay(TimeSpan.FromMilliseconds(750));
+            }
+
+            await ShutdownRuntimeAsync();
+            await LoggingBootstrapper.ShutdownAsync(_services);
+            if (ownsRuntime)
+            {
+                _atomicReset.ExecuteAndRelaunch(plan);
+            }
+        }
+        catch (Exception exception)
+        {
+            // Logging may already be closed because deletion must run without open handles.
+            System.Diagnostics.Debug.WriteLine($"TrackMeUp atomic reset failed: {exception.GetType().Name}");
+            Environment.ExitCode = 1;
+        }
+        finally
+        {
+            Exit();
+        }
     }
 
     private async Task RunCliAndExitAsync(string[] arguments)

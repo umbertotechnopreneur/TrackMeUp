@@ -123,6 +123,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly BuildInformationService _buildInformation;
     private readonly AiModelCatalogSnapshot _aiModelCatalog;
     private readonly ReportAggregationService _reports;
+    private readonly AtomicResetService _atomicReset;
     private readonly OpenAiPricingRefreshService? _pricingRefresh;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
@@ -135,6 +136,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private DateTimeOffset? _pendingManualScreenshotExpiresAt;
     private int _scheduledSnapshotIntervalMinutes;
     private bool _scheduledSnapshotsEnabled;
+    private bool _atomicResetPrepared;
     private readonly object _activityScoreTelemetryGate = new();
     private DateTimeOffset? _nextActivityScoreTelemetryAt;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
@@ -164,7 +166,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         IAiOcrRefinementService? ocrRefinement = null,
         ILogger<ScreenshotTextExtractionCoordinator>? screenshotTextLogger = null,
         ILocalSearchService? localSearch = null,
-        OpenAiPricingRefreshService? pricingRefresh = null)
+        OpenAiPricingRefreshService? pricingRefresh = null,
+        AtomicResetService? atomicResetService = null)
     {
         _store = store;
         _utilities = utilities;
@@ -188,6 +191,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _buildInformation = buildInformation;
         _aiModelCatalog = (aiModelCatalog ?? AiModelCatalog.LoadDefault()).Snapshot;
         _reports = new ReportAggregationService(store);
+        _atomicReset = atomicResetService ?? new AtomicResetService();
         _pricingRefresh = pricingRefresh;
         _pricingRefresh?.Start();
         _logger = logger ?? NullLogger<TrackMeUpApplication>.Instance;
@@ -213,7 +217,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -1337,6 +1341,52 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
+    public Task<OperationResult<AtomicResetPlan>> PrepareAtomicResetAsync(
+        AtomicResetRequest request,
+        CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.FirstConfirmation || !request.FinalConfirmation)
+        {
+            return OperationResult<AtomicResetPlan>.Failure(
+                "app.atomic_reset.confirmation_required",
+                "AtomicResetConfirmationRequired",
+                new ValidationIssue("confirmation", "required_twice", "AtomicResetConfirmationRequired"));
+        }
+
+        AtomicResetPlan plan;
+        try
+        {
+            var settings = _store.LoadSettings();
+            plan = _atomicReset.CreatePlan(_store.DataDirectory, settings.ScreenshotDirectory);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or
+                InvalidOperationException or
+                IOException or
+                UnauthorizedAccessException)
+        {
+            _logger.LogWarning("Atomic reset preparation failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<AtomicResetPlan>.Failure("app.atomic_reset.unavailable", "AtomicResetUnavailable");
+        }
+
+        if (!_startup.SetEnabled(false))
+        {
+            return OperationResult<AtomicResetPlan>.Failure("app.atomic_reset.startup_cleanup_failed", "AtomicResetStartupCleanupFailed");
+        }
+
+        _atomicResetPrepared = true;
+        _scheduledSnapshotsEnabled = false;
+        _nextScheduledSnapshotAt = null;
+        _pausedScheduledSnapshotRemaining = null;
+        _scheduledSnapshotTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        _tracking.Stop();
+        _logger.LogWarning("Atomic reset prepared after two explicit confirmations.");
+        await Task.CompletedTask;
+        return OperationResult<AtomicResetPlan>.Success("app.atomic_reset.prepared", "AtomicResetPrepared", plan);
+    }, cancellationToken);
+
+    /// <inheritdoc />
     public Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1650,6 +1700,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private async Task ProcessRuntimeTimerAsync()
     {
+        if (_atomicResetPrepared)
+        {
+            return;
+        }
+
         await CaptureActivityScoreTelemetryIfDueAsync();
         await ProcessScheduledSnapshotAsync();
     }

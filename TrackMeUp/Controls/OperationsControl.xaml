@@ -195,6 +195,28 @@
                             </StackPanel>
                         </HyperlinkButton>
                     </StackPanel>
+
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <StackPanel Spacing="8">
+                        <TextBlock Tag="Operations.AtomicNuke.Title" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Atomic nuke" />
+                        <TextBlock Tag="Operations.AtomicNuke.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Permanently erase all TrackMeUp data, screenshots, configuration, reports, logs, search indexes, and metadata, then restart the app from a clean state." TextWrapping="Wrap" />
+                        <Button
+                            x:Name="AtomicNukeButton"
+                            MinHeight="40"
+                            Margin="0,4,0,0"
+                            Padding="14,8"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Nuclearize everything"
+                            Background="#FFC83B31"
+                            BorderBrush="#FFFF8A80"
+                            Click="AtomicNukeButton_Click"
+                            Foreground="White">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Glyph="&#xE74D;" />
+                                <TextBlock Tag="Operations.AtomicNuke.Action" Text="Nuclearize everything" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

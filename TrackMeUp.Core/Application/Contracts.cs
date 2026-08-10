@@ -263,6 +263,12 @@ public sealed record RetentionPreview(int FileCount, long TotalBytes, IReadOnlyL
 /// <summary>Describes the configured data-retention policy.</summary>
 public sealed record RetentionStatus(int DataRetentionDays, int ScreenshotRetentionDays, string ScreenshotDirectory);
 
+/// <summary>Requires both destructive confirmations before an atomic application reset can be prepared.</summary>
+public sealed record AtomicResetRequest(bool FirstConfirmation, bool FinalConfirmation);
+
+/// <summary>Contains the validated local targets needed by the runtime owner to reset and relaunch TrackMeUp.</summary>
+public sealed record AtomicResetPlan(string DataDirectory, string ScreenshotDirectory, string ExecutablePath);
+
 /// <summary>Describes safe, non-secret AI configuration state.</summary>
 public sealed record AiStatus(bool Enabled, string Provider, string Model, string Endpoint, string KeyVariable, bool HasKey, bool CanEnable, AnalysisCostGate CostGate);
 
@@ -487,6 +493,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Executes a confirmed retention cleanup.</summary>
     Task<OperationResult<RetentionPreview>> RunRetentionAsync(RetentionRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Stops data-producing services and prepares a complete local-data reset after two explicit confirmations.</summary>
+    Task<OperationResult<AtomicResetPlan>> PrepareAtomicResetAsync(AtomicResetRequest request, CancellationToken cancellationToken);
 
     /// <summary>Lists context-provider plugins.</summary>
     Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken);

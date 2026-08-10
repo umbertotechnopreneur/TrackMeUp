@@ -33,6 +33,9 @@ public sealed class RuntimeHost : IAsyncDisposable
     /// <summary>Gets the endpoint used by this host.</summary>
     public RuntimeEndpoint Endpoint => _endpoint;
 
+    /// <summary>Occurs after a successful reset-preparation response has been flushed to its caller.</summary>
+    public event Action<AtomicResetPlan>? AtomicResetPrepared;
+
     /// <summary>Starts the host when this process successfully acquires runtime ownership.</summary>
     public bool TryStart()
     {
@@ -149,6 +152,13 @@ public sealed class RuntimeHost : IAsyncDisposable
                 }
 
                 await RuntimeProtocol.WriteAsync(pipe, response, shutdownToken);
+                if (request.Operation == "app.atomic_reset.v1"
+                    && response.Succeeded
+                    && response.Payload is AtomicResetPlan resetPlan)
+                {
+                    // The runtime owner begins shutdown only after the frontend has received the destructive-operation result.
+                    AtomicResetPrepared?.Invoke(resetPlan);
+                }
             }
             catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
             {
@@ -242,6 +252,9 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "retention.status" => ToResponse(request, await _application.GetRetentionStatusAsync(cancellationToken)),
                 "retention.preview" => ToResponse(request, await _application.PreviewRetentionAsync(cancellationToken)),
                 "retention.run" => ToResponse(request, await _application.RunRetentionAsync(Read<RetentionRequest>(request.Payload) ?? new RetentionRequest(false, false), cancellationToken)),
+                "app.atomic_reset.v1" => ToResponse(request, await _application.PrepareAtomicResetAsync(
+                    Read<AtomicResetRequest>(request.Payload) ?? new AtomicResetRequest(false, false),
+                    cancellationToken)),
                 "plugins.list" => ToResponse(request, await _application.GetPluginsAsync(cancellationToken)),
                 "plugins.show" => ToResponse(request, await _application.GetPluginAsync(ReadString(request.Payload, "id"), cancellationToken)),
                 "plugins.enable" => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
@@ -557,6 +570,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<RetentionPreview>> PreviewRetentionAsync(CancellationToken cancellationToken) => SendAsync<RetentionPreview>("retention.preview", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<RetentionPreview>> RunRetentionAsync(RetentionRequest request, CancellationToken cancellationToken) => SendAsync<RetentionPreview>("retention.run", request, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AtomicResetPlan>> PrepareAtomicResetAsync(AtomicResetRequest request, CancellationToken cancellationToken) =>
+        SendAsync<AtomicResetPlan>("app.atomic_reset.v1", request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<PluginInfo>>("plugins.list", null, cancellationToken);
     /// <inheritdoc />
