@@ -229,6 +229,25 @@ public sealed record AnalyzeCurrentActivityRequest(bool AllowCapture = true, str
 /// <summary>Contains a whitelist-bound settings patch.</summary>
 public sealed record SettingsPatch(IReadOnlyDictionary<string, string?> Values);
 
+/// <summary>Stable identifiers for the four one-click startup profiles.</summary>
+public static class QuickSetupProfileIds
+{
+    /// <summary>Enables AI-provider features and automatic screenshots.</summary>
+    public const string Complete = "complete";
+
+    /// <summary>Enables AI-provider features without automatic screenshots.</summary>
+    public const string Assisted = "assisted";
+
+    /// <summary>Keeps automatic screenshots locally with AI-provider features disabled.</summary>
+    public const string LocalRecord = "local-record";
+
+    /// <summary>Keeps only the local activity timeline enabled.</summary>
+    public const string EssentialOffline = "essential-offline";
+}
+
+/// <summary>Requests one validated Quick Setup profile and an explicit Windows-startup preference.</summary>
+public sealed record QuickSetupProfileRequest(string ProfileId, bool StartWithWindows);
+
 /// <summary>Requests a retention preview or confirmed cleanup.</summary>
 public sealed record RetentionRequest(bool Execute, bool Confirmed);
 
@@ -508,6 +527,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets typed application settings.</summary>
     Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Applies one complete Quick Setup profile as a single validated settings transaction.</summary>
+    Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken);
 
     /// <summary>Validates and persists an allowed settings patch.</summary>
     Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken);

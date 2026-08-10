@@ -229,6 +229,12 @@ public sealed class CliRouterTests
             return Success(Settings, "settings.loaded");
         }
 
+        public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken)
+        {
+            TotalCalls++;
+            return Success(Settings, "quick_setup.applied");
+        }
+
         public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken)
         {
             TotalCalls++;

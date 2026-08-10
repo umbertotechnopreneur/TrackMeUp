@@ -27,6 +27,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the screenshot schedule window.</summary>
     public const string Schedule = "schedule";
 
+    /// <summary>Identifies the first-run and reusable Quick Setup window.</summary>
+    public const string QuickSetup = "quick-setup";
+
     /// <summary>Identifies the reusable message dialog window.</summary>
     public const string Dialog = "dialog";
 
@@ -66,6 +69,7 @@ public sealed class WindowStateService
             WindowStateKeys.Search => new(780, 140),
             WindowStateKeys.SearchIndexing => new(560, 420),
             WindowStateKeys.Schedule => new(620, 480),
+            WindowStateKeys.QuickSetup => new(760, 560),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.AiPricing => new(620, 430),
             WindowStateKeys.AiConnectionTest => new(480, 480),

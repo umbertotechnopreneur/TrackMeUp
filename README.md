@@ -143,6 +143,11 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
 ~~~
 
+Quick Setup validation checklist:
+
+- [ ] With a clean settings file, the acrylic four-profile chooser opens once; applying a profile persists AI, screenshot, local-retention, and Windows-startup choices together.
+- [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
+
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 
 ## Project documentation

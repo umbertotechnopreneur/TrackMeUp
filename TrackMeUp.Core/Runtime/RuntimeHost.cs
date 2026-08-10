@@ -260,6 +260,9 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "plugins.enable" => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
                 "plugins.disable" => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
                 "settings.get" => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
+                "quick_setup.apply.v1" => ToResponse(request, await _application.ApplyQuickSetupProfileAsync(
+                    Read<QuickSetupProfileRequest>(request.Payload) ?? new QuickSetupProfileRequest(string.Empty, false),
+                    cancellationToken)),
                 "settings.patch" => ToResponse(request, await _application.PatchSettingsAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
                 "window.state.restore" => ToResponse(request, await _application.RestoreWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "window.state.save" => ToResponse(request, await _application.SaveWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
@@ -581,6 +584,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<PluginInfo>> SetPluginEnabledAsync(string id, bool enabled, CancellationToken cancellationToken) => SendAsync<PluginInfo>(enabled ? "plugins.enable" : "plugins.disable", new { id }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken) => SendAsync<AppSettings>("settings.get", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken) => SendAsync<AppSettings>("quick_setup.apply.v1", request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>("settings.patch", patch, cancellationToken);
     /// <inheritdoc />

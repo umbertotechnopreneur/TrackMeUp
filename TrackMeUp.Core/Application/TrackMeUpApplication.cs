@@ -217,7 +217,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -1431,6 +1431,23 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(OperationResult<AppSettings>.Success("settings.loaded", "SettingsLoaded", _store.LoadSettings()));
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(
+        QuickSetupProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var profile = QuickSetupProfileCatalog.CreatePatch(request);
+        if (!profile.Succeeded || profile.Value is null)
+        {
+            return OperationResult<AppSettings>.Failure(
+                profile.Code,
+                profile.MessageKey,
+                profile.Issues.ToArray());
+        }
+
+        return await PatchSettingsAsync(profile.Value, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

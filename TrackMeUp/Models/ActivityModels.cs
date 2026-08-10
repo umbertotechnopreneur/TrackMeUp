@@ -118,6 +118,7 @@ public sealed record AppSettings(
     string AiCustomPrompt = "",
     IReadOnlyList<ActiveHoursDay>? ActiveHours = null,
     bool IncludeDeviceLocation = false,
+    bool QuickSetupCompleted = false,
     IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null);
 
 public sealed record AiAnalysis(

@@ -343,6 +343,15 @@
                                         <FontIcon Glyph="&#xE713;" />
                                     </MenuFlyoutSubItem.Icon>
                                     <MenuFlyoutItem
+                                        x:Name="QuickSetupMenuItem"
+                                        Tag="QuickSetup.MenuTitle"
+                                        Text="Quick Setup"
+                                        Click="QuickSetupMenuItem_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Foreground="#FF71CBB7" Glyph="&#xE9D9;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
                                         x:Name="OptionsMenuItem"
                                         Tag="MenuTitleOptions"
                                         Text="App options"

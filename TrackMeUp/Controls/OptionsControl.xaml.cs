@@ -400,6 +400,9 @@ public sealed partial class OptionsControl : UserControl
         NotifyLayoutChanged();
     }
 
+    /// <summary>Refreshes the passive options controls from a settings snapshot persisted by another surface.</summary>
+    internal void ApplyExternalSettings(AppSettings settings) => ApplySettings(settings);
+
     private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? T("Options.SnapshotHintActive") : T("Options.SnapshotHintAll");
 
     private void ConfigureModelOptions(AiModelCatalogSnapshot catalog)

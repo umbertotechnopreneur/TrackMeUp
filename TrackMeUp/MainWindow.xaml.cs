@@ -85,6 +85,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the user requests the floating local-search surface.</summary>
     public event EventHandler? SearchRequested;
 
+    /// <summary>Occurs when the user requests the reusable Quick Setup surface.</summary>
+    public event EventHandler? QuickSetupRequested;
+
     /// <summary>Occurs when the user requests the retained screenshot gallery surface.</summary>
     public event EventHandler? ScreenshotGalleryRequested;
 
@@ -534,6 +537,13 @@ public sealed partial class MainWindow : Window
         ShowPanel(OptionsPanel, MainWindowSurface.Options);
     }
 
+    /// <summary>Forwards Quick Setup activation to the application composition root.</summary>
+    private void QuickSetupMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        QuickSetupRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>Forwards report-window activation to the application composition root.</summary>
     private void ReportsMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -725,6 +735,7 @@ public sealed partial class MainWindow : Window
         ScreenshotsMenuItem.Text = T("Screenshots.Caption");
         ScheduleMenuItem.Text = T("Schedule.Snapshots");
         ScreenshotsMenuToggle.Text = T("MenuToggleScreenshot");
+        QuickSetupMenuItem.Text = T("QuickSetup.MenuTitle");
         OptionsMenuItem.Text = T("MenuTitleOptions");
         OperationsMenuItem.Text = T("Main.Menu.Operations");
         OpenAiMenuToggle.Text = T("MenuToggleOpenAi");
@@ -1176,6 +1187,19 @@ public sealed partial class MainWindow : Window
         ApplyFlyoutPosition(_position);
 
         SettingsApplied?.Invoke(settings);
+    }
+
+    /// <summary>Refreshes every visible settings projection after another application surface changes them.</summary>
+    internal async Task ApplyExternalSettingsAsync(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        _menuSettings = settings;
+        _updatingMenuState = true;
+        ScreenshotsMenuToggle.IsChecked = settings.ScreenshotsEnabled;
+        _updatingMenuState = false;
+        OptionsControl.ApplyExternalSettings(settings);
+        await AiState.LoadAsync(CancellationToken.None);
+        ApplySettings(settings);
     }
 
     private void UpdateScreenshotCaptureStatus() =>

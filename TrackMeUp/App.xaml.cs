@@ -29,12 +29,14 @@ public partial class App : Microsoft.UI.Xaml.Application
     private ReportsWindow? _reportsWindow;
     private ScreenshotWindow? _screenshotsWindow;
     private SearchWindow? _searchWindow;
+    private QuickSetupWindow? _quickSetupWindow;
     private TaskbarWidgetSurface? _taskbarWidgetSurface;
     private RuntimeHost? _runtimeHost;
     private ITrackMeUpApplication? _runtimeApplication;
     private ITrackMeUpApplication? _applicationFacade;
     private bool _reportsOnly;
     private bool _searchWindowOpening;
+    private bool _quickSetupOwnerWasInteractive;
     private int _shutdownStarted;
     private int _atomicResetStarted;
 
@@ -93,6 +95,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
         _window = new MainWindow(application, options, _dialogs, trayIcon);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
+        _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
         _window.ReportsRequested += MainWindow_ReportsRequested;
         _window.SearchRequested += MainWindow_SearchRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
@@ -126,6 +129,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
 
         ApplyTaskbarWidgetSettings(settings);
+        if (!settings.QuickSetupCompleted && !options.StartWithWindows)
+        {
+            ShowQuickSetupWindow(application, settings, firstRun: true);
+        }
     }
 
     private void StartReports(LaunchOptions options)
@@ -135,6 +142,87 @@ public partial class App : Microsoft.UI.Xaml.Application
     }
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
+
+    private async void MainWindow_QuickSetupRequested(object? sender, EventArgs eventArgs)
+    {
+        var application = StartOrConnectRuntime();
+        var result = await application.GetSettingsAsync(CancellationToken.None);
+        if (!result.Succeeded || result.Value is null)
+        {
+            if (_window is not null)
+            {
+                var strings = new LocalizationService("system");
+                await _dialogs.ShowInformativeAsync(
+                    application,
+                    _window,
+                    MicaDialogRequest.Informative(
+                        strings.Translate("QuickSetup.Unavailable.Title"),
+                        strings.Translate("QuickSetup.Unavailable.Message"),
+                        MicaDialogSeverity.Error,
+                        strings.Translate("Dialog.Ok")),
+                    ElementTheme.Default);
+            }
+
+            return;
+        }
+
+        ShowQuickSetupWindow(application, result.Value, firstRun: false);
+    }
+
+    private void ShowQuickSetupWindow(ITrackMeUpApplication application, AppSettings settings, bool firstRun)
+    {
+        if (_quickSetupWindow is not null)
+        {
+            _quickSetupWindow.Activate();
+            return;
+        }
+
+        if (_window is null)
+        {
+            throw new InvalidOperationException("Quick Setup requires the main TrackMeUp window.");
+        }
+
+        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
+        var ownerAppWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(
+            Microsoft.UI.Win32Interop.GetWindowIdFromWindow(ownerHandle));
+        if (_window.Content is UIElement ownerContent)
+        {
+            _quickSetupOwnerWasInteractive = ownerContent.IsHitTestVisible;
+            ownerContent.IsHitTestVisible = false;
+        }
+
+        _quickSetupWindow = new QuickSetupWindow(application, settings, firstRun, ownerAppWindow, ownerHandle);
+        _quickSetupWindow.ProfileApplied += QuickSetupWindow_ProfileApplied;
+        _quickSetupWindow.Closed += QuickSetupWindow_Closed;
+        _quickSetupWindow.Activate();
+    }
+
+    private async void QuickSetupWindow_ProfileApplied(AppSettings settings)
+    {
+        if (_window is not null)
+        {
+            await _window.ApplyExternalSettingsAsync(settings);
+        }
+        else
+        {
+            ApplyTaskbarWidgetSettings(settings);
+        }
+    }
+
+    private void QuickSetupWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_quickSetupWindow is not null)
+        {
+            _quickSetupWindow.ProfileApplied -= QuickSetupWindow_ProfileApplied;
+            _quickSetupWindow.Closed -= QuickSetupWindow_Closed;
+            _quickSetupWindow = null;
+        }
+
+        if (_window?.Content is UIElement ownerContent)
+        {
+            ownerContent.IsHitTestVisible = _quickSetupOwnerWasInteractive;
+        }
+    }
 
     private async void MainWindow_SearchRequested(object? sender, EventArgs eventArgs) =>
         await ShowSearchWindowAsync(StartOrConnectRuntime());
@@ -253,6 +341,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (_window is not null)
         {
             _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
+            _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
@@ -261,6 +350,14 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.AtomicResetPrepared -= MainWindow_AtomicResetPrepared;
             _window.Closed -= MainWindow_Closed;
             _window = null;
+        }
+
+        if (_quickSetupWindow is not null)
+        {
+            _quickSetupWindow.ProfileApplied -= QuickSetupWindow_ProfileApplied;
+            _quickSetupWindow.Closed -= QuickSetupWindow_Closed;
+            _quickSetupWindow.Close();
+            _quickSetupWindow = null;
         }
 
         if (_reportsWindow is not null)

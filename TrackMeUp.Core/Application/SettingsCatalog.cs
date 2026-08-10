@@ -81,7 +81,8 @@ public static class SettingsCatalog
         Boolean("plugins.word.enabled", "Enable safe Microsoft Word context details."),
         Boolean("plugins.excel.enabled", "Enable safe Microsoft Excel context details."),
         Boolean("plugins.vscode.enabled", "Enable safe Visual Studio Code context details."),
-        Boolean("plugins.browser.enabled", "Enable safe browser title context details.")
+        Boolean("plugins.browser.enabled", "Enable safe browser title context details."),
+        Boolean("quick_setup.completed", "Record that the first-run Quick Setup profile was applied.")
     ];
 
     /// <summary>Gets a safe setting value by its public key without using reflection.</summary>
@@ -135,6 +136,7 @@ public static class SettingsCatalog
             "plugins.excel.enabled" => settings.EnableExcelDetailPlugin,
             "plugins.vscode.enabled" => settings.EnableVsCodeDetailPlugin,
             "plugins.browser.enabled" => settings.EnableBrowserDetailPlugin,
+            "quick_setup.completed" => settings.QuickSetupCompleted,
             _ => null
         };
 
@@ -245,6 +247,7 @@ public static class SettingsCatalog
                 case "plugins.excel.enabled" when TryBoolean(value, out var excel): current = current with { EnableExcelDetailPlugin = excel }; break;
                 case "plugins.vscode.enabled" when TryBoolean(value, out var vscode): current = current with { EnableVsCodeDetailPlugin = vscode }; break;
                 case "plugins.browser.enabled" when TryBoolean(value, out var browser): current = current with { EnableBrowserDetailPlugin = browser }; break;
+                case "quick_setup.completed" when TryBoolean(value, out var quickSetupCompleted): current = current with { QuickSetupCompleted = quickSetupCompleted }; break;
                 default: issues.Add(Invalid(rawKey)); break;
             }
         }

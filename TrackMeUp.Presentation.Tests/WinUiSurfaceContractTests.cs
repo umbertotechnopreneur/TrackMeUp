@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+using TrackMeUp.Application;
 using Xunit;
 
 namespace TrackMeUp.Presentation.Tests;
@@ -179,7 +180,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleMenuFlyoutItem"));
         Assert.DoesNotContain(menu.Descendants(), element => element.Name.LocalName == "Button");
         Assert.Equal(
-            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
+            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
             menuTags);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ElementRect(TitleBarReportButton, scale)", mainSource, StringComparison.Ordinal);
@@ -712,6 +713,36 @@ public sealed class WinUiSurfaceContractTests
         AssertLocalizedScreenshotCommand(resizeGrip, localization);
         Assert.Contains("ToolTipService.SetToolTip", uiLocalization, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName", uiLocalization, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QuickSetup_UsesFourAccessibleProfileControlsOnVisibleAcrylic()
+    {
+        var quickSetup = XDocument.Load(RepositoryFile("TrackMeUp", "QuickSetupWindow.xaml"));
+        var quickSetupSource = File.ReadAllText(RepositoryFile("TrackMeUp", "QuickSetupWindow.xaml.cs"));
+        var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
+        var profiles = quickSetup
+            .Descendants()
+            .Where(element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag") is not null)
+            .ToArray();
+
+        Assert.Contains(quickSetup.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        Assert.Equal("Transparent", quickSetup.Descendants().Single(element => HasName(element, "RootGrid")).Attribute("Background")?.Value);
+        Assert.Equal(
+            [QuickSetupProfileIds.Complete, QuickSetupProfileIds.Assisted, QuickSetupProfileIds.LocalRecord, QuickSetupProfileIds.EssentialOffline],
+            profiles.Select(profile => profile.Attribute("Tag")!.Value).ToArray());
+        Assert.All(profiles, profile => Assert.False(string.IsNullOrWhiteSpace(profile.Attributes().Single(attribute => attribute.Name.LocalName == "Name").Value)));
+        Assert.Contains(quickSetup.Descendants(), element => HasName(element, "StartWithWindowsCheckBox"));
+        Assert.Contains(quickSetup.Descendants(), element => HasName(element, "ApplyInfoBar"));
+        Assert.DoesNotContain(quickSetup.Descendants(), element => element.Name.LocalName is "LinearGradientBrush" or "RadialGradientBrush");
+        Assert.Contains("ApplyQuickSetupProfileAsync", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(CompleteProfileButton", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(AssistedProfileButton", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(LocalRecordProfileButton", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(EssentialOfflineProfileButton", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("!settings.QuickSetupCompleted", appSource, StringComparison.Ordinal);
+        Assert.Contains(player.Descendants(), element => HasName(element, "QuickSetupMenuItem") && element.Attribute("Tag")?.Value == "QuickSetup.MenuTitle");
     }
 
     [Theory]
