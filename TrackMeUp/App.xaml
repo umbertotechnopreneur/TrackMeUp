@@ -16,6 +16,7 @@
                 <ResourceDictionary x:Key="Light">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
                     <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
+                    <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
                     <AcrylicBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" TintColor="#F3F1FF" TintOpacity="0.28" TintLuminosityOpacity="0.72" FallbackColor="#EDF7F6FC" />
                     <AcrylicBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" TintColor="#DDF7E7" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDF5FAF6" />
                     <AcrylicBrush x:Key="InfoBarWarningSeverityBackgroundBrush" TintColor="#FFF1D5" TintOpacity="0.24" TintLuminosityOpacity="0.72" FallbackColor="#EDFDF9F0" />
@@ -24,17 +25,18 @@
                         <GradientStop Color="#C8FFFFFF" Offset="0" />
                         <GradientStop Color="#36737688" Offset="1" />
                     </LinearGradientBrush>
-                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FFFFFFFF" TintOpacity="0.08" TintLuminosityOpacity="0.22" FallbackColor="#17FFFFFF" />
-                    <RadialGradientBrush x:Key="TimedInfoBarGlassVeilBrush" Center="0.14,0.12" GradientOrigin="0.18,0.14" RadiusX="1" RadiusY="1.1">
-                        <GradientStop Color="#40FFFFFF" Offset="0" />
-                        <GradientStop Color="#1AF5FAF8" Offset="0.56" />
-                        <GradientStop Color="#00FFFFFF" Offset="1" />
+                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FFFFFFFF" TintOpacity="0.10" TintLuminosityOpacity="0.30" FallbackColor="#2BFFFFFF" />
+                    <RadialGradientBrush x:Key="TimedInfoBarGlassVeilBrush" Center="0.12,0.12" GradientOrigin="0.12,0.12" RadiusX="1" RadiusY="1.15">
+                        <GradientStop Color="#5CFFFFFF" Offset="0" />
+                        <GradientStop Color="#22FFFFFF" Offset="0.48" />
+                        <GradientStop Color="#00FFFFFF" Offset="0.92" />
                     </RadialGradientBrush>
                     <SolidColorBrush x:Key="TimedInfoBarGlassBorderBrush" Color="#20727C78" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
                     <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
+                    <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFFF9B82" />
                     <AcrylicBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" TintColor="#343247" TintOpacity="0.38" TintLuminosityOpacity="0.34" FallbackColor="#E623222D" />
                     <AcrylicBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" TintColor="#203D2C" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E6212B25" />
                     <AcrylicBrush x:Key="InfoBarWarningSeverityBackgroundBrush" TintColor="#493B23" TintOpacity="0.34" TintLuminosityOpacity="0.34" FallbackColor="#E62C2921" />
@@ -43,16 +45,17 @@
                         <GradientStop Color="#5CFFFFFF" Offset="0" />
                         <GradientStop Color="#18FFFFFF" Offset="1" />
                     </LinearGradientBrush>
-                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FF202029" TintOpacity="0.14" TintLuminosityOpacity="0.18" FallbackColor="#161C1D24" />
-                    <RadialGradientBrush x:Key="TimedInfoBarGlassVeilBrush" Center="0.14,0.12" GradientOrigin="0.18,0.14" RadiusX="1" RadiusY="1.1">
-                        <GradientStop Color="#34FFFFFF" Offset="0" />
-                        <GradientStop Color="#0DFFFFFF" Offset="0.56" />
-                        <GradientStop Color="#00FFFFFF" Offset="1" />
+                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FF202029" TintOpacity="0.14" TintLuminosityOpacity="0.18" FallbackColor="#2B1C1D24" />
+                    <RadialGradientBrush x:Key="TimedInfoBarGlassVeilBrush" Center="0.12,0.12" GradientOrigin="0.12,0.12" RadiusX="1" RadiusY="1.15">
+                        <GradientStop Color="#3DFFFFFF" Offset="0" />
+                        <GradientStop Color="#16FFFFFF" Offset="0.48" />
+                        <GradientStop Color="#00FFFFFF" Offset="0.92" />
                     </RadialGradientBrush>
                     <SolidColorBrush x:Key="TimedInfoBarGlassBorderBrush" Color="#26FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="BrandCoralBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="PlayerAccentTextBrush" ResourceKey="SystemColorHighlightColorBrush" />
                     <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
@@ -68,6 +71,12 @@
             </Style>
             <Style TargetType="ScrollBar">
                 <Setter Property="Opacity" Value="0" />
+            </Style>
+            <Style x:Key="DashboardMetricLabelTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="CharacterSpacing" Value="100" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{ThemeResource PlayerAccentTextBrush}" />
             </Style>
             <Style TargetType="InfoBar">
                 <Setter Property="BorderBrush" Value="{ThemeResource InfoBarGlassBorderBrush}" />

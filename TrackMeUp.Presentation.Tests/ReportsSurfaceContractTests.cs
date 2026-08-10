@@ -21,6 +21,14 @@ public sealed class ReportsSurfaceContractTests
         Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "Reports.Motto");
         Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "custom");
         Assert.Contains(reports.Descendants(), element => element.Attribute("Tag")?.Value == "hourOfWeek");
+
+        var filters = reports.Descendants().Single(element =>
+            element.Name.LocalName == "ScrollViewer" &&
+            element.Descendants().Any(descendant => descendant.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "RangeComboBox")));
+        Assert.Equal("1", filters.Attribute("Grid.Column")?.Value);
+        Assert.Equal("Right", filters.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Bottom", filters.Attribute("VerticalAlignment")?.Value);
+        Assert.True(filters.Parent is { } header && header.Elements().Any(element => element.Name.LocalName == "Grid.ColumnDefinitions"));
     }
 
     [Fact]

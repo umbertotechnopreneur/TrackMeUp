@@ -96,6 +96,47 @@ public sealed class LocalStore
         return _activity.DeleteScreenshotTextSnapshot(ScreenshotIdentity(Path.GetFileName(screenshotPath)));
     }
 
+    /// <summary>Persists the same capture-interval telemetry for every retained artifact in one screenshot pass.</summary>
+    internal void UpsertScreenshotIntervalTelemetry(
+        string captureId,
+        IReadOnlyList<string> screenshotPaths,
+        ScreenshotIntervalTelemetry telemetry)
+    {
+        if (string.IsNullOrWhiteSpace(captureId) || screenshotPaths.Count == 0)
+        {
+            throw new ArgumentException("Screenshot telemetry requires a capture identifier and retained artifacts.");
+        }
+
+        foreach (var path in screenshotPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!ScreenCaptureService.IsOwnedArtifact(path))
+            {
+                throw new ArgumentException("Screenshot telemetry can only reference TrackMeUp-owned artifacts.", nameof(screenshotPaths));
+            }
+
+            _activity.UpsertScreenshotIntervalTelemetry(
+                ScreenshotIdentity(Path.GetFileName(path)),
+                captureId,
+                telemetry);
+        }
+    }
+
+    /// <summary>Loads persisted interval telemetry for one retained screenshot.</summary>
+    internal ScreenshotIntervalTelemetry? LoadScreenshotIntervalTelemetry(string screenshotPath) =>
+        ScreenCaptureService.IsOwnedArtifact(screenshotPath)
+            ? _activity.LoadScreenshotIntervalTelemetry(ScreenshotIdentity(Path.GetFileName(screenshotPath)))
+            : null;
+
+    /// <summary>Loads the last successfully persisted screenshot boundary.</summary>
+    internal DateTimeOffset? LoadLatestScreenshotTelemetryCapturedAt() =>
+        _activity.LoadLatestScreenshotTelemetryCapturedAt();
+
+    /// <summary>Deletes persisted interval telemetry for one retained screenshot.</summary>
+    internal int DeleteScreenshotIntervalTelemetry(string screenshotPath) =>
+        ScreenCaptureService.IsOwnedArtifact(screenshotPath)
+            ? _activity.DeleteScreenshotIntervalTelemetry(ScreenshotIdentity(Path.GetFileName(screenshotPath)))
+            : 0;
+
     /// <summary>Visits every retained activity sample with its stable local identifier.</summary>
     internal void VisitAllActivitySamples(CancellationToken cancellationToken, Action<long, ActivitySample> visitor) =>
         _activity.VisitAllActivitySamples(cancellationToken, visitor);
@@ -390,7 +431,8 @@ public sealed class LocalStore
             .Select(file =>
             {
                 var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
-                var activity = FindScreenshotActivity(capturedAt, settings.ScreenshotIntervalMinutes);
+                var telemetry = LoadScreenshotIntervalTelemetry(file.FullName);
+                var activity = FindScreenshotActivity(capturedAt, settings.ScreenshotIntervalMinutes, telemetry);
                 analyses.TryGetValue(file.FullName, out var analysis);
                 var textSnapshot = LoadScreenshotTextSnapshot(file.FullName);
                 return new ScreenshotGalleryItem(
@@ -407,7 +449,9 @@ public sealed class LocalStore
                     activity.ForegroundWindowTitle,
                     GetScreenIndex(file.Name),
                     GetScreenName(file.Name),
-                    activity.MouseClicks);
+                    activity.MouseClicks,
+                    telemetry?.CpuUsagePercent,
+                    telemetry?.GpuUsagePercent);
             })
             .ToArray();
 
@@ -450,11 +494,15 @@ public sealed class LocalStore
             .ToArray();
     }
 
-    private ScreenshotActivityContext FindScreenshotActivity(DateTimeOffset capturedAt, int screenshotIntervalMinutes)
+    private ScreenshotActivityContext FindScreenshotActivity(
+        DateTimeOffset capturedAt,
+        int screenshotIntervalMinutes,
+        ScreenshotIntervalTelemetry? telemetry)
     {
         var samples = new List<ActivitySample>();
-        var fromUtc = capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
-        var toUtc = capturedAt.ToUniversalTime();
+        var fromUtc = telemetry?.IntervalStartedAt.ToUniversalTime()
+            ?? capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
+        var toUtc = telemetry?.CapturedAt.ToUniversalTime() ?? capturedAt.ToUniversalTime();
         _activity.VisitOverlapping(fromUtc, toUtc, CancellationToken.None, samples.Add);
         var foregroundSample = samples
             .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
@@ -487,9 +535,13 @@ public sealed class LocalStore
 
                     return distinct;
                 });
-        int? activityIndex = samples.Count == 0
+        int? activityIndex = samples.Count == 0 && telemetry is null
             ? null
-            : ActivityScoreService.CalculateIntervalActivityIndex(samples, screenshotIntervalMinutes);
+            : ActivityScoreService.CalculateIntervalActivityIndex(
+                samples,
+                (toUtc - fromUtc).TotalMinutes,
+                telemetry?.CpuUsagePercent,
+                telemetry?.GpuUsagePercent);
         long? mouseClicks = samples.Count == 0
             ? null
             : samples.Aggregate(0L, (total, sample) => checked(total + sample.MouseClicks));

@@ -32,7 +32,32 @@
             CornerRadius="12"
             IsClosable="True"
             IsOpen="False"
-            local:InfoBarElevationBehavior.IsEnabled="False" />
+            local:InfoBarElevationBehavior.IsEnabled="False">
+            <InfoBar.Resources>
+                <ResourceDictionary>
+                    <ResourceDictionary.ThemeDictionaries>
+                        <ResourceDictionary x:Key="Light">
+                            <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="Transparent" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="Dark">
+                            <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="Transparent" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="HighContrast">
+                            <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                            <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                            <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                            <StaticResource x:Key="InfoBarErrorSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                        </ResourceDictionary>
+                    </ResourceDictionary.ThemeDictionaries>
+                </ResourceDictionary>
+            </InfoBar.Resources>
+        </InfoBar>
         <ProgressBar
             x:Name="CountdownProgress"
             Canvas.ZIndex="1"

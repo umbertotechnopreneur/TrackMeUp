@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
 
@@ -13,6 +14,7 @@ public sealed class ActivityScoreService
     private const int MaximumSnapshotIntervalMinutes = WindowMinutes / 2;
     private readonly object _gate = new();
     private readonly Dictionary<DateTimeOffset, MinuteAggregate> _minutes = new();
+    private readonly List<SystemTelemetryPoint> _telemetryPoints = new();
 
     /// <summary>Records keyboard, click, and active-time contributions from one durable activity sample.</summary>
     public void RecordSample(ActivitySample sample)
@@ -43,6 +45,37 @@ public sealed class ActivityScoreService
             aggregate.GpuUsagePercent = snapshot.GpuUsagePercent is { } gpuUsage
                 ? Math.Clamp(gpuUsage, 0, 100)
                 : null;
+            _telemetryPoints.Add(new SystemTelemetryPoint(
+                snapshot.Timestamp.ToUniversalTime(),
+                Math.Clamp(snapshot.CpuUsagePercent, 0, 100),
+                snapshot.GpuUsagePercent is { } pointGpu ? Math.Clamp(pointGpu, 0, 100) : null));
+        }
+    }
+
+    /// <summary>Builds the persisted CPU/GPU averages for one screenshot interval.</summary>
+    public ScreenshotIntervalTelemetry BuildScreenshotIntervalTelemetry(
+        DateTimeOffset intervalStartedAt,
+        DateTimeOffset capturedAt)
+    {
+        var fromUtc = intervalStartedAt.ToUniversalTime();
+        var toUtc = capturedAt.ToUniversalTime();
+        if (fromUtc >= toUtc)
+        {
+            throw new ArgumentOutOfRangeException(nameof(intervalStartedAt), "Screenshot telemetry interval must end after it starts.");
+        }
+
+        lock (_gate)
+        {
+            Trim(toUtc.AddMinutes(-WindowMinutes));
+            var points = _telemetryPoints
+                .Where(point => point.TimestampUtc > fromUtc && point.TimestampUtc <= toUtc)
+                .ToArray();
+            var gpuPoints = points.Where(point => point.GpuUsagePercent is not null).ToArray();
+            return new ScreenshotIntervalTelemetry(
+                fromUtc,
+                toUtc,
+                points.Length == 0 ? null : (int)Math.Round(points.Average(point => point.CpuUsagePercent)),
+                gpuPoints.Length == 0 ? null : (int)Math.Round(gpuPoints.Average(point => point.GpuUsagePercent!.Value)));
         }
     }
 
@@ -85,15 +118,16 @@ public sealed class ActivityScoreService
     }
 
     /// <summary>
-    /// Calculates a durable interval activity index using the same input and active-time weights as the live score.
+    /// Calculates a durable interval activity index using the same input, active-time, CPU, and GPU weights as the live score.
     /// </summary>
-    /// <remarks>
-    /// Historical CPU and GPU telemetry is intentionally omitted because it is not persisted in the activity store.
-    /// </remarks>
-    internal static int CalculateIntervalActivityIndex(IEnumerable<ActivitySample> samples, int intervalMinutes)
+    internal static int CalculateIntervalActivityIndex(
+        IEnumerable<ActivitySample> samples,
+        double intervalMinutes,
+        int? cpuUsagePercent,
+        int? gpuUsagePercent)
     {
         ArgumentNullException.ThrowIfNull(samples);
-        var normalizedIntervalMinutes = Math.Max(1, intervalMinutes);
+        var normalizedIntervalMinutes = Math.Max(1d, intervalMinutes);
         var keyPresses = 0L;
         var mouseClicks = 0L;
         var activeSeconds = 0L;
@@ -112,8 +146,8 @@ public sealed class ActivityScoreService
             keyPresses / (double)normalizedIntervalMinutes,
             mouseClicks / (double)normalizedIntervalMinutes,
             Math.Clamp(activeSeconds / (double)maximumActiveSeconds, 0d, 1d),
-            cpuUsagePercent: 0,
-            gpuUsagePercent: null);
+            cpuUsagePercent,
+            gpuUsagePercent);
     }
 
     private MinuteAggregate GetOrCreate(DateTimeOffset minuteUtc)
@@ -135,6 +169,8 @@ public sealed class ActivityScoreService
         {
             _minutes.Remove(minute);
         }
+
+        _telemetryPoints.RemoveAll(point => point.TimestampUtc < oldestMinute);
     }
 
     private static ActivityScoreInterval BuildInterval(
@@ -169,13 +205,13 @@ public sealed class ActivityScoreService
         double keyPresses,
         double mouseClicks,
         double activeRatio,
-        int cpuUsagePercent,
+        int? cpuUsagePercent,
         int? gpuUsagePercent)
     {
         // Input is deliberately dominant; CPU and GPU together can add at most six points.
         var inputContribution = Math.Min(86d, (keyPresses * 0.55d) + (mouseClicks * 3.5d));
         var activeContribution = Math.Clamp(activeRatio, 0d, 1d) * 8d;
-        var cpuContribution = Math.Clamp(cpuUsagePercent, 0, 100) * 0.04d;
+        var cpuContribution = Math.Clamp(cpuUsagePercent ?? 0, 0, 100) * 0.04d;
         var gpuContribution = Math.Clamp(gpuUsagePercent ?? 0, 0, 100) * 0.02d;
         return (int)Math.Round(Math.Clamp(inputContribution + activeContribution + cpuContribution + gpuContribution, 0d, 100d));
     }
@@ -194,4 +230,6 @@ public sealed class ActivityScoreService
         public int CpuUsagePercent { get; set; }
         public int? GpuUsagePercent { get; set; }
     }
+
+    private sealed record SystemTelemetryPoint(DateTimeOffset TimestampUtc, int CpuUsagePercent, int? GpuUsagePercent);
 }

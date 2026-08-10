@@ -305,6 +305,7 @@
                             HorizontalAlignment="Left"
                             Click="SnapshotAiOperationsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
                                 <TextBlock
                                     Tag="Options.Navigation.SnapshotAi.Action"
                                     Text="Open screen-capture and AI tools" />
@@ -335,6 +336,7 @@
                             HorizontalAlignment="Left"
                             Click="ReportsOperationsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF7D9FF8" Glyph="&#xE787;" />
                                 <TextBlock
                                     Tag="Options.Navigation.Reports.Action"
                                     Text="Open reports and digest" />
@@ -365,6 +367,7 @@
                             HorizontalAlignment="Left"
                             Click="PrivacyOperationsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFA97BEA" Glyph="&#xE72E;" />
                                 <TextBlock
                                     Tag="Options.Navigation.Privacy.Action"
                                     Text="Open privacy settings" />
@@ -395,6 +398,7 @@
                             HorizontalAlignment="Left"
                             Click="RetentionOperationsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF85A8DB" Glyph="&#xE823;" />
                                 <TextBlock
                                     Tag="Options.Navigation.Retention.Action"
                                     Text="Open data-retention settings" />
@@ -425,6 +429,7 @@
                             HorizontalAlignment="Left"
                             Click="PluginsOperationsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF71CBB7" Glyph="&#xE90F;" />
                                 <TextBlock
                                     Tag="Options.Navigation.Plugins.Action"
                                     Text="Open context plugins" />

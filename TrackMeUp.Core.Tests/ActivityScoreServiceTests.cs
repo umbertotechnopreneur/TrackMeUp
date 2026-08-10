@@ -45,17 +45,36 @@ public sealed class ActivityScoreServiceTests
     }
 
     [Fact]
-    public void CalculateIntervalActivityIndex_UsesSharedInputWeightsWithoutInventingHistoricalTelemetry()
+    public void CalculateIntervalActivityIndex_UsesPersistedTelemetryWithSharedWeights()
     {
         var intervalEnd = new DateTimeOffset(2026, 8, 9, 10, 30, 0, TimeSpan.Zero);
         var samples = Enumerable.Range(0, 15)
             .Select(index => Sample(intervalEnd.AddMinutes(-index), keys: 10, clicks: 2))
             .ToArray();
 
-        var index = ActivityScoreService.CalculateIntervalActivityIndex(samples, intervalMinutes: 15);
+        var index = ActivityScoreService.CalculateIntervalActivityIndex(
+            samples,
+            intervalMinutes: 15,
+            cpuUsagePercent: 50,
+            gpuUsagePercent: 50);
 
-        // Average input contributes 12.5 points and five active seconds per minute contribute 0.67 points.
-        Assert.Equal(13, index);
+        // Average input contributes 12.5 points, active time 0.67, CPU 2, and GPU 1.
+        Assert.Equal(16, index);
+    }
+
+    [Fact]
+    public void BuildScreenshotIntervalTelemetry_AveragesOnlyPointsAfterPreviousCapture()
+    {
+        var service = new ActivityScoreService();
+        var previousCapture = new DateTimeOffset(2026, 8, 9, 10, 0, 30, TimeSpan.Zero);
+        service.RecordSystemSnapshot(Snapshot(previousCapture, cpu: 90, gpu: 90));
+        service.RecordSystemSnapshot(Snapshot(previousCapture.AddMinutes(1), cpu: 20, gpu: 40));
+        service.RecordSystemSnapshot(Snapshot(previousCapture.AddMinutes(2), cpu: 40, gpu: 60));
+
+        var telemetry = service.BuildScreenshotIntervalTelemetry(previousCapture, previousCapture.AddMinutes(3));
+
+        Assert.Equal(30, telemetry.CpuUsagePercent);
+        Assert.Equal(50, telemetry.GpuUsagePercent);
     }
 
     private static ActivitySample Sample(DateTimeOffset timestamp, long keys, long clicks) => new(

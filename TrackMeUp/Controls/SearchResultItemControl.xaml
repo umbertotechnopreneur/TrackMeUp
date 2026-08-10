@@ -9,18 +9,22 @@
         <SolidColorBrush x:Key="SearchResultAccentBrush" Color="#FFFF8C78" />
         <SolidColorBrush x:Key="SearchResultHighlightBrush" Color="#FFFFC7BA" />
         <SolidColorBrush x:Key="SearchResultHighlightTextBrush" Color="#FF2E1712" />
+        <SolidColorBrush x:Key="SearchResultBadgeBrush" Color="#18FF8C78" />
+        <SolidColorBrush x:Key="SearchResultBadgeBorderBrush" Color="#52FF8C78" />
+        <SolidColorBrush x:Key="SearchResultBadgeTextBrush" Color="#FF8A3E32" />
     </UserControl.Resources>
 
     <Border
         MinHeight="180"
-        Padding="12,12,14,12"
+        Padding="14,14,18,14"
         AutomationProperties.Name="{Binding ActiveWindowDisplay}"
         Background="Transparent"
         BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
         BorderThickness="0,0,0,1">
-        <Grid ColumnSpacing="20">
+        <Grid ColumnSpacing="14">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="3" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
@@ -31,6 +35,8 @@
                 Height="146"
                 VerticalAlignment="Center"
                 Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="1"
                 CornerRadius="8"
                 PointerEntered="SnapshotThumbnailFrame_PointerEntered"
                 PointerExited="SnapshotThumbnailFrame_PointerExited"
@@ -57,58 +63,118 @@
                 </Grid>
             </Border>
 
-            <Grid
+            <Border
                 Grid.Column="1"
+                Width="3"
+                Height="96"
                 VerticalAlignment="Center"
-                ColumnSpacing="14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+                Background="{StaticResource SearchResultAccentBrush}"
+                CornerRadius="2" />
 
-                <Border
-                    Width="3"
-                    Height="64"
-                    VerticalAlignment="Top"
-                    Background="{StaticResource SearchResultAccentBrush}"
-                    CornerRadius="2" />
+            <Grid
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                RowSpacing="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <Grid Grid.Column="1" RowSpacing="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
                     <TextBlock
-                        x:Name="SnippetText"
-                        MaxLines="2"
-                        FontSize="16"
-                        LineHeight="22"
-                        TextTrimming="CharacterEllipsis"
-                        TextWrapping="WrapWholeWords" />
+                        VerticalAlignment="Center"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        MaxLines="1"
+                        Text="{Binding ActiveWindowDisplay}"
+                        TextTrimming="CharacterEllipsis" />
 
-                    <StackPanel Grid.Row="1" Spacing="3">
+                    <Border
+                        x:Name="MatchScoreChip"
+                        Grid.Column="1"
+                        Padding="8,3"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource SearchResultBadgeBrush}"
+                        BorderBrush="{StaticResource SearchResultBadgeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <TextBlock
+                                CharacterSpacing="70"
+                                FontSize="9"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SearchResultBadgeTextBrush}"
+                                Text="MATCH" />
+                            <TextBlock
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SearchResultBadgeTextBrush}"
+                                Text="{Binding MatchPercentDisplay}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <TextBlock
+                    x:Name="SnippetText"
+                    Grid.Row="1"
+                    MaxLines="2"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    LineHeight="23"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="WrapWholeWords" />
+
+                <StackPanel
+                    Grid.Row="2"
+                    Orientation="Horizontal"
+                    Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="12"
+                            Foreground="{StaticResource SearchResultAccentBrush}"
+                            Glyph="&#xE823;" />
                         <TextBlock
+                            VerticalAlignment="Center"
                             FontSize="13"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Text="{Binding CapturedAtDisplay}"
                             TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Rectangle
+                        Width="1"
+                        Height="14"
+                        VerticalAlignment="Center"
+                        Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="12"
+                            Foreground="{StaticResource SearchResultAccentBrush}"
+                            Glyph="&#xE962;" />
                         <TextBlock
+                            VerticalAlignment="Center"
                             FontSize="13"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="{Binding ActiveWindowDisplay}"
-                            TextTrimming="CharacterEllipsis" />
-                        <TextBlock
-                            FontSize="13"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="{Binding TelemetryDisplay}"
+                            Text="{Binding ActivityDisplay}"
                             TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                </Grid>
+                </StackPanel>
             </Grid>
 
             <FontIcon
-                Grid.Column="2"
+                Grid.Column="3"
                 Margin="4,0,0,0"
                 VerticalAlignment="Center"
                 AutomationProperties.AccessibilityView="Raw"

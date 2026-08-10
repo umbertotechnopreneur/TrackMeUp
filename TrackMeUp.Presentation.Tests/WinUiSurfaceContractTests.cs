@@ -483,12 +483,16 @@ public sealed class WinUiSurfaceContractTests
     [Fact]
     public void NativeWindows_ExposeTitleBarsAndAcrylicWithoutOpaquePanelCards()
     {
+        var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var reports = XDocument.Load(RepositoryFile("TrackMeUp", "ReportsWindow.xaml"));
         var about = XDocument.Load(RepositoryFile("TrackMeUp", "AboutWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var reportsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
         var highContrastResources = player
+            .Descendants()
+            .Single(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "HighContrast"));
+        var applicationHighContrastResources = app
             .Descendants()
             .Single(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "HighContrast"));
 
@@ -499,7 +503,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("SetTitleBar(TitleBarDragRegion)", reportsSource, StringComparison.Ordinal);
         Assert.DoesNotContain(player.Descendants(), element => element.Attribute("Background")?.Value.Contains("FlyoutSurfaceBrush", StringComparison.Ordinal) == true);
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentBrush"));
-        Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentTextBrush"));
+        Assert.Contains(applicationHighContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentTextBrush"));
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentGlyphBrush"));
     }
 
@@ -547,6 +551,29 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "CornerRadius" && element.Attribute("Value")?.Value == "12");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "local:InfoBarElevationBehavior.IsEnabled" && element.Attribute("Value")?.Value == "True");
+    }
+
+    [Fact]
+    public void DashboardMetricLabels_UseOneApplicationLevelStyle()
+    {
+        var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
+        var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
+        var style = app.Descendants().Single(element =>
+            element.Name.LocalName == "Style" && HasKey(element, "DashboardMetricLabelTextBlockStyle"));
+        var trackingLabel = player.Descendants().Single(element => HasName(element, "TrackingStateText"));
+        var monthlySpendLabel = player.Descendants().Single(element => element.Attribute("Text")?.Value == "MONTHLY AI SPEND");
+        var accentBrushes = app.Descendants()
+            .Where(element => HasKey(element, "PlayerAccentTextBrush"))
+            .ToArray();
+
+        Assert.Equal("TextBlock", style.Attribute("TargetType")?.Value);
+        Assert.Equal(3, accentBrushes.Length);
+        Assert.DoesNotContain(player.Descendants(), element => HasKey(element, "PlayerAccentTextBrush"));
+        Assert.Contains(style.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "CharacterSpacing" && element.Attribute("Value")?.Value == "100");
+        Assert.Contains(style.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "FontSize" && element.Attribute("Value")?.Value == "12");
+        Assert.Contains(style.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "FontWeight" && element.Attribute("Value")?.Value == "SemiBold");
+        Assert.Equal("{StaticResource DashboardMetricLabelTextBlockStyle}", trackingLabel.Attribute("Style")?.Value);
+        Assert.Equal("{StaticResource DashboardMetricLabelTextBlockStyle}", monthlySpendLabel.Attribute("Style")?.Value);
     }
 
     [Fact]

@@ -56,6 +56,10 @@ public sealed class LocalSearchAndOcrIntegrationTests
             var snapshot = CreateTextSnapshot(screenshotPath, "Riunione progetto TrackMeUp");
 
             store.UpsertScreenshotTextSnapshot(new string('a', 32), snapshot);
+            store.UpsertScreenshotIntervalTelemetry(
+                new string('a', 32),
+                [screenshotPath],
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-15), capturedAt, 50, 50));
 
             var loaded = store.LoadScreenshotTextSnapshot(screenshotPath);
             var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.LocalDateTime.Date));
@@ -65,6 +69,9 @@ public sealed class LocalSearchAndOcrIntegrationTests
             Assert.Equal(snapshot.Ocr.Lines[0].Words[0], loaded?.Ocr.Lines[0].Words[0]);
             Assert.Equal("Riunione progetto TrackMeUp", item.TextSnapshot?.Ocr.RawText);
             Assert.Equal(42, item.TextSnapshot?.Ocr.Lines[0].Words[0].X);
+            Assert.Equal(50, item.CpuUsagePercent);
+            Assert.Equal(50, item.GpuUsagePercent);
+            Assert.Equal(3, item.ActivityIndex);
         }
         finally
         {
@@ -73,7 +80,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
     }
 
     [Fact]
-    public void ActivitySchema_MigratesValidatedVersionThreeToCurrentVersion()
+    public void ActivitySchema_RejectsSupersededDatabaseVersion()
     {
         var dataDirectory = CreateDataDirectory();
         try
@@ -84,30 +91,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
             {
                 connection.Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = """
-                    DROP TABLE ai_model_pricing;
-                    DROP INDEX ix_screenshot_text_snapshots_capture;
-                    DROP TABLE screenshot_text_snapshots;
-                    PRAGMA user_version = 3;
-                    """;
+                command.CommandText = "PRAGMA user_version = 5;";
                 command.ExecuteNonQuery();
             }
 
-            _ = new LocalStore(dataDirectory);
-
-            using var migrated = new SqliteConnection($"Data Source={databasePath};Pooling=False");
-            migrated.Open();
-            using var version = migrated.CreateCommand();
-            version.CommandText = "PRAGMA user_version;";
-            Assert.Equal(5L, Convert.ToInt64(version.ExecuteScalar()));
-            using var tables = migrated.CreateCommand();
-            tables.CommandText = """
-                SELECT COUNT(*)
-                FROM sqlite_schema
-                WHERE type = 'table'
-                  AND name IN ('screenshot_text_snapshots', 'ai_model_pricing');
-                """;
-            Assert.Equal(2L, Convert.ToInt64(tables.ExecuteScalar()));
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
+            Assert.Contains("Unsupported activity database schema version 5; expected 6", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -160,6 +149,10 @@ public sealed class LocalSearchAndOcrIntegrationTests
                     DateTimeOffset.UtcNow)
             };
             store.UpsertScreenshotTextSnapshot(new string('b', 32), textSnapshot);
+            store.UpsertScreenshotIntervalTelemetry(
+                new string('b', 32),
+                [screenshotPath],
+                new ScreenshotIntervalTelemetry(timestamp.AddMinutes(-15), timestamp, 37, 61));
 
             await using var coordinator = new LocalSearchCoordinator(
                 store,
@@ -186,7 +179,11 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 && hit.Document.OcrRawText == "Fattura marzo 2026"
                 && hit.Document.OcrStructuredSummary?.Contains("scadenza", StringComparison.OrdinalIgnoreCase) == true
                 && hit.Document.AttributesRaw.TryGetValue(SearchAttributeKeys.MouseClicks, out var clicks)
-                && clicks == "1");
+                && clicks == "1"
+                && hit.Document.AttributesRaw.TryGetValue(SearchAttributeKeys.CpuUsagePercent, out var cpu)
+                && cpu == "37"
+                && hit.Document.AttributesRaw.TryGetValue(SearchAttributeKeys.GpuUsagePercent, out var gpu)
+                && gpu == "61");
         }
         finally
         {

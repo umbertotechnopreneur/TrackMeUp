@@ -12,9 +12,11 @@ public sealed class SearchSurfaceContractTests
     public void FloatingSearchWindow_UsesAcrylicAndBoundedScreenshotResults()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "SearchWindow.xaml"));
+        var mainWindow = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var resultControl = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "SearchResultItemControl.xaml"));
         var resultControlSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "SearchResultItemControl.xaml.cs"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
+        var mainWindowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var placementSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
         var viewModelSource = File.ReadAllText(RepositoryFile("TrackMeUp.Presentation", "SearchViewModel.cs"));
         var list = window.Descendants().Single(element => HasName(element, "SearchResultsList"));
@@ -26,8 +28,14 @@ public sealed class SearchSurfaceContractTests
             element.Name.LocalName == "Border"
             && element.Attribute("Width")?.Value == "260"
             && element.Attribute("Height")?.Value == "146");
+        var f3Shortcut = mainWindow.Descendants().Single(element =>
+            element.Name.LocalName == "KeyboardAccelerator" && element.Attribute("Key")?.Value == "F3");
+        var searchMenuItem = mainWindow.Descendants().Single(element => HasName(element, "SearchMenuItem"));
 
         Assert.Equal("Window", window.Root?.Name.LocalName);
+        Assert.Equal("MainKeyboardAccelerator_Invoked", f3Shortcut.Attribute("Invoked")?.Value);
+        Assert.Equal("F3 / Ctrl+Shift+P", searchMenuItem.Attribute("KeyboardAcceleratorTextOverride")?.Value);
+        Assert.Contains("case Windows.System.VirtualKey.F3:", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains(window.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.DoesNotContain(window.Descendants(), element => HasName(element, "WindowTitleText"));
         Assert.Equal("48", queryBox.Attribute("MinHeight")?.Value);
@@ -66,6 +74,10 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(resultThumbnailFrame.Descendants(), element => element.Name.LocalName == "Vector3Transition" && element.Attribute("Duration")?.Value == "0:0:0.16");
         Assert.Contains(resultThumbnailFrame.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
         Assert.Contains(resultControl.Descendants(), element => element.Name.LocalName == "ThemeShadow");
+        Assert.Contains(resultControl.Descendants(), element => HasName(element, "MatchScoreChip"));
+        Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding MatchPercentDisplay}");
+        Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding ActivityDisplay}");
+        Assert.DoesNotContain(resultControl.Descendants(), element => element.Attribute("Text")?.Value?.Contains("CPU", StringComparison.Ordinal) == true);
         Assert.Contains("SnippetText.TextHighlighters", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("HoverThumbnailElevation = 18f", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(HoverThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
@@ -104,6 +116,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("Limit = MaximumResults", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("ToPlainTextPreview", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("CalculateSuggestionConfidence", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("OrderByDescending(hit => hit.Score)", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("CalculateMatchPercent", viewModelSource, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -118,12 +118,14 @@ public sealed record ScreenshotTextSnapshot(
 /// <param name="SpanLabels">Distinct consecutive activity labels sampled during the capture interval.</param>
 /// <param name="AiDescriptionMarkdown">The newest persisted AI description that references this exact artifact, formatted as Markdown.</param>
 /// <param name="AiAnalyzedAt">The timestamp of the associated AI analysis, or <see langword="null"/> when no successful result exists.</param>
-/// <param name="ActivityIndex">A 0-100 historical interval index based on durable keyboard, click, and active-time samples; CPU and GPU telemetry are not reconstructed.</param>
+/// <param name="ActivityIndex">A 0-100 historical interval index based on durable input, active-time, CPU, and GPU telemetry.</param>
 /// <param name="TextSnapshot">The local OCR snapshot and optional AI refinement associated with this artifact.</param>
 /// <param name="ForegroundWindowTitle">The closest foreground window title observed during the capture interval.</param>
 /// <param name="ScreenIndex">The one-based monitor index parsed from the retained artifact name, or <see langword="null"/> for active-window captures.</param>
 /// <param name="ScreenName">A stable display label derived from <paramref name="ScreenIndex"/> when available.</param>
 /// <param name="MouseClicks">The number of durable mouse clicks observed during the capture interval, or <see langword="null"/> when no activity samples overlap it.</param>
+/// <param name="CpuUsagePercent">The average CPU usage persisted for the capture interval, or <see langword="null"/> when telemetry was unavailable.</param>
+/// <param name="GpuUsagePercent">The average GPU usage persisted for the capture interval, or <see langword="null"/> when telemetry was unavailable.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
@@ -138,7 +140,16 @@ public sealed record ScreenshotGalleryItem(
     string? ForegroundWindowTitle = null,
     int? ScreenIndex = null,
     string? ScreenName = null,
-    long? MouseClicks = null);
+    long? MouseClicks = null,
+    int? CpuUsagePercent = null,
+    int? GpuUsagePercent = null);
+
+/// <summary>Contains telemetry averaged between the previous retained screenshot and the current capture.</summary>
+public sealed record ScreenshotIntervalTelemetry(
+    DateTimeOffset IntervalStartedAt,
+    DateTimeOffset CapturedAt,
+    int? CpuUsagePercent,
+    int? GpuUsagePercent);
 
 /// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
 public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);

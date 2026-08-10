@@ -65,6 +65,25 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains(privacyLink.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Navigation.Privacy.Action");
         Assert.Contains(privacyLink.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE76C");
 
+        var settingsLinkIcons = new[]
+        {
+            (Name: "SnapshotAiOperationsLink", Color: "#FFE88F6B", Glyph: "\uE7ED"),
+            (Name: "ReportsOperationsLink", Color: "#FF7D9FF8", Glyph: "\uE787"),
+            (Name: "PrivacyOperationsLink", Color: "#FFA97BEA", Glyph: "\uE72E"),
+            (Name: "RetentionOperationsLink", Color: "#FF85A8DB", Glyph: "\uE823"),
+            (Name: "PluginsOperationsLink", Color: "#FF71CBB7", Glyph: "\uE90F")
+        };
+        Assert.All(settingsLinkIcons, expected =>
+        {
+            var link = settingsLinks.Single(element => HasName(element, expected.Name));
+            var icons = link.Descendants().Where(element => element.Name.LocalName == "FontIcon").ToArray();
+            Assert.Equal(2, icons.Length);
+            Assert.Equal(expected.Color, icons[0].Attribute("Foreground")?.Value);
+            Assert.Equal(expected.Glyph, icons[0].Attribute("Glyph")?.Value);
+            Assert.Equal("Raw", icons[0].Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
+            Assert.Equal("\uE76C", icons[1].Attribute("Glyph")?.Value);
+        });
+
         Assert.All(new[] { snapshots, reports, privacy, retention, plugins }, document =>
         {
             Assert.DoesNotContain(document.Descendants(), element => element.Name.LocalName == "InfoBar");
@@ -73,6 +92,25 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain(snapshots.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.TakeSnapshotNow");
         Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
+
+        var operationLinkIcons = new[]
+        {
+            (Name: "OpenSnapshotAiLink", Color: "#FFE88F6B", Glyph: "\uE7ED"),
+            (Name: "OpenReportsLink", Color: "#FF7D9FF8", Glyph: "\uE787"),
+            (Name: "OpenPrivacyLink", Color: "#FFA97BEA", Glyph: "\uE72E"),
+            (Name: "OpenRetentionLink", Color: "#FF85A8DB", Glyph: "\uE823"),
+            (Name: "OpenPluginsLink", Color: "#FF71CBB7", Glyph: "\uE90F")
+        };
+        Assert.All(operationLinkIcons, expected =>
+        {
+            var link = operations.Descendants().Single(element => HasName(element, expected.Name));
+            var icons = link.Descendants().Where(element => element.Name.LocalName == "FontIcon").ToArray();
+            Assert.Equal(2, icons.Length);
+            Assert.Equal(expected.Color, icons[0].Attribute("Foreground")?.Value);
+            Assert.Equal(expected.Glyph, icons[0].Attribute("Glyph")?.Value);
+            Assert.Equal("Raw", icons[0].Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
+            Assert.Equal("\uE76C", icons[1].Attribute("Glyph")?.Value);
+        });
     }
 
     /// <summary>Guards automatic plugin loading and direct, per-plugin switch updates.</summary>
@@ -147,6 +185,16 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Equal("Transparent", infoBar.Attribute("BorderBrush")?.Value);
         Assert.Equal("0", infoBar.Attribute("BorderThickness")?.Value);
         Assert.Equal("BannerInfoBar_Closing", infoBar.Attribute("Closing")?.Value);
+        var transparentSemanticBackgrounds = infoBar.Descendants()
+            .Where(element => element.Name.LocalName == "SolidColorBrush")
+            .Where(element => element.Attribute("Color")?.Value == "Transparent")
+            .SelectMany(element => element.Attributes().Where(attribute => attribute.Name.LocalName == "Key"))
+            .Select(attribute => attribute.Value)
+            .ToArray();
+        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarInformationalSeverityBackgroundBrush"));
+        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarSuccessSeverityBackgroundBrush"));
+        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarWarningSeverityBackgroundBrush"));
+        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarErrorSeverityBackgroundBrush"));
         Assert.Equal("0", bannerSurface.Attribute("Opacity")?.Value);
         Assert.Equal("3", progress.Attribute("Height")?.Value);
         Assert.Equal("Transparent", progress.Attribute("Background")?.Value);
@@ -174,7 +222,7 @@ public sealed class WinUiOperationsSurfaceContractTests
             .Where(element => element.Name.LocalName == "SolidColorBrush" && HasKey(element, "TimedInfoBarGlassBorderBrush"))
             .ToArray();
         Assert.Equal(2, timedBackdropBrushes.Length);
-        Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.08");
+        Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.10");
         Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.14");
         Assert.Equal(2, timedGlassVeils.Length);
         Assert.All(timedGlassVeils, brush => Assert.Contains(brush.Descendants(), stop =>

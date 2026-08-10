@@ -8,6 +8,7 @@
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="P" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
+            <KeyboardAccelerator Key="F3" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="R" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="G" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="O" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
@@ -141,7 +142,6 @@
                         <GradientStop Color="#FFD34D34" Offset="1" />
                     </LinearGradientBrush>
                     <SolidColorBrush x:Key="PlayerInputBrush" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
                     <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
                     <Style x:Key="CircularActionButtonStyle"
                            TargetType="Button">
@@ -225,7 +225,6 @@
                                 <GradientStop Color="#FFE86C4F" Offset="0" />
                                 <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
-                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="Dark">
@@ -233,12 +232,10 @@
                                 <GradientStop Color="#FFE86C4F" Offset="0" />
                                 <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
-                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFFF9B82" />
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="HighContrast">
                             <SolidColorBrush x:Key="PlayerAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
-                            <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="{ThemeResource SystemColorHighlightColor}" />
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
@@ -293,7 +290,7 @@
                                         x:Name="SearchMenuItem"
                                         Tag="Search.Title"
                                         Text="Search captured moments"
-                                        KeyboardAcceleratorTextOverride="Ctrl+Shift+P"
+                                        KeyboardAcceleratorTextOverride="F3 / Ctrl+Shift+P"
                                         Click="SearchMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FFDB8D72" Glyph="&#xE721;" />
@@ -539,10 +536,7 @@
                             <TextBlock
                                 x:Name="TrackingStateText"
                                 AutomationProperties.LiveSetting="Polite"
-                                CharacterSpacing="100"
-                                FontSize="12"
-                                FontWeight="SemiBold"
-                                Foreground="{ThemeResource PlayerAccentTextBrush}"
+                                Style="{StaticResource DashboardMetricLabelTextBlockStyle}"
                                 Text="IN PAUSA" />
                             <TextBlock
                                 x:Name="ElapsedText"
@@ -598,9 +592,7 @@
                             Visibility="Collapsed">
                             <TextBlock
                                 HorizontalAlignment="Right"
-                                CharacterSpacing="70"
-                                FontSize="9"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource DashboardMetricLabelTextBlockStyle}"
                                 Text="MONTHLY AI SPEND" />
                             <TextBlock
                                 x:Name="AiMonthlySpendText"

@@ -8,10 +8,10 @@ public static class SearchAttributeKeys
     /// <summary>Stores the number of mouse clicks observed in the screenshot capture interval.</summary>
     public const string MouseClicks = "activity.mouse-clicks";
 
-    /// <summary>Stores CPU utilization when a capture-time telemetry source is available.</summary>
+    /// <summary>Stores average CPU usage observed since the previous screenshot.</summary>
     public const string CpuUsagePercent = "telemetry.cpu-usage-percent";
 
-    /// <summary>Stores GPU utilization when a capture-time telemetry source is available.</summary>
+    /// <summary>Stores average GPU usage observed since the previous screenshot.</summary>
     public const string GpuUsagePercent = "telemetry.gpu-usage-percent";
 }
 

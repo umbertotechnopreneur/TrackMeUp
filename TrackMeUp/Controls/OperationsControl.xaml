@@ -137,6 +137,7 @@
                         <TextBlock Tag="Options.Navigation.SnapshotAi.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Capture or inspect images and request a description from the configured AI provider." TextWrapping="Wrap" />
                         <HyperlinkButton x:Name="OpenSnapshotAiLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Open screen capture tools" Click="OpenSnapshotAiLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
                                 <TextBlock Tag="Options.Navigation.SnapshotAi.Action" Text="Open screen capture tools" />
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
                             </StackPanel>
@@ -149,6 +150,7 @@
                         <TextBlock Tag="Options.Navigation.Reports.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Create a report for today or a digest for a selected day from activity stored on this PC." TextWrapping="Wrap" />
                         <HyperlinkButton x:Name="OpenReportsLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Open report tools" Click="OpenReportsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF7D9FF8" Glyph="&#xE787;" />
                                 <TextBlock Tag="Options.Navigation.Reports.Action" Text="Open report tools" />
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
                             </StackPanel>
@@ -161,6 +163,7 @@
                         <TextBlock Tag="Options.Navigation.Privacy.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Choose which apps, window titles, and context details TrackMeUp must ignore before storing or sharing context." TextWrapping="Wrap" />
                         <HyperlinkButton x:Name="OpenPrivacyLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Manage privacy rules" Click="OpenPrivacyLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFA97BEA" Glyph="&#xE72E;" />
                                 <TextBlock Tag="Options.Navigation.Privacy.Action" Text="Manage privacy rules" />
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
                             </StackPanel>
@@ -173,6 +176,7 @@
                         <TextBlock Tag="Options.Navigation.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Preview what can be removed and run a confirmed cleanup of local activity data and screen captures." TextWrapping="Wrap" />
                         <HyperlinkButton x:Name="OpenRetentionLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Review data retention" Click="OpenRetentionLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF85A8DB" Glyph="&#xE823;" />
                                 <TextBlock Tag="Options.Navigation.Retention.Action" Text="Review data retention" />
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
                             </StackPanel>
@@ -185,6 +189,7 @@
                         <TextBlock Tag="Options.Navigation.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Choose which local app-specific context enrichers can add details to the timeline." TextWrapping="Wrap" />
                         <HyperlinkButton x:Name="OpenPluginsLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Manage app details" Click="OpenPluginsLink_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF71CBB7" Glyph="&#xE90F;" />
                                 <TextBlock Tag="Options.Navigation.Plugins.Action" Text="Manage app details" />
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
                             </StackPanel>

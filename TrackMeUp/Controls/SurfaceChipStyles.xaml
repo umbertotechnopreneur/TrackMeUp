@@ -28,25 +28,6 @@
         <Setter Property="CornerRadius" Value="23" />
     </Style>
 
-    <Style x:Key="SurfacePillCardStyle" TargetType="Border">
-        <Setter Property="MinHeight" Value="78" />
-        <Setter Property="Padding" Value="16,12" />
-        <Setter Property="Background" Value="{ThemeResource SurfaceChipBackgroundBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource SurfaceChipBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="20" />
-    </Style>
-
-    <Style x:Key="SurfaceIconChipStyle" TargetType="Border">
-        <Setter Property="Width" Value="22" />
-        <Setter Property="Height" Value="22" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Background" Value="{ThemeResource SurfaceChipBackgroundBrush}" />
-        <Setter Property="BorderBrush" Value="{ThemeResource SurfaceChipBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="11" />
-    </Style>
-
     <Style x:Key="SurfaceChipIconStyle" TargetType="FontIcon">
         <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
         <Setter Property="FontSize" Value="16" />

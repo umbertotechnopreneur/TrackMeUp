@@ -16,8 +16,13 @@ public sealed record ScreenshotSearchResult(
     string ActiveWindowDisplay,
     string TextSnippet,
     string Query,
-    string TelemetryDisplay,
-    float Score);
+    string ActivityDisplay,
+    float Score,
+    int MatchPercent)
+{
+    /// <summary>Gets the Lucene relevance normalized against the best hit in the current query.</summary>
+    public string MatchPercentDisplay => $"{MatchPercent}%";
+}
 
 /// <summary>Contains one safe, compact suggestion prepared for the command-palette popup.</summary>
 public sealed record SearchSuggestionViewState(string Text, int ConfidencePercent)
@@ -126,8 +131,17 @@ public sealed class SearchViewModel : ViewModelBase
                     response.Issues);
             }
 
-            var projected = response.Value.Hits
-                .Select(hit => Project(hit, culture, query))
+            if (response.Value.Hits.Any(hit => !float.IsFinite(hit.Score) || hit.Score < 0f))
+            {
+                throw new InvalidDataException("The application returned an invalid Lucene relevance score.");
+            }
+
+            var rankedHits = response.Value.Hits
+                .OrderByDescending(hit => hit.Score)
+                .ToArray();
+            var highestScore = rankedHits.Length == 0 ? 0f : rankedHits[0].Score;
+            var projected = rankedHits
+                .Select(hit => Project(hit, culture, query, CalculateMatchPercent(hit.Score, highestScore)))
                 .ToArray();
             if (projected.Length > MaximumResults)
             {
@@ -237,7 +251,7 @@ public sealed class SearchViewModel : ViewModelBase
         return Math.Clamp((int)Math.Round(confidence * 100d, MidpointRounding.AwayFromZero), 55, 99);
     }
 
-    private static ScreenshotSearchResult Project(SearchHit hit, CultureInfo culture, string query)
+    private static ScreenshotSearchResult Project(SearchHit hit, CultureInfo culture, string query, int matchPercent)
     {
         var document = hit.Document;
         if (!string.Equals(document.Kind, "screenshot", StringComparison.Ordinal)
@@ -254,6 +268,10 @@ public sealed class SearchViewModel : ViewModelBase
         var mouseClicks = ReadNonNegativeInt64(document, SearchAttributeKeys.MouseClicks);
         var cpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.CpuUsagePercent);
         var gpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.GpuUsagePercent);
+        var snippet = BuildSnippet(document, query);
+        var activeWindowDisplay = windowTitle == "—" || SnippetRepresentsWindowTitle(snippet, windowTitle)
+            ? application
+            : $"{application} · {windowTitle}";
         return new ScreenshotSearchResult(
             document.CapturePath,
             screenshotUri.AbsoluteUri,
@@ -261,12 +279,27 @@ public sealed class SearchViewModel : ViewModelBase
             $"{localTimestamp.ToString("d MMM yyyy", culture)} · {localTimestamp.ToString("t", culture)}",
             application,
             windowTitle,
-            windowTitle == "—" ? application : $"{application} · {windowTitle}",
-            BuildSnippet(document, query),
+            activeWindowDisplay,
+            snippet,
             query,
-            FormatTelemetry(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture),
-            hit.Score);
+            FormatActivity(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture),
+            hit.Score,
+            matchPercent);
     }
+
+    private static int CalculateMatchPercent(float score, float highestScore)
+    {
+        if (score <= 0f || highestScore <= 0f)
+        {
+            return 0;
+        }
+
+        var relativeScore = score / highestScore * 100d;
+        return Math.Clamp((int)Math.Round(relativeScore, MidpointRounding.AwayFromZero), 1, 100);
+    }
+
+    private static bool SnippetRepresentsWindowTitle(string snippet, string windowTitle) =>
+        string.Equals(snippet.Trim('…'), windowTitle.Trim(), StringComparison.OrdinalIgnoreCase);
 
     private static long? ReadNonNegativeInt64(SearchDocument document, string key)
     {
@@ -285,25 +318,25 @@ public sealed class SearchViewModel : ViewModelBase
 
     private static int? ReadPercentage(SearchDocument document, string key)
     {
-        if (!document.AttributesRaw.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || value is < 0 or > 100)
+        var value = ReadNonNegativeInt64(document, key);
+        if (value is > 100)
         {
             throw new InvalidDataException($"Search document '{document.Id}' has an invalid '{key}' attribute.");
         }
 
-        return value;
+        return value is null ? null : checked((int)value.Value);
     }
 
-    private static string FormatTelemetry(long? mouseClicks, int? cpuUsagePercent, int? gpuUsagePercent, CultureInfo culture)
+    private static string FormatActivity(
+        long? mouseClicks,
+        int? cpuUsagePercent,
+        int? gpuUsagePercent,
+        CultureInfo culture)
     {
-        var clicks = mouseClicks?.ToString("N0", culture) ?? "—";
-        var cpu = cpuUsagePercent is { } cpuUsage ? $"{cpuUsage}%" : "—";
-        var gpu = gpuUsagePercent is { } gpuUsage ? $"{gpuUsage}%" : "—";
-        return $"{clicks} click · CPU {cpu} · GPU {gpu}";
+        var clicks = mouseClicks is { } clickCount
+            ? $"{clickCount.ToString("N0", culture)} {(clickCount == 1 ? "click" : "clicks")}"
+            : "Clicks —";
+        return $"{clicks} · CPU {(cpuUsagePercent is { } cpu ? $"{cpu}%" : "—")} · GPU {(gpuUsagePercent is { } gpu ? $"{gpu}%" : "—")}";
     }
 
     private static string BuildSnippet(SearchDocument document, string query)

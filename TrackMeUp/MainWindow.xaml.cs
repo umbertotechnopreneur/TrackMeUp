@@ -560,6 +560,7 @@ public sealed partial class MainWindow : Window
         args.Handled = true;
         switch (sender.Key)
         {
+            case Windows.System.VirtualKey.F3:
             case Windows.System.VirtualKey.P:
                 RequestSearch();
                 break;
@@ -996,7 +997,7 @@ public sealed partial class MainWindow : Window
         var maximumClicks = Math.Max(1L, state.Minutes.Max(minute => minute.MouseClicks));
         var inputStartIndex = Math.Max(0, state.Minutes.Count - (state.SnapshotIntervalMinutes * 2));
         var latestSnapshotStartIndex = Math.Max(0, state.Minutes.Count - state.SnapshotIntervalMinutes);
-        var scoreBrush = (Brush)PlayerPanel.Resources["PlayerAccentTextBrush"];
+        var scoreBrush = GetPlayerAccentBrush();
         var inputBrush = GetActivityInputBrush();
         ActivityScoreBarHost.Children.Clear();
         ActivityScoreBarHost.ColumnDefinitions.Clear();
@@ -1058,11 +1059,16 @@ public sealed partial class MainWindow : Window
     private string FormatInterval(string intervalName, ActivityScoreInterval interval) =>
         $"{intervalName}: {interval.MouseClicks:N0} {T("Activity.Clicks")} · {interval.KeyPresses:N0} {T("Activity.Keys")}";
 
+    private Brush GetPlayerAccentBrush() =>
+        Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue("PlayerAccentTextBrush", out var brush) && brush is Brush playerAccentBrush
+            ? playerAccentBrush
+            : new SolidColorBrush(Colors.Transparent);
+
     private Brush GetActivityInputBrush() =>
         Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue("SystemAccentColor", out var accent)
         && accent is Color accentColor
             ? new SolidColorBrush(accentColor)
-            : (Brush)PlayerPanel.Resources["PlayerAccentTextBrush"];
+            : GetPlayerAccentBrush();
 
     /// <summary>Deletes the most recent manual capture while its temporary countdown is active.</summary>
     private async void DeleteSnapshotButton_Click(object sender, RoutedEventArgs e)

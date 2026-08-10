@@ -30,7 +30,8 @@ public sealed class SearchViewModelTests
         Assert.Equal(0, request.Offset);
         Assert.True(request.IncludeTextContent);
         Assert.Equal(["screenshot"], request.Kinds.ToArray());
-        var item = Assert.Single(viewModel.Results);
+        Assert.Equal(2, viewModel.Results.Count);
+        var item = viewModel.Results[0];
         Assert.Equal(@"C:\captures\meeting.png", item.ScreenshotPath);
         Assert.StartsWith("file:///C:/captures/meeting.png", item.ScreenshotUri, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("2026", item.CapturedAtDisplay, StringComparison.Ordinal);
@@ -39,7 +40,12 @@ public sealed class SearchViewModelTests
         Assert.Contains("riunione", item.TextSnippet, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("#", item.TextSnippet, StringComparison.Ordinal);
         Assert.DoesNotContain("**", item.TextSnippet, StringComparison.Ordinal);
-        Assert.Equal("42 click · CPU — · GPU —", item.TelemetryDisplay);
+        Assert.Equal("42 clicks · CPU 37% · GPU 61%", item.ActivityDisplay);
+        Assert.Equal(4.5f, item.Score);
+        Assert.Equal(100, item.MatchPercent);
+        Assert.Equal("100%", item.MatchPercentDisplay);
+        Assert.Equal(2.25f, viewModel.Results[1].Score);
+        Assert.Equal(50, viewModel.Results[1].MatchPercent);
         Assert.Equal(23, viewModel.TotalCount);
     }
 
@@ -89,6 +95,21 @@ public sealed class SearchViewModelTests
                         {
                             Document = new SearchDocument
                             {
+                                Id = "screenshot:lower-score",
+                                Kind = "screenshot",
+                                Timestamp = new DateTimeOffset(2026, 8, 9, 8, 30, 0, TimeSpan.Zero),
+                                Application = "Outlook",
+                                WindowTitle = "Planning",
+                                OcrRawText = "Promemoria per la riunione settimanale",
+                                AttributesRaw = ImmutableDictionary<string, string?>.Empty,
+                                CapturePath = @"C:\captures\planning.png"
+                            },
+                            Score = 2.25f
+                        },
+                        new SearchHit
+                        {
+                            Document = new SearchDocument
+                            {
                                 Id = "screenshot:meeting",
                                 Kind = "screenshot",
                                 Timestamp = new DateTimeOffset(2026, 8, 9, 9, 30, 0, TimeSpan.Zero),
@@ -96,7 +117,9 @@ public sealed class SearchViewModelTests
                                 WindowTitle = "Project review",
                                 OcrRawText = "## Activity\n\nAppunti della **riunione** di progetto",
                                 AttributesRaw = ImmutableDictionary<string, string?>.Empty
-                                    .Add(SearchAttributeKeys.MouseClicks, "42"),
+                                    .Add(SearchAttributeKeys.MouseClicks, "42")
+                                    .Add(SearchAttributeKeys.CpuUsagePercent, "37")
+                                    .Add(SearchAttributeKeys.GpuUsagePercent, "61"),
                                 CapturePath = @"C:\captures\meeting.png"
                             },
                             Score = 4.5f

@@ -20,6 +20,7 @@ These instructions apply to all changes in this repository.
 - Avoid PowerShell quoting errors: prefer `pwsh -NoProfile -File <script.ps1>` for scripts and `pwsh -NoProfile -Command '<single-quoted command>'` for short commands; pass arguments as arrays or explicit parameters, do not build nested shell strings, and escape embedded quotes for the receiving command instead of relying on PowerShell interpolation.
 - Do not commit credentials, secrets, `.env`, API keys, tokens, or private absolute paths.
 - Exclude generated artifacts in commits (`bin/`, `obj/`, `artifacts/`, `.vs/`).
+- Ignore automatic version metadata changes in `TrackMeUp/build-version.json` and version-only updates in `TrackMeUp/Package.appxmanifest`: do not inspect, restore, report, stage, or commit them unless the user explicitly asks to manage the application version.
 - Run build on Windows SDK targets only: x64, x86, ARM64.
 - Prefer parser checks for PowerShell before running potentially destructive scripts.
 

@@ -360,11 +360,27 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         // Capture happens only after the privacy and enabled-state gates above have succeeded.
+        var telemetryIntervalStartedAt = ResolveScreenshotTelemetryIntervalStart(settings.ScreenshotIntervalMinutes);
+        try
+        {
+            _tracking.RecordSystemSnapshot(_snapshot.Capture());
+        }
+        catch (Exception exception)
+        {
+            // Screenshot capture remains available when optional host telemetry cannot be sampled.
+            _logger.LogWarning("Screenshot telemetry sample failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+        }
+
         var result = _capture.CaptureByMode(
             settings.ScreenshotDirectory,
             mode,
             request.Watermark && settings.WatermarkScreenshots,
             request.CaptureOrigin);
+        if (request.Keep)
+        {
+            PersistScreenshotIntervalTelemetry(result, telemetryIntervalStartedAt, DateTimeOffset.UtcNow);
+        }
+
         result = await _textExtraction.AttachAsync(result, cancellationToken);
 
         if (settings.OpenAiEnabled && !request.DeferAiAnalysis)
@@ -483,6 +499,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                      .Distinct(StringComparer.OrdinalIgnoreCase))
         {
             _store.DeleteScreenshotTextSnapshot(sourcePath);
+        }
+
+        foreach (var storedPath in capture.StoredScreenshotPaths)
+        {
+            _store.DeleteScreenshotIntervalTelemetry(storedPath);
         }
 
         _pendingManualScreenshotCapture = null;
@@ -713,6 +734,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         _store.DeleteScreenshotTextSnapshot(screenshotPath);
+        _store.DeleteScreenshotIntervalTelemetry(screenshotPath);
 
         await Task.CompletedTask;
         return OperationResult<string>.Success("screenshot.deleted", "ScreenshotDeleted", screenshotPath);
@@ -729,7 +751,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         var deletedCount = checked(
             _store.DeleteAiAnalysesReferencingScreenshot(screenshotPath)
-            + _store.DeleteScreenshotTextSnapshot(screenshotPath));
+            + _store.DeleteScreenshotTextSnapshot(screenshotPath)
+            + _store.DeleteScreenshotIntervalTelemetry(screenshotPath));
         if (deletedCount == 0)
         {
             return OperationResult<string>.Failure("snapshot.not_found", "SnapshotNotFound", new ValidationIssue("screenshotPath", "not_found", "SnapshotNotFound"));
@@ -1097,6 +1120,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 AiAnalysis result;
                 if (request.AllowCapture && settings.ScreenshotsEnabled)
                 {
+                    var telemetryIntervalStartedAt = ResolveScreenshotTelemetryIntervalStart(settings.ScreenshotIntervalMinutes);
+                    try
+                    {
+                        _tracking.RecordSystemSnapshot(_snapshot.Capture());
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogWarning("Screenshot telemetry sample failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                    }
+
                     capture = _capture.CaptureByMode(
                         settings.ScreenshotDirectory,
                         settings.ScreenshotCaptureMode,
@@ -1104,6 +1137,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                         string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
                             ? ScreenshotCaptureOrigins.Scheduled
                             : ScreenshotCaptureOrigins.Manual);
+                    if (settings.KeepScreenshots)
+                    {
+                        PersistScreenshotIntervalTelemetry(capture, telemetryIntervalStartedAt, DateTimeOffset.UtcNow);
+                    }
+
                     capture = await _textExtraction.AttachAsync(capture, cancellationToken);
                     capture = await _ocrRefinement.RefineAsync(capture, settings, cancellationToken);
                     result = await _analysis.AnalyzeCapturedScreenAsync(
@@ -1288,6 +1326,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             cancellationToken.ThrowIfCancellationRequested();
             File.Delete(path);
             _store.DeleteScreenshotTextSnapshot(path);
+            _store.DeleteScreenshotIntervalTelemetry(path);
         }
 
         var settings = _store.LoadSettings();
@@ -1644,6 +1683,24 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 _logger.LogWarning("Screenshot cleanup failed. ExceptionType={ExceptionType}", exception.GetType().Name);
             }
         }
+    }
+
+    private DateTimeOffset ResolveScreenshotTelemetryIntervalStart(int fallbackIntervalMinutes)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var persistedBoundary = _store.LoadLatestScreenshotTelemetryCapturedAt();
+        return persistedBoundary is { } boundary && boundary < now
+            ? boundary
+            : now.AddMinutes(-Math.Max(1, fallbackIntervalMinutes));
+    }
+
+    private void PersistScreenshotIntervalTelemetry(
+        ScreenshotCaptureResult capture,
+        DateTimeOffset intervalStartedAt,
+        DateTimeOffset capturedAt)
+    {
+        var telemetry = _tracking.BuildScreenshotIntervalTelemetry(intervalStartedAt, capturedAt);
+        _store.UpsertScreenshotIntervalTelemetry(capture.CaptureId, capture.StoredScreenshotPaths, telemetry);
     }
 
     /// <summary>Captures one telemetry point per minute while tracking so the live score includes CPU and GPU activity.</summary>

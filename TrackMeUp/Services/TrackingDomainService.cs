@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
 
@@ -164,6 +165,12 @@ public sealed class TrackingDomainService : IDisposable
         _activityScore.RecordSystemSnapshot(snapshot);
         DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
     }
+
+    /// <summary>Calculates the telemetry averages that must be persisted with one screenshot.</summary>
+    public ScreenshotIntervalTelemetry BuildScreenshotIntervalTelemetry(
+        DateTimeOffset intervalStartedAt,
+        DateTimeOffset capturedAt) =>
+        _activityScore.BuildScreenshotIntervalTelemetry(intervalStartedAt, capturedAt);
 
     /// <summary>
     /// Handles each new sample and publishes updated UI state.

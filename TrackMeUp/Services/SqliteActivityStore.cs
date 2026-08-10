@@ -10,7 +10,7 @@ namespace TrackMeUp.Services;
 internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
-    private const int SchemaVersion = 5;
+    private const int SchemaVersion = 6;
     private const long FixedEstimatedRowBytes = 96;
     private static readonly SchemaColumn[] ExpectedActivityColumns =
     [
@@ -57,6 +57,17 @@ internal sealed class SqliteActivityStore
         new("updated_utc_ticks", "INTEGER", true, 0)
     ];
 
+    private static readonly SchemaColumn[] ExpectedScreenshotIntervalTelemetryColumns =
+    [
+        new("artifact_identity", "TEXT", true, 1),
+        new("capture_id", "TEXT", true, 0),
+        new("interval_started_utc_ticks", "INTEGER", true, 0),
+        new("captured_utc_ticks", "INTEGER", true, 0),
+        new("cpu_usage_percent", "INTEGER", false, 0),
+        new("gpu_usage_percent", "INTEGER", false, 0),
+        new("updated_utc_ticks", "INTEGER", true, 0)
+    ];
+
     private static readonly SchemaColumn[] ExpectedAiModelPricingColumns =
     [
         new("provider", "TEXT", true, 1),
@@ -98,12 +109,18 @@ internal sealed class SqliteActivityStore
         "ix_screenshot_text_snapshots_capture"
     ];
 
+    private static readonly HashSet<string> ExpectedScreenshotIntervalTelemetryIndexes =
+    [
+        "sqlite_autoindex_screenshot_interval_telemetry_1",
+        "ix_screenshot_interval_telemetry_capture"
+    ];
+
     private static readonly HashSet<string> ExpectedAiModelPricingIndexes =
     [
         "sqlite_autoindex_ai_model_pricing_1"
     ];
 
-    private static readonly HashSet<string> ExpectedVersion3ApplicationSchemaObjects =
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
     [
         "activity_samples",
         "ix_activity_samples_start",
@@ -118,20 +135,12 @@ internal sealed class SqliteActivityStore
         "ai_analysis_search_idx",
         "ai_analysis_search_content",
         "ai_analysis_search_docsize",
-        "ai_analysis_search_config"
-    ];
-
-    private static readonly HashSet<string> ExpectedVersion4ApplicationSchemaObjects =
-    [
-        .. ExpectedVersion3ApplicationSchemaObjects,
+        "ai_analysis_search_config",
         "screenshot_text_snapshots",
-        "ix_screenshot_text_snapshots_capture"
-    ];
-
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
-    [
-        .. ExpectedVersion4ApplicationSchemaObjects,
-        "ai_model_pricing"
+        "ix_screenshot_text_snapshots_capture",
+        "ai_model_pricing",
+        "screenshot_interval_telemetry",
+        "ix_screenshot_interval_telemetry_capture"
     ];
 
     private readonly string _databasePath;
@@ -239,6 +248,101 @@ internal sealed class SqliteActivityStore
         command.Parameters.AddWithValue("$snapshot", payload);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.UtcNow.UtcDateTime.Ticks);
         command.ExecuteNonQuery();
+    }
+
+    /// <summary>Upserts CPU/GPU averages for one retained screenshot artifact.</summary>
+    internal void UpsertScreenshotIntervalTelemetry(
+        string artifactIdentity,
+        string captureId,
+        ScreenshotIntervalTelemetry telemetry)
+    {
+        if (string.IsNullOrWhiteSpace(artifactIdentity) || string.IsNullOrWhiteSpace(captureId))
+        {
+            throw new ArgumentException("Screenshot telemetry persistence requires artifact and capture identifiers.");
+        }
+
+        ArgumentNullException.ThrowIfNull(telemetry);
+        if (telemetry.IntervalStartedAt >= telemetry.CapturedAt
+            || telemetry.CpuUsagePercent is < 0 or > 100
+            || telemetry.GpuUsagePercent is < 0 or > 100)
+        {
+            throw new ArgumentException("Screenshot interval telemetry is invalid.", nameof(telemetry));
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO screenshot_interval_telemetry (
+                artifact_identity, capture_id, interval_started_utc_ticks, captured_utc_ticks,
+                cpu_usage_percent, gpu_usage_percent, updated_utc_ticks)
+            VALUES ($identity, $captureId, $intervalStarted, $captured, $cpu, $gpu, $updated)
+            ON CONFLICT(artifact_identity) DO UPDATE SET
+                capture_id = excluded.capture_id,
+                interval_started_utc_ticks = excluded.interval_started_utc_ticks,
+                captured_utc_ticks = excluded.captured_utc_ticks,
+                cpu_usage_percent = excluded.cpu_usage_percent,
+                gpu_usage_percent = excluded.gpu_usage_percent,
+                updated_utc_ticks = excluded.updated_utc_ticks;
+            """;
+        command.Parameters.AddWithValue("$identity", artifactIdentity);
+        command.Parameters.AddWithValue("$captureId", captureId);
+        command.Parameters.AddWithValue("$intervalStarted", telemetry.IntervalStartedAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$captured", telemetry.CapturedAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$cpu", telemetry.CpuUsagePercent is { } cpu ? (object)cpu : DBNull.Value);
+        command.Parameters.AddWithValue("$gpu", telemetry.GpuUsagePercent is { } gpu ? (object)gpu : DBNull.Value);
+        command.Parameters.AddWithValue("$updated", DateTimeOffset.UtcNow.UtcDateTime.Ticks);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Loads the persisted interval telemetry for one screenshot artifact.</summary>
+    internal ScreenshotIntervalTelemetry? LoadScreenshotIntervalTelemetry(string artifactIdentity)
+    {
+        if (string.IsNullOrWhiteSpace(artifactIdentity))
+        {
+            throw new ArgumentException("Screenshot artifact identity is required.", nameof(artifactIdentity));
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT interval_started_utc_ticks, captured_utc_ticks, cpu_usage_percent, gpu_usage_percent
+            FROM screenshot_interval_telemetry
+            WHERE artifact_identity = $identity;
+            """;
+        command.Parameters.AddWithValue("$identity", artifactIdentity);
+        using var reader = command.ExecuteReader();
+        return reader.Read()
+            ? new ScreenshotIntervalTelemetry(
+                new DateTimeOffset(reader.GetInt64(0), TimeSpan.Zero),
+                new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
+                ReadNullableInt(reader, 2),
+                ReadNullableInt(reader, 3))
+            : null;
+    }
+
+    /// <summary>Loads the latest persisted screenshot boundary.</summary>
+    internal DateTimeOffset? LoadLatestScreenshotTelemetryCapturedAt()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT MAX(captured_utc_ticks) FROM screenshot_interval_telemetry;";
+        var value = command.ExecuteScalar();
+        return value is null or DBNull ? null : new DateTimeOffset(Convert.ToInt64(value), TimeSpan.Zero);
+    }
+
+    /// <summary>Deletes interval telemetry for one screenshot artifact identity.</summary>
+    internal int DeleteScreenshotIntervalTelemetry(string artifactIdentity)
+    {
+        if (string.IsNullOrWhiteSpace(artifactIdentity))
+        {
+            throw new ArgumentException("Screenshot artifact identity is required.", nameof(artifactIdentity));
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM screenshot_interval_telemetry WHERE artifact_identity = $identity;";
+        command.Parameters.AddWithValue("$identity", artifactIdentity);
+        return command.ExecuteNonQuery();
     }
 
     /// <summary>Loads the persisted text snapshot for one screenshot artifact identity.</summary>
@@ -910,22 +1014,6 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
-            if (version == 3)
-            {
-                // Version 3 is validated before the one-way migration so unsupported databases are never mutated.
-                ValidateVersion3Schema(connection);
-                MigrateVersion3To4(connection);
-                version = ReadSchemaVersion(connection);
-            }
-
-            if (version == 4)
-            {
-                // Version 4 is validated before adding the local pricing cache table.
-                ValidateVersion4Schema(connection);
-                MigrateVersion4To5(connection);
-                version = ReadSchemaVersion(connection);
-            }
-
             if (version != SchemaVersion)
             {
                 throw new InvalidOperationException($"Unsupported activity database schema version {version}; expected {SchemaVersion}.");
@@ -957,56 +1045,16 @@ internal sealed class SqliteActivityStore
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql + ScreenshotIntervalTelemetrySchemaSql + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
-    }
-
-    private static void MigrateVersion3To4(SqliteConnection connection)
-    {
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = ScreenshotTextSchemaSql + "PRAGMA user_version = 4;";
-        command.ExecuteNonQuery();
-        transaction.Commit();
-    }
-
-    private static void MigrateVersion4To5(SqliteConnection connection)
-    {
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = AiPricingSchemaSql + "PRAGMA user_version = 5;";
-        command.ExecuteNonQuery();
-        transaction.Commit();
-    }
-
-    private static void ValidateVersion3Schema(SqliteConnection connection)
-    {
-        ValidateBaseSchema(connection);
-        var schemaObjects = ReadApplicationSchemaObjects(connection);
-        if (!schemaObjects.SetEquals(ExpectedVersion3ApplicationSchemaObjects))
-        {
-            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
-        }
-    }
-
-    private static void ValidateVersion4Schema(SqliteConnection connection)
-    {
-        ValidateBaseSchema(connection);
-        ValidateScreenshotTextSchema(connection);
-        var schemaObjects = ReadApplicationSchemaObjects(connection);
-        if (!schemaObjects.SetEquals(ExpectedVersion4ApplicationSchemaObjects))
-        {
-            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
-        }
     }
 
     private static void ValidateSchema(SqliteConnection connection)
     {
         ValidateBaseSchema(connection);
         ValidateScreenshotTextSchema(connection);
+        ValidateScreenshotIntervalTelemetrySchema(connection);
         ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
 
         var actualAiModelPricingColumns = ReadColumns(connection, "ai_model_pricing");
@@ -1041,6 +1089,22 @@ internal sealed class SqliteActivityStore
         if (!screenshotTextIndexes.SetEquals(ExpectedScreenshotTextSnapshotIndexes))
         {
             throw new InvalidOperationException("The screenshot text snapshot indexes do not match the supported schema.");
+        }
+    }
+
+    private static void ValidateScreenshotIntervalTelemetrySchema(SqliteConnection connection)
+    {
+        ValidateCreateStatement(connection, "screenshot_interval_telemetry", ScreenshotIntervalTelemetrySchemaSql);
+        var actualColumns = ReadColumns(connection, "screenshot_interval_telemetry");
+        if (!actualColumns.SequenceEqual(ExpectedScreenshotIntervalTelemetryColumns))
+        {
+            throw new InvalidOperationException("The screenshot interval telemetry schema does not match the supported schema.");
+        }
+
+        var indexes = ReadIndexes(connection, "screenshot_interval_telemetry");
+        if (!indexes.SetEquals(ExpectedScreenshotIntervalTelemetryIndexes))
+        {
+            throw new InvalidOperationException("The screenshot interval telemetry indexes do not match the supported schema.");
         }
     }
 
@@ -1515,6 +1579,20 @@ internal sealed class SqliteActivityStore
             source_retrieved_utc_ticks INTEGER NOT NULL,
             PRIMARY KEY (provider, model, service_tier, context_window)
         );
+        """;
+
+    private const string ScreenshotIntervalTelemetrySchemaSql = """
+        CREATE TABLE screenshot_interval_telemetry (
+            artifact_identity TEXT NOT NULL PRIMARY KEY,
+            capture_id TEXT NOT NULL,
+            interval_started_utc_ticks INTEGER NOT NULL,
+            captured_utc_ticks INTEGER NOT NULL CHECK (captured_utc_ticks > interval_started_utc_ticks),
+            cpu_usage_percent INTEGER NULL CHECK (cpu_usage_percent BETWEEN 0 AND 100),
+            gpu_usage_percent INTEGER NULL CHECK (gpu_usage_percent BETWEEN 0 AND 100),
+            updated_utc_ticks INTEGER NOT NULL
+        );
+        CREATE INDEX ix_screenshot_interval_telemetry_capture
+            ON screenshot_interval_telemetry (capture_id, artifact_identity);
         """;
 
     private readonly record struct SchemaColumn(string Name, string Type, bool NotNull, int PrimaryKeyOrder);
