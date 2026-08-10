@@ -47,6 +47,14 @@ TrackMeUp is already a working product used internally, and now prepared for ope
 
 ## Privacy and Control
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v2-dark-erasure-wave-2400x800.png" />
+    <source media="(prefers-color-scheme: light)" srcset="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v3-light-radial-reset-2400x800.png" />
+    <img src="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v3-light-radial-reset-2400x800.png" alt="Privacy has a nuclear option: permanently erase every trace TrackMeUp has recorded" width="100%" />
+  </picture>
+</p>
+
 TrackMeUp is local-first by default.
 
 - No TrackMeUp cloud account is required.
