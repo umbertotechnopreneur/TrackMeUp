@@ -8,7 +8,31 @@ internal static class CliStrings
 {
     private static readonly IReadOnlyDictionary<string, string> English = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["ok"] = "OK", ["error"] = "ERROR", ["usage"] = "Usage", ["commands"] = "Commands", ["globalOptions"] = "Global options", ["metric"] = "Metric", ["value"] = "Value", ["state"] = "State", ["context"] = "Context", ["keys"] = "Keys", ["clicks"] = "Clicks", ["activeSeconds"] = "Active seconds", ["intensity"] = "Intensity", ["statusTitle"] = "TrackMeUp status", ["memory"] = "Memory", ["network"] = "Network", ["systemSnapshot"] = "System snapshot", ["settings"] = "Settings", ["setting"] = "Setting", ["type"] = "Type", ["allowed"] = "Allowed values", ["restart"] = "Restart", ["yes"] = "yes", ["no"] = "no", ["notAvailable"] = "n/a"
+        ["ok"] = "OK",
+        ["error"] = "ERROR",
+        ["usage"] = "Usage",
+        ["commands"] = "Commands",
+        ["globalOptions"] = "Global options",
+        ["metric"] = "Metric",
+        ["value"] = "Value",
+        ["state"] = "State",
+        ["context"] = "Context",
+        ["keys"] = "Keys",
+        ["clicks"] = "Clicks",
+        ["activeSeconds"] = "Active seconds",
+        ["intensity"] = "Intensity",
+        ["statusTitle"] = "TrackMeUp status",
+        ["memory"] = "Memory",
+        ["network"] = "Network",
+        ["systemSnapshot"] = "System snapshot",
+        ["settings"] = "Settings",
+        ["setting"] = "Setting",
+        ["type"] = "Type",
+        ["allowed"] = "Allowed values",
+        ["restart"] = "Restart",
+        ["yes"] = "yes",
+        ["no"] = "no",
+        ["notAvailable"] = "n/a"
     };
 
     private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Catalog =

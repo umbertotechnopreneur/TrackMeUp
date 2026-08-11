@@ -141,18 +141,18 @@ public sealed class LocalStore
             : 0;
 
     /// <summary>Visits every retained activity sample with its stable local identifier.</summary>
-    internal void VisitAllActivitySamples(CancellationToken cancellationToken, Action<long, ActivitySample> visitor) =>
-        _activity.VisitAllActivitySamples(cancellationToken, visitor);
+    internal void VisitAllActivitySamples(Action<long, ActivitySample> visitor, CancellationToken cancellationToken) =>
+        _activity.VisitAllActivitySamples(visitor, cancellationToken);
 
     /// <summary>Visits every durable screenshot text snapshot for search-index rebuilds.</summary>
     internal void VisitScreenshotTextSnapshots(
-        CancellationToken cancellationToken,
-        Action<string, string, ScreenshotTextSnapshot> visitor) =>
-        _activity.VisitScreenshotTextSnapshots(cancellationToken, visitor);
+        Action<string, string, ScreenshotTextSnapshot> visitor,
+        CancellationToken cancellationToken) =>
+        _activity.VisitScreenshotTextSnapshots(visitor, cancellationToken);
 
     /// <summary>Visits every persisted successful AI analysis for search-index rebuilds.</summary>
-    internal void VisitAllAiAnalyses(CancellationToken cancellationToken, Action<AiAnalysis> visitor) =>
-        _activity.VisitAllAiAnalyses(cancellationToken, visitor);
+    internal void VisitAllAiAnalyses(Action<AiAnalysis> visitor, CancellationToken cancellationToken) =>
+        _activity.VisitAllAiAnalyses(visitor, cancellationToken);
 
     /// <summary>Builds a cheap stamp covering every durable source used by the derived search index.</summary>
     internal string GetSearchSourceStamp()
@@ -506,7 +506,7 @@ public sealed class LocalStore
         var fromUtc = telemetry?.IntervalStartedAt.ToUniversalTime()
             ?? capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
         var toUtc = telemetry?.CapturedAt.ToUniversalTime() ?? capturedAt.ToUniversalTime();
-        _activity.VisitOverlapping(fromUtc, toUtc, CancellationToken.None, samples.Add);
+        _activity.VisitOverlapping(fromUtc, toUtc, samples.Add, CancellationToken.None);
         var foregroundSample = samples
             .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
             .FirstOrDefault(sample => !string.IsNullOrWhiteSpace(sample.Application) || !string.IsNullOrWhiteSpace(sample.WindowTitle));
@@ -660,7 +660,7 @@ public sealed class LocalStore
         var startUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localStart, TimeZoneInfo.Local));
         var endUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localEnd, TimeZoneInfo.Local));
         var samples = new List<ActivitySample>();
-        _activity.VisitOverlapping(startUtc, endUtc, CancellationToken.None, samples.Add);
+        _activity.VisitOverlapping(startUtc, endUtc, samples.Add, CancellationToken.None);
         return samples;
     }
 
@@ -675,7 +675,7 @@ public sealed class LocalStore
         var windowEnd = (windowEndUtc ?? DateTimeOffset.UtcNow).ToUniversalTime();
         var windowStart = windowEnd.AddHours(-hourCount);
         var samples = new List<ActivitySample>();
-        _activity.VisitOverlapping(windowStart, windowEnd, CancellationToken.None, samples.Add);
+        _activity.VisitOverlapping(windowStart, windowEnd, samples.Add, CancellationToken.None);
 
         var activeSecondsByHour = new double[hourCount];
         var coveredSeconds = 0d;
@@ -747,8 +747,8 @@ public sealed class LocalStore
     {
         var report = new ReportAggregationService(this).Build(
             new ReportQuery(date, date, string.Empty),
-            CancellationToken.None,
-            applicationLimit: int.MaxValue);
+            applicationLimit: int.MaxValue,
+            cancellationToken: CancellationToken.None);
         if (!report.Succeeded || report.Value is null)
         {
             throw new InvalidOperationException("The local daily activity query was rejected.");
@@ -768,10 +768,10 @@ public sealed class LocalStore
     internal void VisitReportData(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        CancellationToken cancellationToken,
         Action<ReportSourceSample> activityVisitor,
-        Action<AiRequestUsageRecord> aiUsageVisitor) =>
-        _activity.VisitReportData(fromUtc, toUtc, cancellationToken, activityVisitor, aiUsageVisitor);
+        Action<AiRequestUsageRecord> aiUsageVisitor,
+        CancellationToken cancellationToken) =>
+        _activity.VisitReportData(fromUtc, toUtc, activityVisitor, aiUsageVisitor, cancellationToken);
 
     private AppSettings EnsureInstallationId(AppSettings settings)
     {

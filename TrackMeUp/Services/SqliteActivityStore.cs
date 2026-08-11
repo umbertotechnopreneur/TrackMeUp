@@ -357,8 +357,7 @@ internal sealed class SqliteActivityStore
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT snapshot_json FROM screenshot_text_snapshots WHERE artifact_identity = $identity;";
         command.Parameters.AddWithValue("$identity", artifactIdentity);
-        var payload = command.ExecuteScalar() as string;
-        return payload is null
+        return command.ExecuteScalar() is not string payload
             ? null
             : JsonSerializer.Deserialize<ScreenshotTextSnapshot>(payload, _json)
                 ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
@@ -366,8 +365,8 @@ internal sealed class SqliteActivityStore
 
     /// <summary>Visits every persisted screenshot text snapshot for deterministic search-index rebuilds.</summary>
     internal void VisitScreenshotTextSnapshots(
-        CancellationToken cancellationToken,
-        Action<string, string, ScreenshotTextSnapshot> visitor)
+        Action<string, string, ScreenshotTextSnapshot> visitor,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         using var connection = OpenConnection();
@@ -435,7 +434,7 @@ internal sealed class SqliteActivityStore
     internal IReadOnlyList<AiRequestUsageRecord> ListAiRequestUsage(DateTimeOffset fromUtc, DateTimeOffset toUtc)
     {
         var results = new List<AiRequestUsageRecord>();
-        VisitAiUsage(fromUtc, toUtc, CancellationToken.None, results.Add);
+        VisitAiUsage(fromUtc, toUtc, results.Add, CancellationToken.None);
         return results;
     }
 
@@ -591,7 +590,7 @@ internal sealed class SqliteActivityStore
     }
 
     /// <summary>Visits every persisted successful AI analysis for search-index rebuilds.</summary>
-    internal void VisitAllAiAnalyses(CancellationToken cancellationToken, Action<AiAnalysis> visitor)
+    internal void VisitAllAiAnalyses(Action<AiAnalysis> visitor, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         using var connection = OpenConnection();
@@ -706,20 +705,20 @@ internal sealed class SqliteActivityStore
     private static bool ContainsScreenshotPath(string? screenshotPaths, string normalizedPath)
     {
         return EnumerateScreenshotPaths(screenshotPaths)
-            .Any(path => string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase)) == true;
+            .Any(path => string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static IEnumerable<string> EnumerateScreenshotPaths(string? screenshotPaths) =>
+    private static string[] EnumerateScreenshotPaths(string? screenshotPaths) =>
         screenshotPaths?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        ?? Array.Empty<string>();
+        ?? [];
 
     /// <summary>Streams activity and AI usage from one SQLite read transaction and therefore one database snapshot.</summary>
     internal void VisitReportData(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        CancellationToken cancellationToken,
         Action<ReportSourceSample> activityVisitor,
-        Action<AiRequestUsageRecord> aiUsageVisitor)
+        Action<AiRequestUsageRecord> aiUsageVisitor,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(activityVisitor);
         ArgumentNullException.ThrowIfNull(aiUsageVisitor);
@@ -727,8 +726,8 @@ internal sealed class SqliteActivityStore
 
         using var connection = OpenConnection();
         using var transaction = connection.BeginTransaction();
-        VisitReportOverlapping(connection, transaction, fromUtc, toUtc, cancellationToken, activityVisitor);
-        VisitAiUsage(connection, transaction, fromUtc, toUtc, cancellationToken, aiUsageVisitor);
+        VisitReportOverlapping(connection, transaction, fromUtc, toUtc, activityVisitor, cancellationToken);
+        VisitAiUsage(connection, transaction, fromUtc, toUtc, aiUsageVisitor, cancellationToken);
         transaction.Commit();
     }
 
@@ -736,13 +735,13 @@ internal sealed class SqliteActivityStore
     internal void VisitReportOverlapping(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        CancellationToken cancellationToken,
-        Action<ReportSourceSample> visitor)
+        Action<ReportSourceSample> visitor,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         ValidateInterval(fromUtc, toUtc, "activity");
         using var connection = OpenConnection();
-        VisitReportOverlapping(connection, null, fromUtc, toUtc, cancellationToken, visitor);
+        VisitReportOverlapping(connection, null, fromUtc, toUtc, visitor, cancellationToken);
     }
 
     private static void VisitReportOverlapping(
@@ -750,8 +749,8 @@ internal sealed class SqliteActivityStore
         SqliteTransaction? transaction,
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        CancellationToken cancellationToken,
-        Action<ReportSourceSample> visitor)
+        Action<ReportSourceSample> visitor,
+        CancellationToken cancellationToken)
     {
         using var command = connection.CreateCommand();
         if (transaction is not null)
@@ -788,13 +787,13 @@ internal sealed class SqliteActivityStore
     internal void VisitAiUsage(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        CancellationToken cancellationToken,
-        Action<AiRequestUsageRecord> visitor)
+        Action<AiRequestUsageRecord> visitor,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         ValidateInterval(fromUtc, toUtc, "AI usage");
         using var connection = OpenConnection();
-        VisitAiUsage(connection, null, fromUtc, toUtc, cancellationToken, visitor);
+        VisitAiUsage(connection, null, fromUtc, toUtc, visitor, cancellationToken);
     }
 
     private static void VisitAiUsage(
@@ -802,8 +801,8 @@ internal sealed class SqliteActivityStore
         SqliteTransaction? transaction,
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        CancellationToken cancellationToken,
-        Action<AiRequestUsageRecord> visitor)
+        Action<AiRequestUsageRecord> visitor,
+        CancellationToken cancellationToken)
     {
         using var command = connection.CreateCommand();
         if (transaction is not null)
@@ -843,7 +842,7 @@ internal sealed class SqliteActivityStore
     }
 
     /// <summary>Streams every activity sample overlapping the supplied half-open UTC interval exactly once.</summary>
-    internal void VisitOverlapping(DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken cancellationToken, Action<ActivitySample> visitor)
+    internal void VisitOverlapping(DateTimeOffset fromUtc, DateTimeOffset toUtc, Action<ActivitySample> visitor, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         if (toUtc <= fromUtc)
@@ -873,7 +872,7 @@ internal sealed class SqliteActivityStore
     }
 
     /// <summary>Visits every retained activity sample with its stable SQLite identifier for search indexing.</summary>
-    internal void VisitAllActivitySamples(CancellationToken cancellationToken, Action<long, ActivitySample> visitor)
+    internal void VisitAllActivitySamples(Action<long, ActivitySample> visitor, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         using var connection = OpenConnection();
@@ -1159,15 +1158,14 @@ internal sealed class SqliteActivityStore
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT sql FROM sqlite_schema WHERE name = $name;";
         command.Parameters.AddWithValue("$name", objectName);
-        var actual = command.ExecuteScalar() as string;
-        if (actual is null || !string.Equals(NormalizeSchemaSql(actual), expected, StringComparison.OrdinalIgnoreCase))
+        if (command.ExecuteScalar() is not string actual || !string.Equals(NormalizeSchemaSql(actual), expected, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"The {objectName} schema does not match the supported greenfield schema.");
         }
     }
 
-    private static string NormalizeSchemaSql(string sql) => new(
-        sql.Where(character => !char.IsWhiteSpace(character) && character != ';').ToArray());
+    private static string NormalizeSchemaSql(string sql) => string.Concat(
+        sql.Where(character => !char.IsWhiteSpace(character) && character != ';'));
 
     private static HashSet<string> ReadApplicationSchemaObjects(SqliteConnection connection)
     {

@@ -81,5 +81,5 @@ public sealed class ActivityScoreServiceTests
         timestamp, 5, "active", "test", "Test", "Test", "Test", "installation", keys, clicks);
 
     private static SystemSnapshot Snapshot(DateTimeOffset timestamp, int cpu, int gpu) => new(
-        timestamp, cpu, null, null, gpu, 0, 0, null, new NetworkSnapshotState(0, 0), Array.Empty<DiskSnapshotState>());
+        timestamp, cpu, null, null, gpu, 0, 0, null, new NetworkSnapshotState(0, 0), []);
 }

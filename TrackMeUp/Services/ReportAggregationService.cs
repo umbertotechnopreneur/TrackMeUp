@@ -20,13 +20,13 @@ public sealed class ReportAggregationService
 
     /// <summary>Builds an aggregate report, returning validation issues for invalid user ranges.</summary>
     public OperationResult<ReportSnapshot> Build(ReportQuery query, CancellationToken cancellationToken) =>
-        Build(query, cancellationToken, DefaultApplicationLimit);
+        Build(query, DefaultApplicationLimit, cancellationToken);
 
     /// <summary>Builds an aggregate report with a caller-selected application limit.</summary>
     internal OperationResult<ReportSnapshot> Build(
         ReportQuery query,
-        CancellationToken cancellationToken,
-        int applicationLimit)
+        int applicationLimit,
+        CancellationToken cancellationToken)
     {
         if (query is null)
         {
@@ -98,9 +98,9 @@ public sealed class ReportAggregationService
         _store.VisitReportData(
             fromUtc,
             toUtc,
-            cancellationToken,
             aggregation.AddSample,
-            aiUsage.Add);
+            aiUsage.Add,
+            cancellationToken);
 
         var snapshot = aggregation.BuildSnapshot(
             query.ToInclusive,

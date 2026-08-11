@@ -96,7 +96,7 @@ internal sealed class SynonymCatalog
         }
 
         expansions.Remove(normalizedQuery);
-        return expansions.Order(StringComparer.Ordinal).Take(_maximumExpansions).ToImmutableArray();
+        return [.. expansions.Order(StringComparer.Ordinal).Take(_maximumExpansions)];
     }
 
     private static void AddExpansions(

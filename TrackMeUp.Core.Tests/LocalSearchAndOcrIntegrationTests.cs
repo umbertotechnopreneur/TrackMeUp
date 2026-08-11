@@ -511,7 +511,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
         internal string Prompt { get; private set; } = string.Empty;
 
-        internal IReadOnlyList<string> ScreenshotPaths { get; private set; } = Array.Empty<string>();
+        internal IReadOnlyList<string> ScreenshotPaths { get; private set; } = [];
 
         public Task<AiProviderResult> DecodeAsync(
             string prompt,

@@ -40,8 +40,8 @@ public sealed class HtmlReportService
     {
         var result = new ReportAggregationService(_store).Build(
             new ReportQuery(date, date, TimeZoneInfo.Local.Id),
-            CancellationToken.None,
-            applicationLimit: int.MaxValue);
+            applicationLimit: int.MaxValue,
+            cancellationToken: CancellationToken.None);
         if (!result.Succeeded || result.Value is null)
         {
             throw new InvalidOperationException("The local daily report could not be aggregated.");

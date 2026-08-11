@@ -106,7 +106,18 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Debug-Unpackaged'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Debug-Unpackaged'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Debug-Unpackaged'">True</PublishTrimmed>
+    <PublishTrimmed Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">False</PublishTrimmed>
+    <DebugSymbols Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">False</DebugSymbols>
+    <DebugType Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">none</DebugType>
+    <AppxSymbolPackageEnabled Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">False</AppxSymbolPackageEnabled>
   </PropertyGroup>
+
+  <Target Name="RemoveSideloadSymbolPayload" BeforeTargets="_EnsurePdbCmfExeFullPath" Condition="'$(GenerateAppxPackageOnBuild)' == 'true' and '$(AppxSymbolPackageEnabled)' != 'true'">
+    <ItemGroup>
+      <PDBPayload Remove="@(PDBPayload)" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\TrackMeUp.Core\TrackMeUp.Core.csproj" />
     <ProjectReference Include="..\TrackMeUp.Cli\TrackMeUp.Cli.csproj" />

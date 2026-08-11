@@ -130,7 +130,7 @@ public sealed class AiPromptAndPayloadTests
 
         using var payload = JsonDocument.Parse(OpenAiDecoder.SerializePayload(
             "analyze",
-            new[] { "data:image/webp;base64,AAAA" },
+            ["data:image/webp;base64,AAAA"],
             settings));
 
         var root = payload.RootElement;
@@ -149,7 +149,7 @@ public sealed class AiPromptAndPayloadTests
 
         using var payload = JsonDocument.Parse(OpenAiDecoder.SerializePayload(
             "analyze",
-            Array.Empty<string>(),
+            [],
             settings));
 
         Assert.False(payload.RootElement.TryGetProperty("reasoning", out _));
@@ -163,7 +163,7 @@ public sealed class AiPromptAndPayloadTests
             AiReasoningEffort: "max");
         using var openRouterPayload = JsonDocument.Parse(OpenRouterDecoder.SerializePayload(
             "analyze",
-            new[] { "data:image/webp;base64,AAAA" },
+            ["data:image/webp;base64,AAAA"],
             openRouterSettings));
 
         Assert.Equal(2048, openRouterPayload.RootElement.GetProperty("max_tokens").GetInt32());
@@ -177,7 +177,7 @@ public sealed class AiPromptAndPayloadTests
             AiReasoningEffort: "high");
         using var anthropicPayload = JsonDocument.Parse(AnthropicDecoder.SerializePayload(
             "analyze",
-            new[] { "AAAA" },
+            ["AAAA"],
             anthropicSettings));
 
         Assert.Equal(512, anthropicPayload.RootElement.GetProperty("max_tokens").GetInt32());

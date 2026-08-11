@@ -45,8 +45,7 @@ public sealed record SearchDocument
     public string? WindowTitle { get; init; }
 
     /// <summary>Gets raw activity attributes without requiring an AI description.</summary>
-    public ImmutableDictionary<string, string?> AttributesRaw { get; init; } =
-        ImmutableDictionary<string, string?>.Empty;
+    public ImmutableDictionary<string, string?> AttributesRaw { get; init; } = [];
 
     /// <summary>Gets the ordered span labels associated with the document.</summary>
     public ImmutableArray<string> SpanLabels { get; init; } = [];
@@ -148,10 +147,10 @@ public sealed record SearchRequest
     public bool IncludeTextContent { get; init; } = true;
 
     /// <summary>Gets the optional exact document-kind filters.</summary>
-    public ImmutableHashSet<string> Kinds { get; init; } = ImmutableHashSet<string>.Empty;
+    public ImmutableHashSet<string> Kinds { get; init; } = [];
 
     /// <summary>Gets the optional exact document-language filters.</summary>
-    public ImmutableHashSet<string> Languages { get; init; } = ImmutableHashSet<string>.Empty;
+    public ImmutableHashSet<string> Languages { get; init; } = [];
 
     /// <summary>Gets the optional inclusive lower timestamp bound.</summary>
     public DateTimeOffset? FromInclusive { get; init; }

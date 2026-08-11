@@ -4,19 +4,12 @@ using TrackMeUp.Application;
 namespace TrackMeUp.Cli;
 
 /// <summary>Routes one-shot commands and the REPL through the same application facade calls.</summary>
-public sealed class CliRouter
+/// <remarks>Initializes a router with presentation-only dependencies.</remarks>
+public sealed class CliRouter(ITrackMeUpApplication application, CliOutput output, CliOptions options)
 {
-    private readonly ITrackMeUpApplication _application;
-    private readonly CliOutput _output;
-    private readonly CliOptions _options;
-
-    /// <summary>Initializes a router with presentation-only dependencies.</summary>
-    public CliRouter(ITrackMeUpApplication application, CliOutput output, CliOptions options)
-    {
-        _application = application;
-        _output = output;
-        _options = options;
-    }
+    private readonly ITrackMeUpApplication _application = application;
+    private readonly CliOutput _output = output;
+    private readonly CliOptions _options = options;
 
     /// <summary>Runs a command token sequence, or opens the persistent shell when none was supplied.</summary>
     public async Task<int> RunAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
@@ -193,7 +186,9 @@ public sealed class CliRouter
                 }
                 var secret = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]API key:[/] ").Secret());
                 try { return await WriteAsync(_application.SetAiKeyAsync(variable, secret, cancellationToken)); }
-                finally { secret = string.Empty; }
+                finally
+                {
+                }
             default: return InvalidCommand();
         }
     }

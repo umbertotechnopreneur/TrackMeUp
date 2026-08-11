@@ -25,7 +25,7 @@ public sealed class ScheduledSnapshotStateTests
             store.SaveSettings(store.LoadSettings() with
             {
                 ScreenshotIntervalMinutes = 1,
-                ActiveHours = ActiveHoursSchedule.Days.Select(day => new ActiveHoursDay(day)).ToArray()
+                ActiveHours = [.. ActiveHoursSchedule.Days.Select(day => new ActiveHoursDay(day))]
             });
             var utilities = new UtilityService();
             await using var application = new TrackMeUpApplication(

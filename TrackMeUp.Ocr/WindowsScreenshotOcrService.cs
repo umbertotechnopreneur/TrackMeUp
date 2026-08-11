@@ -138,7 +138,7 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
     {
         try
         {
-            ImmutableArray<string> availableLanguages = OcrEngine.AvailableRecognizerLanguages
+            var availableLanguages = OcrEngine.AvailableRecognizerLanguages
                 .Select(static language => language.LanguageTag)
                 .ToImmutableArray();
 

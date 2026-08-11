@@ -12,6 +12,40 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    name: lint
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter *.csproj | ForEach-Object {
+            dotnet restore $_.FullName
+          }
+
+      - name: Verify code formatting
+        shell: pwsh
+        run: |
+          $env:Platform = 'x64'
+          Get-ChildItem -Recurse -Filter *.csproj | ForEach-Object {
+            dotnet format $_.FullName whitespace --verify-no-changes --no-restore
+          }
+
+      - name: Test with code analyzers
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter *.Tests.csproj | ForEach-Object {
+            dotnet test $_.FullName -p:Platform=x64 --no-restore -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
+          }
+
   build:
     name: build (${{ matrix.platform }})
     runs-on: windows-latest
@@ -26,7 +60,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          global-json-file: global.json
 
       - name: Restore
         run: dotnet restore .\TrackMeUp\TrackMeUp.csproj

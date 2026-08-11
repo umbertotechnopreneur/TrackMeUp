@@ -7,13 +7,11 @@ using TrackMeUp.Application;
 namespace TrackMeUp.Cli;
 
 /// <summary>Renders application DTOs without querying infrastructure or changing application state.</summary>
-public sealed class CliOutput
+/// <remarks>Initializes output rendering for one invocation.</remarks>
+public sealed class CliOutput(CliOptions options)
 {
-    private readonly CliOptions _options;
+    private readonly CliOptions _options = options;
     private bool _jsonWritten;
-
-    /// <summary>Initializes output rendering for one invocation.</summary>
-    public CliOutput(CliOptions options) => _options = options;
 
     /// <summary>Writes a result using the selected output contract.</summary>
     public void WriteResult<T>(OperationResult<T> result, IRenderable? richContent = null)

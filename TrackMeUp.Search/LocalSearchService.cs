@@ -314,7 +314,7 @@ public sealed class LocalSearchService : ILocalSearchService
         ProcessName = null,
         Context = null,
         WindowTitle = null,
-        AttributesRaw = ImmutableDictionary<string, string?>.Empty,
+        AttributesRaw = [],
         SpanLabels = [],
         OcrRawText = null,
         OcrCorrectedText = null,
@@ -354,7 +354,7 @@ public sealed class LocalSearchService : ILocalSearchService
         using var reader = DirectoryReader.Open(_directory);
         if (reader.NumDocs == 0)
         {
-            RebuildSuggestions(Array.Empty<SearchDocument>());
+            RebuildSuggestions([]);
             return;
         }
 
@@ -397,10 +397,10 @@ public sealed class LocalSearchService : ILocalSearchService
             }
         }
 
-        return entries.Values
+        return [.. entries.Values
             .OrderByDescending(entry => entry.Weight)
             .ThenBy(entry => entry.Text, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        ];
     }
 
     private static IEnumerable<(string Value, long Weight)> EnumerateSuggestionValues(SearchDocument document)

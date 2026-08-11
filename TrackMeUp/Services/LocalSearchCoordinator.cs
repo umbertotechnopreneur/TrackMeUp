@@ -148,7 +148,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         var documents = new List<SearchDocument>();
         var settings = _store.LoadSettings();
         var defaultLanguage = ResolveDefaultLanguage(settings);
-        _store.VisitAllActivitySamples(cancellationToken, (id, sample) => documents.Add(new SearchDocument
+        _store.VisitAllActivitySamples((id, sample) => documents.Add(new SearchDocument
         {
             Id = $"activity:{id}",
             Kind = "activity",
@@ -168,7 +168,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 && !string.IsNullOrWhiteSpace(label)
                     ? [label.Trim()]
                     : []
-        }));
+        }), cancellationToken);
 
         var screenshotItems = _store.GetAllScreenshotGalleryItems();
         var retainedScreenshotIdentities = screenshotItems
@@ -207,7 +207,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             });
         }
 
-        _store.VisitScreenshotTextSnapshots(cancellationToken, (artifactIdentity, captureId, text) =>
+        _store.VisitScreenshotTextSnapshots((artifactIdentity, captureId, text) =>
         {
             if (retainedScreenshotIdentities.Contains(artifactIdentity))
             {
@@ -226,9 +226,9 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 OcrCorrectedText = text.AiRefinement?.CorrectedText,
                 OcrStructuredSummary = StructuredSummary(text)
             });
-        });
+        }, cancellationToken);
 
-        _store.VisitAllAiAnalyses(cancellationToken, analysis => documents.Add(new SearchDocument
+        _store.VisitAllAiAnalyses(analysis => documents.Add(new SearchDocument
         {
             Id = $"analysis:{analysis.CorrelationId}",
             Kind = "analysis",
@@ -238,7 +238,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             Context = analysis.Context,
             CaptureOrigin = analysis.Origin,
             AiDescription = analysis.Summary
-        }));
+        }), cancellationToken);
         return documents;
     }
 

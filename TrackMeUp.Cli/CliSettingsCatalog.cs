@@ -21,7 +21,7 @@ internal static class CliSettingsCatalog
     internal static string HelpSummary => "Writable keys: " + string.Join(", ", SettingsCatalog.Definitions.Select(setting =>
         setting.AllowedValues.Count == 0
             ? $"{setting.Key} <{setting.ValueType}>"
-            : $"{setting.Key} <{string.Join('|', setting.AllowedValues)}>") ) + ".";
+            : $"{setting.Key} <{string.Join('|', setting.AllowedValues)}>")) + ".";
 
     /// <summary>Finds a descriptor by stable public key.</summary>
     internal static bool TryGet(string key, out SettingDescriptor? descriptor) =>
@@ -29,7 +29,7 @@ internal static class CliSettingsCatalog
 
     /// <summary>Projects a typed settings snapshot to its non-secret CLI surface.</summary>
     internal static IReadOnlyList<CliSettingValue> ReadAll(AppSettings settings) =>
-        SettingsCatalog.Definitions.Select(descriptor => Read(descriptor, settings)).ToArray();
+        [.. SettingsCatalog.Definitions.Select(descriptor => Read(descriptor, settings))];
 
     /// <summary>Projects one public setting from a typed snapshot.</summary>
     internal static CliSettingValue Read(SettingDescriptor descriptor, AppSettings settings)

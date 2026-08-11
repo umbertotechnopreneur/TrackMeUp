@@ -9,7 +9,7 @@ public sealed class TrackingStartupPolicyTests
     [Fact]
     public void PersistedStartOnLaunch_StartsWithoutCommandLineSwitch()
     {
-        var options = LaunchOptions.Parse(Array.Empty<string>());
+        var options = LaunchOptions.Parse([]);
         var settings = new AppSettings(StartTrackingOnLaunch: true);
 
         Assert.True(TrackingStartupPolicy.ShouldStart(options, settings));
@@ -27,7 +27,7 @@ public sealed class TrackingStartupPolicyTests
     [Fact]
     public void NoLaunchRequest_RemainsPaused()
     {
-        var options = LaunchOptions.Parse(Array.Empty<string>());
+        var options = LaunchOptions.Parse([]);
         var settings = new AppSettings(StartTrackingOnLaunch: false);
 
         Assert.False(TrackingStartupPolicy.ShouldStart(options, settings));

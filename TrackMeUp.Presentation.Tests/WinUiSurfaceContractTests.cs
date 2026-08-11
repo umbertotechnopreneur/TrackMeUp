@@ -32,7 +32,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "Expander");
-        Assert.Contains(about.Descendants(), element => HasName(element, "AboutIcon") && element.Name.LocalName == "Viewbox");
+        Assert.Contains(about.Descendants(), element => HasName(element, "HeroImage") && element.Name.LocalName == "Image");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName is "ThemeShadow" or "LinearGradientBrush");
         Assert.Contains(about.Descendants(), element => HasName(element, "CreatedByButton") && element.Attribute("Content")?.Value == "Umberto Giacobbi");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "HyperlinkButton" || element.Attribute("NavigateUri") is not null);
@@ -41,8 +41,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(about.Descendants(), element => HasName(element, "DiagnosticsInfoBar"));
         Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Right");
         Assert.DoesNotContain(about.Descendants(), element => element.Attribute("Text")?.Value == "•••");
-        Assert.Contains("private const int LogicalWindowWidth = 500;", aboutSource, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowHeight = 460;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowWidth = 940;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowHeight = 650;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", aboutSource, StringComparison.Ordinal);

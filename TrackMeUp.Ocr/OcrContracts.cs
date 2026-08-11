@@ -242,7 +242,7 @@ public sealed record ScreenshotOcrResult
             engineName,
             null,
             null,
-            ImmutableArray<OcrTextLine>.Empty);
+            []);
     }
 
     internal static ScreenshotOcrResult CreateRecognized(

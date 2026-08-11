@@ -847,13 +847,17 @@ function Invoke-TrackMeUpMsixPackage {
     $arguments = @(
         'msbuild',
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
-        '/t:Restore,Publish',
+        '/t:Restore,Clean,Publish',
         '/p:Configuration=Release',
         "/p:Platform=$Platform",
         "/p:RuntimeIdentifier=$runtime",
         '/p:GenerateAppxPackageOnBuild=true',
         '/p:UapAppxPackageBuildMode=SideloadOnly',
-        '/p:AppxBundle=Never'
+        '/p:AppxBundle=Never',
+        '/p:PublishTrimmed=false',
+        '/p:DebugSymbols=false',
+        '/p:DebugType=None',
+        '/p:AppxSymbolPackageEnabled=false'
     )
 
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments

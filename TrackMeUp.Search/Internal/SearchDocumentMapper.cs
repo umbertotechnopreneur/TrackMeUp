@@ -169,7 +169,7 @@ internal static class SearchDocumentMapper
     {
         if (json is null)
         {
-            return ImmutableDictionary<string, string?>.Empty;
+            return [];
         }
 
         try

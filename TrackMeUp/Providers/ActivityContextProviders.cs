@@ -154,10 +154,10 @@ public sealed class AdobeCreativeContextProvider : IActivityContextProvider
 
 public sealed class KnownApplicationContextProvider : IActivityContextProvider
 {
-        /// <summary>
-        /// Known process-name to human-readable application map.
-        /// </summary>
-        private static readonly Dictionary<string, string> Applications = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// Known process-name to human-readable application map.
+    /// </summary>
+    private static readonly Dictionary<string, string> Applications = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Code"] = "Visual Studio Code",
         ["devenv"] = "Visual Studio",

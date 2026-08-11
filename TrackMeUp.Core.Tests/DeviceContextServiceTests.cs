@@ -47,24 +47,16 @@ public sealed class DeviceContextServiceTests
         Assert.Equal("invalid_coordinates", snapshot.Location.Status);
     }
 
-    private sealed class FakeDeviceContextPlatform : IDeviceContextPlatform
+    private sealed class FakeDeviceContextPlatform(
+        DeviceContextValue timeZone,
+        DeviceContextValue windowsUiLanguage,
+        DeviceContextValue inputLanguage,
+        DeviceLocationSnapshot location) : IDeviceContextPlatform
     {
-        private readonly DeviceContextValue _timeZone;
-        private readonly DeviceContextValue _windowsUiLanguage;
-        private readonly DeviceContextValue _inputLanguage;
-        private readonly DeviceLocationSnapshot _location;
-
-        public FakeDeviceContextPlatform(
-            DeviceContextValue timeZone,
-            DeviceContextValue windowsUiLanguage,
-            DeviceContextValue inputLanguage,
-            DeviceLocationSnapshot location)
-        {
-            _timeZone = timeZone;
-            _windowsUiLanguage = windowsUiLanguage;
-            _inputLanguage = inputLanguage;
-            _location = location;
-        }
+        private readonly DeviceContextValue _timeZone = timeZone;
+        private readonly DeviceContextValue _windowsUiLanguage = windowsUiLanguage;
+        private readonly DeviceContextValue _inputLanguage = inputLanguage;
+        private readonly DeviceLocationSnapshot _location = location;
 
         public DeviceContextValue GetTimeZone() => _timeZone;
 
