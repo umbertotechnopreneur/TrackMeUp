@@ -24,11 +24,14 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
+      - name: Restore and audit NuGet dependencies
         shell: pwsh
         run: |
           Get-ChildItem -Recurse -Filter *.csproj | ForEach-Object {
-            dotnet restore $_.FullName
+            dotnet restore $_.FullName -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low -p:WarningsAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
           }
 
       - name: Verify code formatting
