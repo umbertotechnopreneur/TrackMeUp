@@ -123,12 +123,14 @@ public sealed class TaskbarWidgetHost : IDisposable
 
         var normalized = NormalizePosition(position);
         var isHorizontalTaskbar = taskbarClientWidth >= taskbarClientHeight;
+        var taskbarScreenHeight = taskbarScreenBounds.Bottom - taskbarScreenBounds.Top;
         var x = isHorizontalTaskbar ? normalized switch
         {
             TaskbarWidgetPositions.Right => Math.Max(0, taskbarClientWidth - widgetWidth - (int)Math.Ceiling(320 * scale)),
             _ => (int)Math.Ceiling(12 * scale)
         } : Math.Max(0, (taskbarClientWidth - widgetWidth) / 2);
-        var y = isHorizontalTaskbar ? Math.Max(0, (taskbarClientHeight - widgetHeight) / 2) : normalized switch
+        // Explorer can report a shorter client area than the visible horizontal taskbar; center within its actual screen bounds.
+        var y = isHorizontalTaskbar ? Math.Max(0, (taskbarScreenHeight - widgetHeight) / 2) : normalized switch
         {
             TaskbarWidgetPositions.Right => Math.Max(0, taskbarClientHeight - widgetHeight - (int)Math.Ceiling(320 * scale)),
             _ => (int)Math.Ceiling(12 * scale)
