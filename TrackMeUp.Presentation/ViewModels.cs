@@ -9,7 +9,8 @@ namespace TrackMeUp.Presentation;
 public sealed record MainWindowStartupState(
     AppSettings Settings,
     DashboardState Dashboard,
-    LastSessionState? LastSession);
+    LastSessionState? LastSession,
+    bool StartedPaused);
 
 /// <summary>Provides minimal observable state without depending on XAML or Spectre.Console.</summary>
 public abstract class ViewModelBase : INotifyPropertyChanged
@@ -71,7 +72,8 @@ public sealed class MainViewModel : ViewModelBase
             Theme = options.Theme ?? settingsResult.Value.Theme,
             FlyoutPosition = options.Position ?? settingsResult.Value.FlyoutPosition
         };
-        var dashboardResult = TrackingStartupPolicy.ShouldStart(options, effectiveSettings)
+        var shouldStart = TrackingStartupPolicy.ShouldStart(options, effectiveSettings);
+        var dashboardResult = shouldStart
             ? await _application.StartTrackingAsync(
                 new StartTrackingRequest(options.SafeMode, "winui.launch"),
                 cancellationToken)
@@ -102,7 +104,11 @@ public sealed class MainViewModel : ViewModelBase
         return OperationResult<MainWindowStartupState>.Success(
             "main.initialized",
             "MainWindowInitialized",
-            new MainWindowStartupState(effectiveSettings, dashboardResult.Value, lastSessionResult.Value));
+            new MainWindowStartupState(
+                effectiveSettings,
+                dashboardResult.Value,
+                lastSessionResult.Value,
+                StartedPaused: !shouldStart && !dashboardResult.Value.IsTracking));
     }
 
     /// <summary>Loads player data.</summary>

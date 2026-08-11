@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace TrackMeUp.Services;
@@ -36,7 +38,18 @@ public sealed class InputHookService : IDisposable
 
         // Install low-level hooks once; callbacks are lightweight and shared across captures.
         _keyboardHook = NativeMethods.SetWindowsHookEx(NativeMethods.WhKeyboardLl, _keyboardCallback, IntPtr.Zero, 0);
+        if (_keyboardHook == IntPtr.Zero)
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not install the keyboard activity hook.");
+        }
+
         _mouseHook = NativeMethods.SetWindowsHookEx(NativeMethods.WhMouseLl, _mouseCallback, IntPtr.Zero, 0);
+        if (_mouseHook == IntPtr.Zero)
+        {
+            var error = Marshal.GetLastWin32Error();
+            Stop();
+            throw new Win32Exception(error, "TrackMeUp could not install the mouse activity hook.");
+        }
     }
 
     /// <summary>

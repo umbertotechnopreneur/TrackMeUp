@@ -149,6 +149,9 @@ Quick Setup validation checklist:
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
 - [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
 - [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
+- [ ] Starting TrackMeUp while tracking is disabled shows one Windows notification explaining that the app started paused and is not recording.
+- [ ] When an OS or file-system screenshot capture fails, a Windows notification shows the localized failure title and the captured exception details.
+- [ ] If activity hooks cannot start, Windows sign-in startup cannot initialize, or screenshot storage drops below 512 MiB, TrackMeUp shows a toast with actionable failure details and no dialog.
 - [ ] In the screenshot inspector, metadata chips and the toolbar start hidden; entering the window with the mouse reveals the chips first and the toolbar shortly after, while leaving reverses the sequence.
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.

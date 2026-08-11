@@ -139,8 +139,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private bool _atomicResetPrepared;
     private readonly object _activityScoreTelemetryGate = new();
     private DateTimeOffset? _nextActivityScoreTelemetryAt;
+    private DateTimeOffset _lastScreenshotStorageWarningAt = DateTimeOffset.MinValue;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private const int MaximumPendingNotifications = 32;
+    private const long MinimumScreenshotFreeBytes = 512L * 1024 * 1024;
+    private static readonly TimeSpan ScreenshotStorageNotificationInterval = TimeSpan.FromMinutes(30);
     private const string ProductRepositoryUrl = "https://github.com/umbertotechnopreneur/TrackMeUp";
     private const string ProductAuthorUrl = "https://umbertogiacobbi.com";
     private bool _disposed;
@@ -230,12 +233,21 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<DashboardState>.Failure("tracking.safe_mode", "TrackingBlockedSafeMode", new ValidationIssue("safeMode", "safe_mode", "SafeModeBlocksTracking"));
         }
 
-        ResumeScheduledSnapshots();
-        _tracking.Start();
-        _logger.LogInformation("Tracking started. SafeMode={SafeMode}", request.SafeMode);
-        var state = LoadDashboardState();
-        await Task.CompletedTask;
-        return OperationResult<DashboardState>.Success("tracking.started", "TrackingStarted", state);
+        try
+        {
+            ResumeScheduledSnapshots();
+            _tracking.Start();
+            _logger.LogInformation("Tracking started. SafeMode={SafeMode}", request.SafeMode);
+            var state = LoadDashboardState();
+            await Task.CompletedTask;
+            return OperationResult<DashboardState>.Success("tracking.started", "TrackingStarted", state);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Tracking could not start. ExceptionType={ExceptionType}", exception.GetType().Name);
+            EnqueueTrackingUnavailable(exception);
+            return OperationResult<DashboardState>.Failure("tracking.start.failed", "TrackingUnavailable");
+        }
     }, cancellationToken);
 
     /// <inheritdoc />
@@ -364,6 +376,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         // Capture happens only after the privacy and enabled-state gates above have succeeded.
+        if (TryGetScreenshotStorageWarning(settings.ScreenshotDirectory, out _))
+        {
+            return OperationResult<ScreenshotCaptureResult>.Failure("screenshot.storage.low", "ScreenshotStorageLow");
+        }
+
         var telemetryIntervalStartedAt = ResolveScreenshotTelemetryIntervalStart(settings.ScreenshotIntervalMinutes);
         try
         {
@@ -375,11 +392,21 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             _logger.LogWarning("Screenshot telemetry sample failed. ExceptionType={ExceptionType}", exception.GetType().Name);
         }
 
-        var result = _capture.CaptureByMode(
-            settings.ScreenshotDirectory,
-            mode,
-            request.Watermark && settings.WatermarkScreenshots,
-            request.CaptureOrigin);
+        ScreenshotCaptureResult result;
+        try
+        {
+            result = _capture.CaptureByMode(
+                settings.ScreenshotDirectory,
+                mode,
+                request.Watermark && settings.WatermarkScreenshots,
+                request.CaptureOrigin);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Screenshot capture failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            EnqueueScreenshotCaptureFailure(exception);
+            return OperationResult<ScreenshotCaptureResult>.Failure("screenshot.capture.failed", "ScreenshotCaptureFailed");
+        }
         if (request.Keep)
         {
             PersistScreenshotIntervalTelemetry(result, telemetryIntervalStartedAt, DateTimeOffset.UtcNow);
@@ -1138,6 +1165,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 AiAnalysis result;
                 if (request.AllowCapture && settings.ScreenshotsEnabled)
                 {
+                    if (TryGetScreenshotStorageWarning(settings.ScreenshotDirectory, out _))
+                    {
+                        return OperationResult<AiAnalysis>.Failure("screenshot.storage.low", "ScreenshotStorageLow");
+                    }
+
                     var telemetryIntervalStartedAt = ResolveScreenshotTelemetryIntervalStart(settings.ScreenshotIntervalMinutes);
                     try
                     {
@@ -1148,13 +1180,22 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                         _logger.LogWarning("Screenshot telemetry sample failed. ExceptionType={ExceptionType}", exception.GetType().Name);
                     }
 
-                    capture = _capture.CaptureByMode(
-                        settings.ScreenshotDirectory,
-                        settings.ScreenshotCaptureMode,
-                        settings.WatermarkScreenshots,
-                        string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
-                            ? ScreenshotCaptureOrigins.Scheduled
-                            : ScreenshotCaptureOrigins.Manual);
+                    try
+                    {
+                        capture = _capture.CaptureByMode(
+                            settings.ScreenshotDirectory,
+                            settings.ScreenshotCaptureMode,
+                            settings.WatermarkScreenshots,
+                            string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
+                                ? ScreenshotCaptureOrigins.Scheduled
+                                : ScreenshotCaptureOrigins.Manual);
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogWarning(exception, "AI analysis screenshot capture failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                        EnqueueScreenshotCaptureFailure(exception);
+                        return OperationResult<AiAnalysis>.Failure("screenshot.capture.failed", "ScreenshotCaptureFailed");
+                    }
                     if (settings.KeepScreenshots)
                     {
                         PersistScreenshotIntervalTelemetry(capture, telemetryIntervalStartedAt, DateTimeOffset.UtcNow);
@@ -1941,12 +1982,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private void EnqueueAiAnalysisFailure(string code, string? detail = null)
     {
-        while (_notifications.Count >= MaximumPendingNotifications && _notifications.TryDequeue(out _))
-        {
-            // Oldest notifications are discarded first so a headless runtime remains memory-bounded.
-        }
-
-        _notifications.Enqueue(new ApplicationNotification(
+        EnqueueNotification(new ApplicationNotification(
             Guid.NewGuid(),
             DateTimeOffset.UtcNow,
             ApplicationNotificationSeverity.Error,
@@ -1954,6 +1990,83 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             "Notification.AiAnalysisFailed.Message",
             code,
             detail));
+    }
+
+    private void EnqueueScreenshotCaptureFailure(Exception exception)
+    {
+        var detail = $"{exception.GetType().Name}: {exception.Message}";
+        EnqueueNotification(new ApplicationNotification(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            ApplicationNotificationSeverity.Error,
+            "Notification.ScreenshotCaptureFailed.Title",
+            "Notification.ScreenshotCaptureFailed.Message",
+            "screenshot.capture.failed",
+            detail));
+    }
+
+    private void EnqueueTrackingUnavailable(Exception exception) =>
+        EnqueueNotification(new ApplicationNotification(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            ApplicationNotificationSeverity.Error,
+            "Notification.TrackingUnavailable.Title",
+            "Notification.TrackingUnavailable.Message",
+            "tracking.start.failed",
+            $"{exception.GetType().Name}: {exception.Message}"));
+
+    private bool TryGetScreenshotStorageWarning(string directory, out string detail)
+    {
+        detail = string.Empty;
+        try
+        {
+            var root = Path.GetPathRoot(directory);
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                return false;
+            }
+
+            var drive = new DriveInfo(root);
+            if (!drive.IsReady || drive.AvailableFreeSpace >= MinimumScreenshotFreeBytes)
+            {
+                return false;
+            }
+
+            detail = $"Available free space: {FormatBytes(drive.AvailableFreeSpace)}. Required minimum: {FormatBytes(MinimumScreenshotFreeBytes)}.";
+            if (DateTimeOffset.UtcNow - _lastScreenshotStorageWarningAt >= ScreenshotStorageNotificationInterval)
+            {
+                _lastScreenshotStorageWarningAt = DateTimeOffset.UtcNow;
+                EnqueueNotification(new ApplicationNotification(
+                    Guid.NewGuid(),
+                    DateTimeOffset.UtcNow,
+                    ApplicationNotificationSeverity.Warning,
+                    "Notification.ScreenshotStorageLow.Title",
+                    "Notification.ScreenshotStorageLow.Message",
+                    "screenshot.storage.low",
+                    detail));
+            }
+
+            return true;
+        }
+        catch (Exception exception)
+        {
+            // Storage inspection is advisory; an unavailable DriveInfo must not block a capture that may still succeed.
+            _logger.LogDebug(exception, "Screenshot storage availability could not be inspected. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return false;
+        }
+    }
+
+    private static string FormatBytes(long bytes) =>
+        $"{bytes / (1024d * 1024d):0} MiB";
+
+    private void EnqueueNotification(ApplicationNotification notification)
+    {
+        while (_notifications.Count >= MaximumPendingNotifications && _notifications.TryDequeue(out _))
+        {
+            // Oldest notifications are discarded first so a headless runtime remains memory-bounded.
+        }
+
+        _notifications.Enqueue(notification);
     }
 
     private static string? BuildAiProviderFailureDetail(AiProviderRequestException exception)

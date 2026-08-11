@@ -45,6 +45,7 @@ public sealed partial class MainWindow : Window
     private readonly MainWindowLayoutState _layoutState = new();
     private readonly MicaDialogService _dialogs;
     private readonly TrayIconService _trayIcon;
+    private readonly IWindowsToastNotificationService _windowsNotifications;
     private readonly TaskCompletionSource _rootLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RectInt32 _currentWorkArea;
     private LocalizationService _strings = new("system");
@@ -108,11 +109,17 @@ public sealed partial class MainWindow : Window
     #region Initialization
 
     /// <summary>Creates the player view with the shared application facade supplied by the composition root.</summary>
-    internal MainWindow(ITrackMeUpApplication application, LaunchOptions options, MicaDialogService dialogs, TrayIconService trayIcon)
+    internal MainWindow(
+        ITrackMeUpApplication application,
+        LaunchOptions options,
+        MicaDialogService dialogs,
+        TrayIconService trayIcon,
+        IWindowsToastNotificationService windowsNotifications)
     {
         _application = application;
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _trayIcon = trayIcon ?? throw new ArgumentNullException(nameof(trayIcon));
+        _windowsNotifications = windowsNotifications ?? throw new ArgumentNullException(nameof(windowsNotifications));
         _viewModel = new MainViewModel(application);
         AiState = new AiApplicationState(application);
         InitializeComponent();
@@ -187,6 +194,11 @@ public sealed partial class MainWindow : Window
         }
 
         await _rootLoaded.Task;
+        if (initialization.Succeeded && initialization.Value?.StartedPaused == true)
+        {
+            _windowsNotifications.TryShow(T("Notification.TrackingPaused.Title"), T("Notification.TrackingPaused.Message"));
+        }
+
         await ShowStartupAiWarningAsync();
         await DrainApplicationNotificationsAsync();
     }
@@ -288,6 +300,14 @@ public sealed partial class MainWindow : Window
 
             foreach (var notification in result.Value)
             {
+                if (IsWindowsToastNotification(notification))
+                {
+                    _windowsNotifications.TryShow(
+                        T(notification.TitleKey),
+                        FormatNotificationMessage(notification));
+                    continue;
+                }
+
                 if (IsFrameAnalysisNotification(notification))
                 {
                     ShowNotificationBanner(notification);
@@ -319,6 +339,12 @@ public sealed partial class MainWindow : Window
 
     private static bool IsFrameAnalysisNotification(ApplicationNotification notification) =>
         string.Equals(notification.TitleKey, "Notification.AiAnalysisFailed.Title", StringComparison.Ordinal);
+
+    private static bool IsWindowsToastNotification(ApplicationNotification notification) =>
+        notification.TitleKey is
+            "Notification.ScreenshotCaptureFailed.Title" or
+            "Notification.ScreenshotStorageLow.Title" or
+            "Notification.TrackingUnavailable.Title";
 
     private void ShowNotificationBanner(ApplicationNotification notification)
     {
@@ -527,7 +553,11 @@ public sealed partial class MainWindow : Window
         if (state.Succeeded && state.Value is not null)
         {
             UpdatePlayer(state.Value);
+            return;
         }
+
+        // Tracking failures are reported through the non-blocking Windows toast queue.
+        await DrainApplicationNotificationsAsync();
     }
 
     /// <summary>Loads persisted settings into presentation-only flyout controls.</summary>

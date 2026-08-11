@@ -23,6 +23,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly ServiceProvider _services;
     private readonly ILogger<App> _logger;
     private readonly MicaDialogService _dialogs = new();
+    private readonly IWindowsToastNotificationService _windowsNotifications;
     private readonly AtomicResetService _atomicReset = new();
     private readonly DispatcherQueue _dispatcherQueue;
     private MainWindow? _window;
@@ -47,6 +48,8 @@ public partial class App : Microsoft.UI.Xaml.Application
             ?? throw new InvalidOperationException("The WinUI dispatcher queue is unavailable.");
         _services = LoggingBootstrapper.CreateServiceProvider();
         _logger = _services.GetRequiredService<ILogger<App>>();
+        _windowsNotifications = new WindowsToastNotificationService(
+            _services.GetRequiredService<ILoggerFactory>().CreateLogger<WindowsToastNotificationService>());
         InitializeComponent();
         UnhandledException += (_, eventArgs) => _logger.LogCritical(eventArgs.Exception, "Unhandled WinUI exception.");
         _logger.LogInformation("TrackMeUp process started. Architecture={Architecture}", RuntimeInformation.ProcessArchitecture);
@@ -93,7 +96,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _reportsOnly = false;
         var application = StartOrConnectRuntime();
         var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
-        _window = new MainWindow(application, options, _dialogs, trayIcon);
+        _window = new MainWindow(application, options, _dialogs, trayIcon, _windowsNotifications);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
         _window.ReportsRequested += MainWindow_ReportsRequested;
@@ -113,6 +116,10 @@ public partial class App : Microsoft.UI.Xaml.Application
             {
                 // If Explorer rejects the tray icon at sign-in, keep the application reachable instead of leaving a hidden window without an activation path.
                 _logger.LogError(exception, "Windows-sign-in startup could not initialize the notification-area icon.");
+                var strings = new LocalizationService(options.Language ?? "system");
+                _windowsNotifications.TryShow(
+                    strings.Translate("Notification.WindowsStartupFailed.Title"),
+                    $"{strings.Translate("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{exception.GetType().Name}: {exception.Message}");
                 _window.Activate();
             }
         }

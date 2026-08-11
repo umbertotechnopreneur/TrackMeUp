@@ -54,9 +54,19 @@ public sealed class TrackingDomainService : IDisposable
             return;
         }
 
-        _trackingStartedAt = DateTimeOffset.Now;
-        _inputHooks.Start();
-        _monitor.Start();
+        try
+        {
+            _inputHooks.Start();
+            _monitor.Start();
+            _trackingStartedAt = DateTimeOffset.Now;
+        }
+        catch
+        {
+            // A partial hook/monitor start is rolled back so callers never see a false running state.
+            _monitor.Stop();
+            _inputHooks.Stop();
+            throw;
+        }
         TrackingStateChanged?.Invoke(true);
         DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
     }
