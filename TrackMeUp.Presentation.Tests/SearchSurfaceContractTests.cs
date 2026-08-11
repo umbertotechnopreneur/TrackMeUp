@@ -24,6 +24,7 @@ public sealed class SearchSurfaceContractTests
         var activityBar = window.Descendants().Single(element => HasName(element, "SearchActivityBar"));
         var activityGlow = window.Descendants().Single(element => HasName(element, "SearchActivityGlow"));
         var activitySpectrum = window.Descendants().Single(element => HasName(element, "SearchActivitySpectrum"));
+        var availability = window.Descendants().Single(element => HasName(element, "SearchAvailabilityText"));
         var resultThumbnailFrame = resultControl.Descendants().Single(element =>
             element.Name.LocalName == "Border"
             && element.Attribute("Width")?.Value == "260"
@@ -41,6 +42,7 @@ public sealed class SearchSurfaceContractTests
         Assert.Equal("48", queryBox.Attribute("MinHeight")?.Value);
         Assert.Equal("Center", queryBox.Attribute("VerticalContentAlignment")?.Value);
         Assert.Equal("Text", queryBox.Attribute("TextMemberPath")?.Value);
+        Assert.Equal("1", availability.Attribute("Grid.Row")?.Value);
         Assert.Equal("ProgressBar", activityBar.Name.LocalName);
         Assert.Equal("True", activityBar.Attribute("IsIndeterminate")?.Value);
         Assert.Equal("Border", activityGlow.Name.LocalName);
@@ -93,7 +95,7 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("WindowActivationState.Deactivated", windowSource, StringComparison.Ordinal);
         Assert.Contains("Close();", windowSource, StringComparison.Ordinal);
         Assert.Contains("RootGrid.RequestedTheme = ElementTheme.Light;", windowSource, StringComparison.Ordinal);
-        Assert.Contains("CompactLogicalHeight = 140", windowSource, StringComparison.Ordinal);
+        Assert.Contains("CompactLogicalHeight = 168", windowSource, StringComparison.Ordinal);
         Assert.Contains("ResultLogicalHeight = 180", windowSource, StringComparison.Ordinal);
         Assert.Contains("MaximumCursorDisplayHeightRatio = 0.78d", windowSource, StringComparison.Ordinal);
         Assert.Contains("ResizeForCurrentState();", windowSource, StringComparison.Ordinal);
@@ -118,6 +120,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("CalculateSuggestionConfidence", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("OrderByDescending(hit => hit.Score)", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("CalculateMatchPercent", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("GetSearchAvailabilityAsync", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);
+        Assert.Contains("Search.Empty.Title", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);
     }
 
     [Fact]

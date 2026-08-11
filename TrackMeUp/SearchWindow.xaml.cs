@@ -19,10 +19,10 @@ public sealed partial class SearchWindow : Window
 {
     private const int LogicalWindowWidth = 960;
     private const int MaximumLogicalWidth = 960;
-    private const int CompactLogicalHeight = 140;
-    private const int EmptyLogicalHeight = 176;
-    private const int ErrorLogicalHeight = 222;
-    private const int ResultsChromeLogicalHeight = 134;
+    private const int CompactLogicalHeight = 168;
+    private const int EmptyLogicalHeight = 204;
+    private const int ErrorLogicalHeight = 250;
+    private const int ResultsChromeLogicalHeight = 162;
     private const int ResultLogicalHeight = 180;
     private const int LogicalScreenMargin = 22;
     private const double SearchActivityFadeLogicalLength = 48d;
@@ -46,9 +46,17 @@ public sealed partial class SearchWindow : Window
     private int _activeSearchOperationCount;
 
     /// <summary>Creates the fixed-light floating local-search window in the requested language.</summary>
-    public SearchWindow(ITrackMeUpApplication application, string language)
+    public SearchWindow(ITrackMeUpApplication application, string language, SearchAvailability availability)
     {
         ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(availability);
+        if (availability.TotalSnapshotCount <= 0 ||
+            availability.TodaySnapshotCount < 0 ||
+            availability.TodaySnapshotCount > availability.TotalSnapshotCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(availability), "Search availability must describe at least one retained snapshot.");
+        }
+
         _viewModel = new SearchViewModel(application);
         _strings = new LocalizationService(language);
         _culture = CultureInfo.GetCultureInfo(_strings.Language);
@@ -60,6 +68,15 @@ public sealed partial class SearchWindow : Window
         QueryBox.PlaceholderText = _strings.Translate("Search.Placeholder");
         AutomationProperties.SetName(QueryBox, _strings.Translate("Search.Placeholder"));
         AutomationProperties.SetName(SearchActivityBar, _strings.Translate("Search.Working"));
+        SearchAvailabilityText.Text = string.Format(
+            _culture,
+            _strings.Translate("Search.Availability"),
+            availability.TotalSnapshotCount,
+            availability.TodaySnapshotCount,
+            _strings.Translate(availability.TextReadingEnabled
+                ? "Search.TextReading.Enabled"
+                : "Search.TextReading.Disabled"));
+        AutomationProperties.SetName(SearchAvailabilityText, SearchAvailabilityText.Text);
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(

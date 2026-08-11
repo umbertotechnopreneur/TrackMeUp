@@ -23,6 +23,9 @@ public sealed class ScreenshotTextExtractionCoordinator
         _logger = logger ?? NullLogger<ScreenshotTextExtractionCoordinator>.Instance;
     }
 
+    /// <summary>Gets whether the runtime-owned local text reader is currently enabled.</summary>
+    internal bool IsEnabled => _ocr.IsEnabled;
+
     /// <summary>Extracts text from every raw analysis artifact and returns a snapshot carrying the complete raw result.</summary>
     internal async Task<ScreenshotCaptureResult> AttachAsync(
         ScreenshotCaptureResult capture,

@@ -77,13 +77,29 @@
         x:Name="ViewerRoot"
         Background="Transparent"
         GotFocus="ViewerRoot_GotFocus"
-        LostFocus="ViewerRoot_LostFocus"
-        PointerEntered="ViewerRoot_PointerEntered"
-        PointerExited="ViewerRoot_PointerExited">
+        LostFocus="ViewerRoot_LostFocus">
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="OverlayVisibilityStates">
                 <VisualStateGroup.Transitions>
-                    <VisualTransition GeneratedDuration="0:0:0.14" />
+                    <VisualTransition From="OverlayHidden" To="OverlayVisible">
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="ZoomRail"
+                                Storyboard.TargetProperty="Opacity"
+                                BeginTime="0:0:0.08"
+                                To="1"
+                                Duration="0:0:0.20" />
+                        </Storyboard>
+                    </VisualTransition>
+                    <VisualTransition From="OverlayVisible" To="OverlayHidden">
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="ZoomRail"
+                                Storyboard.TargetProperty="Opacity"
+                                To="0"
+                                Duration="0:0:0.14" />
+                        </Storyboard>
+                    </VisualTransition>
                 </VisualStateGroup.Transitions>
                 <VisualState x:Name="OverlayHidden">
                     <VisualState.Setters>

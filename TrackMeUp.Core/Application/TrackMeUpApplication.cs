@@ -667,6 +667,20 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var snapshots = _store.GetAllScreenshotGalleryItems();
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var todaySnapshotCount = snapshots.Count(snapshot =>
+            DateOnly.FromDateTime(snapshot.CapturedAt.LocalDateTime) == today);
+        return Task.FromResult(OperationResult<SearchAvailability>.Success(
+            "search.availability.loaded",
+            "SearchAvailabilityLoaded",
+            new SearchAvailability(snapshots.Count, todaySnapshotCount, _textExtraction.IsEnabled)));
+    }
+
+    /// <inheritdoc />
     public async Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken)
     {
         try
@@ -1936,8 +1950,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             Guid.NewGuid(),
             DateTimeOffset.UtcNow,
             ApplicationNotificationSeverity.Error,
-            "Dialog.AiAnalysisFailed.Title",
-            "Dialog.AiAnalysisFailed.Message",
+            "Notification.AiAnalysisFailed.Title",
+            "Notification.AiAnalysisFailed.Message",
             code,
             detail));
     }

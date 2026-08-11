@@ -47,6 +47,12 @@ public sealed record AnalyzeCapturedScreenshotRequest(
 /// <summary>Requests retained screenshots for one inclusive local calendar date.</summary>
 public sealed record ScreenshotGalleryRequest(DateOnly Date);
 
+/// <summary>Provides the local snapshot counts and text-reading capability shown before opening search.</summary>
+public sealed record SearchAvailability(
+    int TotalSnapshotCount,
+    int TodaySnapshotCount,
+    bool TextReadingEnabled);
+
 /// <summary>Identifies the outcome of local screenshot text extraction.</summary>
 public enum ScreenshotTextExtractionStatus
 {
@@ -398,6 +404,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Returns type-ahead suggestions from the separate local suggestion index.</summary>
     Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Gets the retained snapshot counts and local text-reading availability before search opens.</summary>
+    Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken);
 
     /// <summary>Rebuilds the mandatory local search index from durable source data.</summary>
     Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken);

@@ -214,6 +214,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
                 "search.suggest.v2" => await DispatchSearchSuggestionsAsync(request, cancellationToken),
+                "search.availability.v1" => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
                 "search.rebuild.v1" => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
                 "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
                 "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
@@ -495,6 +496,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) =>
         SendAsync<IReadOnlyList<SearchSuggestion>>("search.suggest.v2", request, cancellationToken, SearchTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) =>
+        SendAsync<SearchAvailability>("search.availability.v1", null, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) =>
         SendAsync<int>("search.rebuild.v1", null, cancellationToken, SearchTimeout);

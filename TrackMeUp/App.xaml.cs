@@ -265,13 +265,37 @@ public partial class App : Microsoft.UI.Xaml.Application
         _searchWindowOpening = true;
         try
         {
-            var settings = await application.GetSettingsAsync(CancellationToken.None);
-            if (!settings.Succeeded || settings.Value is null)
+            if (_window is null)
             {
-                throw new InvalidOperationException($"Search window settings are unavailable ({settings.Code}).");
+                throw new InvalidOperationException("Search requires the main TrackMeUp window.");
             }
 
-            _searchWindow = new SearchWindow(application, settings.Value.UiLanguage);
+            var settingsTask = application.GetSettingsAsync(CancellationToken.None);
+            var availabilityTask = application.GetSearchAvailabilityAsync(CancellationToken.None);
+            await Task.WhenAll(settingsTask, availabilityTask);
+            var settings = await settingsTask;
+            var availability = await availabilityTask;
+            if (!settings.Succeeded || settings.Value is null || !availability.Succeeded || availability.Value is null)
+            {
+                throw new InvalidOperationException($"Search availability is unavailable ({settings.Code}, {availability.Code}).");
+            }
+
+            if (availability.Value.TotalSnapshotCount == 0)
+            {
+                var strings = new LocalizationService(settings.Value.UiLanguage);
+                await _dialogs.ShowInformativeAsync(
+                    application,
+                    _window,
+                    MicaDialogRequest.Informative(
+                        strings.Translate("Search.Empty.Title"),
+                        strings.Translate("Search.Empty.Message"),
+                        MicaDialogSeverity.Information,
+                        strings.Translate("Dialog.Ok")),
+                    ElementTheme.Default);
+                return;
+            }
+
+            _searchWindow = new SearchWindow(application, settings.Value.UiLanguage, availability.Value);
             _searchWindow.ScreenshotRequested += SearchWindow_ScreenshotRequested;
             _searchWindow.Closed += SearchWindow_Closed;
             _searchWindow.Activate();

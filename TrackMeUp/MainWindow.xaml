@@ -971,6 +971,14 @@
                 LayoutChanged="OperationsControl_LayoutChanged" />
         </Border>
 
+        <controls:TimedInfoBar
+            x:Name="MainNotificationBanner"
+            Grid.Row="1"
+            Margin="16,10,16,0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Canvas.ZIndex="100" />
+
         <Border
             x:Name="TrackingStatusToast"
             Grid.Row="1"

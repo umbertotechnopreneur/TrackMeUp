@@ -5,8 +5,11 @@ using TrackMeUp.Runtime;
 
 namespace TrackMeUp.Presentation;
 
-/// <summary>Contains the persisted presentation settings and dashboard resolved for the first main-window frame.</summary>
-public sealed record MainWindowStartupState(AppSettings Settings, DashboardState Dashboard);
+/// <summary>Contains the persisted settings, dashboard, and latest session resolved for the first main-window frame.</summary>
+public sealed record MainWindowStartupState(
+    AppSettings Settings,
+    DashboardState Dashboard,
+    LastSessionState? LastSession);
 
 /// <summary>Provides minimal observable state without depending on XAML or Spectre.Console.</summary>
 public abstract class ViewModelBase : INotifyPropertyChanged
@@ -83,11 +86,23 @@ public sealed class MainViewModel : ViewModelBase
                 dashboardResult.Issues);
         }
 
+        var lastSessionResult = await _application.GetLastSessionAsync(cancellationToken);
+        if (!lastSessionResult.Succeeded)
+        {
+            return new OperationResult<MainWindowStartupState>(
+                false,
+                lastSessionResult.Code,
+                lastSessionResult.MessageKey,
+                null,
+                lastSessionResult.Issues);
+        }
+
         Dashboard = dashboardResult.Value;
+        LastSession = lastSessionResult.Value;
         return OperationResult<MainWindowStartupState>.Success(
             "main.initialized",
             "MainWindowInitialized",
-            new MainWindowStartupState(effectiveSettings, dashboardResult.Value));
+            new MainWindowStartupState(effectiveSettings, dashboardResult.Value, lastSessionResult.Value));
     }
 
     /// <summary>Loads player data.</summary>

@@ -13,6 +13,8 @@
         x:Name="RootGrid"
         Background="Transparent"
         Loaded="RootGrid_Loaded"
+        PointerEntered="RootGrid_PointerEntered"
+        PointerExited="RootGrid_PointerExited"
         SizeChanged="RootGrid_SizeChanged">
         <Grid.Resources>
             <ResourceDictionary>

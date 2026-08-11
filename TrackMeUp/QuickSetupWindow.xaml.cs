@@ -13,8 +13,8 @@ namespace TrackMeUp;
 /// <summary>Collects one Quick Setup profile choice and delegates its atomic application to the shared facade.</summary>
 internal sealed partial class QuickSetupWindow : Window
 {
-    private const int LogicalWindowWidth = 980;
-    private const int LogicalWindowHeight = 700;
+    private const int LogicalWindowWidth = 860;
+    private const int LogicalWindowHeight = 630;
     private const int LogicalScreenMargin = 24;
     private const int GwlHwndParent = -8;
     private readonly ITrackMeUpApplication _application;
@@ -90,14 +90,17 @@ internal sealed partial class QuickSetupWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
+        // ToggleButton content enters the visual tree only after its template is realized.
+        ApplyLanguage();
+        UpdateSelection();
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
             _xamlRoot = xamlRoot;
             _xamlRoot.Changed += XamlRoot_Changed;
         }
 
-        _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+        _placement.ApplyDefaultBounds(RootGrid);
         UpdateTitleBarInsets();
         SelectedButton().Focus(FocusState.Programmatic);
     }
@@ -225,8 +228,6 @@ internal sealed partial class QuickSetupWindow : Window
         {
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
-            presenter.IsMinimizable = false;
-            presenter.SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false);
         }
 
         if (AppWindowTitleBar.IsCustomizationSupported())

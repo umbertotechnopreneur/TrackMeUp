@@ -56,8 +56,8 @@ public sealed class LocalizationServiceTests
 
         Assert.Contains("environment variable {0}", english.Translate("Dialog.AiKeyMissing.Message"), StringComparison.Ordinal);
         Assert.Contains("variabile di ambiente {0}", italian.Translate("Dialog.AiKeyMissing.Message"), StringComparison.Ordinal);
-        Assert.Equal("Frame analysis unavailable", english.Translate("Dialog.AiAnalysisFailed.Title"));
-        Assert.Equal("Analisi del frame non disponibile", italian.Translate("Dialog.AiAnalysisFailed.Title"));
+        Assert.Equal("Frame analysis unavailable", english.Translate("Notification.AiAnalysisFailed.Title"));
+        Assert.Equal("Analisi del frame non disponibile", italian.Translate("Notification.AiAnalysisFailed.Title"));
         Assert.Equal("Change key", english.Translate("Options.ApiKeyAction.Change"));
         Assert.Equal("Cambia chiave", italian.Translate("Options.ApiKeyAction.Change"));
     }

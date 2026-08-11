@@ -10,83 +10,206 @@
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.Resources>
-        <Style x:Key="ProfileCardToggleButtonStyle" TargetType="ToggleButton">
-            <Setter Property="MinHeight" Value="174" />
-            <Setter Property="Padding" Value="22,18" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Grid>
-                            <Border
-                                x:Name="CardRoot"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10">
+            <SolidColorBrush x:Key="QuickSetupAccentBrush" Color="#FF2D9CDB" />
+            <SolidColorBrush x:Key="QuickSetupAccentPointerBrush" Color="#FF3AABE8" />
+            <SolidColorBrush x:Key="QuickSetupAccentPressedBrush" Color="#FF1987C7" />
+            <SolidColorBrush x:Key="QuickSetupAccentSubtleBrush" Color="#262D9CDB" />
+            <SolidColorBrush x:Key="QuickSetupSelectedFillBrush" Color="#102D9CDB" />
+
+            <Style x:Key="ProfileCardToggleButtonStyle" TargetType="ToggleButton">
+                <Setter Property="MinHeight" Value="150" />
+                <Setter Property="Padding" Value="18,15" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Grid>
+                                <Border
+                                    x:Name="CardRoot"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8">
+                                    <ContentPresenter
+                                        Padding="{TemplateBinding Padding}"
+                                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                                <FontIcon
+                                    x:Name="CheckGlyph"
+                                    Margin="0,14,14,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontSize="17"
+                                    Foreground="{StaticResource QuickSetupAccentBrush}"
+                                    Glyph="&#xE73E;"
+                                    Visibility="Collapsed" />
+
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="CardRoot.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="CardRoot.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="CardRoot.Opacity" Value="0.48" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                    <VisualStateGroup x:Name="CheckStates">
+                                        <VisualState x:Name="Unchecked" />
+                                        <VisualState x:Name="Checked">
+                                            <VisualState.Setters>
+                                                <Setter Target="CardRoot.Background" Value="{StaticResource QuickSetupSelectedFillBrush}" />
+                                                <Setter Target="CardRoot.BorderBrush" Value="{StaticResource QuickSetupAccentBrush}" />
+                                                <Setter Target="CardRoot.BorderThickness" Value="1" />
+                                                <Setter Target="CheckGlyph.Visibility" Value="Visible" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Indeterminate" />
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="ProfileFeatureTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
+            <Style x:Key="QuickSetupPrimaryButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource QuickSetupAccentBrush}" />
+                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Padding" Value="12,6" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Border
+                                    x:Name="PrimaryButtonRoot"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="4">
+                                    <ContentPresenter
+                                        Padding="{TemplateBinding Padding}"
+                                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="PrimaryButtonRoot.Background" Value="{StaticResource QuickSetupAccentPointerBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="PrimaryButtonRoot.Background" Value="{StaticResource QuickSetupAccentPressedBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="PrimaryButtonRoot.Opacity" Value="0.45" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="QuickSetupCheckBoxStyle" TargetType="CheckBox">
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="CheckBox">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border
+                                    x:Name="CheckBoxRoot"
+                                    Width="20"
+                                    Height="20"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderBrush="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                    <FontIcon
+                                        x:Name="CheckBoxGlyph"
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        FontSize="13"
+                                        Foreground="White"
+                                        Glyph="&#xE73E;"
+                                        Visibility="Collapsed" />
+                                </Border>
                                 <ContentPresenter
-                                    Padding="{TemplateBinding Padding}"
-                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                            </Border>
-                            <FontIcon
-                                x:Name="CheckGlyph"
-                                Margin="0,17,17,0"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                AutomationProperties.AccessibilityView="Raw"
-                                FontSize="18"
-                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"
-                                Glyph="&#xE73E;"
-                                Visibility="Collapsed" />
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}" />
 
-                            <VisualStateManager.VisualStateGroups>
-                                <VisualStateGroup x:Name="CommonStates">
-                                    <VisualState x:Name="Normal" />
-                                    <VisualState x:Name="PointerOver">
-                                        <VisualState.Setters>
-                                            <Setter Target="CardRoot.Background" Value="{ThemeResource ControlFillColorSecondaryBrush}" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="Pressed">
-                                        <VisualState.Setters>
-                                            <Setter Target="CardRoot.Background" Value="{ThemeResource ControlFillColorTertiaryBrush}" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="Disabled">
-                                        <VisualState.Setters>
-                                            <Setter Target="CardRoot.Opacity" Value="0.48" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                </VisualStateGroup>
-                                <VisualStateGroup x:Name="CheckStates">
-                                    <VisualState x:Name="Unchecked" />
-                                    <VisualState x:Name="Checked">
-                                        <VisualState.Setters>
-                                            <Setter Target="CardRoot.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
-                                            <Setter Target="CardRoot.BorderBrush" Value="{ThemeResource SystemControlHighlightAccentBrush}" />
-                                            <Setter Target="CardRoot.BorderThickness" Value="2" />
-                                            <Setter Target="CheckGlyph.Visibility" Value="Visible" />
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="Indeterminate" />
-                                </VisualStateGroup>
-                            </VisualStateManager.VisualStateGroups>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="ProfileFeatureTextStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        </Style>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="CheckBoxRoot.BorderBrush" Value="{StaticResource QuickSetupAccentBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed" />
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="CheckBoxRoot.Opacity" Value="0.45" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                    <VisualStateGroup x:Name="CheckStates">
+                                        <VisualState x:Name="Unchecked" />
+                                        <VisualState x:Name="Checked">
+                                            <VisualState.Setters>
+                                                <Setter Target="CheckBoxRoot.Background" Value="{StaticResource QuickSetupAccentBrush}" />
+                                                <Setter Target="CheckBoxRoot.BorderBrush" Value="{StaticResource QuickSetupAccentBrush}" />
+                                                <Setter Target="CheckBoxGlyph.Visibility" Value="Visible" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Indeterminate" />
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
@@ -110,12 +233,21 @@
                 VerticalAlignment="Center"
                 Orientation="Horizontal"
                 Spacing="9">
-                <FontIcon
+                <Border
+                    x:Name="TitleBarBrandMark"
+                    Width="20"
+                    Height="20"
                     AutomationProperties.AccessibilityView="Raw"
-                    FontFamily="Segoe Fluent Icons"
-                    FontSize="15"
-                    Foreground="{ThemeResource SystemControlHighlightAccentBrush}"
-                    Glyph="&#xE9D9;" />
+                    BorderBrush="{StaticResource QuickSetupAccentBrush}"
+                    BorderThickness="1"
+                    CornerRadius="1">
+                    <Viewbox Margin="3">
+                        <Grid Width="16" Height="16">
+                            <Path Data="M1,13 L5,8 L8,11 L13,3" Stroke="{StaticResource QuickSetupAccentBrush}" StrokeEndLineCap="Round" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeThickness="2" />
+                            <Ellipse Width="2.5" Height="2.5" Margin="0,0,1,1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Fill="{StaticResource QuickSetupAccentBrush}" />
+                        </Grid>
+                    </Viewbox>
+                </Border>
                 <TextBlock
                     VerticalAlignment="Center"
                     AutomationProperties.AccessibilityView="Raw"
@@ -125,9 +257,14 @@
                     IsHitTestVisible="False"
                     Text="TRACK ME UP" />
             </StackPanel>
+            <Rectangle
+                Grid.ColumnSpan="4"
+                Height="1"
+                VerticalAlignment="Bottom"
+                Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="34,14,34,24" RowSpacing="0">
+        <Grid Grid.Row="1" Padding="34,14,34,20" RowSpacing="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -145,13 +282,13 @@
                     Text="INITIAL SETUP" />
                 <TextBlock
                     Tag="QuickSetup.Heading"
-                    FontSize="32"
+                    FontSize="28"
                     FontWeight="SemiBold"
                     Text="Choose your privacy level"
                     TextWrapping="WrapWholeWords" />
                 <TextBlock
                     Tag="QuickSetup.Subtitle"
-                    FontSize="15"
+                    FontSize="14"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     Text="Four ready-to-use profiles. You can change your mind at any time."
                     TextWrapping="WrapWholeWords" />
@@ -159,12 +296,13 @@
 
             <ScrollViewer
                 Grid.Row="1"
-                Margin="0,22,0,0"
+                Margin="0,18,0,0"
+                HorizontalContentAlignment="Stretch"
                 HorizontalScrollBarVisibility="Disabled"
                 HorizontalScrollMode="Disabled"
-                VerticalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Hidden"
                 VerticalScrollMode="Auto">
-                <Grid ColumnSpacing="16" RowSpacing="16">
+                <Grid ColumnSpacing="14" RowSpacing="14">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
@@ -180,33 +318,35 @@
                         Click="ProfileButton_Click"
                         IsChecked="True"
                         Style="{StaticResource ProfileCardToggleButtonStyle}">
-                        <Grid ColumnSpacing="18">
+                        <Grid ColumnSpacing="14">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="48" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <FontIcon
-                                Margin="0,3,0,0"
+                            <Viewbox
+                                Width="44"
+                                Height="44"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Top"
-                                AutomationProperties.AccessibilityView="Raw"
-                                FontFamily="Segoe Fluent Icons"
-                                FontSize="38"
-                                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"
-                                Glyph="&#xE83D;" />
-                            <StackPanel Grid.Column="1" Spacing="7">
+                                AutomationProperties.AccessibilityView="Raw">
+                                <Grid Width="48" Height="48">
+                                    <Path Data="M24,3 L41,10 L41,22 C41,33 34,41 24,45 C14,41 7,33 7,22 L7,10 Z" Fill="Transparent" Stroke="{StaticResource QuickSetupAccentBrush}" StrokeLineJoin="Round" StrokeThickness="2.5" />
+                                    <Path Data="M15,24 L21,30 L34,17" Stroke="{StaticResource QuickSetupAccentBrush}" StrokeEndLineCap="Round" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeThickness="2.5" />
+                                </Grid>
+                            </Viewbox>
+                            <StackPanel Grid.Column="1" Spacing="5">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Tag="QuickSetup.Profile.Complete.Title" FontSize="22" FontWeight="SemiBold" Text="Complete" />
+                                    <TextBlock Tag="QuickSetup.Profile.Complete.Title" FontSize="20" FontWeight="SemiBold" Text="Complete" />
                                     <Border
                                         Padding="8,3"
                                         VerticalAlignment="Center"
-                                        Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                        Background="{StaticResource QuickSetupAccentSubtleBrush}"
                                         CornerRadius="4">
                                         <TextBlock
                                             Tag="QuickSetup.Recommended"
                                             FontSize="10"
                                             FontWeight="SemiBold"
-                                            Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                            Foreground="{StaticResource QuickSetupAccentBrush}"
                                             Text="RECOMMENDED" />
                                     </Border>
                                 </StackPanel>
@@ -216,7 +356,7 @@
                                     Text="All features available"
                                     TextWrapping="WrapWholeWords" />
                                 <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                <StackPanel Spacing="7">
+                                <StackPanel Spacing="5">
                                     <Grid ColumnSpacing="9">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" Glyph="&#xE73E;" />
@@ -243,14 +383,20 @@
                         Grid.Column="1"
                         Click="ProfileButton_Click"
                         Style="{StaticResource ProfileCardToggleButtonStyle}">
-                        <Grid ColumnSpacing="18">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <FontIcon Margin="0,3,0,0" HorizontalAlignment="Center" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="38" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE945;" />
-                            <StackPanel Grid.Column="1" Spacing="7">
-                                <TextBlock Tag="QuickSetup.Profile.Assisted.Title" FontSize="22" FontWeight="SemiBold" Text="Assisted" />
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Viewbox Width="44" Height="44" HorizontalAlignment="Center" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw">
+                                <Grid Width="48" Height="48">
+                                    <Path Data="M24,9 C21,5 15,5 12,9 C8,9 6,12 6,16 C3,19 4,24 7,27 C4,31 6,37 11,38 C13,43 20,43 24,39 Z" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeLineJoin="Round" StrokeThickness="2.4" />
+                                    <Path Data="M24,9 C27,5 33,5 36,9 C40,9 42,12 42,16 C45,19 44,24 41,27 C44,31 42,37 37,38 C35,43 28,43 24,39 Z" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeLineJoin="Round" StrokeThickness="2.4" />
+                                    <Path Data="M24,9 L24,39 M13,17 C17,17 19,19 19,22 M35,17 C31,17 29,19 29,22 M11,29 C15,29 18,31 18,35 M37,29 C33,29 30,31 30,35" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2.2" />
+                                </Grid>
+                            </Viewbox>
+                            <StackPanel Grid.Column="1" Spacing="5">
+                                <TextBlock Tag="QuickSetup.Profile.Assisted.Title" FontSize="20" FontWeight="SemiBold" Text="Assisted" />
                                 <TextBlock Tag="QuickSetup.Profile.Assisted.Subtitle" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="AI without recording the screen" TextWrapping="WrapWholeWords" />
                                 <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                <StackPanel Spacing="7">
+                                <StackPanel Spacing="5">
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" Glyph="&#xE73E;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.Ai" Style="{StaticResource ProfileFeatureTextStyle}" Text="AI features" /></Grid>
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Glyph="&#xE711;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.NoScreenshots" Style="{StaticResource ProfileFeatureTextStyle}" Text="No screenshots" /></Grid>
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" Glyph="&#xE73E;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.NetworkWhenNeeded" Style="{StaticResource ProfileFeatureTextStyle}" Text="Connection when needed" /></Grid>
@@ -265,14 +411,20 @@
                         Grid.Row="1"
                         Click="ProfileButton_Click"
                         Style="{StaticResource ProfileCardToggleButtonStyle}">
-                        <Grid ColumnSpacing="18">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <FontIcon Margin="0,3,0,0" HorizontalAlignment="Center" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="38" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE958;" />
-                            <StackPanel Grid.Column="1" Spacing="7">
-                                <TextBlock Tag="QuickSetup.Profile.LocalRecord.Title" FontSize="22" FontWeight="SemiBold" Text="Local record" />
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Viewbox Width="44" Height="44" HorizontalAlignment="Center" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw">
+                                <Grid Width="48" Height="48">
+                                    <Path Data="M9,7 L39,7 L45,34 C46,39 43,42 38,42 L10,42 C5,42 2,39 3,34 Z" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeLineJoin="Round" StrokeThickness="2.5" />
+                                    <Path Data="M4,33 L44,33" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2.2" />
+                                    <Ellipse Width="3.5" Height="3.5" Margin="0,0,8,4" HorizontalAlignment="Right" VerticalAlignment="Bottom" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                            </Viewbox>
+                            <StackPanel Grid.Column="1" Spacing="5">
+                                <TextBlock Tag="QuickSetup.Profile.LocalRecord.Title" FontSize="20" FontWeight="SemiBold" Text="Local record" />
                                 <TextBlock Tag="QuickSetup.Profile.LocalRecord.Subtitle" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="A visual history only on this PC" TextWrapping="WrapWholeWords" />
                                 <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                <StackPanel Spacing="7">
+                                <StackPanel Spacing="5">
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Glyph="&#xE711;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.NoAi" Style="{StaticResource ProfileFeatureTextStyle}" Text="AI features disabled" /></Grid>
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" Glyph="&#xE73E;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.Screenshots" Style="{StaticResource ProfileFeatureTextStyle}" Text="Automatic screenshots" /></Grid>
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" Glyph="&#xE73E;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.AlwaysOffline" Style="{StaticResource ProfileFeatureTextStyle}" Text="Always offline" /></Grid>
@@ -288,14 +440,19 @@
                         Grid.Column="1"
                         Click="ProfileButton_Click"
                         Style="{StaticResource ProfileCardToggleButtonStyle}">
-                        <Grid ColumnSpacing="18">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <FontIcon Margin="0,3,0,0" HorizontalAlignment="Center" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="38" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE708;" />
-                            <StackPanel Grid.Column="1" Spacing="7">
-                                <TextBlock Tag="QuickSetup.Profile.EssentialOffline.Title" FontSize="22" FontWeight="SemiBold" Text="Essential offline" />
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Viewbox Width="44" Height="44" HorizontalAlignment="Center" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw">
+                                <Grid Width="48" Height="48">
+                                    <Path Data="M11,35 L36,35 C41,35 44,32 44,27 C44,23 41,20 37,19 C36,12 31,8 25,8 C20,8 17,11 15,15 C9,15 5,19 5,25 C5,30 8,33 11,35" Fill="Transparent" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeEndLineCap="Round" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeThickness="2.5" />
+                                    <Path Data="M6,6 L42,42" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2.8" />
+                                </Grid>
+                            </Viewbox>
+                            <StackPanel Grid.Column="1" Spacing="5">
+                                <TextBlock Tag="QuickSetup.Profile.EssentialOffline.Title" FontSize="20" FontWeight="SemiBold" Text="Essential offline" />
                                 <TextBlock Tag="QuickSetup.Profile.EssentialOffline.Subtitle" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="The minimum to get started" TextWrapping="WrapWholeWords" />
                                 <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                <StackPanel Spacing="7">
+                                <StackPanel Spacing="5">
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Glyph="&#xE711;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.NoAi" Style="{StaticResource ProfileFeatureTextStyle}" Text="AI features disabled" /></Grid>
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Glyph="&#xE711;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.NoScreenshots" Style="{StaticResource ProfileFeatureTextStyle}" Text="No screenshots" /></Grid>
                                     <Grid ColumnSpacing="9"><Grid.ColumnDefinitions><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" Glyph="&#xE73E;" /><TextBlock Grid.Column="1" Tag="QuickSetup.Feature.AlwaysOffline" Style="{StaticResource ProfileFeatureTextStyle}" Text="Always offline" /></Grid>
@@ -306,16 +463,16 @@
                 </Grid>
             </ScrollViewer>
 
-            <Grid Grid.Row="2" Margin="0,18,0,0" ColumnSpacing="14">
+            <Grid Grid.Row="2" Margin="0,14,0,0" ColumnSpacing="14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="4" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Rectangle Fill="{ThemeResource SystemControlHighlightAccentBrush}" RadiusX="2" RadiusY="2" />
+                <Rectangle Fill="{StaticResource QuickSetupAccentBrush}" RadiusX="2" RadiusY="2" />
                 <StackPanel Grid.Column="1" Spacing="3">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock x:Name="SelectedProfileLabelText" FontWeight="SemiBold" Text="Selected profile:" />
-                        <TextBlock x:Name="SelectedProfileNameText" FontWeight="SemiBold" Foreground="{ThemeResource SystemControlHighlightAccentBrush}" Text="Complete" />
+                        <TextBlock x:Name="SelectedProfileNameText" FontWeight="SemiBold" Foreground="{StaticResource QuickSetupAccentBrush}" Text="Complete" />
                     </StackPanel>
                     <TextBlock
                         x:Name="SelectedProfileDescriptionText"
@@ -333,33 +490,41 @@
                 IsOpen="False"
                 Severity="Error" />
 
-            <Grid Grid.Row="4" Margin="0,18,0,0" ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <CheckBox
-                    x:Name="StartWithWindowsCheckBox"
-                    Tag="QuickSetup.StartWithWindows"
-                    VerticalAlignment="Center"
-                    Content="Start TrackMeUp when I sign in to Windows" />
-                <Button
-                    x:Name="CancelButton"
-                    Tag="QuickSetup.Back"
-                    Grid.Column="1"
-                    MinWidth="126"
-                    MinHeight="42"
-                    Click="CancelButton_Click"
-                    Content="Back" />
-                <Button
-                    x:Name="PrimaryButton"
-                    Grid.Column="2"
-                    MinWidth="148"
-                    MinHeight="42"
-                    Click="PrimaryButton_Click"
-                    Content="Start"
-                    Style="{StaticResource AccentButtonStyle}" />
+            <Grid Grid.Row="4" Margin="0,14,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Rectangle Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <Grid Grid.Row="1" Margin="0,12,0,0" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox
+                        x:Name="StartWithWindowsCheckBox"
+                        Tag="QuickSetup.StartWithWindows"
+                        VerticalAlignment="Center"
+                        Content="Start TrackMeUp when I sign in to Windows"
+                        Style="{StaticResource QuickSetupCheckBoxStyle}" />
+                    <Button
+                        x:Name="CancelButton"
+                        Tag="QuickSetup.Back"
+                        Grid.Column="1"
+                        MinWidth="108"
+                        MinHeight="38"
+                        Click="CancelButton_Click"
+                        Content="Back" />
+                    <Button
+                        x:Name="PrimaryButton"
+                        Grid.Column="2"
+                        MinWidth="116"
+                        MinHeight="38"
+                        Click="PrimaryButton_Click"
+                        Content="Start"
+                        Style="{StaticResource QuickSetupPrimaryButtonStyle}" />
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

@@ -114,6 +114,12 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
         ToolTipService.SetToolTip(DetailsToggleButton, localizedLabel);
     }
 
+    internal void SetPointerInside(bool isInside)
+    {
+        _isPointerInside = isInside;
+        UpdateOverlayVisibility();
+    }
+
     private void ClearImage()
     {
         _currentSource = null;
@@ -362,18 +368,6 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
     private void ImageScroller_PointerCaptureLost(object sender, PointerRoutedEventArgs e) =>
         _dragPointerId = null;
-
-    private void ViewerRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        _isPointerInside = true;
-        UpdateOverlayVisibility();
-    }
-
-    private void ViewerRoot_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        _isPointerInside = false;
-        UpdateOverlayVisibility();
-    }
 
     private void ViewerRoot_GotFocus(object sender, RoutedEventArgs e)
     {

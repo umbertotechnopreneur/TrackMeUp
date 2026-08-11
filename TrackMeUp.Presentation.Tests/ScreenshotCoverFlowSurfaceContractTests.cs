@@ -18,14 +18,15 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
         var timelineSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml.cs"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var rootGrid = window.Descendants().Single(element => HasName(element, "RootGrid"));
         var imageScroller = viewer.Descendants().Single(element => HasName(element, "ImageScroller"));
         var screenshotImage = viewer.Descendants().Single(element => HasName(element, "ScreenshotImage"));
         var viewerRoot = viewer.Descendants().Single(element => HasName(element, "ViewerRoot"));
         var imageHost = viewer.Descendants().Single(element => HasName(element, "ImageHost"));
         var zoomRail = viewer.Descendants().Single(element => HasName(element, "ZoomRail"));
-        var viewerOverlayTransition = viewer.Descendants().Single(element => element.Name.LocalName == "VisualTransition");
+        var viewerOverlayTransitions = viewer.Descendants().Where(element => element.Name.LocalName == "VisualTransition").ToArray();
         var metadataPanel = gallery.Descendants().Single(element => HasName(element, "MetadataPanel"));
-        var metadataOverlayTransition = gallery.Descendants().Single(element => element.Name.LocalName == "VisualTransition");
+        var metadataOverlayTransitions = gallery.Descendants().Where(element => element.Name.LocalName == "VisualTransition").ToArray();
         var metadataChipStyle = gallery.Descendants().Single(element =>
             element.Name.LocalName == "Style" && HasKey(element, "ScreenshotMetadataChipStyle"));
         var filmstripSurface = timeline.Descendants().Single(element =>
@@ -45,13 +46,25 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("Uniform", screenshotImage.Attribute("Stretch")?.Value);
         Assert.Equal("ScreenshotImage_ImageOpened", screenshotImage.Attribute("ImageOpened")?.Value);
         Assert.Equal("ImageHost_PointerWheelChanged", imageHost.Attribute("PointerWheelChanged")?.Value);
-        Assert.Equal("ViewerRoot_PointerEntered", viewerRoot.Attribute("PointerEntered")?.Value);
-        Assert.Equal("ViewerRoot_PointerExited", viewerRoot.Attribute("PointerExited")?.Value);
+        Assert.Null(viewerRoot.Attribute("PointerEntered"));
+        Assert.Null(viewerRoot.Attribute("PointerExited"));
+        Assert.Equal("RootGrid_PointerEntered", rootGrid.Attribute("PointerEntered")?.Value);
+        Assert.Equal("RootGrid_PointerExited", rootGrid.Attribute("PointerExited")?.Value);
         Assert.Equal("ViewerRoot_GotFocus", viewerRoot.Attribute("GotFocus")?.Value);
         Assert.Equal("ViewerRoot_LostFocus", viewerRoot.Attribute("LostFocus")?.Value);
         Assert.Contains(viewer.Descendants(), element => HasName(element, "OverlayHidden"));
         Assert.Contains(viewer.Descendants(), element => HasName(element, "OverlayVisible"));
-        Assert.Equal("0:0:0.14", viewerOverlayTransition.Attribute("GeneratedDuration")?.Value);
+        Assert.Contains(viewerOverlayTransitions, transition =>
+            transition.Attribute("To")?.Value == "OverlayVisible"
+            && transition.Descendants().Any(animation =>
+                animation.Name.LocalName == "DoubleAnimation"
+                && animation.Attribute("BeginTime")?.Value == "0:0:0.08"
+                && animation.Attribute("Duration")?.Value == "0:0:0.20"));
+        Assert.Contains(viewerOverlayTransitions, transition =>
+            transition.Attribute("To")?.Value == "OverlayHidden"
+            && transition.Descendants().Any(animation =>
+                animation.Name.LocalName == "DoubleAnimation"
+                && animation.Attribute("Duration")?.Value == "0:0:0.14"));
         Assert.Contains(viewer.Descendants(), element => HasName(element, "ZoomRail") && element.Attribute("VerticalAlignment")?.Value == "Bottom");
         Assert.Equal("{ThemeResource ScreenshotViewerOverlayBrush}", zoomRail.Attribute("Background")?.Value);
         Assert.Equal("{ThemeResource ScreenshotViewerOverlayBorderBrush}", zoomRail.Attribute("BorderBrush")?.Value);
@@ -78,7 +91,18 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("Bottom", metadataPanel.Attribute("VerticalAlignment")?.Value);
         Assert.Equal("False", metadataPanel.Attribute("IsHitTestVisible")?.Value);
         Assert.Equal("0", metadataPanel.Attribute("Opacity")?.Value);
-        Assert.Equal("0:0:0.14", metadataOverlayTransition.Attribute("GeneratedDuration")?.Value);
+        Assert.Contains(metadataOverlayTransitions, transition =>
+            transition.Attribute("To")?.Value == "OverlayVisible"
+            && transition.Descendants().Any(animation =>
+                animation.Name.LocalName == "DoubleAnimation"
+                && animation.Attribute("BeginTime") is null
+                && animation.Attribute("Duration")?.Value == "0:0:0.16"));
+        Assert.Contains(metadataOverlayTransitions, transition =>
+            transition.Attribute("To")?.Value == "OverlayHidden"
+            && transition.Descendants().Any(animation =>
+                animation.Name.LocalName == "DoubleAnimation"
+                && animation.Attribute("BeginTime")?.Value == "0:0:0.04"
+                && animation.Attribute("Duration")?.Value == "0:0:0.16"));
         Assert.Contains(gallery.Descendants(), element => HasName(element, "OverlayHidden"));
         Assert.Contains(gallery.Descendants(), element => HasName(element, "OverlayVisible"));
         Assert.Contains(metadataChipStyle.Descendants(), element =>
@@ -106,6 +130,9 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("var contentAnchorY = (ImageScroller.VerticalOffset + anchorY) / currentZoom;", viewerSource, StringComparison.Ordinal);
         Assert.Contains("e.Handled = true;", viewerSource, StringComparison.Ordinal);
         Assert.Contains("var isVisible = _isPointerInside || _hasKeyboardFocus;", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotViewer.SetPointerInside(true);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotViewer.SetPointerInside(false);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("e.Pointer.PointerDeviceType == PointerDeviceType.Mouse", windowSource, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager.GoToState(this, isVisible ? \"OverlayVisible\" : \"OverlayHidden\", true);", viewerSource, StringComparison.Ordinal);
         Assert.Contains("ImageViewer.OverlayVisibilityChanged += SetOverlayVisibility;", File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml.cs")), StringComparison.Ordinal);
         Assert.Contains("ImageScroller.ChangeView", viewerSource, StringComparison.Ordinal);

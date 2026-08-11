@@ -125,6 +125,22 @@ public sealed partial class ScreenshotWindow : Window
         FilmstripToggleButton.Click += FilmstripToggleButton_Click;
     }
 
+    private void RootGrid_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse)
+        {
+            ScreenshotViewer.SetPointerInside(true);
+        }
+    }
+
+    private void RootGrid_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse)
+        {
+            ScreenshotViewer.SetPointerInside(false);
+        }
+    }
+
     /// <summary>Selects a retained capture when an already-open inspector is reused.</summary>
     public async Task FocusScreenshotAsync(string screenshotPath, DateTimeOffset capturedAt)
     {

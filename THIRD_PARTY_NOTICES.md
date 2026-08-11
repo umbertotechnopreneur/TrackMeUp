@@ -1,36 +1,56 @@
 # Third-Party Notices
 
-This file is the review index for third-party code and assets distributed or referenced by TrackMeUp.
+This file inventories the direct `PackageReference` dependencies declared in tracked `.csproj` files as of 2026-08-11.
 
-Component-specific license files remain authoritative.
+- Scope: direct NuGet dependencies only. Transitive NuGet packages and npm packages are not included yet.
+- Source of truth: repository `*.csproj` files plus official NuGet package metadata.
+- Special cases: packages that publish a bundled license file instead of a NuGet SPDX expression are called out explicitly below.
 
-## Dependencies to Review Before Release
+## Summary
 
-- .NET runtime and Windows SDK dependencies used by project targets.
-- WinUI and Windows App SDK packages.
-- Data/storage dependencies (for example SQLite provider packages).
-- Logging and observability dependencies (for example Serilog sinks and optional Sentry integration).
-- Imaging/capture dependencies (for example SkiaSharp and related components).
-- CLI dependencies (for example Spectre.Console).
-- Reports web stack dependencies under `TrackMeUp.Reports.Web/` (for example Vue, Vuetify, ECharts, Vite, and plugins).
+- Runtime dependencies: 22 unique packages.
+- Test-only dependencies: 4 unique packages.
+- Open-source licenses observed: `MIT`, `Apache-2.0`.
+- Additional Microsoft package terms observed: `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`.
 
-## Assets and Content
+## Runtime Dependencies
 
-Track and document source/license for:
+| Package | Badges | License / terms | Used by |
+| --- | --- | --- | --- |
+| [Lucene.Net](https://www.nuget.org/packages/Lucene.Net/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net?label=NuGet)](https://www.nuget.org/packages/Lucene.Net/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
+| [Lucene.Net.Analysis.Common](https://www.nuget.org/packages/Lucene.Net.Analysis.Common/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net.Analysis.Common?label=NuGet)](https://www.nuget.org/packages/Lucene.Net.Analysis.Common/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
+| [Lucene.Net.Suggest](https://www.nuget.org/packages/Lucene.Net.Suggest/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net.Suggest?label=NuGet)](https://www.nuget.org/packages/Lucene.Net.Suggest/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
+| [Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Data.Sqlite?label=NuGet)](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
+| [Microsoft.Extensions.DependencyInjection](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Extensions.DependencyInjection?label=NuGet)](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp, TrackMeUp.Cli |
+| [Microsoft.Extensions.Logging](https://www.nuget.org/packages/Microsoft.Extensions.Logging/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Extensions.Logging?label=NuGet)](https://www.nuget.org/packages/Microsoft.Extensions.Logging/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp |
+| [Microsoft.Extensions.Logging.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Extensions.Logging.Abstractions?label=NuGet)](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
+| [Microsoft.Windows.SDK.BuildTools](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.28000.2526) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Windows.SDK.BuildTools?label=NuGet)](https://www.nuget.org/packages/Microsoft.Windows.SDK.BuildTools/10.0.28000.2526) [![License](https://img.shields.io/badge/license-Microsoft%20Windows%20SDK%20license%20terms-blue)](https://aka.ms/WinSDKLicenseURL) | [Microsoft Windows SDK license terms](https://aka.ms/WinSDKLicenseURL) (nuspec licenseUrl) | TrackMeUp |
+| [Microsoft.WindowsAppSDK](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.3.1) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.WindowsAppSDK?label=NuGet)](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.3.1) [![License](https://img.shields.io/badge/license-Microsoft%20Software%20License%20Terms-blue)](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.3.1) | [Microsoft Software License Terms](https://www.nuget.org/packages/Microsoft.WindowsAppSDK/2.3.1) (bundled license.txt) | TrackMeUp |
+| [Sentry.Extensions.Logging](https://www.nuget.org/packages/Sentry.Extensions.Logging/6.7.0) | [![NuGet](https://img.shields.io/nuget/v/Sentry.Extensions.Logging?label=NuGet)](https://www.nuget.org/packages/Sentry.Extensions.Logging/6.7.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp |
+| [Serilog](https://www.nuget.org/packages/Serilog/4.4.0) | [![NuGet](https://img.shields.io/nuget/v/Serilog?label=NuGet)](https://www.nuget.org/packages/Serilog/4.4.0) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
+| [Serilog.Extensions.Logging](https://www.nuget.org/packages/Serilog.Extensions.Logging/10.0.0) | [![NuGet](https://img.shields.io/nuget/v/Serilog.Extensions.Logging?label=NuGet)](https://www.nuget.org/packages/Serilog.Extensions.Logging/10.0.0) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
+| [Serilog.Sinks.Console](https://www.nuget.org/packages/Serilog.Sinks.Console/6.1.1) | [![NuGet](https://img.shields.io/nuget/v/Serilog.Sinks.Console?label=NuGet)](https://www.nuget.org/packages/Serilog.Sinks.Console/6.1.1) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
+| [Serilog.Sinks.File](https://www.nuget.org/packages/Serilog.Sinks.File/7.0.0) | [![NuGet](https://img.shields.io/nuget/v/Serilog.Sinks.File?label=NuGet)](https://www.nuget.org/packages/Serilog.Sinks.File/7.0.0) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
+| [SkiaSharp](https://www.nuget.org/packages/SkiaSharp/4.151.0) | [![NuGet](https://img.shields.io/nuget/v/SkiaSharp?label=NuGet)](https://www.nuget.org/packages/SkiaSharp/4.151.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp, TrackMeUp.Core |
+| [SkiaSharp.NativeAssets.Win32](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/4.151.0) | [![NuGet](https://img.shields.io/nuget/v/SkiaSharp.NativeAssets.Win32?label=NuGet)](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/4.151.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp, TrackMeUp.Core |
+| [Spectre.Console](https://www.nuget.org/packages/Spectre.Console/0.57.2) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console?label=NuGet)](https://www.nuget.org/packages/Spectre.Console/0.57.2) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli |
+| [Spectre.Console.Cli](https://www.nuget.org/packages/Spectre.Console.Cli/0.55.0) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console.Cli?label=NuGet)](https://www.nuget.org/packages/Spectre.Console.Cli/0.55.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli |
+| [SQLitePCLRaw.lib.e_sqlite3](https://www.nuget.org/packages/SQLitePCLRaw.lib.e_sqlite3/2.1.12) | [![NuGet](https://img.shields.io/nuget/v/SQLitePCLRaw.lib.e_sqlite3?label=NuGet)](https://www.nuget.org/packages/SQLitePCLRaw.lib.e_sqlite3/2.1.12) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Core |
+| [System.Diagnostics.PerformanceCounter](https://www.nuget.org/packages/System.Diagnostics.PerformanceCounter/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Diagnostics.PerformanceCounter?label=NuGet)](https://www.nuget.org/packages/System.Diagnostics.PerformanceCounter/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp, TrackMeUp.Core |
+| [System.Drawing.Common](https://www.nuget.org/packages/System.Drawing.Common/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Drawing.Common?label=NuGet)](https://www.nuget.org/packages/System.Drawing.Common/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp, TrackMeUp.Core |
+| [System.Management](https://www.nuget.org/packages/System.Management/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Management?label=NuGet)](https://www.nuget.org/packages/System.Management/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp, TrackMeUp.Core |
 
-- icons, logos, and branding assets;
-- screenshots and sample images used for store/distribution;
-- prompt templates and generated sample outputs;
-- copied examples or external snippets.
+## Test-Only Dependencies
 
-## Release Gate
+| Package | Badges | License / terms | Used by |
+| --- | --- | --- | --- |
+| [Microsoft.NET.Test.Sdk](https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/18.8.1) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.NET.Test.Sdk?label=NuGet)](https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/18.8.1) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
+| [Spectre.Console.Testing](https://www.nuget.org/packages/Spectre.Console.Testing/0.57.2) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console.Testing?label=NuGet)](https://www.nuget.org/packages/Spectre.Console.Testing/0.57.2) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli.Tests |
+| [xunit](https://www.nuget.org/packages/xunit/2.9.3) | [![NuGet](https://img.shields.io/nuget/v/xunit?label=NuGet)](https://www.nuget.org/packages/xunit/2.9.3) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
+| [xunit.runner.visualstudio](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) | [![NuGet](https://img.shields.io/nuget/v/xunit.runner.visualstudio?label=NuGet)](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
 
-When adding a dependency or asset, record:
+## Notes
 
-- source URL/repository;
-- version or commit;
-- license type;
-- required notice/attribution;
-- redistribution scope in this repository.
-
-The repository MIT license does not relicense third-party material.
+- The three `Lucene.Net*` packages publish an embedded `LICENSE.txt`; this inventory resolves them as `Apache-2.0` from that bundled file.
+- `Microsoft.WindowsAppSDK` publishes a bundled `license.txt` with Microsoft software license terms, not an OSS SPDX expression.
+- `Microsoft.Windows.SDK.BuildTools` does not publish an SPDX license expression in NuGet metadata; this inventory links the package's official Windows SDK license URL.

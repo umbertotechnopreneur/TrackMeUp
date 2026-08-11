@@ -719,6 +719,7 @@ public sealed class WinUiSurfaceContractTests
     public void QuickSetup_UsesFourAccessibleProfileControlsOnVisibleAcrylic()
     {
         var quickSetup = XDocument.Load(RepositoryFile("TrackMeUp", "QuickSetupWindow.xaml"));
+        var quickSetupMarkup = File.ReadAllText(RepositoryFile("TrackMeUp", "QuickSetupWindow.xaml"));
         var quickSetupSource = File.ReadAllText(RepositoryFile("TrackMeUp", "QuickSetupWindow.xaml.cs"));
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
@@ -729,6 +730,10 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Contains(quickSetup.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Equal("Transparent", quickSetup.Descendants().Single(element => HasName(element, "RootGrid")).Attribute("Background")?.Value);
+        Assert.Equal("Stretch", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("HorizontalContentAlignment")?.Value);
+        Assert.Equal("Hidden", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("VerticalScrollBarVisibility")?.Value);
+        Assert.Equal(5, quickSetup.Descendants().Count(element => element.Name.LocalName == "Viewbox"));
+        Assert.Contains(quickSetup.Descendants(), element => HasName(element, "TitleBarBrandMark"));
         Assert.Equal(
             [QuickSetupProfileIds.Complete, QuickSetupProfileIds.Assisted, QuickSetupProfileIds.LocalRecord, QuickSetupProfileIds.EssentialOffline],
             profiles.Select(profile => profile.Attribute("Tag")!.Value).ToArray());
@@ -736,7 +741,11 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(quickSetup.Descendants(), element => HasName(element, "StartWithWindowsCheckBox"));
         Assert.Contains(quickSetup.Descendants(), element => HasName(element, "ApplyInfoBar"));
         Assert.DoesNotContain(quickSetup.Descendants(), element => element.Name.LocalName is "LinearGradientBrush" or "RadialGradientBrush");
+        Assert.DoesNotContain("SystemControlHighlightAccentBrush", quickSetupMarkup, StringComparison.Ordinal);
         Assert.Contains("ApplyQuickSetupProfileAsync", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowWidth = 860", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("ApplyLanguage();", quickSetupSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false)", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(CompleteProfileButton", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(AssistedProfileButton", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(LocalRecordProfileButton", quickSetupSource, StringComparison.Ordinal);

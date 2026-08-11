@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
     private const int LogicalWindowWidth = 450;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
+    private static readonly TimeSpan LastSessionRefreshInterval = TimeSpan.FromSeconds(5);
     private const int DwmWindowAttributeBorderColor = 34;
     private const uint DwmColorNone = 0xFFFFFFFE;
     private readonly ITrackMeUpApplication _application;
@@ -64,6 +65,8 @@ public sealed partial class MainWindow : Window
     private bool _screenshotsEnabled;
     private const int PendingSnapshotDeleteSeconds = 30;
     private bool _pendingSnapshotDeleteInProgress;
+    private int _lastSessionRefreshInProgress;
+    private DateTimeOffset _nextLastSessionRefreshAt = DateTimeOffset.MinValue;
     private bool _startupAiWarningShown;
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
@@ -175,6 +178,7 @@ public sealed partial class MainWindow : Window
         {
             ApplySettings(initialization.Value.Settings);
             UpdatePlayer(initialization.Value.Dashboard);
+            UpdateLastSession(initialization.Value.LastSession);
         }
         else
         {
@@ -196,6 +200,8 @@ public sealed partial class MainWindow : Window
         {
             UpdatePlayer(state.Value);
         }
+
+        await RefreshLastSessionIfDueAsync();
 
         await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync();
@@ -282,6 +288,12 @@ public sealed partial class MainWindow : Window
 
             foreach (var notification in result.Value)
             {
+                if (IsFrameAnalysisNotification(notification))
+                {
+                    ShowNotificationBanner(notification);
+                    continue;
+                }
+
                 var severity = notification.Severity switch
                 {
                     ApplicationNotificationSeverity.Error => MicaDialogSeverity.Error,
@@ -305,6 +317,27 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private static bool IsFrameAnalysisNotification(ApplicationNotification notification) =>
+        string.Equals(notification.TitleKey, "Notification.AiAnalysisFailed.Title", StringComparison.Ordinal);
+
+    private void ShowNotificationBanner(ApplicationNotification notification)
+    {
+        var title = T(notification.TitleKey);
+        var message = FormatNotificationMessage(notification);
+        switch (notification.Severity)
+        {
+            case ApplicationNotificationSeverity.Error:
+                _dialogs.ShowErrorBanner(MainNotificationBanner, title, message);
+                break;
+            case ApplicationNotificationSeverity.Warning:
+                _dialogs.ShowWarningBanner(MainNotificationBanner, title, message);
+                break;
+            default:
+                _dialogs.ShowInfoBanner(MainNotificationBanner, title, message);
+                break;
+        }
+    }
+
     /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
     private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
     {
@@ -324,11 +357,7 @@ public sealed partial class MainWindow : Window
         await RefreshDashboardAsync();
 
         // Refresh the last session to show the newly captured screenshot.
-        var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
-        if (lastSession.Succeeded)
-        {
-            UpdateLastSession(lastSession.Value);
-        }
+        await RefreshLastSessionIfDueAsync(force: true);
     }
 
     /// <summary>Opens the detached screenshot scheduling window.</summary>
@@ -756,11 +785,7 @@ public sealed partial class MainWindow : Window
         UpdateDetailsAccessibility();
         if (isVisible)
         {
-            var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
-            if (lastSession.Succeeded)
-            {
-                UpdateLastSession(lastSession.Value);
-            }
+            await RefreshLastSessionIfDueAsync(force: true);
             FadeIn(DetailsPanel);
         }
         if (!_windowResizeAnimationTimer.IsRunning)
@@ -1104,11 +1129,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
-            if (lastSession.Succeeded)
-            {
-                UpdateLastSession(lastSession.Value);
-            }
+            await RefreshLastSessionIfDueAsync(force: true);
         }
         finally
         {
@@ -1124,6 +1145,12 @@ public sealed partial class MainWindow : Window
         LastSessionDetailText.Text = session?.Timestamp is null ? string.Empty : $"{session.Timestamp:HH:mm} · {session.Context}";
         if (session?.ScreenshotCapturedAt is { } capturedAt && Uri.TryCreate(session.ScreenshotPath, UriKind.Absolute, out var screenshotUri))
         {
+            if (string.Equals(_latestScreenshotPath, session.ScreenshotPath, StringComparison.OrdinalIgnoreCase)
+                && _latestScreenshotCapturedAt == capturedAt)
+            {
+                return;
+            }
+
             _latestScreenshotPath = session.ScreenshotPath;
             _latestScreenshotCapturedAt = capturedAt;
             LastScreenshotImage.Source = new BitmapImage(screenshotUri);
@@ -1136,6 +1163,34 @@ public sealed partial class MainWindow : Window
         }
 
         ShowScreenshotPlaceholder();
+    }
+
+    /// <summary>Refreshes the visible latest-session projection at a bounded cadence.</summary>
+    private async Task RefreshLastSessionIfDueAsync(bool force = false)
+    {
+        if (!force && (DetailsPanel.Visibility != Visibility.Visible || DateTimeOffset.Now < _nextLastSessionRefreshAt))
+        {
+            return;
+        }
+
+        if (Interlocked.Exchange(ref _lastSessionRefreshInProgress, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var lastSession = await _viewModel.RefreshLastSessionAsync(CancellationToken.None);
+            if (lastSession.Succeeded)
+            {
+                UpdateLastSession(lastSession.Value);
+            }
+        }
+        finally
+        {
+            _nextLastSessionRefreshAt = DateTimeOffset.Now.Add(LastSessionRefreshInterval);
+            Interlocked.Exchange(ref _lastSessionRefreshInProgress, 0);
+        }
     }
 
     /// <summary>Falls back to the packaged pastoral placeholder when an artifact cannot be rendered.</summary>

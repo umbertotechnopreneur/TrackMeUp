@@ -149,17 +149,19 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("if (showSuccess)", contextSource, StringComparison.Ordinal);
     }
 
-    /// <summary>Guards the shared overlay, frosted material, configurable timeout, and coral countdown.</summary>
+    /// <summary>Guards the shared overlay, single-layer Acrylic material, subtle geometry, and configurable timeout.</summary>
     [Fact]
-    public void CentralBanners_UseOneTimedFrostedOverlay()
+    public void CentralBanners_UseOneTimedAcrylicOverlay()
     {
         var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
+        var mainWindow = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
         var banner = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "TimedInfoBar.xaml"));
         var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
         var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
         var bannerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "TimedInfoBar.xaml.cs"));
         var operationsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+        var mainWindowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var screenshotSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
 
         var overlay = operations.Descendants().Single(element => element.Name.LocalName == "TimedInfoBar");
@@ -173,14 +175,15 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Single(banner.Descendants(), element => element.Name.LocalName == "InfoBar");
         var infoBar = banner.Descendants().Single(element => element.Name.LocalName == "InfoBar");
         var bannerSurface = banner.Descendants().Single(element => HasName(element, "BannerSurface"));
-        var frostedBackdrop = banner.Descendants().Single(element => HasName(element, "FrostedBackdrop"));
-        var frostedVeil = banner.Descendants().Single(element => HasName(element, "FrostedVeil"));
+        var acrylicBackdrop = banner.Descendants().Single(element => HasName(element, "AcrylicBackdrop"));
         var progress = banner.Descendants().Single(element => element.Name.LocalName == "ProgressBar");
-        Assert.Equal("{ThemeResource TimedInfoBarBackdropBrush}", frostedBackdrop.Attribute("Background")?.Value);
-        Assert.Equal("{ThemeResource TimedInfoBarGlassBorderBrush}", frostedBackdrop.Attribute("BorderBrush")?.Value);
-        Assert.Equal("0.5", frostedBackdrop.Attribute("BorderThickness")?.Value);
-        Assert.Equal("{ThemeResource TimedInfoBarGlassVeilBrush}", frostedVeil.Attribute("Background")?.Value);
-        Assert.Equal("False", frostedVeil.Attribute("IsHitTestVisible")?.Value);
+        Assert.Equal("{ThemeResource TimedInfoBarBackdropBrush}", acrylicBackdrop.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource TimedInfoBarGlassBorderBrush}", acrylicBackdrop.Attribute("BorderBrush")?.Value);
+        Assert.Equal("0.5", acrylicBackdrop.Attribute("BorderThickness")?.Value);
+        Assert.Equal("6", acrylicBackdrop.Attribute("CornerRadius")?.Value);
+        Assert.Equal("6", infoBar.Attribute("CornerRadius")?.Value);
+        Assert.DoesNotContain(banner.Descendants(), element => HasName(element, "FrostedVeil"));
+        Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName.Contains("GradientBrush", StringComparison.Ordinal));
         Assert.Equal("Transparent", infoBar.Attribute("Background")?.Value);
         Assert.Equal("Transparent", infoBar.Attribute("BorderBrush")?.Value);
         Assert.Equal("0", infoBar.Attribute("BorderThickness")?.Value);
@@ -198,7 +201,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Equal("0", bannerSurface.Attribute("Opacity")?.Value);
         Assert.Equal("3", progress.Attribute("Height")?.Value);
         Assert.Equal("Transparent", progress.Attribute("Background")?.Value);
-        Assert.Equal("{ThemeResource BrandCoralBrush}", progress.Attribute("Foreground")?.Value);
+        Assert.Equal("{ThemeResource TextFillColorTertiaryBrush}", progress.Attribute("Foreground")?.Value);
         Assert.Equal("Raw", progress.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
 
         var coralBrushes = app.Descendants()
@@ -215,19 +218,16 @@ public sealed class WinUiOperationsSurfaceContractTests
         var timedBackdropBrushes = app.Descendants()
             .Where(element => element.Name.LocalName == "AcrylicBrush" && HasKey(element, "TimedInfoBarBackdropBrush"))
             .ToArray();
-        var timedGlassVeils = app.Descendants()
-            .Where(element => element.Name.LocalName == "RadialGradientBrush" && HasKey(element, "TimedInfoBarGlassVeilBrush"))
-            .ToArray();
         var timedBorders = app.Descendants()
             .Where(element => element.Name.LocalName == "SolidColorBrush" && HasKey(element, "TimedInfoBarGlassBorderBrush"))
             .ToArray();
         Assert.Equal(2, timedBackdropBrushes.Length);
         Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.10");
         Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.14");
-        Assert.Equal(2, timedGlassVeils.Length);
-        Assert.All(timedGlassVeils, brush => Assert.Contains(brush.Descendants(), stop =>
-            stop.Name.LocalName == "GradientStop" && stop.Attribute("Color")?.Value == "#00FFFFFF"));
+        Assert.DoesNotContain(app.Descendants(), element => HasKey(element, "TimedInfoBarGlassVeilBrush"));
         Assert.Equal(2, timedBorders.Length);
+        Assert.Contains(timedBorders, brush => brush.Attribute("Color")?.Value == "#18727C78");
+        Assert.Contains(timedBorders, brush => brush.Attribute("Color")?.Value == "#18FFFFFF");
         Assert.Contains(app.Descendants(), element =>
             element.Name.LocalName == "StaticResource" && HasKey(element, "TimedInfoBarBackdropBrush") &&
             element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
@@ -241,6 +241,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("host.Dismissed", service, StringComparison.Ordinal);
         Assert.Contains("countdown.Generation != generation", service, StringComparison.Ordinal);
         Assert.Contains("TimeSpan.FromMilliseconds(80)", bannerSource, StringComparison.Ordinal);
+        Assert.Contains("private const float BannerElevation = 4f;", bannerSource, StringComparison.Ordinal);
         Assert.Contains("args.Cancel = true;", bannerSource, StringComparison.Ordinal);
         Assert.Contains("new UISettings().AnimationsEnabled", bannerSource, StringComparison.Ordinal);
         Assert.Contains("_transitionGeneration", bannerSource, StringComparison.Ordinal);
@@ -250,6 +251,10 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("StartOpacityTransition(0d, () => CompleteDismissal(generation));", bannerSource, StringComparison.Ordinal);
         Assert.Contains(screenshotWindow.Descendants(), element =>
             element.Name.LocalName == "TimedInfoBar" && HasName(element, "ScreenshotActionBanner"));
+        Assert.Contains(mainWindow.Descendants(), element =>
+            element.Name.LocalName == "TimedInfoBar" && HasName(element, "MainNotificationBanner"));
+        Assert.Contains("IsFrameAnalysisNotification(notification)", mainWindowSource, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.ShowErrorBanner(MainNotificationBanner, title, message);", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
         Assert.Equal(5, CountOccurrences(operationsSource, "ownerWindow, OperationBanner"));

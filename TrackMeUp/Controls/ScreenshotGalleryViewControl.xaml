@@ -58,7 +58,25 @@
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="OverlayVisibilityStates">
                 <VisualStateGroup.Transitions>
-                    <VisualTransition GeneratedDuration="0:0:0.14" />
+                    <VisualTransition From="OverlayHidden" To="OverlayVisible">
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="MetadataPanel"
+                                Storyboard.TargetProperty="Opacity"
+                                To="1"
+                                Duration="0:0:0.16" />
+                        </Storyboard>
+                    </VisualTransition>
+                    <VisualTransition From="OverlayVisible" To="OverlayHidden">
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="MetadataPanel"
+                                Storyboard.TargetProperty="Opacity"
+                                BeginTime="0:0:0.04"
+                                To="0"
+                                Duration="0:0:0.16" />
+                        </Storyboard>
+                    </VisualTransition>
                 </VisualStateGroup.Transitions>
                 <VisualState x:Name="OverlayHidden">
                     <VisualState.Setters>

@@ -293,8 +293,8 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.Equal("ai.provider.failed", result.Code);
             var notification = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(notifications.Value));
             Assert.Equal(ApplicationNotificationSeverity.Error, notification.Severity);
-            Assert.Equal("Dialog.AiAnalysisFailed.Title", notification.TitleKey);
-            Assert.Equal("Dialog.AiAnalysisFailed.Message", notification.MessageKey);
+            Assert.Equal("Notification.AiAnalysisFailed.Title", notification.TitleKey);
+            Assert.Equal("Notification.AiAnalysisFailed.Message", notification.MessageKey);
             Assert.Equal("ai.provider.failed", notification.Code);
             Assert.NotNull(notification.Detail);
             Assert.Contains("HTTP status: 429", notification.Detail, StringComparison.Ordinal);

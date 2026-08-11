@@ -50,6 +50,8 @@ public sealed class PresentationBoundaryTests
 
         Assert.True(result.Succeeded);
         Assert.True(result.Value?.Dashboard.IsTracking);
+        Assert.Same(recorder.LastSession, result.Value?.LastSession);
+        Assert.Same(recorder.LastSession, viewModel.LastSession);
         Assert.Equal(1, recorder.StartCalls);
         Assert.Equal(0, recorder.ToggleCalls);
         Assert.Equal("winui.launch", recorder.LastStartRequest?.Source);
@@ -89,6 +91,15 @@ public sealed class PresentationBoundaryTests
 
         public StartTrackingRequest? LastStartRequest { get; private set; }
 
+        public LastSessionState LastSession { get; } = new(
+            DateTimeOffset.UtcNow.AddMinutes(-1),
+            "Editor",
+            "Document",
+            "test-installation",
+            null,
+            @"C:\captures\latest.webp",
+            DateTimeOffset.UtcNow);
+
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             switch (targetMethod?.Name)
@@ -108,6 +119,11 @@ public sealed class PresentationBoundaryTests
                         "tracking.started",
                         "TrackingStarted",
                         Dashboard(isTracking: true)));
+                case nameof(ITrackMeUpApplication.GetLastSessionAsync):
+                    return Task.FromResult(OperationResult<LastSessionState?>.Success(
+                        "session.last.loaded",
+                        "LastSessionLoaded",
+                        LastSession));
                 case nameof(ITrackMeUpApplication.ToggleTrackingAsync):
                     ToggleCalls++;
                     return Task.FromResult(OperationResult<DashboardState>.Success(

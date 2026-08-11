@@ -36,6 +36,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -149,14 +150,22 @@
                 </Border>
             </Grid>
 
+            <TextBlock
+                x:Name="SearchAvailabilityText"
+                Grid.Row="1"
+                Margin="4,0"
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                TextWrapping="WrapWholeWords" />
+
             <InfoBar
                 x:Name="SearchInfoBar"
-                Grid.Row="1"
+                Grid.Row="2"
                 IsClosable="True"
                 IsOpen="False"
                 Severity="Error" />
 
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="3">
                 <ListView
                     x:Name="SearchResultsList"
                     Margin="0"

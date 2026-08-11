@@ -27,7 +27,7 @@
   <a href="https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml"><img src="https://github.com/umbertotechnopreneur/TrackMeUp/actions/workflows/build.yml/badge.svg?branch=main" alt="Build status" /></a>
   <img src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&amp;logoColor=white" alt="Windows" />
   <img src="https://img.shields.io/badge/status-pre--production-F9665B" alt="Pre-production" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2E7D32" alt="MIT license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-source--available-4F46E5" alt="Source-available license" /></a>
 </p>
 
 ## Remember the moment, not the tab
@@ -147,6 +147,9 @@ Quick Setup validation checklist:
 
 - [ ] With a clean settings file, the acrylic four-profile chooser opens once; applying a profile persists AI, screenshot, local-retention, and Windows-startup choices together.
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
+- [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
+- [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
+- [ ] In the screenshot inspector, metadata chips and the toolbar start hidden; entering the window with the mouse reveals the chips first and the toolbar shortly after, while leaving reverses the sequence.
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 
@@ -177,4 +180,7 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation g
 
 ## License
 
-TrackMeUp is available under the [MIT license](LICENSE).
+TrackMeUp is available under the [TrackMeUp Source-Available License 1.0](LICENSE).
+It allows local use, review, and private modification, but forbids publishing
+TrackMeUp or substantially similar derivatives, including Microsoft Store or
+other marketplace submissions, without prior written permission.

@@ -164,6 +164,21 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task SearchAvailability_RoundTripsThroughTheRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, SearchAvailabilityRuntimeProxy>();
+        var installationId = $"search-availability-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+
+        var result = await client.GetSearchAvailabilityAsync(CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(new SearchAvailability(14, 3, true), result.Value);
+    }
+
+    [Fact]
     public async Task ApplicationNotifications_RoundTripThroughTheSharedRuntimeFacade()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, NotificationRuntimeProxy>();
@@ -177,7 +192,7 @@ public sealed class RuntimeProtocolTests
         Assert.True(result.Succeeded);
         var notification = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(result.Value));
         Assert.Equal(ApplicationNotificationSeverity.Error, notification.Severity);
-        Assert.Equal("Dialog.AiAnalysisFailed.Message", notification.MessageKey);
+        Assert.Equal("Notification.AiAnalysisFailed.Message", notification.MessageKey);
     }
 
     public class ConcurrentRuntimeProxy : DispatchProxy
@@ -283,9 +298,27 @@ public sealed class RuntimeProtocolTests
                             Guid.Parse("638ba5bb-5074-44f5-85da-da172add83d1"),
                             new DateTimeOffset(2026, 8, 9, 0, 0, 0, TimeSpan.Zero),
                             ApplicationNotificationSeverity.Error,
-                            "Dialog.AiAnalysisFailed.Title",
-                            "Dialog.AiAnalysisFailed.Message",
+                            "Notification.AiAnalysisFailed.Title",
+                            "Notification.AiAnalysisFailed.Message",
                             "ai.provider.failed")])),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+    }
+
+    public class SearchAvailabilityRuntimeProxy : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetSearchAvailabilityAsync) => Task.FromResult(
+                    OperationResult<SearchAvailability>.Success(
+                        "search.availability.loaded",
+                        "SearchAvailabilityLoaded",
+                        new SearchAvailability(14, 3, true))),
                 nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
                 "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
                 _ => throw new NotSupportedException(targetMethod?.Name)

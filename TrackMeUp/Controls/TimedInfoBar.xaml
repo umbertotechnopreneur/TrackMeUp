@@ -12,16 +12,11 @@
             <ThemeShadow />
         </Grid.Shadow>
         <Border
-            x:Name="FrostedBackdrop"
+            x:Name="AcrylicBackdrop"
             Background="{ThemeResource TimedInfoBarBackdropBrush}"
             BorderBrush="{ThemeResource TimedInfoBarGlassBorderBrush}"
             BorderThickness="0.5"
-            CornerRadius="12" />
-        <Border
-            x:Name="FrostedVeil"
-            Background="{ThemeResource TimedInfoBarGlassVeilBrush}"
-            CornerRadius="12"
-            IsHitTestVisible="False" />
+            CornerRadius="6" />
         <InfoBar
             x:Name="BannerInfoBar"
             AutomationProperties.LiveSetting="Polite"
@@ -29,7 +24,7 @@
             BorderBrush="Transparent"
             BorderThickness="0"
             Closing="BannerInfoBar_Closing"
-            CornerRadius="12"
+            CornerRadius="6"
             IsClosable="True"
             IsOpen="False"
             local:InfoBarElevationBehavior.IsEnabled="False">
@@ -67,7 +62,7 @@
             VerticalAlignment="Bottom"
             AutomationProperties.AccessibilityView="Raw"
             Background="Transparent"
-            Foreground="{ThemeResource BrandCoralBrush}"
+            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
             IsHitTestVisible="False"
             Maximum="100"
             Minimum="0"

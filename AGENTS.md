@@ -40,4 +40,4 @@ dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=x64
 
 License posture:
 
-- This repo uses the MIT license; default project artifacts are intended for redistribution under the same terms.
+- This repo uses a custom source-available license; default project artifacts are not approved for third-party redistribution or marketplace publication without prior written permission.
