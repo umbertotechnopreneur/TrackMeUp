@@ -44,14 +44,24 @@ public sealed class MainWindowLayoutStateTests
         state.RecordMeasuredHeight(1400);
 
         state.ShowSurface(MainWindowSurface.Options);
-        Assert.Equal(760, state.ResolveLogicalHeight(1200));
-        Assert.Equal(620, state.ResolveLogicalHeight(620));
+        Assert.Equal(760, state.ResolveLogicalHeight(1200, 0));
+        Assert.Equal(620, state.ResolveLogicalHeight(620, 0));
 
         state.ShowSurface(MainWindowSurface.Operations);
-        Assert.Equal(760, state.ResolveLogicalHeight(1200));
-        Assert.Equal(620, state.ResolveLogicalHeight(620));
+        Assert.Equal(760, state.ResolveLogicalHeight(1200, 0));
+        Assert.Equal(620, state.ResolveLogicalHeight(620, 0));
 
         state.ShowSurface(MainWindowSurface.Player);
-        Assert.Equal(1200, state.ResolveLogicalHeight(1200));
+        Assert.Equal(1200, state.ResolveLogicalHeight(1200, 0));
+    }
+
+    [Fact]
+    public void ResolveLogicalHeight_AddsOuterPaddingWithoutExceedingTheDisplay()
+    {
+        var state = new MainWindowLayoutState();
+        state.RecordMeasuredHeight(304);
+
+        Assert.Equal(324, state.ResolveLogicalHeight(900, 20));
+        Assert.Equal(310, state.ResolveLogicalHeight(310, 20));
     }
 }

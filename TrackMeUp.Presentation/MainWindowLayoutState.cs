@@ -125,21 +125,27 @@ public sealed class MainWindowLayoutState
         return LogicalHeight;
     }
 
-    /// <summary>Constrains the measured height to the current display and the preferred compact height of the active surface.</summary>
+    /// <summary>Constrains the measured height and requested outer padding to the current display and active surface.</summary>
     /// <param name="availableLogicalHeight">Usable display height in WinUI logical pixels after outer margins.</param>
+    /// <param name="additionalLogicalHeight">Extra logical pixels reserved outside the measured content.</param>
     /// <returns>The logical window height to apply.</returns>
-    public int ResolveLogicalHeight(double availableLogicalHeight)
+    public int ResolveLogicalHeight(double availableLogicalHeight, int additionalLogicalHeight)
     {
         if (double.IsNaN(availableLogicalHeight) || double.IsInfinity(availableLogicalHeight) || availableLogicalHeight <= 0d)
         {
             throw new ArgumentOutOfRangeException(nameof(availableLogicalHeight));
         }
 
+        if (additionalLogicalHeight < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(additionalLogicalHeight));
+        }
+
         var displayLimit = Math.Max(1, checked((int)Math.Floor(availableLogicalHeight)));
         var surfaceLimit = Surface == MainWindowSurface.Player
             ? displayLimit
             : Math.Min(displayLimit, PreferredSecondarySurfaceLogicalHeight);
-        return Math.Min(LogicalHeight, surfaceLimit);
+        return Math.Min(checked(LogicalHeight + additionalLogicalHeight), surfaceLimit);
     }
 
     private bool IsSectionVisible(MainWindowLayoutSection section) => section switch

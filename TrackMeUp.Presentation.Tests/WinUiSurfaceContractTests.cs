@@ -455,11 +455,12 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
         Assert.Contains("RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowWidth = 450;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowWidth = 470;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowHeightPadding = 20;", source, StringComparison.Ordinal);
         Assert.Contains("private const int DwmWindowAttributeBorderColor = 34;", source, StringComparison.Ordinal);
         Assert.Contains("private const uint DwmColorNone = 0xFFFFFFFE;", source, StringComparison.Ordinal);
         Assert.Contains("DwmSetWindowAttribute(", source, StringComparison.Ordinal);
-        Assert.Contains("_layoutState.ResolveLogicalHeight(availableHeight / scale)", source, StringComparison.Ordinal);
+        Assert.Contains("_layoutState.ResolveLogicalHeight(availableHeight / scale, LogicalWindowHeightPadding)", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -744,6 +745,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("SystemControlHighlightAccentBrush", quickSetupMarkup, StringComparison.Ordinal);
         Assert.Contains("ApplyQuickSetupProfileAsync", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("LogicalWindowWidth = 860", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowHeight = 650", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("ApplyLanguage();", quickSetupSource, StringComparison.Ordinal);
         Assert.DoesNotContain("SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false)", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(CompleteProfileButton", quickSetupSource, StringComparison.Ordinal);

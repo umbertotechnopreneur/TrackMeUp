@@ -14,7 +14,7 @@ namespace TrackMeUp;
 internal sealed partial class QuickSetupWindow : Window
 {
     private const int LogicalWindowWidth = 860;
-    private const int LogicalWindowHeight = 630;
+    private const int LogicalWindowHeight = 650;
     private const int LogicalScreenMargin = 24;
     private const int GwlHwndParent = -8;
     private readonly ITrackMeUpApplication _application;

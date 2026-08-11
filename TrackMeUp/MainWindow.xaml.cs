@@ -31,7 +31,8 @@ public sealed partial class MainWindow : Window
 {
     #region Fields
 
-    private const int LogicalWindowWidth = 450;
+    private const int LogicalWindowWidth = 470;
+    private const int LogicalWindowHeightPadding = 20;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
     private static readonly TimeSpan LastSessionRefreshInterval = TimeSpan.FromSeconds(5);
@@ -1537,7 +1538,7 @@ public sealed partial class MainWindow : Window
         var physicalMargin = (int)Math.Ceiling(LogicalScreenMargin * scale);
         var availableWidth = Math.Max(1, workArea.Width - (physicalMargin * 2));
         var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
-        var boundedLogicalHeight = Math.Min(logicalHeight, _layoutState.ResolveLogicalHeight(availableHeight / scale));
+        var boundedLogicalHeight = _layoutState.ResolveLogicalHeight(availableHeight / scale, LogicalWindowHeightPadding);
         var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(boundedLogicalHeight * scale));
         return new SizeInt32(physicalWidth, physicalHeight);
