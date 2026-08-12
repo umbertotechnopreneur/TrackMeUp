@@ -25,6 +25,18 @@ public sealed class CliRouterTests
     }
 
     [Fact]
+    public async Task AiOnQuickSwitch_RoutesToSharedApplicationFacade()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["--ai-on"], CancellationToken.None);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(true, application.LastAiEnabled);
+    }
+
+    [Fact]
     public async Task RuntimeHealth_RoutesToSharedApplicationFacade()
     {
         var application = new RecordingApplication();
@@ -211,6 +223,7 @@ public sealed class CliRouterTests
         internal int SettingsReads { get; private set; }
         internal int UiOpenCalls { get; private set; }
         internal int TotalCalls { get; private set; }
+        internal bool? LastAiEnabled { get; private set; }
         internal CaptureScreenshotRequest? LastCaptureRequest { get; private set; }
         internal OperationResult<ScreenshotCaptureResult>? ScreenshotCaptureResponse { get; init; }
 
@@ -301,7 +314,12 @@ public sealed class CliRouterTests
         public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => Unsupported<AiPricingOverview>();
         public Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken) => Unsupported<AiConnectionTestResult>();
         public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => Unsupported<AiModelCatalogSnapshot>();
-        public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => Unsupported<AiStatus>();
+        public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken)
+        {
+            TotalCalls++;
+            LastAiEnabled = enabled;
+            return Success(new AiStatus(enabled, "test-provider", "test-model", "https://example.invalid", "TEST_AI_KEY", enabled, true, new AnalysisCostGate(true, null, 0m, 0, 0m)), enabled ? "ai.enabled" : "ai.disabled");
+        }
         public Task<OperationResult<AppSettings>> ConfigureAiAsync(SettingsPatch patch, CancellationToken cancellationToken)
         {
             TotalCalls++;

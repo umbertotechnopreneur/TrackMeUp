@@ -41,4 +41,30 @@ public sealed class CliCommandCatalogTests
     {
         Assert.False(CliCommandCatalog.TryGetHelpTopic(["focus", "start", "--objective", "help"], out _));
     }
+
+    [Theory]
+    [InlineData("--status", "status")]
+    [InlineData("--start", "tracking", "start")]
+    [InlineData("--ai-on", "ai", "enable")]
+    [InlineData("--ai-off", "ai", "disable")]
+    public void TryExpandShortcut_MapsQuickSwitchToCanonicalCommand(string shortcut, params string[] expected)
+    {
+        Assert.True(CliCommandCatalog.TryExpandShortcut([shortcut], out var expanded));
+        Assert.Equal(expected, expanded);
+    }
+
+    [Fact]
+    public void TryExpandShortcut_AllowsOnlyHelpAfterQuickSwitch()
+    {
+        Assert.True(CliCommandCatalog.TryExpandShortcut(["--ai-on", "--help"], out var expanded));
+        Assert.Equal(["ai", "enable", "--help"], expanded);
+        Assert.True(CliCommandCatalog.TryGetHelpTopic(expanded, out var topic));
+        Assert.Equal("ai", topic);
+    }
+
+    [Fact]
+    public void TryExpandShortcut_RejectsAmbiguousArguments()
+    {
+        Assert.False(CliCommandCatalog.TryExpandShortcut(["--ai-on", "status"], out _));
+    }
 }

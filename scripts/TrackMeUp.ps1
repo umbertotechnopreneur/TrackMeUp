@@ -69,6 +69,7 @@ param(
     [string]$OutputPath,
     [string]$PackageManifestPath,
     [string]$RuntimeIdentifier,
+    [string]$PackageCertificateThumbprint,
 
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$PassThruArguments = @()
@@ -842,8 +843,83 @@ function Invoke-TrackMeUpUnpackagedPublish {
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments
 }
 
+function Resolve-TrackMeUpPackageCertificate {
+    $certificate = $null
+    if (-not [string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)) {
+        $normalizedThumbprint = $PackageCertificateThumbprint.Replace(' ', '').ToUpperInvariant()
+        $certificate = Get-ChildItem Cert:\CurrentUser\My -ErrorAction Stop |
+            Where-Object { $_.Thumbprint -eq $normalizedThumbprint -and $_.HasPrivateKey } |
+            Sort-Object NotAfter -Descending |
+            Select-Object -First 1
+
+        if ($null -eq $certificate) {
+            throw "Package certificate with thumbprint '$PackageCertificateThumbprint' was not found in Cert:\CurrentUser\My or has no private key."
+        }
+    }
+    else {
+        $certificate = Get-ChildItem Cert:\CurrentUser\My -ErrorAction Stop |
+            Where-Object {
+                $_.Subject -eq 'CN=umber' -and
+                $_.FriendlyName -eq 'TrackMeUp Test Signing' -and
+                $_.HasPrivateKey -and
+                $_.NotAfter -gt (Get-Date)
+            } |
+            Sort-Object NotAfter -Descending |
+            Select-Object -First 1
+
+        if ($null -eq $certificate) {
+            $certificate = New-SelfSignedCertificate `
+                -Type Custom `
+                -Subject 'CN=umber' `
+                -FriendlyName 'TrackMeUp Test Signing' `
+                -CertStoreLocation 'Cert:\CurrentUser\My' `
+                -KeyAlgorithm RSA `
+                -KeyLength 3072 `
+                -HashAlgorithm SHA256 `
+                -KeyUsage DigitalSignature `
+                -KeyExportPolicy Exportable `
+                -NotAfter (Get-Date).AddYears(3) `
+                -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')
+        }
+    }
+
+    $certificateDirectory = Join-Path $script:RepositoryRoot 'artifacts\certificates'
+    [System.IO.Directory]::CreateDirectory($certificateDirectory) | Out-Null
+    $publicCertificatePath = Join-Path $certificateDirectory 'TrackMeUp-Test-Signing.cer'
+    Export-Certificate -Cert $certificate -FilePath $publicCertificatePath -Force | Out-Null
+
+    $trustedCertificate = Get-ChildItem Cert:\CurrentUser\TrustedPeople -ErrorAction Stop |
+        Where-Object { $_.Thumbprint -eq $certificate.Thumbprint } |
+        Select-Object -First 1
+    if ($null -eq $trustedCertificate) {
+        Import-Certificate -FilePath $publicCertificatePath -CertStoreLocation 'Cert:\CurrentUser\TrustedPeople' | Out-Null
+    }
+
+    Write-Host "Using package signing certificate $($certificate.Thumbprint) ($($certificate.Subject))." -ForegroundColor DarkCyan
+    return $certificate
+}
+
+function Assert-TrackMeUpPackageSigned {
+    param([Parameter(Mandatory)][System.IO.FileInfo]$PackageFile)
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($PackageFile.FullName)
+    try {
+        $signatureEntry = $archive.Entries | Where-Object { $_.FullName -eq 'AppxSignature.p7x' } | Select-Object -First 1
+        if ($null -eq $signatureEntry) {
+            throw "MSIX package is not signed: $($PackageFile.FullName)"
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Invoke-TrackMeUpMsixPackage {
     $runtime = Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform
+    $certificate = Resolve-TrackMeUpPackageCertificate
+    $packageDirectory = Join-Path $script:RepositoryRoot 'artifacts\packages'
+    [System.IO.Directory]::CreateDirectory($packageDirectory) | Out-Null
     $arguments = @(
         'msbuild',
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
@@ -854,18 +930,25 @@ function Invoke-TrackMeUpMsixPackage {
         '/p:GenerateAppxPackageOnBuild=true',
         '/p:UapAppxPackageBuildMode=SideloadOnly',
         '/p:AppxBundle=Never',
+        "/p:AppxPackageDir=$packageDirectory\",
         '/p:PublishTrimmed=false',
         '/p:DebugSymbols=false',
         '/p:DebugType=None',
-        '/p:AppxSymbolPackageEnabled=false'
+        '/p:AppxSymbolPackageEnabled=false',
+        '/p:AppxPackageSigningEnabled=true',
+        "/p:PackageCertificateThumbprint=$($certificate.Thumbprint)"
     )
 
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments
+
+    $packageFile = Get-TrackMeUpLatestPackageFile
+    Assert-TrackMeUpPackageSigned -PackageFile $packageFile
+    Write-Host "Signed MSIX package ready: $($packageFile.FullName)" -ForegroundColor Green
 }
 
 function Get-TrackMeUpLatestPackageFile {
     $roots = @(
-        (Join-Path $script:RepositoryRoot 'TrackMeUp\AppPackages'),
+        (Join-Path $script:RepositoryRoot 'artifacts\packages'),
         (Join-Path $script:RepositoryRoot 'TrackMeUp\bin')
     )
 
@@ -923,6 +1006,7 @@ function Invoke-TrackMeUpInstallerCreation {
     }
 
     $packageFile = Get-TrackMeUpLatestPackageFile
+    Assert-TrackMeUpPackageSigned -PackageFile $packageFile
     if ($InstallerFormat -eq 'Zip') {
         $outputPath = Resolve-TrackMeUpInstallerOutputPath -DefaultExtension '.zip'
         Assert-OutputFileCanBeWritten -Path $outputPath

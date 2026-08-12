@@ -19,9 +19,14 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             return await RunShellAsync(cancellationToken);
         }
 
+        if (!CliCommandCatalog.TryExpandShortcut(arguments, out var expanded))
+        {
+            return InvalidCommand();
+        }
+
         try
         {
-            return await DispatchAsync(CliCommandCatalog.Normalize(arguments), cancellationToken);
+            return await DispatchAsync(CliCommandCatalog.Normalize(expanded), cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -369,27 +374,95 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             return 0;
         }
 
-        AnsiConsole.Write(new FigletText("TrackMeUp").Color(Color.IndianRed));
         while (!cancellationToken.IsCancellationRequested)
         {
-            var dashboard = await _application.GetDashboardAsync(cancellationToken);
+            AnsiConsole.Clear();
+            _output.WriteShellHeader();
+
+            var dashboardTask = _application.GetDashboardAsync(cancellationToken);
+            var aiStatusTask = _application.GetAiStatusAsync(cancellationToken);
+            await Task.WhenAll(dashboardTask, aiStatusTask);
+            var dashboard = await dashboardTask;
+            var aiStatus = await aiStatusTask;
             if (dashboard.Succeeded && dashboard.Value is not null)
             {
-                AnsiConsole.Write(_output.RenderDashboard(dashboard.Value));
+                AnsiConsole.Write(_output.RenderShellDashboard(dashboard.Value, aiStatus.Succeeded ? aiStatus.Value : null));
+            }
+            else
+            {
+                _output.WriteResult(dashboard);
             }
 
-            var line = AnsiConsole.Prompt(new TextPrompt<string>("[teal]trackmeup>[/] ").AllowEmpty());
-            var tokens = CliCommandCatalog.Normalize(Tokenize(line));
-            if (tokens.Count == 0)
+            var action = AnsiConsole.Prompt(
+                new SelectionPrompt<ShellAction>()
+                    .Title("[bold cyan]Choose an action[/] [grey](↑↓ then Enter)[/]")
+                    .HighlightStyle(new Style(Color.Teal))
+                    .UseConverter(item => item.Label)
+                    .PageSize(12)
+                    .AddChoices(BuildShellActions(dashboard.Value, aiStatus.Value)));
+            if (action.Id == "exit")
+            {
+                return 0;
+            }
+            if (action.Id == "refresh")
             {
                 continue;
             }
-            if (tokens[0].Equals("exit", StringComparison.OrdinalIgnoreCase) || tokens[0].Equals("quit", StringComparison.OrdinalIgnoreCase)) return 0;
-            if (tokens[0].Equals("clear", StringComparison.OrdinalIgnoreCase)) { Console.Clear(); continue; }
-            await DispatchAsync(tokens, cancellationToken);
+
+            if (action.Id == "command")
+            {
+                var line = AnsiConsole.Prompt(new TextPrompt<string>("[teal]trackmeup>[/] ").AllowEmpty());
+                var tokens = CliCommandCatalog.Normalize(Tokenize(line));
+                if (tokens.Count > 0)
+                {
+                    if (CliCommandCatalog.TryExpandShortcut(tokens, out var expanded))
+                    {
+                        await DispatchAsync(expanded, cancellationToken);
+                    }
+                    else
+                    {
+                        InvalidCommand();
+                    }
+                }
+            }
+            else if (action.Id == "help")
+            {
+                _output.WriteHelp();
+            }
+            else if (action.Command is not null)
+            {
+                await DispatchAsync(action.Command, cancellationToken);
+            }
+
+            AnsiConsole.Prompt(new TextPrompt<string>("[grey]Press Enter to return to the command center[/]").AllowEmpty());
         }
 
         return 130;
+    }
+
+    private static IReadOnlyList<ShellAction> BuildShellActions(DashboardState? dashboard, AiStatus? aiStatus)
+    {
+        var trackingAction = dashboard?.IsTracking == true
+            ? new ShellAction("pause", "Pause activity tracking", ["tracking", "pause"])
+            : new ShellAction("start", "Start activity tracking", ["tracking", "start"]);
+        var aiAction = aiStatus?.Enabled == true
+            ? new ShellAction("ai-off", "Disable AI analysis", ["ai", "disable"])
+            : new ShellAction("ai-on", "Enable the configured AI provider", ["ai", "enable"]);
+        return
+        [
+            new ShellAction("refresh", "Refresh live workspace"),
+            trackingAction,
+            new ShellAction("toggle", "Toggle activity tracking", ["tracking", "toggle"]),
+            aiAction,
+            new ShellAction("capture", "Capture a privacy-checked screenshot", ["screenshot", "capture"]),
+            new ShellAction("report", "Generate today's activity report", ["report", "today"]),
+            new ShellAction("doctor", "Run read-only diagnostics", ["doctor"]),
+            new ShellAction("settings", "Open the settings wizard", ["config", "wizard"]),
+            new ShellAction("open", "Open the TrackMeUp desktop app", ["open", "ui"]),
+            new ShellAction("help", "Browse all commands and switches"),
+            new ShellAction("command", "Enter an advanced command"),
+            new ShellAction("exit", "Exit")
+        ];
     }
 
     private async Task<int> WriteAsync<T>(Task<OperationResult<T>> task) => WriteResult(await task);
@@ -496,4 +569,6 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
         if (builder.Length > 0) tokens.Add(builder.ToString());
         return tokens;
     }
+
+    private sealed record ShellAction(string Id, string Label, IReadOnlyList<string>? Command = null);
 }

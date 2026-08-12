@@ -34,6 +34,12 @@ public static class CliBootstrap
 
             var output = new CliOutput(options);
             var commandArguments = CliCommandCatalog.Normalize(options.CommandArguments);
+            if (!CliCommandCatalog.TryExpandShortcut(commandArguments, out commandArguments))
+            {
+                output.WriteResult(OperationResult<object>.Failure("command.arguments.invalid", "CommandInvalid", new ValidationIssue("shortcut", "ambiguous", "CommandInvalid")));
+                return 2;
+            }
+
             if (CliCommandCatalog.TryGetHelpTopic(commandArguments, out var helpTopic))
             {
                 if (output.WriteHelp(helpTopic))

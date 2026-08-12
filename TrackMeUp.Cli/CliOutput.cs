@@ -64,6 +64,7 @@ public sealed class CliOutput(CliOptions options)
                     usage = "trackmeup.exe -cli /command [arguments] [global options]",
                     slashPrefixOptional = true,
                     commands = CliCommandCatalog.Commands.Select(item => new { command = item.Name, summary = item.Summary, aliases = item.Aliases }),
+                    shortcuts = CliCommandCatalog.Shortcuts.Select(item => new { option = item.Option, command = item.Command, summary = item.Summary }),
                     globalOptions = GlobalOptions
                 }
                 : new
@@ -82,7 +83,7 @@ public sealed class CliOutput(CliOptions options)
         }
         else
         {
-            AnsiConsole.Write(new Panel(new Markup(Markup.Escape(text))).Header("[bold coral1]TrackMeUp CLI[/]").BorderColor(Color.Teal));
+            AnsiConsole.Write(command is null ? RenderGeneralHelp() : RenderCommandHelp(command));
         }
 
         return true;
@@ -112,6 +113,41 @@ public sealed class CliOutput(CliOptions options)
         table.AddRow(Localize("activeSeconds"), dashboard.ActiveSeconds.ToString("N0"));
         table.AddRow(Localize("intensity"), dashboard.Intensity.ToString("F0") + "%");
         return new Panel(table).Header($"[bold coral1]{Markup.Escape(Localize("statusTitle"))}[/]").BorderColor(Color.Teal);
+    }
+
+    /// <summary>Writes the branded header used by the interactive command center.</summary>
+    public void WriteShellHeader()
+    {
+        AnsiConsole.Write(new FigletText("TrackMeUp").Color(Color.Teal));
+        AnsiConsole.MarkupLine("[grey70]Your local activity command center[/]");
+        AnsiConsole.WriteLine();
+    }
+
+    /// <summary>Renders a compact live overview for the interactive command center.</summary>
+    public IRenderable RenderShellDashboard(DashboardState dashboard, AiStatus? aiStatus)
+    {
+        var tracking = dashboard.IsTracking ? "[green]● Tracking[/]" : "[yellow]● Paused[/]";
+        var ai = aiStatus is null
+            ? "[grey]Unavailable[/]"
+            : aiStatus.Enabled
+                ? $"[green]Enabled[/] [grey]· {Markup.Escape(aiStatus.Provider)} / {Markup.Escape(aiStatus.Model)}[/]"
+                : "[grey]Disabled[/]";
+        var metrics = new Table().Border(TableBorder.None)
+            .AddColumn(new TableColumn("[grey]Signal[/]"))
+            .AddColumn(new TableColumn("[grey]Today[/]").RightAligned());
+        metrics.AddRow(Localize("keys"), dashboard.TotalKeyPresses.ToString("N0"));
+        metrics.AddRow(Localize("clicks"), dashboard.TotalMouseClicks.ToString("N0"));
+        metrics.AddRow(Localize("activeSeconds"), TimeSpan.FromSeconds(dashboard.ActiveSeconds).ToString("hh\\:mm\\:ss"));
+        metrics.AddRow(Localize("intensity"), dashboard.Intensity.ToString("F0") + "%");
+
+        var content = new Rows(
+            new Markup($"[bold]{tracking}[/] [grey]· AI: {ai}[/]\n[grey]Context:[/] {Markup.Escape(dashboard.CurrentContext)}"),
+            new Rule().RuleStyle("grey").LeftJustified(),
+            metrics);
+        return new Panel(content)
+            .Header("[bold cyan]Live workspace[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderColor(dashboard.IsTracking ? Color.Teal : Color.Grey);
     }
 
     /// <summary>Renders a system snapshot in a stable table.</summary>
@@ -172,7 +208,21 @@ public sealed class CliOutput(CliOptions options)
 
     private string Localize(string key) => CliStrings.Get(_options.Language, key);
 
-    private static readonly string[] GlobalOptions = ["--format <rich|plain|json>", "--json", "--language <en|it|vi|fr|de|es>", "--no-color", "--no-emoji", "--no-animation", "--quiet", "--yes", "--timeout <1-300>", "--verbose"];
+    private static readonly (string Option, string Description)[] GlobalOptionDetails =
+    [
+        ("--format <rich|plain|json>", "Choose the output contract."),
+        ("--json", "Shortcut for machine-readable JSON output."),
+        ("--language <en|it|vi|fr|de|es>", "Choose CLI display language."),
+        ("--no-color", "Disable terminal color."),
+        ("--no-emoji", "Use text-only status indicators."),
+        ("--no-animation", "Disable animated terminal widgets."),
+        ("--quiet", "Suppress successful result output."),
+        ("--yes", "Confirm operations that require confirmation."),
+        ("--timeout <1-300>", "Set runtime connection timeout in seconds."),
+        ("--verbose", "Print diagnostic details in plain mode.")
+    ];
+
+    private static readonly string[] GlobalOptions = GlobalOptionDetails.Select(item => item.Option).ToArray();
 
     private string BuildGeneralHelp()
     {
@@ -189,6 +239,8 @@ public sealed class CliOutput(CliOptions options)
         lines.AddRange([
             string.Empty,
             "Command help: /help /command or /command --help",
+            string.Empty,
+            "Quick switches: " + string.Join(", ", CliCommandCatalog.Shortcuts.Select(shortcut => shortcut.Option)),
             string.Empty,
             $"{Localize("globalOptions")}: {string.Join(", ", GlobalOptions)}"
         ]);
@@ -217,5 +269,62 @@ public sealed class CliOutput(CliOptions options)
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private IRenderable RenderGeneralHelp()
+    {
+        var commands = new Table().Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn("[bold cyan]Command[/]"))
+            .AddColumn(new TableColumn("[bold cyan]What it does[/]"));
+        foreach (var command in CliCommandCatalog.Commands)
+        {
+            commands.AddRow($"[teal]/{Markup.Escape(command.Name)}[/]", Markup.Escape(command.Summary));
+        }
+
+        var shortcuts = new Table().Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn("[bold cyan]Quick switch[/]"))
+            .AddColumn(new TableColumn("[bold cyan]Action[/]"));
+        foreach (var shortcut in CliCommandCatalog.Shortcuts)
+        {
+            shortcuts.AddRow($"[teal]{Markup.Escape(shortcut.Option)}[/]", Markup.Escape(shortcut.Summary));
+        }
+
+        var globalOptions = new Table().Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn("[bold cyan]Option[/]"))
+            .AddColumn(new TableColumn("[bold cyan]Purpose[/]"));
+        foreach (var option in GlobalOptionDetails)
+        {
+            globalOptions.AddRow($"[teal]{Markup.Escape(option.Option)}[/]", Markup.Escape(option.Description));
+        }
+
+        return new Rows(
+            new Rule("[bold cyan]TrackMeUp CLI[/]").LeftJustified(),
+            new Markup("[grey70]Control the same local TrackMeUp runtime from your terminal.[/]"),
+            new Markup($"[grey]Usage:[/] [teal]trackmeup.exe -cli /command [arguments] [global options][/][grey]  (the first slash is optional)[/]"),
+            new Panel(commands).Header("[bold]Commands[/]").BorderColor(Color.Teal),
+            new Panel(shortcuts).Header("[bold]Quick switches[/]").BorderColor(Color.Teal),
+            new Panel(globalOptions).Header("[bold]Global options[/]").BorderColor(Color.Grey),
+            new Markup("[grey]Command help: [/][teal]/help /command[/][grey] or [/][teal]/command --help[/]"));
+    }
+
+    private static IRenderable RenderCommandHelp(CliCommandHelp command)
+    {
+        var usage = new Table().Border(TableBorder.Rounded).AddColumn(new TableColumn("[bold cyan]Usage[/]"));
+        foreach (var item in command.Usage)
+        {
+            usage.AddRow($"[teal]trackmeup.exe -cli {Markup.Escape(item)}[/]");
+        }
+
+        var content = new List<IRenderable>
+        {
+            new Markup($"[bold]{Markup.Escape(command.Summary)}[/]"),
+            usage
+        };
+        if (command.Aliases.Count > 0)
+        {
+            content.Add(new Markup($"[grey]Aliases:[/] {Markup.Escape(string.Join(", ", command.Aliases.Select(alias => "/" + alias)))}"));
+        }
+        content.AddRange(command.Details.Select(detail => new Markup($"[grey]{Markup.Escape(detail)}[/]")));
+        return new Panel(new Rows([.. content])).Header($"[bold cyan]/{Markup.Escape(command.Name)}[/]").BorderColor(Color.Teal);
     }
 }

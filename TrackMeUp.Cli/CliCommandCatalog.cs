@@ -8,6 +8,9 @@ internal sealed record CliCommandHelp(
     IReadOnlyList<string> Details,
     IReadOnlyList<string> Aliases);
 
+/// <summary>Describes one top-level shortcut that expands to a canonical command sequence.</summary>
+internal sealed record CliShortcut(string Option, IReadOnlyList<string> Command, string Summary);
+
 /// <summary>Keeps slash-command normalization and help routing in one presentation-only catalog.</summary>
 internal static class CliCommandCatalog
 {
@@ -35,8 +38,24 @@ internal static class CliCommandCatalog
 
     private static readonly IReadOnlyDictionary<string, CliCommandHelp> Lookup = BuildLookup();
 
+    private static readonly IReadOnlyList<CliShortcut> CanonicalShortcuts =
+    [
+        new("--status", ["status"], "Show the live tracking dashboard."),
+        new("--start", ["tracking", "start"], "Start activity tracking."),
+        new("--pause", ["tracking", "pause"], "Pause activity tracking."),
+        new("--toggle", ["tracking", "toggle"], "Toggle activity tracking."),
+        new("--ai-on", ["ai", "enable"], "Enable the configured AI provider."),
+        new("--ai-off", ["ai", "disable"], "Disable AI analysis."),
+        new("--capture", ["screenshot", "capture"], "Capture a privacy-checked screenshot."),
+        new("--report", ["report", "today"], "Generate today's activity report."),
+        new("--doctor", ["doctor"], "Run read-only diagnostics.")
+    ];
+
     /// <summary>Gets canonical commands in stable display order.</summary>
     internal static IReadOnlyList<CliCommandHelp> Commands => CanonicalCommands;
+
+    /// <summary>Gets documented top-level shortcuts in stable display order.</summary>
+    internal static IReadOnlyList<CliShortcut> Shortcuts => CanonicalShortcuts;
 
     /// <summary>Normalizes an optional slash on the first command token.</summary>
     internal static IReadOnlyList<string> Normalize(IReadOnlyList<string> arguments)
@@ -49,6 +68,30 @@ internal static class CliCommandCatalog
         var normalized = arguments.ToArray();
         normalized[0] = NormalizeCommandToken(normalized[0]);
         return normalized;
+    }
+
+    /// <summary>Expands one standalone top-level shortcut while rejecting ambiguous extra arguments.</summary>
+    internal static bool TryExpandShortcut(IReadOnlyList<string> arguments, out IReadOnlyList<string> expanded)
+    {
+        expanded = arguments;
+        if (arguments.Count == 0)
+        {
+            return true;
+        }
+
+        var shortcut = CanonicalShortcuts.FirstOrDefault(item => item.Option.Equals(arguments[0], StringComparison.OrdinalIgnoreCase));
+        if (shortcut is null)
+        {
+            return true;
+        }
+
+        if (arguments.Skip(1).Any(argument => !IsHelpFlag(argument)))
+        {
+            return false;
+        }
+
+        expanded = shortcut.Command.Concat(arguments.Skip(1)).ToArray();
+        return true;
     }
 
     /// <summary>Recognizes general and command-specific help forms.</summary>

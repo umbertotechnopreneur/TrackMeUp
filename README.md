@@ -119,7 +119,9 @@ To produce a self-contained unpackaged build:
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ~~~
 
-The same utility can create a sideloadable MSIX or installer when release packaging is required.
+The same utility can create a sideloadable MSIX or installer when release packaging is required. Package layouts are written to `artifacts/packages/`; final installers are written to `artifacts/installers/`.
+
+On Windows, `PackageMsix` and `CreateInstaller` sign the package automatically with the local TrackMeUp test certificate (`CN=umber`). If it is missing, the script creates it in the current user's certificate store, exports the public certificate to `artifacts/certificates/TrackMeUp-Test-Signing.cer`, and trusts it for the current user. To use another certificate already installed in `Cert:\CurrentUser\My`, pass `-PackageCertificateThumbprint <thumbprint>`. The test certificate is intended only for local sideloading; production releases must use a certificate issued for distribution.
 
 ## Power users and contributors
 
@@ -131,6 +133,46 @@ trackmeup.exe -cli tracking start
 trackmeup.exe -cli report today
 trackmeup.exe -cli ai status
 trackmeup.exe -cli retention preview
+~~~
+
+Run `trackmeup.exe -cli` with no command in PowerShell 7 to open the interactive Spectre.Console command center. It shows the live local dashboard and offers tracking, AI, screenshot, report, diagnostics, settings, and desktop-app actions. The CLI always talks to the same shared TrackMeUp runtime as the desktop app; it does not start a second tracker or automate the graphical UI.
+
+### CLI switches
+
+Use `trackmeup.exe -cli --help` for the complete command reference. The following quick switches expand to their documented command and are convenient for daily use:
+
+| Switch | Equivalent command | Purpose |
+| --- | --- | --- |
+| `--status` | `status` | Show the live tracking dashboard. |
+| `--start` | `tracking start` | Start activity tracking. |
+| `--pause` | `tracking pause` | Pause activity tracking. |
+| `--toggle` | `tracking toggle` | Toggle activity tracking. |
+| `--ai-on` | `ai enable` | Enable the configured AI provider. |
+| `--ai-off` | `ai disable` | Disable AI analysis. |
+| `--capture` | `screenshot capture` | Capture a privacy-checked screenshot. |
+| `--report` | `report today` | Generate today's activity report. |
+| `--doctor` | `doctor` | Run read-only diagnostics. |
+| `--help` | `help` | Show help without connecting to the runtime. |
+| `--version` | `version` | Show CLI and protocol versions without connecting to the runtime. |
+
+Global output and safety switches can be combined with a command or quick switch:
+
+| Switch | Purpose |
+| --- | --- |
+| `--format <rich|plain|json>` / `--json` | Select interactive, plain-text, or machine-readable output. |
+| `--language <system|en|it|vi|fr|de|es>` | Select the CLI display language. |
+| `--no-color`, `--no-emoji`, `--no-animation` | Adapt rendering for a terminal or accessibility preference. |
+| `--quiet`, `--verbose` | Reduce successful output or add diagnostics in plain mode. |
+| `--yes` | Explicitly confirm a command that requires confirmation. |
+| `--timeout <1-300>` | Set the shared-runtime connection timeout in seconds. |
+
+Examples:
+
+~~~powershell
+trackmeup.exe -cli
+trackmeup.exe -cli --ai-on
+trackmeup.exe -cli --status --format json
+trackmeup.exe -cli /ai --help
 ~~~
 
 Repository automation:
@@ -145,6 +187,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 
 Quick Setup validation checklist:
 
+- [ ] In PowerShell 7, run `trackmeup.exe -cli` with no command, use the interactive command center to refresh the dashboard and open help, then exit without starting a second tracking runtime.
 - [ ] With a clean settings file, the acrylic four-profile chooser opens once; applying a profile persists AI, screenshot, local-retention, and Windows-startup choices together.
 - [ ] The four Quick Setup profile cards are fully visible without vertical scrolling, and the main window has a 20-DIP margin below its measured content.
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.

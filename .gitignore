@@ -4,6 +4,7 @@ obj/
 artifacts/
 .vs/
 out/
+TrackMeUp/AppPackages/
 
 # Local activity data, screenshots, and developer configuration
 data/
