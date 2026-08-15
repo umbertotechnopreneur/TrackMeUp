@@ -193,6 +193,24 @@
                                 <TextBlock x:Name="SamplesValueText" Grid.Row="5" Grid.Column="1" FontFamily="Consolas" FontWeight="SemiBold" />
                             </Grid>
                         </StackPanel>
+
+                        <Button
+                            x:Name="ReprocessAiButton"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Click="ReprocessAiButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="9">
+                                <FontIcon
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontFamily="Segoe Fluent Icons"
+                                    FontSize="15"
+                                    Glyph="&#xE895;" />
+                                <TextBlock
+                                    x:Name="ReprocessAiButtonText"
+                                    Text="Reprocess screenshots without an AI description"
+                                    TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Border>
 

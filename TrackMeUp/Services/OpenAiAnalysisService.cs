@@ -38,6 +38,18 @@ public interface IAiAnalysisService
         bool keepCapture,
         string origin,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Analyzes retained historical images without attaching current device or system context.</summary>
+    /// <param name="activity">Historical context reconstructed for the original capture interval.</param>
+    /// <param name="captureResult">Retained images and previously extracted OCR associated with one capture.</param>
+    /// <param name="origin">Stable analysis origin recorded with local usage and history.</param>
+    /// <param name="cancellationToken">Cancels the provider request during runtime shutdown.</param>
+    /// <returns>The AI summary record persisted in the local history store.</returns>
+    Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+        AnalysisContextSnapshot activity,
+        ScreenshotCaptureResult captureResult,
+        string origin,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -118,6 +130,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             captureResult,
             settings.KeepScreenshots,
             origin,
+            includeCurrentSystemContext: true,
             cancellationToken);
     }
 
@@ -158,6 +171,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 captureResult,
                 keepCapture,
                 origin,
+                includeCurrentSystemContext: true,
                 cancellationToken);
         }
         finally
@@ -169,6 +183,47 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+        AnalysisContextSnapshot activity,
+        ScreenshotCaptureResult captureResult,
+        string origin,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(activity);
+        ArgumentNullException.ThrowIfNull(captureResult);
+        var coreOwnsCleanup = false;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (captureResult.AnalysisScreenshotPaths.Count == 0 ||
+                captureResult.AnalysisScreenshotPaths.Any(path => !ScreenCaptureService.IsOwnedArtifact(path) || !File.Exists(path)))
+            {
+                throw new InvalidOperationException("The historical snapshot does not contain valid retained analysis files.");
+            }
+
+            var settings = _store.LoadSettings();
+            var apiKey = LoadRequiredApiKey(settings);
+            coreOwnsCleanup = true;
+            return await AnalyzeCapturedScreenCoreAsync(
+                settings,
+                apiKey,
+                activity,
+                captureResult,
+                keepCapture: true,
+                origin,
+                includeCurrentSystemContext: false,
+                cancellationToken);
+        }
+        finally
+        {
+            if (!coreOwnsCleanup)
+            {
+                CleanupCapture(captureResult, keepCapture: true);
+            }
+        }
+    }
+
     private async Task<AiAnalysis> AnalyzeCapturedScreenCoreAsync(
         AppSettings settings,
         string apiKey,
@@ -176,30 +231,40 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
         ScreenshotCaptureResult captureResult,
         bool keepCapture,
         string origin,
+        bool includeCurrentSystemContext,
         CancellationToken cancellationToken)
     {
         try
         {
-            var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
-            var capturedSnapshot = _snapshotService.Capture();
-            var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, capturedSnapshot.Timestamp);
-            var snapshot = capturedSnapshot with
+            AnalysisContextSnapshot context;
+            if (includeCurrentSystemContext)
             {
-                DeviceContext = deviceContext,
-                InformationalSchedule = scheduleNote
-            };
-            var context = (activity is null ? null : activity with
+                var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
+                var capturedSnapshot = _snapshotService.Capture();
+                var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, capturedSnapshot.Timestamp);
+                var snapshot = capturedSnapshot with
+                {
+                    DeviceContext = deviceContext,
+                    InformationalSchedule = scheduleNote
+                };
+                context = (activity is null ? null : activity with
+                {
+                    Snapshot = snapshot,
+                    InformationalSchedule = scheduleNote
+                }) ?? new AnalysisContextSnapshot(
+                    "not available",
+                    "not available",
+                    "not available",
+                    "active",
+                    null,
+                    snapshot,
+                    scheduleNote);
+            }
+            else
             {
-                Snapshot = snapshot,
-                InformationalSchedule = scheduleNote
-            }) ?? new AnalysisContextSnapshot(
-                "not available",
-                "not available",
-                "not available",
-                "active",
-                null,
-                snapshot,
-                scheduleNote);
+                // Historical processing must never present current telemetry or location as capture-time context.
+                context = activity ?? throw new InvalidOperationException("Historical analysis context is required.");
+            }
             context = ApplyCaptureFocusMetadata(context, captureResult.FocusMetadata);
 
             var prompt = AiPromptCatalog.RenderScreenshotAnalysis(
@@ -222,7 +287,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 settings.Model,
                 endpointHost,
                 captureResult.AnalysisScreenshotPaths.Count);
-            // Route un-watermarked capture to model, and keep watermarked files only for local history UX.
+            // Submit the caller-owned analysis paths; live and historical callers have different retention behavior.
             AiProviderResult providerResult;
             try
             {
@@ -308,7 +373,8 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 throw;
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
+            // Once the provider has returned a successful response, persist it even if shutdown was
+            // requested in the meantime. Recovery can then reconcile the durable job without billing a retry.
             var result = new AiAnalysis(
                 DateTimeOffset.Now,
                 context.Application,

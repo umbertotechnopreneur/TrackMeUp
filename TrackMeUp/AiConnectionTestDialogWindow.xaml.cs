@@ -113,7 +113,12 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
             {
                 CompleteTest(success: true);
                 TitleText.Text = T("AiConnectionTest.Connected.Title");
-                StatusText.Text = $"{ProviderDisplayName(result.Value.Provider)} · {result.Value.Model} · {result.Value.ElapsedMilliseconds:N0} ms";
+                StatusText.Text = string.Format(
+                    _strings.Culture,
+                    "{0} · {1} · {2:N0} ms",
+                    ProviderDisplayName(result.Value.Provider),
+                    result.Value.Model,
+                    result.Value.ElapsedMilliseconds);
                 TerminalStateText.Text = T("AiConnectionTest.State.Response");
                 var output = string.IsNullOrWhiteSpace(result.Value.Output) ? T("AiConnectionTest.EmptyResponse") : result.Value.Output.Trim();
                 await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}> {T("AiConnectionTest.Terminal.Response")}{Environment.NewLine}{output}", CancellationToken.None);

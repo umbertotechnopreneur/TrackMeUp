@@ -5,8 +5,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using System.Globalization;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 using Windows.Foundation;
 
 namespace TrackMeUp.Controls;
@@ -32,6 +32,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
     private bool _isPointerInside;
     private bool _hasKeyboardFocus;
     private bool _areOverlayControlsVisible;
+    private LocalizationService _strings = new("system");
 
     /// <summary>Creates the single-image screenshot viewer.</summary>
     public ScreenshotImageViewerControl()
@@ -72,6 +73,8 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
     public void SetItem(ScreenshotGalleryItem? item, int selectedIndex, int totalCount, string language)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
+        _strings = new LocalizationService(language);
+        AutomationProperties.SetName(this, _strings.Translate("Screenshots.Caption"));
         if (item is null)
         {
             ClearImage();
@@ -98,11 +101,10 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
             ResetZoom(disableAnimation: true);
         }
 
-        var culture = CultureInfo.GetCultureInfo(language);
         var localTime = item.CapturedAt.ToLocalTime();
         AutomationProperties.SetName(
             ScreenshotImage,
-            $"Screenshot {selectedIndex + 1} of {totalCount}, {localTime.ToString("f", culture)}");
+            _strings.Format("Screenshots.Image.Accessible", selectedIndex + 1, totalCount, localTime));
         UpdateZoomControls();
     }
 
@@ -130,7 +132,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
         _imagePixelHeight = 0d;
         ScreenshotImage.Source = null;
         ScreenshotFrame.Visibility = Visibility.Collapsed;
-        AutomationProperties.SetName(ScreenshotImage, "No screenshot selected");
+        AutomationProperties.SetName(ScreenshotImage, _strings.Translate("Screenshots.Image.None"));
         ResetZoom(disableAnimation: true);
     }
 
@@ -446,7 +448,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
     private void UpdateZoomControls()
     {
         var zoom = ImageScroller.ZoomFactor;
-        ZoomPercentText.Text = string.Format(CultureInfo.InvariantCulture, "{0:0}%", zoom * 100d);
+        ZoomPercentText.Text = _strings.Format("Screenshots.ZoomPercent", zoom);
         ZoomOutButton.IsEnabled = _hasImage && zoom > MinimumZoomFactor + 0.001f;
         ZoomResetButton.IsEnabled = _hasImage;
         ZoomInButton.IsEnabled = _hasImage && zoom < MaximumZoomFactor - 0.001f;

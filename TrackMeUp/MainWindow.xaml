@@ -41,11 +41,13 @@
                 Margin="8,0,0,0"
                 Padding="8"
                 AllowFocusOnInteraction="False"
-                AutomationProperties.Name="Indietro"
+                AutomationProperties.Name="Back"
                 Background="Transparent"
                 BorderBrush="Transparent"
                 Click="TitleBarBackButton_Click"
                 IsTabStop="False"
+                Tag="QuickSetup.Back"
+                ToolTipService.ToolTip="Back"
                 Visibility="Collapsed">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
@@ -71,13 +73,14 @@
                 Height="40"
                 Padding="6,0,6,7"
                 AllowFocusOnInteraction="False"
-                AutomationProperties.Name="Apri menu applicazione"
+                AutomationProperties.Name="Open application menu"
                 Background="Transparent"
                 BorderBrush="Transparent"
                 Click="TitleBarMoreButton_Click"
                 IsTabStop="False"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
-                ToolTipService.ToolTip="Menu">
+                Tag="Main.Menu.Open"
+                ToolTipService.ToolTip="Open application menu">
                 <Button.KeyboardAccelerators>
                     <KeyboardAccelerator Key="M" Modifiers="Menu" />
                 </Button.KeyboardAccelerators>
@@ -94,13 +97,14 @@
                 Height="40"
                 Padding="8"
                 AllowFocusOnInteraction="False"
-                AutomationProperties.Name="Search captured moments"
+                AutomationProperties.Name="Search history"
                 Background="Transparent"
                 BorderBrush="Transparent"
                 Click="TitleBarSearchButton_Click"
                 IsTabStop="False"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
-                ToolTipService.ToolTip="Search">
+                Tag="Search.Title"
+                ToolTipService.ToolTip="Search history">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
@@ -114,13 +118,14 @@
                 Height="40"
                 Padding="8"
                 AllowFocusOnInteraction="False"
-                AutomationProperties.Name="Reports"
+                AutomationProperties.Name="Activity reports"
                 Background="Transparent"
                 BorderBrush="Transparent"
                 Click="TitleBarReportButton_Click"
                 IsTabStop="False"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
-                ToolTipService.ToolTip="Reports">
+                Tag="Reports.Title"
+                ToolTipService.ToolTip="Activity reports">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
@@ -304,7 +309,13 @@
                                     </Style>
                                 </MenuFlyout.MenuFlyoutPresenterStyle>
 
-                                <MenuFlyoutSubItem x:Name="ActivityMenu" Tag="Main.Menu.Activity" Text="Activity">
+                                <MenuFlyoutSubItem
+                                    x:Name="ActivityMenu"
+                                    AutomationProperties.HelpText="Search your history or open reports, calendar, and captured screenshots."
+                                    AutomationProperties.Name="History and insights"
+                                    Tag="Main.Menu.Activity"
+                                    Text="History and insights"
+                                    ToolTipService.ToolTip="Search your history or open reports, calendar, and captured screenshots.">
                                     <MenuFlyoutSubItem.Icon>
                                         <FontIcon Glyph="&#xE81C;" />
                                     </MenuFlyoutSubItem.Icon>
@@ -312,6 +323,7 @@
                                         x:Name="SearchMenuItem"
                                         Tag="Search.Title"
                                         Text="Search captured moments"
+                                        ToolTipService.ToolTip="Find recorded moments by app, window title, OCR text, or AI description."
                                         KeyboardAcceleratorTextOverride="F3 / Ctrl+Shift+P"
                                         Click="SearchMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
@@ -321,17 +333,19 @@
                                     <MenuFlyoutItem
                                         x:Name="ReportsMenuItem"
                                         Tag="Reports.Title"
-                                        Text="Reports"
+                                        Text="Activity reports"
+                                        ToolTipService.ToolTip="Review activity summaries and trends for a selected period."
                                         KeyboardAcceleratorTextOverride="Ctrl+Shift+R"
                                         Click="ReportsMenuItem_Click">
                                     <MenuFlyoutItem.Icon>
-                                        <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
+                                        <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE9F9;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
                                     x:Name="ActivityCalendarMenuItem"
                                     Tag="ActivityCalendar.MenuTitle"
                                     Text="Activity calendar"
+                                    ToolTipService.ToolTip="Browse recorded days and inspect each day's activity details."
                                     Click="ActivityCalendarMenuItem_Click">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
@@ -340,36 +354,55 @@
                                 <MenuFlyoutItem
                                     x:Name="ScreenshotsMenuItem"
                                         Tag="Screenshots.Caption"
-                                        Text="Captured moments"
+                                        Text="Screenshot gallery"
+                                        ToolTipService.ToolTip="Browse screenshots retained by TrackMeUp."
                                         KeyboardAcceleratorTextOverride="Ctrl+Shift+G"
                                         Click="ScreenshotsMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF71CBB7" Glyph="&#xE722;" />
+                                            <FontIcon Foreground="#FF71CBB7" Glyph="&#xE8B9;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyoutSubItem>
 
-                                <MenuFlyoutSubItem x:Name="CaptureMenu" Tag="Main.Menu.Capture" Text="Capture">
+                                <MenuFlyoutSubItem
+                                    x:Name="CaptureMenu"
+                                    AutomationProperties.HelpText="Configure when screenshots are captured and whether capture is enabled."
+                                    AutomationProperties.Name="Screen capture"
+                                    Tag="Main.Menu.Capture"
+                                    Text="Screen capture"
+                                    ToolTipService.ToolTip="Configure when screenshots are captured and whether capture is enabled.">
                                     <MenuFlyoutSubItem.Icon>
-                                        <FontIcon Glyph="&#xE7ED;" />
+                                        <FontIcon Glyph="&#xE722;" />
                                     </MenuFlyoutSubItem.Icon>
-                                    <MenuFlyoutItem x:Name="ScheduleMenuItem" Tag="Schedule.Snapshots" Text="Snapshot schedule" Click="ScheduleScreenshotMenuItem_Click">
+                                    <MenuFlyoutItem
+                                        x:Name="ScheduleMenuItem"
+                                        Tag="Schedule.Snapshots"
+                                        Text="Screenshot schedule"
+                                        ToolTipService.ToolTip="Choose the days, hours, and interval for automatic screenshots."
+                                        Click="ScheduleScreenshotMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF85A8DB" Glyph="&#xE823;" />
+                                            <FontIcon Foreground="#FF85A8DB" Glyph="&#xE8C0;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                     <ToggleMenuFlyoutItem
                                         x:Name="ScreenshotsMenuToggle"
                                         Tag="MenuToggleScreenshot"
-                                        Text="Screen capture"
+                                        Text="Automatic screenshots"
+                                        ToolTipService.ToolTip="Enable or pause scheduled screenshot capture."
                                         Click="ScreenshotsMenuToggle_Click">
                                         <ToggleMenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
+                                            <FontIcon Foreground="#FFE88F6B" Glyph="&#xE8B8;" />
                                         </ToggleMenuFlyoutItem.Icon>
                                     </ToggleMenuFlyoutItem>
                                 </MenuFlyoutSubItem>
 
-                                <MenuFlyoutSubItem x:Name="SettingsMenu" Tag="Main.Menu.Settings" Text="Settings and tools">
+                                <MenuFlyoutSubItem
+                                    x:Name="SettingsMenu"
+                                    AutomationProperties.HelpText="Configure TrackMeUp or open maintenance and diagnostic tools."
+                                    AutomationProperties.Name="App settings"
+                                    Tag="Main.Menu.Settings"
+                                    Text="App settings"
+                                    ToolTipService.ToolTip="Configure TrackMeUp or open maintenance and diagnostic tools.">
                                     <MenuFlyoutSubItem.Icon>
                                         <FontIcon Glyph="&#xE713;" />
                                     </MenuFlyoutSubItem.Icon>
@@ -377,51 +410,66 @@
                                         x:Name="QuickSetupMenuItem"
                                         Tag="QuickSetup.MenuTitle"
                                         Text="Quick Setup"
+                                        ToolTipService.ToolTip="Choose a guided privacy and capture profile."
                                         Click="QuickSetupMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF71CBB7" Glyph="&#xE9D9;" />
+                                            <FontIcon Foreground="#FF71CBB7" Glyph="&#xE9D5;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                     <MenuFlyoutItem
                                         x:Name="OptionsMenuItem"
                                         Tag="MenuTitleOptions"
                                         Text="App options"
+                                        ToolTipService.ToolTip="Open all application, capture, search, and AI settings."
                                         KeyboardAcceleratorTextOverride="Ctrl+Shift+O"
                                         Click="OptionsMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FFE5B06A" Glyph="&#xE713;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
-                                    <MenuFlyoutItem x:Name="OperationsMenuItem" Tag="Main.Menu.Operations" Text="Tools and diagnostics" Click="OperationsMenuItem_Click">
+                                    <MenuFlyoutItem
+                                        x:Name="OperationsMenuItem"
+                                        Tag="Main.Menu.Operations"
+                                        Text="Maintenance and diagnostics"
+                                        ToolTipService.ToolTip="Open data, privacy, retention, plugin, and diagnostic tools."
+                                        Click="OperationsMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Glyph="&#xE90F;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyoutSubItem>
 
-                                <MenuFlyoutSubItem x:Name="AiProviderMenu" Tag="Main.Menu.AiProvider" Text="AI provider">
+                                <MenuFlyoutSubItem
+                                    x:Name="AiProviderMenu"
+                                    AutomationProperties.HelpText="Enable AI descriptions and review provider-specific usage costs."
+                                    AutomationProperties.Name="AI features"
+                                    Tag="Main.Menu.AiProvider"
+                                    Text="AI features"
+                                    ToolTipService.ToolTip="Enable AI descriptions and review provider-specific usage costs.">
                                     <MenuFlyoutSubItem.Icon>
-                                        <FontIcon Foreground="#FFA97BEA" Glyph="&#xE945;" />
+                                        <FontIcon Foreground="#FFA97BEA" Glyph="&#xE99A;" />
                                     </MenuFlyoutSubItem.Icon>
                                     <ToggleMenuFlyoutItem
                                         x:Name="OpenAiMenuToggle"
                                         Tag="MenuToggleOpenAi"
-                                        Text="AI provider"
+                                        Text="Automatic AI descriptions"
+                                        ToolTipService.ToolTip="Enable or pause automatic AI descriptions for eligible screenshots."
                                         IsChecked="{x:Bind AiState.Enabled, Mode=OneWay}"
                                         IsEnabled="{x:Bind AiState.CanToggle, Mode=OneWay}"
                                         Click="OpenAiMenuToggle_Click">
                                         <ToggleMenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FFA97BEA" Glyph="&#xE945;" />
+                                            <FontIcon Foreground="#FFA97BEA" Glyph="&#xE9A3;" />
                                         </ToggleMenuFlyoutItem.Icon>
                                     </ToggleMenuFlyoutItem>
                                     <MenuFlyoutItem
                                         x:Name="AiPricingMenuItem"
                                         Tag="AiPricing.MenuTitle"
-                                        Text="OpenAI costs"
+                                        Text="OpenAI usage and costs"
+                                        ToolTipService.ToolTip="Review estimated usage and provider-specific OpenAI pricing."
                                         Click="AiPricingMenuItem_Click"
                                         IsEnabled="False">
                                         <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE9D2;" />
+                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE8C7;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyoutSubItem>
@@ -431,6 +479,7 @@
                                     x:Name="AboutMenuItem"
                                     Tag="MenuTitleAbout"
                                     Text="About"
+                                    ToolTipService.ToolTip="View TrackMeUp version, logs, licenses, and project links."
                                     Click="AboutMenuItem_Click">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Foreground="#FF85A8DB" Glyph="&#xE946;" />
@@ -496,13 +545,14 @@
                                 Padding="0"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                AutomationProperties.Name="Avvia il monitoraggio"
+                                AutomationProperties.Name="Start tracking"
                                 Background="{ThemeResource PlayerAccentBrush}"
                                 BorderBrush="#D9FFFFFF"
                                 BorderThickness="1"
                                 Click="TrackingButton_Click"
                                 CornerRadius="40"
                                 Style="{StaticResource CircularActionButtonStyle}"
+                                ToolTipService.ToolTip="Start tracking"
                                 Translation="0,0,3">
                                 <Button.Shadow>
                                     <ThemeShadow/>
@@ -524,13 +574,14 @@
                                     Height="32"
                                     Padding="0"
                                     HorizontalAlignment="Center"
-                                    AutomationProperties.Name="Scatta uno snapshot"
+                                    AutomationProperties.Name="Take snapshot"
                                     Background="{ThemeResource ControlFillColorSecondaryBrush}"
                                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                                     BorderThickness="1"
                                     Click="TakeScreenshotButton_Click"
                                     CornerRadius="16"
                                     Style="{StaticResource CircularActionButtonStyle}"
+                                    Tag="Snapshot.Take"
                                     ToolTipService.ToolTip="Take snapshot">
                                     <FontIcon
                                         AutomationProperties.AccessibilityView="Raw"
@@ -639,6 +690,7 @@
                             <TextBlock
                                 HorizontalAlignment="Right"
                                 Style="{StaticResource DashboardMetricLabelTextBlockStyle}"
+                                Tag="Main.AiMonthlySpend"
                                 Text="MONTHLY AI SPEND" />
                             <TextBlock
                                 x:Name="AiMonthlySpendText"
@@ -812,13 +864,13 @@
                         Padding="2,8"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
-                        AutomationProperties.Name="Mostra ultima sessione"
+                        AutomationProperties.Name="Show last session"
                         Background="Transparent"
                         BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                         BorderThickness="0,1,0,0"
                         Click="DetailsButton_Click"
                         CornerRadius="0"
-                        ToolTipService.ToolTip="Ultima sessione">
+                        ToolTipService.ToolTip="Show last session">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -897,14 +949,14 @@
                                 Height="92"
                                 Padding="0"
                                 VerticalAlignment="Top"
-                                AutomationProperties.Name="Apri galleria screenshot"
+                                AutomationProperties.Name="No screen capture available yet"
                                 Background="Transparent"
                                 BorderBrush="Transparent"
                                 BorderThickness="0"
                                 Click="ScreenshotPreviewButton_Click"
                                 PointerEntered="ScreenshotPreviewButton_PointerEntered"
                                 PointerExited="ScreenshotPreviewButton_PointerExited"
-                                ToolTipService.ToolTip="Apri galleria screenshot">
+                                ToolTipService.ToolTip="No screen capture available yet">
                                 <Border
                                     x:Name="ScreenshotPreviewSurface"
                                     Width="124"
@@ -919,12 +971,12 @@
                                     <Grid>
                                         <Image
                                             x:Name="ScreenshotPlaceholderImage"
-                                            AutomationProperties.Name="Snapshot placeholder"
+                                            AutomationProperties.AccessibilityView="Raw"
                                             Source="ms-appx:///Assets/TrackMeUpSnapshotPlaceholder.png"
                                             Stretch="UniformToFill" />
                                         <Image
                                             x:Name="LastScreenshotImage"
-                                            AutomationProperties.Name="Latest snapshot"
+                                            AutomationProperties.AccessibilityView="Raw"
                                             ImageFailed="LastScreenshotImage_ImageFailed"
                                             Stretch="UniformToFill"
                                             Visibility="Collapsed" />
@@ -1024,7 +1076,7 @@
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
             AutomationProperties.LiveSetting="Polite"
-            AutomationProperties.Name="Stato monitoraggio"
+            AutomationProperties.Name="Tracking status"
             BorderBrush="#33FFFFFF"
             BorderThickness="1"
             Canvas.ZIndex="10"
@@ -1039,7 +1091,11 @@
                 <Image Width="28" Height="28" AutomationProperties.AccessibilityView="Raw" Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
                 <StackPanel VerticalAlignment="Center" Spacing="1">
                     <TextBlock x:Name="TrackingStatusToastText" FontSize="12" FontWeight="SemiBold" Foreground="White" />
-                    <TextBlock FontSize="9" Foreground="#D9FFFFFF" Text="Local activity player" />
+                    <TextBlock
+                        FontSize="9"
+                        Foreground="#D9FFFFFF"
+                        Tag="Main.LocalActivityPlayer"
+                        Text="Local activity player" />
                 </StackPanel>
             </StackPanel>
         </Border>

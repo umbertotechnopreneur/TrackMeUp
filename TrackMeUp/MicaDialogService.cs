@@ -379,6 +379,7 @@ internal sealed class MicaDialogService
         var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
         var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
         ActivityCalendarDialogWindow? dialog = null;
+        AiScreenshotReprocessingDialogWindow? reprocessingDialog = null;
         List<IntPtr>? disabledPeerWindows = null;
         try
         {
@@ -397,12 +398,26 @@ internal sealed class MicaDialogService
             dialog = new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle);
             _activeWindow = dialog;
             disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
-            await dialog.ShowAsync();
+            var result = await dialog.ShowAsync();
+            if (result is not null && !_isShuttingDown)
+            {
+                // The calendar and reprocessing surfaces share this queue acquisition so no nested modal wait can deadlock.
+                reprocessingDialog = new AiScreenshotReprocessingDialogWindow(
+                    application,
+                    result.Date,
+                    theme,
+                    strings,
+                    ownerAppWindow,
+                    ownerHandle);
+                _activeWindow = reprocessingDialog;
+                await reprocessingDialog.ShowAsync();
+            }
         }
         finally
         {
             _activeWindow = null;
             dialog?.DisposePlacement();
+            reprocessingDialog?.DisposePlacement();
             if (disabledPeerWindows is not null)
             {
                 RestoreDialogPeerWindows(disabledPeerWindows);

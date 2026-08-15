@@ -1,3 +1,5 @@
+using TrackMeUp.Services;
+
 namespace TrackMeUp.Runtime;
 
 /// <summary>Identifies the presentation/runtime mode selected before XAML activation.</summary>
@@ -62,7 +64,12 @@ public sealed record LaunchOptions(
                 case "--safe-mode": safeMode = true; break;
                 case "--start-with-windows": startWithWindows = true; break;
                 case "--no-splash": noSplash = true; break;
-                case "--language" when index + 1 < arguments.Count: language = arguments[++index]; break;
+                case "--language" when index + 1 < arguments.Count:
+                    language = ProductLanguageCatalog.CanonicalUiChoice(arguments[++index])
+                        ?? throw new ArgumentException($"Unsupported TrackMeUp language '{arguments[index]}'.", nameof(arguments));
+                    break;
+                case "--language":
+                    throw new ArgumentException("--language requires a value.", nameof(arguments));
                 case "--theme" when index + 1 < arguments.Count: theme = arguments[++index]; break;
                 case "--position" when index + 1 < arguments.Count: position = arguments[++index]; break;
                 default: remaining.Add(value); break;

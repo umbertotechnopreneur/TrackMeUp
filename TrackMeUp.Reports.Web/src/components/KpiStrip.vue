@@ -25,48 +25,48 @@ const items = computed(() => {
   return [
     {
       icon: 'mdi-clock-check-outline',
-      label: tr('Active time', 'Tempo attivo'),
+      label: tr('Active time'),
       value: hasData.value ? formatDuration(props.snapshot.totals.activeSeconds) : unavailable,
-      detail: tr('In the selected period', 'Nel periodo selezionato'),
+      detail: tr('In the selected period'),
     },
     {
       icon: 'mdi-coffee-outline',
-      label: tr('Idle time', 'Tempo inattivo'),
+      label: tr('Idle time'),
       value: hasData.value ? formatDuration(props.snapshot.totals.idleSeconds) : unavailable,
-      detail: tr('While tracking', 'Durante il tracking'),
+      detail: tr('While tracking'),
     },
     {
       icon: 'mdi-calendar-check-outline',
-      label: tr('Active days', 'Giorni attivi'),
+      label: tr('Active days'),
       value: hasData.value
         ? `${formatInteger(activeDays)} / ${formatInteger(props.snapshot.range.dayCount)}`
         : unavailable,
-      detail: tr('Days with activity', 'Giorni con attività'),
+      detail: tr('Days with activity'),
     },
     {
       icon: 'mdi-chart-timeline-variant',
-      label: tr('Daily average', 'Media giornaliera'),
+      label: tr('Daily average'),
       value: hasData.value ? formatDuration(averageSeconds) : unavailable,
-      detail: tr('Across active days', 'Sui giorni attivi'),
+      detail: tr('Across active days'),
     },
     {
       icon: 'mdi-apps',
-      label: tr('Top application', 'Applicazione principale'),
+      label: tr('Top application'),
       value: hasData.value && topApplication ? topApplication.application : unavailable,
-      detail: topApplication ? formatDuration(topApplication.activeSeconds) : tr('No data available', 'Nessun dato disponibile'),
+      detail: topApplication ? formatDuration(topApplication.activeSeconds) : tr('No data available'),
     },
     {
       icon: 'mdi-radar',
-      label: tr('Coverage', 'Copertura'),
+      label: tr('Coverage'),
       value: hasData.value ? formatPercent(props.snapshot.quality.coverageRatio) : unavailable,
-      detail: `${formatInteger(props.snapshot.quality.sampleCount)} ${tr('samples', 'campioni')}`,
+      detail: tr('{count} samples', { count: formatInteger(props.snapshot.quality.sampleCount) }),
     },
   ]
 })
 </script>
 
 <template>
-  <section :aria-label="tr('Key indicators', 'Indicatori principali')">
+  <section :aria-label="tr('Key indicators')">
     <v-row dense>
       <v-col
         v-for="item in items"

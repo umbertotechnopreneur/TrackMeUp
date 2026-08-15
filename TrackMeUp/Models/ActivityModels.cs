@@ -140,6 +140,7 @@ public sealed record DailySummary(long ActiveSeconds, long IdleSeconds, long Key
 
 public sealed record DailyActivityWindow(string Application, string Context, long ActiveSeconds);
 
+/// <summary>Describes the local daily guardrail for visual requests sent to the configured AI provider.</summary>
 public sealed record AnalysisCostGate(
     bool Allowed,
     string? Reason,

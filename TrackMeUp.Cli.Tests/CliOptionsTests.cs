@@ -16,19 +16,49 @@ public sealed class CliOptionsTests
     [Fact]
     public void JsonMode_DisablesColorAndAnimationAndRetainsCommand()
     {
-        var options = CliOptions.Parse(["--json", "--language", "it", "status"], redirected: false);
+        var options = CliOptions.Parse(["--json", "--language", "pt-br", "status"], redirected: false);
 
         Assert.Equal(CliFormat.Json, options.Format);
         Assert.True(options.NoColor);
         Assert.True(options.NoAnimation);
-        Assert.Equal("it", options.Language);
+        Assert.Equal("pt-BR", options.Language);
         Assert.Equal(["status"], options.CommandArguments);
     }
 
-    [Fact]
-    public void UnsupportedLanguage_IsRejectedBeforeCommandDispatch()
+    [Theory]
+    [InlineData("en")]
+    [InlineData("it")]
+    [InlineData("pt")]
+    [InlineData("zh")]
+    [InlineData("zh-CN")]
+    [InlineData("pt_BR")]
+    public void AmbiguousLegacyOrNonCanonicalLanguage_IsRejectedBeforeCommandDispatch(string language)
     {
-        Assert.Throws<ArgumentException>(() => CliOptions.Parse(["--language", "pt", "status"], redirected: false));
+        Assert.Throws<ArgumentException>(() => CliOptions.Parse(["--language", language, "status"], redirected: false));
+    }
+
+    [Fact]
+    public void SupportedLanguages_AreTheCanonicalProductLocaleSet()
+    {
+        Assert.Equal(
+            ["system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-Hans", "vi-VN", "ko-KR", "pt-PT", "pt-BR"],
+            CliOptions.SupportedLanguages);
+    }
+
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("it-IT")]
+    [InlineData("fr-FR")]
+    [InlineData("de-DE")]
+    [InlineData("es-ES")]
+    [InlineData("zh-Hans")]
+    [InlineData("vi-VN")]
+    [InlineData("ko-KR")]
+    [InlineData("pt-PT")]
+    [InlineData("pt-BR")]
+    public void EveryCanonicalLocale_IsAcceptedWithoutChangingItsTag(string locale)
+    {
+        Assert.Equal(locale, CliOptions.Parse(["--language", locale, "status"], redirected: false).Language);
     }
 
     [Theory]

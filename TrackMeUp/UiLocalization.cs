@@ -128,6 +128,27 @@ internal static class UiLocalization
                 });
                 SetIfTranslated(strings, $"{key}.Placeholder", value => textBox.PlaceholderText = value);
                 break;
+            case AutoSuggestBox autoSuggestBox:
+                SetIfTranslated(strings, key, value =>
+                {
+                    autoSuggestBox.PlaceholderText = value;
+                    AutomationProperties.SetName(autoSuggestBox, value);
+                });
+                break;
+            case NumberBox numberBox:
+                if (!SetIfTranslated(strings, $"{key}.Header", value =>
+                    {
+                        numberBox.Header = value;
+                        AutomationProperties.SetName(numberBox, value);
+                    }))
+                {
+                    SetIfTranslated(strings, key, value =>
+                    {
+                        numberBox.Header = value;
+                        AutomationProperties.SetName(numberBox, value);
+                    });
+                }
+                break;
             case PasswordBox passwordBox:
                 SetIfTranslated(strings, $"{key}.Header", value =>
                 {
@@ -143,6 +164,20 @@ internal static class UiLocalization
                     AutomationProperties.SetName(datePicker, value);
                 });
                 SetIfTranslated(strings, $"{key}.Placeholder", value => datePicker.PlaceholderText = value);
+                break;
+            case ToggleMenuFlyoutItem toggleMenuItem:
+                SetIfTranslated(strings, key, value =>
+                {
+                    toggleMenuItem.Text = value;
+                    AutomationProperties.SetName(toggleMenuItem, value);
+                });
+                break;
+            case MenuFlyoutSubItem menuSubItem:
+                SetIfTranslated(strings, key, value =>
+                {
+                    menuSubItem.Text = value;
+                    AutomationProperties.SetName(menuSubItem, value);
+                });
                 break;
             case MenuFlyoutItem menuItem:
                 SetIfTranslated(strings, key, value =>
@@ -186,11 +221,14 @@ internal static class UiLocalization
         });
     }
 
-    private static void SetIfTranslated(LocalizationService strings, string key, Action<string> setter)
+    private static bool SetIfTranslated(LocalizationService strings, string key, Action<string> setter)
     {
         if (strings.TryTranslate(key, out var value))
         {
             setter(value);
+            return true;
         }
+
+        return false;
     }
 }

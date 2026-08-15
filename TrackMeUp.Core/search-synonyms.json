@@ -15,6 +15,21 @@
     { "language": "de", "terms": ["besprechung", "meeting", "anruf"] },
     { "language": "es", "terms": ["captura de pantalla", "screenshot", "instantanea"] },
     { "language": "es", "terms": ["correo", "email", "e-mail"] },
-    { "language": "es", "terms": ["reunion", "meeting", "llamada"] }
+    { "language": "es", "terms": ["reunion", "meeting", "llamada"] },
+    { "language": "vi-VN", "terms": ["screenshot", "ảnh chụp màn hình", "ảnh chụp"] },
+    { "language": "vi-VN", "terms": ["email", "thư điện tử", "thư"] },
+    { "language": "vi-VN", "terms": ["cuộc họp", "họp", "cuộc gọi"] },
+    { "language": "zh-Hans", "terms": ["screenshot", "屏幕截图", "截图"] },
+    { "language": "zh-Hans", "terms": ["email", "电子邮件", "邮件"] },
+    { "language": "zh-Hans", "terms": ["meeting", "会议", "通话"] },
+    { "language": "ko-KR", "terms": ["screenshot", "스크린샷", "화면 캡처"] },
+    { "language": "ko-KR", "terms": ["email", "이메일", "전자우편"] },
+    { "language": "ko-KR", "terms": ["meeting", "회의", "통화"] },
+    { "language": "pt-PT", "terms": ["captura de ecrã", "screenshot", "imagem do ecrã"] },
+    { "language": "pt-PT", "terms": ["correio eletrónico", "email", "e-mail"] },
+    { "language": "pt-PT", "terms": ["reunião", "meeting", "chamada"] },
+    { "language": "pt-BR", "terms": ["captura de tela", "screenshot", "imagem da tela"] },
+    { "language": "pt-BR", "terms": ["e-mail", "email", "correio eletrônico"] },
+    { "language": "pt-BR", "terms": ["reunião", "meeting", "chamada"] }
   ]
 }

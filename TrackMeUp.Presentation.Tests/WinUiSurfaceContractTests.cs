@@ -1,14 +1,21 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 using Xunit;
 
 namespace TrackMeUp.Presentation.Tests;
 
 public sealed class WinUiSurfaceContractTests
 {
+    private static readonly string[] CanonicalUiLocales = ProductLanguageCatalog.UiLocales.ToArray();
+
     [Fact]
     public void ExecutableManifest_DeclaresPerMonitorV2DpiAwareness()
     {
@@ -76,8 +83,9 @@ public sealed class WinUiSurfaceContractTests
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
 
         var optionExpanders = options.Descendants().Where(element => element.Name.LocalName == "Expander").ToArray();
-        Assert.Single(optionExpanders);
-        Assert.True(HasName(optionExpanders[0], "ApiKeyExpander"));
+        Assert.Equal(2, optionExpanders.Length);
+        Assert.Contains(optionExpanders, element => HasName(element, "ApiKeyExpander"));
+        Assert.Contains(optionExpanders, element => HasName(element, "AiDailyLimitExpander"));
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "Expander");
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("CornerRadius") is not null);
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("Click")?.Value == "BackButton_Click");
@@ -217,6 +225,20 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal(4, menu.Descendants().Count(element => element.Name.LocalName == "MenuFlyoutSubItem"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleMenuFlyoutItem"));
         Assert.DoesNotContain(menu.Descendants(), element => element.Name.LocalName == "Button");
+        Assert.All(
+            menu.Descendants().Where(element => element.Name.LocalName is "MenuFlyoutSubItem" or "MenuFlyoutItem" or "ToggleMenuFlyoutItem"),
+            item => Assert.False(string.IsNullOrWhiteSpace(item.Attribute("ToolTipService.ToolTip")?.Value)));
+        Assert.Contains(MenuGlyph(player, "ReportsMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE9F9");
+        Assert.Contains(MenuGlyph(player, "ActivityCalendarMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE787");
+        Assert.Contains(MenuGlyph(player, "ScreenshotsMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8B9");
+        Assert.Contains(MenuGlyph(player, "CaptureMenu"), element => element.Attribute("Glyph")?.Value == "\uE722");
+        Assert.Contains(MenuGlyph(player, "ScheduleMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8C0");
+        Assert.Contains(MenuGlyph(player, "ScreenshotsMenuToggle"), element => element.Attribute("Glyph")?.Value == "\uE8B8");
+        Assert.Contains(MenuGlyph(player, "QuickSetupMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE9D5");
+        Assert.Contains(MenuGlyph(player, "OperationsMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE90F");
+        Assert.Contains(MenuGlyph(player, "AiProviderMenu"), element => element.Attribute("Glyph")?.Value == "\uE99A");
+        Assert.Contains(MenuGlyph(player, "OpenAiMenuToggle"), element => element.Attribute("Glyph")?.Value == "\uE9A3");
+        Assert.Contains(MenuGlyph(player, "AiPricingMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8C7");
         Assert.Equal(
             ["Main.Menu.Activity", "Search.Title", "Reports.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "MenuTitleAbout"],
             menuTags);
@@ -232,6 +254,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("OptionsControl.OperationsSectionRequested", mainSource, StringComparison.Ordinal);
         Assert.Contains("OperationsControl.NavigateTo(section, returnToOverview: false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ApplyMainMenuLabels();", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ApplyMenuAccessibility", mainSource, StringComparison.Ordinal);
         Assert.Contains("AiPricingMenuItem.IsEnabled = IsOpenAiPricingAvailable(result.Value);", mainSource, StringComparison.Ordinal);
         Assert.Contains("[\"screenshots.enabled\"]", mainSource, StringComparison.Ordinal);
         Assert.Contains("CaptureManualScreenshotAsync", mainSource, StringComparison.Ordinal);
@@ -491,8 +514,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("0", openOverlay.Attribute("Opacity")?.Value);
         Assert.Null(openOverlay.Attribute("BorderBrush"));
         Assert.Null(openOverlay.Attribute("BorderThickness"));
-        Assert.Contains("LocalTimeText.Text = $\"Local time {state.LocalTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
-        Assert.Contains("UtcTimeText.Text = $\"UTC {state.UtcTime:HH:mm:ss}\";", source, StringComparison.Ordinal);
+        Assert.Contains("LocalTimeText.Text = _strings.Format(\"Main.Time.Local\", state.LocalTime);", source, StringComparison.Ordinal);
+        Assert.Contains("UtcTimeText.Text = _strings.Format(\"Main.Time.Utc\", state.UtcTime);", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
         Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
         Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
@@ -607,7 +630,7 @@ public sealed class WinUiSurfaceContractTests
         var style = app.Descendants().Single(element =>
             element.Name.LocalName == "Style" && HasKey(element, "DashboardMetricLabelTextBlockStyle"));
         var trackingLabel = player.Descendants().Single(element => HasName(element, "TrackingStateText"));
-        var monthlySpendLabel = player.Descendants().Single(element => element.Attribute("Text")?.Value == "MONTHLY AI SPEND");
+        var monthlySpendLabel = player.Descendants().Single(element => element.Attribute("Tag")?.Value == "Main.AiMonthlySpend");
         var accentBrushes = app.Descendants()
             .Where(element => HasKey(element, "PlayerAccentTextBrush"))
             .ToArray();
@@ -627,10 +650,27 @@ public sealed class WinUiSurfaceContractTests
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
         var languagePicker = options.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "LanguageBox"));
+        var searchLanguagePicker = options.Descendants().Single(element => HasName(element, "SearchLanguageBox"));
+        var ocrLanguagePicker = options.Descendants().Single(element => HasName(element, "OcrLanguageBox"));
+        string?[] uiAndSearchChoices = ["system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-Hans", "vi-VN", "ko-KR", "pt-PT", "pt-BR"];
+        string?[] ocrChoices = ["system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-CN", "ko-KR", "pt-PT", "pt-BR"];
 
         Assert.Equal("Options.Language", languagePicker.Attribute("Tag")?.Value);
-        Assert.Contains(languagePicker.Descendants(), element => element.Attribute("Tag")?.Value == "system");
-        Assert.Contains(languagePicker.Descendants(), element => element.Attribute("Tag")?.Value == "en");
+        Assert.Equal(
+            uiAndSearchChoices,
+            languagePicker.Descendants()
+                .Where(element => element.Name.LocalName == "ComboBoxItem")
+                .Select(element => element.Attribute("Tag")?.Value));
+        Assert.Equal(
+            uiAndSearchChoices,
+            searchLanguagePicker.Descendants()
+                .Where(element => element.Name.LocalName == "ComboBoxItem")
+                .Select(element => element.Attribute("Tag")?.Value));
+        Assert.Equal(
+            ocrChoices,
+            ocrLanguagePicker.Descendants()
+                .Where(element => element.Name.LocalName == "ComboBoxItem")
+                .Select(element => element.Attribute("Tag")?.Value));
     }
 
     [Fact]
@@ -738,8 +778,14 @@ public sealed class WinUiSurfaceContractTests
             XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml"))
         };
         var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
-        var localization = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "LocalizationService.cs"));
+        var localizationCatalogs = CanonicalUiLocales.Select(LoadLocalizationKeys).ToArray();
         var uiLocalization = File.ReadAllText(RepositoryFile("TrackMeUp", "UiLocalization.cs"));
+
+        Assert.All(
+            localizationCatalogs.Skip(1),
+            catalog => Assert.Equal(
+                localizationCatalogs[0].OrderBy(static key => key, StringComparer.Ordinal),
+                catalog.OrderBy(static key => key, StringComparer.Ordinal)));
 
         foreach (var document in documents)
         {
@@ -751,13 +797,147 @@ public sealed class WinUiSurfaceContractTests
                 .ToArray();
 
             Assert.NotEmpty(iconOnlyButtons);
-            Assert.All(iconOnlyButtons, button => AssertLocalizedScreenshotCommand(button, localization));
+            Assert.All(iconOnlyButtons, button => AssertLocalizedScreenshotCommand(button, localizationCatalogs));
         }
 
         var resizeGrip = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsResizeGrip"));
-        AssertLocalizedScreenshotCommand(resizeGrip, localization);
+        AssertLocalizedScreenshotCommand(resizeGrip, localizationCatalogs);
         Assert.Contains("ToolTipService.SetToolTip", uiLocalization, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName", uiLocalization, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopResidualAccessibilityAndBuiltInMetadata_AreLocalizedAtRuntime()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var operationsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+        var pluginsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "PluginOperationsControl.xaml.cs"));
+        var privacy = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml"));
+        var privacySource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml.cs"));
+        var retentionSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml.cs"));
+        var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
+
+        Assert.Equal("Options.Theme.system", options.Descendants().Single(element => HasName(element, "ThemeSystemButton")).Attribute("Tag")?.Value);
+        Assert.Equal("Options.Theme.light", options.Descendants().Single(element => HasName(element, "ThemeLightButton")).Attribute("Tag")?.Value);
+        Assert.Equal("Options.Theme.dark", options.Descendants().Single(element => HasName(element, "ThemeDarkButton")).Attribute("Tag")?.Value);
+        Assert.Equal("Options.AiConnection.Test", options.Descendants().Single(element => HasName(element, "TestConnectionButton")).Attribute("Tag")?.Value);
+        Assert.Contains("AutomationProperties.SetName(KeepScreenshotsSwitch, T(\"Options.KeepSnapshots.Header\"));", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("BuiltInModelKeys", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("Options.Model.Description.{model.Key}", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("Explicitly loaded external model catalogs own their descriptive metadata.", optionsSource, StringComparison.Ordinal);
+
+        Assert.Contains("AutomationProperties.SetName(OperationProgress", operationsSource, StringComparison.Ordinal);
+        Assert.Contains("BuiltInPluginIds", pluginsSource, StringComparison.Ordinal);
+        Assert.Contains("Operations.Plugin.{plugin.Id}", pluginsSource, StringComparison.Ordinal);
+        Assert.Contains("External plugin metadata is supplied by the plugin", pluginsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(PluginsList", pluginsSource, StringComparison.Ordinal);
+        Assert.Contains(privacy.Descendants(), element => element.Attribute("Text")?.Value == "{Binding TypeLabel}");
+        Assert.Contains("Operations.PrivacyType.{rule.Type}", privacySource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(PrivacyRulesList", privacySource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(RetentionPathsList", retentionSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(this, _strings.Translate(\"Screenshots.Caption\"));", viewerSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LowStorageNotifications_KeepLocalizedDetailStructuredUntilRendering()
+    {
+        var contracts = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "Contracts.cs"));
+        var application = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.cs"));
+        var main = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+
+        Assert.Contains("record LocalizedNotificationDetail", contracts, StringComparison.Ordinal);
+        Assert.Contains("\"Notification.ScreenshotStorageLow.Detail\"", application, StringComparison.Ordinal);
+        Assert.DoesNotContain("Available free space:", application, StringComparison.Ordinal);
+        Assert.Contains("notification.LocalizedDetail is { } localizedDetail", main, StringComparison.Ordinal);
+        Assert.Contains("localizedDetail.MessageKey", main, StringComparison.Ordinal);
+        Assert.Contains("localizedDetail.Arguments.Select", main, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HtmlReport_UsesTheSelectedUiLanguageCatalogAndCulture()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "HtmlReportService.cs"));
+
+        Assert.Contains("new LocalizationService(_store.LoadSettings().UiLanguage)", source, StringComparison.Ordinal);
+        Assert.Contains("var culture = strings.Culture;", source, StringComparison.Ordinal);
+        Assert.Contains("Html(strings.Language)", source, StringComparison.Ordinal);
+        Assert.Contains("\"HtmlReport.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("lang=\\\"it\\\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Tempo attivo", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Tempo inattivo", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Utilizzo AI", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nessuna richiesta AI", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CultureInfo.CurrentCulture", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopLocalizationCatalogs_HaveExactLocaleKeyAndFormatParity()
+    {
+        var localizationDirectory = Path.GetDirectoryName(
+            RepositoryFile("TrackMeUp.Core", "Localization", "en-US.json"))!;
+        var actualLocales = Directory.GetFiles(localizationDirectory, "*.json")
+            .Select(Path.GetFileNameWithoutExtension)
+            .OrderBy(static locale => locale, StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(CanonicalUiLocales.OrderBy(static locale => locale, StringComparer.Ordinal), actualLocales);
+
+        var catalogs = CanonicalUiLocales.ToDictionary(
+            static locale => locale,
+            LoadLocalizationCatalog,
+            StringComparer.Ordinal);
+        var english = catalogs["en-US"];
+        foreach (var (locale, catalog) in catalogs)
+        {
+            Assert.Equal(
+                english.Keys.OrderBy(static key => key, StringComparer.Ordinal),
+                catalog.Keys.OrderBy(static key => key, StringComparer.Ordinal));
+            foreach (var (key, value) in catalog)
+            {
+                _ = CompositeFormat.Parse(value);
+                Assert.Equal(FormatItems(english[key]), FormatItems(value));
+            }
+
+            if (!locale.Equals("en-US", StringComparison.Ordinal))
+            {
+                var unchangedEntries = english.Count(entry =>
+                    string.Equals(entry.Value, catalog[entry.Key], StringComparison.Ordinal));
+                Assert.True(
+                    unchangedEntries <= 150,
+                    $"Localization catalog '{locale}' still contains {unchangedEntries} unchanged English entries.");
+            }
+        }
+
+        var portugueseDialectDifferences = catalogs["pt-PT"].Count(entry =>
+            !string.Equals(entry.Value, catalogs["pt-BR"][entry.Key], StringComparison.Ordinal));
+        Assert.True(
+            portugueseDialectDifferences >= 200,
+            $"Portuguese product catalogs differ in only {portugueseDialectDifferences} entries.");
+        Assert.Equal("Capturas de ecrã automáticas", catalogs["pt-PT"]["MenuToggleScreenshot"]);
+        Assert.Equal("Capturas de tela automáticas", catalogs["pt-BR"]["MenuToggleScreenshot"]);
+    }
+
+    [Fact]
+    public void DesktopDynamicCopy_UsesResolvedLocalizationCultureAndFormats()
+    {
+        var reports = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
+        var screenshots = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var main = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var pricing = File.ReadAllText(RepositoryFile("TrackMeUp", "AiPricingDialogWindow.xaml.cs"));
+        var options = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var indexing = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchIndexingWindow.xaml.cs"));
+        var imageViewer = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
+        var timeline = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml.cs"));
+
+        Assert.Contains("_strings.Format(\"Reports.Error.ReportUnavailable\"", reports, StringComparison.Ordinal);
+        Assert.Contains("_strings.Format(\"Screenshots.Count.Many\"", screenshots, StringComparison.Ordinal);
+        Assert.Contains("_strings.Format(\"Main.Time.Local\"", main, StringComparison.Ordinal);
+        Assert.Contains("var culture = _strings.Culture;", pricing, StringComparison.Ordinal);
+        Assert.Contains("_strings.Format(\"Options.AiQuota.Usage\"", options, StringComparison.Ordinal);
+        Assert.Contains("_strings.Format(\"SearchIndex.Completed.Description\"", indexing, StringComparison.Ordinal);
+        Assert.Contains("_strings.Format(\"Screenshots.Image.Accessible\"", imageViewer, StringComparison.Ordinal);
+        Assert.Contains("_strings.Format(\"Screenshots.Timeline.ItemAccessible\"", timeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("CultureInfo.CurrentCulture", reports + screenshots + main + pricing + options + indexing + imageViewer + timeline, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -836,27 +1016,51 @@ public sealed class WinUiSurfaceContractTests
     private static bool HasName(XElement element, string name) =>
         element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == name);
 
+    private static XElement[] MenuGlyph(XDocument document, string itemName) =>
+        document.Descendants()
+            .Single(element => HasName(element, itemName))
+            .Descendants()
+            .Where(element => element.Name.LocalName == "FontIcon")
+            .ToArray();
+
     private static bool HasKey(XElement element, string key) =>
         element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == key);
 
-    private static void AssertLocalizedScreenshotCommand(XElement element, string localizationSource)
+    private static void AssertLocalizedScreenshotCommand(
+        XElement element,
+        IReadOnlyList<HashSet<string>> localizationCatalogs)
     {
         var tag = element.Attribute("Tag")?.Value;
         Assert.False(string.IsNullOrWhiteSpace(tag));
         Assert.StartsWith("Screenshots.", tag, StringComparison.Ordinal);
         Assert.Contains(element.Attributes(), attribute => attribute.Name.LocalName == "AutomationProperties.Name" && !string.IsNullOrWhiteSpace(attribute.Value));
         Assert.Contains(element.Attributes(), attribute => attribute.Name.LocalName == "ToolTipService.ToolTip" && !string.IsNullOrWhiteSpace(attribute.Value));
-        Assert.Equal(2, CountOccurrences(localizationSource, $"[\"{tag}\"]"));
+        Assert.All(localizationCatalogs, catalog => Assert.Contains(tag!, catalog));
     }
 
-    private static int CountOccurrences(string source, string value)
+    private static HashSet<string> LoadLocalizationKeys(string locale)
+        => LoadLocalizationCatalog(locale).Keys.ToHashSet(StringComparer.Ordinal);
+
+    private static Dictionary<string, string> LoadLocalizationCatalog(string locale)
     {
-        var count = 0;
-        for (var offset = 0; (offset = source.IndexOf(value, offset, StringComparison.Ordinal)) >= 0; offset += value.Length)
+        using var document = JsonDocument.Parse(
+            File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Localization", $"{locale}.json")));
+        Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
+        var entries = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var property in document.RootElement.EnumerateObject())
         {
-            count++;
+            Assert.Equal(JsonValueKind.String, property.Value.ValueKind);
+            var value = property.Value.GetString();
+            Assert.False(string.IsNullOrWhiteSpace(value));
+            Assert.True(entries.TryAdd(property.Name, value!), $"Duplicate localization key '{property.Name}' in {locale}.");
         }
 
-        return count;
+        return entries;
     }
+
+    private static string[] FormatItems(string value) =>
+        Regex.Matches(value, @"\{[0-9]+(?:,-?[0-9]+)?(?::[^{}]+)?\}")
+            .Select(static match => match.Value)
+            .OrderBy(static item => item, StringComparer.Ordinal)
+            .ToArray();
 }

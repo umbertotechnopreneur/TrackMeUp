@@ -1,3 +1,5 @@
+using TrackMeUp.Services;
+
 namespace TrackMeUp.Cli;
 
 /// <summary>Defines the supported automation-safe output modes.</summary>
@@ -24,7 +26,8 @@ public sealed record CliOptions(
     bool Verbose,
     IReadOnlyList<string> CommandArguments)
 {
-    private static readonly string[] SupportedLanguages = ["system", "en", "it", "vi", "fr", "de", "es"];
+    /// <summary>Gets the canonical locale choices accepted by the CLI.</summary>
+    public static IReadOnlyList<string> SupportedLanguages => ProductLanguageCatalog.UiChoices;
 
     /// <summary>Parses global flags and leaves command arguments intact.</summary>
     public static CliOptions Parse(IReadOnlyList<string> arguments, bool redirected)
@@ -74,12 +77,13 @@ public sealed record CliOptions(
             noAnimation = true;
         }
 
-        if (!SupportedLanguages.Contains(language, StringComparer.OrdinalIgnoreCase))
+        var canonicalLanguage = ProductLanguageCatalog.CanonicalUiChoice(language);
+        if (canonicalLanguage is null)
         {
-            throw new ArgumentException("language must be system, en, it, vi, fr, de, or es");
+            throw new ArgumentException($"Unsupported CLI locale '{language}'. Use one of: {string.Join(", ", SupportedLanguages)}.");
         }
 
-        return new CliOptions(format, language.ToLowerInvariant(), noColor, noEmoji, noAnimation, quiet, yes, timeout, verbose, remaining);
+        return new CliOptions(format, canonicalLanguage, noColor, noEmoji, noAnimation, quiet, yes, timeout, verbose, remaining);
     }
 
     private static string ReadRequiredValue(IReadOnlyList<string> arguments, ref int index, string option)

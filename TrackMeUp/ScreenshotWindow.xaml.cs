@@ -112,6 +112,7 @@ public sealed partial class ScreenshotWindow : Window
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         SetSelectedDate(_selectedDate);
         ApplyTheme(_theme);
+        ApplyLocalization();
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += ScreenshotWindow_Closed;
     }
@@ -186,8 +187,7 @@ public sealed partial class ScreenshotWindow : Window
                 _theme = result.Value.Theme;
                 _strings = new LocalizationService(result.Value.UiLanguage);
                 ApplyTheme(_theme);
-                UiLocalization.Apply(RootGrid, _strings);
-                ApplyHeaderLocalization();
+                ApplyLocalization();
             }
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
@@ -198,8 +198,7 @@ public sealed partial class ScreenshotWindow : Window
         {
             // The gallery remains usable with the system theme and default strings if optional settings cannot be read.
             _strings = new LocalizationService("system");
-            UiLocalization.Apply(RootGrid, _strings);
-            ApplyHeaderLocalization();
+            ApplyLocalization();
         }
 
         await LoadGalleryAsync(_requestedScreenshotPath is null ? null : _selectedDate);
@@ -237,7 +236,7 @@ public sealed partial class ScreenshotWindow : Window
             if (!result.Succeeded || result.Value is null)
             {
                 _items = Array.Empty<ScreenshotGalleryItem>();
-                RenderGallery($"Screenshot gallery unavailable ({result.Code}).");
+                RenderGallery(_strings.Format("Screenshots.Error.UnavailableWithCode", result.Code));
                 return;
             }
 
@@ -259,7 +258,7 @@ public sealed partial class ScreenshotWindow : Window
         catch (Exception)
         {
             _items = Array.Empty<ScreenshotGalleryItem>();
-            RenderGallery("Screenshot gallery unavailable.");
+            RenderGallery(T("Screenshots.Error.Unavailable"));
         }
         finally
         {
@@ -311,17 +310,26 @@ public sealed partial class ScreenshotWindow : Window
 
     private void ApplyHeaderLocalization()
     {
-        SelectedDatePicker.PlaceholderText = _strings.Translate("Screenshots.Date.Placeholder");
-        AutomationProperties.SetName(SelectedDatePicker, _strings.Translate("Screenshots.Date"));
+        SelectedDatePicker.PlaceholderText = T("Screenshots.Date.Placeholder");
+        AutomationProperties.SetName(SelectedDatePicker, T("Screenshots.Date"));
         UpdateDisplayedDate();
         UpdateDetailsToggleAccessibility();
         UpdateFilmstripToggleAccessibility();
     }
 
+    private void ApplyLocalization()
+    {
+        UiLocalization.Apply(RootGrid, _strings);
+        Title = T("Screenshots.Title");
+        var resizeLabel = T("Screenshots.Details.Resize");
+        AutomationProperties.SetName(DetailsResizeGrip, resizeLabel);
+        ToolTipService.SetToolTip(DetailsResizeGrip, resizeLabel);
+        ApplyHeaderLocalization();
+    }
+
     private void UpdateDisplayedDate()
     {
-        var culture = CultureInfo.GetCultureInfo(_strings.Language);
-        ExtendedDateText.Text = _selectedDate.ToDateTime(TimeOnly.MinValue).ToString("D", culture);
+        ExtendedDateText.Text = _selectedDate.ToDateTime(TimeOnly.MinValue).ToString("D", _strings.Culture);
     }
 
     private void SelectRequestedScreenshot()
@@ -346,7 +354,12 @@ public sealed partial class ScreenshotWindow : Window
     private void RenderGallery(string? error)
     {
         var hasItems = _items.Count > 0;
-        GalleryCountText.Text = hasItems ? $"{_items.Count} captures" : "0 captures";
+        GalleryCountText.Text = _items.Count switch
+        {
+            0 => T("Screenshots.Count.Zero"),
+            1 => T("Screenshots.Count.One"),
+            _ => _strings.Format("Screenshots.Count.Many", _items.Count)
+        };
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
         ScreenshotViewer.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
@@ -354,7 +367,7 @@ public sealed partial class ScreenshotWindow : Window
         {
             SetDetailsPaneVisibility(isVisible: false);
         }
-        EmptyGalleryText.Text = error ?? (_items.Count == 0 ? "No screenshots for this day." : string.Empty);
+        EmptyGalleryText.Text = error ?? (_items.Count == 0 ? T("Screenshots.Empty") : string.Empty);
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
         TimelineSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
@@ -402,11 +415,13 @@ public sealed partial class ScreenshotWindow : Window
             return;
         }
 
-        var culture = CultureInfo.GetCultureInfo(_strings.Language);
+        var culture = _strings.Culture;
         var localTime = item.CapturedAt.ToLocalTime();
         MetadataDateValueText.Text = FormatMetadataDate(localTime, culture);
         MetadataTimeValueText.Text = localTime.ToString("t", culture);
-        MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
+        MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication)
+            ? T("Screenshots.Application.Desktop")
+            : item.ForegroundApplication;
         var captureOrigin = FormatCaptureOrigin(item.CaptureOrigin);
         _selectedDetailsState = ScreenshotDetailsProjection.Create(
             item,
@@ -598,7 +613,7 @@ public sealed partial class ScreenshotWindow : Window
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
             SuggestedFileName = Path.GetFileName(selected.Path)
         };
-        picker.FileTypeChoices.Add("Screenshot", new[] { extension });
+        picker.FileTypeChoices.Add(T("Screenshots.FileType"), new[] { extension });
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
         var destination = await picker.PickSaveFileAsync();
         if (destination is null)
@@ -668,6 +683,8 @@ public sealed partial class ScreenshotWindow : Window
         GalleryProgressRing.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
         SelectedDatePicker.IsEnabled = !isLoading;
     }
+
+    private string T(string key) => _strings.Translate(key);
 
     private void ApplyTheme(string theme)
     {

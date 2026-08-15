@@ -18,10 +18,16 @@ internal static class CliSettingsCatalog
     internal static IReadOnlyList<SettingDescriptor> Settings => SettingsCatalog.Definitions;
 
     /// <summary>Gets a compact help summary containing only public writable keys.</summary>
-    internal static string HelpSummary => "Writable keys: " + string.Join(", ", SettingsCatalog.Definitions.Select(setting =>
+    internal static string HelpValueSummary => string.Join(", ", SettingsCatalog.Definitions.Select(setting =>
         setting.AllowedValues.Count == 0
             ? $"{setting.Key} <{setting.ValueType}>"
-            : $"{setting.Key} <{string.Join('|', setting.AllowedValues)}>")) + ".";
+            : $"{setting.Key} <{string.Join('|', setting.AllowedValues)}>"));
+
+    /// <summary>Gets the English help sentence retained for contract-level tests.</summary>
+    internal static string HelpSummary => string.Format(
+        System.Globalization.CultureInfo.InvariantCulture,
+        CliStrings.Get("en-US", "detail.configWritable"),
+        HelpValueSummary);
 
     /// <summary>Finds a descriptor by stable public key.</summary>
     internal static bool TryGet(string key, out SettingDescriptor? descriptor) =>

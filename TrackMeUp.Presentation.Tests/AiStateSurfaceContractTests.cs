@@ -45,6 +45,9 @@ public sealed class AiStateSurfaceContractTests
         var quotaUsage = options.Descendants().Single(element => HasName(element, "AiQuotaUsageText"));
         var quotaProgress = options.Descendants().Single(element => HasName(element, "AiQuotaProgressBar"));
         var quotaDescription = options.Descendants().Single(element => HasName(element, "AiQuotaDescriptionText"));
+        var quotaExpander = options.Descendants().Single(element => HasName(element, "AiDailyLimitExpander"));
+        var quotaLimit = options.Descendants().Single(element => HasName(element, "AiDailyLimitBox"));
+        var quotaSave = options.Descendants().Single(element => HasName(element, "SaveAiDailyLimitButton"));
 
         Assert.Equal("Border", quotaPanel.Name.LocalName);
         Assert.Equal("Polite", quotaPanel.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
@@ -52,7 +55,16 @@ public sealed class AiStateSurfaceContractTests
         Assert.Equal("Polite", quotaUsage.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
         Assert.Equal("ProgressBar", quotaProgress.Name.LocalName);
         Assert.Equal("Options.AiQuota.Description", quotaDescription.Attribute("Tag")?.Value);
+        Assert.Equal("Expander", quotaExpander.Name.LocalName);
+        Assert.Equal("Options.AiQuota.Configure", quotaExpander.Descendants().Single(element => HasName(element, "AiDailyLimitActionText")).Attribute("Tag")?.Value);
+        Assert.Equal("NumberBox", quotaLimit.Name.LocalName);
+        Assert.Equal("0", quotaLimit.Attribute("Minimum")?.Value);
+        Assert.Equal("400", quotaLimit.Attribute("Maximum")?.Value);
+        Assert.Equal("20", quotaLimit.Attribute("Value")?.Value);
+        Assert.Equal("SaveAiDailyLimitButton_Click", quotaSave.Attribute("Click")?.Value);
         Assert.Contains("_openAiDailyLimit = settings.OpenAiDailyLimit;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("[\"ai.daily_limit\"]", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("SettingsCatalog.MaximumAiDailyLimit", optionsSource, StringComparison.Ordinal);
         Assert.Contains("costGate.DailyAnalysisCount", optionsSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(AiQuotaProgressBar", optionsSource, StringComparison.Ordinal);
         Assert.Contains("nameof(AiApplicationState.CostGate)", optionsSource, StringComparison.Ordinal);

@@ -246,9 +246,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     }
 
     private static string ResolveDefaultLanguage(AppSettings settings) =>
-        string.Equals(settings.SearchLanguage, "system", StringComparison.OrdinalIgnoreCase)
-            ? CultureInfo.CurrentUICulture.Name
-            : settings.SearchLanguage;
+        ProductLanguageCatalog.ResolveSearchLanguage(settings.SearchLanguage, CultureInfo.CurrentUICulture);
 
     private static ImmutableDictionary<string, string?> BuildOcrAttributes(
         string? captureId,

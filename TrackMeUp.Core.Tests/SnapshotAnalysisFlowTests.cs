@@ -936,6 +936,13 @@ public sealed class SnapshotAnalysisFlowTests
                 CorrelationId: captureResult.CaptureId,
                 Origin: origin));
         }
+
+        public Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+            AnalysisContextSnapshot activity,
+            ScreenshotCaptureResult captureResult,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            AnalyzeCapturedScreenAsync(activity, captureResult, keepCapture: true, origin, cancellationToken);
     }
 
     private sealed class CancellationAwareAnalysisService : IAiAnalysisService
@@ -975,6 +982,13 @@ public sealed class SnapshotAnalysisFlowTests
                 throw;
             }
         }
+
+        public Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+            AnalysisContextSnapshot activity,
+            ScreenshotCaptureResult captureResult,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            AnalyzeCapturedScreenAsync(activity, captureResult, keepCapture: true, origin, cancellationToken);
     }
 
     private sealed class ProviderFailureAnalysisService : IAiAnalysisService
@@ -1001,6 +1015,13 @@ public sealed class SnapshotAnalysisFlowTests
             string origin,
             CancellationToken cancellationToken = default) =>
             Task.FromException<AiAnalysis>(Failure());
+
+        public Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+            AnalysisContextSnapshot activity,
+            ScreenshotCaptureResult captureResult,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            Task.FromException<AiAnalysis>(Failure());
     }
 
     private sealed class FailingAnalysisService : IAiAnalysisService
@@ -1016,6 +1037,13 @@ public sealed class SnapshotAnalysisFlowTests
             AnalysisContextSnapshot? activity,
             ScreenshotCaptureResult captureResult,
             bool keepCapture,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException("Test-only provider failure.");
+
+        public Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+            AnalysisContextSnapshot activity,
+            ScreenshotCaptureResult captureResult,
             string origin,
             CancellationToken cancellationToken = default) =>
             throw new HttpRequestException("Test-only provider failure.");

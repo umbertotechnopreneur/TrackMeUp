@@ -89,7 +89,8 @@
                             HorizontalContentAlignment="Center"
                             AutomationProperties.Name="System theme"
                             Click="ThemeButton_Click"
-                            IsChecked="True">
+                            IsChecked="True"
+                            Tag="Options.Theme.system">
                             <TextBlock Tag="Options.Theme.system" Text="System" />
                         </ToggleButton>
                         <ToggleButton
@@ -99,7 +100,8 @@
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             AutomationProperties.Name="Light theme"
-                            Click="ThemeButton_Click">
+                            Click="ThemeButton_Click"
+                            Tag="Options.Theme.light">
                             <TextBlock Tag="Options.Theme.light" Text="Light" />
                         </ToggleButton>
                         <ToggleButton
@@ -109,7 +111,8 @@
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             AutomationProperties.Name="Dark theme"
-                            Click="ThemeButton_Click">
+                            Click="ThemeButton_Click"
+                            Tag="Options.Theme.dark">
                             <TextBlock Tag="Options.Theme.dark" Text="Dark" />
                         </ToggleButton>
                     </Grid>
@@ -231,7 +234,8 @@
                         HorizontalContentAlignment="Stretch"
                         AutomationProperties.Name="Open AI configuration"
                         Click="AiSettingsButton_Click"
-                        Padding="12,10">
+                        Padding="12,10"
+                        Tag="Options.AiConfiguration.Title">
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -482,7 +486,8 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="GeneralAdvancedButton_Click"
-                        Padding="4,8">
+                        Padding="4,8"
+                        Tag="Options.Advanced">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -503,12 +508,16 @@
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                         <ComboBox x:Name="LanguageBox" Tag="Options.Language" HorizontalAlignment="Stretch" Header="Interface language">
                             <ComboBoxItem Content="System" Tag="system" />
-                            <ComboBoxItem Content="English" Tag="en" />
-                            <ComboBoxItem Content="Italiano" Tag="it" />
-                            <ComboBoxItem Content="Français" Tag="fr" />
-                            <ComboBoxItem Content="Deutsch" Tag="de" />
-                            <ComboBoxItem Content="Español" Tag="es" />
-                            <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
+                            <ComboBoxItem Content="English (United States)" Tag="en-US" />
+                            <ComboBoxItem Content="Italiano" Tag="it-IT" />
+                            <ComboBoxItem Content="Français" Tag="fr-FR" />
+                            <ComboBoxItem Content="Deutsch" Tag="de-DE" />
+                            <ComboBoxItem Content="Español" Tag="es-ES" />
+                            <ComboBoxItem Content="简体中文" Tag="zh-Hans" />
+                            <ComboBoxItem Content="Tiếng Việt" Tag="vi-VN" />
+                            <ComboBoxItem Content="한국어" Tag="ko-KR" />
+                            <ComboBoxItem Content="Português (Portugal)" Tag="pt-PT" />
+                            <ComboBoxItem Content="Português (Brasil)" Tag="pt-BR" />
                         </ComboBox>
 
                         <Border Height="1" Margin="0,4,0,0" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
@@ -618,12 +627,16 @@
                     </StackPanel>
                     <ComboBox x:Name="SearchLanguageBox" Tag="Options.Search.Language" HorizontalAlignment="Stretch" Header="Search language">
                         <ComboBoxItem Content="System" Tag="system" />
-                        <ComboBoxItem Content="English" Tag="en" />
-                        <ComboBoxItem Content="Italiano" Tag="it" />
-                        <ComboBoxItem Content="Français" Tag="fr" />
-                        <ComboBoxItem Content="Deutsch" Tag="de" />
-                        <ComboBoxItem Content="Español" Tag="es" />
-                        <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
+                        <ComboBoxItem Content="English (United States)" Tag="en-US" />
+                        <ComboBoxItem Content="Italiano" Tag="it-IT" />
+                        <ComboBoxItem Content="Français" Tag="fr-FR" />
+                        <ComboBoxItem Content="Deutsch" Tag="de-DE" />
+                        <ComboBoxItem Content="Español" Tag="es-ES" />
+                        <ComboBoxItem Content="简体中文" Tag="zh-Hans" />
+                        <ComboBoxItem Content="Tiếng Việt" Tag="vi-VN" />
+                        <ComboBoxItem Content="한국어" Tag="ko-KR" />
+                        <ComboBoxItem Content="Português (Portugal)" Tag="pt-PT" />
+                        <ComboBoxItem Content="Português (Brasil)" Tag="pt-BR" />
                     </ComboBox>
                     <Grid MinHeight="44" ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
@@ -718,12 +731,15 @@
                     </Grid>
                     <ComboBox x:Name="OcrLanguageBox" Tag="Options.Ocr.Language" HorizontalAlignment="Stretch" Header="OCR language">
                         <ComboBoxItem Content="System" Tag="system" />
-                        <ComboBoxItem Content="English" Tag="en" />
-                        <ComboBoxItem Content="Italiano" Tag="it" />
-                        <ComboBoxItem Content="Français" Tag="fr" />
-                        <ComboBoxItem Content="Deutsch" Tag="de" />
-                        <ComboBoxItem Content="Español" Tag="es" />
-                        <ComboBoxItem Content="Tiếng Việt" Tag="vi" />
+                        <ComboBoxItem Content="English (United States)" Tag="en-US" />
+                        <ComboBoxItem Content="Italiano" Tag="it-IT" />
+                        <ComboBoxItem Content="Français" Tag="fr-FR" />
+                        <ComboBoxItem Content="Deutsch" Tag="de-DE" />
+                        <ComboBoxItem Content="Español" Tag="es-ES" />
+                        <ComboBoxItem Content="简体中文" Tag="zh-CN" />
+                        <ComboBoxItem Content="한국어" Tag="ko-KR" />
+                        <ComboBoxItem Content="Português (Portugal)" Tag="pt-PT" />
+                        <ComboBoxItem Content="Português (Brasil)" Tag="pt-BR" />
                     </ComboBox>
                     <TextBlock
                         Tag="Options.Ocr.Restart"
@@ -751,13 +767,13 @@
                             VerticalAlignment="Center"
                             Tag="Options.OpenAi.Header"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="AI provider"
+                            Text="AI features"
                             TextWrapping="Wrap" />
                         <ToggleSwitch
                             x:Name="OpenAiEnabledSwitch"
                             Grid.Column="1"
                             VerticalAlignment="Center"
-                            AutomationProperties.Name="AI provider"
+                            AutomationProperties.Name="AI features"
                             IsEnabled="{Binding CanToggle, Mode=OneWay}"
                             IsOn="{Binding Enabled, Mode=OneWay}"
                             OffContent=""
@@ -835,6 +851,48 @@
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Text="Only AI descriptions created successfully count toward this quota. It resets at local midnight: new descriptions resume then; screenshots already saved without one are not reprocessed automatically."
                                     TextWrapping="Wrap" />
+                                <Expander
+                                    x:Name="AiDailyLimitExpander"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    AutomationProperties.Name="Set daily processing limit"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
+                                    SizeChanged="AiDailyLimitExpander_SizeChanged">
+                                    <Expander.Header>
+                                        <TextBlock
+                                            x:Name="AiDailyLimitActionText"
+                                            Tag="Options.AiQuota.Configure"
+                                            Style="{StaticResource BodyTextBlockStyle}"
+                                            Text="Set daily processing limit" />
+                                    </Expander.Header>
+                                    <StackPanel Padding="0,2,0,6" Spacing="8">
+                                        <NumberBox
+                                            x:Name="AiDailyLimitBox"
+                                            Tag="Options.AiQuota.Limit"
+                                            AutomationProperties.Name="Screenshots processed per day"
+                                            Header="Screenshots processed per day"
+                                            Minimum="0"
+                                            Maximum="400"
+                                            SmallChange="1"
+                                            SpinButtonPlacementMode="Inline"
+                                            Value="20" />
+                                        <TextBlock
+                                            x:Name="AiDailyLimitHintText"
+                                            Tag="Options.AiQuota.LimitHint"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="Choose from 0 to 400. Set 0 to pause AI processing."
+                                            TextWrapping="Wrap" />
+                                        <Button
+                                            x:Name="SaveAiDailyLimitButton"
+                                            Tag="Options.AiQuota.Save"
+                                            HorizontalAlignment="Stretch"
+                                            Click="SaveAiDailyLimitButton_Click"
+                                            Content="Save daily limit" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -1004,7 +1062,8 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="AiAdvancedButton_Click"
-                        Padding="4,8">
+                        Padding="4,8"
+                        Tag="Options.Advanced">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -1067,7 +1126,8 @@
                         HorizontalAlignment="Stretch"
                         AutomationProperties.Name="Test AI connection"
                         Click="TestConnectionButton_Click"
-                        Content="Test connection" />
+                        Content="Test connection"
+                        Tag="Options.AiConnection.Test" />
                 </Grid>
                 <TextBlock
                     x:Name="StatusText"

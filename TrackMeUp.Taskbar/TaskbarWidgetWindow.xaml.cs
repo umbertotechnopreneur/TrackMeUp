@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -20,6 +21,7 @@ public sealed partial class TaskbarWidgetWindow : Window
     private bool _refreshInProgress;
     private bool _updatingSpanLabel;
     private bool _spanLabelSaveInProgress;
+    private bool _isTracking;
     private LocalizationService _strings = new("system");
 
     /// <summary>Initializes the transparent taskbar control.</summary>
@@ -27,6 +29,7 @@ public sealed partial class TaskbarWidgetWindow : Window
     {
         _application = application;
         InitializeComponent();
+        ApplyLocalization();
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _refreshTimer.Tick += RefreshTimer_Tick;
@@ -63,6 +66,7 @@ public sealed partial class TaskbarWidgetWindow : Window
     internal void ApplySettings(AppSettings settings)
     {
         _strings = new LocalizationService(settings.UiLanguage);
+        ApplyLocalization();
         var isLight = settings.Theme == "light";
         var foreground = new SolidColorBrush(isLight
             ? Color.FromRgb(23, 59, 63)
@@ -117,6 +121,7 @@ public sealed partial class TaskbarWidgetWindow : Window
 
     private void UpdateWidget(DashboardState state)
     {
+        _isTracking = state.IsTracking;
         PlayPauseIcon.Text = state.IsTracking ? "\uE769" : "\uE768";
         var actionName = _strings.Translate(state.IsTracking ? "TrackingActionPause" : "TrackingActionStart");
         TrackingButton.ToolTip = actionName;
@@ -126,6 +131,19 @@ public sealed partial class TaskbarWidgetWindow : Window
         {
             SetSpanLabelText(state.SpanLabel);
         }
+    }
+
+    private void ApplyLocalization()
+    {
+        Title = _strings.Translate("Taskbar.WindowTitle");
+        RootGrid.Language = XmlLanguage.GetLanguage(_strings.Language);
+        var openLabel = _strings.Translate("Taskbar.Open");
+        OpenFlyoutButton.ToolTip = openLabel;
+        AutomationProperties.SetName(OpenFlyoutButton, openLabel);
+        SpanLabelWatermark.Text = _strings.Translate("Taskbar.SpanLabel");
+        AutomationProperties.SetName(SpanLabelTextBox, _strings.Translate("Taskbar.SpanLabel"));
+        SpanLabelTextBox.ToolTip = _strings.Translate("Taskbar.SpanLabel.Tooltip");
+        SetRecordingVisual(_isTracking);
     }
 
     private void SpanLabelTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -189,14 +207,14 @@ public sealed partial class TaskbarWidgetWindow : Window
         {
             RecordingLed.Fill = new SolidColorBrush(Color.FromRgb(119, 128, 141));
             RecordingGlow.Opacity = 0;
-            RecordingIndicator.ToolTip = _strings.Translate("StatePaused");
-            AutomationProperties.SetName(RecordingIndicator, _strings.Translate("StatePaused"));
+            RecordingIndicator.ToolTip = _strings.Translate("Taskbar.State.Paused");
+            AutomationProperties.SetName(RecordingIndicator, _strings.Translate("Taskbar.State.Paused"));
             return;
         }
 
         RecordingLed.Fill = new SolidColorBrush(Color.FromRgb(244, 61, 75));
-        RecordingIndicator.ToolTip = _strings.Translate("StateRunning");
-        AutomationProperties.SetName(RecordingIndicator, _strings.Translate("StateRunning"));
+        RecordingIndicator.ToolTip = _strings.Translate("Taskbar.State.Running");
+        AutomationProperties.SetName(RecordingIndicator, _strings.Translate("Taskbar.State.Running"));
         RecordingGlow.BeginAnimation(
             OpacityProperty,
             new DoubleAnimation

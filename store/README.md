@@ -13,7 +13,7 @@ The editorial source of truth is [`listing.json`](listing.json). It keeps the pr
 - Privacy policy: <https://github.com/umbertotechnopreneur/TrackMeUp/blob/main/docs/PRIVACY.md>
 - Support: <https://github.com/umbertotechnopreneur/TrackMeUp/issues>
 
-The first copy is available in English (`en-US`) and Italian (`it-IT`). The listing intentionally explains that TrackMeUp is an internal tool we use ourselves, that it is a working product rather than an MVP, and that its source code, local-first design, and optional AI and screen-capture features are part of the product promise.
+The listing copy is available in English (`en-US`), Italian (`it-IT`), French (`fr-FR`), German (`de-DE`), Spanish (`es-ES`), Simplified Chinese (`zh-Hans`), Vietnamese (`vi-VN`), Korean (`ko-KR`), European Portuguese (`pt-PT`), and Brazilian Portuguese (`pt-BR`). It intentionally explains that TrackMeUp is an internal tool we use ourselves, that it is a working product rather than an MVP, and that its source code, local-first design, and optional AI and screen-capture features are part of the product promise.
 
 ## Screenshots
 

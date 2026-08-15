@@ -61,6 +61,10 @@ TrackMeUp does **not** store the content of what you type. It retains only non-c
 
 The desktop experience is paired with a PowerShell-friendly CLI, so the same application behavior is available to people and automation without creating a second tracking runtime.
 
+The desktop app, reports, and human-readable CLI output can follow the Windows language or use `en-US`, `it-IT`, `fr-FR`, `de-DE`, `es-ES`, `zh-Hans`, `vi-VN`, `ko-KR`, `pt-PT`, or `pt-BR`. European and Brazilian Portuguese use separate product catalogs.
+
+Display, search, and OCR languages are configured independently. Search supports every product locale; OCR offers only the corresponding Windows recognizer choices and requires the selected language pack to be installed. Vietnamese remains available for the interface and search but is not offered as a Windows OCR language.
+
 ## Privacy you can act on
 
 <p align="center">
@@ -160,7 +164,7 @@ Global output and safety switches can be combined with a command or quick switch
 | Switch | Purpose |
 | --- | --- |
 | `--format <rich|plain|json>` / `--json` | Select interactive, plain-text, or machine-readable output. |
-| `--language <system|en|it|vi|fr|de|es>` | Select the CLI display language. |
+| `--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>` | Select the CLI display locale. Language-only legacy values such as `en`, `pt`, and `zh` are rejected. |
 | `--no-color`, `--no-emoji`, `--no-animation` | Adapt rendering for a terminal or accessibility preference. |
 | `--quiet`, `--verbose` | Reduce successful output or add diagnostics in plain mode. |
 | `--yes` | Explicitly confirm a command that requires confirmation. |
@@ -193,13 +197,15 @@ Quick Setup validation checklist:
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
 - [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
 - [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
-- [ ] In Italian, open Local search/OCR, Operations, and the AI provider connection test: every heading, action, result banner, and dialog control is localized, with no raw result codes shown to the user.
-- [ ] In AI options, the daily successful-description quota clearly shows used versus configured capacity, available/limit-reached state, an accessible progress indicator, local-midnight reset semantics, and that historical captures are not reprocessed automatically.
+- [ ] In each supported non-English locale, open Local search/OCR, Operations, and the AI provider connection test: every heading, action, result banner, and dialog control is localized, with no raw result codes shown to the user.
+- [ ] In AI options, the daily visual-provider-request quota remains visible before and after the limit is reached; it counts AI OCR refinement plus successful and failed visual-analysis attempts while excluding connection tests, its expander accepts and persists only whole values from 0 through 400 (default 20), and it refreshes used versus configured capacity, accessible progress, and limit state.
 - [ ] Take a manual snapshot near the end of its deletion window: the localized delete label may trim, but the complete `mm:ss` countdown and the accessible delete action remain visible and correct.
 - [ ] From **Activity > Activity calendar**, recorded days are marked in the rolling twelve-month calendar; selecting a day shows its exact 0–100 activity-intensity score and the active, idle, tracked, keyboard, and mouse totals, while a date without samples remains explicitly marked as no data.
+- [ ] From a selected calendar day, open **Reprocess missing AI descriptions**: the Acrylic preflight shows the exact screenshot, acquisition, maximum-request, exclusion, and current-quota counts without contacting the provider; starting creates only the quota-bounded work shown, progress reports completed and remaining screenshots/acquisitions, Pause stops before the next provider request, Close leaves the durable job running, and reopening the calendar restores the active job.
 - [ ] With AI descriptions and OCR refinement enabled, an incomplete OCR-provider response is recorded as a failed refinement but the raw OCR remains available and the visual screenshot description is still requested and saved.
 - [ ] With a full day of retained captures, opening **Captured moments** keeps pointer and window interaction responsive while the cancellable gallery projection loads in the background; each capture still shows only the activity from its own interval.
 - [ ] With a large retained screenshot history, opening local search remains responsive and its availability summary appears without loading OCR, AI, activity, or thumbnail metadata for every capture.
+- [ ] Starting search-index reconstruction first paints the complete Mica progress window, then performs indexing without freezing its progress indicators or Cancel action.
 - [ ] While tracking a large activity history, keep the main dashboard open through several system samples and one screenshot: counters continue updating while repeated one-second refreshes do not rescan SQLite history or make pointer input stutter.
 - [ ] Starting TrackMeUp while tracking is disabled shows one Windows notification explaining that the app started paused and is not recording.
 - [ ] When an OS or file-system screenshot capture fails, a Windows notification shows the localized failure title and the captured exception details.

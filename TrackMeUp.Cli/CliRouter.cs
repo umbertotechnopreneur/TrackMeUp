@@ -189,7 +189,7 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
                     variable = status.Value.KeyVariable;
                 }
-                var secret = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]API key:[/] ").Secret());
+                var secret = AnsiConsole.Prompt(new TextPrompt<string>($"[yellow]{Markup.Escape(_output.Text("prompt.apiKey"))}:[/] ").Secret());
                 try { return await WriteAsync(_application.SetAiKeyAsync(variable, secret, cancellationToken)); }
                 finally
                 {
@@ -258,9 +258,15 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
                 return await SetSettingAsync(arguments[2], arguments[3], cancellationToken);
             case "wizard":
                 if (Console.IsInputRedirected) return InvalidCommand();
-                var language = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[cyan]Language[/]").AddChoices("system", "en", "it", "vi", "fr", "de", "es"));
-                var theme = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[cyan]Theme[/]").AddChoices("system", "light", "dark"));
-                var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { ["language"] = language, ["theme"] = theme }), cancellationToken);
+                var language = AnsiConsole.Prompt(new SelectionPrompt<WizardChoice>()
+                    .Title($"[cyan]{Markup.Escape(_output.Text("language"))}[/]")
+                    .UseConverter(choice => choice.Label)
+                    .AddChoices(LanguageWizardChoices(_output)));
+                var theme = AnsiConsole.Prompt(new SelectionPrompt<WizardChoice>()
+                    .Title($"[cyan]{Markup.Escape(_output.Text("theme"))}[/]")
+                    .UseConverter(choice => choice.Label)
+                    .AddChoices(ThemeWizardChoices(_output)));
+                var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { ["language"] = language.Value, ["theme"] = theme.Value }), cancellationToken);
                 return WriteSettingsResult(result, ["language", "theme"]);
             default: return InvalidCommand();
         }
@@ -395,7 +401,7 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
             var action = AnsiConsole.Prompt(
                 new SelectionPrompt<ShellAction>()
-                    .Title("[bold cyan]Choose an action[/] [grey](↑↓ then Enter)[/]")
+                    .Title($"[bold cyan]{Markup.Escape(_output.Text("shell.chooseAction"))}[/]")
                     .HighlightStyle(new Style(Color.Teal))
                     .UseConverter(item => item.Label)
                     .PageSize(12)
@@ -434,34 +440,34 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
                 await DispatchAsync(action.Command, cancellationToken);
             }
 
-            AnsiConsole.Prompt(new TextPrompt<string>("[grey]Press Enter to return to the command center[/]").AllowEmpty());
+            AnsiConsole.Prompt(new TextPrompt<string>($"[grey]{Markup.Escape(_output.Text("shell.return"))}[/]").AllowEmpty());
         }
 
         return 130;
     }
 
-    private static IReadOnlyList<ShellAction> BuildShellActions(DashboardState? dashboard, AiStatus? aiStatus)
+    private IReadOnlyList<ShellAction> BuildShellActions(DashboardState? dashboard, AiStatus? aiStatus)
     {
         var trackingAction = dashboard?.IsTracking == true
-            ? new ShellAction("pause", "Pause activity tracking", ["tracking", "pause"])
-            : new ShellAction("start", "Start activity tracking", ["tracking", "start"]);
+            ? new ShellAction("pause", _output.Text("action.pause"), ["tracking", "pause"])
+            : new ShellAction("start", _output.Text("action.start"), ["tracking", "start"]);
         var aiAction = aiStatus?.Enabled == true
-            ? new ShellAction("ai-off", "Disable AI analysis", ["ai", "disable"])
-            : new ShellAction("ai-on", "Enable the configured AI provider", ["ai", "enable"]);
+            ? new ShellAction("ai-off", _output.Text("action.aiOff"), ["ai", "disable"])
+            : new ShellAction("ai-on", _output.Text("action.aiOn"), ["ai", "enable"]);
         return
         [
-            new ShellAction("refresh", "Refresh live workspace"),
+            new ShellAction("refresh", _output.Text("action.refresh")),
             trackingAction,
-            new ShellAction("toggle", "Toggle activity tracking", ["tracking", "toggle"]),
+            new ShellAction("toggle", _output.Text("action.toggle"), ["tracking", "toggle"]),
             aiAction,
-            new ShellAction("capture", "Capture a privacy-checked screenshot", ["screenshot", "capture"]),
-            new ShellAction("report", "Generate today's activity report", ["report", "today"]),
-            new ShellAction("doctor", "Run read-only diagnostics", ["doctor"]),
-            new ShellAction("settings", "Open the settings wizard", ["config", "wizard"]),
-            new ShellAction("open", "Open the TrackMeUp desktop app", ["open", "ui"]),
-            new ShellAction("help", "Browse all commands and switches"),
-            new ShellAction("command", "Enter an advanced command"),
-            new ShellAction("exit", "Exit")
+            new ShellAction("capture", _output.Text("action.capture"), ["screenshot", "capture"]),
+            new ShellAction("report", _output.Text("action.report"), ["report", "today"]),
+            new ShellAction("doctor", _output.Text("action.doctor"), ["doctor"]),
+            new ShellAction("settings", _output.Text("action.settings"), ["config", "wizard"]),
+            new ShellAction("open", _output.Text("action.open"), ["open", "ui"]),
+            new ShellAction("help", _output.Text("action.help")),
+            new ShellAction("command", _output.Text("action.command")),
+            new ShellAction("exit", _output.Text("action.exit"))
         ];
     }
 
@@ -512,7 +518,9 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
                 if (!next.Succeeded || next.Value is null)
                 {
                     code = next.Succeeded ? 0 : ExitCodeMapper.Map(next.Code);
-                    context.UpdateTarget(new Spectre.Console.Panel(new Spectre.Console.Markup(Spectre.Console.Markup.Escape(next.MessageKey))).BorderColor(Spectre.Console.Color.IndianRed));
+                    context.UpdateTarget(new Spectre.Console.Panel(
+                        new Spectre.Console.Markup(Spectre.Console.Markup.Escape(_output.ResultText(next.MessageKey, next.Succeeded))))
+                        .BorderColor(Spectre.Console.Color.IndianRed));
                     break;
                 }
 
@@ -570,5 +578,22 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
         return tokens;
     }
 
+    internal static IReadOnlyList<WizardChoice> LanguageWizardChoices(CliOutput output) =>
+        CliOptions.SupportedLanguages
+            .Select(value => new WizardChoice(
+                value,
+                value.Equals("system", StringComparison.Ordinal)
+                    ? output.Text("choice.language.system")
+                    : value))
+            .ToArray();
+
+    internal static IReadOnlyList<WizardChoice> ThemeWizardChoices(CliOutput output) =>
+    [
+        new("system", output.Text("choice.theme.system")),
+        new("light", output.Text("choice.theme.light")),
+        new("dark", output.Text("choice.theme.dark"))
+    ];
+
+    internal sealed record WizardChoice(string Value, string Label);
     private sealed record ShellAction(string Id, string Label, IReadOnlyList<string>? Command = null);
 }

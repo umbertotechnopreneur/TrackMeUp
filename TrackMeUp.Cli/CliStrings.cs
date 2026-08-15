@@ -1,54 +1,213 @@
 namespace TrackMeUp.Cli;
 
+using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
 using TrackMeUp.Services;
 
-/// <summary>Provides the compact CLI text catalog without exposing translated text to automation contracts.</summary>
+/// <summary>Provides the complete CLI-owned text catalog without changing automation tokens.</summary>
 internal static class CliStrings
 {
-    private static readonly IReadOnlyDictionary<string, string> English = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["ok"] = "OK",
-        ["error"] = "ERROR",
-        ["usage"] = "Usage",
-        ["commands"] = "Commands",
-        ["globalOptions"] = "Global options",
-        ["metric"] = "Metric",
-        ["value"] = "Value",
-        ["state"] = "State",
-        ["context"] = "Context",
-        ["keys"] = "Keys",
-        ["clicks"] = "Clicks",
-        ["activeSeconds"] = "Active seconds",
-        ["intensity"] = "Intensity",
-        ["statusTitle"] = "TrackMeUp status",
-        ["memory"] = "Memory",
-        ["network"] = "Network",
-        ["systemSnapshot"] = "System snapshot",
-        ["settings"] = "Settings",
-        ["setting"] = "Setting",
-        ["type"] = "Type",
-        ["allowed"] = "Allowed values",
-        ["restart"] = "Restart",
-        ["yes"] = "yes",
-        ["no"] = "no",
-        ["notAvailable"] = "n/a"
-    };
+    private static readonly string[] Locales = [.. ProductLanguageCatalog.UiLocales];
 
-    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Catalog =
-        new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyDictionary<string, string> CultureNames =
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["en"] = English,
-            ["it"] = new Dictionary<string, string>(English) { ["ok"] = "OK", ["error"] = "ERRORE", ["usage"] = "Uso", ["commands"] = "Comandi", ["globalOptions"] = "Opzioni globali", ["metric"] = "Metrica", ["value"] = "Valore", ["state"] = "Stato", ["context"] = "Contesto", ["keys"] = "Tasti", ["clicks"] = "Click", ["activeSeconds"] = "Secondi attivi", ["intensity"] = "Intensità", ["statusTitle"] = "Stato TrackMeUp", ["memory"] = "Memoria", ["network"] = "Rete", ["systemSnapshot"] = "Snapshot del sistema", ["notAvailable"] = "n/d" },
-            ["vi"] = new Dictionary<string, string>(English) { ["error"] = "LỖI", ["usage"] = "Cách dùng", ["commands"] = "Lệnh", ["globalOptions"] = "Tùy chọn chung", ["metric"] = "Chỉ số", ["value"] = "Giá trị", ["state"] = "Trạng thái", ["context"] = "Ngữ cảnh", ["keys"] = "Phím", ["clicks"] = "Lần nhấp", ["activeSeconds"] = "Giây hoạt động", ["intensity"] = "Cường độ", ["statusTitle"] = "Trạng thái TrackMeUp", ["memory"] = "Bộ nhớ", ["network"] = "Mạng", ["systemSnapshot"] = "Ảnh chụp hệ thống", ["notAvailable"] = "không có" },
-            ["fr"] = new Dictionary<string, string>(English) { ["error"] = "ERREUR", ["usage"] = "Utilisation", ["commands"] = "Commandes", ["globalOptions"] = "Options globales", ["metric"] = "Mesure", ["value"] = "Valeur", ["state"] = "État", ["context"] = "Contexte", ["keys"] = "Touches", ["clicks"] = "Clics", ["activeSeconds"] = "Secondes actives", ["intensity"] = "Intensité", ["statusTitle"] = "État TrackMeUp", ["memory"] = "Mémoire", ["network"] = "Réseau", ["systemSnapshot"] = "Instantané système", ["notAvailable"] = "n/d" },
-            ["de"] = new Dictionary<string, string>(English) { ["error"] = "FEHLER", ["usage"] = "Verwendung", ["commands"] = "Befehle", ["globalOptions"] = "Globale Optionen", ["metric"] = "Metrik", ["value"] = "Wert", ["state"] = "Status", ["context"] = "Kontext", ["keys"] = "Tasten", ["clicks"] = "Klicks", ["activeSeconds"] = "Aktive Sekunden", ["intensity"] = "Intensität", ["statusTitle"] = "TrackMeUp-Status", ["memory"] = "Arbeitsspeicher", ["network"] = "Netzwerk", ["systemSnapshot"] = "System-Snapshot", ["notAvailable"] = "k. A." },
-            ["es"] = new Dictionary<string, string>(English) { ["error"] = "ERROR", ["usage"] = "Uso", ["commands"] = "Comandos", ["globalOptions"] = "Opciones globales", ["metric"] = "Métrica", ["value"] = "Valor", ["state"] = "Estado", ["context"] = "Contexto", ["keys"] = "Teclas", ["clicks"] = "Clics", ["activeSeconds"] = "Segundos activos", ["intensity"] = "Intensidad", ["statusTitle"] = "Estado de TrackMeUp", ["memory"] = "Memoria", ["network"] = "Red", ["systemSnapshot"] = "Instantánea del sistema", ["notAvailable"] = "n/d" }
-        };
+            ["en-US"] = "en-US",
+            ["it-IT"] = "it-IT",
+            ["fr-FR"] = "fr-FR",
+            ["de-DE"] = "de-DE",
+            ["es-ES"] = "es-ES",
+            ["zh-Hans"] = "zh-CN",
+            ["vi-VN"] = "vi-VN",
+            ["ko-KR"] = "ko-KR",
+            ["pt-PT"] = "pt-PT",
+            ["pt-BR"] = "pt-BR"
+        });
 
-    /// <summary>Returns the translated CLI string, falling back to its stable key when no catalog entry exists.</summary>
-    internal static string Get(string language, string key) =>
-        Catalog.TryGetValue(LocalizationService.ResolveLanguage(language, CultureInfo.CurrentUICulture), out var languageCatalog) && languageCatalog.TryGetValue(key, out var translated)
-            ? translated
-            : English.TryGetValue(key, out var english) ? english : key;
+    // Values follow ProductLanguageCatalog.UiLocales. Every row is parity-checked at startup.
+    private static readonly IReadOnlyDictionary<string, string[]> Catalog =
+        new ReadOnlyDictionary<string, string[]>(new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["ok"] = ["OK", "OK", "OK", "OK", "OK", "确定", "OK", "확인", "OK", "OK"],
+            ["error"] = ["ERROR", "ERRORE", "ERREUR", "FEHLER", "ERROR", "错误", "LỖI", "오류", "ERRO", "ERRO"],
+            ["warning"] = ["Warning", "Avviso", "Avertissement", "Warnung", "Advertencia", "警告", "Cảnh báo", "경고", "Aviso", "Aviso"],
+            ["usage"] = ["Usage", "Uso", "Utilisation", "Verwendung", "Uso", "用法", "Cách dùng", "사용법", "Utilização", "Uso"],
+            ["commands"] = ["Commands", "Comandi", "Commandes", "Befehle", "Comandos", "命令", "Lệnh", "명령", "Comandos", "Comandos"],
+            ["globalOptions"] = ["Global options", "Opzioni globali", "Options globales", "Globale Optionen", "Opciones globales", "全局选项", "Tùy chọn chung", "전역 옵션", "Opções globais", "Opções globais"],
+            ["metric"] = ["Metric", "Metrica", "Mesure", "Metrik", "Métrica", "指标", "Chỉ số", "지표", "Métrica", "Métrica"],
+            ["value"] = ["Value", "Valore", "Valeur", "Wert", "Valor", "值", "Giá trị", "값", "Valor", "Valor"],
+            ["state"] = ["State", "Stato", "État", "Status", "Estado", "状态", "Trạng thái", "상태", "Estado", "Estado"],
+            ["context"] = ["Context", "Contesto", "Contexte", "Kontext", "Contexto", "上下文", "Ngữ cảnh", "컨텍스트", "Contexto", "Contexto"],
+            ["keys"] = ["Keys", "Tasti", "Touches", "Tasten", "Teclas", "按键", "Phím", "키", "Teclas", "Teclas"],
+            ["clicks"] = ["Clicks", "Clic", "Clics", "Klicks", "Clics", "点击", "Lần nhấp", "클릭", "Cliques", "Cliques"],
+            ["activeSeconds"] = ["Active seconds", "Secondi attivi", "Secondes actives", "Aktive Sekunden", "Segundos activos", "活动秒数", "Giây hoạt động", "활성 시간(초)", "Segundos ativos", "Segundos ativos"],
+            ["intensity"] = ["Intensity", "Intensità", "Intensité", "Intensität", "Intensidad", "强度", "Cường độ", "집중도", "Intensidade", "Intensidade"],
+            ["statusTitle"] = ["TrackMeUp status", "Stato di TrackMeUp", "État de TrackMeUp", "TrackMeUp-Status", "Estado de TrackMeUp", "TrackMeUp 状态", "Trạng thái TrackMeUp", "TrackMeUp 상태", "Estado do TrackMeUp", "Status do TrackMeUp"],
+            ["memory"] = ["Memory", "Memoria", "Mémoire", "Arbeitsspeicher", "Memoria", "内存", "Bộ nhớ", "메모리", "Memória", "Memória"],
+            ["network"] = ["Network", "Rete", "Réseau", "Netzwerk", "Red", "网络", "Mạng", "네트워크", "Rede", "Rede"],
+            ["systemSnapshot"] = ["System snapshot", "Snapshot del sistema", "Instantané système", "System-Snapshot", "Instantánea del sistema", "系统快照", "Ảnh chụp hệ thống", "시스템 스냅샷", "Instantâneo do sistema", "Instantâneo do sistema"],
+            ["settings"] = ["Settings", "Impostazioni", "Paramètres", "Einstellungen", "Configuración", "设置", "Cài đặt", "설정", "Definições", "Configurações"],
+            ["setting"] = ["Setting", "Impostazione", "Paramètre", "Einstellung", "Ajuste", "设置项", "Cài đặt", "설정", "Definição", "Configuração"],
+            ["type"] = ["Type", "Tipo", "Type", "Typ", "Tipo", "类型", "Loại", "유형", "Tipo", "Tipo"],
+            ["allowed"] = ["Allowed values", "Valori consentiti", "Valeurs autorisées", "Zulässige Werte", "Valores permitidos", "允许的值", "Giá trị được phép", "허용 값", "Valores permitidos", "Valores permitidos"],
+            ["restart"] = ["Restart", "Riavvio", "Redémarrage", "Neustart", "Reinicio", "重启", "Khởi động lại", "다시 시작", "Reinício", "Reinicialização"],
+            ["yes"] = ["yes", "sì", "oui", "ja", "sí", "是", "có", "예", "sim", "sim"],
+            ["no"] = ["no", "no", "non", "nein", "no", "否", "không", "아니요", "não", "não"],
+            ["notAvailable"] = ["n/a", "n/d", "n/d", "k. A.", "n/d", "不可用", "không có", "해당 없음", "n/d", "n/d"],
+            ["command"] = ["Command", "Comando", "Commande", "Befehl", "Comando", "命令", "Lệnh", "명령", "Comando", "Comando"],
+            ["whatItDoes"] = ["What it does", "Cosa fa", "Fonction", "Funktion", "Qué hace", "功能", "Chức năng", "기능", "O que faz", "O que faz"],
+            ["quickSwitch"] = ["Quick switch", "Scorciatoia", "Raccourci", "Schnellschalter", "Acceso rápido", "快捷开关", "Lối tắt", "빠른 스위치", "Atalho", "Atalho"],
+            ["action"] = ["Action", "Azione", "Action", "Aktion", "Acción", "操作", "Hành động", "작업", "Ação", "Ação"],
+            ["option"] = ["Option", "Opzione", "Option", "Option", "Opción", "选项", "Tùy chọn", "옵션", "Opção", "Opção"],
+            ["purpose"] = ["Purpose", "Scopo", "Objectif", "Zweck", "Finalidad", "用途", "Mục đích", "용도", "Finalidade", "Finalidade"],
+            ["aliases"] = ["Aliases", "Alias", "Alias", "Aliasse", "Alias", "别名", "Bí danh", "별칭", "Aliases", "Aliases"],
+            ["language"] = ["Language", "Lingua", "Langue", "Sprache", "Idioma", "语言", "Ngôn ngữ", "언어", "Idioma", "Idioma"],
+            ["theme"] = ["Theme", "Tema", "Thème", "Design", "Tema", "主题", "Giao diện", "테마", "Tema", "Tema"],
+            ["choice.language.system"] = ["Windows language", "Lingua di Windows", "Langue de Windows", "Windows-Sprache", "Idioma de Windows", "Windows 语言", "Ngôn ngữ Windows", "Windows 언어", "Idioma do Windows", "Idioma do Windows"],
+            ["choice.theme.system"] = ["System", "Sistema", "Système", "System", "Sistema", "系统", "Hệ thống", "시스템", "Sistema", "Sistema"],
+            ["choice.theme.light"] = ["Light", "Chiaro", "Clair", "Hell", "Claro", "浅色", "Sáng", "밝게", "Claro", "Claro"],
+            ["choice.theme.dark"] = ["Dark", "Scuro", "Sombre", "Dunkel", "Oscuro", "深色", "Tối", "어둡게", "Escuro", "Escuro"],
+            ["help.tagline"] = ["Control the same local TrackMeUp runtime from your terminal.", "Controlla lo stesso runtime locale di TrackMeUp dal terminale.", "Contrôlez la même instance locale de TrackMeUp depuis votre terminal.", "Steuern Sie dieselbe lokale TrackMeUp-Laufzeit über Ihr Terminal.", "Controla el mismo entorno local de TrackMeUp desde el terminal.", "从终端控制同一个本地 TrackMeUp 运行时。", "Điều khiển cùng một tiến trình TrackMeUp cục bộ từ terminal.", "터미널에서 동일한 로컬 TrackMeUp 런타임을 제어합니다.", "Controle a mesma instância local do TrackMeUp a partir do terminal.", "Controle o mesmo runtime local do TrackMeUp pelo terminal."],
+            ["help.slashOptional"] = ["The leading slash is optional for the first command token.", "La barra iniziale è facoltativa per il primo token del comando.", "La barre oblique initiale est facultative pour le premier élément de commande.", "Der führende Schrägstrich ist beim ersten Befehlsteil optional.", "La barra inicial es opcional en el primer elemento del comando.", "第一个命令标记前的斜杠可省略。", "Dấu gạch chéo đầu tiên là tùy chọn cho mã lệnh đầu tiên.", "첫 번째 명령 토큰의 앞 슬래시는 선택 사항입니다.", "A barra inicial é opcional no primeiro elemento do comando.", "A barra inicial é opcional no primeiro token do comando."],
+            ["help.command"] = ["Command help: /help /command or /command --help", "Guida del comando: /help /command oppure /command --help", "Aide d’une commande : /help /command ou /command --help", "Befehlshilfe: /help /command oder /command --help", "Ayuda del comando: /help /command o /command --help", "命令帮助：/help /command 或 /command --help", "Trợ giúp lệnh: /help /command hoặc /command --help", "명령 도움말: /help /command 또는 /command --help", "Ajuda do comando: /help /command ou /command --help", "Ajuda do comando: /help /command ou /command --help"],
+            ["help.quickSwitches"] = ["Quick switches", "Scorciatoie", "Raccourcis", "Schnellschalter", "Accesos rápidos", "快捷开关", "Lối tắt", "빠른 스위치", "Atalhos", "Atalhos"],
+            ["shell.tagline"] = ["Your local activity command center", "Il tuo centro di comando locale per le attività", "Votre centre de commande local pour l’activité", "Ihre lokale Kommandozentrale für Aktivitäten", "Tu centro de mando local de actividad", "你的本地活动控制中心", "Trung tâm điều khiển hoạt động cục bộ", "로컬 활동 명령 센터", "O seu centro de comando local de atividade", "Sua central local de atividades"],
+            ["shell.tracking"] = ["Tracking", "Monitoraggio", "Suivi actif", "Erfassung", "Seguimiento", "正在跟踪", "Đang theo dõi", "추적 중", "A acompanhar", "Rastreando"],
+            ["shell.paused"] = ["Paused", "In pausa", "En pause", "Pausiert", "En pausa", "已暂停", "Đã tạm dừng", "일시 중지됨", "Em pausa", "Pausado"],
+            ["shell.unavailable"] = ["Unavailable", "Non disponibile", "Indisponible", "Nicht verfügbar", "No disponible", "不可用", "Không khả dụng", "사용할 수 없음", "Indisponível", "Indisponível"],
+            ["shell.enabled"] = ["Enabled", "Attiva", "Activée", "Aktiviert", "Activado", "已启用", "Đã bật", "활성화됨", "Ativada", "Ativada"],
+            ["shell.disabled"] = ["Disabled", "Disattiva", "Désactivée", "Deaktiviert", "Desactivado", "已禁用", "Đã tắt", "비활성화됨", "Desativada", "Desativada"],
+            ["shell.signal"] = ["Signal", "Segnale", "Signal", "Signal", "Señal", "信号", "Tín hiệu", "신호", "Sinal", "Sinal"],
+            ["shell.today"] = ["Today", "Oggi", "Aujourd’hui", "Heute", "Hoy", "今天", "Hôm nay", "오늘", "Hoje", "Hoje"],
+            ["shell.ai"] = ["AI", "AI", "IA", "KI", "IA", "AI", "AI", "AI", "IA", "IA"],
+            ["shell.liveWorkspace"] = ["Live workspace", "Area di lavoro in tempo reale", "Espace de travail en direct", "Live-Arbeitsbereich", "Espacio de trabajo en vivo", "实时工作区", "Không gian làm việc trực tiếp", "실시간 작업 공간", "Espaço de trabalho em direto", "Espaço de trabalho ao vivo"],
+            ["shell.chooseAction"] = ["Choose an action (↑↓ then Enter)", "Scegli un’azione (↑↓ poi Invio)", "Choisissez une action (↑↓ puis Entrée)", "Aktion wählen (↑↓, dann Eingabe)", "Elige una acción (↑↓ y después Entrar)", "选择操作（↑↓，然后按 Enter）", "Chọn hành động (↑↓ rồi Enter)", "작업 선택(↑↓ 후 Enter)", "Escolha uma ação (↑↓ e depois Enter)", "Escolha uma ação (↑↓ e depois Enter)"],
+            ["shell.return"] = ["Press Enter to return to the command center", "Premi Invio per tornare al centro di comando", "Appuyez sur Entrée pour revenir au centre de commande", "Eingabetaste drücken, um zur Kommandozentrale zurückzukehren", "Pulsa Entrar para volver al centro de mando", "按 Enter 返回控制中心", "Nhấn Enter để trở lại trung tâm điều khiển", "명령 센터로 돌아가려면 Enter 키를 누르세요", "Prima Enter para regressar ao centro de comando", "Pressione Enter para voltar à central de atividades"],
+            ["prompt.apiKey"] = ["API key", "Chiave API", "Clé API", "API-Schlüssel", "Clave de API", "API 密钥", "Khóa API", "API 키", "Chave da API", "Chave de API"],
+            ["command.status"] = ["Show the live tracking dashboard.", "Mostra la dashboard di monitoraggio in tempo reale.", "Afficher le tableau de bord de suivi en direct.", "Live-Dashboard der Erfassung anzeigen.", "Mostrar el panel de seguimiento en vivo.", "显示实时跟踪仪表板。", "Hiển thị bảng điều khiển theo dõi trực tiếp.", "실시간 추적 대시보드를 표시합니다.", "Mostrar o painel de acompanhamento em direto.", "Mostrar o painel de rastreamento ao vivo."],
+            ["command.runtime"] = ["Inspect the shared runtime endpoint.", "Esamina l’endpoint del runtime condiviso.", "Inspecter le point de terminaison de l’instance partagée.", "Endpunkt der gemeinsamen Laufzeit prüfen.", "Inspeccionar el punto de conexión del entorno compartido.", "检查共享运行时终结点。", "Kiểm tra điểm cuối tiến trình dùng chung.", "공유 런타임 엔드포인트를 검사합니다.", "Inspecionar o ponto final da instância partilhada.", "Inspecionar o endpoint do runtime compartilhado."],
+            ["command.tracking"] = ["Start, pause, or toggle activity tracking.", "Avvia, sospendi o commuta il monitoraggio delle attività.", "Démarrer, suspendre ou basculer le suivi d’activité.", "Aktivitätserfassung starten, pausieren oder umschalten.", "Iniciar, pausar o alternar el seguimiento de actividad.", "启动、暂停或切换活动跟踪。", "Bắt đầu, tạm dừng hoặc chuyển đổi theo dõi hoạt động.", "활동 추적을 시작, 일시 중지 또는 전환합니다.", "Iniciar, pausar ou alternar o acompanhamento de atividade.", "Iniciar, pausar ou alternar o rastreamento de atividades."],
+            ["command.session"] = ["Read recent activity summaries.", "Leggi i riepiloghi delle attività recenti.", "Lire les résumés d’activité récents.", "Zusammenfassungen der letzten Aktivitäten lesen.", "Leer resúmenes de actividad recientes.", "读取最近的活动摘要。", "Đọc tóm tắt hoạt động gần đây.", "최근 활동 요약을 읽습니다.", "Ler resumos de atividade recentes.", "Ler resumos de atividades recentes."],
+            ["command.system"] = ["Capture a CPU, GPU, memory, network, and disk snapshot.", "Acquisisci uno snapshot di CPU, GPU, memoria, rete e dischi.", "Capturer un instantané du processeur, du GPU, de la mémoire, du réseau et des disques.", "Snapshot von CPU, GPU, Arbeitsspeicher, Netzwerk und Datenträgern erfassen.", "Capturar una instantánea de CPU, GPU, memoria, red y discos.", "捕获 CPU、GPU、内存、网络和磁盘快照。", "Chụp nhanh CPU, GPU, bộ nhớ, mạng và ổ đĩa.", "CPU, GPU, 메모리, 네트워크 및 디스크 스냅샷을 캡처합니다.", "Capturar um instantâneo da CPU, GPU, memória, rede e discos.", "Capturar um instantâneo de CPU, GPU, memória, rede e discos."],
+            ["command.screenshot"] = ["Capture or inspect privacy-checked screenshots.", "Acquisisci o esamina screenshot sottoposti ai controlli privacy.", "Capturer ou examiner des captures d’écran contrôlées pour la confidentialité.", "Datenschutzgeprüfte Screenshots erfassen oder prüfen.", "Capturar o inspeccionar capturas de pantalla comprobadas para la privacidad.", "捕获或检查经过隐私校验的屏幕截图。", "Chụp hoặc kiểm tra ảnh màn hình đã qua kiểm tra quyền riêng tư.", "개인정보 보호 검사를 거친 스크린샷을 캡처하거나 검사합니다.", "Capturar ou inspecionar capturas de ecrã verificadas quanto à privacidade.", "Capturar ou inspecionar capturas de tela verificadas quanto à privacidade."],
+            ["command.ai"] = ["Inspect and operate the configured AI integration.", "Esamina e gestisci l’integrazione AI configurata.", "Examiner et utiliser l’intégration d’IA configurée.", "Konfigurierte KI-Integration prüfen und bedienen.", "Inspeccionar y utilizar la integración de IA configurada.", "检查并操作已配置的 AI 集成。", "Kiểm tra và vận hành tích hợp AI đã cấu hình.", "구성된 AI 통합을 검사하고 작동합니다.", "Inspecionar e utilizar a integração de IA configurada.", "Inspecionar e operar a integração de IA configurada."],
+            ["command.report"] = ["Generate activity reports and daily digests.", "Genera report delle attività e riepiloghi giornalieri.", "Générer des rapports d’activité et des synthèses quotidiennes.", "Aktivitätsberichte und Tagesübersichten erstellen.", "Generar informes de actividad y resúmenes diarios.", "生成活动报告和每日摘要。", "Tạo báo cáo hoạt động và bản tóm tắt hằng ngày.", "활동 보고서와 일일 요약을 생성합니다.", "Gerar relatórios de atividade e resumos diários.", "Gerar relatórios de atividades e resumos diários."],
+            ["command.privacy"] = ["List, add, remove, and test privacy rules.", "Elenca, aggiungi, rimuovi e verifica le regole privacy.", "Répertorier, ajouter, supprimer et tester les règles de confidentialité.", "Datenschutzregeln auflisten, hinzufügen, entfernen und testen.", "Listar, añadir, eliminar y probar reglas de privacidad.", "列出、添加、删除和测试隐私规则。", "Liệt kê, thêm, xóa và kiểm tra quy tắc riêng tư.", "개인정보 보호 규칙을 나열, 추가, 제거 및 테스트합니다.", "Listar, adicionar, remover e testar regras de privacidade.", "Listar, adicionar, remover e testar regras de privacidade."],
+            ["command.retention"] = ["Inspect or execute the configured retention policy.", "Esamina o esegui i criteri di conservazione configurati.", "Examiner ou exécuter la stratégie de conservation configurée.", "Konfigurierte Aufbewahrungsrichtlinie prüfen oder ausführen.", "Inspeccionar o ejecutar la directiva de conservación configurada.", "检查或执行已配置的保留策略。", "Kiểm tra hoặc thực thi chính sách lưu giữ đã cấu hình.", "구성된 보존 정책을 검사하거나 실행합니다.", "Inspecionar ou executar a política de retenção configurada.", "Inspecionar ou executar a política de retenção configurada."],
+            ["command.plugins"] = ["Inspect and toggle application-context providers.", "Esamina e commuta i provider del contesto applicativo.", "Examiner et basculer les fournisseurs de contexte applicatif.", "Anbieter für Anwendungskontext prüfen und umschalten.", "Inspeccionar y alternar proveedores de contexto de la aplicación.", "检查和切换应用上下文提供程序。", "Kiểm tra và chuyển đổi nhà cung cấp ngữ cảnh ứng dụng.", "애플리케이션 컨텍스트 공급자를 검사하고 전환합니다.", "Inspecionar e alternar fornecedores de contexto da aplicação.", "Inspecionar e alternar provedores de contexto do aplicativo."],
+            ["command.config"] = ["Read or patch whitelisted application settings.", "Leggi o modifica le impostazioni dell’applicazione consentite.", "Lire ou modifier les paramètres d’application autorisés.", "Zugelassene Anwendungseinstellungen lesen oder ändern.", "Leer o modificar ajustes permitidos de la aplicación.", "读取或修改允许的应用设置。", "Đọc hoặc sửa cài đặt ứng dụng trong danh sách cho phép.", "허용 목록의 애플리케이션 설정을 읽거나 수정합니다.", "Ler ou alterar definições permitidas da aplicação.", "Ler ou alterar configurações permitidas do aplicativo."],
+            ["command.startup"] = ["Inspect or change Windows startup registration.", "Esamina o modifica la registrazione all’avvio di Windows.", "Examiner ou modifier l’inscription au démarrage de Windows.", "Windows-Autostartregistrierung prüfen oder ändern.", "Inspeccionar o cambiar el registro de inicio de Windows.", "检查或更改 Windows 启动注册。", "Kiểm tra hoặc thay đổi đăng ký khởi động Windows.", "Windows 시작 등록을 검사하거나 변경합니다.", "Inspecionar ou alterar o registo de arranque do Windows.", "Inspecionar ou alterar o registro de inicialização do Windows."],
+            ["command.open"] = ["Open a safe application surface or managed folder.", "Apri una superficie sicura dell’applicazione o una cartella gestita.", "Ouvrir une surface sûre de l’application ou un dossier géré.", "Sichere Anwendungsoberfläche oder verwalteten Ordner öffnen.", "Abrir una superficie segura de la aplicación o una carpeta administrada.", "打开安全的应用界面或托管文件夹。", "Mở bề mặt ứng dụng an toàn hoặc thư mục được quản lý.", "안전한 애플리케이션 화면 또는 관리 폴더를 엽니다.", "Abrir uma área segura da aplicação ou uma pasta gerida.", "Abrir uma área segura do aplicativo ou uma pasta gerenciada."],
+            ["command.about"] = ["Show product, license, and safe link information.", "Mostra informazioni sul prodotto, sulla licenza e sui link sicuri.", "Afficher les informations sur le produit, la licence et les liens sûrs.", "Produkt-, Lizenz- und sichere Linkinformationen anzeigen.", "Mostrar información del producto, la licencia y enlaces seguros.", "显示产品、许可证和安全链接信息。", "Hiển thị thông tin sản phẩm, giấy phép và liên kết an toàn.", "제품, 라이선스 및 안전한 링크 정보를 표시합니다.", "Mostrar informações do produto, licença e ligações seguras.", "Mostrar informações do produto, da licença e de links seguros."],
+            ["command.doctor"] = ["Run a read-only diagnostic sweep through the application facade.", "Esegui una diagnostica di sola lettura tramite la facciata dell’applicazione.", "Exécuter un diagnostic en lecture seule via la façade de l’application.", "Schreibgeschützte Diagnose über die Anwendungsfassade ausführen.", "Ejecutar un diagnóstico de solo lectura mediante la fachada de la aplicación.", "通过应用外观运行只读诊断。", "Chạy chẩn đoán chỉ đọc thông qua giao diện ứng dụng.", "애플리케이션 파사드를 통해 읽기 전용 진단을 실행합니다.", "Executar um diagnóstico só de leitura através da fachada da aplicação.", "Executar um diagnóstico somente leitura pela fachada do aplicativo."],
+            ["command.version"] = ["Show CLI and runtime protocol versions without starting the runtime.", "Mostra le versioni della CLI e del protocollo senza avviare il runtime.", "Afficher les versions de la CLI et du protocole sans démarrer l’instance.", "CLI- und Protokollversionen anzeigen, ohne die Laufzeit zu starten.", "Mostrar las versiones de la CLI y del protocolo sin iniciar el entorno.", "在不启动运行时的情况下显示 CLI 和协议版本。", "Hiển thị phiên bản CLI và giao thức mà không khởi động tiến trình.", "런타임을 시작하지 않고 CLI 및 프로토콜 버전을 표시합니다.", "Mostrar as versões da CLI e do protocolo sem iniciar a instância.", "Mostrar as versões da CLI e do protocolo sem iniciar o runtime."],
+            ["command.help"] = ["Show general or command-specific help without starting the runtime.", "Mostra la guida generale o di un comando senza avviare il runtime.", "Afficher l’aide générale ou propre à une commande sans démarrer l’instance.", "Allgemeine oder befehlsspezifische Hilfe anzeigen, ohne die Laufzeit zu starten.", "Mostrar ayuda general o específica de un comando sin iniciar el entorno.", "在不启动运行时的情况下显示常规或命令帮助。", "Hiển thị trợ giúp chung hoặc theo lệnh mà không khởi động tiến trình.", "런타임을 시작하지 않고 일반 또는 명령별 도움말을 표시합니다.", "Mostrar ajuda geral ou específica de um comando sem iniciar a instância.", "Mostrar ajuda geral ou específica de um comando sem iniciar o runtime."],
+            ["detail.jsonSnapshot"] = ["JSON output supports a single snapshot only.", "L’output JSON supporta un solo snapshot.", "La sortie JSON ne prend en charge qu’un seul instantané.", "Die JSON-Ausgabe unterstützt nur einen einzelnen Snapshot.", "La salida JSON solo admite una instantánea.", "JSON 输出仅支持单个快照。", "Đầu ra JSON chỉ hỗ trợ một ảnh chụp nhanh.", "JSON 출력은 단일 스냅샷만 지원합니다.", "A saída JSON suporta apenas um instantâneo.", "A saída JSON aceita apenas um instantâneo."],
+            ["detail.runtime"] = ["Reports protocol, ownership, version, advertised capabilities, local logging, and redacted error-reporting status.", "Mostra protocollo, proprietà, versione, funzionalità dichiarate, registrazione locale e stato oscurato della segnalazione errori.", "Indique le protocole, le propriétaire, la version, les capacités annoncées, la journalisation locale et l’état expurgé du signalement des erreurs.", "Zeigt Protokoll, Eigentümerschaft, Version, angekündigte Funktionen, lokale Protokollierung und bereinigten Fehlerberichtstatus.", "Muestra el protocolo, la propiedad, la versión, las capacidades anunciadas, el registro local y el estado redactado de informes de errores.", "报告协议、所有权、版本、声明的功能、本地日志和脱敏后的错误报告状态。", "Báo cáo giao thức, quyền sở hữu, phiên bản, khả năng được công bố, nhật ký cục bộ và trạng thái báo lỗi đã ẩn dữ liệu.", "프로토콜, 소유권, 버전, 제공 기능, 로컬 로깅 및 가려진 오류 보고 상태를 표시합니다.", "Apresenta protocolo, propriedade, versão, capacidades anunciadas, registo local e estado ocultado dos relatórios de erros.", "Mostra protocolo, propriedade, versão, recursos anunciados, logs locais e status redigido de relatórios de erro."],
+            ["detail.sharedRuntime"] = ["Every action is sent to the single shared runtime.", "Ogni azione viene inviata all’unico runtime condiviso.", "Chaque action est envoyée à l’unique instance partagée.", "Jede Aktion wird an die einzige gemeinsame Laufzeit gesendet.", "Cada acción se envía al único entorno compartido.", "每个操作都会发送到唯一的共享运行时。", "Mọi hành động được gửi đến tiến trình dùng chung duy nhất.", "모든 작업은 단일 공유 런타임으로 전송됩니다.", "Todas as ações são enviadas para a única instância partilhada.", "Todas as ações são enviadas ao único runtime compartilhado."],
+            ["detail.screenshot"] = ["Capture policy and privacy checks remain enforced by the application service.", "I criteri di acquisizione e i controlli privacy restano applicati dal servizio dell’applicazione.", "La stratégie de capture et les contrôles de confidentialité restent appliqués par le service de l’application.", "Erfassungsrichtlinie und Datenschutzprüfungen werden weiterhin vom Anwendungsdienst durchgesetzt.", "El servicio de la aplicación sigue aplicando la política de captura y las comprobaciones de privacidad.", "应用服务仍会强制执行捕获策略和隐私检查。", "Dịch vụ ứng dụng vẫn thực thi chính sách chụp và kiểm tra quyền riêng tư.", "애플리케이션 서비스가 캡처 정책과 개인정보 보호 검사를 계속 적용합니다.", "A política de captura e as verificações de privacidade continuam a ser aplicadas pelo serviço da aplicação.", "A política de captura e as verificações de privacidade continuam sendo aplicadas pelo serviço do aplicativo."],
+            ["detail.aiKey"] = ["The API key is requested with a hidden interactive prompt. Without --variable, the configured AI provider key-variable name is loaded through the application facade. Secret command-line arguments are never accepted.", "La chiave API viene richiesta con un prompt interattivo nascosto. Senza --variable, il nome configurato della variabile della chiave del provider AI viene caricato tramite la facciata dell’applicazione. Gli argomenti segreti nella riga di comando non sono mai accettati.", "La clé API est demandée par une invite interactive masquée. Sans --variable, le nom configuré de la variable de clé du fournisseur d’IA est chargé via la façade de l’application. Les arguments secrets en ligne de commande ne sont jamais acceptés.", "Der API-Schlüssel wird über eine verdeckte interaktive Eingabe abgefragt. Ohne --variable wird der konfigurierte Variablenname für den Schlüssel des KI-Anbieters über die Anwendungsfassade geladen. Geheime Befehlszeilenargumente werden niemals akzeptiert.", "La clave de API se solicita mediante una entrada interactiva oculta. Sin --variable, el nombre configurado de la variable de clave del proveedor de IA se carga mediante la fachada de la aplicación. Nunca se aceptan secretos como argumentos de línea de comandos.", "API 密钥通过隐藏的交互式提示输入。若未使用 --variable，则通过应用外观加载已配置的 AI 提供商密钥变量名。绝不接受包含密钥的命令行参数。", "Khóa API được yêu cầu bằng lời nhắc tương tác ẩn. Nếu không có --variable, tên biến khóa của nhà cung cấp AI đã cấu hình được tải qua giao diện ứng dụng. Không bao giờ chấp nhận bí mật trong đối số dòng lệnh.", "API 키는 숨겨진 대화형 프롬프트로 요청됩니다. --variable이 없으면 구성된 AI 공급자 키 변수 이름을 애플리케이션 파사드를 통해 불러옵니다. 명령줄 비밀 인수는 허용되지 않습니다.", "A chave da API é pedida numa caixa interativa oculta. Sem --variable, o nome configurado da variável da chave do fornecedor de IA é carregado através da fachada da aplicação. Nunca são aceites segredos como argumentos da linha de comandos.", "A chave de API é solicitada em um prompt interativo oculto. Sem --variable, o nome configurado da variável de chave do provedor de IA é carregado pela fachada do aplicativo. Segredos nunca são aceitos como argumentos de linha de comando."],
+            ["detail.retention"] = ["Deletion is rejected unless explicit confirmation is present.", "L’eliminazione viene rifiutata senza una conferma esplicita.", "La suppression est refusée sans confirmation explicite.", "Das Löschen wird ohne ausdrückliche Bestätigung abgelehnt.", "La eliminación se rechaza sin confirmación explícita.", "没有明确确认时将拒绝删除。", "Việc xóa bị từ chối nếu không có xác nhận rõ ràng.", "명시적 확인 없이는 삭제가 거부됩니다.", "A eliminação é recusada sem confirmação explícita.", "A exclusão é recusada sem confirmação explícita."],
+            ["detail.configWritable"] = ["Writable keys: {0}.", "Chiavi modificabili: {0}.", "Clés modifiables : {0}.", "Änderbare Schlüssel: {0}.", "Claves modificables: {0}.", "可写键：{0}。", "Khóa có thể ghi: {0}.", "쓰기 가능한 키: {0}.", "Chaves editáveis: {0}.", "Chaves editáveis: {0}."],
+            ["detail.configExcluded"] = ["Secret values, installation identity, privacy-rule contents, history markers, and accumulated cost state are outside this surface.", "Valori segreti, identità dell’installazione, contenuto delle regole privacy, marcatori cronologici e stato dei costi accumulati non sono disponibili in questa superficie.", "Les valeurs secrètes, l’identité de l’installation, le contenu des règles de confidentialité, les marqueurs d’historique et l’état des coûts cumulés sont exclus de cette interface.", "Geheime Werte, Installationsidentität, Inhalte von Datenschutzregeln, Verlaufsmarkierungen und kumulierter Kostenstatus sind hier nicht verfügbar.", "Los valores secretos, la identidad de instalación, el contenido de las reglas de privacidad, los marcadores del historial y el estado de costes acumulados quedan fuera de esta superficie.", "机密值、安装标识、隐私规则内容、历史标记和累计成本状态不在此界面中提供。", "Giá trị bí mật, danh tính cài đặt, nội dung quy tắc riêng tư, dấu lịch sử và trạng thái chi phí tích lũy không nằm trong bề mặt này.", "비밀 값, 설치 ID, 개인정보 보호 규칙 내용, 기록 표시 및 누적 비용 상태는 이 화면에서 제외됩니다.", "Valores secretos, identidade da instalação, conteúdo das regras de privacidade, marcadores de histórico e estado de custos acumulados não estão disponíveis nesta interface.", "Valores secretos, identidade da instalação, conteúdo das regras de privacidade, marcadores do histórico e estado de custos acumulados não ficam disponíveis nesta interface."],
+            ["detail.doctor"] = ["Checks runtime, local logging and error-reporting status, dashboard, AI, retention, startup, and plugins without printing secrets or private paths.", "Controlla runtime, registrazione locale e stato della segnalazione errori, dashboard, AI, conservazione, avvio e plugin senza stampare segreti o percorsi privati.", "Vérifie l’instance, la journalisation locale et le signalement des erreurs, le tableau de bord, l’IA, la conservation, le démarrage et les extensions sans afficher de secrets ni de chemins privés.", "Prüft Laufzeit, lokale Protokollierung und Fehlerberichtstatus, Dashboard, KI, Aufbewahrung, Autostart und Plugins, ohne Geheimnisse oder private Pfade auszugeben.", "Comprueba el entorno, el registro local y los informes de errores, el panel, la IA, la conservación, el inicio y los complementos sin mostrar secretos ni rutas privadas.", "检查运行时、本地日志和错误报告状态、仪表板、AI、保留策略、启动项和插件，不输出机密或私有路径。", "Kiểm tra tiến trình, nhật ký cục bộ và trạng thái báo lỗi, bảng điều khiển, AI, lưu giữ, khởi động và phần bổ trợ mà không in bí mật hoặc đường dẫn riêng tư.", "비밀이나 개인 경로를 출력하지 않고 런타임, 로컬 로깅 및 오류 보고 상태, 대시보드, AI, 보존, 시작 및 플러그인을 검사합니다.", "Verifica a instância, o registo local e o estado dos relatórios de erros, o painel, a IA, a retenção, o arranque e os plug-ins sem apresentar segredos ou caminhos privados.", "Verifica o runtime, os logs locais e o status de relatórios de erro, o painel, a IA, a retenção, a inicialização e os plugins sem exibir segredos ou caminhos privados."],
+            ["action.start"] = ["Start activity tracking.", "Avvia il monitoraggio delle attività.", "Démarrer le suivi d’activité.", "Aktivitätserfassung starten.", "Iniciar el seguimiento de actividad.", "开始活动跟踪。", "Bắt đầu theo dõi hoạt động.", "활동 추적을 시작합니다.", "Iniciar o acompanhamento de atividade.", "Iniciar o rastreamento de atividades."],
+            ["action.pause"] = ["Pause activity tracking.", "Sospendi il monitoraggio delle attività.", "Suspendre le suivi d’activité.", "Aktivitätserfassung pausieren.", "Pausar el seguimiento de actividad.", "暂停活动跟踪。", "Tạm dừng theo dõi hoạt động.", "활동 추적을 일시 중지합니다.", "Pausar o acompanhamento de atividade.", "Pausar o rastreamento de atividades."],
+            ["action.toggle"] = ["Toggle activity tracking.", "Commuta il monitoraggio delle attività.", "Basculer le suivi d’activité.", "Aktivitätserfassung umschalten.", "Alternar el seguimiento de actividad.", "切换活动跟踪。", "Chuyển đổi theo dõi hoạt động.", "활동 추적을 전환합니다.", "Alternar o acompanhamento de atividade.", "Alternar o rastreamento de atividades."],
+            ["action.aiOn"] = ["Enable the configured AI provider.", "Abilita il provider AI configurato.", "Activer le fournisseur d’IA configuré.", "Konfigurierten KI-Anbieter aktivieren.", "Activar el proveedor de IA configurado.", "启用已配置的 AI 提供商。", "Bật nhà cung cấp AI đã cấu hình.", "구성된 AI 공급자를 활성화합니다.", "Ativar o fornecedor de IA configurado.", "Ativar o provedor de IA configurado."],
+            ["action.aiOff"] = ["Disable AI analysis.", "Disabilita l’analisi AI.", "Désactiver l’analyse par IA.", "KI-Analyse deaktivieren.", "Desactivar el análisis de IA.", "禁用 AI 分析。", "Tắt phân tích AI.", "AI 분석을 비활성화합니다.", "Desativar a análise por IA.", "Desativar a análise de IA."],
+            ["action.capture"] = ["Capture a privacy-checked screenshot.", "Acquisisci uno screenshot sottoposto ai controlli privacy.", "Capturer une image d’écran contrôlée pour la confidentialité.", "Datenschutzgeprüften Screenshot erfassen.", "Capturar una pantalla comprobada para la privacidad.", "捕获经过隐私校验的屏幕截图。", "Chụp ảnh màn hình đã qua kiểm tra quyền riêng tư.", "개인정보 보호 검사를 거친 스크린샷을 캡처합니다.", "Capturar uma imagem de ecrã verificada quanto à privacidade.", "Capturar uma tela verificada quanto à privacidade."],
+            ["action.report"] = ["Generate today's activity report.", "Genera il report delle attività di oggi.", "Générer le rapport d’activité du jour.", "Heutigen Aktivitätsbericht erstellen.", "Generar el informe de actividad de hoy.", "生成今天的活动报告。", "Tạo báo cáo hoạt động hôm nay.", "오늘의 활동 보고서를 생성합니다.", "Gerar o relatório de atividade de hoje.", "Gerar o relatório de atividades de hoje."],
+            ["action.doctor"] = ["Run read-only diagnostics.", "Esegui la diagnostica di sola lettura.", "Exécuter les diagnostics en lecture seule.", "Schreibgeschützte Diagnose ausführen.", "Ejecutar diagnósticos de solo lectura.", "运行只读诊断。", "Chạy chẩn đoán chỉ đọc.", "읽기 전용 진단을 실행합니다.", "Executar diagnósticos só de leitura.", "Executar diagnósticos somente leitura."],
+            ["action.refresh"] = ["Refresh live workspace", "Aggiorna l’area di lavoro in tempo reale", "Actualiser l’espace de travail en direct", "Live-Arbeitsbereich aktualisieren", "Actualizar el espacio de trabajo en vivo", "刷新实时工作区", "Làm mới không gian làm việc trực tiếp", "실시간 작업 공간 새로 고침", "Atualizar o espaço de trabalho em direto", "Atualizar o espaço de trabalho ao vivo"],
+            ["action.settings"] = ["Open the settings wizard", "Apri la procedura guidata delle impostazioni", "Ouvrir l’assistant de configuration", "Einstellungsassistenten öffnen", "Abrir el asistente de configuración", "打开设置向导", "Mở trình hướng dẫn cài đặt", "설정 마법사 열기", "Abrir o assistente de definições", "Abrir o assistente de configurações"],
+            ["action.open"] = ["Open the TrackMeUp desktop app", "Apri l’app desktop TrackMeUp", "Ouvrir l’application de bureau TrackMeUp", "TrackMeUp-Desktop-App öffnen", "Abrir la aplicación de escritorio TrackMeUp", "打开 TrackMeUp 桌面应用", "Mở ứng dụng TrackMeUp trên máy tính", "TrackMeUp 데스크톱 앱 열기", "Abrir a aplicação TrackMeUp para computador", "Abrir o aplicativo TrackMeUp para desktop"],
+            ["action.help"] = ["Browse all commands and switches", "Consulta tutti i comandi e le opzioni", "Parcourir toutes les commandes et options", "Alle Befehle und Schalter durchsuchen", "Consultar todos los comandos y modificadores", "浏览所有命令和开关", "Xem tất cả lệnh và tùy chọn", "모든 명령과 스위치 찾아보기", "Consultar todos os comandos e opções", "Consultar todos os comandos e opções"],
+            ["action.command"] = ["Enter an advanced command", "Inserisci un comando avanzato", "Saisir une commande avancée", "Erweiterten Befehl eingeben", "Introducir un comando avanzado", "输入高级命令", "Nhập lệnh nâng cao", "고급 명령 입력", "Introduzir um comando avançado", "Inserir um comando avançado"],
+            ["action.exit"] = ["Exit", "Esci", "Quitter", "Beenden", "Salir", "退出", "Thoát", "종료", "Sair", "Sair"],
+            ["option.format"] = ["Choose the output contract.", "Scegli il contratto di output.", "Choisir le contrat de sortie.", "Ausgabevertrag auswählen.", "Elegir el contrato de salida.", "选择输出契约。", "Chọn hợp đồng đầu ra.", "출력 계약을 선택합니다.", "Escolher o contrato de saída.", "Escolher o contrato de saída."],
+            ["option.json"] = ["Shortcut for machine-readable JSON output.", "Scorciatoia per l’output JSON leggibile dalle macchine.", "Raccourci pour une sortie JSON exploitable par une machine.", "Kurzform für maschinenlesbare JSON-Ausgabe.", "Acceso rápido para salida JSON legible por máquinas.", "用于机器可读 JSON 输出的快捷方式。", "Lối tắt cho đầu ra JSON mà máy có thể đọc.", "기계 판독 가능한 JSON 출력용 단축 옵션입니다.", "Atalho para saída JSON legível por máquina.", "Atalho para saída JSON legível por máquina."],
+            ["option.language"] = ["Choose the CLI display language.", "Scegli la lingua di visualizzazione della CLI.", "Choisir la langue d’affichage de la CLI.", "Anzeigesprache der CLI auswählen.", "Elegir el idioma de visualización de la CLI.", "选择 CLI 显示语言。", "Chọn ngôn ngữ hiển thị CLI.", "CLI 표시 언어를 선택합니다.", "Escolher o idioma de apresentação da CLI.", "Escolher o idioma de exibição da CLI."],
+            ["option.noColor"] = ["Disable terminal color.", "Disabilita i colori del terminale.", "Désactiver les couleurs du terminal.", "Terminalfarben deaktivieren.", "Desactivar los colores del terminal.", "禁用终端颜色。", "Tắt màu terminal.", "터미널 색상을 비활성화합니다.", "Desativar as cores do terminal.", "Desativar as cores do terminal."],
+            ["option.noEmoji"] = ["Use text-only status indicators.", "Usa indicatori di stato solo testuali.", "Utiliser des indicateurs d’état uniquement textuels.", "Nur Text für Statusanzeigen verwenden.", "Usar indicadores de estado solo de texto.", "使用纯文本状态指示器。", "Chỉ dùng văn bản cho chỉ báo trạng thái.", "텍스트 전용 상태 표시기를 사용합니다.", "Utilizar indicadores de estado apenas em texto.", "Usar indicadores de status apenas em texto."],
+            ["option.noAnimation"] = ["Disable animated terminal widgets.", "Disabilita i widget animati del terminale.", "Désactiver les composants animés du terminal.", "Animierte Terminalelemente deaktivieren.", "Desactivar los elementos animados del terminal.", "禁用终端动画组件。", "Tắt tiện ích terminal có hoạt ảnh.", "애니메이션 터미널 위젯을 비활성화합니다.", "Desativar componentes animados do terminal.", "Desativar componentes animados do terminal."],
+            ["option.quiet"] = ["Suppress successful result output.", "Nascondi l’output dei risultati riusciti.", "Masquer la sortie des opérations réussies.", "Ausgabe erfolgreicher Ergebnisse unterdrücken.", "Suprimir la salida de resultados correctos.", "隐藏成功结果的输出。", "Ẩn đầu ra kết quả thành công.", "성공 결과 출력을 표시하지 않습니다.", "Omitir a saída de resultados bem-sucedidos.", "Omitir a saída de resultados bem-sucedidos."],
+            ["option.yes"] = ["Confirm operations that require confirmation.", "Conferma le operazioni che richiedono conferma.", "Confirmer les opérations qui exigent une confirmation.", "Bestätigungspflichtige Vorgänge bestätigen.", "Confirmar las operaciones que requieren confirmación.", "确认需要确认的操作。", "Xác nhận các thao tác cần xác nhận.", "확인이 필요한 작업을 확인합니다.", "Confirmar operações que exigem confirmação.", "Confirmar operações que exigem confirmação."],
+            ["option.timeout"] = ["Set runtime connection timeout in seconds.", "Imposta in secondi il timeout di connessione al runtime.", "Définir en secondes le délai de connexion à l’instance.", "Zeitlimit der Laufzeitverbindung in Sekunden festlegen.", "Establecer en segundos el tiempo de espera de conexión al entorno.", "设置运行时连接超时秒数。", "Đặt thời gian chờ kết nối tiến trình theo giây.", "런타임 연결 제한 시간을 초 단위로 설정합니다.", "Definir em segundos o tempo limite de ligação à instância.", "Definir em segundos o tempo limite de conexão ao runtime."],
+            ["option.verbose"] = ["Print diagnostic details in plain mode.", "Stampa i dettagli diagnostici in modalità semplice.", "Afficher les détails de diagnostic en mode texte.", "Diagnosedetails im einfachen Modus ausgeben.", "Mostrar detalles de diagnóstico en modo de texto.", "在纯文本模式下输出诊断详细信息。", "In chi tiết chẩn đoán ở chế độ văn bản thuần.", "일반 텍스트 모드에서 진단 세부 정보를 출력합니다.", "Apresentar detalhes de diagnóstico no modo de texto.", "Exibir detalhes de diagnóstico no modo de texto."],
+            ["diagnostic.pwsh"] = ["TrackMeUp CLI is supported in PowerShell 7 (pwsh). Output may be limited in the current host.", "La CLI di TrackMeUp è supportata in PowerShell 7 (pwsh). L’output potrebbe essere limitato nell’host corrente.", "La CLI TrackMeUp est prise en charge dans PowerShell 7 (pwsh). La sortie peut être limitée dans l’hôte actuel.", "Die TrackMeUp-CLI wird in PowerShell 7 (pwsh) unterstützt. Die Ausgabe kann im aktuellen Host eingeschränkt sein.", "La CLI de TrackMeUp es compatible con PowerShell 7 (pwsh). La salida puede estar limitada en el host actual.", "TrackMeUp CLI 支持 PowerShell 7 (pwsh)。当前主机中的输出可能受限。", "CLI TrackMeUp được hỗ trợ trong PowerShell 7 (pwsh). Đầu ra có thể bị hạn chế trong máy chủ hiện tại.", "TrackMeUp CLI는 PowerShell 7(pwsh)에서 지원됩니다. 현재 호스트에서는 출력이 제한될 수 있습니다.", "A CLI do TrackMeUp é suportada no PowerShell 7 (pwsh). A saída pode estar limitada no anfitrião atual.", "A CLI do TrackMeUp é compatível com o PowerShell 7 (pwsh). A saída pode ser limitada no host atual."],
+            ["error.invalidGlobalOption"] = ["Invalid global option.", "Opzione globale non valida.", "Option globale non valide.", "Ungültige globale Option.", "Opción global no válida.", "全局选项无效。", "Tùy chọn chung không hợp lệ.", "잘못된 전역 옵션입니다.", "Opção global inválida.", "Opção global inválida."],
+            ["result.success"] = ["Operation completed.", "Operazione completata.", "Opération terminée.", "Vorgang abgeschlossen.", "Operación completada.", "操作已完成。", "Thao tác đã hoàn tất.", "작업이 완료되었습니다.", "Operação concluída.", "Operação concluída."],
+            ["result.failure"] = ["The operation could not be completed.", "Non è stato possibile completare l’operazione.", "L’opération n’a pas pu être effectuée.", "Der Vorgang konnte nicht abgeschlossen werden.", "No se pudo completar la operación.", "无法完成操作。", "Không thể hoàn tất thao tác.", "작업을 완료할 수 없습니다.", "Não foi possível concluir a operação.", "Não foi possível concluir a operação."]
+        });
+
+    static CliStrings()
+    {
+        if (CultureNames.Count != Locales.Length || Locales.Any(locale => !CultureNames.ContainsKey(locale)))
+        {
+            throw new InvalidDataException("CLI culture mappings do not match the canonical product locale set.");
+        }
+
+        foreach (var (key, values) in Catalog)
+        {
+            if (values.Length != Locales.Length || values.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new InvalidDataException($"CLI localization entry '{key}' must define non-empty text for every locale.");
+            }
+
+            var expectedArgumentCount = CompositeFormat.Parse(values[0]).MinimumArgumentCount;
+            if (values.Any(value => CompositeFormat.Parse(value).MinimumArgumentCount != expectedArgumentCount))
+            {
+                throw new InvalidDataException($"CLI localization entry '{key}' changes its composite-format arguments.");
+            }
+        }
+    }
+
+    /// <summary>Gets the canonical explicit locales represented by every catalog entry.</summary>
+    internal static IReadOnlyList<string> SupportedLocales => Locales;
+
+    /// <summary>Gets all CLI-owned catalog keys for contract tests.</summary>
+    internal static IReadOnlyCollection<string> Keys => Catalog.Keys.ToArray();
+
+    /// <summary>Returns translated text for a required CLI-owned key.</summary>
+    internal static string Get(string language, string key)
+    {
+        var resolved = ProductLanguageCatalog.ResolveUiLanguage(language, CultureInfo.CurrentUICulture);
+        var localeIndex = Array.FindIndex(Locales, locale => locale.Equals(resolved, StringComparison.OrdinalIgnoreCase));
+        if (localeIndex < 0)
+        {
+            throw new InvalidDataException($"Resolved CLI locale '{resolved}' is not cataloged.");
+        }
+
+        return Catalog.TryGetValue(key, out var values)
+            ? values[localeIndex]
+            : throw new KeyNotFoundException($"CLI localization key '{key}' is not defined.");
+    }
+
+    /// <summary>Returns a localized result message without exposing an untranslated message-key identifier.</summary>
+    internal static string GetResult(string language, string messageKey, bool succeeded)
+    {
+        var resolved = ProductLanguageCatalog.ResolveUiLanguage(language, CultureInfo.CurrentUICulture);
+        var localeIndex = Array.FindIndex(Locales, locale => locale.Equals(resolved, StringComparison.OrdinalIgnoreCase));
+        if (localeIndex < 0)
+        {
+            throw new InvalidDataException($"Resolved CLI locale '{resolved}' is not cataloged.");
+        }
+
+        return Catalog.TryGetValue(messageKey, out var values)
+            ? values[localeIndex]
+            : Catalog[succeeded ? "result.success" : "result.failure"][localeIndex];
+    }
+
+    /// <summary>Formats translated CLI text using the selected locale conventions.</summary>
+    internal static string Format(string language, string key, params object?[] arguments) =>
+        string.Format(GetCulture(language), Get(language, key), arguments);
+
+    /// <summary>Gets the formatting culture associated with an explicit or system-derived CLI locale.</summary>
+    internal static CultureInfo GetCulture(string language)
+    {
+        var resolved = ProductLanguageCatalog.ResolveUiLanguage(language, CultureInfo.CurrentUICulture);
+        return CultureInfo.GetCultureInfo(CultureNames[resolved]);
+    }
 }

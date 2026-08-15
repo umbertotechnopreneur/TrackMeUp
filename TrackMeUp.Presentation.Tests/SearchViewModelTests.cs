@@ -20,7 +20,7 @@ public sealed class SearchViewModelTests
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
         var proxy = (SearchApplicationProxy)(object)application;
-        var viewModel = new SearchViewModel(application);
+        var viewModel = CreateViewModel(application);
 
         var result = await viewModel.SearchAsync("riunione", CultureInfo.GetCultureInfo("it-IT"), CancellationToken.None);
 
@@ -30,7 +30,7 @@ public sealed class SearchViewModelTests
         Assert.Equal(0, request.Offset);
         Assert.True(request.IncludeTextContent);
         Assert.Equal(["screenshot"], request.Kinds.ToArray());
-        Assert.Equal(2, viewModel.Results.Count);
+        Assert.Equal(3, viewModel.Results.Count);
         var item = viewModel.Results[0];
         Assert.Equal(@"C:\captures\meeting.png", item.ScreenshotPath);
         Assert.StartsWith("file:///C:/captures/meeting.png", item.ScreenshotUri, StringComparison.OrdinalIgnoreCase);
@@ -40,12 +40,17 @@ public sealed class SearchViewModelTests
         Assert.Contains("riunione", item.TextSnippet, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("#", item.TextSnippet, StringComparison.Ordinal);
         Assert.DoesNotContain("**", item.TextSnippet, StringComparison.Ordinal);
-        Assert.Equal("42 clicks · CPU 37% · GPU 61%", item.ActivityDisplay);
+        Assert.Equal("42 localized clicks · CPU 37% · GPU 61%", item.ActivityDisplay);
+        Assert.Equal("LOCALIZED MATCH", item.MatchLabel);
         Assert.Equal(4.5f, item.Score);
         Assert.Equal(100, item.MatchPercent);
         Assert.Equal("100%", item.MatchPercentDisplay);
-        Assert.Equal(2.25f, viewModel.Results[1].Score);
-        Assert.Equal(50, viewModel.Results[1].MatchPercent);
+        Assert.Equal("1 localized click · CPU — · GPU —", viewModel.Results[1].ActivityDisplay);
+        Assert.Equal(3f, viewModel.Results[1].Score);
+        Assert.Equal(67, viewModel.Results[1].MatchPercent);
+        Assert.Equal("Localized clicks — · CPU — · GPU —", viewModel.Results[2].ActivityDisplay);
+        Assert.Equal(2.25f, viewModel.Results[2].Score);
+        Assert.Equal(50, viewModel.Results[2].MatchPercent);
         Assert.Equal(23, viewModel.TotalCount);
     }
 
@@ -54,7 +59,7 @@ public sealed class SearchViewModelTests
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
         var proxy = (SearchApplicationProxy)(object)application;
-        var viewModel = new SearchViewModel(application);
+        var viewModel = CreateViewModel(application);
 
         var result = await viewModel.SuggestAsync("spo", CancellationToken.None);
 
@@ -76,6 +81,16 @@ public sealed class SearchViewModelTests
         Assert.All(result.Value!, suggestion => Assert.DoesNotContain("#", suggestion.Text, StringComparison.Ordinal));
     }
 
+    private static SearchViewModel CreateViewModel(ITrackMeUpApplication application) =>
+        new(application, "LOCALIZED MATCH", FormatClickCount);
+
+    private static string FormatClickCount(long? clickCount, CultureInfo culture) => clickCount switch
+    {
+        null => "Localized clicks —",
+        1 => string.Format(culture, "{0:N0} localized click", clickCount.Value),
+        _ => string.Format(culture, "{0:N0} localized clicks", clickCount.Value)
+    };
+
     public class SearchApplicationProxy : DispatchProxy
     {
         public SearchRequest? Request { get; private set; }
@@ -91,6 +106,22 @@ public sealed class SearchViewModelTests
                 {
                     Hits =
                     [
+                        new SearchHit
+                        {
+                            Document = new SearchDocument
+                            {
+                                Id = "screenshot:single-click",
+                                Kind = "screenshot",
+                                Timestamp = new DateTimeOffset(2026, 8, 9, 9, 0, 0, TimeSpan.Zero),
+                                Application = "Browser",
+                                WindowTitle = "Notes",
+                                OcrRawText = "Una riunione con un solo clic",
+                                AttributesRaw = ImmutableDictionary<string, string?>.Empty
+                                    .Add(SearchAttributeKeys.MouseClicks, "1"),
+                                CapturePath = @"C:\captures\single-click.png"
+                            },
+                            Score = 3f
+                        },
                         new SearchHit
                         {
                             Document = new SearchDocument

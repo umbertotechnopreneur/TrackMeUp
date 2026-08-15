@@ -36,7 +36,9 @@ internal static class TextNormalization
                 continue;
             }
 
-            builder.Append(char.ToLowerInvariant(character));
+            // Vietnamese d-with-stroke is a distinct base letter and is not removed by
+            // Unicode decomposition, so fold it explicitly alongside other diacritics.
+            builder.Append(character is 'đ' or 'Đ' ? 'd' : char.ToLowerInvariant(character));
             previousWasWhitespace = false;
         }
 
@@ -103,6 +105,21 @@ internal static class TextNormalization
         }
 
         var normalized = NormalizeLanguage(language);
+        if (normalized == "pt-br" || normalized.StartsWith("pt-br-", StringComparison.Ordinal))
+        {
+            return "pt-br";
+        }
+
+        if (normalized == "pt" || normalized.StartsWith("pt-", StringComparison.Ordinal))
+        {
+            return "pt";
+        }
+
+        if (normalized == "zh" || normalized.StartsWith("zh-", StringComparison.Ordinal))
+        {
+            return "zh";
+        }
+
         var separator = normalized.IndexOf('-');
         return separator < 0 ? normalized : normalized[..separator];
     }

@@ -45,8 +45,9 @@ body {
 }
 
 .theme-selector {
-  flex: 0 0 168px;
-  max-width: 168px;
+  flex: 0 1 220px;
+  min-width: 200px;
+  max-width: 240px;
 }
 
 .report-intro {

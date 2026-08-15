@@ -7,6 +7,13 @@ namespace TrackMeUp.Search.Tests;
 public sealed class LocalSearchServiceTests
 {
     [Fact]
+    public void IndexSchema_IsVersionedForTheExpandedLanguageAnalyzerContract()
+    {
+        Assert.Equal(2, LocalSearchService.IndexSchemaVersion);
+        Assert.Equal("lucene-v2", LocalSearchService.IndexDirectoryName);
+    }
+
+    [Fact]
     public async Task SuggestAsync_UsesSeparateInfixIndexForThreeCharacterQueries()
     {
         await using var harness = new SearchHarness();
@@ -129,11 +136,16 @@ public sealed class LocalSearchServiceTests
         await using var harness = new SearchHarness();
         var cases = new[]
         {
-            (Language: "it", Indexed: "fatture", Query: "fattura"),
-            (Language: "en", Indexed: "reports", Query: "report"),
-            (Language: "fr", Indexed: "factures", Query: "facture"),
-            (Language: "de", Indexed: "Rechnungen", Query: "Rechnung"),
-            (Language: "es", Indexed: "facturas", Query: "factura"),
+            (Language: "it-IT", Indexed: "fatture", Query: "fattura"),
+            (Language: "en-US", Indexed: "reports", Query: "report"),
+            (Language: "fr-FR", Indexed: "factures", Query: "facture"),
+            (Language: "de-DE", Indexed: "Rechnungen", Query: "Rechnung"),
+            (Language: "es-ES", Indexed: "facturas", Query: "factura"),
+            (Language: "vi-VN", Indexed: "cuộc họp điện thoại", Query: "CUOC HOP DIEN THOAI"),
+            (Language: "zh-Hans", Indexed: "项目会议", Query: "项目"),
+            (Language: "ko-KR", Indexed: "프로젝트회의", Query: "프로젝트"),
+            (Language: "pt-PT", Indexed: "faturas", Query: "fatura"),
+            (Language: "pt-BR", Indexed: "relatórios", Query: "relatório"),
         };
 
         foreach (var item in cases)

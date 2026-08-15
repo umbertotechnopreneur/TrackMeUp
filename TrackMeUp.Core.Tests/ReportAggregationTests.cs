@@ -551,7 +551,7 @@ public sealed class ReportAggregationTests
             {
                 connection.Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "CREATE TABLE activity_samples (id INTEGER PRIMARY KEY); PRAGMA user_version = 6;";
+                command.CommandText = "CREATE TABLE activity_samples (id INTEGER PRIMARY KEY); PRAGMA user_version = 7;";
                 command.ExecuteNonQuery();
             }
 

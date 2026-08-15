@@ -1,10 +1,13 @@
 using Lucene.Net.Analysis;
+using Lucene.Net.Analysis.Br;
+using Lucene.Net.Analysis.Cjk;
 using Lucene.Net.Analysis.De;
 using Lucene.Net.Analysis.En;
 using Lucene.Net.Analysis.Es;
 using Lucene.Net.Analysis.Fr;
 using Lucene.Net.Analysis.It;
 using Lucene.Net.Analysis.Miscellaneous;
+using Lucene.Net.Analysis.Pt;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Analysis.TokenAttributes;
 using Lucene.Net.Util;
@@ -27,6 +30,11 @@ internal sealed class LanguageAnalyzerCatalog : IDisposable
             ["fr"] = new FrenchAnalyzer(Version),
             ["de"] = new GermanAnalyzer(Version),
             ["es"] = new SpanishAnalyzer(Version),
+            ["vi"] = new StandardAnalyzer(Version),
+            ["zh"] = new CJKAnalyzer(Version),
+            ["ko"] = new CJKAnalyzer(Version),
+            ["pt"] = new PortugueseAnalyzer(Version),
+            ["pt-br"] = new BrazilianAnalyzer(Version),
         };
 
         var perField = new Dictionary<string, Analyzer>(StringComparer.Ordinal);

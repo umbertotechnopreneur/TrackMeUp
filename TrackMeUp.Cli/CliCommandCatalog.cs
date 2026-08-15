@@ -3,52 +3,52 @@ namespace TrackMeUp.Cli;
 /// <summary>Describes presentation-only help for one CLI command family.</summary>
 internal sealed record CliCommandHelp(
     string Name,
-    string Summary,
+    string SummaryKey,
     IReadOnlyList<string> Usage,
-    IReadOnlyList<string> Details,
+    IReadOnlyList<string> DetailKeys,
     IReadOnlyList<string> Aliases);
 
 /// <summary>Describes one top-level shortcut that expands to a canonical command sequence.</summary>
-internal sealed record CliShortcut(string Option, IReadOnlyList<string> Command, string Summary);
+internal sealed record CliShortcut(string Option, IReadOnlyList<string> Command, string SummaryKey);
 
 /// <summary>Keeps slash-command normalization and help routing in one presentation-only catalog.</summary>
 internal static class CliCommandCatalog
 {
     private static readonly IReadOnlyList<CliCommandHelp> CanonicalCommands =
     [
-        new("status", "Show the live tracking dashboard.", ["/status [--watch] [--interval <1-60>]"], ["JSON output supports a single snapshot only."], []),
-        new("runtime", "Inspect the shared runtime endpoint.", ["/runtime health"], ["Reports protocol, ownership, version, advertised capabilities, local logging, and redacted Sentry status."], []),
-        new("tracking", "Start, pause, or toggle activity tracking.", ["/tracking start [--safe-mode]", "/tracking pause", "/tracking toggle"], ["Every action is sent to the single shared runtime."], []),
-        new("session", "Read recent activity summaries.", ["/session last", "/session today"], [], []),
-        new("system", "Capture a CPU, GPU, memory, network, and disk snapshot.", ["/system snapshot [--watch] [--interval <1-60>]"], ["JSON output supports a single snapshot only."], []),
-        new("screenshot", "Capture or inspect privacy-checked screenshots.", ["/screenshot capture [--mode <all-screens|active-window>] [--keep] [--watermark]", "/screenshot latest", "/screenshot open-folder"], ["Capture policy and privacy checks remain enforced by the application service."], []),
-        new("ai", "Inspect and operate the configured AI integration.", ["/ai status", "/ai enable", "/ai disable", "/ai configure [--provider <name>] [--model <name>] [--endpoint <uri>] [--output-detail <compact|balanced|detailed>] [--reasoning-effort <auto|none|low|medium|high|xhigh|max>]", "/ai analyze [--no-capture]", "/ai key set [--variable <allowed-name>]"], ["The API key is requested with a hidden interactive prompt. Without --variable, the configured provider key-variable name is loaded through the application facade. Secret command-line arguments are never accepted."], []),
-        new("report", "Generate activity reports and daily digests.", ["/report today [--output <directory>] [--open]", "/report digest [--date <yyyy-MM-dd>] [--open]"], [], []),
-        new("privacy", "List, add, remove, and test privacy rules.", ["/privacy list", "/privacy add --type <process|title|hint> --value <text>", "/privacy remove --id <id>", "/privacy test-current"], [], []),
-        new("retention", "Inspect or execute the configured retention policy.", ["/retention status", "/retention preview", "/retention run --yes"], ["Deletion is rejected unless explicit confirmation is present."], []),
-        new("plugins", "Inspect and toggle application-context providers.", ["/plugins list", "/plugins show <id>", "/plugins enable <id>", "/plugins disable <id>"], [], []),
-        new("config", "Read or patch whitelisted application settings.", ["/config list", "/config get <key>", "/config set <key> <value>", "/config wizard"], [CliSettingsCatalog.HelpSummary, "Secret values, installation identity, privacy-rule contents, history markers, and accumulated cost state are outside this surface."], ["settings"]),
-        new("startup", "Inspect or change Windows startup registration.", ["/startup status", "/startup enable", "/startup disable"], [], []),
-        new("open", "Open a safe application surface or managed folder.", ["/open ui", "/open reports", "/open screenshots"], [], []),
-        new("about", "Show product, license, and safe link information.", ["/about"], [], []),
-        new("doctor", "Run a read-only diagnostic sweep through the application facade.", ["/doctor"], ["Checks runtime, logging/Sentry status, dashboard, AI, retention, startup, and plugins without printing secrets or private paths."], ["diagnostics"]),
-        new("version", "Show CLI and runtime protocol versions without starting the runtime.", ["/version", "--version"], [], []),
-        new("help", "Show general or command-specific help without starting the runtime.", ["/help", "/help /command", "/command --help"], ["The leading slash is optional for the first command token."], [])
+        new("status", "command.status", ["/status [--watch] [--interval <1-60>]"], ["detail.jsonSnapshot"], []),
+        new("runtime", "command.runtime", ["/runtime health"], ["detail.runtime"], []),
+        new("tracking", "command.tracking", ["/tracking start [--safe-mode]", "/tracking pause", "/tracking toggle"], ["detail.sharedRuntime"], []),
+        new("session", "command.session", ["/session last", "/session today"], [], []),
+        new("system", "command.system", ["/system snapshot [--watch] [--interval <1-60>]"], ["detail.jsonSnapshot"], []),
+        new("screenshot", "command.screenshot", ["/screenshot capture [--mode <all-screens|active-window>] [--keep] [--watermark]", "/screenshot latest", "/screenshot open-folder"], ["detail.screenshot"], []),
+        new("ai", "command.ai", ["/ai status", "/ai enable", "/ai disable", "/ai configure [--provider <name>] [--model <name>] [--endpoint <uri>] [--output-detail <compact|balanced|detailed>] [--reasoning-effort <auto|none|low|medium|high|xhigh|max>]", "/ai analyze [--no-capture]", "/ai key set [--variable <allowed-name>]"], ["detail.aiKey"], []),
+        new("report", "command.report", ["/report today [--output <directory>] [--open]", "/report digest [--date <yyyy-MM-dd>] [--open]"], [], []),
+        new("privacy", "command.privacy", ["/privacy list", "/privacy add --type <process|title|hint> --value <text>", "/privacy remove --id <id>", "/privacy test-current"], [], []),
+        new("retention", "command.retention", ["/retention status", "/retention preview", "/retention run --yes"], ["detail.retention"], []),
+        new("plugins", "command.plugins", ["/plugins list", "/plugins show <id>", "/plugins enable <id>", "/plugins disable <id>"], [], []),
+        new("config", "command.config", ["/config list", "/config get <key>", "/config set <key> <value>", "/config wizard"], ["detail.configWritable", "detail.configExcluded"], ["settings"]),
+        new("startup", "command.startup", ["/startup status", "/startup enable", "/startup disable"], [], []),
+        new("open", "command.open", ["/open ui", "/open reports", "/open screenshots"], [], []),
+        new("about", "command.about", ["/about"], [], []),
+        new("doctor", "command.doctor", ["/doctor"], ["detail.doctor"], ["diagnostics"]),
+        new("version", "command.version", ["/version", "--version"], [], []),
+        new("help", "command.help", ["/help", "/help /command", "/command --help"], ["help.slashOptional"], [])
     ];
 
     private static readonly IReadOnlyDictionary<string, CliCommandHelp> Lookup = BuildLookup();
 
     private static readonly IReadOnlyList<CliShortcut> CanonicalShortcuts =
     [
-        new("--status", ["status"], "Show the live tracking dashboard."),
-        new("--start", ["tracking", "start"], "Start activity tracking."),
-        new("--pause", ["tracking", "pause"], "Pause activity tracking."),
-        new("--toggle", ["tracking", "toggle"], "Toggle activity tracking."),
-        new("--ai-on", ["ai", "enable"], "Enable the configured AI provider."),
-        new("--ai-off", ["ai", "disable"], "Disable AI analysis."),
-        new("--capture", ["screenshot", "capture"], "Capture a privacy-checked screenshot."),
-        new("--report", ["report", "today"], "Generate today's activity report."),
-        new("--doctor", ["doctor"], "Run read-only diagnostics.")
+        new("--status", ["status"], "command.status"),
+        new("--start", ["tracking", "start"], "action.start"),
+        new("--pause", ["tracking", "pause"], "action.pause"),
+        new("--toggle", ["tracking", "toggle"], "action.toggle"),
+        new("--ai-on", ["ai", "enable"], "action.aiOn"),
+        new("--ai-off", ["ai", "disable"], "action.aiOff"),
+        new("--capture", ["screenshot", "capture"], "action.capture"),
+        new("--report", ["report", "today"], "action.report"),
+        new("--doctor", ["doctor"], "action.doctor")
     ];
 
     /// <summary>Gets canonical commands in stable display order.</summary>

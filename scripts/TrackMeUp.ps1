@@ -522,12 +522,57 @@ function Assert-Url {
     Assert-Condition -Condition ($isValid -and $uri.Scheme -in @('http', 'https')) -Message "$Name must be an absolute HTTP or HTTPS URL."
 }
 
+function Assert-UniqueJsonProperties {
+    param(
+        [Parameter(Mandatory)][System.Text.Json.JsonElement]$Element,
+        [Parameter(Mandatory)][string]$Path
+    )
+
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $propertyNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($property in $Element.EnumerateObject()) {
+            $propertyPath = "$Path.$($property.Name)"
+            Assert-Condition -Condition ($propertyNames.Add($property.Name)) -Message "Duplicate JSON property '$propertyPath'."
+            Assert-UniqueJsonProperties -Element $property.Value -Path $propertyPath
+        }
+
+        return
+    }
+
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        $index = 0
+        foreach ($item in $Element.EnumerateArray()) {
+            Assert-UniqueJsonProperties -Element $item -Path "$Path[$index]"
+            $index++
+        }
+    }
+}
+
+function Assert-ValidUniqueJsonDocument {
+    param([Parameter(Mandatory)][string]$Json)
+
+    $document = $null
+    try {
+        $document = [System.Text.Json.JsonDocument]::Parse($Json)
+        Assert-UniqueJsonProperties -Element $document.RootElement -Path '$'
+    }
+    catch [System.Text.Json.JsonException] {
+        throw "Store listing is not valid JSON: $($_.Exception.Message)"
+    }
+    finally {
+        if ($null -ne $document) {
+            $document.Dispose()
+        }
+    }
+}
+
 function Invoke-TrackMeUpStoreListingValidation {
     $pathToValidate = if ([string]::IsNullOrWhiteSpace($ListingPath)) { Join-Path $script:RepositoryRoot 'store\listing.json' } else { Resolve-TrackMeUpPath -Path $ListingPath }
     $resolvedPath = (Resolve-Path -LiteralPath $pathToValidate).Path
     $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $resolvedPath) '..'))
     $raw = Get-Content -LiteralPath $resolvedPath -Raw
-    $listing = $raw | ConvertFrom-Json
+    Assert-ValidUniqueJsonDocument -Json $raw
+    $listing = $raw | ConvertFrom-Json -ErrorAction Stop
 
     Assert-Condition -Condition ($listing.schemaVersion -eq 1) -Message 'Unsupported Store listing schemaVersion.'
     Assert-Text -Value $listing.product.name -Name 'product.name' -MaximumLength 80
@@ -538,8 +583,13 @@ function Invoke-TrackMeUpStoreListingValidation {
         Assert-Url -Value $listing.product.$property -Name "product.$property"
     }
 
+    $requiredLocales = @('en-US', 'it-IT', 'fr-FR', 'de-DE', 'es-ES', 'zh-Hans', 'vi-VN', 'ko-KR', 'pt-PT', 'pt-BR')
     $locales = @($listing.locales.PSObject.Properties)
-    Assert-Condition -Condition ($locales.Count -gt 0) -Message 'At least one Store locale is required.'
+    $localeNames = @($locales.Name)
+    Assert-Condition -Condition ($localeNames.Count -eq $requiredLocales.Count) -Message "Store listing must contain exactly these locales: $($requiredLocales -join ', ')."
+    for ($localeIndex = 0; $localeIndex -lt $requiredLocales.Count; $localeIndex++) {
+        Assert-Condition -Condition ($localeNames[$localeIndex] -ceq $requiredLocales[$localeIndex]) -Message "Store locale '$($localeNames[$localeIndex])' is missing, out of order, or non-canonical; expected '$($requiredLocales[$localeIndex])'."
+    }
 
     foreach ($locale in $locales) {
         $copy = $locale.Value
@@ -562,6 +612,7 @@ function Invoke-TrackMeUpStoreListingValidation {
     foreach ($item in @($listing.screenshots.items)) {
         Assert-Text -Value $item.path -Name 'screenshots.items.path' -MaximumLength 260
         Assert-Text -Value $item.locale -Name 'screenshots.items.locale' -MaximumLength 20
+        Assert-Condition -Condition ($localeNames -ccontains $item.locale) -Message "Screenshot locale '$($item.locale)' is not a canonical Store listing locale."
         Assert-Text -Value $item.caption -Name 'screenshots.items.caption' -MaximumLength 300
         Assert-Text -Value $item.purpose -Name 'screenshots.items.purpose' -MaximumLength 300
 
@@ -579,6 +630,8 @@ function Invoke-TrackMeUpStoreListingValidation {
 
     $secretPattern = '(?i)(sk-[A-Za-z0-9]|clientSecret|accessToken|api[_-]?key\s*[:=]\s*["''][^"'']+)'
     Assert-Condition -Condition ($raw -notmatch $secretPattern) -Message 'Store listing appears to contain a credential or access token.'
+    $vendorPattern = '(?i)\b(OpenAI|OpenRouter|Anthropic|Claude|Gemini)\b'
+    Assert-Condition -Condition ($raw -notmatch $vendorPattern) -Message 'Store listing must describe shared AI features using vendor-agnostic wording.'
 
     Write-Host "Store listing validation passed: $resolvedPath"
     Write-Host "Locales: $($locales.Name -join ', ')"

@@ -28,7 +28,7 @@ public static class CliBootstrap
             }
             catch (ArgumentException)
             {
-                Console.Error.WriteLine("Invalid global option.");
+                Console.Error.WriteLine(CliStrings.Get(ResolveDiagnosticLanguage(stripped), "error.invalidGlobalOption"));
                 return 2;
             }
 
@@ -59,7 +59,7 @@ public static class CliBootstrap
 
             if (options.Format == CliFormat.Rich && !IsPowerShell7Parent())
             {
-                output.WriteDiagnostic("TrackMeUp CLI is supported in PowerShell 7 (pwsh). Output may be limited in the current host.");
+                output.WriteDiagnostic(output.Text("diagnostic.pwsh"));
             }
 
             var application = await RuntimeConnector.ConnectAsync(executablePath, options.TimeoutSeconds, cancellation.Token);
@@ -130,6 +130,19 @@ public static class CliBootstrap
         {
             return false;
         }
+    }
+
+    private static string ResolveDiagnosticLanguage(IReadOnlyList<string> arguments)
+    {
+        var index = arguments.ToList().FindIndex(argument => argument.Equals("--language", StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || index + 1 >= arguments.Count)
+        {
+            return "system";
+        }
+
+        var requested = arguments[index + 1];
+        return CliOptions.SupportedLanguages.FirstOrDefault(language => language.Equals(requested, StringComparison.OrdinalIgnoreCase))
+            ?? "system";
     }
 }
 

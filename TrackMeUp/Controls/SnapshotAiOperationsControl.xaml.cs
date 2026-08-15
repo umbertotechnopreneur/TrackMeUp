@@ -24,7 +24,14 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
 
     /// <summary>Connects the passive surface to the application facade owned by the composition root.</summary>
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
+        _context = new OperationsSectionContext(
+            application,
+            dialogs,
+            ownerWindow,
+            banner,
+            Progress,
+            SectionBody,
+            key => _strings.TryTranslate(key, out var value) ? value : null);
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("SnapshotAiOperationsControl must be initialized before use.");
 
@@ -34,8 +41,8 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
         if (result is { Succeeded: true })
         {
             ScreenshotResultText.Text = string.IsNullOrWhiteSpace(result.Value)
-                ? L("No retained screen capture.", "Nessuna cattura schermo conservata.")
-                : L($"Latest screen capture:\n{result.Value}", $"Ultima cattura schermo:\n{result.Value}");
+                ? _strings.Translate("Operations.Snapshot.None")
+                : _strings.Format("Operations.Snapshot.Latest", result.Value);
         }
     }
 
@@ -44,7 +51,7 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.OpenScreenshotFolderAsync(token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ScreenshotResultText.Text = L($"Screen-capture folder opened:\n{path}", $"Cartella catture schermo aperta:\n{path}");
+            ScreenshotResultText.Text = _strings.Format("Operations.Snapshot.FolderOpened", path);
         }
     }
 
@@ -57,6 +64,4 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
             AiAnalysisText.Text = $"{analysis.Application} · {analysis.Context}\n{analysis.Summary}";
         }
     }
-
-    private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TrackMeUp.Cli;
 using Xunit;
 
@@ -6,6 +7,37 @@ namespace TrackMeUp.Cli.Tests;
 
 public sealed class CliCommandCatalogTests
 {
+    [Fact]
+    public void LocalizationCatalog_CoversEveryCanonicalLocaleAndCommandHelpEntry()
+    {
+        Assert.Equal(
+            ["en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-Hans", "vi-VN", "ko-KR", "pt-PT", "pt-BR"],
+            CliStrings.SupportedLocales);
+
+        foreach (var locale in CliStrings.SupportedLocales)
+        {
+            foreach (var key in CliStrings.Keys)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(CliStrings.Get(locale, key)), $"{locale}:{key}");
+            }
+
+            foreach (var command in CliCommandCatalog.Commands)
+            {
+                Assert.Contains(command.SummaryKey, CliStrings.Keys);
+                Assert.All(command.DetailKeys, key => Assert.Contains(key, CliStrings.Keys));
+            }
+        }
+
+        Assert.Throws<KeyNotFoundException>(() => CliStrings.Get("en-US", "missing.localization.key"));
+    }
+
+    [Fact]
+    public void PortugueseLocalesRemainDistinctAndChineseUsesSimplifiedCulture()
+    {
+        Assert.NotEqual(CliStrings.Get("pt-PT", "settings"), CliStrings.Get("pt-BR", "settings"));
+        Assert.Equal("zh-CN", CliStrings.GetCulture("zh-Hans").Name);
+    }
+
     [Theory]
     [InlineData("/status", "status")]
     [InlineData("/tracking", "tracking")]

@@ -397,6 +397,13 @@ public sealed class ScreenshotDeletionTests
             string origin,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The deletion tests must not analyze a new snapshot.");
+
+        public Task<AiAnalysis> AnalyzeHistoricalCapturedScreenAsync(
+            AnalysisContextSnapshot activity,
+            ScreenshotCaptureResult captureResult,
+            string origin,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The deletion tests must not analyze a historical snapshot.");
     }
 
     private sealed class SuccessfulDecoder : IAIDecoder

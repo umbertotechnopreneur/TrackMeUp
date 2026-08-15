@@ -69,7 +69,7 @@ internal sealed partial class MicaDialogWindow : Window
         };
         DialogTitleText.Text = request.Title;
         DialogMessageText.Text = request.Message;
-        AutomationProperties.SetName(RootGrid, $"{request.Title} dialog");
+        AutomationProperties.SetName(RootGrid, request.Title);
         AutomationProperties.SetName(DialogTitleText, request.Title);
         AutomationProperties.SetName(DialogMessageText, request.Message);
         PrimaryButton.Content = request.PrimaryButtonText;

@@ -49,6 +49,7 @@ public sealed partial class OperationsControl : UserControl
         ApplyNavigationAccessibility(OpenPrivacyLink, "Options.Navigation.Privacy.Action", "Options.Navigation.Privacy.Description");
         ApplyNavigationAccessibility(OpenRetentionLink, "Options.Navigation.Retention.Action", "Options.Navigation.Retention.Description");
         ApplyNavigationAccessibility(OpenPluginsLink, "Options.Navigation.Plugins.Action", "Options.Navigation.Plugins.Description");
+        AutomationProperties.SetName(OperationProgress, _strings.Translate("Operations.Status.InProgress.Title"));
         AutomationProperties.SetName(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Action"));
         AutomationProperties.SetHelpText(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Description"));
     }
@@ -118,7 +119,9 @@ public sealed partial class OperationsControl : UserControl
         RuntimeHealthSummary.Visibility = Visibility.Visible;
         RuntimeVersionValue.Text = health.ProductVersion;
         RuntimeProtocolValue.Text = health.ProtocolVersion.ToString(CultureInfo.InvariantCulture);
-        RuntimeRoleValue.Text = health.IsRuntimeOwner ? L("Owner", "Proprietario") : L("Client", "Client");
+        RuntimeRoleValue.Text = _strings.Translate(health.IsRuntimeOwner
+            ? "Operations.Runtime.Role.Owner"
+            : "Operations.Runtime.Role.Client");
         RuntimeCapabilitiesList.ItemsSource = health.Capabilities.OrderBy(capability => capability, StringComparer.OrdinalIgnoreCase).ToArray();
 
         if (health.Observability is { } observability)
@@ -132,7 +135,7 @@ public sealed partial class OperationsControl : UserControl
         else
         {
             RuntimeConsoleValue.Text = RuntimeFileValue.Text = RuntimeSentryValue.Text = RuntimePiiValue.Text = "—";
-            ObservabilityUnavailableText.Text = L("Logging and remote diagnostics are not exposed by the current runtime.", "Il runtime corrente non espone logging e diagnostica remota.");
+            ObservabilityUnavailableText.Text = _strings.Translate("Operations.Runtime.ObservabilityUnavailable");
             ObservabilityUnavailableText.Visibility = Visibility.Visible;
         }
     }
@@ -154,10 +157,12 @@ public sealed partial class OperationsControl : UserControl
         SystemMemoryValue.Text = $"{FormatMemory(snapshot.MemoryUsedMb)} / {FormatMemory(snapshot.MemoryTotalMb)}";
         SystemNetworkValue.Text = $"↑ {FormatBytes(snapshot.Network.UploadBytesPerSecond)}/s\n↓ {FormatBytes(snapshot.Network.DownloadBytesPerSecond)}/s";
         SystemDisksList.ItemsSource = snapshot.Disks.Count == 0
-            ? [L("No local storage volumes reported", "Nessun volume locale rilevato")]
-            : snapshot.Disks.Select(disk => L(
-                $"{disk.Drive,-4} {FormatBytes(disk.FreeBytes)} free / {FormatBytes(disk.TotalBytes)}",
-                $"{disk.Drive,-4} {FormatBytes(disk.FreeBytes)} liberi / {FormatBytes(disk.TotalBytes)}")).ToArray();
+            ? [_strings.Translate("Operations.System.NoStorage")]
+            : snapshot.Disks.Select(disk => _strings.Format(
+                "Operations.System.StorageRow",
+                disk.Drive,
+                FormatBytes(disk.FreeBytes),
+                FormatBytes(disk.TotalBytes))).ToArray();
     }
 
     private void OpenSnapshotAiLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.SnapshotAi, sender);
@@ -174,7 +179,10 @@ public sealed partial class OperationsControl : UserControl
     {
         if (_operationInProgress)
         {
-            ShowStatus(L("Operation in progress", "Operazione in corso"), L("Wait for the current operation to finish.", "Attendi il completamento dell'operazione corrente."), InfoBarSeverity.Warning);
+            ShowStatus(
+                _strings.Translate("Operations.Status.InProgress.Title"),
+                _strings.Translate("Operations.Status.InProgress.Message"),
+                InfoBarSeverity.Warning);
             return;
         }
 
@@ -253,7 +261,10 @@ public sealed partial class OperationsControl : UserControl
     {
         if (_operationInProgress)
         {
-            ShowStatus(L("Operation in progress", "Operazione in corso"), L("Wait for the current operation to finish.", "Attendi il completamento dell'operazione corrente."), InfoBarSeverity.Warning);
+            ShowStatus(
+                _strings.Translate("Operations.Status.InProgress.Title"),
+                _strings.Translate("Operations.Status.InProgress.Message"),
+                InfoBarSeverity.Warning);
             return null;
         }
 
@@ -267,14 +278,14 @@ public sealed partial class OperationsControl : UserControl
             if (result.Succeeded)
             {
                 ShowStatus(
-                    L("Operation completed", "Operazione completata"),
+                    _strings.Translate("Operations.Status.Completed.Title"),
                     ResultMessage(result.MessageKey, succeeded: true),
                     InfoBarSeverity.Success);
             }
             else
             {
                 ShowStatus(
-                    L("Operation failed", "Operazione non completata"),
+                    _strings.Translate("Operations.Status.Failed.Title"),
                     ResultMessage(result.MessageKey, succeeded: false),
                     InfoBarSeverity.Error);
             }
@@ -284,13 +295,19 @@ public sealed partial class OperationsControl : UserControl
         catch (OperationCanceledException)
         {
             // Presentation remains usable if the shared runtime cancels an operation.
-            ShowStatus(L("Operation cancelled", "Operazione annullata"), L("The runtime cancelled the operation.", "Il runtime ha annullato l'operazione."), InfoBarSeverity.Warning);
+            ShowStatus(
+                _strings.Translate("Operations.Status.Cancelled.Title"),
+                _strings.Translate("Operations.Status.Cancelled.Message"),
+                InfoBarSeverity.Warning);
             return null;
         }
         catch (Exception)
         {
             // Runtime failures are rendered without leaking implementation or host details into the UI.
-            ShowStatus(L("Runtime unavailable", "Runtime non disponibile"), L("The operation returned no result.", "L'operazione non ha restituito un risultato."), InfoBarSeverity.Error);
+            ShowStatus(
+                _strings.Translate("Operations.Status.RuntimeUnavailable.Title"),
+                _strings.Translate("Operations.Status.RuntimeUnavailable.Message"),
+                InfoBarSeverity.Error);
             return null;
         }
         finally
@@ -323,27 +340,28 @@ public sealed partial class OperationsControl : UserControl
 
     private string ResultMessage(string messageKey, bool succeeded)
     {
-        var localized = _strings.Translate(messageKey);
-        return !string.Equals(localized, messageKey, StringComparison.Ordinal)
+        return _strings.TryTranslate(messageKey, out var localized)
             ? localized
             : _strings.Translate(succeeded ? "Operations.Result.Success" : "Operations.Result.Failure");
     }
 
-    private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
+    private string YesNo(bool value) => _strings.Translate(value ? "Common.Yes" : "Common.No");
 
-    private string YesNo(bool value) => value ? L("yes", "sì") : L("no", "no");
+    private string EnabledDisabled(bool value) => _strings.Translate(value ? "Common.Enabled" : "Common.Disabled");
 
-    private string EnabledDisabled(bool value) => value ? L("enabled", "abilitato") : L("disabled", "disabilitato");
+    private string FormatPercent(int? value) => value is null
+        ? _strings.Translate("Common.NotAvailable")
+        : $"{value.Value.ToString("N0", _strings.Culture)}%";
 
-    private static string FormatPercent(int? value) => value is null ? "n/d" : $"{value}%";
+    private string FormatTemperature(int? value) => value is null
+        ? _strings.Translate("Common.NotAvailable")
+        : $"{value.Value.ToString("N0", _strings.Culture)} °C";
 
-    private static string FormatTemperature(int? value) => value is null ? "n/d" : $"{value} °C";
+    private string FormatMemory(long megabytes) => megabytes >= 1024
+        ? $"{(megabytes / 1024d).ToString("0.0", _strings.Culture)} GB"
+        : $"{Math.Max(0, megabytes).ToString("N0", _strings.Culture)} MB";
 
-    private static string FormatMemory(long megabytes) => megabytes >= 1024
-        ? $"{megabytes / 1024d:0.0} GB"
-        : $"{Math.Max(0, megabytes):N0} MB";
-
-    private static string FormatBytes(long bytes)
+    private string FormatBytes(long bytes)
     {
         var size = Math.Max(0, bytes);
         string[] units = ["B", "KB", "MB", "GB", "TB"];
@@ -355,7 +373,7 @@ public sealed partial class OperationsControl : UserControl
             unit++;
         }
 
-        return $"{value:0.#} {units[unit]}";
+        return $"{value.ToString("0.#", _strings.Culture)} {units[unit]}";
     }
 }
 

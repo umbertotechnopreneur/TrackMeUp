@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Collections.Generic;
 using System;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -13,15 +15,207 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void ExplicitLanguage_OverridesWindowsUiCulture()
     {
-        Assert.Equal("en", LocalizationService.ResolveLanguage("en", CultureInfo.GetCultureInfo("it-IT")));
-        Assert.Equal("vi", LocalizationService.ResolveLanguage("vi", CultureInfo.GetCultureInfo("it-IT")));
+        Assert.Equal("en-US", LocalizationService.ResolveLanguage("en-US", CultureInfo.GetCultureInfo("it-IT")));
+        Assert.Equal("vi-VN", LocalizationService.ResolveLanguage("vi-VN", CultureInfo.GetCultureInfo("it-IT")));
     }
 
     [Fact]
     public void SystemLanguage_FollowsSupportedWindowsUiCulture()
     {
-        Assert.Equal("it", LocalizationService.ResolveLanguage("system", CultureInfo.GetCultureInfo("it-IT")));
-        Assert.Equal("en", LocalizationService.ResolveLanguage("system", CultureInfo.GetCultureInfo("ja-JP")));
+        Assert.Equal("it-IT", LocalizationService.ResolveLanguage("system", CultureInfo.GetCultureInfo("it-IT")));
+        Assert.Equal("en-US", LocalizationService.ResolveLanguage("system", CultureInfo.GetCultureInfo("ja-JP")));
+    }
+
+    [Theory]
+    [InlineData("en-GB", "en-US")]
+    [InlineData("it-CH", "it-IT")]
+    [InlineData("fr-CA", "fr-FR")]
+    [InlineData("de-CH", "de-DE")]
+    [InlineData("es-MX", "es-ES")]
+    [InlineData("zh-CN", "zh-Hans")]
+    [InlineData("zh-SG", "zh-Hans")]
+    [InlineData("zh-TW", "en-US")]
+    [InlineData("vi-VN", "vi-VN")]
+    [InlineData("ko-KR", "ko-KR")]
+    [InlineData("pt-PT", "pt-PT")]
+    [InlineData("pt-BR", "pt-BR")]
+    public void SystemLanguage_ResolvesSupportedRegionAndScriptRules(string systemLocale, string expected)
+    {
+        Assert.Equal(expected, LocalizationService.ResolveLanguage("system", CultureInfo.GetCultureInfo(systemLocale)));
+    }
+
+    [Fact]
+    public void ExplicitLanguage_AcceptsOnlyCanonicalProductLocales()
+    {
+        string[] expected =
+        [
+            "en-US",
+            "it-IT",
+            "fr-FR",
+            "de-DE",
+            "es-ES",
+            "zh-Hans",
+            "vi-VN",
+            "ko-KR",
+            "pt-PT",
+            "pt-BR"
+        ];
+
+        Assert.Equal(expected, LocalizationService.SupportedLanguages);
+        Assert.All(
+            expected,
+            locale => Assert.Equal(locale, LocalizationService.ResolveLanguage(locale, CultureInfo.GetCultureInfo("ja-JP"))));
+        Assert.All(
+            new[] { "en", "it", "fr", "vi", "pt", "zh", "zh-Hant" },
+            locale => Assert.Throws<ArgumentException>(
+                () => LocalizationService.ResolveLanguage(locale, CultureInfo.GetCultureInfo("en-US"))));
+    }
+
+    [Fact]
+    public void LanguageContracts_KeepUiSearchAndWindowsOcrCapabilitiesDistinct()
+    {
+        Assert.Equal(
+            new[] { "system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-Hans", "vi-VN", "ko-KR", "pt-PT", "pt-BR" },
+            ProductLanguageCatalog.UiChoices);
+        Assert.Equal(ProductLanguageCatalog.UiChoices, ProductLanguageCatalog.SearchChoices);
+        Assert.Equal(
+            new[] { "system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-CN", "ko-KR", "pt-PT", "pt-BR" },
+            ProductLanguageCatalog.OcrChoices);
+        Assert.Null(ProductLanguageCatalog.ResolveOcrLanguage("system"));
+        Assert.Equal("zh-CN", ProductLanguageCatalog.ResolveOcrLanguage("zh-CN"));
+        Assert.Throws<ArgumentException>(() => ProductLanguageCatalog.ResolveOcrLanguage("vi-VN"));
+        Assert.Throws<ArgumentException>(() => ProductLanguageCatalog.ResolveOcrLanguage("zh-Hans"));
+
+        Assert.Equal(
+            ProductLanguageCatalog.UiChoices,
+            SettingsCatalog.Definitions.Single(definition => definition.Key == "language").AllowedValues);
+        Assert.Equal(
+            ProductLanguageCatalog.SearchChoices,
+            SettingsCatalog.Definitions.Single(definition => definition.Key == "search.language").AllowedValues);
+        Assert.Equal(
+            ProductLanguageCatalog.OcrChoices,
+            SettingsCatalog.Definitions.Single(definition => definition.Key == "ocr.language").AllowedValues);
+    }
+
+    [Theory]
+    [InlineData("zh-CN", "zh-Hans")]
+    [InlineData("zh-TW", "zh-TW")]
+    [InlineData("pt-BR", "pt-BR")]
+    [InlineData("pt-PT", "pt-PT")]
+    [InlineData("fr-CA", "fr-FR")]
+    [InlineData("nl-NL", "nl-NL")]
+    public void SystemSearchLanguage_UsesCanonicalSupportedLocalesWithoutCollapsingUnsupportedCultures(
+        string systemCulture,
+        string expected)
+    {
+        Assert.Equal(
+            expected,
+            ProductLanguageCatalog.ResolveSearchLanguage("system", CultureInfo.GetCultureInfo(systemCulture)));
+    }
+
+    [Fact]
+    public void SettingsCatalog_AcceptsEachDomainLocaleAndRejectsLegacyOrUnsupportedChoices()
+    {
+        Assert.All(ProductLanguageCatalog.UiChoices, locale =>
+            Assert.True(SettingsCatalog.Apply(
+                new AppSettings(),
+                new SettingsPatch(new Dictionary<string, string?> { ["language"] = locale })).Succeeded));
+        Assert.All(ProductLanguageCatalog.SearchChoices, locale =>
+            Assert.True(SettingsCatalog.Apply(
+                new AppSettings(),
+                new SettingsPatch(new Dictionary<string, string?> { ["search.language"] = locale })).Succeeded));
+        Assert.All(ProductLanguageCatalog.OcrChoices, locale =>
+            Assert.True(SettingsCatalog.Apply(
+                new AppSettings(),
+                new SettingsPatch(new Dictionary<string, string?> { ["ocr.language"] = locale })).Succeeded));
+
+        Assert.False(SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?> { ["language"] = "en" })).Succeeded);
+        Assert.False(SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?> { ["ocr.language"] = "vi-VN" })).Succeeded);
+
+        Assert.Throws<InvalidDataException>(() => SettingsCatalog.NormalizePersisted(
+            new AppSettings { UiLanguage = "it" },
+            Path.GetTempPath()));
+        var unsupportedLegacyOcr = SettingsCatalog.MigrateLegacyPersistedLocaleIds(
+            new AppSettings { OcrLanguage = "vi" },
+            out var migrated);
+        Assert.True(migrated);
+        Assert.Equal("system", SettingsCatalog.NormalizePersisted(
+            unsupportedLegacyOcr,
+            Path.GetTempPath()).OcrLanguage);
+    }
+
+    [Theory]
+    [InlineData("en", "en-US")]
+    [InlineData("it", "it-IT")]
+    [InlineData("fr", "fr-FR")]
+    [InlineData("de", "de-DE")]
+    [InlineData("es", "es-ES")]
+    [InlineData("vi", "vi-VN")]
+    public void LoadingLegacyLocaleIds_RewritesCanonicalSettingsExactlyOnce(string legacyLocale, string canonicalLocale)
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        var settingsPath = Path.Combine(dataDirectory, "appsettings.json");
+        var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var installationId = Guid.NewGuid().ToString("N");
+        try
+        {
+            Directory.CreateDirectory(dataDirectory);
+            var legacy = new AppSettings(
+                InstallationId: installationId,
+                UiLanguage: legacyLocale,
+                OcrLanguage: legacyLocale,
+                SearchLanguage: legacyLocale);
+            File.WriteAllText(settingsPath, JsonSerializer.Serialize(legacy, serializerOptions));
+
+            var loaded = new LocalStore(dataDirectory).LoadSettings();
+            var persisted = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(settingsPath), serializerOptions);
+
+            var expectedOcrLocale = legacyLocale == "vi" ? "system" : canonicalLocale;
+            Assert.Equal(canonicalLocale, loaded.UiLanguage);
+            Assert.Equal(expectedOcrLocale, loaded.OcrLanguage);
+            Assert.Equal(canonicalLocale, loaded.SearchLanguage);
+            Assert.Equal(installationId, loaded.InstallationId);
+            Assert.Equal(canonicalLocale, persisted?.UiLanguage);
+            Assert.Equal(expectedOcrLocale, persisted?.OcrLanguage);
+            Assert.Equal(canonicalLocale, persisted?.SearchLanguage);
+
+            var sentinelWriteTime = DateTime.UtcNow.AddDays(-2);
+            File.SetLastWriteTimeUtc(settingsPath, sentinelWriteTime);
+            var persistedWriteTime = File.GetLastWriteTimeUtc(settingsPath);
+            _ = new LocalStore(dataDirectory).LoadSettings();
+            Assert.Equal(persistedWriteTime, File.GetLastWriteTimeUtc(settingsPath));
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void EverySupportedCatalog_LoadsWithAConcreteCultureCompleteKeysAndValidFormats()
+    {
+        Assert.All(LocalizationService.SupportedLanguages, locale =>
+        {
+            var strings = new LocalizationService(locale);
+
+            Assert.Equal(locale, strings.Language);
+            Assert.NotEqual("StateRunning", strings.Translate("StateRunning"));
+            Assert.False(string.IsNullOrWhiteSpace(strings.Culture.Name));
+            var format = strings.Translate("AiReprocess.QuotaValue");
+            var formatted = strings.Format("AiReprocess.QuotaValue", 1, 10, 9, 2, 3);
+            Assert.NotEqual(format, formatted);
+            Assert.DoesNotContain("{0", formatted, StringComparison.Ordinal);
+        });
+        Assert.Equal("zh-CN", new LocalizationService("zh-Hans").Culture.Name);
+        Assert.Equal("pt-PT", new LocalizationService("pt-PT").Culture.Name);
+        Assert.Equal("pt-BR", new LocalizationService("pt-BR").Culture.Name);
     }
 
     [Fact]
@@ -38,8 +232,8 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void ApiKeyStatus_IsExplicitInEnglishAndItalian()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
         Assert.Equal("API key set and ready.", english.Translate("Options.ApiKeyStatus.Set"));
         Assert.Equal("API key not set.", english.Translate("Options.ApiKeyStatus.Missing"));
@@ -52,8 +246,8 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void DialogMessages_AreLocalizedWithoutEmbeddingSecretValues()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
         Assert.Contains("environment variable {0}", english.Translate("Dialog.AiKeyMissing.Message"), StringComparison.Ordinal);
         Assert.Contains("variabile di ambiente {0}", italian.Translate("Dialog.AiKeyMissing.Message"), StringComparison.Ordinal);
@@ -66,8 +260,8 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void AiConnectionTest_IsLocalizedInEnglishAndItalian()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
         Assert.Equal("AI provider connected", english.Translate("AiConnectionTest.Connected.Title"));
         Assert.Equal("Provider AI connesso", italian.Translate("AiConnectionTest.Connected.Title"));
@@ -80,66 +274,67 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void DailyAiLimitNotification_IsLocalizedInEverySupportedLanguage()
     {
-        Dictionary<string, string> expectedTitles = new()
+        Assert.All(LocalizationService.SupportedLanguages, language =>
         {
-            ["en"] = "Daily AI description limit reached",
-            ["it"] = "Limite giornaliero di descrizioni AI raggiunto",
-            ["fr"] = "Limite quotidienne de descriptions IA atteinte",
-            ["de"] = "Tägliches Limit für KI-Beschreibungen erreicht",
-            ["es"] = "Se alcanzó el límite diario de descripciones de IA",
-            ["vi"] = "Đã đạt giới hạn mô tả AI hàng ngày"
-        };
-
-        Assert.All(expectedTitles, item =>
-        {
-            var strings = new LocalizationService(item.Key);
-            Assert.Equal(item.Value, strings.Translate("Notification.AiDailyLimitReached.Title"));
+            var strings = new LocalizationService(language);
+            Assert.NotEqual("Notification.AiDailyLimitReached.Title", strings.Translate("Notification.AiDailyLimitReached.Title"));
             Assert.NotEqual("Notification.AiDailyLimitReached.Message", strings.Translate("Notification.AiDailyLimitReached.Message"));
+            Assert.Contains("OCR", strings.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.OrdinalIgnoreCase);
         });
-        Assert.Equal(
-            expectedTitles.Count,
-            expectedTitles.Keys.Select(language => new LocalizationService(language).Translate("Notification.AiDailyLimitReached.Message")).Distinct().Count());
 
-        var italian = new LocalizationService("it");
-        Assert.Equal("Limite giornaliero di descrizioni AI raggiunto", italian.Translate("Notification.AiDailyLimitReached.Title"));
-        Assert.Contains("nuove descrizioni AI", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
+        Assert.Equal("Daily AI provider request limit reached", english.Translate("Notification.AiDailyLimitReached.Title"));
+        Assert.Equal("Limite giornaliero di richieste al provider AI raggiunto", italian.Translate("Notification.AiDailyLimitReached.Title"));
+        Assert.Equal(
+            LocalizationService.SupportedLanguages.Count,
+            LocalizationService.SupportedLanguages
+                .Select(language => new LocalizationService(language).Translate("Notification.AiDailyLimitReached.Message"))
+                .Distinct(StringComparer.Ordinal)
+                .Count());
+
+        Assert.Contains("visual AI provider requests", english.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
+        Assert.Contains("le nuove descrizioni", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
         Assert.Contains("mezzanotte locale", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
-        Assert.Contains("non vengono rielaborati automaticamente", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
+        Assert.Contains("perfezionamento OCR tramite AI", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
     }
 
     [Fact]
     public void AiQuotaPanel_IsLocalizedInEverySupportedLanguage()
     {
-        Dictionary<string, (string Title, string Available, string Reached)> expected = new()
+        Assert.All(LocalizationService.SupportedLanguages, language =>
         {
-            ["en"] = ("Daily description quota", "Available", "Limit reached"),
-            ["it"] = ("Quota giornaliera delle descrizioni AI", "Disponibile", "Limite raggiunto"),
-            ["fr"] = ("Quota quotidien de descriptions IA", "Disponible", "Limite atteinte"),
-            ["de"] = ("Tägliches Kontingent für KI-Beschreibungen", "Verfügbar", "Limit erreicht"),
-            ["es"] = ("Cuota diaria de descripciones de IA", "Disponible", "Límite alcanzado"),
-            ["vi"] = ("Hạn mức mô tả AI hàng ngày", "Còn khả dụng", "Đã đạt giới hạn")
-        };
-
-        Assert.All(expected, item =>
-        {
-            var strings = new LocalizationService(item.Key);
-            Assert.Equal(item.Value.Title, strings.Translate("Options.AiQuota.Title"));
-            Assert.Equal(item.Value.Available, strings.Translate("Options.AiQuota.Available"));
-            Assert.Equal(item.Value.Reached, strings.Translate("Options.AiQuota.Reached"));
+            var strings = new LocalizationService(language);
+            Assert.NotEqual("Options.AiQuota.Title", strings.Translate("Options.AiQuota.Title"));
+            Assert.NotEqual("Options.AiQuota.Available", strings.Translate("Options.AiQuota.Available"));
+            Assert.NotEqual("Options.AiQuota.Reached", strings.Translate("Options.AiQuota.Reached"));
             Assert.NotEqual("Options.AiQuota.Unavailable", strings.Translate("Options.AiQuota.Unavailable"));
             Assert.NotEqual("Options.AiQuota.Description", strings.Translate("Options.AiQuota.Description"));
+            Assert.Contains("OCR", strings.Translate("Options.AiQuota.Description"), StringComparison.OrdinalIgnoreCase);
             Assert.NotEqual("Options.AiQuota.ProgressAccessible", strings.Translate("Options.AiQuota.ProgressAccessible"));
             Assert.NotEqual("Options.AiQuota.UnavailableAccessible", strings.Translate("Options.AiQuota.UnavailableAccessible"));
+            Assert.NotEqual("Options.AiQuota.Configure", strings.Translate("Options.AiQuota.Configure"));
+            Assert.NotEqual("Options.AiQuota.Limit", strings.Translate("Options.AiQuota.Limit"));
+            Assert.NotEqual("Options.AiQuota.LimitHint", strings.Translate("Options.AiQuota.LimitHint"));
+            Assert.NotEqual("Options.AiQuota.Save", strings.Translate("Options.AiQuota.Save"));
+            Assert.NotEqual("Options.AiQuota.Saved", strings.Translate("Options.AiQuota.Saved"));
+            Assert.NotEqual("Options.AiQuota.Invalid", strings.Translate("Options.AiQuota.Invalid"));
+            Assert.NotEqual("Options.AiQuota.SaveError", strings.Translate("Options.AiQuota.SaveError"));
         });
 
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
-        Assert.Contains("created successfully", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
+        Assert.Equal("Daily AI provider request quota", english.Translate("Options.AiQuota.Title"));
+        Assert.Equal("Quota giornaliera di richieste al provider AI", italian.Translate("Options.AiQuota.Title"));
+        Assert.Contains("Every visual request", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
         Assert.Contains("local midnight", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
-        Assert.Contains("not reprocessed automatically", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
-        Assert.Contains("create con successo", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("failed attempts", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("ogni richiesta visiva", italian.Translate("Options.AiQuota.Description"), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("mezzanotte locale", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
-        Assert.Contains("non vengono rielaborati automaticamente", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("tentativi non riusciti", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Equal("Funzionalità AI", italian.Translate("Main.Menu.AiProvider"));
+        Assert.Equal("Descrizioni AI automatiche", italian.Translate("MenuToggleOpenAi"));
+        Assert.Equal("AI features", english.Translate("Options.OpenAi.Header"));
     }
 
     [Fact]
@@ -147,12 +342,12 @@ public sealed class LocalizationServiceTests
     {
         Dictionary<string, string> expected = new()
         {
-            ["en"] = "Delete snapshot",
-            ["it"] = "Elimina snapshot",
-            ["fr"] = "Supprimer l'instantané",
-            ["de"] = "Snapshot löschen",
-            ["es"] = "Eliminar instantánea",
-            ["vi"] = "Xóa bản chụp"
+            ["en-US"] = "Delete snapshot",
+            ["it-IT"] = "Elimina snapshot",
+            ["fr-FR"] = "Supprimer l'instantané",
+            ["de-DE"] = "Snapshot löschen",
+            ["es-ES"] = "Eliminar instantánea",
+            ["vi-VN"] = "Xóa bản chụp"
         };
 
         Assert.All(expected, item =>
@@ -165,8 +360,8 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void ScreenshotDetails_DistinguishHistoricalActivityIndexFromLiveScore()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
         Assert.Equal("Activity index", english.Translate("Screenshots.ActivityIndex"));
         Assert.Equal("Indice attività", italian.Translate("Screenshots.ActivityIndex"));
@@ -181,8 +376,8 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void AboutDiagnostics_AreLocalizedForOpenAndRedactedShareActions()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
         Assert.Equal("View logs", english.Translate("About.ShowLogs"));
         Assert.Equal("Report a problem", english.Translate("About.ShareLog"));
@@ -194,17 +389,17 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void SearchIndexingProgress_IsLocalizedInEnglishAndItalian()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
-        Assert.Equal("Search snapshots", english.Translate("Search.Title"));
+        Assert.Equal("Search history", english.Translate("Search.Title"));
         Assert.Equal("No matching snapshots", english.Translate("Search.NoResults"));
         Assert.Equal("Search indexing", english.Translate("SearchIndex.Title"));
         Assert.Equal("Search results", english.Translate("SearchIndex.Results.Title"));
         Assert.Equal("Search suggestions", english.Translate("SearchIndex.Suggestions.Title"));
         Assert.Equal("Searching the local index", english.Translate("Search.Working"));
         Assert.Equal("Cancel", english.Translate("SearchIndex.Cancel"));
-        Assert.Equal("Cerca negli snapshot", italian.Translate("Search.Title"));
+        Assert.Equal("Cerca nella cronologia", italian.Translate("Search.Title"));
         Assert.Equal("Nessuno snapshot corrispondente", italian.Translate("Search.NoResults"));
         Assert.Equal("Indicizzazione ricerca", italian.Translate("SearchIndex.Title"));
         Assert.Equal("Risultati di ricerca", italian.Translate("SearchIndex.Results.Title"));
@@ -216,8 +411,8 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void ActivityCalendar_IsLocalizedInEnglishAndItalian()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
 
         Assert.Equal("Activity calendar", english.Translate("ActivityCalendar.MenuTitle"));
         Assert.Equal("Calendario attività", italian.Translate("ActivityCalendar.MenuTitle"));
@@ -232,10 +427,34 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void HistoricalAiReprocessing_UsesExplicitScreenshotAndAcquisitionWordingInEnglishAndItalian()
+    {
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
+
+        Assert.Equal("Reprocess missing AI descriptions", english.Translate("ActivityCalendar.Reprocess"));
+        Assert.Equal("Riprocessa descrizioni AI mancanti", italian.Translate("ActivityCalendar.Reprocess"));
+        Assert.Equal("SCREENSHOTS", english.Translate("AiReprocess.Screenshots"));
+        Assert.Equal("SCHERMATE", italian.Translate("AiReprocess.Screenshots"));
+        Assert.Equal("ACQUISITIONS", english.Translate("AiReprocess.Captures"));
+        Assert.Equal("ACQUISIZIONI", italian.Translate("AiReprocess.Captures"));
+        Assert.Contains("AI requests", english.Translate("AiReprocess.ScopeSummary"), StringComparison.Ordinal);
+        Assert.Contains("richieste AI", italian.Translate("AiReprocess.ScopeSummary"), StringComparison.Ordinal);
+        Assert.Contains("{0:N0}", english.Translate("AiReprocess.Start"), StringComparison.Ordinal);
+        Assert.Contains("{0:N0}", italian.Translate("AiReprocess.Start"), StringComparison.Ordinal);
+        Assert.Contains("{4:N0}", english.Translate("AiReprocess.QuotaValue"), StringComparison.Ordinal);
+        Assert.Contains("{4:N0}", italian.Translate("AiReprocess.QuotaValue"), StringComparison.Ordinal);
+        Assert.Contains("{1:N0}", english.Translate("AiReprocess.CompletedCount"), StringComparison.Ordinal);
+        Assert.Contains("{1:N0}", italian.Translate("AiReprocess.CompletedCount"), StringComparison.Ordinal);
+        Assert.Contains("continues", english.Translate("AiReprocess.CloseKeepsRunning"), StringComparison.Ordinal);
+        Assert.Contains("continua", italian.Translate("AiReprocess.CloseKeepsRunning"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OperationsDescriptions_AreDetailedInEnglishAndItalian()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
         (string Key, string English, string Italian)[] descriptions =
         [
             ("Operations.Runtime.Description", "Review the TrackMeUp runtime, protocol and capabilities, logging status, and a current snapshot of CPU, GPU, memory, network, and local storage. These diagnostics are read from this PC.", "Controlla il runtime di TrackMeUp, il protocollo e le funzionalità, lo stato dei log e una fotografia attuale di CPU, GPU, memoria, rete e archiviazione locale. Questi dati diagnostici vengono letti da questo PC."),
@@ -262,13 +481,13 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void OperationsNavigation_IsLocalizedAndVendorAgnostic()
     {
-        var english = new LocalizationService("en");
-        var italian = new LocalizationService("it");
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
         (string Key, string English, string Italian)[] navigation =
         [
             ("Options.Operations.Section", "Tools and data controls", "Strumenti e controllo dei dati"),
-            ("Options.Operations.Description", "Open dedicated pages for screen captures and AI provider actions, reports, privacy rules, data retention, and context plugins.", "Apri pagine dedicate alle catture schermo e alle azioni del provider AI, ai report, alle regole di privacy, alla conservazione dei dati e ai plugin di contesto."),
-            ("Options.Navigation.SnapshotAi.Title", "Screen captures and AI provider", "Catture schermo e provider AI"),
+            ("Options.Operations.Description", "Open dedicated pages for screen captures and AI features, reports, privacy rules, data retention, and context plugins.", "Apri pagine dedicate alle catture schermo e alle funzionalità AI, ai report, alle regole di privacy, alla conservazione dei dati e ai plugin di contesto."),
+            ("Options.Navigation.SnapshotAi.Title", "Screen captures and AI features", "Catture schermo e funzionalità AI"),
             ("Options.Navigation.SnapshotAi.Description", "Capture the current screen, inspect saved images, or request a description from the configured AI provider.", "Cattura lo schermo corrente, controlla le immagini salvate o richiedi una descrizione al provider AI configurato."),
             ("Options.Navigation.SnapshotAi.Action", "Open capture and analysis tools", "Apri gli strumenti di cattura e analisi"),
             ("Options.Navigation.Reports.Title", "Reports and digests", "Report e digest"),
@@ -291,15 +510,24 @@ public sealed class LocalizationServiceTests
             Assert.Equal(item.Italian, italian.Translate(item.Key));
         });
 
-        string[] providerCopyKeys =
+        string[] featureCopyKeys =
         [
             "Options.Operations.Description",
-            "Options.Navigation.SnapshotAi.Title",
+            "Options.Navigation.SnapshotAi.Title"
+        ];
+        string[] providerCopyKeys =
+        [
             "Options.Navigation.SnapshotAi.Description",
             "Operations.SnapshotAi.Description",
             "Operations.Privacy.Description"
         ];
         string[] vendorNames = ["OpenAI", "OpenRouter", "Anthropic"];
+
+        Assert.All(featureCopyKeys, key =>
+        {
+            Assert.Contains("AI features", english.Translate(key), StringComparison.Ordinal);
+            Assert.Contains("funzionalità AI", italian.Translate(key), StringComparison.Ordinal);
+        });
 
         Assert.All(providerCopyKeys, key =>
         {
@@ -313,6 +541,13 @@ public sealed class LocalizationServiceTests
                 Assert.DoesNotContain(vendor, italianCopy, StringComparison.OrdinalIgnoreCase);
             });
         });
+        Assert.All(LocalizationService.SupportedLanguages, language =>
+        {
+            var strings = new LocalizationService(language);
+            Assert.All(providerCopyKeys, key =>
+                Assert.All(vendorNames, vendor =>
+                    Assert.DoesNotContain(vendor, strings.Translate(key), StringComparison.OrdinalIgnoreCase)));
+        });
 
         string[] obsoleteSectionKeys =
         [
@@ -323,8 +558,8 @@ public sealed class LocalizationServiceTests
 
         Assert.All(obsoleteSectionKeys, key =>
         {
-            Assert.Equal(key, english.Translate(key));
-            Assert.Equal(key, italian.Translate(key));
+            Assert.Throws<KeyNotFoundException>(() => english.Translate(key));
+            Assert.Throws<KeyNotFoundException>(() => italian.Translate(key));
         });
     }
 }

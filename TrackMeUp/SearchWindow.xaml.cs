@@ -57,9 +57,12 @@ public sealed partial class SearchWindow : Window
             throw new ArgumentOutOfRangeException(nameof(availability), "Search availability must describe at least one retained snapshot.");
         }
 
-        _viewModel = new SearchViewModel(application);
         _strings = new LocalizationService(language);
-        _culture = CultureInfo.GetCultureInfo(_strings.Language);
+        _culture = _strings.Culture;
+        _viewModel = new SearchViewModel(
+            application,
+            _strings.Translate("Search.Result.Match"),
+            FormatClickCount);
         InitializeComponent();
         RootGrid.DataContext = _viewModel;
         RootGrid.RequestedTheme = ElementTheme.Light;
@@ -86,6 +89,19 @@ public sealed partial class SearchWindow : Window
         _placement.ApplyDefaultBounds(RootGrid);
         Activated += SearchWindow_Activated;
         Closed += SearchWindow_Closed;
+    }
+
+    private string FormatClickCount(long? clickCount, CultureInfo culture)
+    {
+        if (clickCount is null)
+        {
+            return _strings.Translate("Search.Result.Clicks.None");
+        }
+
+        var key = clickCount == 1
+            ? "Search.Result.Clicks.One"
+            : "Search.Result.Clicks.Many";
+        return string.Format(culture, _strings.Translate(key), clickCount.Value);
     }
 
     /// <summary>Occurs when the user selects a screenshot result for the existing inspector.</summary>

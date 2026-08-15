@@ -198,7 +198,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             }
 
             var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
-            Assert.Contains("Unsupported activity database schema version 5; expected 6", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("Unsupported activity database schema version 5; expected 7", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -218,7 +218,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             store.SaveSettings(store.LoadSettings() with
             {
                 ScreenshotDirectory = screenshotDirectory,
-                UiLanguage = "it"
+                UiLanguage = "it-IT"
             });
             var timestamp = DateTimeOffset.Now.AddSeconds(-1);
             store.AppendSample(new ActivitySample(
@@ -305,7 +305,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             store.SaveSettings(store.LoadSettings() with
             {
                 ScreenshotDirectory = screenshotDirectory,
-                SearchLanguage = "it"
+                SearchLanguage = "it-IT"
             });
             var screenshotPath = CreateOwnedScreenshot(screenshotDirectory, 'd', DateTimeOffset.Now.AddSeconds(-1));
             var textSnapshot = CreateTextSnapshot(screenshotPath, "Preventivo cliente senza allegato");
@@ -345,7 +345,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             var store = new LocalStore(dataDirectory);
             store.SaveSettings(store.LoadSettings() with
             {
-                SearchLanguage = "it",
+                SearchLanguage = "it-IT",
                 SearchSynonymsEnabled = false,
                 SearchTypoToleranceEnabled = false
             });
@@ -400,6 +400,18 @@ public sealed class LocalSearchAndOcrIntegrationTests
         {
             DeleteDataDirectory(dataDirectory);
         }
+    }
+
+    [Fact]
+    public void SearchSynonymConfiguration_CoversEveryNewAnalyzerLocale()
+    {
+        var sets = SearchSynonymConfiguration.Load(Path.Combine(AppContext.BaseDirectory, "search-synonyms.json"));
+
+        Assert.All(
+            new[] { "vi-VN", "zh-Hans", "ko-KR", "pt-PT", "pt-BR" },
+            locale => Assert.True(
+                sets.Count(set => string.Equals(set.Language, locale, StringComparison.OrdinalIgnoreCase)) >= 3,
+                $"Expected screenshot, email, and meeting synonym groups for {locale}."));
     }
 
     [Fact]
@@ -459,12 +471,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
             new SettingsPatch(new Dictionary<string, string?>
             {
                 ["ocr.enabled"] = "false",
-                ["ocr.language"] = "it"
+                ["ocr.language"] = "it-IT"
             }));
 
         Assert.True(result.Succeeded);
         Assert.False(result.Value!.OcrEnabled);
-        Assert.Equal("it", result.Value.OcrLanguage);
+        Assert.Equal("it-IT", result.Value.OcrLanguage);
         Assert.All(
             SettingsCatalog.Definitions.Where(definition => definition.Key.StartsWith("ocr.", StringComparison.Ordinal)),
             definition => Assert.True(definition.RequiresRestart));
@@ -477,13 +489,13 @@ public sealed class LocalSearchAndOcrIntegrationTests
             new AppSettings(),
             new SettingsPatch(new Dictionary<string, string?>
             {
-                ["search.language"] = "it",
+                ["search.language"] = "it-IT",
                 ["search.synonyms"] = "false",
                 ["search.typo_tolerance"] = "false"
             }));
 
         Assert.True(result.Succeeded);
-        Assert.Equal("it", result.Value!.SearchLanguage);
+        Assert.Equal("it-IT", result.Value!.SearchLanguage);
         Assert.False(result.Value.SearchSynonymsEnabled);
         Assert.False(result.Value.SearchTypoToleranceEnabled);
         Assert.DoesNotContain(

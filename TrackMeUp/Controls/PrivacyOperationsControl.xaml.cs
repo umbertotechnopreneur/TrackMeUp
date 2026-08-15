@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -13,6 +14,7 @@ public sealed partial class PrivacyOperationsControl : UserControl
 {
     private LocalizationService _strings = new("system");
     private OperationsSectionContext? _context;
+    private PrivacyRule[] _rules = [];
 
     /// <summary>Creates the independent privacy operations surface.</summary>
     public PrivacyOperationsControl() => InitializeComponent();
@@ -22,10 +24,19 @@ public sealed partial class PrivacyOperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        AutomationProperties.SetName(PrivacyRulesList, _strings.Translate("Operations.Privacy"));
+        ApplyPrivacyRules();
     }
 
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
+        _context = new OperationsSectionContext(
+            application,
+            dialogs,
+            ownerWindow,
+            banner,
+            Progress,
+            SectionBody,
+            key => _strings.TryTranslate(key, out var value) ? value : null);
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("PrivacyOperationsControl must be initialized before use.");
 
@@ -47,19 +58,23 @@ public sealed partial class PrivacyOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GetPrivacyRulesAsync(token));
         if (result is { Succeeded: true, Value: { } rules })
         {
-            PrivacyRulesList.ItemsSource = rules.ToArray();
+            _rules = rules.ToArray();
+            ApplyPrivacyRules();
         }
     }
 
     private async void RemovePrivacyRuleButton_Click(object sender, RoutedEventArgs e)
     {
-        if (PrivacyRulesList.SelectedItem is not PrivacyRule rule)
+        if (PrivacyRulesList.SelectedItem is not PrivacyRuleListItem item)
         {
-            Context.ShowStatus(L("Selection required", "Selezione richiesta"), L("Select the privacy rule to remove.", "Seleziona la regola privacy da rimuovere."), InfoBarSeverity.Warning);
+            Context.ShowStatus(
+                _strings.Translate("Operations.Privacy.SelectionRequired.Title"),
+                _strings.Translate("Operations.Privacy.SelectionRequired.Message"),
+                InfoBarSeverity.Warning);
             return;
         }
 
-        var result = await Context.ExecuteAsync((application, token) => application.RemovePrivacyRuleAsync(rule.Id, token));
+        var result = await Context.ExecuteAsync((application, token) => application.RemovePrivacyRuleAsync(item.Id, token));
         if (result is { Succeeded: true })
         {
             await RefreshPrivacyRulesAsync();
@@ -72,12 +87,20 @@ public sealed partial class PrivacyOperationsControl : UserControl
         if (result is { Succeeded: true, Value: { } blocked })
         {
             PrivacyTestText.Text = blocked
-                ? L("The current context is blocked by privacy rules.", "Il contesto corrente è bloccato dalle regole privacy.")
-                : L("The current context is not blocked.", "Il contesto corrente non è bloccato.");
+                ? _strings.Translate("Operations.Privacy.ContextBlocked")
+                : _strings.Translate("Operations.Privacy.ContextAllowed");
         }
     }
 
     private static string SelectedTag(ComboBox comboBox, string fallback) => comboBox.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
 
-    private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
+    private void ApplyPrivacyRules() =>
+        PrivacyRulesList.ItemsSource = _rules
+            .Select(rule => new PrivacyRuleListItem(
+                rule.Id,
+                _strings.Translate($"Operations.PrivacyType.{rule.Type}"),
+                rule.Value))
+            .ToArray();
+
+    private sealed record PrivacyRuleListItem(string Id, string TypeLabel, string Value);
 }

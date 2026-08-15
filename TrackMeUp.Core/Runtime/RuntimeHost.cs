@@ -267,6 +267,11 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
                 "ai.pricing.overview" => ToResponse(request, await _application.GetAiPricingOverviewAsync(cancellationToken)),
                 "ai.connection.test" => ToResponse(request, await _application.TestAiConnectionAsync(cancellationToken)),
+                "ai.screenshot_reprocess.preview.v1" => await DispatchAiScreenshotReprocessPreviewAsync(request, cancellationToken),
+                "ai.screenshot_reprocess.start.v1" => ToResponse(request, await _application.StartAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "planId"), cancellationToken)),
+                "ai.screenshot_reprocess.status.v1" => ToResponse(request, await _application.GetAiScreenshotReprocessingJobAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
+                "ai.screenshot_reprocess.pause.v1" => ToResponse(request, await _application.PauseAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
+                "ai.screenshot_reprocess.resume.v1" => ToResponse(request, await _application.ResumeAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
                 "ai.models" => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
                 "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
                 "ai.disable" => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
@@ -361,6 +366,16 @@ public sealed class RuntimeHost : IAsyncDisposable
             : ToResponse(request, await _application.AnalyzeCapturedScreenshotAsync(analysisRequest, cancellationToken));
     }
 
+    private async Task<RuntimeResponseEnvelope> DispatchAiScreenshotReprocessPreviewAsync(
+        RuntimeRequestEnvelope request,
+        CancellationToken cancellationToken)
+    {
+        var previewRequest = Read<AiScreenshotReprocessRequest>(request.Payload);
+        return previewRequest is null
+            ? Failure(request, "ai.screenshot_reprocess.preview.invalid", "AiScreenshotReprocessInvalid")
+            : ToResponse(request, await _application.PreviewAiScreenshotReprocessingAsync(previewRequest, cancellationToken));
+    }
+
     private async Task<RuntimeResponseEnvelope> DispatchDailyDigestAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
     {
         var digest = Read<GenerateDailyDigestRequest>(request.Payload);
@@ -390,6 +405,9 @@ public sealed class RuntimeHost : IAsyncDisposable
     private static string ReadString(JsonElement value, string name) => ReadStringOrNull(value, name) ?? string.Empty;
 
     private static string? ReadStringOrNull(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String ? property.GetString() : null;
+
+    private static Guid ReadGuid(JsonElement value, string name) =>
+        Guid.TryParse(ReadStringOrNull(value, name), out var parsed) ? parsed : Guid.Empty;
 
     private Task<OperationResult<string>> DispatchOpenScreenshotFolderAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
         => ReadStringOrNull(request.Payload, "directory") is { } directory
@@ -488,6 +506,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
 {
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ScreenshotReprocessPreviewTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
@@ -579,6 +598,23 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => SendAsync<AiPricingOverview>("ai.pricing.overview", null, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
     public Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken) => SendAsync<AiConnectionTestResult>("ai.connection.test", null, cancellationToken, TimeSpan.FromSeconds(35));
+    /// <inheritdoc />
+    public Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(
+        AiScreenshotReprocessRequest request,
+        CancellationToken cancellationToken) =>
+        SendAsync<AiScreenshotReprocessPlan>("ai.screenshot_reprocess.preview.v1", request, cancellationToken, ScreenshotReprocessPreviewTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> StartAiScreenshotReprocessingAsync(Guid planId, CancellationToken cancellationToken) =>
+        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.start.v1", new { planId }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> GetAiScreenshotReprocessingJobAsync(Guid jobId, CancellationToken cancellationToken) =>
+        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.status.v1", new { jobId }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> PauseAiScreenshotReprocessingAsync(Guid jobId, CancellationToken cancellationToken) =>
+        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.pause.v1", new { jobId }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> ResumeAiScreenshotReprocessingAsync(Guid jobId, CancellationToken cancellationToken) =>
+        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.resume.v1", new { jobId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => SendAsync<AiModelCatalogSnapshot>("ai.models", null, cancellationToken);
     /// <inheritdoc />

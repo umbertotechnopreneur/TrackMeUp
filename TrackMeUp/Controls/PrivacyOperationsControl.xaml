@@ -35,7 +35,7 @@
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Padding="2,5" Spacing="2">
-                            <TextBlock FontWeight="SemiBold" Text="{Binding Type}" />
+                            <TextBlock FontWeight="SemiBold" Text="{Binding TypeLabel}" />
                             <TextBlock Text="{Binding Value}" TextWrapping="Wrap" />
                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="{Binding Id}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>

@@ -105,6 +105,41 @@ public sealed class OpenAiAnalysisCleanupTests
     }
 
     [Fact]
+    public async Task CancellationAfterSuccessfulProviderResponse_PersistsResultBeforeShutdown()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-key", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = CreateStore(dataDirectory, openAiEnabled: true);
+            var capture = CreateWatermarkedCapture(dataDirectory);
+            using var cancellation = new CancellationTokenSource();
+            var service = new OpenAiAnalysisService(
+                store,
+                new UnexpectedCaptureService(),
+                decoder: new PostResponseCancellationDecoder(cancellation));
+
+            var analysis = await service.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: true,
+                origin: "snapshot.reprocess",
+                cancellation.Token);
+
+            Assert.True(cancellation.IsCancellationRequested);
+            Assert.Equal(capture.CaptureId, analysis.CorrelationId);
+            Assert.Equal(capture.CaptureId, store.LoadLatestAnalysis()?.CorrelationId);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ProviderFailure_LogsOnlyStructuredRedactedAttemptMetadata()
     {
         var dataDirectory = CreateTemporaryDirectory();
@@ -242,6 +277,33 @@ public sealed class OpenAiAnalysisCleanupTests
                 CancellationObserved = true;
                 throw;
             }
+        }
+    }
+
+    private sealed class PostResponseCancellationDecoder(CancellationTokenSource cancellation) : IAIDecoder
+    {
+        public string Provider => "openai";
+
+        public Task<AiProviderResult> DecodeAsync(
+            string prompt,
+            IReadOnlyList<string> screenshotPaths,
+            AppSettings settings,
+            string apiKey,
+            string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
+            CancellationToken cancellationToken = default)
+        {
+            cancellation.Cancel();
+            return Task.FromResult(new AiProviderResult(
+                "analyzed",
+                new AiUsageMetrics(),
+                "response-id",
+                "request-id",
+                settings.Model,
+                "completed",
+                200,
+                1,
+                null));
         }
     }
 

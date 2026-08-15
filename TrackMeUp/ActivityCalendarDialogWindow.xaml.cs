@@ -13,6 +13,9 @@ using Windows.UI;
 
 namespace TrackMeUp;
 
+/// <summary>Returns the day selected for AI screenshot reprocessing.</summary>
+internal sealed record ActivityCalendarDialogResult(DateOnly Date);
+
 /// <summary>Shows a native rolling activity calendar backed only by aggregate application-layer report data.</summary>
 internal sealed partial class ActivityCalendarDialogWindow : Window
 {
@@ -25,7 +28,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoActivate = 0x0010;
     private static readonly IntPtr HwndTopMost = new(-1);
-    private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<ActivityCalendarDialogResult?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
@@ -35,6 +38,8 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private IReadOnlyDictionary<DateOnly, ReportCalendarCell> _recordedDays = new Dictionary<DateOnly, ReportCalendarCell>();
+    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
+    private ActivityCalendarDialogResult? _result;
     private bool _isCompleting;
     private bool _isLoaded;
 
@@ -49,7 +54,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
         _ownerAppWindow = ownerAppWindow ?? throw new ArgumentNullException(nameof(ownerAppWindow));
-        _culture = CultureInfo.GetCultureInfo(_strings.Language);
+        _culture = _strings.Culture;
         InitializeComponent();
         Title = T("ActivityCalendar.Title");
         RootGrid.RequestedTheme = theme;
@@ -81,7 +86,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     }
 
     /// <summary>Activates the queued acrylic surface and completes after closure.</summary>
-    internal Task ShowAsync()
+    internal Task<ActivityCalendarDialogResult?> ShowAsync()
     {
         SetWindowPos(_windowHandle, HwndTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
         Activate();
@@ -258,6 +263,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
     private void UpdateSelectedDay(DateOnly date)
     {
+        _selectedDate = date;
         SelectedDateText.Text = date.ToString("D", _culture);
         if (!_recordedDays.TryGetValue(date, out var cell))
         {
@@ -298,11 +304,13 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         KeyPressesLabelText.Text = T("ActivityCalendar.KeyPresses");
         MouseClicksLabelText.Text = T("ActivityCalendar.MouseClicks");
         SamplesLabelText.Text = T("ActivityCalendar.Samples");
+        ReprocessAiButtonText.Text = T("ActivityCalendar.Reprocess");
         CloseButton.Content = T("About.Close");
         AutomationProperties.SetName(RootGrid, T("ActivityCalendar.Title"));
         AutomationProperties.SetName(DialogTitleText, DialogTitleText.Text);
         AutomationProperties.SetName(DialogSubtitleText, DialogSubtitleText.Text);
         AutomationProperties.SetName(ActivityCalendarView, T("ActivityCalendar.Title"));
+        AutomationProperties.SetName(ReprocessAiButton, ReprocessAiButtonText.Text);
         AutomationProperties.SetName(CloseButton, T("About.Close"));
     }
 
@@ -344,6 +352,12 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         await CompleteAsync();
     }
 
+    private async void ReprocessAiButton_Click(object sender, RoutedEventArgs e)
+    {
+        _result = new ActivityCalendarDialogResult(_selectedDate);
+        await CompleteAsync();
+    }
+
     private async void RootGrid_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Escape)
@@ -372,7 +386,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private void ActivityCalendarDialogWindow_Closed(object sender, WindowEventArgs args)
     {
         _lifetimeCancellation.Cancel();
-        _completion.TrySetResult();
+        _completion.TrySetResult(_result);
     }
 
     private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)

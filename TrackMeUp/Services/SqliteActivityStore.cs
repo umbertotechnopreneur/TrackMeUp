@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -10,7 +11,8 @@ namespace TrackMeUp.Services;
 internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
-    private const int SchemaVersion = 6;
+    private const int SchemaVersion = 7;
+    private const int PreviousSchemaVersion = 6;
     private const long FixedEstimatedRowBytes = 96;
     private static readonly SchemaColumn[] ExpectedActivityColumns =
     [
@@ -68,6 +70,45 @@ internal sealed class SqliteActivityStore
         new("updated_utc_ticks", "INTEGER", true, 0)
     ];
 
+    private static readonly SchemaColumn[] ExpectedAiAnalysisArtifactColumns =
+    [
+        new("artifact_identity", "TEXT", true, 1),
+        new("capture_id", "TEXT", true, 0),
+        new("correlation_id", "TEXT", true, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedAiReprocessJobColumns =
+    [
+        new("job_id", "TEXT", true, 1),
+        new("created_utc_ticks", "INTEGER", true, 0),
+        new("updated_utc_ticks", "INTEGER", true, 0),
+        new("range_start_utc_ticks", "INTEGER", true, 0),
+        new("range_end_utc_ticks", "INTEGER", true, 0),
+        new("selected_local_date", "TEXT", true, 0),
+        new("capture_origin", "TEXT", false, 0),
+        new("configuration_fingerprint", "TEXT", true, 0),
+        new("state", "TEXT", true, 0),
+        new("active_slot", "INTEGER", false, 0),
+        new("total_captures", "INTEGER", true, 0),
+        new("total_screenshots", "INTEGER", true, 0),
+        new("pause_reason", "TEXT", false, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedAiReprocessJobItemColumns =
+    [
+        new("job_id", "TEXT", true, 1),
+        new("capture_id", "TEXT", true, 2),
+        new("ordinal", "INTEGER", true, 0),
+        new("captured_utc_ticks", "INTEGER", true, 0),
+        new("capture_origin", "TEXT", true, 0),
+        new("artifact_identities_json", "TEXT", true, 0),
+        new("screenshot_count", "INTEGER", true, 0),
+        new("state", "TEXT", true, 0),
+        new("attempt_count", "INTEGER", true, 0),
+        new("last_code", "TEXT", false, 0),
+        new("updated_utc_ticks", "INTEGER", true, 0)
+    ];
+
     private static readonly SchemaColumn[] ExpectedAiModelPricingColumns =
     [
         new("provider", "TEXT", true, 1),
@@ -109,10 +150,35 @@ internal sealed class SqliteActivityStore
         "ix_screenshot_text_snapshots_capture"
     ];
 
-    private static readonly HashSet<string> ExpectedScreenshotIntervalTelemetryIndexes =
+    private static readonly HashSet<string> ExpectedScreenshotIntervalTelemetryIndexesV6 =
     [
         "sqlite_autoindex_screenshot_interval_telemetry_1",
         "ix_screenshot_interval_telemetry_capture"
+    ];
+
+    private static readonly HashSet<string> ExpectedScreenshotIntervalTelemetryIndexes =
+    [
+        .. ExpectedScreenshotIntervalTelemetryIndexesV6,
+        "ix_screenshot_interval_telemetry_captured"
+    ];
+
+    private static readonly HashSet<string> ExpectedAiAnalysisArtifactIndexes =
+    [
+        "sqlite_autoindex_ai_analysis_artifacts_1",
+        "ix_ai_analysis_artifacts_capture"
+    ];
+
+    private static readonly HashSet<string> ExpectedAiReprocessJobIndexes =
+    [
+        "sqlite_autoindex_ai_reprocess_jobs_1",
+        "ux_ai_reprocess_jobs_active_slot"
+    ];
+
+    private static readonly HashSet<string> ExpectedAiReprocessJobItemIndexes =
+    [
+        "sqlite_autoindex_ai_reprocess_job_items_1",
+        "sqlite_autoindex_ai_reprocess_job_items_2",
+        "ix_ai_reprocess_job_items_next"
     ];
 
     private static readonly HashSet<string> ExpectedAiModelPricingIndexes =
@@ -120,7 +186,7 @@ internal sealed class SqliteActivityStore
         "sqlite_autoindex_ai_model_pricing_1"
     ];
 
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV6 =
     [
         "activity_samples",
         "ix_activity_samples_start",
@@ -141,6 +207,18 @@ internal sealed class SqliteActivityStore
         "ai_model_pricing",
         "screenshot_interval_telemetry",
         "ix_screenshot_interval_telemetry_capture"
+    ];
+
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    [
+        .. ExpectedApplicationSchemaObjectsV6,
+        "ix_screenshot_interval_telemetry_captured",
+        "ai_analysis_artifacts",
+        "ix_ai_analysis_artifacts_capture",
+        "ai_reprocess_jobs",
+        "ux_ai_reprocess_jobs_active_slot",
+        "ai_reprocess_job_items",
+        "ix_ai_reprocess_job_items_next"
     ];
 
     private readonly string _databasePath;
@@ -371,6 +449,497 @@ internal sealed class SqliteActivityStore
         return value is null or DBNull ? null : new DateTimeOffset(Convert.ToInt64(value), TimeSpan.Zero);
     }
 
+    /// <summary>Lists screenshot capture metadata and description state in a half-open UTC interval.</summary>
+    internal IReadOnlyList<AiReprocessCatalogRecord> ListScreenshotCapturesForAiReprocessing(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        CancellationToken cancellationToken)
+    {
+        if (fromUtc >= toUtc)
+        {
+            throw new ArgumentOutOfRangeException(nameof(toUtc), "The screenshot reprocessing interval must be positive.");
+        }
+
+        var captures = new List<AiReprocessCatalogRecord>();
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT telemetry.capture_id,
+                   MIN(telemetry.interval_started_utc_ticks) AS interval_started_utc_ticks,
+                   MIN(telemetry.captured_utc_ticks) AS captured_utc_ticks,
+                   telemetry.artifact_identity,
+                   EXISTS (
+                       SELECT 1
+                       FROM ai_analysis_artifacts AS artifact
+                       WHERE artifact.capture_id = telemetry.capture_id) AS has_ai_description
+            FROM screenshot_interval_telemetry AS telemetry
+            WHERE telemetry.captured_utc_ticks >= $from
+              AND telemetry.captured_utc_ticks < $to
+            GROUP BY telemetry.capture_id, telemetry.artifact_identity
+            ORDER BY captured_utc_ticks, telemetry.capture_id, telemetry.artifact_identity;
+            """;
+        command.Parameters.AddWithValue("$from", fromUtc.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$to", toUtc.UtcDateTime.Ticks);
+        using var reader = command.ExecuteReader();
+        string? captureId = null;
+        DateTimeOffset intervalStartedAt = default;
+        DateTimeOffset capturedAt = default;
+        var hasAiDescription = false;
+        var artifactIdentities = new List<string>();
+        while (reader.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var rowCaptureId = reader.GetString(0);
+            if (captureId is not null && !string.Equals(captureId, rowCaptureId, StringComparison.Ordinal))
+            {
+                captures.Add(new AiReprocessCatalogRecord(
+                    captureId,
+                    intervalStartedAt,
+                    capturedAt,
+                    artifactIdentities.ToArray(),
+                    HasTelemetry: true,
+                    hasAiDescription));
+                artifactIdentities.Clear();
+            }
+
+            captureId = rowCaptureId;
+            intervalStartedAt = new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero);
+            capturedAt = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            artifactIdentities.Add(reader.GetString(3));
+            hasAiDescription = reader.GetInt32(4) == 1;
+        }
+
+        if (captureId is not null)
+        {
+            captures.Add(new AiReprocessCatalogRecord(
+                captureId,
+                intervalStartedAt,
+                capturedAt,
+                artifactIdentities.ToArray(),
+                HasTelemetry: true,
+                hasAiDescription));
+        }
+
+        return captures;
+    }
+
+    /// <summary>Loads persisted telemetry identities for one original screenshot capture.</summary>
+    internal AiReprocessCatalogRecord? LoadScreenshotCapture(string captureId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT MIN(telemetry.interval_started_utc_ticks), MIN(telemetry.captured_utc_ticks),
+                   telemetry.artifact_identity,
+                   EXISTS (
+                       SELECT 1 FROM ai_analysis_artifacts AS artifact
+                       WHERE artifact.capture_id = $captureId)
+            FROM screenshot_interval_telemetry AS telemetry
+            WHERE telemetry.capture_id = $captureId
+            GROUP BY telemetry.artifact_identity
+            ORDER BY telemetry.artifact_identity;
+            """;
+        command.Parameters.AddWithValue("$captureId", captureId);
+        using var reader = command.ExecuteReader();
+        DateTimeOffset intervalStartedAt = default;
+        DateTimeOffset capturedAt = default;
+        var hasAiDescription = false;
+        var identities = new List<string>();
+        while (reader.Read())
+        {
+            intervalStartedAt = new DateTimeOffset(reader.GetInt64(0), TimeSpan.Zero);
+            capturedAt = new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero);
+            identities.Add(reader.GetString(2));
+            hasAiDescription = reader.GetInt32(3) == 1;
+        }
+
+        return identities.Count == 0
+            ? null
+            : new AiReprocessCatalogRecord(
+                captureId,
+                intervalStartedAt,
+                capturedAt,
+                identities,
+                HasTelemetry: true,
+                hasAiDescription);
+    }
+
+    /// <summary>Loads telemetry presence and AI-description state for a bounded set of capture identifiers.</summary>
+    internal IReadOnlyDictionary<string, AiReprocessCapturePersistenceState> LoadAiReprocessCaptureStates(
+        IEnumerable<string> captureIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(captureIds);
+        var ids = captureIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var states = new Dictionary<string, AiReprocessCapturePersistenceState>(StringComparer.Ordinal);
+        using var connection = OpenConnection();
+        foreach (var batch in ids.Chunk(400))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (var telemetry = connection.CreateCommand())
+            {
+                var parameters = AddTextParameters(telemetry, batch, "$capture");
+                telemetry.CommandText = $"""
+                    SELECT capture_id, MIN(interval_started_utc_ticks), MIN(captured_utc_ticks)
+                    FROM screenshot_interval_telemetry
+                    WHERE capture_id IN ({parameters})
+                    GROUP BY capture_id;
+                    """;
+                using var reader = telemetry.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var captureId = reader.GetString(0);
+                    states[captureId] = new AiReprocessCapturePersistenceState(
+                        captureId,
+                        new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
+                        new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero),
+                        HasAiDescription: false);
+                }
+            }
+
+            using (var descriptions = connection.CreateCommand())
+            {
+                var parameters = AddTextParameters(descriptions, batch, "$described");
+                descriptions.CommandText = $"""
+                    SELECT DISTINCT capture_id
+                    FROM ai_analysis_artifacts
+                    WHERE capture_id IN ({parameters});
+                    """;
+                using var reader = descriptions.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var captureId = reader.GetString(0);
+                    states.TryGetValue(captureId, out var current);
+                    states[captureId] = new AiReprocessCapturePersistenceState(
+                        captureId,
+                        current?.IntervalStartedAt,
+                        current?.CapturedAt,
+                        HasAiDescription: true);
+                }
+            }
+        }
+
+        return states;
+    }
+
+    /// <summary>Checks whether a successful AI description is linked to the supplied capture.</summary>
+    internal bool HasAiDescription(string captureId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT EXISTS(SELECT 1 FROM ai_analysis_artifacts WHERE capture_id = $captureId);";
+        command.Parameters.AddWithValue("$captureId", captureId);
+        return Convert.ToInt32(command.ExecuteScalar()) == 1;
+    }
+
+    /// <summary>Creates one immutable reprocessing checkpoint plan and all of its work items atomically.</summary>
+    internal void CreateAiReprocessJob(
+        AiReprocessJobRecord job,
+        IReadOnlyList<AiReprocessJobItemRecord> items)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        ArgumentNullException.ThrowIfNull(items);
+        ValidateAiReprocessJob(job, items);
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using (var insertJob = connection.CreateCommand())
+        {
+            insertJob.Transaction = transaction;
+            insertJob.CommandText = """
+                INSERT INTO ai_reprocess_jobs (
+                    job_id, created_utc_ticks, updated_utc_ticks, range_start_utc_ticks, range_end_utc_ticks,
+                    selected_local_date, capture_origin, configuration_fingerprint, state, active_slot, total_captures,
+                    total_screenshots, pause_reason)
+                VALUES (
+                    $jobId, $created, $updated, $from, $to, $selectedDate, $origin, $fingerprint, $state, 1,
+                    $totalCaptures, $totalScreenshots, $pauseReason);
+                """;
+            Add(insertJob, "$jobId", job.JobId.ToString("N"));
+            Add(insertJob, "$created", job.CreatedAt.UtcDateTime.Ticks);
+            Add(insertJob, "$updated", job.UpdatedAt.UtcDateTime.Ticks);
+            Add(insertJob, "$from", job.FromUtc.UtcDateTime.Ticks);
+            Add(insertJob, "$to", job.ToUtc.UtcDateTime.Ticks);
+            Add(insertJob, "$selectedDate", job.SelectedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            Add(insertJob, "$origin", job.CaptureOrigin);
+            Add(insertJob, "$fingerprint", job.ConfigurationFingerprint);
+            Add(insertJob, "$state", job.State);
+            Add(insertJob, "$totalCaptures", job.TotalCaptures);
+            Add(insertJob, "$totalScreenshots", job.TotalScreenshots);
+            Add(insertJob, "$pauseReason", job.PauseReason);
+            insertJob.ExecuteNonQuery();
+        }
+
+        using var insertItem = connection.CreateCommand();
+        insertItem.Transaction = transaction;
+        insertItem.CommandText = """
+            INSERT INTO ai_reprocess_job_items (
+                job_id, capture_id, ordinal, captured_utc_ticks, capture_origin, artifact_identities_json,
+                screenshot_count, state, attempt_count, last_code, updated_utc_ticks)
+            VALUES (
+                $jobId, $captureId, $ordinal, $captured, $origin, $identities,
+                $screenshotCount, $state, $attemptCount, $lastCode, $updated);
+            """;
+        foreach (var item in items.OrderBy(item => item.Ordinal))
+        {
+            insertItem.Parameters.Clear();
+            Add(insertItem, "$jobId", item.JobId.ToString("N"));
+            Add(insertItem, "$captureId", item.CaptureId);
+            Add(insertItem, "$ordinal", item.Ordinal);
+            Add(insertItem, "$captured", item.CapturedAt.UtcDateTime.Ticks);
+            Add(insertItem, "$origin", item.CaptureOrigin);
+            Add(insertItem, "$identities", JsonSerializer.Serialize(item.ArtifactIdentities, _json));
+            Add(insertItem, "$screenshotCount", item.ScreenshotCount);
+            Add(insertItem, "$state", item.State);
+            Add(insertItem, "$attemptCount", item.AttemptCount);
+            Add(insertItem, "$lastCode", item.LastCode);
+            Add(insertItem, "$updated", item.UpdatedAt.UtcDateTime.Ticks);
+            insertItem.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>Loads one durable reprocessing job checkpoint.</summary>
+    internal AiReprocessJobRecord? LoadAiReprocessJob(Guid jobId)
+    {
+        if (jobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(jobId));
+        }
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, created_utc_ticks, updated_utc_ticks, range_start_utc_ticks, range_end_utc_ticks,
+                   selected_local_date, capture_origin, configuration_fingerprint, state, total_captures, total_screenshots, pause_reason
+            FROM ai_reprocess_jobs
+            WHERE job_id = $jobId;
+            """;
+        command.Parameters.AddWithValue("$jobId", jobId.ToString("N"));
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadAiReprocessJob(reader) : null;
+    }
+
+    /// <summary>Loads the single non-terminal reprocessing job, when present.</summary>
+    internal AiReprocessJobRecord? LoadActiveAiReprocessJob()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, created_utc_ticks, updated_utc_ticks, range_start_utc_ticks, range_end_utc_ticks,
+                   selected_local_date, capture_origin, configuration_fingerprint, state, total_captures, total_screenshots, pause_reason
+            FROM ai_reprocess_jobs
+            WHERE active_slot = 1;
+            """;
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadAiReprocessJob(reader) : null;
+    }
+
+    /// <summary>Lists all persisted items for one reprocessing job in their frozen order.</summary>
+    internal IReadOnlyList<AiReprocessJobItemRecord> ListAiReprocessJobItems(Guid jobId)
+    {
+        if (jobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(jobId));
+        }
+
+        var items = new List<AiReprocessJobItemRecord>();
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, capture_id, ordinal, captured_utc_ticks, capture_origin, artifact_identities_json,
+                   screenshot_count, state, attempt_count, last_code, updated_utc_ticks
+            FROM ai_reprocess_job_items
+            WHERE job_id = $jobId
+            ORDER BY ordinal;
+            """;
+        command.Parameters.AddWithValue("$jobId", jobId.ToString("N"));
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            items.Add(ReadAiReprocessJobItem(reader));
+        }
+
+        return items;
+    }
+
+    /// <summary>Loads the next pending work item for one job.</summary>
+    internal AiReprocessJobItemRecord? LoadNextAiReprocessJobItem(Guid jobId)
+    {
+        if (jobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(jobId));
+        }
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, capture_id, ordinal, captured_utc_ticks, capture_origin, artifact_identities_json,
+                   screenshot_count, state, attempt_count, last_code, updated_utc_ticks
+            FROM ai_reprocess_job_items
+            WHERE job_id = $jobId AND state = 'pending'
+            ORDER BY ordinal
+            LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$jobId", jobId.ToString("N"));
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadAiReprocessJobItem(reader) : null;
+    }
+
+    /// <summary>Transitions a durable reprocessing job and releases its single-flight slot on terminal states.</summary>
+    internal void UpdateAiReprocessJobState(Guid jobId, string state, string? pauseReason, DateTimeOffset updatedAt)
+    {
+        if (jobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(jobId));
+        }
+        ValidateAiReprocessJobState(state);
+        var activeSlot = IsTerminalAiReprocessJobState(state) ? null : (int?)1;
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE ai_reprocess_jobs
+            SET state = $state, active_slot = $activeSlot, pause_reason = $pauseReason, updated_utc_ticks = $updated
+            WHERE job_id = $jobId;
+            """;
+        Add(command, "$state", state);
+        Add(command, "$activeSlot", activeSlot);
+        Add(command, "$pauseReason", pauseReason);
+        Add(command, "$updated", updatedAt.UtcDateTime.Ticks);
+        Add(command, "$jobId", jobId.ToString("N"));
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("The AI reprocessing job does not exist.");
+        }
+    }
+
+    /// <summary>Transitions one durable work-item checkpoint.</summary>
+    internal void UpdateAiReprocessJobItemState(
+        Guid jobId,
+        string captureId,
+        string state,
+        int attemptCount,
+        string? lastCode,
+        DateTimeOffset updatedAt)
+    {
+        if (jobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(jobId));
+        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
+        ValidateAiReprocessItemState(state);
+        if (attemptCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(attemptCount));
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            UPDATE ai_reprocess_job_items
+            SET state = $state, attempt_count = $attemptCount, last_code = $lastCode, updated_utc_ticks = $updated
+            WHERE job_id = $jobId AND capture_id = $captureId;
+            """;
+        Add(command, "$state", state);
+        Add(command, "$attemptCount", attemptCount);
+        Add(command, "$lastCode", lastCode);
+        Add(command, "$updated", updatedAt.UtcDateTime.Ticks);
+        Add(command, "$jobId", jobId.ToString("N"));
+        Add(command, "$captureId", captureId);
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("The AI reprocessing job item does not exist.");
+        }
+
+        using var touchJob = connection.CreateCommand();
+        touchJob.Transaction = transaction;
+        touchJob.CommandText = "UPDATE ai_reprocess_jobs SET updated_utc_ticks = $updated WHERE job_id = $jobId;";
+        Add(touchJob, "$updated", updatedAt.UtcDateTime.Ticks);
+        Add(touchJob, "$jobId", jobId.ToString("N"));
+        if (touchJob.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("The AI reprocessing job does not exist.");
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>Recovers a job interrupted while one item was running into a resumable paused checkpoint.</summary>
+    internal void RecoverInterruptedAiReprocessJob(Guid jobId, DateTimeOffset updatedAt)
+    {
+        if (jobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(jobId));
+        }
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using (var items = connection.CreateCommand())
+        {
+            items.Transaction = transaction;
+            items.CommandText = """
+                UPDATE ai_reprocess_job_items AS item
+                SET state = CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM ai_analysis_artifacts AS artifact
+                            WHERE artifact.capture_id = item.capture_id)
+                        THEN 'succeeded'
+                        ELSE 'pending'
+                    END,
+                    last_code = CASE
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM ai_analysis_artifacts AS artifact
+                            WHERE artifact.capture_id = item.capture_id)
+                        THEN 'ai.analyzed.recovered'
+                        ELSE 'runtime_restart'
+                    END,
+                    updated_utc_ticks = $updated
+                WHERE job_id = $jobId AND state = 'running';
+                """;
+            items.Parameters.AddWithValue("$updated", updatedAt.UtcDateTime.Ticks);
+            items.Parameters.AddWithValue("$jobId", jobId.ToString("N"));
+            items.ExecuteNonQuery();
+        }
+
+        using (var job = connection.CreateCommand())
+        {
+            job.Transaction = transaction;
+            job.CommandText = """
+                UPDATE ai_reprocess_jobs
+                SET state = 'paused_by_user', pause_reason = 'runtime_restart', updated_utc_ticks = $updated
+                WHERE job_id = $jobId AND state IN ('running', 'pause_requested');
+                """;
+            job.Parameters.AddWithValue("$updated", updatedAt.UtcDateTime.Ticks);
+            job.Parameters.AddWithValue("$jobId", jobId.ToString("N"));
+            job.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>Removes terminal reprocessing checkpoints whose screenshot day is outside retention.</summary>
+    internal int DeleteTerminalAiReprocessJobsBefore(DateTimeOffset cutoffUtc)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            DELETE FROM ai_reprocess_jobs
+            WHERE range_end_utc_ticks <= $cutoff
+              AND state IN ('completed', 'completed_with_errors', 'failed');
+            """;
+        command.Parameters.AddWithValue("$cutoff", cutoffUtc.UtcDateTime.Ticks);
+        return command.ExecuteNonQuery();
+    }
+
     /// <summary>Deletes interval telemetry for one screenshot artifact identity.</summary>
     internal int DeleteScreenshotIntervalTelemetry(string artifactIdentity)
     {
@@ -505,6 +1074,7 @@ internal sealed class SqliteActivityStore
         using var transaction = connection.BeginTransaction();
         InsertAiRequest(connection, transaction, request);
         InsertAiAnalysisResult(connection, transaction, request, analysis);
+        InsertAiAnalysisArtifacts(connection, transaction, analysis);
         transaction.Commit();
     }
 
@@ -630,16 +1200,17 @@ internal sealed class SqliteActivityStore
         return ReadScalarNullableLong(command) is { } ticks ? new DateTimeOffset(ticks, TimeSpan.Zero) : null;
     }
 
-    /// <summary>Counts successful analysis results in a half-open UTC interval.</summary>
-    internal int CountAiAnalysisResults(DateTimeOffset fromUtc, DateTimeOffset toUtc)
+    /// <summary>Counts persisted visual AI provider attempts in a half-open UTC interval.</summary>
+    internal int CountAiVisualProviderRequests(DateTimeOffset fromUtc, DateTimeOffset toUtc)
     {
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT COUNT(*)
-            FROM ai_analysis_results
-            WHERE timestamp_utc_ticks >= $from
-              AND timestamp_utc_ticks < $to;
+            FROM ai_request_usage
+            WHERE occurred_utc_ticks >= $from
+              AND occurred_utc_ticks < $to
+              AND request_kind IN ('screen_analysis', 'ocr_refinement');
             """;
         command.Parameters.AddWithValue("$from", fromUtc.UtcDateTime.Ticks);
         command.Parameters.AddWithValue("$to", toUtc.UtcDateTime.Ticks);
@@ -790,6 +1361,108 @@ internal sealed class SqliteActivityStore
         screenshotPaths?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         ?? [];
 
+    private static AiReprocessJobRecord ReadAiReprocessJob(SqliteDataReader reader) => new(
+        Guid.ParseExact(reader.GetString(0), "N"),
+        new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
+        new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero),
+        new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero),
+        new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero),
+        DateOnly.ParseExact(reader.GetString(5), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None),
+        ReadNullableString(reader, 6),
+        reader.GetString(7),
+        reader.GetString(8),
+        reader.GetInt32(9),
+        reader.GetInt32(10),
+        ReadNullableString(reader, 11));
+
+    private AiReprocessJobItemRecord ReadAiReprocessJobItem(SqliteDataReader reader)
+    {
+        var identities = JsonSerializer.Deserialize<string[]>(reader.GetString(5), _json)
+            ?? throw new InvalidDataException("Persisted AI reprocessing artifact identities are invalid.");
+        if (identities.Length == 0 || identities.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new InvalidDataException("Persisted AI reprocessing artifact identities are empty.");
+        }
+
+        return new AiReprocessJobItemRecord(
+            Guid.ParseExact(reader.GetString(0), "N"),
+            reader.GetString(1),
+            reader.GetInt32(2),
+            new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero),
+            reader.GetString(4),
+            identities,
+            reader.GetInt32(6),
+            reader.GetString(7),
+            reader.GetInt32(8),
+            ReadNullableString(reader, 9),
+            new DateTimeOffset(reader.GetInt64(10), TimeSpan.Zero));
+    }
+
+    private static void ValidateAiReprocessJob(
+        AiReprocessJobRecord job,
+        IReadOnlyList<AiReprocessJobItemRecord> items)
+    {
+        if (job.JobId == Guid.Empty)
+        {
+            throw new ArgumentException("AI reprocessing job identifier is required.", nameof(job));
+        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(job.ConfigurationFingerprint);
+        ValidateAiReprocessJobState(job.State);
+        if (IsTerminalAiReprocessJobState(job.State)
+            || job.FromUtc >= job.ToUtc
+            || items.Count == 0
+            || job.TotalCaptures != items.Count
+            || job.TotalScreenshots != items.Sum(item => item.ScreenshotCount)
+            || job.TotalCaptures <= 0
+            || job.TotalScreenshots <= 0)
+        {
+            throw new ArgumentException("The AI reprocessing job checkpoint is invalid.", nameof(job));
+        }
+
+        var expectedOrdinals = Enumerable.Range(0, items.Count).ToArray();
+        if (!items.Select(item => item.Ordinal).Order().SequenceEqual(expectedOrdinals)
+            || items.Any(item => item.JobId != job.JobId
+                || !Guid.TryParseExact(item.CaptureId, "N", out _)
+                || string.IsNullOrWhiteSpace(item.CaptureOrigin)
+                || item.ArtifactIdentities.Count == 0
+                || item.ArtifactIdentities.Any(string.IsNullOrWhiteSpace)
+                || item.ArtifactIdentities.Distinct(StringComparer.OrdinalIgnoreCase).Count() != item.ArtifactIdentities.Count
+                || item.ArtifactIdentities.Any(identity =>
+                    !string.Equals(Path.GetFileName(identity), identity, StringComparison.Ordinal)
+                    || !ScreenCaptureService.IsOwnedArtifact(identity + ".webp")
+                    || !identity.StartsWith(item.CaptureId + "_", StringComparison.Ordinal))
+                || item.ScreenshotCount != item.ArtifactIdentities.Count
+                || item.AttemptCount < 0))
+        {
+            throw new ArgumentException("The AI reprocessing work-item plan is invalid.", nameof(items));
+        }
+
+        foreach (var item in items)
+        {
+            ValidateAiReprocessItemState(item.State);
+        }
+    }
+
+    private static void ValidateAiReprocessJobState(string state)
+    {
+        if (state is not ("pending" or "running" or "pause_requested" or "paused_by_user" or "paused_daily_quota"
+            or "completed" or "completed_with_errors" or "failed"))
+        {
+            throw new ArgumentOutOfRangeException(nameof(state), "Unsupported AI reprocessing job state.");
+        }
+    }
+
+    private static void ValidateAiReprocessItemState(string state)
+    {
+        if (state is not ("pending" or "running" or "succeeded" or "skipped" or "failed"))
+        {
+            throw new ArgumentOutOfRangeException(nameof(state), "Unsupported AI reprocessing item state.");
+        }
+    }
+
+    private static bool IsTerminalAiReprocessJobState(string state) =>
+        state is "completed" or "completed_with_errors" or "failed";
+
     /// <summary>Streams activity and AI usage from one SQLite read transaction and therefore one database snapshot.</summary>
     internal void VisitReportData(
         DateTimeOffset fromUtc,
@@ -926,13 +1599,19 @@ internal sealed class SqliteActivityStore
     }
 
     private static string AddIdentityParameters(SqliteCommand command, IReadOnlyList<string> identities)
+        => AddTextParameters(command, identities, "$identity");
+
+    private static string AddTextParameters(
+        SqliteCommand command,
+        IReadOnlyList<string> values,
+        string parameterPrefix)
     {
-        var parameterNames = new string[identities.Count];
-        for (var index = 0; index < identities.Count; index++)
+        var parameterNames = new string[values.Count];
+        for (var index = 0; index < values.Count; index++)
         {
-            var name = $"$identity{index}";
+            var name = $"{parameterPrefix}{index}";
             parameterNames[index] = name;
-            command.Parameters.AddWithValue(name, identities[index]);
+            command.Parameters.AddWithValue(name, values[index]);
         }
 
         return string.Join(", ", parameterNames);
@@ -1118,6 +1797,13 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
+            if (version == PreviousSchemaVersion)
+            {
+                ValidateSchemaV6(connection);
+                MigrateSchemaV6ToV7(connection);
+                version = ReadSchemaVersion(connection);
+            }
+
             if (version != SchemaVersion)
             {
                 throw new InvalidOperationException($"Unsupported activity database schema version {version}; expected {SchemaVersion}.");
@@ -1149,9 +1835,79 @@ internal sealed class SqliteActivityStore
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql + ScreenshotIntervalTelemetrySchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+        command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql
+            + ScreenshotIntervalTelemetrySchemaSql + AiReprocessingSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
+    }
+
+    private static void MigrateSchemaV6ToV7(SqliteConnection connection)
+    {
+        using var transaction = connection.BeginTransaction();
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = """
+                CREATE INDEX ix_screenshot_interval_telemetry_captured
+                    ON screenshot_interval_telemetry (captured_utc_ticks, capture_id, artifact_identity);
+                """ + AiReprocessingSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+            command.ExecuteNonQuery();
+        }
+
+        // Backfill runs in the schema transaction: malformed legacy relations leave the v6 database untouched.
+        using (var select = connection.CreateCommand())
+        {
+            select.Transaction = transaction;
+            select.CommandText = """
+                SELECT correlation_id, screenshot_paths
+                FROM ai_analysis_results
+                WHERE screenshot_paths IS NOT NULL
+                ORDER BY correlation_id;
+                """;
+            var rows = new List<(string CorrelationId, string ScreenshotPaths)>();
+            using (var reader = select.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    rows.Add((reader.GetString(0), reader.GetString(1)));
+                }
+            }
+
+            foreach (var row in rows)
+            {
+                var analysis = new AiAnalysis(
+                    DateTimeOffset.UnixEpoch,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    row.ScreenshotPaths,
+                    CorrelationId: row.CorrelationId);
+                InsertAiAnalysisArtifacts(connection, transaction, analysis);
+            }
+        }
+
+        transaction.Commit();
+    }
+
+    private static void ValidateSchemaV6(SqliteConnection connection)
+    {
+        ValidateBaseSchema(connection);
+        ValidateScreenshotTextSchema(connection);
+        ValidateCreateStatement(connection, "screenshot_interval_telemetry", ScreenshotIntervalTelemetrySchemaSql);
+        if (!ReadColumns(connection, "screenshot_interval_telemetry").SequenceEqual(ExpectedScreenshotIntervalTelemetryColumns)
+            || !ReadIndexes(connection, "screenshot_interval_telemetry").SetEquals(ExpectedScreenshotIntervalTelemetryIndexesV6))
+        {
+            throw new InvalidOperationException("The screenshot interval telemetry schema does not match schema version 6.");
+        }
+
+        ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
+        if (!ReadColumns(connection, "ai_model_pricing").SequenceEqual(ExpectedAiModelPricingColumns)
+            || !ReadIndexes(connection, "ai_model_pricing").SetEquals(ExpectedAiModelPricingIndexes)
+            || !ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjectsV6))
+        {
+            throw new InvalidOperationException("The activity database does not match schema version 6.");
+        }
     }
 
     private static void ValidateSchema(SqliteConnection connection)
@@ -1159,6 +1915,7 @@ internal sealed class SqliteActivityStore
         ValidateBaseSchema(connection);
         ValidateScreenshotTextSchema(connection);
         ValidateScreenshotIntervalTelemetrySchema(connection);
+        ValidateAiReprocessingSchema(connection);
         ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
 
         var actualAiModelPricingColumns = ReadColumns(connection, "ai_model_pricing");
@@ -1412,6 +2169,90 @@ internal sealed class SqliteActivityStore
         Add(command, "$screenshotPaths", analysis.ScreenshotPaths);
         Add(command, "$imageCount", request.ImageCount);
         command.ExecuteNonQuery();
+    }
+
+    private static void InsertAiAnalysisArtifacts(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        AiAnalysis analysis)
+    {
+        var paths = EnumerateScreenshotPaths(analysis.ScreenshotPaths);
+        if (paths.Length == 0)
+        {
+            return;
+        }
+
+        if (!Guid.TryParseExact(analysis.CorrelationId, "N", out _))
+        {
+            throw new InvalidDataException("Screenshot analysis artifacts require a GUID N capture correlation identifier.");
+        }
+
+        var captureId = analysis.CorrelationId;
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO ai_analysis_artifacts (artifact_identity, capture_id, correlation_id)
+            VALUES ($artifactIdentity, $captureId, $correlationId);
+            """;
+        var artifactParameter = command.Parameters.Add("$artifactIdentity", SqliteType.Text);
+        var captureParameter = command.Parameters.Add("$captureId", SqliteType.Text);
+        var correlationParameter = command.Parameters.Add("$correlationId", SqliteType.Text);
+        captureParameter.Value = captureId;
+        correlationParameter.Value = captureId;
+        foreach (var path in paths)
+        {
+            var artifactIdentity = ArtifactIdentityFromScreenshotPath(path);
+            if (!artifactIdentity.StartsWith(captureId + "_", StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("AI analysis screenshot artifact identity does not match its capture correlation identifier.");
+            }
+
+            artifactParameter.Value = artifactIdentity;
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static void ValidateAiReprocessingSchema(SqliteConnection connection)
+    {
+        ValidateCreateStatement(connection, "ai_analysis_artifacts", AiReprocessingSchemaSql);
+        ValidateCreateStatement(connection, "ai_reprocess_jobs", AiReprocessingSchemaSql);
+        ValidateCreateStatement(connection, "ai_reprocess_job_items", AiReprocessingSchemaSql);
+
+        if (!ReadColumns(connection, "ai_analysis_artifacts").SequenceEqual(ExpectedAiAnalysisArtifactColumns)
+            || !ReadIndexes(connection, "ai_analysis_artifacts").SetEquals(ExpectedAiAnalysisArtifactIndexes))
+        {
+            throw new InvalidOperationException("The AI analysis artifact relation schema does not match the supported schema.");
+        }
+
+        if (!ReadColumns(connection, "ai_reprocess_jobs").SequenceEqual(ExpectedAiReprocessJobColumns)
+            || !ReadIndexes(connection, "ai_reprocess_jobs").SetEquals(ExpectedAiReprocessJobIndexes))
+        {
+            throw new InvalidOperationException("The AI reprocessing job schema does not match the supported schema.");
+        }
+
+        if (!ReadColumns(connection, "ai_reprocess_job_items").SequenceEqual(ExpectedAiReprocessJobItemColumns)
+            || !ReadIndexes(connection, "ai_reprocess_job_items").SetEquals(ExpectedAiReprocessJobItemIndexes))
+        {
+            throw new InvalidOperationException("The AI reprocessing item schema does not match the supported schema.");
+        }
+    }
+
+    private static string ArtifactIdentityFromScreenshotPath(string screenshotPath)
+    {
+        if (!Path.IsPathFullyQualified(screenshotPath) || !ScreenCaptureService.IsOwnedArtifact(screenshotPath))
+        {
+            throw new InvalidDataException("AI analysis references an invalid TrackMeUp screenshot artifact.");
+        }
+
+        var identity = Path.GetFileNameWithoutExtension(screenshotPath);
+        if (identity.EndsWith("-raw", StringComparison.OrdinalIgnoreCase))
+        {
+            identity = identity[..^4];
+        }
+
+        return string.IsNullOrWhiteSpace(identity)
+            ? throw new InvalidDataException("AI analysis references an invalid screenshot artifact identity.")
+            : identity;
     }
 
     private static void ValidateAiRequest(AiRequestUsageRecord request)
@@ -1696,6 +2537,59 @@ internal sealed class SqliteActivityStore
         );
         CREATE INDEX ix_screenshot_interval_telemetry_capture
             ON screenshot_interval_telemetry (capture_id, artifact_identity);
+        CREATE INDEX ix_screenshot_interval_telemetry_captured
+            ON screenshot_interval_telemetry (captured_utc_ticks, capture_id, artifact_identity);
+        """;
+
+    private const string AiReprocessingSchemaSql = """
+        CREATE TABLE ai_analysis_artifacts (
+            artifact_identity TEXT NOT NULL PRIMARY KEY,
+            capture_id TEXT NOT NULL,
+            correlation_id TEXT NOT NULL,
+            FOREIGN KEY (correlation_id) REFERENCES ai_analysis_results(correlation_id) ON DELETE CASCADE
+        );
+        CREATE INDEX ix_ai_analysis_artifacts_capture
+            ON ai_analysis_artifacts (capture_id, artifact_identity);
+
+        CREATE TABLE ai_reprocess_jobs (
+            job_id TEXT NOT NULL PRIMARY KEY,
+            created_utc_ticks INTEGER NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            range_start_utc_ticks INTEGER NOT NULL,
+            range_end_utc_ticks INTEGER NOT NULL CHECK (range_end_utc_ticks > range_start_utc_ticks),
+            selected_local_date TEXT NOT NULL CHECK (
+                selected_local_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+            capture_origin TEXT NULL,
+            configuration_fingerprint TEXT NOT NULL,
+            state TEXT NOT NULL CHECK (state IN (
+                'pending', 'running', 'pause_requested', 'paused_by_user', 'paused_daily_quota',
+                'completed', 'completed_with_errors', 'failed')),
+            active_slot INTEGER NULL CHECK (active_slot IS NULL OR active_slot = 1),
+            total_captures INTEGER NOT NULL CHECK (total_captures > 0),
+            total_screenshots INTEGER NOT NULL CHECK (total_screenshots > 0),
+            pause_reason TEXT NULL
+        );
+        CREATE UNIQUE INDEX ux_ai_reprocess_jobs_active_slot
+            ON ai_reprocess_jobs (active_slot);
+
+        CREATE TABLE ai_reprocess_job_items (
+            job_id TEXT NOT NULL,
+            capture_id TEXT NOT NULL,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            captured_utc_ticks INTEGER NOT NULL,
+            capture_origin TEXT NOT NULL,
+            artifact_identities_json TEXT NOT NULL,
+            screenshot_count INTEGER NOT NULL CHECK (screenshot_count > 0),
+            state TEXT NOT NULL CHECK (state IN ('pending', 'running', 'succeeded', 'skipped', 'failed')),
+            attempt_count INTEGER NOT NULL CHECK (attempt_count >= 0),
+            last_code TEXT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY (job_id, capture_id),
+            UNIQUE (job_id, ordinal),
+            FOREIGN KEY (job_id) REFERENCES ai_reprocess_jobs(job_id) ON DELETE CASCADE
+        );
+        CREATE INDEX ix_ai_reprocess_job_items_next
+            ON ai_reprocess_job_items (job_id, state, ordinal);
         """;
 
     private readonly record struct SchemaColumn(string Name, string Type, bool NotNull, int PrimaryKeyOrder);
@@ -1709,3 +2603,60 @@ internal sealed record ReportSourceSample(
     string Application,
     long KeyPresses,
     long MouseClicks);
+
+/// <summary>Groups persisted screenshot artifact identities by their original capture.</summary>
+internal sealed record AiReprocessCatalogRecord(
+    string CaptureId,
+    DateTimeOffset IntervalStartedAt,
+    DateTimeOffset CapturedAt,
+    IReadOnlyList<string> ArtifactIdentities,
+    bool HasTelemetry,
+    bool HasAiDescription);
+
+/// <summary>Contains persisted metadata presence for a capture discovered from retained files.</summary>
+internal sealed record AiReprocessCapturePersistenceState(
+    string CaptureId,
+    DateTimeOffset? IntervalStartedAt,
+    DateTimeOffset? CapturedAt,
+    bool HasAiDescription);
+
+/// <summary>Contains one locally materialized historical screenshot capture considered for AI reprocessing.</summary>
+internal sealed record AiScreenshotReprocessCandidate(
+    string CaptureId,
+    DateTimeOffset CapturedAt,
+    string CaptureOrigin,
+    IReadOnlyList<string> ScreenshotPaths,
+    IReadOnlyList<ScreenshotTextSnapshot> TextSnapshots,
+    AnalysisContextSnapshot? HistoricalContext,
+    bool HasAiDescription,
+    int MissingFileCount,
+    string ProcessName = "");
+
+/// <summary>Represents the SQLite projection of one durable AI screenshot reprocessing job.</summary>
+internal sealed record AiReprocessJobRecord(
+    Guid JobId,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset FromUtc,
+    DateTimeOffset ToUtc,
+    DateOnly SelectedDate,
+    string? CaptureOrigin,
+    string ConfigurationFingerprint,
+    string State,
+    int TotalCaptures,
+    int TotalScreenshots,
+    string? PauseReason);
+
+/// <summary>Represents the SQLite projection of one durable AI screenshot reprocessing work item.</summary>
+internal sealed record AiReprocessJobItemRecord(
+    Guid JobId,
+    string CaptureId,
+    int Ordinal,
+    DateTimeOffset CapturedAt,
+    string CaptureOrigin,
+    IReadOnlyList<string> ArtifactIdentities,
+    int ScreenshotCount,
+    string State,
+    int AttemptCount,
+    string? LastCode,
+    DateTimeOffset UpdatedAt);

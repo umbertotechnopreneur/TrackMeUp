@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 using TrackMeUp.Application;
@@ -38,8 +39,9 @@ public sealed partial class ReportsWindow : Window
     private bool _webReady;
     private bool _initializing;
     private XamlRoot? _xamlRoot;
+    private LocalizationService _strings = new("system");
     private string _reportTheme = "system";
-    private string _reportLanguage = "en";
+    private string _reportLanguage = "en-US";
     private ReportRangeKey? _cachedRange;
     private ReportSnapshot? _cachedSnapshot;
     private DateTimeOffset _cachedAtUtc;
@@ -57,6 +59,7 @@ public sealed partial class ReportsWindow : Window
         SetTitleBar(TitleBarDragRegion);
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         ApplyReportTheme(_reportTheme);
+        ApplyLocalization();
 
         var today = DateTimeOffset.Now.Date;
         CustomFromPicker.Date = new DateTimeOffset(today);
@@ -91,7 +94,7 @@ public sealed partial class ReportsWindow : Window
         }
 
         _initializing = true;
-        ShowLoading("Caricamento delle preferenze…");
+        ShowLoading(T("Reports.Loading.Settings"));
         if (!await InitializeThemeAsync())
         {
             return;
@@ -111,20 +114,19 @@ public sealed partial class ReportsWindow : Window
                     _lifetimeCancellation.Token);
             if (!result.Succeeded || result.Value is null)
             {
-                ShowError($"La preferenza del tema non è disponibile ({result.Code}). Correggi il valore e riapri Reports.");
+                ShowError(_strings.Format("Reports.Error.SettingsUnavailable", result.Code));
                 return false;
             }
 
+            _strings = new LocalizationService(result.Value.UiLanguage);
+            ApplyLocalization();
             if (!IsReportTheme(result.Value.Theme))
             {
-                ShowError("La preferenza del tema salvata non è valida. Correggila nelle opzioni di TrackMeUp.");
+                ShowError(T("Reports.Error.ThemeInvalid"));
                 return false;
             }
 
             ApplyReportTheme(result.Value.Theme);
-            var strings = new LocalizationService(result.Value.UiLanguage);
-            _reportLanguage = strings.Language;
-            UiLocalization.Apply(RootGrid, strings);
             return true;
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
@@ -133,14 +135,14 @@ public sealed partial class ReportsWindow : Window
         }
         catch (Exception)
         {
-            ShowError("La preferenza del tema non può essere caricata o salvata. Riapri Reports dopo aver verificato il runtime.");
+            ShowError(T("Reports.Error.SettingsLoad"));
             return false;
         }
     }
 
     private async Task InitializeWebViewAsync()
     {
-        ShowLoading("Avvio del motore dei report…");
+        ShowLoading(T("Reports.Loading.Engine"));
         try
         {
             await ReportsWebView.EnsureCoreWebView2Async();
@@ -166,7 +168,7 @@ public sealed partial class ReportsWindow : Window
         }
         catch (Exception)
         {
-            ShowError("WebView2 non è disponibile. Installa o ripara Microsoft Edge WebView2 Runtime e riapri Reports.");
+            ShowError(T("Reports.Error.WebViewUnavailable"));
         }
     }
 
@@ -174,7 +176,7 @@ public sealed partial class ReportsWindow : Window
     {
         if (!args.IsSuccess)
         {
-            ShowError("Gli asset Vue dei report non sono disponibili o non possono essere caricati. Ricrea il pacchetto TrackMeUp completo.");
+            ShowError(T("Reports.Error.AssetsUnavailable"));
             return;
         }
 
@@ -191,12 +193,12 @@ public sealed partial class ReportsWindow : Window
         catch (OperationCanceledException)
         {
             // A loaded document without the Vue readiness handshake is invalid; no legacy renderer is substituted.
-            ShowError("L'app Vue dei report non si è inizializzata. Ricrea gli asset e riapri Reports.");
+            ShowError(T("Reports.Error.FrontendTimeout"));
             return;
         }
         catch (Exception)
         {
-            ShowError("L'app Vue dei report non è valida. Ricrea gli asset e riapri Reports.");
+            ShowError(T("Reports.Error.FrontendInvalid"));
             return;
         }
 
@@ -214,7 +216,7 @@ public sealed partial class ReportsWindow : Window
         if (!Uri.TryCreate(args.Source, UriKind.Absolute, out var source) ||
             !string.Equals(source.GetLeftPart(UriPartial.Authority), ReportsOrigin, StringComparison.OrdinalIgnoreCase))
         {
-            ShowError("La WebView2 ha inviato un messaggio da un'origine non autorizzata.");
+            ShowError(T("Reports.Error.WebMessageOrigin"));
             return;
         }
 
@@ -225,7 +227,7 @@ public sealed partial class ReportsWindow : Window
                 !document.RootElement.TryGetProperty("type", out var type) ||
                 type.ValueKind != JsonValueKind.String)
             {
-                ShowError("La WebView2 ha inviato un messaggio senza un tipo valido.");
+                ShowError(T("Reports.Error.WebMessageType"));
                 return;
             }
 
@@ -254,11 +256,11 @@ public sealed partial class ReportsWindow : Window
         }
         catch (Exception)
         {
-            ShowError("La comunicazione con l'app Vue dei report non è riuscita. Chiudi e riapri Reports.");
+            ShowError(T("Reports.Error.WebCommunication"));
             return;
         }
 
-        ShowError("La WebView2 ha inviato un messaggio non valido.");
+        ShowError(T("Reports.Error.WebMessageInvalid"));
     }
 
     private async Task PersistReportThemeAsync(string theme)
@@ -375,17 +377,17 @@ public sealed partial class ReportsWindow : Window
         }
 
         args.Cancel = true;
-        ShowError("La navigazione esterna è bloccata nella vista Reports.");
+        ShowError(T("Reports.Error.ExternalNavigation"));
     }
 
     private void Core_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
     {
         args.Handled = true;
-        ShowError("L'apertura di finestre esterne è bloccata nella vista Reports.");
+        ShowError(T("Reports.Error.ExternalWindow"));
     }
 
     private void Core_ProcessFailed(CoreWebView2 sender, CoreWebView2ProcessFailedEventArgs args) =>
-        DispatcherQueue.TryEnqueue(() => ShowError("Il processo WebView2 si è arrestato. Chiudi e riapri Reports."));
+        DispatcherQueue.TryEnqueue(() => ShowError(T("Reports.Error.WebViewProcess")));
 
     private async void ReportSelection_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -416,7 +418,7 @@ public sealed partial class ReportsWindow : Window
     {
         if (!_webReady || ReportsWebView.CoreWebView2 is null)
         {
-            ShowError("Il runtime WebView2 non è pronto per ricevere il report.");
+            ShowError(T("Reports.Error.WebViewNotReady"));
             return;
         }
 
@@ -443,7 +445,7 @@ public sealed partial class ReportsWindow : Window
 
         _refreshCancellation = new CancellationTokenSource();
         var cancellationToken = _refreshCancellation.Token;
-        ShowLoading("Calcolo del report in corso…");
+        ShowLoading(T("Reports.Loading.Calculating"));
         try
         {
             var result = await _viewModel.LoadAsync(query, cancellationToken);
@@ -454,7 +456,7 @@ public sealed partial class ReportsWindow : Window
 
             if (!result.Succeeded || result.Value is null)
             {
-                ShowError($"Report non disponibile ({result.Code}). Riprova dopo aver verificato il runtime di TrackMeUp.");
+                ShowError(_strings.Format("Reports.Error.ReportUnavailable", result.Code));
                 return;
             }
 
@@ -470,7 +472,7 @@ public sealed partial class ReportsWindow : Window
         }
         catch (Exception)
         {
-            ShowError("Il report non può essere inviato alla WebView2. Chiudi e riapri Reports.");
+            ShowError(T("Reports.Error.ReportDispatch"));
         }
     }
 
@@ -520,7 +522,7 @@ public sealed partial class ReportsWindow : Window
         if (from > to)
         {
             query = default!;
-            validationError = "La data iniziale non può essere successiva alla data finale.";
+            validationError = T("Reports.Error.DateRange");
             return false;
         }
 
@@ -546,6 +548,21 @@ public sealed partial class ReportsWindow : Window
         ReportView.Applications => "applications",
         _ => "calendar"
     };
+
+    private void ApplyLocalization()
+    {
+        UiLocalization.Apply(RootGrid, _strings);
+        _reportLanguage = _strings.Language;
+        Title = T("Reports.WindowTitle");
+        TitleBarCaptionText.Text = Title;
+        var refreshLabel = T("Reports.Refresh");
+        AutomationProperties.SetName(RefreshReportButton, refreshLabel);
+        ToolTipService.SetToolTip(RefreshReportButton, refreshLabel);
+        AutomationProperties.SetName(ReportsWebView, T("Reports.WebView.Accessible"));
+        AutomationProperties.SetName(ReportProgressRing, T("Reports.Loading.Accessible"));
+    }
+
+    private string T(string key) => _strings.Translate(key);
 
     private void ShowLoading(string message)
     {

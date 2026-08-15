@@ -29,7 +29,7 @@ const option = computed<EChartsOption>(() => {
     animation: !reducedMotion.value,
     aria: {
       enabled: true,
-      description: tr('Daily activity map. A stronger shade indicates more active time.', 'Mappa dell’attività giornaliera. Una tonalità più intensa indica più tempo attivo.'),
+      description: tr('Daily activity map. A stronger shade indicates more active time.'),
     },
     tooltip: {
       confine: true,
@@ -38,14 +38,14 @@ const option = computed<EChartsOption>(() => {
       formatter: (parameters: any) => {
         const raw = parameters.data as [string, number, number]
         const cell = cells[raw[2]]
-        if (!cell) return tr('Data unavailable', 'Dato non disponibile')
+        if (!cell) return tr('Data unavailable')
         return [
           formatDate(cell.date),
-          `${tr('Activity score', 'Punteggio attività')}: ${formatInteger(cell.activityScore ?? 0)}/100`,
-          `${tr('Active', 'Attivo')}: ${formatDuration(cell.activeSeconds)}`,
-          `${tr('Idle', 'Inattivo')}: ${formatDuration(cell.idleSeconds)}`,
-          `${tr('Coverage', 'Copertura')}: ${formatDuration(cell.trackedSeconds)}`,
-          `${tr('Samples', 'Campioni')}: ${formatInteger(cell.sampleCount)}`,
+          `${tr('Activity score')}: ${formatInteger(cell.activityScore ?? 0)}/100`,
+          `${tr('Active')}: ${formatDuration(cell.activeSeconds)}`,
+          `${tr('Idle')}: ${formatDuration(cell.idleSeconds)}`,
+          `${tr('Coverage')}: ${formatDuration(cell.trackedSeconds)}`,
+          `${tr('Samples')}: ${formatInteger(cell.sampleCount)}`,
         ].join('\n')
       },
     },
@@ -58,11 +58,11 @@ const option = computed<EChartsOption>(() => {
       bottom: 4,
       itemWidth: 130,
       itemHeight: 9,
-      text: [tr('More activity', 'Più attività'), tr('Less activity', 'Meno attività')],
+      text: [tr('More activity'), tr('Less activity')],
       textGap: 9,
       textStyle: {
         color: palette.value.muted,
-        fontFamily: 'Segoe UI',
+        fontFamily: '"Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Malgun Gothic", sans-serif',
         fontSize: 11,
       },
       inRange: { color: palette.value.heat },
@@ -115,12 +115,12 @@ const option = computed<EChartsOption>(() => {
   <section aria-labelledby="calendar-chart-title">
     <div class="chart-heading">
       <div>
-        <h2 id="calendar-chart-title" class="chart-title">{{ tr('Activity calendar', 'Calendario dell’attività') }}</h2>
-        <p class="chart-subtitle">{{ tr('Active time by day; gray cells indicate missing data.', 'Tempo attivo per giorno; le celle grigie indicano assenza di dati.') }}</p>
+        <h2 id="calendar-chart-title" class="chart-title">{{ tr('Activity calendar') }}</h2>
+        <p class="chart-subtitle">{{ tr('Active time by day; gray cells indicate missing data.') }}</p>
       </div>
-      <span class="chart-no-data-legend" :aria-label="tr('Legend: gray means no data', 'Legenda: grigio uguale nessun dato')">
+      <span class="chart-no-data-legend" :aria-label="tr('Legend: gray means no data')">
         <span class="chart-no-data-swatch" aria-hidden="true" />
-        {{ tr('No data', 'Nessun dato') }}
+        {{ tr('No data') }}
       </span>
     </div>
     <v-chart
@@ -128,10 +128,10 @@ const option = computed<EChartsOption>(() => {
       :option="option"
       autoresize
       role="img"
-      :aria-label="tr('Active time map by day', 'Mappa del tempo attivo per giorno')"
+      :aria-label="tr('Active time map by day')"
     />
     <p class="chart-forced-colors-message">
-      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.', 'Il grafico è nascosto in modalità contrasto elevato. Apri la tabella accessibile qui sotto per consultare tutti i valori.') }}
+      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.') }}
     </p>
   </section>
 </template>

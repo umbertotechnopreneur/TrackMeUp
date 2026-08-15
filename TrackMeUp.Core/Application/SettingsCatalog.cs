@@ -14,12 +14,27 @@ public sealed record SettingDescriptor(
 /// <summary>Provides the single public settings catalog and deterministic validation used by every frontend.</summary>
 public static class SettingsCatalog
 {
+    /// <summary>Gets the lowest supported daily AI processing limit.</summary>
+    public const int MinimumAiDailyLimit = 0;
+
+    /// <summary>Gets the highest supported daily AI processing limit.</summary>
+    public const int MaximumAiDailyLimit = 400;
+
     private static readonly string[] BooleanValues = ["true", "false"];
     private static readonly string[] Providers = ["openai", "openrouter", "anthropic"];
     private static readonly string[] ApiKeyVariables = ["OPENAI_API_KEY", "TRACKMEUP_OPENAI_APIKEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
     private static readonly string[] OutputDetails = ["compact", "balanced", "detailed"];
     private static readonly string[] ReasoningEfforts = ["auto", "none", "low", "medium", "high", "xhigh", "max"];
-    private static readonly string[] Languages = ["system", "en", "it", "vi", "fr", "de", "es"];
+    private static readonly IReadOnlyDictionary<string, string> LegacyLocaleIds =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["en"] = "en-US",
+            ["it"] = "it-IT",
+            ["fr"] = "fr-FR",
+            ["de"] = "de-DE",
+            ["es"] = "es-ES",
+            ["vi"] = "vi-VN"
+        };
     private static readonly string[] Themes = ["system", "light", "dark"];
     private static readonly string[] ScreenshotModes = ["all-screens", "active-window"];
     private static readonly string[] FlyoutAnchors = [FlyoutPositions.BottomCenter, FlyoutPositions.BottomLeft, FlyoutPositions.BottomRight, FlyoutPositions.TopLeft, FlyoutPositions.TopRight];
@@ -35,8 +50,8 @@ public static class SettingsCatalog
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
         Integer("screenshots.interval_minutes", "Minutes between scheduled eligible screenshots."),
         Boolean("ocr.enabled", "Extract searchable text locally from captured screenshots.", requiresRestart: true),
-        Choice("ocr.language", "Preferred Windows OCR recognizer language.", Languages, requiresRestart: true),
-        Choice("search.language", "Language used for local query analysis and stemming.", Languages),
+        Choice("ocr.language", "Preferred installed Windows OCR recognizer language.", ProductLanguageCatalog.OcrChoices, requiresRestart: true),
+        Choice("search.language", "Language used for local query analysis and stemming.", ProductLanguageCatalog.SearchChoices),
         Boolean("search.synonyms", "Expand local queries with configured multilingual synonyms."),
         Boolean("search.typo_tolerance", "Use controlled fuzzy matching for eligible query terms."),
         Boolean("ai.enabled", "Analyze every captured snapshot after privacy and cost checks."),
@@ -48,11 +63,11 @@ public static class SettingsCatalog
         Choice("ai.reasoning_effort", "OpenAI Responses reasoning effort; auto omits the field.", ReasoningEfforts),
         Text("ai.custom_prompt", "Optional user instruction appended after the built-in screenshot prompt; empty keeps only the built-in prompt.", "multiline"),
         Boolean("ai.include_device_location", "Include Windows-provided latitude and longitude in AI snapshots only when location access is available."),
-        Integer("ai.daily_limit", "Maximum AI analyses per local day."),
+        Integer("ai.daily_limit", "Maximum visual AI provider requests per local day, including failed attempts and AI OCR refinement."),
         Decimal("ai.estimated_cost_per_analysis_usd", "Estimated cost used by the local guardrail."),
         Decimal("ai.estimated_cost_per_screenshot_usd", "Estimated screenshot cost used by the local guardrail."),
         Boolean("ai.show_cost_guardrail", "Include local cost guardrail state in status output."),
-        Choice("language", "Application language.", Languages, requiresRestart: true),
+        Choice("language", "Application language.", ProductLanguageCatalog.UiChoices, requiresRestart: true),
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
         Boolean("taskbar.widget.visible", "Show the compact control in the Windows taskbar."),
@@ -215,8 +230,8 @@ public static class SettingsCatalog
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
                 case "screenshots.interval_minutes" when TryInteger(value, 1, 1440, out var screenshotIntervalMinutes): current = current with { ScreenshotIntervalMinutes = screenshotIntervalMinutes }; break;
                 case "ocr.enabled" when TryBoolean(value, out var ocrEnabled): current = current with { OcrEnabled = ocrEnabled }; break;
-                case "ocr.language" when Canonical(Languages, value) is { } ocrLanguage: current = current with { OcrLanguage = ocrLanguage }; break;
-                case "search.language" when Canonical(Languages, value) is { } searchLanguage: current = current with { SearchLanguage = searchLanguage }; break;
+                case "ocr.language" when Canonical(ProductLanguageCatalog.OcrChoices, value) is { } ocrLanguage: current = current with { OcrLanguage = ocrLanguage }; break;
+                case "search.language" when Canonical(ProductLanguageCatalog.SearchChoices, value) is { } searchLanguage: current = current with { SearchLanguage = searchLanguage }; break;
                 case "search.synonyms" when TryBoolean(value, out var searchSynonyms): current = current with { SearchSynonymsEnabled = searchSynonyms }; break;
                 case "search.typo_tolerance" when TryBoolean(value, out var typoTolerance): current = current with { SearchTypoToleranceEnabled = typoTolerance }; break;
                 case "ai.enabled" when TryBoolean(value, out var enabled): current = current with { OpenAiEnabled = enabled }; break;
@@ -227,11 +242,11 @@ public static class SettingsCatalog
                 case "ai.reasoning_effort" when Contains(ReasoningEfforts, value): current = current with { AiReasoningEffort = value!.ToLowerInvariant() }; break;
                 case "ai.custom_prompt" when TryNormalizeCustomPrompt(rawValue, out var customPrompt): current = current with { AiCustomPrompt = customPrompt }; break;
                 case "ai.include_device_location" when TryBoolean(value, out var includeDeviceLocation): current = current with { IncludeDeviceLocation = includeDeviceLocation }; break;
-                case "ai.daily_limit" when TryInteger(value, 0, 10_000, out var dailyLimit): current = current with { OpenAiDailyLimit = dailyLimit }; break;
+                case "ai.daily_limit" when TryInteger(value, MinimumAiDailyLimit, MaximumAiDailyLimit, out var dailyLimit): current = current with { OpenAiDailyLimit = dailyLimit }; break;
                 case "ai.estimated_cost_per_analysis_usd" when TryDecimal(value, 0m, 1_000m, out var analysisCost): current = current with { EstimatedCostPerAnalysisUsd = analysisCost }; break;
                 case "ai.estimated_cost_per_screenshot_usd" when TryDecimal(value, 0m, 1_000m, out var screenshotCost): current = current with { EstimatedCostPerScreenshotUsd = screenshotCost }; break;
                 case "ai.show_cost_guardrail" when TryBoolean(value, out var showGuardrail): current = current with { ShowCostGuardrailInStatus = showGuardrail }; break;
-                case "language" when Canonical(Languages, value) is { } language: current = current with { UiLanguage = language }; break;
+                case "language" when Canonical(ProductLanguageCatalog.UiChoices, value) is { } language: current = current with { UiLanguage = language }; break;
                 case "theme" when Canonical(Themes, value) is { } theme: current = current with { Theme = theme }; break;
                 case "position" when Canonical(FlyoutAnchors, value) is { } position: current = current with { FlyoutPosition = position }; break;
                 case "taskbar.widget.visible" when TryBoolean(value, out var taskbarVisible): current = current with { TaskbarWidgetVisible = taskbarVisible }; break;
@@ -266,7 +281,7 @@ public static class SettingsCatalog
             : new OperationResult<AppSettings>(false, "settings.validation.failed", "SettingsValidationFailed", null, issues);
     }
 
-    /// <summary>Normalizes untrusted persisted settings to supported, safe values before application use.</summary>
+    /// <summary>Validates contract choices and normalizes other persisted settings before application use.</summary>
     public static AppSettings NormalizePersisted(AppSettings settings, string defaultScreenshotDirectory)
     {
         var provider = Canonical(Providers, settings.AiProvider) ?? "openai";
@@ -287,8 +302,9 @@ public static class SettingsCatalog
             ScreenshotIntervalMinutes = settings.ScreenshotIntervalMinutes <= 0
                 ? 15
                 : Math.Min(settings.ScreenshotIntervalMinutes, 1440),
-            OcrLanguage = Canonical(Languages, settings.OcrLanguage) ?? "system",
-            SearchLanguage = Canonical(Languages, settings.SearchLanguage) ?? "system",
+            // Persisted locale identifiers are contracts after the explicit load-time migration has run.
+            OcrLanguage = RequiredPersistedChoice(ProductLanguageCatalog.OcrChoices, settings.OcrLanguage, "ocr.language"),
+            SearchLanguage = RequiredPersistedChoice(ProductLanguageCatalog.SearchChoices, settings.SearchLanguage, "search.language"),
             AiProvider = provider,
             AiEndpoint = endpoint,
             AiApiKeyName = keyVariable,
@@ -296,14 +312,14 @@ public static class SettingsCatalog
             AiReasoningEffort = Canonical(ReasoningEfforts, settings.AiReasoningEffort) ?? "auto",
             AiCustomPrompt = TryNormalizeCustomPrompt(settings.AiCustomPrompt, out var customPrompt) ? customPrompt : string.Empty,
             FlyoutPosition = Canonical(FlyoutAnchors, settings.FlyoutPosition) ?? FlyoutPositions.BottomCenter,
-            UiLanguage = Canonical(Languages, settings.UiLanguage) ?? "system",
+            UiLanguage = RequiredPersistedChoice(ProductLanguageCatalog.UiChoices, settings.UiLanguage, "language"),
             Theme = Canonical(Themes, settings.Theme) ?? "system",
             TaskbarWidgetPosition = Canonical(TaskbarAnchors, settings.TaskbarWidgetPosition) ?? TaskbarWidgetPositions.Left,
             SpanLabel = settings.SpanLabel is { Length: <= 20 } ? settings.SpanLabel.Trim() : string.Empty,
             DailyDigestDirectory = digestDirectory,
             DataRetentionDays = Math.Clamp(settings.DataRetentionDays, 0, 3650),
             ScreenshotRetentionDays = Math.Clamp(settings.ScreenshotRetentionDays, 0, 3650),
-            OpenAiDailyLimit = Math.Clamp(settings.OpenAiDailyLimit, 0, 10_000),
+            OpenAiDailyLimit = Math.Clamp(settings.OpenAiDailyLimit, MinimumAiDailyLimit, MaximumAiDailyLimit),
             OpenAiDailyCostUsd = Math.Max(0m, settings.OpenAiDailyCostUsd),
             EstimatedCostPerAnalysisUsd = Math.Clamp(settings.EstimatedCostPerAnalysisUsd, 0m, 1_000m),
             EstimatedCostPerScreenshotUsd = Math.Clamp(settings.EstimatedCostPerScreenshotUsd, 0m, 1_000m),
@@ -346,6 +362,47 @@ public static class SettingsCatalog
 
     private static string? Canonical(IEnumerable<string> values, string? value) =>
         value is null ? null : values.FirstOrDefault(candidate => candidate.Equals(value.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Migrates only locale identifiers written by the immediately preceding settings contract.</summary>
+    internal static AppSettings MigrateLegacyPersistedLocaleIds(AppSettings settings, out bool migrated)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var uiLanguage = MigrateLegacyLocaleId(settings.UiLanguage);
+        var searchLanguage = MigrateLegacyLocaleId(settings.SearchLanguage);
+        var persistedOcrLanguage = settings.OcrLanguage
+            ?? throw new InvalidDataException("Persisted setting 'ocr.language' is missing.");
+        // The superseded contract exposed Vietnamese for OCR even though the current Windows OCR
+        // capability catalog cannot guarantee that recognizer. Preserve startup by migrating it to
+        // the documented system recognizer instead of inventing an unsupported canonical locale.
+        var ocrLanguage = string.Equals(persistedOcrLanguage.Trim(), "vi", StringComparison.OrdinalIgnoreCase)
+            ? ProductLanguageCatalog.SystemLanguage
+            : MigrateLegacyLocaleId(persistedOcrLanguage);
+        migrated = !string.Equals(uiLanguage, settings.UiLanguage, StringComparison.Ordinal) ||
+                   !string.Equals(searchLanguage, settings.SearchLanguage, StringComparison.Ordinal) ||
+                   !string.Equals(ocrLanguage, settings.OcrLanguage, StringComparison.Ordinal);
+        return migrated
+            ? settings with
+            {
+                UiLanguage = uiLanguage,
+                SearchLanguage = searchLanguage,
+                OcrLanguage = ocrLanguage
+            }
+            : settings;
+    }
+
+    private static string MigrateLegacyLocaleId(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var trimmed = value.Trim();
+        return LegacyLocaleIds.TryGetValue(trimmed, out var migrated)
+            ? migrated
+            : value;
+    }
+
+    private static string RequiredPersistedChoice(IEnumerable<string> values, string? value, string key) =>
+        Canonical(values, value)
+        ?? throw new InvalidDataException($"Persisted setting '{key}' contains unsupported value '{value ?? "<null>"}'.");
 
     private static bool TryBoolean(string? value, out bool parsed)
     {

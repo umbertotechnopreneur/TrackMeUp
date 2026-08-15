@@ -150,6 +150,8 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("bool showSuccess = true", contextSource, StringComparison.Ordinal);
         Assert.Contains("if (showSuccess)", contextSource, StringComparison.Ordinal);
         Assert.Contains("ResultMessage(result.MessageKey", contextSource, StringComparison.Ordinal);
+        Assert.Contains("_tryTranslate(messageKey)", contextSource, StringComparison.Ordinal);
+        Assert.Contains("key => _strings.TryTranslate(key, out var value) ? value : null", pluginSource, StringComparison.Ordinal);
         Assert.DoesNotContain("result.Code", contextSource, StringComparison.Ordinal);
         Assert.Contains("ResultMessage(result.MessageKey", operationsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("result.Code", operationsSource, StringComparison.Ordinal);

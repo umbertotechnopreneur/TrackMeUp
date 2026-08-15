@@ -66,10 +66,11 @@ public sealed partial class ScheduleWindow : Window
     public void ApplyLanguage(string uiLanguage)
     {
         _strings = new LocalizationService(uiLanguage);
-        StandardWorkWeekButton.Content = _strings.Translate("Schedule.Preset.WorkWeek");
-        ClearAllHoursButton.Content = _strings.Translate("Schedule.ClearAll");
-        AutomationProperties.SetName(StandardWorkWeekButton, _strings.Translate("Schedule.Preset.WorkWeek.Title"));
-        AutomationProperties.SetName(ClearAllHoursButton, _strings.Translate("Schedule.ClearAll.Title"));
+        Title = _strings.Translate("Schedule.WindowTitle");
+        UiLocalization.Apply(RootGrid, _strings);
+        WorkingHoursEditor.ApplyLanguage(uiLanguage);
+        AutomationProperties.SetName(StandardWorkWeekButton, _strings.Translate("Schedule.Preset.WorkWeek.Accessible"));
+        AutomationProperties.SetName(ClearAllHoursButton, _strings.Translate("Schedule.ClearAll.Accessible"));
     }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)

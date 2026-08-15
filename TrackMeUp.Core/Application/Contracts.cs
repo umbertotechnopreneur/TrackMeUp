@@ -165,6 +165,87 @@ public sealed record ScreenshotGallery(
     DateOnly Date,
     IReadOnlyList<ScreenshotGalleryItem> Items);
 
+/// <summary>Requests a preview of retained screenshots without AI descriptions for one local calendar date.</summary>
+public sealed record AiScreenshotReprocessRequest(DateOnly Date);
+
+/// <summary>Describes the immutable, short-lived work plan shown before historical AI processing starts.</summary>
+public sealed record AiScreenshotReprocessPlan(
+    Guid PlanId,
+    DateTimeOffset ExpiresAt,
+    DateOnly Date,
+    int MissingDescriptionScreenshotCount,
+    int MissingDescriptionCaptureCount,
+    int EligibleScreenshotCount,
+    int EligibleCaptureCount,
+    int MissingFileCount,
+    int PrivacyBlockedCaptureCount,
+    int MissingMetadataCaptureCount,
+    int DailyAnalysisCount,
+    int DailyAnalysisLimit,
+    int RemainingDailyAllowance,
+    int ProcessableTodayCaptureCount,
+    int ProcessableTodayScreenshotCount,
+    decimal EstimatedMaximumCostTodayUsd,
+    string Provider,
+    string Model,
+    bool CanStart,
+    string? BlockingReason,
+    Guid? ActiveJobId);
+
+/// <summary>Contains safe display metadata for the historical capture currently being processed.</summary>
+public sealed record AiScreenshotReprocessCurrentItem(
+    int Ordinal,
+    DateTimeOffset CapturedAt,
+    string CaptureOrigin,
+    string Application,
+    int ScreenshotCount);
+
+/// <summary>Defines stable states returned by the historical screenshot reprocessing worker.</summary>
+public static class AiScreenshotReprocessJobStatuses
+{
+    /// <summary>The worker is processing or waiting to process the next capture.</summary>
+    public const string Running = "running";
+
+    /// <summary>A cooperative pause has been requested and the current request is being completed.</summary>
+    public const string PauseRequested = "pause_requested";
+
+    /// <summary>The worker was paused at an item boundary by the user.</summary>
+    public const string PausedByUser = "paused_by_user";
+
+    /// <summary>The daily visual-request quota was reached before the next item.</summary>
+    public const string PausedDailyQuota = "paused_daily_quota";
+
+    /// <summary>Every planned capture completed successfully.</summary>
+    public const string Completed = "completed";
+
+    /// <summary>The plan is terminal and contains one or more skipped or failed captures.</summary>
+    public const string CompletedWithErrors = "completed_with_errors";
+
+    /// <summary>The job could not continue because its durable state is invalid or unavailable.</summary>
+    public const string Failed = "failed";
+}
+
+/// <summary>Provides deterministic capture and screenshot progress for one historical AI reprocessing job.</summary>
+public sealed record AiScreenshotReprocessJobSnapshot(
+    Guid JobId,
+    DateOnly Date,
+    string Status,
+    int TotalCaptures,
+    int TotalScreenshots,
+    int CompletedCaptures,
+    int CompletedScreenshots,
+    int RemainingCaptures,
+    int RemainingScreenshots,
+    int SucceededCaptures,
+    int SucceededScreenshots,
+    int SkippedCaptures,
+    int SkippedScreenshots,
+    int FailedCaptures,
+    int FailedScreenshots,
+    AiScreenshotReprocessCurrentItem? CurrentItem,
+    string? PauseReason,
+    DateTimeOffset UpdatedAt);
+
 /// <summary>Identifies one persisted top-level window placement in physical pixels.</summary>
 public sealed record WindowState(
     int X,
@@ -341,6 +422,11 @@ public enum ApplicationNotificationSeverity
     Error
 }
 
+/// <summary>Provides culture-neutral numeric arguments for a localized notification detail.</summary>
+public sealed record LocalizedNotificationDetail(
+    string MessageKey,
+    IReadOnlyList<decimal> Arguments);
+
 /// <summary>Describes one localized, non-secret notification emitted by the shared runtime.</summary>
 public sealed record ApplicationNotification(
     Guid Id,
@@ -349,7 +435,8 @@ public sealed record ApplicationNotification(
     string TitleKey,
     string MessageKey,
     string Code,
-    string? Detail = null);
+    string? Detail = null,
+    LocalizedNotificationDetail? LocalizedDetail = null);
 
 /// <summary>Provides product metadata and safe external links.</summary>
 public sealed record BuildInformation(
@@ -443,6 +530,31 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the retained screenshot gallery for the most recent local calendar date that contains a capture.</summary>
     Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken);
+
+    /// <summary>Builds a short-lived, provider-call-free plan for screenshots without AI descriptions on one local date.</summary>
+    Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(
+        AiScreenshotReprocessRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>Queues one confirmed historical screenshot plan without waiting for that plan's provider calls.</summary>
+    Task<OperationResult<AiScreenshotReprocessJobSnapshot>> StartAiScreenshotReprocessingAsync(
+        Guid planId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Gets the latest deterministic progress snapshot for a historical screenshot job.</summary>
+    Task<OperationResult<AiScreenshotReprocessJobSnapshot>> GetAiScreenshotReprocessingJobAsync(
+        Guid jobId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Requests a cooperative pause after the current historical capture completes.</summary>
+    Task<OperationResult<AiScreenshotReprocessJobSnapshot>> PauseAiScreenshotReprocessingAsync(
+        Guid jobId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Resumes a user- or quota-paused historical screenshot job when its gates allow processing.</summary>
+    Task<OperationResult<AiScreenshotReprocessJobSnapshot>> ResumeAiScreenshotReprocessingAsync(
+        Guid jobId,
+        CancellationToken cancellationToken);
 
     /// <summary>Saves one retained screenshot to a user-selected destination.</summary>
     Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken);

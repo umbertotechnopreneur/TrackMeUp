@@ -2,8 +2,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using System.Globalization;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
 
@@ -13,6 +13,7 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     private IReadOnlyList<ScreenshotTimelineEntry> _entries = Array.Empty<ScreenshotTimelineEntry>();
     private ScrollViewer? _timelineScroller;
     private bool _updatingSelection;
+    private LocalizationService _strings = new("system");
 
     /// <summary>Creates the timeline control.</summary>
     public ScreenshotTimelineControl() => InitializeComponent();
@@ -37,6 +38,7 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
+        _strings = new LocalizationService(language);
         if (items.Count == 0 && selectedIndex != -1)
         {
             throw new ArgumentOutOfRangeException(nameof(selectedIndex), selectedIndex, "An empty timeline must use selection index -1.");
@@ -47,9 +49,8 @@ public sealed partial class ScreenshotTimelineControl : UserControl
             throw new ArgumentOutOfRangeException(nameof(selectedIndex), selectedIndex, "The selected screenshot must exist in the timeline.");
         }
 
-        var culture = CultureInfo.GetCultureInfo(language);
         _entries = items
-            .Select((item, index) => CreateEntry(item, index, culture))
+            .Select(CreateEntry)
             .ToArray();
 
         _updatingSelection = true;
@@ -98,7 +99,7 @@ public sealed partial class ScreenshotTimelineControl : UserControl
         BringSelectionIntoView();
     }
 
-    private static ScreenshotTimelineEntry CreateEntry(ScreenshotGalleryItem item, int index, CultureInfo culture)
+    private ScreenshotTimelineEntry CreateEntry(ScreenshotGalleryItem item, int index)
     {
         if (!Uri.TryCreate(item.Path, UriKind.Absolute, out _))
         {
@@ -108,9 +109,9 @@ public sealed partial class ScreenshotTimelineControl : UserControl
         var localTime = item.CapturedAt.ToLocalTime();
         return new ScreenshotTimelineEntry(
             item.Path,
-            localTime.ToString("d MMM", culture),
-            localTime.ToString("HH:mm", culture),
-            $"Screenshot {index + 1}, {localTime.ToString("f", culture)}");
+            _strings.Format("Screenshots.Timeline.Date", localTime),
+            _strings.Format("Screenshots.Timeline.Time", localTime),
+            _strings.Format("Screenshots.Timeline.ItemAccessible", index + 1, localTime));
     }
 
     private void FilmstripList_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -3,8 +3,8 @@ import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import VChart from 'vue-echarts'
 import { useChartSettings } from '../composables/useChartSettings'
-import { reportDayNames, tr } from '../localization'
-import { formatDuration, type ReportSnapshot } from '../reporting'
+import { reportDayNames, reportHourLabel, tr } from '../localization'
+import { formatDuration, formatInteger, type ReportSnapshot } from '../reporting'
 
 const props = defineProps<{
   snapshot: ReportSnapshot
@@ -31,7 +31,7 @@ const option = computed<EChartsOption>(() => {
     animation: !reducedMotion.value,
     aria: {
       enabled: true,
-      description: tr('Average active-time map by weekday and hour.', 'Mappa del tempo attivo medio per giorno della settimana e fascia oraria.'),
+      description: tr('Average active-time map by weekday and hour.'),
     },
     grid: {
       top: 24,
@@ -47,13 +47,13 @@ const option = computed<EChartsOption>(() => {
       formatter: (parameters: any) => {
         const raw = parameters.data as [number, number, number, number]
         const cell = cells[raw[3]]
-        if (!cell) return tr('Data unavailable', 'Dato non disponibile')
+        if (!cell) return tr('Data unavailable')
         const fullDayName = reportDayNames()[cell.dayOfWeek]
         return [
-          `${fullDayName}, ${cell.hour.toString().padStart(2, '0')}:00`,
-          `${tr('Average active', 'Attivo medio')}: ${formatDuration(cell.activeSeconds)}`,
-          `${tr('Average idle', 'Inattivo medio')}: ${formatDuration(cell.idleSeconds)}`,
-          `${tr('Observed days', 'Giorni osservati')}: ${cell.observationDays}`,
+          `${fullDayName}, ${reportHourLabel(cell.hour)}`,
+          `${tr('Average active')}: ${formatDuration(cell.activeSeconds)}`,
+          `${tr('Average idle')}: ${formatDuration(cell.idleSeconds)}`,
+          `${tr('Observed days')}: ${formatInteger(cell.observationDays)}`,
         ].join('\n')
       },
     },
@@ -66,18 +66,18 @@ const option = computed<EChartsOption>(() => {
       bottom: 2,
       itemWidth: 130,
       itemHeight: 9,
-      text: [tr('More activity', 'Più attività'), tr('Less activity', 'Meno attività')],
+      text: [tr('More activity'), tr('Less activity')],
       textGap: 9,
       textStyle: {
         color: palette.value.muted,
-        fontFamily: 'Segoe UI',
+        fontFamily: '"Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Malgun Gothic", sans-serif',
         fontSize: 11,
       },
       inRange: { color: palette.value.heat },
     },
     xAxis: {
       type: 'category',
-      data: Array.from({ length: 24 }, (_, hour) => hour.toString().padStart(2, '0')),
+      data: Array.from({ length: 24 }, (_, hour) => reportHourLabel(hour)),
       axisLine: { lineStyle: { color: palette.value.border } },
       axisTick: { show: false },
       axisLabel: {
@@ -124,12 +124,12 @@ const option = computed<EChartsOption>(() => {
   <section aria-labelledby="hour-chart-title">
     <div class="chart-heading">
       <div>
-        <h2 id="hour-chart-title" class="chart-title">{{ tr('Activity by day and hour', 'Attività per giorno e ora') }}</h2>
-        <p class="chart-subtitle">{{ tr('Average active time in the observed time bands.', 'Media del tempo attivo nelle fasce osservate del periodo.') }}</p>
+        <h2 id="hour-chart-title" class="chart-title">{{ tr('Activity by day and hour') }}</h2>
+        <p class="chart-subtitle">{{ tr('Average active time in the observed time bands.') }}</p>
       </div>
-      <span class="chart-no-data-legend" :aria-label="tr('Legend: gray means no data', 'Legenda: grigio uguale nessun dato')">
+      <span class="chart-no-data-legend" :aria-label="tr('Legend: gray means no data')">
         <span class="chart-no-data-swatch" aria-hidden="true" />
-        {{ tr('No data', 'Nessun dato') }}
+        {{ tr('No data') }}
       </span>
     </div>
     <v-chart
@@ -137,10 +137,10 @@ const option = computed<EChartsOption>(() => {
       :option="option"
       autoresize
       role="img"
-      :aria-label="tr('Average active-time map by weekday and hour', 'Mappa del tempo attivo medio per giorno della settimana e ora')"
+      :aria-label="tr('Average active-time map by weekday and hour')"
     />
     <p class="chart-forced-colors-message">
-      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.', 'Il grafico è nascosto in modalità contrasto elevato. Apri la tabella accessibile qui sotto per consultare tutti i valori.') }}
+      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.') }}
     </p>
   </section>
 </template>

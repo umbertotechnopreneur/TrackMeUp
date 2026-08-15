@@ -45,6 +45,9 @@ public sealed class TrackingDomainService : IDisposable
         ? null
         : ToAnalysisContext(_latestSample);
 
+    /// <summary>Gets the process identity paired with <see cref="LatestAnalysisContext"/> for privacy checks.</summary>
+    internal string? LatestProcessName => _latestSample?.ProcessName;
+
     /// <summary>
     /// Starts the input hooks and periodic sample collection when not already running.
     /// </summary>
@@ -367,7 +370,7 @@ public sealed class TrackingDomainService : IDisposable
         sample.State,
         FilterAnalysisAttributes(sample.Attributes));
 
-    private static IReadOnlyDictionary<string, string>? FilterAnalysisAttributes(IReadOnlyDictionary<string, string>? attributes)
+    internal static IReadOnlyDictionary<string, string>? FilterAnalysisAttributes(IReadOnlyDictionary<string, string>? attributes)
     {
         if (attributes is null)
         {
@@ -378,6 +381,62 @@ public sealed class TrackingDomainService : IDisposable
             .Where(attribute => !string.Equals(attribute.Key, ActivityAttributeKeys.SpanLabel, StringComparison.Ordinal))
             .ToDictionary(attribute => attribute.Key, attribute => attribute.Value, StringComparer.Ordinal);
         return safeAttributes.Count == 0 ? null : safeAttributes;
+    }
+
+    /// <summary>Evaluates current privacy rules against separated process and presentation context metadata.</summary>
+    internal static bool IsHistoricalContextPrivate(
+        AppSettings settings,
+        string processName,
+        AnalysisContextSnapshot context)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(context);
+        return MatchesPersistedPrivacyRule(settings.PrivacyProcessNames, processName)
+            || MatchesPersistedPrivacyRule(settings.PrivacyWindowTitles, context.WindowTitle)
+            || MatchesPersistedPrivacyRule(settings.PrivacyWindowHints, context.Context);
+    }
+
+    private static bool MatchesPersistedPrivacyRule(string serializedRules, string target)
+    {
+        if (string.IsNullOrWhiteSpace(serializedRules))
+        {
+            return false;
+        }
+
+        var rules = new List<string>();
+        foreach (var rawRow in serializedRules.Split('\n'))
+        {
+            var row = rawRow.Trim();
+            if (row.Length == 0)
+            {
+                continue;
+            }
+
+            var separator = row.IndexOf('|', StringComparison.Ordinal);
+            if (separator <= 0
+                || separator != row.LastIndexOf('|')
+                || string.IsNullOrWhiteSpace(row[..separator])
+                || string.IsNullOrWhiteSpace(row[(separator + 1)..]))
+            {
+                // Historical replay must not bypass a rule that cannot be interpreted safely.
+                return true;
+            }
+
+            rules.Add(row[(separator + 1)..].Trim());
+        }
+
+        if (rules.Count == 0)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            // A configured rule without its corresponding historical target is private by default.
+            return true;
+        }
+
+        return rules.Any(rule => target.Contains(rule, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

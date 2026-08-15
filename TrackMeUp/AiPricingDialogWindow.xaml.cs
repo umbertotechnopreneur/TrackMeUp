@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Text;
@@ -101,10 +100,11 @@ internal sealed partial class AiPricingDialogWindow : Window
 
     private void ApplyContent()
     {
-        var culture = CultureInfo.CurrentCulture;
+        UiLocalization.Apply(RootGrid, _strings);
+        var culture = _strings.Culture;
         DialogTitleText.Text = T("AiPricing.Title");
         DialogSubtitleText.Text = T("AiPricing.Subtitle");
-        AutomationProperties.SetName(RootGrid, $"{DialogTitleText.Text} dialog");
+        AutomationProperties.SetName(RootGrid, DialogTitleText.Text);
         AutomationProperties.SetName(DialogTitleText, DialogTitleText.Text);
         AutomationProperties.SetName(DialogSubtitleText, DialogSubtitleText.Text);
 
@@ -207,13 +207,14 @@ internal sealed partial class AiPricingDialogWindow : Window
 
     private string T(string key) => _strings.Translate(key);
 
-    private static string FormatOptionalUsd(decimal? value, string unavailable, int decimals) =>
+    private string FormatOptionalUsd(decimal? value, string unavailable, int decimals) =>
         value.HasValue ? FormatUsd(value.Value, decimals) : unavailable;
 
-    private static string FormatUsd(decimal value, int decimals)
+    private string FormatUsd(decimal value, int decimals)
     {
-        var format = decimals <= 2 ? "0.##" : "0.####";
-        return "$" + value.ToString(format, CultureInfo.InvariantCulture);
+        return _strings.Format(
+            decimals <= 2 ? "AiPricing.UsdShort" : "AiPricing.UsdDetailed",
+            value);
     }
 
     private async void CloseButton_Click(object sender, RoutedEventArgs e)

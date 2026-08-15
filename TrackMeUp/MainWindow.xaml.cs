@@ -65,6 +65,7 @@ public sealed partial class MainWindow : Window
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
     private bool _screenshotsEnabled;
+    private bool _isTracking;
     private const int PendingSnapshotDeleteSeconds = 30;
     private bool _pendingSnapshotDeleteInProgress;
     private int _lastSessionRefreshInProgress;
@@ -124,6 +125,8 @@ public sealed partial class MainWindow : Window
         _viewModel = new MainViewModel(application);
         AiState = new AiApplicationState(application);
         InitializeComponent();
+        UiLocalization.Apply(RootGrid, _strings);
+        ApplyMainAccessibility();
         AiState.PropertyChanged += AiState_PropertyChanged;
         _trayIcon.ExitRequested += TrayIcon_ExitRequested;
         UpdateOpenAiMenuAccessibility();
@@ -253,9 +256,11 @@ public sealed partial class MainWindow : Window
     private void UpdateAiMonthlySpend(AiPricingOverview overview)
     {
         var cost = overview.ActualCostCurrentMonthUsd ?? overview.EstimatedCostCurrentMonthUsd ?? 0m;
-        AiMonthlySpendText.Text = "$" + cost.ToString("0.0", CultureInfo.InvariantCulture);
-        var range = $"{overview.CurrentMonthStart:dd/MM}-{overview.CurrentMonthEnd:dd/MM}";
-        AiMonthlySpendRangeText.Text = range;
+        AiMonthlySpendText.Text = _strings.Format("AiPricing.UsdShort", cost);
+        AiMonthlySpendRangeText.Text = _strings.Format(
+            "AiPricing.DateRange",
+            overview.CurrentMonthStart,
+            overview.CurrentMonthEnd);
         AiMonthlySpendPanel.Visibility = Visibility.Visible;
     }
 
@@ -278,7 +283,7 @@ public sealed partial class MainWindow : Window
             this,
             MicaDialogRequest.Informative(
                 T("Dialog.AiKeyMissing.Title"),
-                string.Format(CultureInfo.CurrentCulture, T("Dialog.AiKeyMissing.Message"), aiStatus.KeyVariable),
+                _strings.Format("Dialog.AiKeyMissing.Message", aiStatus.KeyVariable),
                 MicaDialogSeverity.Warning,
                 T("Dialog.Ok")),
             RootGrid.RequestedTheme);
@@ -811,6 +816,32 @@ public sealed partial class MainWindow : Window
         OpenAiMenuToggle.Text = T("MenuToggleOpenAi");
         AiPricingMenuItem.Text = T("AiPricing.MenuTitle");
         AboutMenuItem.Text = T("MenuTitleAbout");
+
+        ApplyMenuAccessibility(ActivityMenu, "Main.Menu.Activity", "Main.Menu.Activity.Tooltip");
+        ApplyMenuAccessibility(SearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
+        ApplyMenuAccessibility(ReportsMenuItem, "Reports.Title", "Main.Menu.Reports.Tooltip");
+        ApplyMenuAccessibility(ActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
+        ApplyMenuAccessibility(ScreenshotsMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
+        ApplyMenuAccessibility(CaptureMenu, "Main.Menu.Capture", "Main.Menu.Capture.Tooltip");
+        ApplyMenuAccessibility(ScheduleMenuItem, "Schedule.Snapshots", "Main.Menu.Schedule.Tooltip");
+        ApplyMenuAccessibility(ScreenshotsMenuToggle, "MenuToggleScreenshot", "Main.Menu.ScreenshotToggle.Tooltip");
+        ApplyMenuAccessibility(SettingsMenu, "Main.Menu.Settings", "Main.Menu.Settings.Tooltip");
+        ApplyMenuAccessibility(QuickSetupMenuItem, "QuickSetup.MenuTitle", "Main.Menu.QuickSetup.Tooltip");
+        ApplyMenuAccessibility(OptionsMenuItem, "MenuTitleOptions", "Main.Menu.Options.Tooltip");
+        ApplyMenuAccessibility(OperationsMenuItem, "Main.Menu.Operations", "Main.Menu.Operations.Tooltip");
+        ApplyMenuAccessibility(AiProviderMenu, "Main.Menu.AiProvider", "Main.Menu.AiProvider.Tooltip");
+        ApplyMenuAccessibility(OpenAiMenuToggle, "MenuToggleOpenAi", "Main.Menu.AiToggle.Tooltip");
+        ApplyMenuAccessibility(AiPricingMenuItem, "AiPricing.MenuTitle", "Main.Menu.AiPricing.Tooltip");
+        ApplyMenuAccessibility(AboutMenuItem, "MenuTitleAbout", "Main.Menu.About.Tooltip");
+    }
+
+    private void ApplyMenuAccessibility(DependencyObject item, string labelKey, string tooltipKey)
+    {
+        var label = T(labelKey);
+        var tooltip = T(tooltipKey);
+        AutomationProperties.SetName(item, label);
+        AutomationProperties.SetHelpText(item, tooltip);
+        ToolTipService.SetToolTip(item, tooltip);
     }
 
     private static bool IsOpenAiPricingAvailable(AppSettings settings) =>
@@ -980,6 +1011,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders current dashboard values without making application calls.</summary>
     private void UpdatePlayer(DashboardState state)
     {
+        _isTracking = state.IsTracking;
         UpdateActiveHoursAvailability(state.IsWithinActiveHours);
         var currentContext = state.CurrentContext is "STATE_READY"
             ? T("StateReady")
@@ -987,15 +1019,19 @@ public sealed partial class MainWindow : Window
                 ? T("StateIdleContext")
                 : state.CurrentContext;
         CurrentContextText.Text = FormatCurrentContext(currentContext);
-        KeyCountText.Text = state.TotalKeyPresses.ToString("N0");
-        ClickCountText.Text = state.TotalMouseClicks.ToString("N0");
+        KeyCountText.Text = state.TotalKeyPresses.ToString("N0", _strings.Culture);
+        ClickCountText.Text = state.TotalMouseClicks.ToString("N0", _strings.Culture);
         ActiveTimeText.Text = TimeSpan.FromSeconds(state.ActiveSeconds).ToString(@"hh\:mm\:ss");
         RenderActivityScore(state.ActivityScore);
         TrackingStateText.Text = T(state.IsTracking ? "StateRunning" : "StatePaused");
         PlayPauseIcon.Glyph = state.IsTracking ? "\uE769" : "\uE768";
-        LocalTimeText.Text = $"Local time {state.LocalTime:HH:mm:ss}";
-        UtcTimeText.Text = $"UTC {state.UtcTime:HH:mm:ss}";
-        AutomationProperties.SetName(TrackingButton, state.IsTracking ? "Metti in pausa il monitoraggio" : "Avvia il monitoraggio");
+        LocalTimeText.Text = _strings.Format("Main.Time.Local", state.LocalTime);
+        UtcTimeText.Text = _strings.Format("Main.Time.Utc", state.UtcTime);
+        AutomationProperties.SetName(LocalTimeText, LocalTimeText.Text);
+        AutomationProperties.SetName(UtcTimeText, UtcTimeText.Text);
+        var trackingAction = T(state.IsTracking ? "TrackingActionPause" : "TrackingActionStart");
+        AutomationProperties.SetName(TrackingButton, trackingAction);
+        ToolTipService.SetToolTip(TrackingButton, trackingAction);
 
         // The runtime owns the deadline and freezes this value while tracking is paused.
         if (state.ScheduledSnapshotRemaining is { } scheduledSnapshotRemaining)
@@ -1081,17 +1117,20 @@ public sealed partial class MainWindow : Window
         if (state is not { Minutes.Count: > 0 })
         {
             ActivityScoreValueText.Text = "0";
-            ActivityScoreTelemetryText.Text = "CPU -- · GPU --";
-            ActivityScorePreviousIntervalText.Text = T("Activity.Previous") + ": --";
-            ActivityScoreLatestIntervalText.Text = T("Activity.Latest") + ": --";
+            ActivityScoreTelemetryText.Text = T("Activity.Telemetry.Empty");
+            ActivityScorePreviousIntervalText.Text = _strings.Format("Activity.Interval.Empty", T("Activity.Previous"));
+            ActivityScoreLatestIntervalText.Text = _strings.Format("Activity.Interval.Empty", T("Activity.Latest"));
             ActivityScoreBarHost.Children.Clear();
             ActivityScoreBarHost.ColumnDefinitions.Clear();
             return;
         }
 
         var latestMinute = state.Minutes[^1];
-        ActivityScoreValueText.Text = state.CurrentScore.ToString(CultureInfo.CurrentCulture);
-        ActivityScoreTelemetryText.Text = $"CPU {latestMinute.CpuUsagePercent}% · GPU {(latestMinute.GpuUsagePercent is { } gpu ? $"{gpu}%" : "--")}";
+        ActivityScoreValueText.Text = state.CurrentScore.ToString(_strings.Culture);
+        var gpuUsage = latestMinute.GpuUsagePercent is { } gpu
+            ? _strings.Format("Activity.Percent", gpu)
+            : "--";
+        ActivityScoreTelemetryText.Text = _strings.Format("Activity.Telemetry", latestMinute.CpuUsagePercent, gpuUsage);
         ActivityScorePreviousIntervalText.Text = FormatInterval(T("Activity.Previous"), state.PreviousSnapshotInterval);
         ActivityScoreLatestIntervalText.Text = FormatInterval(T("Activity.Latest"), state.LatestSnapshotInterval);
 
@@ -1159,7 +1198,13 @@ public sealed partial class MainWindow : Window
     }
 
     private string FormatInterval(string intervalName, ActivityScoreInterval interval) =>
-        $"{intervalName}: {interval.MouseClicks:N0} {T("Activity.Clicks")} · {interval.KeyPresses:N0} {T("Activity.Keys")}";
+        _strings.Format(
+            "Activity.Interval",
+            intervalName,
+            interval.MouseClicks,
+            T("Activity.Clicks"),
+            interval.KeyPresses,
+            T("Activity.Keys"));
 
     private Brush GetPlayerAccentBrush() =>
         Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue("PlayerAccentTextBrush", out var brush) && brush is Brush playerAccentBrush
@@ -1201,7 +1246,9 @@ public sealed partial class MainWindow : Window
     private void UpdateLastSession(LastSessionState? session)
     {
         LastSessionAppText.Text = session?.Application ?? T("NoSession");
-        LastSessionDetailText.Text = session?.Timestamp is null ? string.Empty : $"{session.Timestamp:HH:mm} · {session.Context}";
+        LastSessionDetailText.Text = session?.Timestamp is { } timestamp
+            ? _strings.Format("LastSession.Detail", timestamp, session.Context)
+            : string.Empty;
         if (session?.ScreenshotCapturedAt is { } capturedAt && Uri.TryCreate(session.ScreenshotPath, UriKind.Absolute, out var screenshotUri))
         {
             if (string.Equals(_latestScreenshotPath, session.ScreenshotPath, StringComparison.OrdinalIgnoreCase)
@@ -1216,8 +1263,7 @@ public sealed partial class MainWindow : Window
             LastScreenshotImage.Visibility = Visibility.Visible;
             ScreenshotPlaceholderImage.Visibility = Visibility.Collapsed;
             ScreenshotPreviewButton.IsHitTestVisible = true;
-            AutomationProperties.SetName(ScreenshotPreviewButton, "Open latest screenshot");
-            ToolTipService.SetToolTip(ScreenshotPreviewButton, "Open latest screenshot");
+            UpdateScreenshotPreviewAccessibility();
             return;
         }
 
@@ -1265,8 +1311,7 @@ public sealed partial class MainWindow : Window
         UpdateScreenshotCaptureStatus();
         ScreenshotOpenOverlay.Opacity = 0;
         ScreenshotPreviewButton.IsHitTestVisible = false;
-        AutomationProperties.SetName(ScreenshotPreviewButton, "No captured screenshot");
-        ToolTipService.SetToolTip(ScreenshotPreviewButton, "No captured screenshot");
+        UpdateScreenshotPreviewAccessibility();
     }
 
     /// <summary>Applies presentation settings already validated and persisted by the application layer.</summary>
@@ -1285,6 +1330,7 @@ public sealed partial class MainWindow : Window
         _searchIndexingWindow?.ApplyTheme(indexingTheme);
         _searchIndexingWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
+        ApplyMainAccessibility();
         var reportsLabel = T("Reports.Title");
         var searchLabel = T("Search.Title");
         AutomationProperties.SetName(TitleBarSearchButton, searchLabel);
@@ -1301,6 +1347,36 @@ public sealed partial class MainWindow : Window
         ApplyFlyoutPosition(_position);
 
         SettingsApplied?.Invoke(settings);
+    }
+
+    private void ApplyMainAccessibility()
+    {
+        SetIconButtonLabel(TitleBarBackButton, "QuickSetup.Back");
+        SetIconButtonLabel(TitleBarMoreButton, "Main.Menu.Open");
+        SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
+        SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
+        SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
+        SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
+        SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
+        AutomationProperties.SetName(TrackingStatusToast, T("Main.TrackingStatus"));
+        AutomationProperties.SetName(ActivityScoreBarHost, T("Activity.LastThirtyMinutes"));
+        UpdateScreenshotPreviewAccessibility();
+    }
+
+    private void SetIconButtonLabel(Button button, string key)
+    {
+        var label = T(key);
+        AutomationProperties.SetName(button, label);
+        ToolTipService.SetToolTip(button, label);
+    }
+
+    private void UpdateScreenshotPreviewAccessibility()
+    {
+        var label = T(_latestScreenshotPath is null
+            ? "ScreenshotUnavailableHint"
+            : "Screenshots.OpenLatest");
+        AutomationProperties.SetName(ScreenshotPreviewButton, label);
+        ToolTipService.SetToolTip(ScreenshotPreviewButton, label);
     }
 
     /// <summary>Refreshes every visible settings projection after another application surface changes them.</summary>
@@ -1394,20 +1470,22 @@ public sealed partial class MainWindow : Window
 
     private void UpdateOpenAiMenuAccessibility()
     {
-        AutomationProperties.SetName(OpenAiMenuToggle, T("Options.OpenAi.Header"));
+        AutomationProperties.SetName(OpenAiMenuToggle, T("MenuToggleOpenAi"));
+        var toggleTooltip = T("Main.Menu.AiToggle.Tooltip");
         AutomationProperties.SetHelpText(
             OpenAiMenuToggle,
             AiState.IsStatusUnavailable
-                ? T("Options.ApiKeyStatus.Unavailable")
+                ? $"{toggleTooltip} {T("Options.ApiKeyStatus.Unavailable")}"
                 : !AiState.CanEnable && !AiState.Enabled
-                    ? T("Options.OpenAi.KeyRequired")
-                    : string.Empty);
+                    ? $"{toggleTooltip} {T("Options.OpenAi.KeyRequired")}"
+                    : toggleTooltip);
         AutomationProperties.SetName(AiPricingMenuItem, T("AiPricing.MenuTitle"));
+        var pricingTooltip = T("Main.Menu.AiPricing.Tooltip");
         AutomationProperties.SetHelpText(
             AiPricingMenuItem,
             AiState.Enabled
-                ? string.Empty
-                : T("AiPricing.DisabledHint"));
+                ? pricingTooltip
+                : $"{pricingTooltip} {T("AiPricing.DisabledHint")}");
     }
 
     private void UpdateActiveHoursAvailability(bool isWithinActiveHours)
@@ -1424,9 +1502,14 @@ public sealed partial class MainWindow : Window
     private string FormatNotificationMessage(ApplicationNotification notification)
     {
         var message = T(notification.MessageKey);
-        return string.IsNullOrWhiteSpace(notification.Detail)
+        var detail = notification.LocalizedDetail is { } localizedDetail
+            ? _strings.Format(
+                localizedDetail.MessageKey,
+                localizedDetail.Arguments.Select(static value => (object?)value).ToArray())
+            : notification.Detail;
+        return string.IsNullOrWhiteSpace(detail)
             ? message
-            : $"{message}{Environment.NewLine}{Environment.NewLine}{notification.Detail}";
+            : $"{message}{Environment.NewLine}{Environment.NewLine}{detail}";
     }
 
     /// <summary>Shows and positions the player when requested from the taskbar control.</summary>

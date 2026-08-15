@@ -71,10 +71,10 @@
                     Height="38"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    AutomationProperties.Name="Apri TrackMeUp"
+                    AutomationProperties.Name="Open TrackMeUp"
                     Click="OpenFlyoutButton_Click"
                     Style="{StaticResource TaskbarButtonStyle}"
-                    ToolTip="Apri TrackMeUp">
+                    ToolTip="Open TrackMeUp">
                     <Image
                         Width="22"
                         Height="22"
@@ -88,10 +88,10 @@
                     Height="38"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    AutomationProperties.Name="Avvia registrazione sessione"
+                    AutomationProperties.Name="Start tracking"
                     Click="TrackingButton_Click"
                     Style="{StaticResource TaskbarButtonStyle}"
-                    ToolTip="Avvia registrazione sessione">
+                    ToolTip="Start tracking">
                     <TextBlock
                         x:Name="PlayPauseIcon"
                         FontFamily="Segoe Fluent Icons"
@@ -133,8 +133,8 @@
                     Width="40"
                     Height="38"
                     HorizontalAlignment="Center"
-                    AutomationProperties.Name="Registrazione in pausa"
-                    ToolTip="Registrazione in pausa">
+                    AutomationProperties.Name="Activity recording is paused"
+                    ToolTip="Activity recording is paused">
                     <Ellipse
                         x:Name="RecordingGlow"
                         Width="22"

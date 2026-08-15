@@ -1,7 +1,7 @@
 import { createApp, watch } from 'vue'
 import { createVuetify } from 'vuetify'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
-import { en, it } from 'vuetify/locale'
+import { de, en, es, fr, it, ko, pt, vi, zhHans } from 'vuetify/locale'
 import { use } from 'echarts/core'
 import { BarChart, HeatmapChart } from 'echarts/charts'
 import {
@@ -38,6 +38,18 @@ use([
 ])
 
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)')
+const vuetifyMessages = {
+  'en-US': en,
+  'it-IT': it,
+  'fr-FR': fr,
+  'de-DE': de,
+  'es-ES': es,
+  'zh-Hans': zhHans,
+  'vi-VN': vi,
+  'ko-KR': ko,
+  'pt-PT': pt,
+  'pt-BR': pt,
+}
 
 const vuetify = createVuetify({
   icons: {
@@ -47,8 +59,8 @@ const vuetify = createVuetify({
   },
   locale: {
     locale: reportLanguage.value,
-    fallback: 'en',
-    messages: { en, it },
+    fallback: 'en-US',
+    messages: vuetifyMessages,
   },
   theme: {
     defaultTheme: resolveThemeName(themePreference.value, colorScheme.matches),

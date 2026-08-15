@@ -38,6 +38,8 @@ public sealed class HtmlReportService
 
     private string ExportForDate(DateOnly date, bool isDigest)
     {
+        var strings = new LocalizationService(_store.LoadSettings().UiLanguage);
+        var culture = strings.Culture;
         var result = new ReportAggregationService(_store).Build(
             new ReportQuery(date, date, TimeZoneInfo.Local.Id),
             applicationLimit: int.MaxValue,
@@ -48,39 +50,71 @@ public sealed class HtmlReportService
         }
 
         var report = result.Value;
-        var rows = string.Join(Environment.NewLine, report.Applications.Select(x => $"<tr><td>{WebUtility.HtmlEncode(x.Application)}</td><td>{WebUtility.HtmlEncode(_utilities.FormatDuration(x.ActiveSeconds))}</td></tr>"));
-        var aiUsage = RenderAiUsage(report.AiUsage);
+        var rows = string.Join(Environment.NewLine, report.Applications.Select(application =>
+            $"<tr><td>{Html(application.Application)}</td><td>{Html(FormatDuration(strings, application.ActiveSeconds))}</td></tr>"));
+        var aiUsage = RenderAiUsage(report.AiUsage, strings);
         var dateTime = date.ToDateTime(TimeOnly.MinValue);
-        var title = isDigest ? "Daily digest" : "Daily report";
-        var html = $"<!doctype html><html lang=\"it\"><head><meta charset=\"utf-8\"><title>TrackMeUp {title} {date:yyyy-MM-dd}</title><style>body{{font:16px Segoe UI,sans-serif;background:#f8f3ea;color:#173b3f;max-width:720px;margin:40px auto}}section,table{{background:white;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 8px 24px #173b3f12}}table{{width:100%;border-collapse:collapse}}td,th{{padding:10px;border-bottom:1px solid #eee;text-align:left}}h1{{letter-spacing:.08em}}h2{{margin-top:0}}</style></head><body><h1>TRACK ME UP</h1><p>{dateTime:dddd d MMMM yyyy}</p><section>Tempo attivo: <strong>{_utilities.FormatDuration(report.Totals.ActiveSeconds)}</strong><br>Tempo inattivo: <strong>{_utilities.FormatDuration(report.Totals.IdleSeconds)}</strong><br>Tasti: <strong>{report.Totals.KeyPresses:N0}</strong> · Click: <strong>{report.Totals.MouseClicks:N0}</strong></section>{aiUsage}<table><tr><th>Applicazione</th><th>Tempo attivo</th></tr>{rows}</table></body></html>";
+        var title = strings.Translate(isDigest ? "HtmlReport.DigestTitle" : "HtmlReport.ReportTitle");
+        var html = $"<!doctype html><html lang=\"{Html(strings.Language)}\"><head><meta charset=\"utf-8\"><title>TrackMeUp {Html(title)} {date:yyyy-MM-dd}</title><style>body{{font:16px Segoe UI,sans-serif;background:#f8f3ea;color:#173b3f;max-width:720px;margin:40px auto}}section,table{{background:white;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 8px 24px #173b3f12}}table{{width:100%;border-collapse:collapse}}td,th{{padding:10px;border-bottom:1px solid #eee;text-align:left}}h1{{letter-spacing:.08em}}h2{{margin-top:0}}</style></head><body><h1>TRACK ME UP</h1><p>{Html(dateTime.ToString("D", culture))}</p><section>{Html(strings.Translate("ActivityCalendar.ActiveTime"))}: <strong>{Html(FormatDuration(strings, report.Totals.ActiveSeconds))}</strong><br>{Html(strings.Translate("ActivityCalendar.IdleTime"))}: <strong>{Html(FormatDuration(strings, report.Totals.IdleSeconds))}</strong><br>{Html(strings.Translate("ActivityCalendar.KeyPresses"))}: <strong>{report.Totals.KeyPresses.ToString("N0", culture)}</strong> · {Html(strings.Translate("ActivityCalendar.MouseClicks"))}: <strong>{report.Totals.MouseClicks.ToString("N0", culture)}</strong></section>{aiUsage}<table><tr><th>{Html(strings.Translate("HtmlReport.Application"))}</th><th>{Html(strings.Translate("ActivityCalendar.ActiveTime"))}</th></tr>{rows}</table></body></html>";
         var name = isDigest ? $"trackmeup-digest-{date:yyyy-MM-dd}.html" : $"trackmeup-{date:yyyy-MM-dd}.html";
         var path = Path.Combine(_utilities.ReportsDirectory, name);
         File.WriteAllText(path, html, Encoding.UTF8);
         return path;
     }
 
-    private static string RenderAiUsage(AiUsageSummary usage)
+    private static string RenderAiUsage(AiUsageSummary usage, LocalizationService strings)
     {
         if (usage.RequestCount == 0)
         {
-            return "<section><h2>Utilizzo AI</h2><p>Nessuna richiesta AI nel periodo.</p></section>";
+            return $"<section><h2>{Html(strings.Translate("HtmlReport.AiUsage"))}</h2><p>{Html(strings.Translate("HtmlReport.NoAiRequests"))}</p></section>";
         }
 
         var actualCost = usage.ActualCostUsd.HasValue
-            ? $"${usage.ActualCostUsd.Value:0.######} ({usage.ActualCostRequestCount} richieste con costo restituito dal provider)"
-            : "non restituito dal provider";
+            ? strings.Format(
+                "HtmlReport.ActualCostDetail",
+                FormatCost(strings, usage.ActualCostUsd),
+                usage.ActualCostRequestCount)
+            : strings.Translate("HtmlReport.ActualCostUnavailable");
         var pricingUpdatedAt = usage.EstimatedCostPricingUpdatedAt?.UtcDateTime.ToString(
-            "yyyy-MM-dd HH:mm",
-            System.Globalization.CultureInfo.InvariantCulture)
-            ?? "n/d";
+            "g",
+            strings.Culture)
+            ?? strings.Translate("Common.NotAvailable");
         var estimatedCost = usage.EstimatedCostUsd.HasValue
-            ? $"${usage.EstimatedCostUsd.Value:0.######} ({usage.EstimatedCostRequestCount} richieste stimate, prezzi aggiornati {pricingUpdatedAt} UTC)"
-            : "non stimabile con il listino locale";
+            ? strings.Format(
+                "HtmlReport.EstimatedCostDetail",
+                FormatCost(strings, usage.EstimatedCostUsd),
+                usage.EstimatedCostRequestCount,
+                pricingUpdatedAt)
+            : strings.Translate("HtmlReport.EstimatedCostUnavailable");
         var providers = string.Join(Environment.NewLine, usage.ByProvider.Select(provider =>
-            $"<tr><td>{WebUtility.HtmlEncode(provider.Label)}</td><td>{provider.RequestCount:N0}</td><td>{provider.TotalTokens:N0}</td><td>{FormatCost(provider.ActualCostUsd)}</td><td>{FormatCost(provider.EstimatedCostUsd)}</td></tr>"));
-        return $"<section><h2>Utilizzo AI</h2>Richieste: <strong>{usage.RequestCount:N0}</strong> ({usage.SuccessfulRequestCount:N0} riuscite, {usage.FailedRequestCount:N0} non riuscite)<br>Token: <strong>{usage.TotalTokens:N0}</strong> (input {usage.InputTokens:N0}, output {usage.OutputTokens:N0})<br>Costo effettivo: <strong>{actualCost}</strong><br>Costo stimato: <strong>{estimatedCost}</strong><table><tr><th>Provider</th><th>Richieste</th><th>Token</th><th>Costo effettivo</th><th>Costo stimato</th></tr>{providers}</table></section>";
+            $"<tr><td>{Html(provider.Label)}</td><td>{provider.RequestCount.ToString("N0", strings.Culture)}</td><td>{provider.TotalTokens.ToString("N0", strings.Culture)}</td><td>{Html(FormatCost(strings, provider.ActualCostUsd))}</td><td>{Html(FormatCost(strings, provider.EstimatedCostUsd))}</td></tr>"));
+        var requestSummary = strings.Format(
+            "HtmlReport.RequestSummary",
+            usage.RequestCount,
+            usage.SuccessfulRequestCount,
+            usage.FailedRequestCount);
+        var tokenSummary = strings.Format(
+            "HtmlReport.TokenSummary",
+            usage.TotalTokens,
+            usage.InputTokens,
+            usage.OutputTokens);
+        return $"<section><h2>{Html(strings.Translate("HtmlReport.AiUsage"))}</h2>{Html(requestSummary)}<br>{Html(tokenSummary)}<br>{Html(strings.Translate("HtmlReport.ActualCostLabel"))}: <strong>{Html(actualCost)}</strong><br>{Html(strings.Translate("HtmlReport.EstimatedCostLabel"))}: <strong>{Html(estimatedCost)}</strong><table><tr><th>{Html(strings.Translate("HtmlReport.Provider"))}</th><th>{Html(strings.Translate("HtmlReport.Requests"))}</th><th>{Html(strings.Translate("HtmlReport.Tokens"))}</th><th>{Html(strings.Translate("HtmlReport.ActualCostLabel"))}</th><th>{Html(strings.Translate("HtmlReport.EstimatedCostLabel"))}</th></tr>{providers}</table></section>";
     }
 
-    private static string FormatCost(decimal? value) =>
-        value.HasValue ? "$" + value.Value.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture) : "n/d";
+    private static string FormatDuration(LocalizationService strings, long seconds)
+    {
+        var normalized = Math.Max(0, seconds);
+        return strings.Format(
+            "ActivityCalendar.Duration",
+            normalized / 3600,
+            (normalized % 3600) / 60,
+            normalized % 60);
+    }
+
+    private static string FormatCost(LocalizationService strings, decimal? value) =>
+        value.HasValue
+            ? "$" + value.Value.ToString("0.######", strings.Culture)
+            : strings.Translate("Common.NotAvailable");
+
+    private static string Html(string value) => WebUtility.HtmlEncode(value);
 }

@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -11,6 +13,14 @@ namespace TrackMeUp.Controls;
 /// <summary>Collects and renders local context-plugin operations.</summary>
 public sealed partial class PluginOperationsControl : UserControl
 {
+    private static readonly HashSet<string> BuiltInPluginIds = new(StringComparer.Ordinal)
+    {
+        "word",
+        "excel",
+        "vscode",
+        "browser"
+    };
+
     private LocalizationService _strings = new("system");
     private OperationsSectionContext? _context;
     private PluginInfo[] _plugins = [];
@@ -24,10 +34,19 @@ public sealed partial class PluginOperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        AutomationProperties.SetName(PluginsList, _strings.Translate("Operations.Plugins"));
+        ApplyPlugins(_plugins);
     }
 
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
+        _context = new OperationsSectionContext(
+            application,
+            dialogs,
+            ownerWindow,
+            banner,
+            Progress,
+            SectionBody,
+            key => _strings.TryTranslate(key, out var value) ? value : null);
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("PluginOperationsControl must be initialized before use.");
 
@@ -64,7 +83,7 @@ public sealed partial class PluginOperationsControl : UserControl
         {
             ReplacePlugin(updatedPlugin);
             Context.ShowStatus(
-                L("Operation completed", "Operazione completata"),
+                _strings.Translate("Operations.Status.Completed.Title"),
                 Context.ResultMessage(result.MessageKey, succeeded: true),
                 InfoBarSeverity.Success);
             return;
@@ -74,8 +93,8 @@ public sealed partial class PluginOperationsControl : UserControl
         if (result is { Succeeded: true })
         {
             Context.ShowStatus(
-                L("Operation failed", "Operazione non completata"),
-                L("The runtime returned an invalid plugin state.", "Il runtime ha restituito uno stato del plugin non valido."),
+                _strings.Translate("Operations.Status.Failed.Title"),
+                _strings.Translate("Operations.Plugin.InvalidState"),
                 InfoBarSeverity.Error);
         }
     }
@@ -86,7 +105,7 @@ public sealed partial class PluginOperationsControl : UserControl
         try
         {
             _plugins = plugins;
-            PluginsList.ItemsSource = plugins;
+            PluginsList.ItemsSource = plugins.Select(CreateListItem).ToArray();
         }
         finally
         {
@@ -120,5 +139,21 @@ public sealed partial class PluginOperationsControl : UserControl
         }
     }
 
-    private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
+    private PluginListItem CreateListItem(PluginInfo plugin)
+    {
+        if (!BuiltInPluginIds.Contains(plugin.Id))
+        {
+            // External plugin metadata is supplied by the plugin and remains display data.
+            return new PluginListItem(plugin.Id, plugin.Name, plugin.Description, plugin.Enabled);
+        }
+
+        var prefix = $"Operations.Plugin.{plugin.Id}";
+        return new PluginListItem(
+            plugin.Id,
+            _strings.Translate($"{prefix}.Name"),
+            _strings.Translate($"{prefix}.Description"),
+            plugin.Enabled);
+    }
+
+    private sealed record PluginListItem(string Id, string Name, string Description, bool Enabled);
 }

@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Localization\*.json" LogicalName="TrackMeUp.Localization.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="..\prompts\*.prompt.md" Link="prompts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="search-synonyms.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -91,6 +91,28 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
+    public void Apply_RestrictsDailyAiProcessingLimitToFourHundred()
+    {
+        var accepted = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.daily_limit"] = SettingsCatalog.MaximumAiDailyLimit.ToString()
+            }));
+        var rejected = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.daily_limit"] = (SettingsCatalog.MaximumAiDailyLimit + 1).ToString()
+            }));
+
+        Assert.True(accepted.Succeeded);
+        Assert.Equal(400, accepted.Value?.OpenAiDailyLimit);
+        Assert.False(rejected.Succeeded);
+        Assert.Contains(rejected.Issues, issue => issue.Field == "ai.daily_limit");
+    }
+
+    [Fact]
     public void SettingsWithoutAnInterval_UseTheFifteenMinuteScheduleDefault()
     {
         var settings = JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -181,6 +203,7 @@ public sealed class SettingsAndRetentionSafetyTests
                 AiApiKeyName: "SECRET_FROM_SETTINGS",
                 AiOutputDetail: "unbounded",
                 AiReasoningEffort: "extreme",
+                OpenAiDailyLimit: 10_000,
                 ScreenshotIntervalMinutes: 50_000,
                 DataRetentionDays: -50,
                 ScreenshotRetentionDays: 50_000),
@@ -191,6 +214,7 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Equal("OPENAI_API_KEY", normalized.AiApiKeyName);
         Assert.Equal("balanced", normalized.AiOutputDetail);
         Assert.Equal("auto", normalized.AiReasoningEffort);
+        Assert.Equal(400, normalized.OpenAiDailyLimit);
         Assert.Equal(1440, normalized.ScreenshotIntervalMinutes);
         Assert.Equal(0, normalized.DataRetentionDays);
         Assert.Equal(3650, normalized.ScreenshotRetentionDays);

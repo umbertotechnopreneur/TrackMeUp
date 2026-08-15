@@ -59,7 +59,7 @@ La prima pagina della dialog presenta:
 - scorciatoie `Giorno selezionato`, `Mese visualizzato`, `Intervallo personalizzato`;
 - filtro origine `Tutte`, `Manuali`, `Programmate`;
 - riepilogo configurazione non segreto: provider AI selezionato e modello;
-- quota descrizioni: usate, limite giornaliero, disponibili oggi e ora di reset locale;
+- quota richieste visive al provider AI: usate, limite giornaliero, disponibili oggi e ora di reset locale;
 - stima massima per gli elementi processabili oggi, chiaramente etichettata come stima;
 - classificazione esatta dei file trovati.
 
@@ -214,7 +214,7 @@ flowchart LR
     W --> Q["Coordinatore AI con priorità live"]
     Q --> R["Pipeline descrizione storica"]
     R --> V["Provider AI"]
-    R --> S["SQLite: usage, risultato e checkpoint atomico"]
+    R --> S["SQLite: usage e risultato, poi checkpoint con riconciliazione al riavvio"]
     D -->|poll 500 ms / pausa / riprendi| A
 ```
 
@@ -235,7 +235,7 @@ Il nuovo caso d'uso deve invece:
 4. riusare l'OCR già salvato, senza rifare OCR salvo futura opzione esplicita;
 5. usare le immagini conservate come input di analisi, accettando che possano contenere il watermark locale perché i raw originali sono già stati eliminati;
 6. invocare la logica comune di descrizione con origine stabile `snapshot.reprocess`;
-7. persistere usage, risultato, relazione artifact e checkpoint nella sequenza più atomica possibile.
+7. persistere usage, risultato e relazione artifact prima del checkpoint; se il runtime termina tra i due commit, il recovery riconcilia l'item `running` come riuscito dalla relazione normalizzata e non ripete la richiesta.
 
 Si consiglia di estrarre dalla pipeline corrente una funzione interna comune che analizzi un `HistoricalScreenshotAnalysisInput`, senza esporre servizi infrastrutturali alla view.
 
@@ -288,7 +288,7 @@ Quando la quota termina:
 - mostrare il reset alla mezzanotte locale;
 - consentire ripresa esplicita dopo il reset; l'eventuale ripresa automatica è una decisione di prodotto separata.
 
-Non deve esistere un pulsante “forza” né un parametro che bypassi `BuildCostGate`. Le descrizioni riuscite da `snapshot.reprocess` contano nella stessa quota giornaliera delle descrizioni live.
+Non deve esistere un pulsante “forza” né un parametro che bypassi `BuildCostGate`. Ogni richiesta visiva al provider AI conta nella stessa quota giornaliera, inclusi i tentativi non riusciti e il perfezionamento OCR tramite AI; i test di connessione sono esclusi.
 
 ## Persistenza e query minime
 
@@ -383,7 +383,7 @@ Architettura eventuale:
 **Saldo disponibile:** nell'attuale documentazione pubblica OpenAI non risulta un endpoint supportato che restituisca il credito residuo/prepagato reale dell'account. Quindi TrackMeUp non deve promettere “balance” o “quanto resta”, né chiamare endpoint dashboard legacy/non documentati. Può mostrare:
 
 - la spesa restituita dal Costs endpoint;
-- la quota locale di descrizioni rimasta oggi;
+- la quota locale di richieste visive al provider AI rimasta oggi;
 - eventualmente il residuo rispetto a un budget locale configurato dall'utente, etichettato come budget TrackMeUp e non come saldo OpenAI.
 
 Un eventuale limite di spesa organizzativo è una soglia di policy, non equivale al credito monetario residuo e non va presentato come balance.
@@ -416,7 +416,7 @@ Un eventuale limite di spesa organizzativo è una soglia di policy, non equivale
 - formule dei contatori e progress determinato;
 - stato pausa quota e ripresa;
 - chiusura/Escape secondo la policy approvata;
-- localizzazione completa nelle sei lingue;
+- localizzazione completa nei dieci locale supportati;
 - tooltip/nome accessibile, live region e High Contrast.
 
 ### Integrazione
@@ -438,8 +438,8 @@ Un eventuale limite di spesa organizzativo è una soglia di policy, non equivale
 7. Dopo crash/riavvio, un job incompleto è rilevato e può essere ripreso senza duplicare descrizioni.
 8. File mancanti, privacy, metadati mancanti, AI disabilitata/configurazione invalida e quota hanno esiti distinti e localizzati.
 9. Il guardrail giornaliero viene rivalutato per ogni richiesta e non esiste bypass.
-10. Il risultato riuscito, la relazione con le schermate e il checkpoint sono coerenti dopo ogni commit.
-11. La dialog Acrylic rispetta tema, High Contrast, tastiera, screen reader e le sei lingue supportate.
+10. Il risultato riuscito e la relazione con le schermate sono atomici; un checkpoint interrotto viene riconciliato come riuscito al riavvio, senza una seconda richiesta al provider.
+11. La dialog Acrylic rispetta tema, High Contrast, tastiera, screen reader e i dieci locale supportati.
 12. Nessuna chiave amministrativa o provider viene salvata, loggata o trasmessa via CLI/IPC diagnostico.
 
 ## Rollout proposto

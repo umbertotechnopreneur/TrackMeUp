@@ -17,6 +17,7 @@ public sealed record ScreenshotSearchResult(
     string TextSnippet,
     string Query,
     string ActivityDisplay,
+    string MatchLabel,
     float Score,
     int MatchPercent)
 {
@@ -35,6 +36,8 @@ public sealed record SearchSuggestionViewState(string Text, int ConfidencePercen
 public sealed class SearchViewModel : ViewModelBase
 {
     private readonly ITrackMeUpApplication _application;
+    private readonly string _matchLabel;
+    private readonly Func<long?, CultureInfo, string> _formatClickCount;
     private IReadOnlyList<ScreenshotSearchResult> _results = Array.Empty<ScreenshotSearchResult>();
     private bool _isSearching;
     private int _totalCount;
@@ -48,9 +51,17 @@ public sealed class SearchViewModel : ViewModelBase
     /// <summary>Gets the maximum number of type-ahead suggestions shown by the search surface.</summary>
     public const int MaximumSuggestions = 8;
 
-    /// <summary>Creates a local-search presentation model.</summary>
-    public SearchViewModel(ITrackMeUpApplication application) =>
+    /// <summary>Creates a local-search presentation model with host-provided localized result formatting.</summary>
+    public SearchViewModel(
+        ITrackMeUpApplication application,
+        string matchLabel,
+        Func<long?, CultureInfo, string> formatClickCount)
+    {
         _application = application ?? throw new ArgumentNullException(nameof(application));
+        ArgumentException.ThrowIfNullOrWhiteSpace(matchLabel);
+        _matchLabel = matchLabel;
+        _formatClickCount = formatClickCount ?? throw new ArgumentNullException(nameof(formatClickCount));
+    }
 
     /// <summary>Gets the current bounded screenshot result list.</summary>
     public IReadOnlyList<ScreenshotSearchResult> Results
@@ -141,7 +152,13 @@ public sealed class SearchViewModel : ViewModelBase
                 .ToArray();
             var highestScore = rankedHits.Length == 0 ? 0f : rankedHits[0].Score;
             var projected = rankedHits
-                .Select(hit => Project(hit, culture, query, CalculateMatchPercent(hit.Score, highestScore)))
+                .Select(hit => Project(
+                    hit,
+                    culture,
+                    query,
+                    CalculateMatchPercent(hit.Score, highestScore),
+                    _matchLabel,
+                    _formatClickCount))
                 .ToArray();
             if (projected.Length > MaximumResults)
             {
@@ -251,7 +268,13 @@ public sealed class SearchViewModel : ViewModelBase
         return Math.Clamp((int)Math.Round(confidence * 100d, MidpointRounding.AwayFromZero), 55, 99);
     }
 
-    private static ScreenshotSearchResult Project(SearchHit hit, CultureInfo culture, string query, int matchPercent)
+    private static ScreenshotSearchResult Project(
+        SearchHit hit,
+        CultureInfo culture,
+        string query,
+        int matchPercent,
+        string matchLabel,
+        Func<long?, CultureInfo, string> formatClickCount)
     {
         var document = hit.Document;
         if (!string.Equals(document.Kind, "screenshot", StringComparison.Ordinal)
@@ -282,7 +305,8 @@ public sealed class SearchViewModel : ViewModelBase
             activeWindowDisplay,
             snippet,
             query,
-            FormatActivity(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture),
+            FormatActivity(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture, formatClickCount),
+            matchLabel,
             hit.Score,
             matchPercent);
     }
@@ -331,11 +355,15 @@ public sealed class SearchViewModel : ViewModelBase
         long? mouseClicks,
         int? cpuUsagePercent,
         int? gpuUsagePercent,
-        CultureInfo culture)
+        CultureInfo culture,
+        Func<long?, CultureInfo, string> formatClickCount)
     {
-        var clicks = mouseClicks is { } clickCount
-            ? $"{clickCount.ToString("N0", culture)} {(clickCount == 1 ? "click" : "clicks")}"
-            : "Clicks —";
+        var clicks = formatClickCount(mouseClicks, culture);
+        if (string.IsNullOrWhiteSpace(clicks))
+        {
+            throw new InvalidOperationException("The host click-count formatter returned an empty result.");
+        }
+
         return $"{clicks} · CPU {(cpuUsagePercent is { } cpu ? $"{cpu}%" : "—")} · GPU {(gpuUsagePercent is { } gpu ? $"{gpu}%" : "—")}";
     }
 

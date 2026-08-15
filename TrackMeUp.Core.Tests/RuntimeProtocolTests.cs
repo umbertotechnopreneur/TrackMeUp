@@ -26,11 +26,28 @@ public sealed class RuntimeProtocolTests
     [Fact]
     public void LaunchOptions_StripsCliSwitchFromCommandArguments()
     {
-        var options = LaunchOptions.Parse(["-cli", "--language", "it", "status"]);
+        var options = LaunchOptions.Parse(["-cli", "--language", "it-IT", "status"]);
 
         Assert.Equal(LaunchMode.Cli, options.Mode);
-        Assert.Equal("it", options.Language);
+        Assert.Equal("it-IT", options.Language);
         Assert.Equal(["status"], options.RemainingArguments);
+    }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("it")]
+    [InlineData("pt")]
+    [InlineData("zh")]
+    [InlineData("zh-Hant")]
+    public void LaunchOptions_RejectsUnsupportedOrAmbiguousLanguageAliases(string language)
+    {
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["--language", language]));
+    }
+
+    [Fact]
+    public void LaunchOptions_RequiresLanguageValue()
+    {
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["--language"]));
     }
 
     [Fact]
@@ -222,6 +239,35 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task AiScreenshotReprocessing_RoundTripsPreviewAndJobCommandsThroughRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, AiScreenshotReprocessRuntimeProxy>();
+        var installationId = $"ai-reprocess-runtime-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+        var date = new DateOnly(2026, 8, 14);
+
+        var preview = await client.PreviewAiScreenshotReprocessingAsync(
+            new AiScreenshotReprocessRequest(date),
+            CancellationToken.None);
+        var started = await client.StartAiScreenshotReprocessingAsync(
+            AiScreenshotReprocessRuntimeProxy.PlanId,
+            CancellationToken.None);
+        var paused = await client.PauseAiScreenshotReprocessingAsync(
+            AiScreenshotReprocessRuntimeProxy.JobId,
+            CancellationToken.None);
+
+        Assert.True(preview.Succeeded);
+        Assert.Equal(date, preview.Value?.Date);
+        Assert.Equal(5, preview.Value?.MissingDescriptionScreenshotCount);
+        Assert.True(started.Succeeded);
+        Assert.Equal(AiScreenshotReprocessJobStatuses.Running, started.Value?.Status);
+        Assert.True(paused.Succeeded);
+        Assert.Equal(AiScreenshotReprocessJobStatuses.PauseRequested, paused.Value?.Status);
+    }
+
+    [Fact]
     public async Task SearchAvailability_RoundTripsThroughTheRuntimeFacade()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, SearchAvailabilityRuntimeProxy>();
@@ -364,6 +410,78 @@ public sealed class RuntimeProtocolTests
                 _ => throw new NotSupportedException(targetMethod?.Name)
             };
         }
+    }
+
+    public class AiScreenshotReprocessRuntimeProxy : DispatchProxy
+    {
+        public static Guid PlanId { get; } = Guid.Parse("06df0bfa-7180-4431-a1c2-b104f986238f");
+        public static Guid JobId { get; } = Guid.Parse("50617e02-0a8d-4eb6-9e29-3458b72d7f1c");
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.PreviewAiScreenshotReprocessingAsync) => Task.FromResult(
+                    OperationResult<AiScreenshotReprocessPlan>.Success(
+                        "ai.screenshot_reprocess.previewed",
+                        "AiScreenshotReprocessPreviewed",
+                        new AiScreenshotReprocessPlan(
+                            PlanId,
+                            DateTimeOffset.UtcNow.AddMinutes(2),
+                            ((AiScreenshotReprocessRequest)args![0]!).Date,
+                            5,
+                            3,
+                            5,
+                            3,
+                            0,
+                            0,
+                            0,
+                            4,
+                            20,
+                            16,
+                            3,
+                            5,
+                            0.01m,
+                            "test-provider",
+                            "test-model",
+                            true,
+                            null,
+                            null))),
+                nameof(ITrackMeUpApplication.StartAiScreenshotReprocessingAsync) => Task.FromResult(
+                    OperationResult<AiScreenshotReprocessJobSnapshot>.Success(
+                        "ai.screenshot_reprocess.started",
+                        "AiScreenshotReprocessStarted",
+                        Job(AiScreenshotReprocessJobStatuses.Running))),
+                nameof(ITrackMeUpApplication.PauseAiScreenshotReprocessingAsync) => Task.FromResult(
+                    OperationResult<AiScreenshotReprocessJobSnapshot>.Success(
+                        "ai.screenshot_reprocess.pause_requested",
+                        "AiScreenshotReprocessPauseRequested",
+                        Job(AiScreenshotReprocessJobStatuses.PauseRequested))),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private static AiScreenshotReprocessJobSnapshot Job(string status) => new(
+            JobId,
+            new DateOnly(2026, 8, 14),
+            status,
+            3,
+            5,
+            0,
+            0,
+            3,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            null,
+            null,
+            DateTimeOffset.UtcNow);
     }
 
     public class SearchAvailabilityRuntimeProxy : DispatchProxy

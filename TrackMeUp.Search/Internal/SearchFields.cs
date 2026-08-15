@@ -26,7 +26,8 @@ internal static class SearchFields
     internal const string AttributesExact = "attributes_exact";
     internal const string SpanLabelExact = "span_label_exact";
 
-    internal static readonly ImmutableArray<string> SupportedLanguages = ["it", "en", "fr", "de", "es"];
+    internal static readonly ImmutableArray<string> SupportedLanguages =
+        ["it", "en", "fr", "de", "es", "vi", "zh", "ko", "pt", "pt-br"];
 
     internal static readonly ImmutableArray<SearchTextField> Text =
     [

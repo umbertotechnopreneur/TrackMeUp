@@ -144,6 +144,140 @@ public sealed class LocalStore
     internal DateTimeOffset? LoadLatestScreenshotTelemetryCapturedAt() =>
         _activity.LoadLatestScreenshotTelemetryCapturedAt();
 
+    /// <summary>Lists historical screenshot captures without AI descriptions inside a half-open UTC interval.</summary>
+    internal IReadOnlyList<AiScreenshotReprocessCandidate> ListAiReprocessCandidates(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        CancellationToken cancellationToken)
+    {
+        if (fromUtc >= toUtc)
+        {
+            throw new ArgumentOutOfRangeException(nameof(toUtc), "The screenshot reprocessing interval must be positive.");
+        }
+
+        var settings = LoadSettings();
+        var retainedByIdentity = EnumerateRetainedScreenshotArtifacts(settings, cancellationToken);
+        var retainedByCapture = retainedByIdentity
+            .Select(entry => new { entry.Key, entry.Value, CaptureId = TryGetCaptureId(entry.Key) })
+            .Where(entry => entry.CaptureId is not null)
+            .GroupBy(entry => entry.CaptureId!, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.OrdinalIgnoreCase),
+                StringComparer.Ordinal);
+        var persisted = _activity.ListScreenshotCapturesForAiReprocessing(fromUtc, toUtc, cancellationToken);
+        var persistedStates = _activity.LoadAiReprocessCaptureStates(retainedByCapture.Keys, cancellationToken);
+        var records = new List<AiReprocessCatalogRecord>(persisted.Count + retainedByCapture.Count);
+        foreach (var record in persisted)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var identities = retainedByCapture.TryGetValue(record.CaptureId, out var retained)
+                ? record.ArtifactIdentities.Concat(retained.Keys).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+                : record.ArtifactIdentities;
+            records.Add(record with { ArtifactIdentities = identities });
+        }
+
+        var persistedCaptureIds = persisted.Select(record => record.CaptureId).ToHashSet(StringComparer.Ordinal);
+        foreach (var retained in retainedByCapture)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (persistedCaptureIds.Contains(retained.Key))
+            {
+                continue;
+            }
+
+            persistedStates.TryGetValue(retained.Key, out var state);
+            if (state?.CapturedAt is not null)
+            {
+                // Persisted telemetry is the capture-time source of truth; a changed file timestamp cannot move it to another day.
+                continue;
+            }
+
+            var capturedAt = retained.Value.Values.Max(file => new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero));
+            if (capturedAt < fromUtc || capturedAt >= toUtc)
+            {
+                continue;
+            }
+
+            records.Add(new AiReprocessCatalogRecord(
+                retained.Key,
+                capturedAt,
+                capturedAt,
+                retained.Value.Keys.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+                HasTelemetry: false,
+                state?.HasAiDescription ?? false));
+        }
+
+        return MaterializeAiReprocessCandidates(
+            records.Where(record => !record.HasAiDescription).ToArray(),
+            retainedByIdentity,
+            cancellationToken);
+    }
+
+    /// <summary>Loads one historical screenshot capture, including its current AI-description state.</summary>
+    internal AiScreenshotReprocessCandidate? LoadAiReprocessCandidate(
+        string captureId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var record = _activity.LoadScreenshotCapture(captureId);
+        return record is null
+            ? null
+            : MaterializeAiReprocessCandidates(
+                [record],
+                ResolveRetainedScreenshotArtifacts(LoadSettings(), record.ArtifactIdentities, cancellationToken),
+                cancellationToken)[0];
+    }
+
+    /// <summary>Checks whether a successful AI description is already linked to one capture.</summary>
+    internal bool HasAiDescription(string captureId) => _activity.HasAiDescription(captureId);
+
+    /// <summary>Creates one durable AI screenshot reprocessing job and its frozen item plan.</summary>
+    internal void CreateAiReprocessJob(
+        AiReprocessJobRecord job,
+        IReadOnlyList<AiReprocessJobItemRecord> items) =>
+        _activity.CreateAiReprocessJob(job, items);
+
+    /// <summary>Loads one durable AI screenshot reprocessing job.</summary>
+    internal AiReprocessJobRecord? LoadAiReprocessJob(Guid jobId) => _activity.LoadAiReprocessJob(jobId);
+
+    /// <summary>Loads the single non-terminal AI screenshot reprocessing job.</summary>
+    internal AiReprocessJobRecord? LoadActiveAiReprocessJob() => _activity.LoadActiveAiReprocessJob();
+
+    /// <summary>Lists the frozen checkpoint items for one AI screenshot reprocessing job.</summary>
+    internal IReadOnlyList<AiReprocessJobItemRecord> ListAiReprocessJobItems(Guid jobId) =>
+        _activity.ListAiReprocessJobItems(jobId);
+
+    /// <summary>Loads the next pending AI screenshot reprocessing item.</summary>
+    internal AiReprocessJobItemRecord? LoadNextAiReprocessItem(Guid jobId) =>
+        _activity.LoadNextAiReprocessJobItem(jobId);
+
+    /// <summary>Transitions the top-level AI screenshot reprocessing checkpoint.</summary>
+    internal void TransitionAiReprocessJob(
+        Guid jobId,
+        string state,
+        string? pauseReason,
+        DateTimeOffset updatedAt) =>
+        _activity.UpdateAiReprocessJobState(jobId, state, pauseReason, updatedAt);
+
+    /// <summary>Transitions one AI screenshot reprocessing work-item checkpoint.</summary>
+    internal void TransitionAiReprocessItem(
+        Guid jobId,
+        string captureId,
+        string state,
+        int attemptCount,
+        string? lastCode,
+        DateTimeOffset updatedAt) =>
+        _activity.UpdateAiReprocessJobItemState(jobId, captureId, state, attemptCount, lastCode, updatedAt);
+
+    /// <summary>Converts an interrupted running item into a resumable paused checkpoint.</summary>
+    internal void RecoverInterruptedAiReprocessJob(Guid jobId, DateTimeOffset updatedAt) =>
+        _activity.RecoverInterruptedAiReprocessJob(jobId, updatedAt);
+
+    /// <summary>Prunes completed historical-reprocessing checkpoints outside screenshot retention.</summary>
+    internal int PruneTerminalAiReprocessJobs(DateTimeOffset screenshotCutoffUtc) =>
+        _activity.DeleteTerminalAiReprocessJobsBefore(screenshotCutoffUtc);
+
     /// <summary>Deletes persisted interval telemetry for one retained screenshot.</summary>
     internal int DeleteScreenshotIntervalTelemetry(string screenshotPath) =>
         ScreenCaptureService.IsOwnedArtifact(screenshotPath)
@@ -225,8 +359,16 @@ public sealed class LocalStore
                 ?? throw new InvalidOperationException("The TrackMeUp settings file must contain a JSON object.")
             : new AppSettings();
 
-        var normalized = SettingsCatalog.NormalizePersisted(settings, _utilities.GetDefaultScreenshotDirectory());
-        return EnsureInstallationId(normalized);
+        var migrated = SettingsCatalog.MigrateLegacyPersistedLocaleIds(settings, out var localeIdsMigrated);
+        var normalized = SettingsCatalog.NormalizePersisted(migrated, _utilities.GetDefaultScreenshotDirectory());
+        var payload = EnsureInstallationId(normalized);
+        if (localeIdsMigrated)
+        {
+            // The atomic replacement makes this a one-shot migration; later loads see only canonical locale IDs.
+            WriteSettingsFile(payload);
+        }
+
+        return payload;
     });
 
     /// <summary>
@@ -320,14 +462,11 @@ public sealed class LocalStore
     /// </summary>
     public string? LoadApiKey() => LoadApiKey("OPENAI_API_KEY");
 
-    /// <summary>Counts today's persisted AI analyses using the current SQLite schema.</summary>
+    /// <summary>Counts today's persisted visual AI provider attempts, including failed requests.</summary>
     public int GetTodayAnalysisCount()
     {
-        var localStart = DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Unspecified);
-        var localEnd = localStart.AddDays(1);
-        var startUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localStart, TimeZoneInfo.Local));
-        var endUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localEnd, TimeZoneInfo.Local));
-        return _activity.CountAiAnalysisResults(startUtc, endUtc);
+        var (startUtc, endUtc) = ConvertLocalDateRangeToUtc(DateOnly.FromDateTime(DateTime.Today));
+        return _activity.CountAiVisualProviderRequests(startUtc, endUtc);
     }
 
     /// <summary>Loads the most recent analysis from the current SQLite store.</summary>
@@ -618,6 +757,180 @@ public sealed class LocalStore
             .ToArray();
     }
 
+    private IReadOnlyList<AiScreenshotReprocessCandidate> MaterializeAiReprocessCandidates(
+        IReadOnlyList<AiReprocessCatalogRecord> records,
+        IReadOnlyDictionary<string, FileInfo> retainedByIdentity,
+        CancellationToken cancellationToken)
+    {
+        if (records.Count == 0)
+        {
+            return Array.Empty<AiScreenshotReprocessCandidate>();
+        }
+
+        var requestedIdentities = records
+            .SelectMany(record => record.ArtifactIdentities)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var textByIdentity = _activity.LoadScreenshotTextSnapshots(requestedIdentities, cancellationToken);
+        var activitySamples = new List<ActivitySample>();
+        var recordsWithTelemetry = records.Where(record => record.HasTelemetry).ToArray();
+        if (recordsWithTelemetry.Length > 0)
+        {
+            _activity.VisitOverlapping(
+                recordsWithTelemetry.Min(record => record.IntervalStartedAt),
+                recordsWithTelemetry.Max(record => record.CapturedAt).AddTicks(1),
+                activitySamples.Add,
+                cancellationToken);
+        }
+
+        var candidates = new List<AiScreenshotReprocessCandidate>(records.Count);
+        foreach (var record in records)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var paths = record.ArtifactIdentities
+                .Select(identity => retainedByIdentity.TryGetValue(identity, out var file) ? file.FullName : null)
+                .Where(path => path is not null)
+                .Cast<string>()
+                .ToArray();
+            var texts = record.ArtifactIdentities
+                .Select(identity => textByIdentity.TryGetValue(identity, out var text) ? text : null)
+                .Where(text => text is not null)
+                .Cast<ScreenshotTextSnapshot>()
+                .ToArray();
+            var coveringSamples = record.HasTelemetry
+                ? activitySamples.Where(sample => SampleContainsInstant(sample, record.CapturedAt)).ToArray()
+                : [];
+            // Overlapping samples provide conflicting foreground identities. Without a unique source,
+            // replay cannot prove that every applicable privacy rule was evaluated safely.
+            var historicalSample = coveringSamples.Length == 1 ? coveringSamples[0] : null;
+            var historicalContext = historicalSample is null || string.IsNullOrWhiteSpace(historicalSample.ProcessName)
+                ? null
+                : new AnalysisContextSnapshot(
+                    historicalSample.Application,
+                    historicalSample.Context,
+                    historicalSample.WindowTitle,
+                    historicalSample.State,
+                    TrackingDomainService.FilterAnalysisAttributes(historicalSample.Attributes));
+            var captureOrigin = GetCaptureOrigin(record.ArtifactIdentities[0] + ".webp");
+            candidates.Add(new AiScreenshotReprocessCandidate(
+                record.CaptureId,
+                record.CapturedAt,
+                captureOrigin,
+                paths,
+                texts,
+                historicalContext,
+                record.HasAiDescription,
+                record.ArtifactIdentities.Count - paths.Length,
+                historicalSample?.ProcessName ?? string.Empty));
+        }
+
+        return candidates;
+    }
+
+    private IReadOnlyDictionary<string, FileInfo> EnumerateRetainedScreenshotArtifacts(
+        AppSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
+            ? _utilities.GetDefaultScreenshotDirectory()
+            : settings.ScreenshotDirectory;
+        var retainedByIdentity = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+        if (!Directory.Exists(directory))
+        {
+            return retainedByIdentity;
+        }
+
+        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!ScreenCaptureService.IsOwnedArtifact(path))
+            {
+                continue;
+            }
+
+            var candidate = new FileInfo(path);
+            var identity = ScreenshotIdentity(candidate.Name);
+            if (!retainedByIdentity.TryGetValue(identity, out var current)
+                || IsPreferredStoredArtifact(candidate.Name) && !IsPreferredStoredArtifact(current.Name)
+                || IsPreferredStoredArtifact(candidate.Name) == IsPreferredStoredArtifact(current.Name)
+                && candidate.LastWriteTimeUtc > current.LastWriteTimeUtc)
+            {
+                retainedByIdentity[identity] = candidate;
+            }
+        }
+
+        return retainedByIdentity;
+    }
+
+    private IReadOnlyDictionary<string, FileInfo> ResolveRetainedScreenshotArtifacts(
+        AppSettings settings,
+        IReadOnlyList<string> artifactIdentities,
+        CancellationToken cancellationToken)
+    {
+        var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
+            ? _utilities.GetDefaultScreenshotDirectory()
+            : settings.ScreenshotDirectory;
+        var retainedByIdentity = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+        if (!Directory.Exists(directory))
+        {
+            return retainedByIdentity;
+        }
+
+        foreach (var identity in artifactIdentities.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(identity)
+                || !string.Equals(Path.GetFileName(identity), identity, StringComparison.Ordinal)
+                || !ScreenCaptureService.IsOwnedArtifact(identity + ".webp"))
+            {
+                continue;
+            }
+
+            FileInfo? selected = null;
+            foreach (var fileName in new[]
+                     {
+                         identity + ".webp",
+                         identity + ".png",
+                         identity + "-raw.webp",
+                         identity + "-raw.png"
+                     })
+            {
+                var path = Path.Combine(directory, fileName);
+                if (!File.Exists(path) || !ScreenCaptureService.IsOwnedArtifact(path))
+                {
+                    continue;
+                }
+
+                var candidate = new FileInfo(path);
+                if (selected is null
+                    || IsPreferredStoredArtifact(candidate.Name) && !IsPreferredStoredArtifact(selected.Name)
+                    || IsPreferredStoredArtifact(candidate.Name) == IsPreferredStoredArtifact(selected.Name)
+                    && candidate.LastWriteTimeUtc > selected.LastWriteTimeUtc)
+                {
+                    selected = candidate;
+                }
+            }
+
+            if (selected is not null)
+            {
+                retainedByIdentity[identity] = selected;
+            }
+        }
+
+        return retainedByIdentity;
+    }
+
+    private static string? TryGetCaptureId(string artifactIdentity)
+    {
+        var separator = artifactIdentity.IndexOf('_', StringComparison.Ordinal);
+        if (separator <= 0)
+        {
+            return null;
+        }
+
+        var captureId = artifactIdentity[..separator];
+        return Guid.TryParseExact(captureId, "N", out _) ? captureId : null;
+    }
+
     private static ScreenshotGallerySource CreateScreenshotGallerySource(
         FileInfo file,
         string artifactIdentity,
@@ -689,6 +1002,14 @@ public sealed class LocalStore
         return sampleEnd > fromUtc && sampleStart < toUtc;
     }
 
+    private static bool SampleContainsInstant(ActivitySample sample, DateTimeOffset instant)
+    {
+        var sampleEnd = sample.Timestamp.ToUniversalTime();
+        var sampleStart = sampleEnd.AddSeconds(-sample.DurationSeconds);
+        var utcInstant = instant.ToUniversalTime();
+        return sampleStart <= utcInstant && utcInstant < sampleEnd;
+    }
+
     private sealed record ScreenshotGallerySource(
         FileInfo File,
         string ArtifactIdentity,
@@ -704,7 +1025,8 @@ public sealed class LocalStore
         string? ForegroundWindowTitle,
         long? MouseClicks);
 
-    private static string ScreenshotIdentity(string fileName)
+    /// <summary>Returns the stable artifact identity shared by raw and retained variants of one screen.</summary>
+    internal static string ScreenshotIdentity(string fileName)
     {
         var withoutExtension = Path.GetFileNameWithoutExtension(fileName);
         return withoutExtension.EndsWith("-raw", StringComparison.OrdinalIgnoreCase)
@@ -974,6 +1296,10 @@ public sealed class LocalStore
                 (decimal)count * includedTicks / originalTicks,
                 0,
                 MidpointRounding.AwayFromZero));
+
+    /// <summary>Converts one selected local calendar day to its robust half-open UTC interval.</summary>
+    internal static (DateTimeOffset FromUtc, DateTimeOffset ToUtc) ConvertLocalDateRangeToUtc(DateOnly date) =>
+        (ConvertLocalBoundaryToUtc(date), ConvertLocalBoundaryToUtc(date.AddDays(1)));
 
     private static DateTimeOffset ConvertLocalBoundaryToUtc(DateOnly date)
     {

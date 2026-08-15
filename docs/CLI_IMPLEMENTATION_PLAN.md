@@ -28,7 +28,7 @@ The CLI and WinUI application must expose the same application capabilities thro
 8. UI and CLI must consume the same result DTOs. Do not create CLI-specific copies of domain models.
 9. API keys must never be stored in `appsettings.json`, command history, logs, IPC payload logs, or command-line arguments.
 10. Public and protected C# members require XML documentation. Critical I/O, IPC, native interop, privacy, and external-service paths require concise implementation comments.
-11. Code, identifiers, internal prompts, tests, and developer documentation are English. User-facing content is localizable in English, Italian, Vietnamese, French, German, and Spanish.
+11. Code, identifiers, internal prompts, tests, and developer documentation are English. User-facing content is localizable in `en-US`, `it-IT`, `fr-FR`, `de-DE`, `es-ES`, `zh-Hans`, `vi-VN`, `ko-KR`, `pt-PT`, and `pt-BR`.
 12. Every x64 and ARM64 build must finish with zero warnings and zero errors.
 
 ## 3. Current-state observations
@@ -187,7 +187,7 @@ Request envelope:
   "requestId": "guid",
   "operation": "tracking.start",
   "payload": {},
-  "locale": "it",
+  "locale": "it-IT",
   "clientVersion": "1.0.0"
 }
 ```
@@ -268,7 +268,7 @@ Do not use fixed sleeps to simulate animation. Spinners and progress must reflec
 | --- | --- |
 | `--format <rich|plain|json>` | Output contract; default is `rich` on a terminal and `plain` when redirected |
 | `--json` | Alias for `--format json` |
-| `--language <en|it|vi|fr|de|es>` | Output locale for this invocation |
+| `--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>` | Output locale for this invocation |
 | `--no-color` | Disable ANSI color |
 | `--no-emoji` | Replace emoji with text-safe symbols |
 | `--no-animation` | Disable spinner/live animation |
@@ -578,7 +578,7 @@ Acceptance: retention preview is read-only; retention run requires confirmation;
 
 Implement the branded persistent shell, main selection prompts, spinner/live behavior, localization, narrow-terminal fallback, reduced-motion behavior, and emoji fallback.
 
-Acceptance: all six locales render; 80-column and 120-column terminals remain readable; redirected mode has no animation.
+Acceptance: all ten locales render; 80-column and 120-column terminals remain readable; redirected mode has no animation.
 
 ### Phase 11: Packaging and documentation
 
@@ -628,7 +628,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action TestCli
 The script must verify:
 
 - The running PowerShell major version is at least 7.
-- UTF-8 output round-trips Italian, Vietnamese, French, German, Spanish, box-drawing characters, and emoji.
+- UTF-8 output round-trips all ten supported locales, box-drawing characters, and emoji.
 - `--help`, `--version`, `status --json`, and `doctor --json` return expected exit codes.
 - No XAML window appears in CLI mode.
 - Runtime startup and shutdown do not leave duplicate host processes.
@@ -654,7 +654,7 @@ pwsh -NoProfile -Command "dotnet list .\TrackMeUp.sln package --vulnerable --inc
 - Plain and JSON modes are automation-safe.
 - Privacy, screenshots, AI keys, cost guardrails, and retention policies are enforced below the presentation layer.
 - API keys and sensitive content do not appear in logs, settings, history, arguments, or test snapshots.
-- English, Italian, Vietnamese, French, German, and Spanish output is available.
+- Output is available for all ten canonical locales, with European and Brazilian Portuguese kept distinct.
 - x64 and ARM64 builds and tests complete with zero warnings and zero errors.
 - NuGet reports no known vulnerable direct or transitive packages.
 - The MSIX-installed app exposes the `trackmeup.exe` execution alias.

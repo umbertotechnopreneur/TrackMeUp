@@ -6,9 +6,25 @@ import type {
   ReportHourCell,
   ReportTrendBucket,
 } from '../reporting'
+import type { ReportLocale } from '../locales/catalogs'
 
-export const developmentFixtureTitle = 'Anteprima di sviluppo'
-export const developmentFixtureDescription = 'I valori mostrati sono dati dimostrativi isolati dal build di produzione.'
+const developmentFixtureCopy = {
+  'en-US': ['Development preview', 'The displayed values are demonstration data isolated from the production build.'],
+  'it-IT': ['Anteprima di sviluppo', 'I valori mostrati sono dati dimostrativi isolati dalla build di produzione.'],
+  'fr-FR': ['Aperçu de développement', 'Les valeurs affichées sont des données de démonstration isolées de la version de production.'],
+  'de-DE': ['Entwicklungsvorschau', 'Die angezeigten Werte sind Demodaten, die vom Produktionsbuild getrennt sind.'],
+  'es-ES': ['Vista previa de desarrollo', 'Los valores mostrados son datos de demostración aislados de la compilación de producción.'],
+  'zh-Hans': ['开发预览', '显示的值是与生产版本隔离的演示数据。'],
+  'vi-VN': ['Bản xem trước phát triển', 'Các giá trị hiển thị là dữ liệu minh họa được tách biệt khỏi bản dựng sản xuất.'],
+  'ko-KR': ['개발 미리 보기', '표시된 값은 프로덕션 빌드와 분리된 데모 데이터입니다.'],
+  'pt-PT': ['Pré-visualização de desenvolvimento', 'Os valores apresentados são dados de demonstração isolados da compilação de produção.'],
+  'pt-BR': ['Prévia de desenvolvimento', 'Os valores exibidos são dados de demonstração isolados da compilação de produção.'],
+} as const satisfies Readonly<Record<ReportLocale, readonly [title: string, description: string]>>
+
+export function getDevelopmentFixtureCopy(locale: ReportLocale): { title: string; description: string } {
+  const [title, description] = developmentFixtureCopy[locale]
+  return { title, description }
+}
 
 const startDate = new Date('2026-07-23T00:00:00Z')
 

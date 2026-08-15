@@ -61,12 +61,30 @@ for (const sentinel of fixtureSentinels) {
 for (const runtimeContract of [
   'report.ready',
   'report.snapshot',
+  'report.language.state',
   'report.theme.set',
   'report.theme.state',
   'report.theme.error',
 ]) {
   if (!productionText.includes(runtimeContract)) {
     throw new Error(`Production runtime contract is missing: ${runtimeContract}`)
+  }
+}
+
+for (const locale of [
+  'en-US',
+  'it-IT',
+  'fr-FR',
+  'de-DE',
+  'es-ES',
+  'zh-Hans',
+  'vi-VN',
+  'ko-KR',
+  'pt-PT',
+  'pt-BR',
+]) {
+  if (!productionText.includes(locale)) {
+    throw new Error(`Production report locale is missing: ${locale}`)
   }
 }
 

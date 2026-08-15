@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -105,9 +106,15 @@ internal sealed partial class SearchIndexingWindow : Window
         if (!_started && !_closing)
         {
             _started = true;
-            await RunIndexingAsync();
+            if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, RunIndexingFromVisibleWindow))
+            {
+                SetState(IndexingWindowState.Failed);
+            }
         }
     }
+
+    /// <summary>Starts the facade request only after Loaded returns so WinUI can compose the visible window first.</summary>
+    private async void RunIndexingFromVisibleWindow() => await RunIndexingAsync();
 
     private async Task RunIndexingAsync()
     {
@@ -221,7 +228,7 @@ internal sealed partial class SearchIndexingWindow : Window
                 break;
             case IndexingWindowState.Completed:
                 HeadingText.Text = T("SearchIndex.Completed.Title");
-                DescriptionText.Text = string.Format(T("SearchIndex.Completed.Description"), _documentCount);
+                DescriptionText.Text = _strings.Format("SearchIndex.Completed.Description", _documentCount);
                 SummaryText.Text = T("SearchIndex.Summary.Completed");
                 SetActionLabel("SearchIndex.Close");
                 break;

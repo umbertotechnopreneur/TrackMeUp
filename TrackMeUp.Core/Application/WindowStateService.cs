@@ -15,6 +15,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the native activity-calendar dialog window.</summary>
     public const string ActivityCalendar = "activity-calendar";
 
+    /// <summary>Identifies the historical screenshot AI-reprocessing dialog window.</summary>
+    public const string AiScreenshotReprocessing = "ai-screenshot-reprocessing";
+
     /// <summary>Identifies the screenshot gallery window.</summary>
     public const string Screenshots = "screenshots";
 
@@ -71,6 +74,7 @@ public sealed class WindowStateService
         {
             WindowStateKeys.Reports => new(720, 520),
             WindowStateKeys.ActivityCalendar => new(760, 560),
+            WindowStateKeys.AiScreenshotReprocessing => new(640, 560),
             WindowStateKeys.Screenshots => new(760, 540),
             WindowStateKeys.About => new(360, 420),
             WindowStateKeys.Licenses => new(720, 520),

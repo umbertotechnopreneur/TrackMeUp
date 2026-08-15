@@ -27,10 +27,11 @@
                 <Image
                     Width="22"
                     Height="22"
-                    AutomationProperties.Name="Icona TrackMeUp"
+                    AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False"
                     Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
                 <TextBlock
+                    x:Name="TitleBarCaptionText"
                     VerticalAlignment="Center"
                     FontSize="13"
                     FontWeight="SemiBold"
@@ -58,7 +59,7 @@
                     Height="44"
                     Margin="0,2,0,0"
                     VerticalAlignment="Top"
-                    AutomationProperties.Name="Icona TrackMeUp Reports"
+                    AutomationProperties.AccessibilityView="Raw"
                     Source="ms-appx:///Assets/TrackMeUpSquare150Logo.png" />
                 <StackPanel Grid.Column="1" Spacing="2">
                     <TextBlock
@@ -142,11 +143,11 @@
                     <Button
                         x:Name="RefreshReportButton"
                         VerticalAlignment="Bottom"
-                        AutomationProperties.Name="Aggiorna il report ignorando la cache"
+                        AutomationProperties.Name="Refresh"
                         Click="RefreshReportButton_Click"
                         Content="Refresh"
                         Tag="Reports.Refresh"
-                        ToolTipService.ToolTip="Aggiorna report" />
+                        ToolTipService.ToolTip="Refresh" />
                 </StackPanel>
             </ScrollViewer>
         </Grid>
@@ -161,7 +162,7 @@
             <Grid>
                 <WebView2
                     x:Name="ReportsWebView"
-                    AutomationProperties.Name="Visualizzazione interattiva del report"
+                    AutomationProperties.Name="Interactive report"
                     Visibility="Collapsed" />
 
                 <Grid
@@ -178,7 +179,7 @@
                             Width="36"
                             Height="36"
                             HorizontalAlignment="Center"
-                            AutomationProperties.Name="Caricamento report"
+                            AutomationProperties.Name="Loading report"
                             IsActive="True" />
                         <FontIcon
                             x:Name="ReportErrorIcon"
@@ -193,7 +194,7 @@
                             x:Name="ReportStatusText"
                             AutomationProperties.LiveSetting="Assertive"
                             FontSize="15"
-                            Text="Avvio del motore dei report…"
+                            Text="Starting the report engine…"
                             TextAlignment="Center"
                             TextWrapping="Wrap" />
                     </StackPanel>

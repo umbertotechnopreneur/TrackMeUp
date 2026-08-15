@@ -28,6 +28,8 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains(dialog.Descendants(), element => HasName(element, "TrackedTimeValueText"));
         Assert.Contains(dialog.Descendants(), element => HasName(element, "KeyPressesValueText"));
         Assert.Contains(dialog.Descendants(), element => HasName(element, "MouseClicksValueText"));
+        var reprocess = dialog.Descendants().Single(element => HasName(element, "ReprocessAiButton"));
+        Assert.Equal("ReprocessAiButton_Click", reprocess.Attribute("Click")?.Value);
         Assert.DoesNotContain(dialog.Descendants(), element => element.Name.LocalName is "WebView2" or "Frame");
 
         Assert.Contains("_application.GetReportAsync", source, StringComparison.Ordinal);
@@ -40,6 +42,8 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains("cell.ActivityScore", source, StringComparison.Ordinal);
         Assert.Contains("SetDensityColors", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.ActivityCalendar", source, StringComparison.Ordinal);
+        Assert.Contains("ActivityCalendarDialogResult", source, StringComparison.Ordinal);
+        Assert.Contains("new ActivityCalendarDialogResult(_selectedDate)", source, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(args.Item", source, StringComparison.Ordinal);
         Assert.Contains("ToolTipService.SetToolTip(args.Item", source, StringComparison.Ordinal);
         Assert.DoesNotContain("LocalStore", source, StringComparison.Ordinal);
@@ -67,6 +71,9 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains("new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle)", dialogs, StringComparison.Ordinal);
         Assert.Contains("await _queue.WaitAsync()", dialogs, StringComparison.Ordinal);
         Assert.Contains("DisableDialogPeerWindows(dialog.WindowHandle)", dialogs, StringComparison.Ordinal);
+        Assert.Contains("var result = await dialog.ShowAsync()", dialogs, StringComparison.Ordinal);
+        Assert.Contains("new AiScreenshotReprocessingDialogWindow(", dialogs, StringComparison.Ordinal);
+        Assert.Contains("share this queue acquisition", dialogs, StringComparison.Ordinal);
     }
 
     private static string RepositoryFile(params string[] pathSegments)

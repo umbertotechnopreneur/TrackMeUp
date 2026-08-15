@@ -18,12 +18,25 @@ namespace TrackMeUp.Controls;
 /// <summary>Displays option controls and forwards typed requests to the shared application facade.</summary>
 public sealed partial class OptionsControl : UserControl
 {
+    private static readonly HashSet<string> BuiltInModelKeys = new(StringComparer.Ordinal)
+    {
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.3-codex-spark",
+        "gpt-5.5",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano"
+    };
+
     private ITrackMeUpApplication? _application;
     private AiApplicationState? _aiState;
     private LocalizationService _strings = new("system");
     private IReadOnlyList<AiModelOption> _modelOptions = Array.Empty<AiModelOption>();
     private string _requestedThinkingEffort = "auto";
     private bool _updatingAiToggle;
+    private bool _updatingAiDailyLimit;
     private int? _openAiDailyLimit;
 
     /// <summary>Initializes the options control.</summary>
@@ -55,11 +68,13 @@ public sealed partial class OptionsControl : UserControl
         if (SelectedModel() is { } selectedModel)
         {
             PopulateThinkingEfforts(selectedModel, SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort));
+            ModelDescriptionText.Text = LocalizedModelDescription(selectedModel);
         }
         var openFolderLabel = T("Options.OpenFolderAction");
         AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
         ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
         AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
+        AutomationProperties.SetName(KeepScreenshotsSwitch, T("Options.KeepSnapshots.Header"));
         AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
         AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
         AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
@@ -69,6 +84,15 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
         AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
         AutomationProperties.SetName(RebuildSearchIndexButton, T("Options.Search.Rebuild"));
+        AutomationProperties.SetName(AiDailyLimitExpander, T("Options.AiQuota.Configure"));
+        AutomationProperties.SetHelpText(AiDailyLimitExpander, T("Options.AiQuota.LimitHint"));
+        AiDailyLimitActionText.Text = T("Options.AiQuota.Configure");
+        AiDailyLimitBox.Header = T("Options.AiQuota.Limit");
+        AiDailyLimitHintText.Text = T("Options.AiQuota.LimitHint");
+        SaveAiDailyLimitButton.Content = T("Options.AiQuota.Save");
+        AutomationProperties.SetName(AiDailyLimitBox, T("Options.AiQuota.Limit"));
+        AutomationProperties.SetHelpText(AiDailyLimitBox, T("Options.AiQuota.LimitHint"));
+        AutomationProperties.SetName(SaveAiDailyLimitButton, T("Options.AiQuota.Save"));
         AutomationProperties.SetName(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Action"));
         AutomationProperties.SetHelpText(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Description"));
         AutomationProperties.SetName(ReportsOperationsLink, T("Options.Navigation.Reports.Action"));
@@ -221,6 +245,15 @@ public sealed partial class OptionsControl : UserControl
         }
     }
 
+    /// <summary>Keeps the host window measurement synchronized with the daily-limit expander.</summary>
+    private void AiDailyLimitExpander_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Height - e.PreviousSize.Height) > 0.5)
+        {
+            NotifyLayoutChanged();
+        }
+    }
+
     /// <summary>Opens the configured screen-capture folder through the shared application facade.</summary>
     private async void OpenScreenshotFolderButton_Click(object sender, RoutedEventArgs e)
     {
@@ -281,6 +314,50 @@ public sealed partial class OptionsControl : UserControl
         OpenAiEnabledSwitch.IsOn = _aiState.Enabled;
         _updatingAiToggle = false;
         StatusText.Text = T("Options.OpenAi.KeyRequired");
+    }
+
+    /// <summary>Persists only the validated daily screenshot-processing limit through the application facade.</summary>
+    private async void SaveAiDailyLimitButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_application is null || _updatingAiDailyLimit)
+        {
+            return;
+        }
+
+        var requestedValue = AiDailyLimitBox.Value;
+        if (!double.IsFinite(requestedValue)
+            || requestedValue != Math.Truncate(requestedValue)
+            || requestedValue < SettingsCatalog.MinimumAiDailyLimit
+            || requestedValue > SettingsCatalog.MaximumAiDailyLimit)
+        {
+            StatusText.Text = T("Options.AiQuota.Invalid");
+            return;
+        }
+
+        _updatingAiDailyLimit = true;
+        SaveAiDailyLimitButton.IsEnabled = false;
+        var result = await _application.PatchSettingsAsync(
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.daily_limit"] = ((int)requestedValue).ToString(CultureInfo.InvariantCulture)
+            }),
+            CancellationToken.None);
+        SaveAiDailyLimitButton.IsEnabled = true;
+        _updatingAiDailyLimit = false;
+
+        if (!result.Succeeded || result.Value is null)
+        {
+            StatusText.Text = T("Options.AiQuota.SaveError");
+            return;
+        }
+
+        ApplySettings(result.Value);
+        if (_aiState is not null)
+        {
+            await _aiState.LoadAsync(CancellationToken.None);
+        }
+        SettingsSaved?.Invoke(result.Value);
+        StatusText.Text = T("Options.AiQuota.Saved");
     }
 
     /// <summary>Builds a typed, whitelisted patch and forwards persistence to the application facade.</summary>
@@ -372,6 +449,9 @@ public sealed partial class OptionsControl : UserControl
     private void ApplySettings(AppSettings settings)
     {
         _openAiDailyLimit = settings.OpenAiDailyLimit;
+        _updatingAiDailyLimit = true;
+        AiDailyLimitBox.Value = settings.OpenAiDailyLimit;
+        _updatingAiDailyLimit = false;
         ApplyLanguage(settings.UiLanguage);
         _requestedThinkingEffort = settings.AiReasoningEffort;
         SelectModel(settings.Model);
@@ -452,7 +532,7 @@ public sealed partial class OptionsControl : UserControl
         var option = (AiModelOption)ModelBox.SelectedItem;
         ModelAccentBar.Background = option.AccentBrush;
         ModelInfoCard.BorderBrush = option.AccentBrush;
-        ModelDescriptionText.Text = model.Description;
+        ModelDescriptionText.Text = LocalizedModelDescription(model);
         ModelKeyText.Text = model.Key;
         ModelPreviewBadge.Visibility = model.IsPreview ? Visibility.Visible : Visibility.Collapsed;
         ModelCapabilityText.Text = T(model.SupportsImageInput ? "Options.ModelImageInput" : "Options.ModelTextOnly");
@@ -463,6 +543,17 @@ public sealed partial class OptionsControl : UserControl
     }
 
     private void NotifyLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
+
+    private string LocalizedModelDescription(AiModelDescriptor model)
+    {
+        if (BuiltInModelKeys.Contains(model.Key))
+        {
+            return T($"Options.Model.Description.{model.Key}");
+        }
+
+        // Explicitly loaded external model catalogs own their descriptive metadata.
+        return model.Description;
+    }
 
     private void PopulateThinkingEfforts(AiModelDescriptor model, string preferredEffort)
     {
@@ -567,11 +658,12 @@ public sealed partial class OptionsControl : UserControl
         var progressMaximum = Math.Max(1, limit);
 
         AiQuotaStateText.Text = status;
-        AiQuotaUsageText.Text = string.Format(CultureInfo.CurrentCulture, "{0} / {1}", used, limit);
+        AiQuotaUsageText.Text = _strings.Format("Options.AiQuota.Usage", used, limit);
         AiQuotaProgressBar.Maximum = progressMaximum;
         AiQuotaProgressBar.Value = limit == 0 ? progressMaximum : Math.Clamp(used, 0, progressMaximum);
-        AutomationProperties.SetName(AiQuotaProgressBar,
-            string.Format(CultureInfo.CurrentCulture, T("Options.AiQuota.ProgressAccessible"), used, limit, status));
+        AutomationProperties.SetName(
+            AiQuotaProgressBar,
+            _strings.Format("Options.AiQuota.ProgressAccessible", used, limit, status));
         AutomationProperties.SetHelpText(AiQuotaProgressBar, description);
         VisualStateManager.GoToState(this, reached ? "AiQuotaReached" : "AiQuotaAvailable", false);
         NotifyLayoutChanged();

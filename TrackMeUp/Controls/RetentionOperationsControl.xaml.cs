@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -22,10 +23,18 @@ public sealed partial class RetentionOperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        AutomationProperties.SetName(RetentionPathsList, _strings.Translate("Operations.Retention.Preview"));
     }
 
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
+        _context = new OperationsSectionContext(
+            application,
+            dialogs,
+            ownerWindow,
+            banner,
+            Progress,
+            SectionBody,
+            key => _strings.TryTranslate(key, out var value) ? value : null);
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("RetentionOperationsControl must be initialized before use.");
 
@@ -34,9 +43,11 @@ public sealed partial class RetentionOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GetRetentionStatusAsync(token));
         if (result is { Succeeded: true, Value: { } status })
         {
-            RetentionStatusText.Text = L(
-                $"Activity data · {status.DataRetentionDays} days\nSnapshots · {status.ScreenshotRetentionDays} days\nLocation · {status.ScreenshotDirectory}",
-                $"Dati attività · {status.DataRetentionDays} giorni\nSnapshot · {status.ScreenshotRetentionDays} giorni\nPosizione · {status.ScreenshotDirectory}");
+            RetentionStatusText.Text = _strings.Format(
+                "Operations.Retention.Status",
+                status.DataRetentionDays,
+                status.ScreenshotRetentionDays,
+                status.ScreenshotDirectory);
         }
     }
 
@@ -53,7 +64,10 @@ public sealed partial class RetentionOperationsControl : UserControl
     {
         if (_confirmationOpen)
         {
-            Context.ShowStatus(L("Confirmation already open", "Conferma già aperta"), L("Complete or cancel the current cleanup confirmation.", "Completa o annulla la conferma di pulizia corrente."), InfoBarSeverity.Warning);
+            Context.ShowStatus(
+                _strings.Translate("Operations.Retention.ConfirmationOpen.Title"),
+                _strings.Translate("Operations.Retention.ConfirmationOpen.Message"),
+                InfoBarSeverity.Warning);
             return;
         }
 
@@ -71,16 +85,17 @@ public sealed partial class RetentionOperationsControl : UserControl
                 Context.Application,
                 Context.OwnerWindow,
                 MicaDialogRequest.Confirmation(
-                    L("Confirm data cleanup", "Conferma pulizia dati"),
-                    L(
-                        $"Permanently delete the {preview.FileCount} items ({FormatBytes(preview.TotalBytes)}) listed in the preview?",
-                        $"Eliminare definitivamente {preview.FileCount} elementi ({FormatBytes(preview.TotalBytes)}) elencati nell'anteprima?"),
-                    L("Delete items", "Elimina elementi"),
-                    L("Cancel", "Annulla")),
+                    _strings.Translate("Operations.Retention.Confirm.Title"),
+                    _strings.Format("Operations.Retention.Confirm.Message", preview.FileCount, FormatBytes(preview.TotalBytes)),
+                    _strings.Translate("Operations.Retention.Confirm.Delete"),
+                    _strings.Translate("Dialog.Cancel")),
                 RequestedTheme);
             if (!confirmed)
             {
-                Context.ShowStatus(L("Cleanup cancelled", "Pulizia annullata"), L("No items were deleted.", "Nessun elemento è stato eliminato."), InfoBarSeverity.Informational);
+                Context.ShowStatus(
+                    _strings.Translate("Operations.Retention.Cancelled.Title"),
+                    _strings.Translate("Operations.Retention.Cancelled.Message"),
+                    InfoBarSeverity.Informational);
                 return;
             }
 
@@ -93,7 +108,10 @@ public sealed partial class RetentionOperationsControl : UserControl
         catch (Exception)
         {
             // A dialog-host failure leaves retention untouched and the subsection available.
-            Context.ShowStatus(L("Confirmation unavailable", "Conferma non disponibile"), L("Cleanup was not started.", "La pulizia non è stata avviata."), InfoBarSeverity.Error);
+            Context.ShowStatus(
+                _strings.Translate("Operations.Retention.ConfirmationUnavailable.Title"),
+                _strings.Translate("Operations.Retention.ConfirmationUnavailable.Message"),
+                InfoBarSeverity.Error);
         }
         finally
         {
@@ -104,14 +122,12 @@ public sealed partial class RetentionOperationsControl : UserControl
     private void RenderRetentionPreview(RetentionPreview preview, bool executed)
     {
         RetentionPreviewText.Text = executed
-            ? L($"Deleted {preview.FileCount} items · {FormatBytes(preview.TotalBytes)}", $"Eliminati {preview.FileCount} elementi · {FormatBytes(preview.TotalBytes)}")
-            : L($"{preview.FileCount} eligible items · {FormatBytes(preview.TotalBytes)}", $"{preview.FileCount} elementi idonei · {FormatBytes(preview.TotalBytes)}");
+            ? _strings.Format("Operations.Retention.Deleted", preview.FileCount, FormatBytes(preview.TotalBytes))
+            : _strings.Format("Operations.Retention.Eligible", preview.FileCount, FormatBytes(preview.TotalBytes));
         RetentionPathsList.ItemsSource = preview.Paths.ToArray();
     }
 
-    private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
-
-    private static string FormatBytes(long bytes)
+    private string FormatBytes(long bytes)
     {
         var size = Math.Max(0, bytes);
         string[] units = ["B", "KB", "MB", "GB", "TB"];
@@ -123,6 +139,6 @@ public sealed partial class RetentionOperationsControl : UserControl
             unit++;
         }
 
-        return $"{value:0.#} {units[unit]}";
+        return $"{value.ToString("0.#", _strings.Culture)} {units[unit]}";
     }
 }

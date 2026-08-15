@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -84,7 +83,7 @@ public sealed partial class AboutWindow : Window
             }
 
             VersionText.Text = result.Value.Build.SemVer;
-            BuiltAtText.Text = result.Value.Build.BuiltAtLocal.ToString("d", CultureInfo.GetCultureInfo(_strings.Language));
+            BuiltAtText.Text = result.Value.Build.BuiltAtLocal.ToString("d", _strings.Culture);
             CommitText.Text = result.Value.Build.GitCommitShort;
             DirtyIndicator.Visibility = result.Value.Build.GitDirty ? Visibility.Visible : Visibility.Collapsed;
         }

@@ -24,7 +24,14 @@ public sealed partial class ReportsOperationsControl : UserControl
 
     /// <summary>Connects the passive surface to the application facade owned by the composition root.</summary>
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
+        _context = new OperationsSectionContext(
+            application,
+            dialogs,
+            ownerWindow,
+            banner,
+            Progress,
+            SectionBody,
+            key => _strings.TryTranslate(key, out var value) ? value : null);
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("ReportsOperationsControl must be initialized before use.");
 
@@ -34,7 +41,7 @@ public sealed partial class ReportsOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GenerateTodayReportAsync(null, open, token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ReportResultText.Text = L($"Today's report:\n{path}", $"Report di oggi:\n{path}");
+            ReportResultText.Text = _strings.Format("Operations.Reports.Today", path);
         }
     }
 
@@ -42,7 +49,10 @@ public sealed partial class ReportsOperationsControl : UserControl
     {
         if (DigestDatePicker.Date is not { } selectedDate)
         {
-            Context.ShowStatus(L("Date required", "Data richiesta"), L("Select the digest date.", "Seleziona la data del digest."), InfoBarSeverity.Warning);
+            Context.ShowStatus(
+                _strings.Translate("Operations.Reports.DateRequired.Title"),
+                _strings.Translate("Operations.Reports.DateRequired.Message"),
+                InfoBarSeverity.Warning);
             return;
         }
 
@@ -51,7 +61,7 @@ public sealed partial class ReportsOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GenerateDailyDigestAsync(date, open, token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ReportResultText.Text = $"Digest {date:yyyy-MM-dd}:\n{path}";
+            ReportResultText.Text = _strings.Format("Operations.Reports.Digest", date, path);
         }
     }
 
@@ -60,9 +70,7 @@ public sealed partial class ReportsOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.OpenReportsFolderAsync(token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ReportResultText.Text = L($"Reports folder opened:\n{path}", $"Cartella report aperta:\n{path}");
+            ReportResultText.Text = _strings.Format("Operations.Reports.FolderOpened", path);
         }
     }
-
-    private string L(string english, string italian) => _strings.Language == "it" ? italian : english;
 }

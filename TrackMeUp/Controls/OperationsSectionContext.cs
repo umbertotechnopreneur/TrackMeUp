@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
@@ -13,8 +14,7 @@ internal sealed class OperationsSectionContext
     private readonly TimedInfoBar _status;
     private readonly ProgressRing _progress;
     private readonly UIElement _interactionRoot;
-    private readonly Func<string, string, string> _localize;
-    private readonly Func<string, string> _translate;
+    private readonly Func<string, string?> _tryTranslate;
     private bool _operationInProgress;
 
     internal OperationsSectionContext(
@@ -24,8 +24,7 @@ internal sealed class OperationsSectionContext
         TimedInfoBar status,
         ProgressRing progress,
         UIElement interactionRoot,
-        Func<string, string, string> localize,
-        Func<string, string> translate)
+        Func<string, string?> tryTranslate)
     {
         Application = application ?? throw new ArgumentNullException(nameof(application));
         Dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
@@ -33,8 +32,7 @@ internal sealed class OperationsSectionContext
         _status = status ?? throw new ArgumentNullException(nameof(status));
         _progress = progress ?? throw new ArgumentNullException(nameof(progress));
         _interactionRoot = interactionRoot ?? throw new ArgumentNullException(nameof(interactionRoot));
-        _localize = localize ?? throw new ArgumentNullException(nameof(localize));
-        _translate = translate ?? throw new ArgumentNullException(nameof(translate));
+        _tryTranslate = tryTranslate ?? throw new ArgumentNullException(nameof(tryTranslate));
     }
 
     internal ITrackMeUpApplication Application { get; }
@@ -49,7 +47,7 @@ internal sealed class OperationsSectionContext
     {
         if (_operationInProgress)
         {
-            ShowStatus(L("Operation in progress", "Operazione in corso"), L("Wait for the current operation to finish.", "Attendi il completamento dell'operazione corrente."), InfoBarSeverity.Warning);
+            ShowStatus(Translate("Operations.Status.InProgress.Title"), Translate("Operations.Status.InProgress.Message"), InfoBarSeverity.Warning);
             return null;
         }
 
@@ -66,7 +64,7 @@ internal sealed class OperationsSectionContext
                 if (showSuccess)
                 {
                     ShowStatus(
-                        L("Operation completed", "Operazione completata"),
+                        Translate("Operations.Status.Completed.Title"),
                         ResultMessage(result.MessageKey, succeeded: true),
                         InfoBarSeverity.Success);
                 }
@@ -74,7 +72,7 @@ internal sealed class OperationsSectionContext
             else
             {
                 ShowStatus(
-                    L("Operation failed", "Operazione non completata"),
+                    Translate("Operations.Status.Failed.Title"),
                     ResultMessage(result.MessageKey, succeeded: false),
                     InfoBarSeverity.Error);
             }
@@ -84,13 +82,13 @@ internal sealed class OperationsSectionContext
         catch (OperationCanceledException)
         {
             // Cancellation keeps the subsection interactive and does not infer a successful result.
-            ShowStatus(L("Operation cancelled", "Operazione annullata"), L("The runtime cancelled the operation.", "Il runtime ha annullato l'operazione."), InfoBarSeverity.Warning);
+            ShowStatus(Translate("Operations.Status.Cancelled.Title"), Translate("Operations.Status.Cancelled.Message"), InfoBarSeverity.Warning);
             return null;
         }
         catch (Exception)
         {
             // Runtime failures are rendered without exposing implementation or host details.
-            ShowStatus(L("Runtime unavailable", "Runtime non disponibile"), L("The operation returned no result.", "L'operazione non ha restituito un risultato."), InfoBarSeverity.Error);
+            ShowStatus(Translate("Operations.Status.RuntimeUnavailable.Title"), Translate("Operations.Status.RuntimeUnavailable.Message"), InfoBarSeverity.Error);
             return null;
         }
         finally
@@ -124,11 +122,11 @@ internal sealed class OperationsSectionContext
 
     internal string ResultMessage(string messageKey, bool succeeded)
     {
-        var localized = _translate(messageKey);
-        return !string.Equals(localized, messageKey, StringComparison.Ordinal)
-            ? localized
-            : _translate(succeeded ? "Operations.Result.Success" : "Operations.Result.Failure");
+        return _tryTranslate(messageKey)
+            ?? Translate(succeeded ? "Operations.Result.Success" : "Operations.Result.Failure");
     }
 
-    private string L(string english, string italian) => _localize(english, italian);
+    private string Translate(string key) =>
+        _tryTranslate(key)
+        ?? throw new KeyNotFoundException($"Missing required localization key '{key}'.");
 }

@@ -27,6 +27,7 @@
                 FontSize="13"
                 FontWeight="SemiBold"
                 IsHitTestVisible="False"
+                Tag="Schedule.WindowTitleUpper"
                 Text="SNAPSHOT SCHEDULE" />
         </Grid>
 
@@ -44,10 +45,11 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <StackPanel VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Capture interval" />
+                        <TextBlock Tag="Schedule.Interval.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Capture interval" />
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
+                            Tag="Schedule.Interval.Description"
                             Text="Minutes between eligible snapshots" />
                     </StackPanel>
                     <NumberBox
@@ -60,12 +62,14 @@
                         Maximum="1440"
                         SmallChange="1"
                         LargeChange="5"
+                        Tag="Schedule.Interval.Value"
                         SpinButtonPlacementMode="Inline" />
                     <TextBlock
                         Grid.Row="2"
                         Margin="0,4,0,0"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
+                        Tag="Schedule.Interval.Help"
                         Text="The countdown restarts after every eligible interval."
                         TextWrapping="Wrap" />
                 </Grid>
@@ -77,10 +81,11 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Spacing="3">
-                            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Working hours" />
+                            <TextBlock Tag="Schedule.WorkingHours.Title" Style="{StaticResource SubtitleTextBlockStyle}" Text="Working hours" />
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Style="{StaticResource BodyTextBlockStyle}"
+                                Tag="Schedule.WorkingHours.Description"
                                 Text="Select the 30-minute periods when scheduled snapshots may run."
                                 TextWrapping="Wrap" />
                         </StackPanel>
@@ -89,23 +94,27 @@
                                 x:Name="StandardWorkWeekButton"
                                 AutomationProperties.Name="Apply the 09:00-18:00 work week"
                                 Click="StandardWorkWeekButton_Click"
+                                Tag="Schedule.Preset.WorkWeek"
                                 Content="09:00-18:00" />
                             <Button
                                 x:Name="ClearAllHoursButton"
                                 AutomationProperties.Name="Clear all working hours"
                                 Click="ClearAllHoursButton_Click"
+                                Tag="Schedule.ClearAll"
                                 Content="Clear all" />
                         </StackPanel>
                     </Grid>
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
+                        Tag="Schedule.WorkingHours.Instructions"
                         Text="Selected 30-minute blocks are the only times when scheduled snapshots can run. Gaps inside an active period are breaks. With no blocks selected, scheduled snapshots are skipped."
                         TextWrapping="Wrap" />
                     <controls:WeeklyHoursEditor x:Name="WorkingHoursEditor" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
+                        Tag="Schedule.WorkingHours.CaptureNote"
                         Text="When screen capture is enabled, an eligible snapshot also includes a screen capture."
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -127,11 +136,13 @@
                 Grid.Column="1"
                 MinWidth="112"
                 Click="CancelButton_Click"
+                Tag="Schedule.Cancel"
                 Content="Cancel" />
             <Button
                 Grid.Column="2"
                 MinWidth="112"
                 Click="StartButton_Click"
+                Tag="Schedule.Start"
                 Content="Start" />
         </Grid>
     </Grid>

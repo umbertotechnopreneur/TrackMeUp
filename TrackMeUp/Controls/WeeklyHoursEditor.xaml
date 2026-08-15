@@ -26,6 +26,7 @@
                 VerticalAlignment="Center"
                 FontSize="12"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Tag="Schedule.Week.Day"
                 Text="Day" />
             <Grid Grid.Column="1" Width="672" ColumnSpacing="0">
                 <Grid.ColumnDefinitions>
@@ -52,6 +53,7 @@
         <TextBlock
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             Style="{StaticResource CaptionTextBlockStyle}"
+            Tag="Schedule.Week.Instructions"
             Text="Click or drag across 30-minute blocks. Selected blocks are active hours; gaps inside an active period are breaks."
             TextWrapping="Wrap" />
     </StackPanel>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatDateTime, formatInteger, type AiUsageSummary } from '../reporting'
+import { formatDateTime, formatInteger, type AiUsageOrigin, type AiUsageSummary } from '../reporting'
 import { reportLocale, tr } from '../localization'
 
 const props = defineProps<{
@@ -8,14 +8,30 @@ const props = defineProps<{
 }>()
 
 const formatUsd = (value: number | null): string =>
-  value === null ? tr('Unavailable', 'Non disponibile') : new Intl.NumberFormat(reportLocale.value, {
+  value === null ? tr('Unavailable') : new Intl.NumberFormat(reportLocale.value, {
     style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 6,
   }).format(value)
 
 const costDetail = (count: number, timestamp: string | null): string =>
   timestamp === null
-    ? `${formatInteger(count)} ${tr('estimated requests', 'richieste stimate')}`
-    : `${formatInteger(count)} ${tr('estimated requests', 'richieste stimate')} · ${tr('Prices', 'Prezzi')}: ${formatDateTime(timestamp)}`
+    ? tr('{count} estimated requests', { count: formatInteger(count) })
+    : tr('{count} estimated requests · Prices: {timestamp}', {
+        count: formatInteger(count),
+        timestamp: formatDateTime(timestamp),
+      })
+
+const formatOriginLabel = (origin: AiUsageOrigin): string => {
+  switch (origin) {
+    case 'winui.operations': return tr('WinUI operations')
+    case 'cli.ai': return tr('CLI AI')
+    case 'snapshot.manual': return tr('Manual snapshot')
+    case 'snapshot.scheduled': return tr('Scheduled snapshot')
+    case 'snapshot.reprocess': return tr('Reprocessed snapshot')
+    case 'runtime.ai': return tr('Runtime AI')
+    case 'manual': return tr('Manual')
+    case 'unknown': return tr('Unknown')
+  }
+}
 
 const costNotice = computed(() => {
   const usage = props.aiUsage
@@ -23,8 +39,8 @@ const costNotice = computed(() => {
     return {
       color: 'primary',
       icon: 'mdi-information-outline',
-      title: tr('No AI requests in the period', 'Nessuna richiesta AI nel periodo'),
-      text: tr('There are no AI requests to account for in the selected period.', 'Non ci sono richieste AI da contabilizzare nel periodo selezionato.'),
+      title: tr('No AI requests in the period'),
+      text: tr('There are no AI requests to account for in the selected period.'),
     }
   }
 
@@ -32,8 +48,11 @@ const costNotice = computed(() => {
     return {
       color: usage.estimatedCostRequestCount === usage.requestCount ? 'success' : 'warning',
       icon: usage.estimatedCostRequestCount === usage.requestCount ? 'mdi-cash-sync' : 'mdi-cash-clock',
-      title: tr('Estimated cost', 'Costo stimato'),
-      text: tr(`No provider returned a per-request cost. The local pricing table estimates ${formatInteger(usage.estimatedCostRequestCount)} of ${formatInteger(usage.requestCount)} requests.`, `Nessun provider ha restituito un costo per richiesta. Il listino locale stima ${formatInteger(usage.estimatedCostRequestCount)} di ${formatInteger(usage.requestCount)} richieste.`),
+      title: tr('Estimated cost'),
+      text: tr('No AI provider returned a per-request cost. The local pricing table estimates {estimated} of {total} requests.', {
+        estimated: formatInteger(usage.estimatedCostRequestCount),
+        total: formatInteger(usage.requestCount),
+      }),
     }
   }
 
@@ -41,8 +60,8 @@ const costNotice = computed(() => {
     return {
       color: 'warning',
       icon: 'mdi-cash-remove',
-      title: tr('Cost unavailable', 'Costo non disponibile'),
-      text: tr('No provider returned a per-request cost. Token counts remain available for usage analysis.', 'Nessun provider ha restituito un costo per richiesta. I token restano disponibili per l’analisi di utilizzo.'),
+      title: tr('Cost unavailable'),
+      text: tr('No AI provider returned a per-request cost. Token counts remain available for usage analysis.'),
     }
   }
 
@@ -50,8 +69,11 @@ const costNotice = computed(() => {
     return {
       color: 'warning',
       icon: 'mdi-cash-sync',
-      title: tr('Reported and estimated cost', 'Costo dichiarato e stimato'),
-      text: tr(`The provider reported ${formatInteger(usage.actualCostRequestCount)} costs, and the local pricing table estimated ${formatInteger(usage.estimatedCostRequestCount)} requests.`, `Il provider ha dichiarato ${formatInteger(usage.actualCostRequestCount)} costi e il listino locale ha stimato ${formatInteger(usage.estimatedCostRequestCount)} richieste.`),
+      title: tr('Reported and estimated cost'),
+      text: tr('The AI provider reported {reported} costs, and the local pricing table estimated {estimated} requests.', {
+        reported: formatInteger(usage.actualCostRequestCount),
+        estimated: formatInteger(usage.estimatedCostRequestCount),
+      }),
     }
   }
 
@@ -59,47 +81,56 @@ const costNotice = computed(() => {
     return {
       color: 'warning',
       icon: 'mdi-cash-clock',
-      title: tr('Partial cost', 'Costo parziale'),
-      text: tr(`The provider reported a cost for ${formatInteger(usage.actualCostRequestCount)} of ${formatInteger(usage.requestCount)} requests. The displayed total does not cover the other requests.`, `Il provider ha dichiarato il costo per ${formatInteger(usage.actualCostRequestCount)} di ${formatInteger(usage.requestCount)} richieste. Il totale mostrato non copre le altre richieste.`),
+      title: tr('Partial cost'),
+      text: tr('The AI provider reported a cost for {reported} of {total} requests. The displayed total does not cover the other requests.', {
+        reported: formatInteger(usage.actualCostRequestCount),
+        total: formatInteger(usage.requestCount),
+      }),
     }
   }
 
   return {
     color: 'success',
     icon: 'mdi-cash-check',
-    title: tr('Provider-reported cost', 'Costo dichiarato dal provider'),
-    text: tr('The provider returned a cost for every AI request in the period.', 'Il provider ha restituito un costo per tutte le richieste AI del periodo.'),
+    title: tr('AI-provider-reported cost'),
+    text: tr('The AI provider returned a cost for every AI request in the period.'),
   }
 })
 
 const summaryItems = computed(() => [
   {
-    label: tr('Requests', 'Richieste'),
+    label: tr('Requests'),
     value: formatInteger(props.aiUsage.requestCount),
-    detail: tr(`${formatInteger(props.aiUsage.successfulRequestCount)} succeeded, ${formatInteger(props.aiUsage.failedRequestCount)} failed`, `${formatInteger(props.aiUsage.successfulRequestCount)} riuscite, ${formatInteger(props.aiUsage.failedRequestCount)} non riuscite`),
+    detail: tr('{succeeded} succeeded, {failed} failed', {
+      succeeded: formatInteger(props.aiUsage.successfulRequestCount),
+      failed: formatInteger(props.aiUsage.failedRequestCount),
+    }),
   },
   {
-    label: 'Token input',
+    label: tr('Input tokens'),
     value: formatInteger(props.aiUsage.inputTokens),
-    detail: `${tr('Cache', 'Cache')}: ${formatInteger(props.aiUsage.cachedInputTokens)}`,
+    detail: tr('Cached input: {count}', { count: formatInteger(props.aiUsage.cachedInputTokens) }),
   },
   {
-    label: 'Token output',
+    label: tr('Output tokens'),
     value: formatInteger(props.aiUsage.outputTokens),
-    detail: `Reasoning: ${formatInteger(props.aiUsage.reasoningTokens)} · Thinking: ${formatInteger(props.aiUsage.thinkingTokens)}`,
+    detail: tr('Reasoning: {reasoning} · Thinking: {thinking}', {
+      reasoning: formatInteger(props.aiUsage.reasoningTokens),
+      thinking: formatInteger(props.aiUsage.thinkingTokens),
+    }),
   },
   {
-    label: tr('Total tokens', 'Token totali'),
+    label: tr('Total tokens'),
     value: formatInteger(props.aiUsage.totalTokens),
-    detail: tr('Input and output reported by the provider', 'Input e output riportati dal provider'),
+    detail: tr('Input and output reported by the AI provider'),
   },
   {
-    label: tr('Reported cost', 'Costo dichiarato'),
+    label: tr('Reported cost'),
     value: formatUsd(props.aiUsage.actualCostUsd),
-    detail: `${formatInteger(props.aiUsage.actualCostRequestCount)} ${tr('requests with cost', 'richieste con costo')}`,
+    detail: tr('{count} requests with cost', { count: formatInteger(props.aiUsage.actualCostRequestCount) }),
   },
   {
-    label: tr('Estimated cost', 'Costo stimato'),
+    label: tr('Estimated cost'),
     value: formatUsd(props.aiUsage.estimatedCostUsd),
     detail: costDetail(props.aiUsage.estimatedCostRequestCount, props.aiUsage.estimatedCostPricingUpdatedAt),
   },
@@ -112,10 +143,10 @@ const summaryItems = computed(() => [
       <v-card-text>
         <div class="ai-usage-header">
           <div>
-            <p class="ai-usage-eyebrow">{{ tr('AI telemetry', 'Telemetria AI') }}</p>
-            <h2 id="ai-usage-title" class="ai-usage-title">{{ tr('Token usage and costs', 'Utilizzo di token e costi') }}</h2>
+            <p class="ai-usage-eyebrow">{{ tr('AI telemetry') }}</p>
+            <h2 id="ai-usage-title" class="ai-usage-title">{{ tr('Token usage and costs') }}</h2>
             <p class="ai-usage-description">
-              {{ tr('Data collected for snapshot analysis. Costs use provider-reported values when available and local pricing estimates otherwise.', 'Dati raccolti per le analisi degli snapshot. I costi usano i valori dichiarati dal provider quando disponibili e le stime del listino locale negli altri casi.') }}
+              {{ tr('Data collected for snapshot analysis. Costs use AI-provider-reported values when available and local pricing estimates otherwise.') }}
             </p>
           </div>
           <v-icon color="primary" icon="mdi-chart-donut-variant" size="28" aria-hidden="true" />
@@ -152,18 +183,18 @@ const summaryItems = computed(() => [
         <v-row class="mt-1" dense>
           <v-col cols="12" lg="6">
             <section class="ai-usage-table" aria-labelledby="ai-usage-provider-title">
-              <h3 id="ai-usage-provider-title" class="ai-usage-table__title">{{ tr('By provider', 'Per provider') }}</h3>
+              <h3 id="ai-usage-provider-title" class="ai-usage-table__title">{{ tr('By AI provider') }}</h3>
               <v-table density="compact" class="ai-usage-table__table">
-                <caption class="visually-hidden">{{ tr('AI usage broken down by provider', 'Utilizzo AI suddiviso per provider') }}</caption>
+                <caption class="visually-hidden">{{ tr('AI usage broken down by provider') }}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Provider</th>
-                    <th scope="col" class="text-right">{{ tr('Requests', 'Richieste') }}</th>
-                    <th scope="col" class="text-right">Input</th>
-                    <th scope="col" class="text-right">Output</th>
-                    <th scope="col" class="text-right">{{ tr('Total', 'Totale') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Reported', 'Dichiarato') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Estimated', 'Stimato') }}</th>
+                    <th scope="col">{{ tr('AI provider') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Requests') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Input') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Output') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Total') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Reported') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Estimated') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,7 +208,7 @@ const summaryItems = computed(() => [
                     <td class="text-right">{{ formatUsd(slice.estimatedCostUsd) }}</td>
                   </tr>
                   <tr v-if="aiUsage.byProvider.length === 0">
-                    <td colspan="7" class="text-medium-emphasis">{{ tr('No provider details available.', 'Nessun dettaglio per provider disponibile.') }}</td>
+                    <td colspan="7" class="text-medium-emphasis">{{ tr('No AI-provider details available.') }}</td>
                   </tr>
                 </tbody>
               </v-table>
@@ -186,23 +217,23 @@ const summaryItems = computed(() => [
 
           <v-col cols="12" lg="6">
             <section class="ai-usage-table" aria-labelledby="ai-usage-origin-title">
-              <h3 id="ai-usage-origin-title" class="ai-usage-table__title">{{ tr('By origin', 'Per provenienza') }}</h3>
+              <h3 id="ai-usage-origin-title" class="ai-usage-table__title">{{ tr('By origin') }}</h3>
               <v-table density="compact" class="ai-usage-table__table">
-                <caption class="visually-hidden">{{ tr('AI usage broken down by request origin', 'Utilizzo AI suddiviso per provenienza della richiesta') }}</caption>
+                <caption class="visually-hidden">{{ tr('AI usage broken down by request origin') }}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">{{ tr('Origin', 'Provenienza') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Requests', 'Richieste') }}</th>
-                    <th scope="col" class="text-right">Input</th>
-                    <th scope="col" class="text-right">Output</th>
-                    <th scope="col" class="text-right">{{ tr('Total', 'Totale') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Reported', 'Dichiarato') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Estimated', 'Stimato') }}</th>
+                    <th scope="col">{{ tr('Origin') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Requests') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Input') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Output') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Total') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Reported') }}</th>
+                    <th scope="col" class="text-right">{{ tr('Estimated') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="slice in aiUsage.byOrigin" :key="slice.label">
-                    <th scope="row">{{ slice.label }}</th>
+                    <th scope="row">{{ formatOriginLabel(slice.label) }}</th>
                     <td class="text-right">{{ formatInteger(slice.requestCount) }}</td>
                     <td class="text-right">{{ formatInteger(slice.inputTokens) }}</td>
                     <td class="text-right">{{ formatInteger(slice.outputTokens) }}</td>
@@ -211,7 +242,7 @@ const summaryItems = computed(() => [
                     <td class="text-right">{{ formatUsd(slice.estimatedCostUsd) }}</td>
                   </tr>
                   <tr v-if="aiUsage.byOrigin.length === 0">
-                    <td colspan="7" class="text-medium-emphasis">{{ tr('No origin details available.', 'Nessun dettaglio sulla provenienza disponibile.') }}</td>
+                    <td colspan="7" class="text-medium-emphasis">{{ tr('No origin details available.') }}</td>
                   </tr>
                 </tbody>
               </v-table>

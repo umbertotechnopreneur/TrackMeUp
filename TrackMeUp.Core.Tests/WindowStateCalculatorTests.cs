@@ -10,6 +10,7 @@ public sealed class WindowStateCalculatorTests
     {
         Assert.Equal(new WindowMinimumSize(720, 520), WindowStateService.GetMinimumSize(WindowStateKeys.Reports));
         Assert.Equal(new WindowMinimumSize(760, 560), WindowStateService.GetMinimumSize(WindowStateKeys.ActivityCalendar));
+        Assert.Equal(new WindowMinimumSize(640, 560), WindowStateService.GetMinimumSize(WindowStateKeys.AiScreenshotReprocessing));
         Assert.Equal(new WindowMinimumSize(760, 540), WindowStateService.GetMinimumSize(WindowStateKeys.Screenshots));
         Assert.Equal(new WindowMinimumSize(780, 140), WindowStateService.GetMinimumSize(WindowStateKeys.Search));
         Assert.Equal(new WindowMinimumSize(560, 420), WindowStateService.GetMinimumSize(WindowStateKeys.SearchIndexing));

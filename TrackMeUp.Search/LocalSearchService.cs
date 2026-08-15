@@ -30,10 +30,10 @@ public sealed class LocalSearchService : ILocalSearchService
     private int _disposeStarted;
 
     /// <summary>Gets the current on-disk index schema version.</summary>
-    public const int IndexSchemaVersion = 1;
+    public const int IndexSchemaVersion = 2;
 
     /// <summary>Gets the versioned directory name created below <see cref="SearchOptions.IndexRootPath"/>.</summary>
-    public const string IndexDirectoryName = "lucene-v1";
+    public const string IndexDirectoryName = "lucene-v2";
 
     /// <summary>Gets the private directory name used by the infix suggestion index.</summary>
     public const string SuggestionIndexDirectoryName = "suggestions-v1";

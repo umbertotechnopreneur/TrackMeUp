@@ -77,6 +77,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(resultThumbnailFrame.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
         Assert.Contains(resultControl.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Contains(resultControl.Descendants(), element => HasName(element, "MatchScoreChip"));
+        Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding MatchLabel}");
+        Assert.DoesNotContain(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "MATCH");
         Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding MatchPercentDisplay}");
         Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding ActivityDisplay}");
         Assert.DoesNotContain(resultControl.Descendants(), element => element.Attribute("Text")?.Value?.Contains("CPU", StringComparison.Ordinal) == true);
@@ -122,6 +124,13 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("CalculateSuggestionConfidence", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("OrderByDescending(hit => hit.Score)", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("CalculateMatchPercent", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("Func<long?, CultureInfo, string> formatClickCount", viewModelSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"Clicks —\"", viewModelSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("? \"click\" : \"clicks\"", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("Search.Result.Match", windowSource, StringComparison.Ordinal);
+        Assert.Contains("Search.Result.Clicks.One", windowSource, StringComparison.Ordinal);
+        Assert.Contains("Search.Result.Clicks.Many", windowSource, StringComparison.Ordinal);
+        Assert.Contains("Search.Result.Clicks.None", windowSource, StringComparison.Ordinal);
         Assert.Contains("GetSearchAvailabilityAsync", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);
         Assert.Contains("Search.Empty.Title", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);
     }
@@ -148,7 +157,7 @@ public sealed class SearchSurfaceContractTests
     }
 
     [Fact]
-    public void SearchIndexingWindow_UsesAcrylicIndeterminateProgressAndCancellableFacadeOperation()
+    public void SearchIndexingWindow_RendersMicaBeforeStartingCancellableFacadeOperation()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "SearchIndexingWindow.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchIndexingWindow.xaml.cs"));
@@ -157,12 +166,15 @@ public sealed class SearchSurfaceContractTests
         var resultsProgress = window.Descendants().Single(element => HasName(element, "ResultsProgressBar"));
         var suggestionsProgress = window.Descendants().Single(element => HasName(element, "SuggestionsProgressBar"));
 
-        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        var backdrop = window.Descendants().Single(element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Equal("BaseAlt", backdrop.Attribute("Kind")?.Value);
         Assert.Equal("Transparent", root.Attribute("Background")?.Value);
         Assert.Equal("True", resultsProgress.Attribute("IsIndeterminate")?.Value);
         Assert.Equal("True", suggestionsProgress.Attribute("IsIndeterminate")?.Value);
         Assert.Contains(window.Descendants(), element => HasName(element, "CancelOrCloseButton"));
         Assert.Contains("_application.RebuildSearchIndexAsync", source, StringComparison.Ordinal);
+        Assert.Contains("DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, RunIndexingFromVisibleWindow)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("await RunIndexingAsync();", source[source.IndexOf("private async void RootGrid_Loaded", StringComparison.Ordinal)..source.IndexOf("private async void RunIndexingFromVisibleWindow", StringComparison.Ordinal)], StringComparison.Ordinal);
         Assert.Contains("_rebuildCancellation?.Cancel()", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.SearchIndexing", source, StringComparison.Ordinal);
         Assert.Contains("OptionsControl.SearchIndexingRequested += OptionsControl_SearchIndexingRequested", mainSource, StringComparison.Ordinal);

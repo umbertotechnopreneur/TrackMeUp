@@ -1,8 +1,10 @@
 using System.Globalization;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
 
@@ -14,6 +16,8 @@ public sealed partial class WeeklyHoursEditor : UserControl
     private const double SlotHeight = 28d;
     private static readonly string[] Days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     private readonly Dictionary<string, ToggleButton[]> _daySlots = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TextBlock> _dayLabels = new(StringComparer.Ordinal);
+    private LocalizationService _strings = new("system");
     private bool? _dragSelectionValue;
 
     /// <summary>Creates the reusable weekly hours editor.</summary>
@@ -26,6 +30,14 @@ public sealed partial class WeeklyHoursEditor : UserControl
         DaysHost.AddHandler(PointerReleasedEvent, new PointerEventHandler(DaysHost_PointerReleased), true);
         DaysHost.PointerCanceled += DaysHost_PointerCanceled;
         DaysHost.PointerCaptureLost += DaysHost_PointerCaptureLost;
+    }
+
+    /// <summary>Applies the selected locale to instructions, weekday names, and slot accessibility labels.</summary>
+    public void ApplyLanguage(string language)
+    {
+        _strings = new LocalizationService(language);
+        UiLocalization.Apply(this, _strings);
+        UpdateLocalizedLabels();
     }
 
     /// <summary>Loads a normalized working-hours schedule into the selectable grid.</summary>
@@ -41,6 +53,8 @@ public sealed partial class WeeklyHoursEditor : UserControl
                 _daySlots[dayName][slot].IsChecked = selectedSlots[slot];
             }
         }
+
+        UpdateLocalizedLabels();
     }
 
     /// <summary>Returns the current grid selection in the application's normalized schedule format.</summary>
@@ -90,9 +104,10 @@ public sealed partial class WeeklyHoursEditor : UserControl
                 HorizontalAlignment = HorizontalAlignment.Right,
                 TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
-                Text = CultureInfo.CurrentCulture.DateTimeFormat.GetDayName(
+                Text = _strings.Culture.DateTimeFormat.GetDayName(
                     Enum.Parse<DayOfWeek>(day, ignoreCase: true))
             };
+            _dayLabels.Add(day, label);
             row.Children.Add(label);
 
             var slotsGrid = new Grid
@@ -241,6 +256,22 @@ public sealed partial class WeeklyHoursEditor : UserControl
         for (var slot = startSlot; slot < endSlot; slot++)
         {
             slots[slot] = value;
+        }
+
+    }
+
+    private void UpdateLocalizedLabels()
+    {
+        foreach (var day in Days)
+        {
+            var dayName = _strings.Culture.DateTimeFormat.GetDayName(Enum.Parse<DayOfWeek>(day, ignoreCase: true));
+            _dayLabels[day].Text = dayName;
+            for (var slot = 0; slot < SlotsPerDay; slot++)
+            {
+                AutomationProperties.SetName(
+                    _daySlots[day][slot],
+                    _strings.Format("Schedule.Slot.Accessible", dayName, CreateSlotLabel(slot), CreateSlotLabel(slot + 1)));
+            }
         }
     }
 

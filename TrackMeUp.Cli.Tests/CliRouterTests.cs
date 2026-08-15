@@ -200,7 +200,7 @@ public sealed class CliRouterTests
 
     private static CliRouter CreateRouter(RecordingApplication application)
     {
-        var options = new CliOptions(CliFormat.Plain, "en", true, true, true, true, false, 5, false, []);
+        var options = new CliOptions(CliFormat.Plain, "en-US", true, true, true, true, false, 5, false, []);
         return new CliRouter(application, new CliOutput(options), options);
     }
 
@@ -298,6 +298,11 @@ public sealed class CliRouterTests
         public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => Unsupported<string?>();
         public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
         public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
+        public Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(AiScreenshotReprocessRequest request, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessPlan>();
+        public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> StartAiScreenshotReprocessingAsync(Guid planId, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessJobSnapshot>();
+        public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> GetAiScreenshotReprocessingJobAsync(Guid jobId, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessJobSnapshot>();
+        public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> PauseAiScreenshotReprocessingAsync(Guid jobId, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessJobSnapshot>();
+        public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> ResumeAiScreenshotReprocessingAsync(Guid jobId, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessJobSnapshot>();
         public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => Unsupported<bool>();

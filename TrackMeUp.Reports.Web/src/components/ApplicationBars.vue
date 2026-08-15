@@ -4,7 +4,7 @@ import type { EChartsOption } from 'echarts'
 import VChart from 'vue-echarts'
 import { useChartSettings } from '../composables/useChartSettings'
 import { tr } from '../localization'
-import { formatDuration, type ReportSnapshot } from '../reporting'
+import { formatDecimal, formatDuration, type ReportSnapshot } from '../reporting'
 
 const props = defineProps<{
   snapshot: ReportSnapshot
@@ -20,7 +20,7 @@ const option = computed<EChartsOption>(() => {
     animation: !reducedMotion.value,
     aria: {
       enabled: true,
-      description: tr('Horizontal bar chart of applications with the most active time.', 'Grafico a barre orizzontali delle applicazioni con più tempo attivo.'),
+      description: tr('Horizontal bar chart of applications with the most active time.'),
     },
     grid: {
       top: 14,
@@ -38,15 +38,19 @@ const option = computed<EChartsOption>(() => {
         const entry = Array.isArray(parameters) ? parameters[0] : parameters
         const application = applications[entry?.dataIndex as number]
         return application
-          ? `${application.application}\n${tr('Active time', 'Tempo attivo')}: ${formatDuration(application.activeSeconds)}`
-          : tr('Data unavailable', 'Dato non disponibile')
+          ? `${application.application}\n${tr('Active time')}: ${formatDuration(application.activeSeconds)}`
+          : tr('Data unavailable')
       },
     },
     xAxis: {
       type: 'value',
-      name: tr('hours', 'ore'),
+      name: tr('hours'),
       nameTextStyle: { color: palette.value.muted, fontSize: 10 },
-      axisLabel: { color: palette.value.muted, fontSize: 10 },
+      axisLabel: {
+        color: palette.value.muted,
+        fontSize: 10,
+        formatter: (value: number) => formatDecimal(value),
+      },
       splitLine: { lineStyle: { color: palette.value.border, type: 'dashed' } },
     },
     yAxis: {
@@ -63,7 +67,7 @@ const option = computed<EChartsOption>(() => {
       },
     },
     series: [{
-      name: tr('Active time', 'Tempo attivo'),
+      name: tr('Active time'),
       type: 'bar',
       data: applications.map((application) => application.activeSeconds / 3600),
       barMaxWidth: 22,
@@ -83,8 +87,8 @@ const option = computed<EChartsOption>(() => {
   <section aria-labelledby="applications-chart-title">
     <div class="chart-heading">
       <div>
-        <h2 id="applications-chart-title" class="chart-title">{{ tr('Top applications', 'Applicazioni principali') }}</h2>
-        <p class="chart-subtitle">{{ tr('Top twelve applications plus the remaining aggregate, ordered by active time.', 'Prime dodici applicazioni e aggregato delle altre, ordinati per tempo attivo.') }}</p>
+        <h2 id="applications-chart-title" class="chart-title">{{ tr('Top applications') }}</h2>
+        <p class="chart-subtitle">{{ tr('Top twelve applications plus the remaining aggregate, ordered by active time.') }}</p>
       </div>
     </div>
     <v-chart
@@ -92,10 +96,10 @@ const option = computed<EChartsOption>(() => {
       :option="option"
       autoresize
       role="img"
-      :aria-label="tr('Applications ordered by active time', 'Applicazioni ordinate per tempo attivo')"
+      :aria-label="tr('Applications ordered by active time')"
     />
     <p class="chart-forced-colors-message">
-      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.', 'Il grafico è nascosto in modalità contrasto elevato. Apri la tabella accessibile qui sotto per consultare tutti i valori.') }}
+      {{ tr('The chart is hidden in high contrast mode. Open the accessible table below to inspect all values.') }}
     </p>
   </section>
 </template>
