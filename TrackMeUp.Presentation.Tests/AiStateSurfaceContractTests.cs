@@ -34,6 +34,33 @@ public sealed class AiStateSurfaceContractTests
         Assert.DoesNotContain("Environment.", optionsSource, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AiOptions_ShowAccessibleDailyDescriptionQuotaFromFacadeDtos()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var stateSource = File.ReadAllText(RepositoryFile("TrackMeUp.Presentation", "AiApplicationState.cs"));
+        var quotaPanel = options.Descendants().Single(element => HasName(element, "AiQuotaPanel"));
+        var quotaTitle = options.Descendants().Single(element => HasName(element, "AiQuotaTitleText"));
+        var quotaUsage = options.Descendants().Single(element => HasName(element, "AiQuotaUsageText"));
+        var quotaProgress = options.Descendants().Single(element => HasName(element, "AiQuotaProgressBar"));
+        var quotaDescription = options.Descendants().Single(element => HasName(element, "AiQuotaDescriptionText"));
+
+        Assert.Equal("Border", quotaPanel.Name.LocalName);
+        Assert.Equal("Polite", quotaPanel.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
+        Assert.Equal("Options.AiQuota.Title", quotaTitle.Attribute("Tag")?.Value);
+        Assert.Equal("Polite", quotaUsage.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
+        Assert.Equal("ProgressBar", quotaProgress.Name.LocalName);
+        Assert.Equal("Options.AiQuota.Description", quotaDescription.Attribute("Tag")?.Value);
+        Assert.Contains("_openAiDailyLimit = settings.OpenAiDailyLimit;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("costGate.DailyAnalysisCount", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(AiQuotaProgressBar", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("nameof(AiApplicationState.CostGate)", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("_application.GetAiStatusAsync(cancellationToken)", stateSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SqliteActivityStore", optionsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("CountAiAnalysisResults", optionsSource, StringComparison.Ordinal);
+    }
+
     private static string RepositoryFile(params string[] pathSegments)
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

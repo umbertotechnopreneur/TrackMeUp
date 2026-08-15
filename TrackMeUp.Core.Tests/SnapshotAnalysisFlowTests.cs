@@ -744,7 +744,7 @@ public sealed class SnapshotAnalysisFlowTests
     }
 
     [Fact]
-    public async Task DeferredAnalysis_CostGuardrailDeletesRawAndRetainsStoredArtifact()
+    public async Task DeferredAnalysis_CostGuardrailDeletesRawRetainsStoredAndWarnsOncePerDay()
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
@@ -783,6 +783,20 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.False(File.Exists(rawPath));
             Assert.True(File.Exists(storedPath));
             Assert.Equal(0, analysis.CallCount);
+
+            var repeated = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(capture, KeepCapture: true),
+                CancellationToken.None);
+            Assert.False(repeated.Succeeded);
+            Assert.Equal("ai.cost_guardrail", repeated.Code);
+
+            var notifications = await application.DrainApplicationNotificationsAsync(CancellationToken.None);
+            var notification = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<ApplicationNotification>>(notifications.Value));
+            Assert.Equal(ApplicationNotificationSeverity.Warning, notification.Severity);
+            Assert.Equal("Notification.AiDailyLimitReached.Title", notification.TitleKey);
+            Assert.Equal("Notification.AiDailyLimitReached.Message", notification.MessageKey);
+            Assert.Equal("ai.cost_guardrail", notification.Code);
+            Assert.Equal("0 / 0", notification.Detail);
         }
         finally
         {

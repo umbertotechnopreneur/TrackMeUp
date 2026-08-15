@@ -14,6 +14,7 @@ public sealed class AiApplicationState : ViewModelBase
     private bool _hasInvalidKey;
     private bool _isStatusUnavailable = true;
     private bool _isBusy;
+    private AnalysisCostGate? _costGate;
 
     /// <summary>Initializes the shared AI state with the application facade.</summary>
     public AiApplicationState(ITrackMeUpApplication application) => _application = application;
@@ -41,6 +42,9 @@ public sealed class AiApplicationState : ViewModelBase
 
     /// <summary>Gets whether a shared AI-state mutation is currently running.</summary>
     public bool IsBusy { get => _isBusy; private set => Set(ref _isBusy, value); }
+
+    /// <summary>Gets the latest privacy-safe daily AI usage gate returned by the application facade.</summary>
+    public AnalysisCostGate? CostGate { get => _costGate; private set => Set(ref _costGate, value); }
 
     /// <summary>Reloads redacted AI state from the application facade.</summary>
     public async Task<OperationResult<AiStatus>> LoadAsync(CancellationToken cancellationToken)
@@ -132,6 +136,7 @@ public sealed class AiApplicationState : ViewModelBase
         IsStatusUnavailable = false;
         IsKeyMissing = !status.HasKey;
         HasInvalidKey = status.HasKey && !status.CanEnable;
+        CostGate = status.CostGate;
         UpdateCanToggle();
     }
 
@@ -142,6 +147,7 @@ public sealed class AiApplicationState : ViewModelBase
         CanEnable = false;
         IsKeyMissing = false;
         HasInvalidKey = false;
+        CostGate = null;
         UpdateCanToggle();
     }
 

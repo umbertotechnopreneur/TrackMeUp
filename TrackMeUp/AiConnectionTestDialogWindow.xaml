@@ -26,6 +26,7 @@
                     CharacterSpacing="80"
                     FontSize="12"
                     FontWeight="SemiBold"
+                    Tag="AiConnectionTest.Eyebrow"
                     Text="AI PROVIDER TEST" />
             </StackPanel>
         </Grid>
@@ -55,10 +56,11 @@
                         Visibility="Collapsed" />
                 </Grid>
                 <StackPanel Grid.Column="1" Spacing="3">
-                    <TextBlock x:Name="TitleText" FontSize="21" FontWeight="SemiBold" Text="Checking AI provider" />
+                    <TextBlock x:Name="TitleText" Tag="AiConnectionTest.Checking.Title" FontSize="21" FontWeight="SemiBold" Text="Checking AI provider" />
                     <TextBlock
                         x:Name="StatusText"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Tag="AiConnectionTest.Checking.Message"
                         Text="Sending a minimal text-only request…"
                         TextWrapping="WrapWholeWords" />
                 </StackPanel>
@@ -73,6 +75,7 @@
                         CharacterSpacing="80"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
+                        Tag="AiConnectionTest.TimeLeft"
                         Text="TIME LEFT" />
                     <TextBlock
                         x:Name="CountdownText"
@@ -115,6 +118,7 @@
                                 FontFamily="Cascadia Mono"
                                 FontSize="10"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Tag="AiConnectionTest.Console"
                                 Text="AI PROVIDER CONSOLE" />
                         </StackPanel>
                         <TextBlock
@@ -123,6 +127,7 @@
                             FontFamily="Cascadia Mono"
                             FontSize="10"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Tag="AiConnectionTest.State.Request"
                             Text="REQUEST" />
                     </Grid>
                     <ScrollViewer
@@ -154,6 +159,7 @@
                 MinWidth="112"
                 MinHeight="38"
                 HorizontalAlignment="Right"
+                Tag="AiConnectionTest.Cancel"
                 Click="CloseButton_Click"
                 Content="Cancel" />
         </Grid>

@@ -11,7 +11,7 @@ namespace TrackMeUp.Controls;
 /// <summary>Renders one closable Acrylic InfoBar with a subtle timeout indicator over its lower edge.</summary>
 public sealed partial class TimedInfoBar : UserControl
 {
-    private const float BannerElevation = 4f;
+    private const float BannerElevation = 18f;
     private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(80);
 
     private Storyboard? _activeTransition;

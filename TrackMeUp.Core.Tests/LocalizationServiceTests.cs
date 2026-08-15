@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -60,6 +61,105 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Analisi del frame non disponibile", italian.Translate("Notification.AiAnalysisFailed.Title"));
         Assert.Equal("Change key", english.Translate("Options.ApiKeyAction.Change"));
         Assert.Equal("Cambia chiave", italian.Translate("Options.ApiKeyAction.Change"));
+    }
+
+    [Fact]
+    public void AiConnectionTest_IsLocalizedInEnglishAndItalian()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Equal("AI provider connected", english.Translate("AiConnectionTest.Connected.Title"));
+        Assert.Equal("Provider AI connesso", italian.Translate("AiConnectionTest.Connected.Title"));
+        Assert.Equal("response", english.Translate("AiConnectionTest.Terminal.Response"));
+        Assert.Equal("risposta", italian.Translate("AiConnectionTest.Terminal.Response"));
+        Assert.Equal("Close", english.Translate("AiConnectionTest.Close"));
+        Assert.Equal("Chiudi", italian.Translate("AiConnectionTest.Close"));
+    }
+
+    [Fact]
+    public void DailyAiLimitNotification_IsLocalizedInEverySupportedLanguage()
+    {
+        Dictionary<string, string> expectedTitles = new()
+        {
+            ["en"] = "Daily AI description limit reached",
+            ["it"] = "Limite giornaliero di descrizioni AI raggiunto",
+            ["fr"] = "Limite quotidienne de descriptions IA atteinte",
+            ["de"] = "Tägliches Limit für KI-Beschreibungen erreicht",
+            ["es"] = "Se alcanzó el límite diario de descripciones de IA",
+            ["vi"] = "Đã đạt giới hạn mô tả AI hàng ngày"
+        };
+
+        Assert.All(expectedTitles, item =>
+        {
+            var strings = new LocalizationService(item.Key);
+            Assert.Equal(item.Value, strings.Translate("Notification.AiDailyLimitReached.Title"));
+            Assert.NotEqual("Notification.AiDailyLimitReached.Message", strings.Translate("Notification.AiDailyLimitReached.Message"));
+        });
+        Assert.Equal(
+            expectedTitles.Count,
+            expectedTitles.Keys.Select(language => new LocalizationService(language).Translate("Notification.AiDailyLimitReached.Message")).Distinct().Count());
+
+        var italian = new LocalizationService("it");
+        Assert.Equal("Limite giornaliero di descrizioni AI raggiunto", italian.Translate("Notification.AiDailyLimitReached.Title"));
+        Assert.Contains("nuove descrizioni AI", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
+        Assert.Contains("mezzanotte locale", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
+        Assert.Contains("non vengono rielaborati automaticamente", italian.Translate("Notification.AiDailyLimitReached.Message"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AiQuotaPanel_IsLocalizedInEverySupportedLanguage()
+    {
+        Dictionary<string, (string Title, string Available, string Reached)> expected = new()
+        {
+            ["en"] = ("Daily description quota", "Available", "Limit reached"),
+            ["it"] = ("Quota giornaliera delle descrizioni AI", "Disponibile", "Limite raggiunto"),
+            ["fr"] = ("Quota quotidien de descriptions IA", "Disponible", "Limite atteinte"),
+            ["de"] = ("Tägliches Kontingent für KI-Beschreibungen", "Verfügbar", "Limit erreicht"),
+            ["es"] = ("Cuota diaria de descripciones de IA", "Disponible", "Límite alcanzado"),
+            ["vi"] = ("Hạn mức mô tả AI hàng ngày", "Còn khả dụng", "Đã đạt giới hạn")
+        };
+
+        Assert.All(expected, item =>
+        {
+            var strings = new LocalizationService(item.Key);
+            Assert.Equal(item.Value.Title, strings.Translate("Options.AiQuota.Title"));
+            Assert.Equal(item.Value.Available, strings.Translate("Options.AiQuota.Available"));
+            Assert.Equal(item.Value.Reached, strings.Translate("Options.AiQuota.Reached"));
+            Assert.NotEqual("Options.AiQuota.Unavailable", strings.Translate("Options.AiQuota.Unavailable"));
+            Assert.NotEqual("Options.AiQuota.Description", strings.Translate("Options.AiQuota.Description"));
+            Assert.NotEqual("Options.AiQuota.ProgressAccessible", strings.Translate("Options.AiQuota.ProgressAccessible"));
+            Assert.NotEqual("Options.AiQuota.UnavailableAccessible", strings.Translate("Options.AiQuota.UnavailableAccessible"));
+        });
+
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+        Assert.Contains("created successfully", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("local midnight", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("not reprocessed automatically", english.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("create con successo", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("mezzanotte locale", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+        Assert.Contains("non vengono rielaborati automaticamente", italian.Translate("Options.AiQuota.Description"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SnapshotDeleteCommand_IsLocalizedInEverySupportedLanguage()
+    {
+        Dictionary<string, string> expected = new()
+        {
+            ["en"] = "Delete snapshot",
+            ["it"] = "Elimina snapshot",
+            ["fr"] = "Supprimer l'instantané",
+            ["de"] = "Snapshot löschen",
+            ["es"] = "Eliminar instantánea",
+            ["vi"] = "Xóa bản chụp"
+        };
+
+        Assert.All(expected, item =>
+        {
+            var strings = new LocalizationService(item.Key);
+            Assert.Equal(item.Value, strings.Translate("Snapshot.Delete"));
+        });
     }
 
     [Fact]
@@ -151,6 +251,12 @@ public sealed class LocalizationServiceTests
             Assert.Equal(description.English, english.Translate(description.Key));
             Assert.Equal(description.Italian, italian.Translate(description.Key));
         });
+
+        Assert.Equal("Data-retention status loaded.", english.Translate("RetentionStatusLoaded"));
+        Assert.Equal("Stato della conservazione dati caricato.", italian.Translate("RetentionStatusLoaded"));
+        Assert.Equal("Azzeramento totale", italian.Translate("Operations.AtomicNuke.Title"));
+        Assert.Equal("The operation could not be completed.", english.Translate("Operations.Result.Failure"));
+        Assert.Equal("Non è stato possibile completare l'operazione.", italian.Translate("Operations.Result.Failure"));
     }
 
     [Fact]

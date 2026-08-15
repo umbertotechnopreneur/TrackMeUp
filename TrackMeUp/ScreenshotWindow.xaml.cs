@@ -24,6 +24,8 @@ public sealed partial class ScreenshotWindow : Window
     private const double MinimumDetailsPaneWidth = 300d;
     private const double MaximumDetailsPaneWidthRatio = 0.5d;
     private const double DetailsPaneKeyboardResizeStep = 16d;
+    private const string DefaultAiDescriptionEmptyMessageKey = "Screenshots.AiDescription.Empty";
+    private const string DailyAiLimitEmptyMessageKey = "Notification.AiDailyLimitReached.Message";
 
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
@@ -37,6 +39,8 @@ public sealed partial class ScreenshotWindow : Window
     private LocalizationService _strings = new("system");
     private XamlRoot? _xamlRoot;
     private string _theme = "system";
+    private string _aiDescriptionEmptyMessageKey = DefaultAiDescriptionEmptyMessageKey;
+    private ScreenshotDetailsViewState? _selectedDetailsState;
     private bool _initialized;
     private bool _settingSelectedDate;
     private uint? _detailsResizePointerId;
@@ -237,6 +241,12 @@ public sealed partial class ScreenshotWindow : Window
                 return;
             }
 
+            await RefreshAiDescriptionEmptyMessageAsync(cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             SetSelectedDate(result.Value.Date);
             _items = result.Value.Items;
             SelectRequestedScreenshot();
@@ -257,6 +267,30 @@ public sealed partial class ScreenshotWindow : Window
             {
                 SetLoading(false);
             }
+        }
+    }
+
+    private async Task RefreshAiDescriptionEmptyMessageAsync(CancellationToken cancellationToken)
+    {
+        _aiDescriptionEmptyMessageKey = DefaultAiDescriptionEmptyMessageKey;
+        try
+        {
+            var result = await _application.GetAiStatusAsync(cancellationToken);
+            if (result.Succeeded &&
+                result.Value is { Enabled: true, CostGate: { Allowed: false, Reason: "daily_limit" } })
+            {
+                // Historical rows do not retain an empty-description reason; report only the truthful current gate state.
+                _aiDescriptionEmptyMessageKey = DailyAiLimitEmptyMessageKey;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // Contextual gate status is optional; the existing neutral empty-state copy remains the safe fallback.
+            _aiDescriptionEmptyMessageKey = DefaultAiDescriptionEmptyMessageKey;
         }
     }
 
@@ -362,7 +396,8 @@ public sealed partial class ScreenshotWindow : Window
             MetadataDateValueText.Text = "--";
             MetadataTimeValueText.Text = "--";
             MetadataAppValueText.Text = "--";
-            DetailsSection.Render(null);
+            _selectedDetailsState = null;
+            RenderDetails();
             MetadataPanel.Visibility = Visibility.Collapsed;
             return;
         }
@@ -373,13 +408,23 @@ public sealed partial class ScreenshotWindow : Window
         MetadataTimeValueText.Text = localTime.ToString("t", culture);
         MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication) ? "Desktop" : item.ForegroundApplication;
         var captureOrigin = FormatCaptureOrigin(item.CaptureOrigin);
-        DetailsSection.Render(ScreenshotDetailsProjection.Create(
+        _selectedDetailsState = ScreenshotDetailsProjection.Create(
             item,
             culture,
             FormatCaptureKind(item.CaptureKind),
             captureOrigin,
-            "--"));
+            "--");
+        RenderDetails();
         MetadataPanel.Visibility = Visibility.Visible;
+    }
+
+    private void RenderDetails()
+    {
+        // The pane starts collapsed, so explicitly localize its declared subtree whenever it is bound or revealed.
+        UiLocalization.Apply(DetailsSection, _strings);
+        DetailsSection.Render(
+            _selectedDetailsState,
+            _strings.Translate(_aiDescriptionEmptyMessageKey));
     }
 
     private void ScreenshotViewer_DetailsVisibilityRequested(bool isVisible) =>
@@ -391,6 +436,7 @@ public sealed partial class ScreenshotWindow : Window
         if (isVisible)
         {
             SetDetailsPaneWidth(double.IsNaN(DetailsPane.Width) ? DefaultDetailsPaneWidth : DetailsPane.Width);
+            RenderDetails();
         }
 
         UpdateDetailsToggleAccessibility();

@@ -16,6 +16,19 @@ internal static class UiLocalization
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(strings);
 
+        Apply(root, strings, new HashSet<DependencyObject>(ReferenceEqualityComparer.Instance));
+    }
+
+    private static void Apply(
+        DependencyObject root,
+        LocalizationService strings,
+        HashSet<DependencyObject> visited)
+    {
+        if (!visited.Add(root))
+        {
+            return;
+        }
+
         if (root is FrameworkElement element)
         {
             element.Language = strings.Language;
@@ -25,9 +38,44 @@ internal static class UiLocalization
             }
         }
 
+        // Declared children remain reachable here even while an options page is collapsed and absent
+        // from the realized visual tree. This keeps first-open surfaces in the selected language.
+        foreach (var child in DeclaredChildren(root))
+        {
+            Apply(child, strings, visited);
+        }
+
         for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
         {
-            Apply(VisualTreeHelper.GetChild(root, index), strings);
+            Apply(VisualTreeHelper.GetChild(root, index), strings, visited);
+        }
+    }
+
+    private static IEnumerable<DependencyObject> DeclaredChildren(DependencyObject root)
+    {
+        switch (root)
+        {
+            case Panel panel:
+                foreach (var child in panel.Children)
+                {
+                    yield return child;
+                }
+                break;
+            case UserControl userControl when userControl.Content is DependencyObject userContent:
+                yield return userContent;
+                break;
+            case ContentControl contentControl when contentControl.Content is DependencyObject controlContent:
+                yield return controlContent;
+                break;
+            case ContentPresenter presenter when presenter.Content is DependencyObject presenterContent:
+                yield return presenterContent;
+                break;
+            case ItemsControl itemsControl:
+                foreach (var child in itemsControl.Items.OfType<DependencyObject>())
+                {
+                    yield return child;
+                }
+                break;
         }
     }
 

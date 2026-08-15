@@ -12,8 +12,12 @@ public sealed partial class ScreenshotDetailsControl : UserControl
     public ScreenshotDetailsControl() => InitializeComponent();
 
     /// <summary>Replaces every displayed value with one immutable screenshot-detail projection.</summary>
-    public void Render(ScreenshotDetailsViewState? state)
+    /// <param name="state">The selected screenshot details, or <see langword="null"/> when no screenshot is selected.</param>
+    /// <param name="emptyAiDescriptionText">Localized contextual copy to show when the description has no rendered blocks.</param>
+    public void Render(ScreenshotDetailsViewState? state, string emptyAiDescriptionText)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(emptyAiDescriptionText);
+
         CapturedAtSummaryText.Text = state is null ? "--" : $"{state.CapturedDate} · {state.CapturedTime}";
         ActivityIndexValueText.Text = state?.ActivityIndex ?? "--";
         ApplicationValueText.Text = state?.Application ?? "--";
@@ -27,6 +31,7 @@ public sealed partial class ScreenshotDetailsControl : UserControl
 
         AiMarkdownHost.Children.Clear();
         var blocks = state?.AiDescription ?? Array.Empty<SafeMarkdownBlock>();
+        NoAiDescriptionText.Text = emptyAiDescriptionText;
         NoAiDescriptionText.Visibility = blocks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var block in blocks)
         {

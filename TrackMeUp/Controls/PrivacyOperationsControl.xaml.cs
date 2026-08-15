@@ -25,7 +25,7 @@ public sealed partial class PrivacyOperationsControl : UserControl
     }
 
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L);
+        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("PrivacyOperationsControl must be initialized before use.");
 

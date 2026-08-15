@@ -148,6 +148,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private DateTimeOffset? _nextActivityScoreTelemetryAt;
     private SystemSnapshot? _recentSystemSnapshot;
     private int _runtimeTimerActive;
+    private int _lastAiDailyLimitNotificationDateStamp;
     private DateTimeOffset _lastScreenshotStorageWarningAt = DateTimeOffset.MinValue;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private const int MaximumPendingNotifications = 32;
@@ -1125,6 +1126,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 Guid.NewGuid().ToString("N"),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
+            _logger.LogInformation(
+                "AI connection test succeeded. Provider={Provider} Model={Model} LatencyMs={LatencyMs}",
+                validatedSettings.AiProvider,
+                validatedSettings.Model,
+                stopwatch.ElapsedMilliseconds);
             return OperationResult<AiConnectionTestResult>.Success(
                 "ai.connection.succeeded",
                 "AiConnectionTestSucceeded",
@@ -2160,6 +2166,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private void EnqueueAiAnalysisFailure(string code, string? detail = null)
     {
+        if (string.Equals(code, "ai.cost_guardrail", StringComparison.Ordinal))
+        {
+            EnqueueAiDailyLimitReached();
+            return;
+        }
+
         EnqueueNotification(new ApplicationNotification(
             Guid.NewGuid(),
             DateTimeOffset.UtcNow,
@@ -2168,6 +2180,27 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             "Notification.AiAnalysisFailed.Message",
             code,
             detail));
+    }
+
+    private void EnqueueAiDailyLimitReached()
+    {
+        var today = DateTime.Now;
+        var dateStamp = checked((today.Year * 10_000) + (today.Month * 100) + today.Day);
+        if (Interlocked.Exchange(ref _lastAiDailyLimitNotificationDateStamp, dateStamp) == dateStamp)
+        {
+            return;
+        }
+
+        var settings = _store.LoadSettings();
+        var gate = BuildCostGate(settings);
+        EnqueueNotification(new ApplicationNotification(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            ApplicationNotificationSeverity.Warning,
+            "Notification.AiDailyLimitReached.Title",
+            "Notification.AiDailyLimitReached.Message",
+            "ai.cost_guardrail",
+            $"{gate.DailyAnalysisCount} / {settings.OpenAiDailyLimit}"));
     }
 
     private void EnqueueScreenshotCaptureFailure(Exception exception)

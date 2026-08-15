@@ -25,8 +25,8 @@
                         <GradientStop Color="#C8FFFFFF" Offset="0" />
                         <GradientStop Color="#36737688" Offset="1" />
                     </LinearGradientBrush>
-                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FFFFFFFF" TintOpacity="0.10" TintLuminosityOpacity="0.30" FallbackColor="#2BFFFFFF" />
-                    <SolidColorBrush x:Key="TimedInfoBarGlassBorderBrush" Color="#18727C78" />
+                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FFF8F8FA" TintOpacity="0.68" TintLuminosityOpacity="0.52" FallbackColor="#F4F7F7F8" />
+                    <SolidColorBrush x:Key="TimedInfoBarGlassBorderBrush" Color="#4D727C78" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
@@ -40,8 +40,8 @@
                         <GradientStop Color="#5CFFFFFF" Offset="0" />
                         <GradientStop Color="#18FFFFFF" Offset="1" />
                     </LinearGradientBrush>
-                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FF202029" TintOpacity="0.14" TintLuminosityOpacity="0.18" FallbackColor="#2B1C1D24" />
-                    <SolidColorBrush x:Key="TimedInfoBarGlassBorderBrush" Color="#18FFFFFF" />
+                    <AcrylicBrush x:Key="TimedInfoBarBackdropBrush" TintColor="#FF24252D" TintOpacity="0.60" TintLuminosityOpacity="0.24" FallbackColor="#F424252D" />
+                    <SolidColorBrush x:Key="TimedInfoBarGlassBorderBrush" Color="#3DFFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="BrandCoralBrush" ResourceKey="SystemColorHighlightColorBrush" />

@@ -4,6 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:TrackMeUp"
+    MaxWidth="620"
+    HorizontalAlignment="Stretch"
     Visibility="Collapsed">
     <Grid
         x:Name="BannerSurface"
@@ -15,8 +17,8 @@
             x:Name="AcrylicBackdrop"
             Background="{ThemeResource TimedInfoBarBackdropBrush}"
             BorderBrush="{ThemeResource TimedInfoBarGlassBorderBrush}"
-            BorderThickness="0.5"
-            CornerRadius="6" />
+            BorderThickness="1"
+            CornerRadius="14" />
         <InfoBar
             x:Name="BannerInfoBar"
             AutomationProperties.LiveSetting="Polite"
@@ -24,9 +26,11 @@
             BorderBrush="Transparent"
             BorderThickness="0"
             Closing="BannerInfoBar_Closing"
-            CornerRadius="6"
+            CornerRadius="14"
             IsClosable="True"
             IsOpen="False"
+            MinHeight="82"
+            Padding="6,4,6,10"
             local:InfoBarElevationBehavior.IsEnabled="False">
             <InfoBar.Resources>
                 <ResourceDictionary>
@@ -56,16 +60,18 @@
         <ProgressBar
             x:Name="CountdownProgress"
             Canvas.ZIndex="1"
-            Height="3"
-            Margin="1,0,1,1"
+            Height="2"
+            Margin="16,0,16,8"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Bottom"
             AutomationProperties.AccessibilityView="Raw"
-            Background="Transparent"
-            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+            Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+            CornerRadius="1"
+            Foreground="{ThemeResource BrandCoralBrush}"
             IsHitTestVisible="False"
             Maximum="100"
             Minimum="0"
+            Opacity="0.72"
             Value="0" />
     </Grid>
 </UserControl>

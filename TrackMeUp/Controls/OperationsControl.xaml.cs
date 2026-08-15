@@ -266,12 +266,17 @@ public sealed partial class OperationsControl : UserControl
             var result = await operation(Application, CancellationToken.None);
             if (result.Succeeded)
             {
-                ShowStatus(L("Operation completed", "Operazione completata"), result.Code, InfoBarSeverity.Success);
+                ShowStatus(
+                    L("Operation completed", "Operazione completata"),
+                    ResultMessage(result.MessageKey, succeeded: true),
+                    InfoBarSeverity.Success);
             }
             else
             {
-                var issues = result.Issues.Count == 0 ? string.Empty : $" · {string.Join(", ", result.Issues.Select(issue => $"{issue.Field}: {issue.Code}"))}";
-                ShowStatus(L("Operation failed", "Operazione non completata"), $"{result.Code}{issues}", InfoBarSeverity.Error);
+                ShowStatus(
+                    L("Operation failed", "Operazione non completata"),
+                    ResultMessage(result.MessageKey, succeeded: false),
+                    InfoBarSeverity.Error);
             }
 
             return result;
@@ -314,6 +319,14 @@ public sealed partial class OperationsControl : UserControl
                 Dialogs.ShowInfoBanner(OperationBanner, title, message);
                 break;
         }
+    }
+
+    private string ResultMessage(string messageKey, bool succeeded)
+    {
+        var localized = _strings.Translate(messageKey);
+        return !string.Equals(localized, messageKey, StringComparison.Ordinal)
+            ? localized
+            : _strings.Translate(succeeded ? "Operations.Result.Success" : "Operations.Result.Failure");
     }
 
     private string L(string english, string italian) => _strings.Language == "it" ? italian : english;

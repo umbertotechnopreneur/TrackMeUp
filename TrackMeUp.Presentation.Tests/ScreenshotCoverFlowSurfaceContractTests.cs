@@ -9,6 +9,27 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class ScreenshotCoverFlowSurfaceContractTests
 {
     [Fact]
+    public void ScreenshotDetails_UsesCurrentDailyGateForTheLocalizedEmptyDescription()
+    {
+        var details = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml"));
+        var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var detailsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml.cs"));
+        var emptyDescription = details.Descendants().Single(element => HasName(element, "NoAiDescriptionText"));
+
+        Assert.Equal("Screenshots.AiDescription.Empty", emptyDescription.Attribute("Tag")?.Value);
+        Assert.Contains("_application.GetAiStatusAsync(cancellationToken)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("CostGate: { Allowed: false, Reason: \"daily_limit\" }", windowSource, StringComparison.Ordinal);
+        Assert.Contains("DefaultAiDescriptionEmptyMessageKey = \"Screenshots.AiDescription.Empty\"", windowSource, StringComparison.Ordinal);
+        Assert.Contains("DailyAiLimitEmptyMessageKey = \"Notification.AiDailyLimitReached.Message\"", windowSource, StringComparison.Ordinal);
+        Assert.Contains("UiLocalization.Apply(DetailsSection, _strings);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_strings.Translate(_aiDescriptionEmptyMessageKey)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("NoAiDescriptionText.Text = emptyAiDescriptionText;", detailsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IAiAnalysisService", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("AnalyzeCapturedScreenAsync", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("LocalStore", windowSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ScreenshotGallery_UsesSingleZoomableViewerAndVirtualizedTimeline()
     {
         var gallery = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml"));

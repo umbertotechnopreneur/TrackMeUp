@@ -339,7 +339,9 @@ public sealed partial class MainWindow : Window
     }
 
     private static bool IsFrameAnalysisNotification(ApplicationNotification notification) =>
-        string.Equals(notification.TitleKey, "Notification.AiAnalysisFailed.Title", StringComparison.Ordinal);
+        notification.TitleKey is
+            "Notification.AiAnalysisFailed.Title" or
+            "Notification.AiDailyLimitReached.Title";
 
     private static bool IsWindowsToastNotification(ApplicationNotification notification) =>
         notification.TitleKey is
@@ -1023,35 +1025,54 @@ public sealed partial class MainWindow : Window
     {
         if (_pendingSnapshotDeleteInProgress)
         {
-            SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
-            DeleteSnapshotButton.Visibility = Visibility.Collapsed;
-            TakeScreenshotButton.IsEnabled = false;
+            HidePendingSnapshotDeleteUi(enableCapture: false);
             return;
         }
 
         if (pendingSnapshot is not { } pending)
         {
-            SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
-            DeleteSnapshotButton.Visibility = Visibility.Collapsed;
-            TakeScreenshotButton.IsEnabled = true;
+            HidePendingSnapshotDeleteUi(enableCapture: true);
             return;
         }
 
         var remaining = pending.ExpiresAt - DateTimeOffset.Now;
         if (remaining <= TimeSpan.Zero)
         {
-            SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
-            DeleteSnapshotButton.Visibility = Visibility.Collapsed;
-            TakeScreenshotButton.IsEnabled = true;
+            HidePendingSnapshotDeleteUi(enableCapture: true);
             return;
         }
 
-        var remainingSeconds = Math.Clamp(remaining.TotalSeconds, 0, PendingSnapshotDeleteSeconds);
-        SnapshotDeleteCountdownText.Text = $"00:{Math.Max(1, (int)Math.Ceiling(remainingSeconds)):00}";
+        var countdown = FormatPendingSnapshotCountdown(remaining);
+        var deleteAvailableLabel = T("Snapshot.DeleteAvailable");
+        var deleteLabel = T("Snapshot.Delete");
+        var accessibleStatus = $"{deleteAvailableLabel}, {countdown}";
+        SnapshotDeleteAvailableText.Text = deleteAvailableLabel;
+        SnapshotDeleteCountdownText.Text = countdown;
+        AutomationProperties.SetName(PendingSnapshotPanel, accessibleStatus);
+        AutomationProperties.SetHelpText(DeleteSnapshotButton, accessibleStatus);
+        AutomationProperties.SetName(DeleteSnapshotButton, deleteLabel);
+        ToolTipService.SetToolTip(DeleteSnapshotButton, deleteLabel);
         DeleteSnapshotButton.IsEnabled = true;
         DeleteSnapshotButton.Visibility = Visibility.Visible;
         TakeScreenshotButton.IsEnabled = false;
         SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: true);
+    }
+
+    private void HidePendingSnapshotDeleteUi(bool enableCapture)
+    {
+        SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
+        DeleteSnapshotButton.Visibility = Visibility.Collapsed;
+        TakeScreenshotButton.IsEnabled = enableCapture;
+        AutomationProperties.SetName(PendingSnapshotPanel, string.Empty);
+        AutomationProperties.SetHelpText(DeleteSnapshotButton, string.Empty);
+    }
+
+    private static string FormatPendingSnapshotCountdown(TimeSpan remaining)
+    {
+        var boundedSeconds = Math.Clamp(remaining.TotalSeconds, 1d, PendingSnapshotDeleteSeconds);
+        return TimeSpan
+            .FromSeconds(Math.Ceiling(boundedSeconds))
+            .ToString(@"mm\:ss", CultureInfo.InvariantCulture);
     }
 
     /// <summary>Renders the bounded one-minute score series supplied by the application facade.</summary>

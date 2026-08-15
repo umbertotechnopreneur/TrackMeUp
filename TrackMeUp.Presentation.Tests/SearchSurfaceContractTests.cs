@@ -131,6 +131,7 @@ public sealed class SearchSurfaceContractTests
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var localization = File.ReadAllText(RepositoryFile("TrackMeUp", "UiLocalization.cs"));
 
         Assert.Contains(options.Descendants(), element => HasName(element, "SearchOptionsView"));
         Assert.Contains(options.Descendants(), element => HasName(element, "SearchLanguageBox"));
@@ -141,6 +142,9 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("[\"ocr.enabled\"] = OcrEnabledSwitch.IsOn.ToString()", source, StringComparison.Ordinal);
         Assert.Contains("[\"search.synonyms\"] = SearchSynonymsSwitch.IsOn.ToString()", source, StringComparison.Ordinal);
         Assert.Contains("SearchIndexingRequested?.Invoke", source, StringComparison.Ordinal);
+        Assert.Contains("DeclaredChildren(root)", localization, StringComparison.Ordinal);
+        Assert.Contains("case Panel panel:", localization, StringComparison.Ordinal);
+        Assert.Contains("case UserControl userControl", localization, StringComparison.Ordinal);
     }
 
     [Fact]

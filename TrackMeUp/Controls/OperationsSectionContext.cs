@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
@@ -15,6 +14,7 @@ internal sealed class OperationsSectionContext
     private readonly ProgressRing _progress;
     private readonly UIElement _interactionRoot;
     private readonly Func<string, string, string> _localize;
+    private readonly Func<string, string> _translate;
     private bool _operationInProgress;
 
     internal OperationsSectionContext(
@@ -24,7 +24,8 @@ internal sealed class OperationsSectionContext
         TimedInfoBar status,
         ProgressRing progress,
         UIElement interactionRoot,
-        Func<string, string, string> localize)
+        Func<string, string, string> localize,
+        Func<string, string> translate)
     {
         Application = application ?? throw new ArgumentNullException(nameof(application));
         Dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
@@ -33,6 +34,7 @@ internal sealed class OperationsSectionContext
         _progress = progress ?? throw new ArgumentNullException(nameof(progress));
         _interactionRoot = interactionRoot ?? throw new ArgumentNullException(nameof(interactionRoot));
         _localize = localize ?? throw new ArgumentNullException(nameof(localize));
+        _translate = translate ?? throw new ArgumentNullException(nameof(translate));
     }
 
     internal ITrackMeUpApplication Application { get; }
@@ -63,13 +65,18 @@ internal sealed class OperationsSectionContext
             {
                 if (showSuccess)
                 {
-                    ShowStatus(L("Operation completed", "Operazione completata"), result.Code, InfoBarSeverity.Success);
+                    ShowStatus(
+                        L("Operation completed", "Operazione completata"),
+                        ResultMessage(result.MessageKey, succeeded: true),
+                        InfoBarSeverity.Success);
                 }
             }
             else
             {
-                var issues = result.Issues.Count == 0 ? string.Empty : $" · {string.Join(", ", result.Issues.Select(issue => $"{issue.Field}: {issue.Code}"))}";
-                ShowStatus(L("Operation failed", "Operazione non completata"), $"{result.Code}{issues}", InfoBarSeverity.Error);
+                ShowStatus(
+                    L("Operation failed", "Operazione non completata"),
+                    ResultMessage(result.MessageKey, succeeded: false),
+                    InfoBarSeverity.Error);
             }
 
             return result;
@@ -113,6 +120,14 @@ internal sealed class OperationsSectionContext
                 Dialogs.ShowInfoBanner(_status, title, message);
                 break;
         }
+    }
+
+    internal string ResultMessage(string messageKey, bool succeeded)
+    {
+        var localized = _translate(messageKey);
+        return !string.Equals(localized, messageKey, StringComparison.Ordinal)
+            ? localized
+            : _translate(succeeded ? "Operations.Result.Success" : "Operations.Result.Failure");
     }
 
     private string L(string english, string italian) => _localize(english, italian);

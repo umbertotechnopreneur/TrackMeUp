@@ -6,6 +6,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
@@ -21,6 +22,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     private const uint SwpNoActivate = 0x0010;
     private static readonly IntPtr HwndTopMost = new(-1);
     private readonly ITrackMeUpApplication _application;
+    private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
@@ -32,12 +34,20 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     private bool _isClosing;
 
     /// <summary>Creates the passive acrylic test surface using the shared application facade.</summary>
-    internal AiConnectionTestDialogWindow(ITrackMeUpApplication application, ElementTheme theme, AppWindow ownerAppWindow, IntPtr ownerHandle)
+    internal AiConnectionTestDialogWindow(
+        ITrackMeUpApplication application,
+        ElementTheme theme,
+        AppWindow ownerAppWindow,
+        IntPtr ownerHandle,
+        LocalizationService strings)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
+        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
         ArgumentNullException.ThrowIfNull(ownerAppWindow);
         InitializeComponent();
         RootGrid.RequestedTheme = theme;
+        UiLocalization.Apply(RootGrid, _strings);
+        Title = T("AiConnectionTest.WindowTitle");
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -91,8 +101,8 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         try
         {
             var requestTask = _application.TestAiConnectionAsync(_testCancellation.Token);
-            await AppendTerminalAsync($"$ prompt{Environment.NewLine}{AiConnectionTestProtocol.Prompt}", _testCancellation.Token);
-            TerminalStateText.Text = "WAITING";
+            await AppendTerminalAsync($"$ {T("AiConnectionTest.Terminal.Prompt")}{Environment.NewLine}{AiConnectionTestProtocol.Prompt}", _testCancellation.Token);
+            TerminalStateText.Text = T("AiConnectionTest.State.Waiting");
             var result = await requestTask;
             if (_isClosing)
             {
@@ -102,23 +112,23 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
             if (result.Succeeded && result.Value is not null)
             {
                 CompleteTest(success: true);
-                TitleText.Text = "AI provider connected";
+                TitleText.Text = T("AiConnectionTest.Connected.Title");
                 StatusText.Text = $"{ProviderDisplayName(result.Value.Provider)} · {result.Value.Model} · {result.Value.ElapsedMilliseconds:N0} ms";
-                TerminalStateText.Text = "RESPONSE";
-                var output = string.IsNullOrWhiteSpace(result.Value.Output) ? "<empty response>" : result.Value.Output.Trim();
-                await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}> response{Environment.NewLine}{output}", CancellationToken.None);
+                TerminalStateText.Text = T("AiConnectionTest.State.Response");
+                var output = string.IsNullOrWhiteSpace(result.Value.Output) ? T("AiConnectionTest.EmptyResponse") : result.Value.Output.Trim();
+                await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}> {T("AiConnectionTest.Terminal.Response")}{Environment.NewLine}{output}", CancellationToken.None);
                 return;
             }
 
             CompleteTest(success: false);
-            TitleText.Text = "AI provider connection failed";
+            TitleText.Text = T("AiConnectionTest.Failed.Title");
             StatusText.Text = result.Code == "ai.connection.key.missing"
-                ? "No usable API key is available for the selected AI provider."
+                ? T("AiConnectionTest.Failed.MissingKey")
                 : result.Code == "ai.connection.configuration.invalid"
-                    ? "Save a valid AI provider configuration before testing it."
-                    : "The AI provider could not confirm the connection. Check the endpoint, model and key.";
-            TerminalStateText.Text = "ERROR";
-            await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}! error{Environment.NewLine}{StatusText.Text}", CancellationToken.None);
+                    ? T("AiConnectionTest.Failed.InvalidConfiguration")
+                    : T("AiConnectionTest.Failed.Generic");
+            TerminalStateText.Text = T("AiConnectionTest.State.Error");
+            await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}! {T("AiConnectionTest.Terminal.Error")}{Environment.NewLine}{StatusText.Text}", CancellationToken.None);
         }
         catch (OperationCanceledException) when (_isClosing)
         {
@@ -127,10 +137,10 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         catch (OperationCanceledException) when (!_isClosing)
         {
             CompleteTest(success: false);
-            TitleText.Text = "AI provider timed out";
-            StatusText.Text = "The AI provider did not respond within 30 seconds.";
-            TerminalStateText.Text = "TIMEOUT";
-            await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}! timeout{Environment.NewLine}{StatusText.Text}", CancellationToken.None);
+            TitleText.Text = T("AiConnectionTest.Timeout.Title");
+            StatusText.Text = T("AiConnectionTest.Timeout.Message");
+            TerminalStateText.Text = T("AiConnectionTest.State.Timeout");
+            await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}! {T("AiConnectionTest.Terminal.Timeout")}{Environment.NewLine}{StatusText.Text}", CancellationToken.None);
         }
     }
 
@@ -149,7 +159,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         ResultIcon.Glyph = success ? "\uE73E" : "\uEA39";
         ResultIcon.Foreground = new SolidColorBrush(success ? Colors.ForestGreen : Colors.IndianRed);
         ResultIcon.Visibility = Visibility.Visible;
-        CloseButton.Content = "Close";
+        CloseButton.Content = T("AiConnectionTest.Close");
     }
 
     private async Task AppendTerminalAsync(string text, CancellationToken cancellationToken)
@@ -172,6 +182,8 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         "anthropic" => "Anthropic",
         _ => provider
     };
+
+    private string T(string key) => _strings.Translate(key);
 
     private async void CloseButton_Click(object sender, RoutedEventArgs e)
     {

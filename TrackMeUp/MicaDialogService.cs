@@ -215,6 +215,9 @@ internal sealed class MicaDialogService
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(owner);
+        var settings = await application.GetSettingsAsync(CancellationToken.None);
+        // If settings cannot be read, system language is the safe presentation-only fallback.
+        var strings = new LocalizationService(settings is { Succeeded: true, Value: { } value } ? value.UiLanguage : "system");
         await _queue.WaitAsync();
         var ownerContent = owner.Content as UIElement;
         var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
@@ -234,7 +237,7 @@ internal sealed class MicaDialogService
             }
 
             var ownerAppWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(ownerHandle));
-            dialog = new AiConnectionTestDialogWindow(application, theme, ownerAppWindow, ownerHandle);
+            dialog = new AiConnectionTestDialogWindow(application, theme, ownerAppWindow, ownerHandle, strings);
             _activeWindow = dialog;
             disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
             await dialog.ShowAsync();

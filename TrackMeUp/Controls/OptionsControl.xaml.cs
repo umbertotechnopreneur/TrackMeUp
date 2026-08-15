@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ public sealed partial class OptionsControl : UserControl
     private IReadOnlyList<AiModelOption> _modelOptions = Array.Empty<AiModelOption>();
     private string _requestedThinkingEffort = "auto";
     private bool _updatingAiToggle;
+    private int? _openAiDailyLimit;
 
     /// <summary>Initializes the options control.</summary>
     public OptionsControl() => InitializeComponent();
@@ -78,6 +80,7 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(PluginsOperationsLink, T("Options.Navigation.Plugins.Action"));
         AutomationProperties.SetHelpText(PluginsOperationsLink, T("Options.Navigation.Plugins.Description"));
         UpdateApiKeyPresentation();
+        UpdateAiQuotaPresentation();
         UpdateScreenshotModeHint();
         NotifyLayoutChanged();
     }
@@ -147,6 +150,7 @@ public sealed partial class OptionsControl : UserControl
         {
             await _aiState.LoadAsync(CancellationToken.None);
         }
+        UpdateAiQuotaPresentation();
     }
 
     /// <summary>Shows the focused local-search and OCR settings view.</summary>
@@ -367,6 +371,7 @@ public sealed partial class OptionsControl : UserControl
 
     private void ApplySettings(AppSettings settings)
     {
+        _openAiDailyLimit = settings.OpenAiDailyLimit;
         ApplyLanguage(settings.UiLanguage);
         _requestedThinkingEffort = settings.AiReasoningEffort;
         SelectModel(settings.Model);
@@ -396,6 +401,7 @@ public sealed partial class OptionsControl : UserControl
         SelectTheme(settings.Theme);
         AiCustomPromptBox.Text = settings.AiCustomPrompt;
         IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
+        UpdateAiQuotaPresentation();
         UpdateScreenshotModeHint();
         NotifyLayoutChanged();
     }
@@ -491,6 +497,11 @@ public sealed partial class OptionsControl : UserControl
         {
             UpdateApiKeyPresentation();
         }
+
+        if (e.PropertyName == nameof(AiApplicationState.CostGate))
+        {
+            UpdateAiQuotaPresentation();
+        }
     }
 
     private void UpdateApiKeyPresentation()
@@ -520,6 +531,49 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(ApiKeyExpander, actionLabel);
         AutomationProperties.SetHelpText(ApiKeyExpander, ApiKeyStatusText.Text);
         VisualStateManager.GoToState(this, visualState, false);
+        NotifyLayoutChanged();
+    }
+
+    private void UpdateAiQuotaPresentation()
+    {
+        var title = T("Options.AiQuota.Title");
+        var description = T("Options.AiQuota.Description");
+        AiQuotaTitleText.Text = title;
+        AiQuotaDescriptionText.Text = description;
+        AutomationProperties.SetName(AiQuotaPanel, title);
+        AutomationProperties.SetHelpText(AiQuotaPanel, description);
+
+        var costGate = _aiState?.CostGate;
+        if (costGate is null || !_openAiDailyLimit.HasValue)
+        {
+            var unavailable = T("Options.AiQuota.Unavailable");
+            AiQuotaStateText.Text = unavailable;
+            AiQuotaUsageText.Text = "– / –";
+            AiQuotaProgressBar.Maximum = 1;
+            AiQuotaProgressBar.Value = 0;
+            AutomationProperties.SetName(AiQuotaProgressBar, T("Options.AiQuota.UnavailableAccessible"));
+            AutomationProperties.SetHelpText(AiQuotaProgressBar, description);
+            VisualStateManager.GoToState(this, "AiQuotaUnavailable", false);
+            NotifyLayoutChanged();
+            return;
+        }
+
+        var used = Math.Max(0, costGate.DailyAnalysisCount);
+        var limit = Math.Max(0, _openAiDailyLimit.Value);
+        var reached = limit == 0
+            || used >= limit
+            || string.Equals(costGate.Reason, "daily_limit", StringComparison.Ordinal);
+        var status = T(reached ? "Options.AiQuota.Reached" : "Options.AiQuota.Available");
+        var progressMaximum = Math.Max(1, limit);
+
+        AiQuotaStateText.Text = status;
+        AiQuotaUsageText.Text = string.Format(CultureInfo.CurrentCulture, "{0} / {1}", used, limit);
+        AiQuotaProgressBar.Maximum = progressMaximum;
+        AiQuotaProgressBar.Value = limit == 0 ? progressMaximum : Math.Clamp(used, 0, progressMaximum);
+        AutomationProperties.SetName(AiQuotaProgressBar,
+            string.Format(CultureInfo.CurrentCulture, T("Options.AiQuota.ProgressAccessible"), used, limit, status));
+        AutomationProperties.SetHelpText(AiQuotaProgressBar, description);
+        VisualStateManager.GoToState(this, reached ? "AiQuotaReached" : "AiQuotaAvailable", false);
         NotifyLayoutChanged();
     }
 

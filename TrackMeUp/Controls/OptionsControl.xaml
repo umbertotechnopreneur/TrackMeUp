@@ -29,6 +29,38 @@
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
+            <VisualStateGroup x:Name="AiQuotaStates">
+                <VisualState x:Name="AiQuotaAvailable">
+                    <VisualState.Setters>
+                        <Setter Target="AiQuotaPanel.BorderBrush" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <Setter Target="AiQuotaAccentBar.Background" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <Setter Target="AiQuotaStateIcon.Foreground" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <Setter Target="AiQuotaStateIcon.Glyph" Value="&#xE73E;" />
+                        <Setter Target="AiQuotaStateText.Foreground" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <Setter Target="AiQuotaProgressBar.Foreground" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="AiQuotaReached">
+                    <VisualState.Setters>
+                        <Setter Target="AiQuotaPanel.BorderBrush" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Setter Target="AiQuotaAccentBar.Background" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Setter Target="AiQuotaStateIcon.Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Setter Target="AiQuotaStateIcon.Glyph" Value="&#xE7BA;" />
+                        <Setter Target="AiQuotaStateText.Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Setter Target="AiQuotaProgressBar.Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="AiQuotaUnavailable">
+                    <VisualState.Setters>
+                        <Setter Target="AiQuotaPanel.BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                        <Setter Target="AiQuotaAccentBar.Background" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Setter Target="AiQuotaStateIcon.Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Setter Target="AiQuotaStateIcon.Glyph" Value="&#xE946;" />
+                        <Setter Target="AiQuotaStateText.Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Setter Target="AiQuotaProgressBar.Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
@@ -732,6 +764,80 @@
                             OnContent=""
                             Toggled="OpenAiEnabledSwitch_Toggled" />
                     </Grid>
+
+                    <Border
+                        x:Name="AiQuotaPanel"
+                        Margin="0,10,0,2"
+                        Padding="12"
+                        AutomationProperties.LiveSetting="Polite"
+                        Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="4" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border
+                                x:Name="AiQuotaAccentBar"
+                                Background="{ThemeResource TextFillColorSecondaryBrush}"
+                                CornerRadius="2" />
+                            <StackPanel Grid.Column="1" Spacing="7">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        x:Name="AiQuotaTitleText"
+                                        Tag="Options.AiQuota.Title"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="Daily description quota"
+                                        TextWrapping="Wrap" />
+                                    <StackPanel
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="5">
+                                        <FontIcon
+                                            x:Name="AiQuotaStateIcon"
+                                            AutomationProperties.AccessibilityView="Raw"
+                                            FontFamily="Segoe Fluent Icons"
+                                            FontSize="13"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Glyph="&#xE946;" />
+                                        <TextBlock
+                                            x:Name="AiQuotaStateText"
+                                            VerticalAlignment="Center"
+                                            FontWeight="SemiBold"
+                                            Text="Quota unavailable" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock
+                                    x:Name="AiQuotaUsageText"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    FontSize="26"
+                                    FontWeight="SemiBold"
+                                    Text="– / –" />
+                                <ProgressBar
+                                    x:Name="AiQuotaProgressBar"
+                                    Height="6"
+                                    AutomationProperties.Name="Daily AI description quota unavailable"
+                                    IsHitTestVisible="False"
+                                    Maximum="1"
+                                    Minimum="0"
+                                    Value="0" />
+                                <TextBlock
+                                    x:Name="AiQuotaDescriptionText"
+                                    Tag="Options.AiQuota.Description"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Only AI descriptions created successfully count toward this quota. It resets at local midnight: new descriptions resume then; screenshots already saved without one are not reprocessed automatically."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
                     <StackPanel
                         Margin="0,8,0,0"

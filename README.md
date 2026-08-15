@@ -193,6 +193,9 @@ Quick Setup validation checklist:
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
 - [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
 - [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
+- [ ] In Italian, open Local search/OCR, Operations, and the AI provider connection test: every heading, action, result banner, and dialog control is localized, with no raw result codes shown to the user.
+- [ ] In AI options, the daily successful-description quota clearly shows used versus configured capacity, available/limit-reached state, an accessible progress indicator, local-midnight reset semantics, and that historical captures are not reprocessed automatically.
+- [ ] Take a manual snapshot near the end of its deletion window: the localized delete label may trim, but the complete `mm:ss` countdown and the accessible delete action remain visible and correct.
 - [ ] From **Activity > Activity calendar**, recorded days are marked in the rolling twelve-month calendar; selecting a day shows its exact 0–100 activity-intensity score and the active, idle, tracked, keyboard, and mouse totals, while a date without samples remains explicitly marked as no data.
 - [ ] With AI descriptions and OCR refinement enabled, an incomplete OCR-provider response is recorded as a failed refinement but the raw OCR remains available and the visual screenshot description is still requested and saved.
 - [ ] With a full day of retained captures, opening **Captured moments** keeps pointer and window interaction responsive while the cancellable gallery projection loads in the background; each capture still shows only the activity from its own interval.

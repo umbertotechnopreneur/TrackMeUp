@@ -27,7 +27,7 @@ public sealed partial class PluginOperationsControl : UserControl
     }
 
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
-        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L);
+        _context = new OperationsSectionContext(application, dialogs, ownerWindow, banner, Progress, SectionBody, L, key => _strings.Translate(key));
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("PluginOperationsControl must be initialized before use.");
 
@@ -63,7 +63,10 @@ public sealed partial class PluginOperationsControl : UserControl
             updatedPlugin.Enabled == requestedState)
         {
             ReplacePlugin(updatedPlugin);
-            Context.ShowStatus(L("Operation completed", "Operazione completata"), result.Code, InfoBarSeverity.Success);
+            Context.ShowStatus(
+                L("Operation completed", "Operazione completata"),
+                Context.ResultMessage(result.MessageKey, succeeded: true),
+                InfoBarSeverity.Success);
             return;
         }
 

@@ -541,6 +541,7 @@
                                 </Button>
                                 <Button
                                     x:Name="DeleteSnapshotButton"
+                                    Tag="Snapshot.Delete"
                                     Width="32"
                                     Height="32"
                                     Padding="0"
@@ -577,30 +578,44 @@
                             <Grid
                                 x:Name="PendingSnapshotPanel"
                                 Margin="0,3,0,1"
+                                AutomationProperties.AccessibilityView="Content"
+                                ColumnSpacing="5"
                                 Visibility="Collapsed">
-                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <TextBlock
-                                        Tag="Snapshot.DeleteAvailable"
-                                        VerticalAlignment="Center"
-                                        FontSize="10"
-                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                        MaxLines="1"
-                                        Text="Delete available"
-                                        TextTrimming="CharacterEllipsis" />
-                                    <TextBlock
-                                        VerticalAlignment="Center"
-                                        AutomationProperties.AccessibilityView="Raw"
-                                        FontSize="10"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Text="·" />
-                                    <TextBlock
-                                        x:Name="SnapshotDeleteCountdownText"
-                                        VerticalAlignment="Center"
-                                        FontSize="10"
-                                        FontWeight="SemiBold"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Text="00:30" />
-                                </StackPanel>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="SnapshotDeleteAvailableText"
+                                    Grid.Column="0"
+                                    Tag="Snapshot.DeleteAvailable"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontSize="10"
+                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                    MaxLines="1"
+                                    Text="Delete available"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontSize="10"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="·" />
+                                <TextBlock
+                                    x:Name="SnapshotDeleteCountdownText"
+                                    Grid.Column="2"
+                                    MinWidth="36"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontSize="10"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="00:30"
+                                    TextAlignment="Right" />
                             </Grid>
                             <TextBlock
                                 x:Name="CurrentContextText"
