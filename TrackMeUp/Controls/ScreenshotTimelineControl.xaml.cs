@@ -68,37 +68,6 @@ public sealed partial class ScreenshotTimelineControl : UserControl
         QueueNavigationAvailabilityUpdate();
     }
 
-    /// <summary>Synchronizes the selected thumbnail with another gallery surface.</summary>
-    public void SetSelectedIndex(int selectedIndex)
-    {
-        if (_entries.Count == 0 && selectedIndex == -1)
-        {
-            return;
-        }
-
-        if (selectedIndex < 0 || selectedIndex >= _entries.Count)
-        {
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex), selectedIndex, "The selected screenshot must exist in the timeline.");
-        }
-
-        if (FilmstripList.SelectedIndex == selectedIndex)
-        {
-            return;
-        }
-
-        _updatingSelection = true;
-        try
-        {
-            FilmstripList.SelectedIndex = selectedIndex;
-        }
-        finally
-        {
-            _updatingSelection = false;
-        }
-
-        BringSelectionIntoView();
-    }
-
     private ScreenshotTimelineEntry CreateEntry(ScreenshotGalleryItem item, int index)
     {
         if (!Uri.TryCreate(item.Path, UriKind.Absolute, out _))

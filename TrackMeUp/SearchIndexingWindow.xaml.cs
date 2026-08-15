@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
@@ -57,7 +56,7 @@ internal sealed partial class SearchIndexingWindow : Window
             LogicalHeight,
             LogicalScreenMargin,
             ownerAppWindow.Id);
-        SetWindowOwner(windowHandle, ownerHandle);
+        WindowInteropService.SetOwner(windowHandle, ownerHandle);
         ConfigureWindowBehavior();
         ApplyTheme(theme);
         ApplyLanguage(language);
@@ -327,15 +326,6 @@ internal sealed partial class SearchIndexingWindow : Window
     }
 
     private string T(string key) => _strings.Translate(key);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-    private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
-    {
-        const int GwlHwndParent = -8;
-        _ = SetWindowLongPtr(windowHandle, GwlHwndParent, ownerHandle);
-    }
 
     private enum IndexingWindowState
     {

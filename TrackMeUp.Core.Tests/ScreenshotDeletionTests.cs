@@ -361,7 +361,7 @@ public sealed class ScreenshotDeletionTests
         new(
             store,
             new UtilityService(),
-            new TrackingDomainService(store, new UtilityService()),
+            new TrackingDomainService(store),
             new UnexpectedCaptureService(),
             new SystemSnapshotService(),
             analysis ?? new UnexpectedAnalysisService(),

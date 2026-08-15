@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.Extensions.DependencyInjection;
-using Spectre.Console.Cli;
 using TrackMeUp.Application;
 using TrackMeUp.Runtime;
 
@@ -69,16 +67,7 @@ public static class CliBootstrap
                 return 4;
             }
 
-            var services = new ServiceCollection()
-                .AddSingleton(options)
-                .AddSingleton(output)
-                .AddSingleton<ITrackMeUpApplication>(application)
-                .AddSingleton(new CliRouter(application, output, options))
-                .BuildServiceProvider();
-            var router = services.GetRequiredService<CliRouter>();
-
-            // Keep Spectre.Console.Cli in the command composition path; command parsing remains shared by one-shot and REPL modes.
-            _ = new CommandApp();
+            var router = new CliRouter(application, output, options);
             return await router.RunAsync(commandArguments, cancellation.Token);
         }
         finally

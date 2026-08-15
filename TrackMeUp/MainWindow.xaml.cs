@@ -781,7 +781,7 @@ public sealed partial class MainWindow : Window
         var result = await _application.PatchSettingsAsync(
             new SettingsPatch(new Dictionary<string, string?>
             {
-                ["screenshots.enabled"] = requestedValue.ToString()
+                ["screenshots.enabled"] = requestedValue ? "true" : "false"
             }),
             CancellationToken.None);
 

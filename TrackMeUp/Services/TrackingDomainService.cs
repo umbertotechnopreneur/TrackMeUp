@@ -24,8 +24,7 @@ public sealed class TrackingDomainService : IDisposable
     /// Initializes a new tracking domain service.
     /// </summary>
     /// <param name="store">Persistent store used for summaries and settings.</param>
-    /// <param name="utilities">Shared utility service (required for compatibility with future persistence strategies).</param>
-    public TrackingDomainService(LocalStore store, UtilityService utilities)
+    public TrackingDomainService(LocalStore store)
     {
         _store = store;
         _monitor = new ActivityMonitorService(_store, _inputHooks);
@@ -40,7 +39,6 @@ public sealed class TrackingDomainService : IDisposable
     public event Action<bool>? TrackingStateChanged;
 
     public bool IsTracking => _trackingStartedAt is not null;
-    public DateTimeOffset? TrackingStartedAt => _trackingStartedAt;
     public AnalysisContextSnapshot? LatestAnalysisContext => _latestSample is null
         ? null
         : ToAnalysisContext(_latestSample);
@@ -146,20 +144,6 @@ public sealed class TrackingDomainService : IDisposable
         }
 
         return new LastSessionState(sample.Timestamp, sample.Application, sample.Context, sample.InstallationId, sample.Attributes, screenshotPath, screenshotCapturedAt);
-    }
-
-    /// <summary>
-    /// Returns a compact elapsed timer label for the running tracking session.
-    /// </summary>
-    public string GetElapsedLabel()
-    {
-        if (_trackingStartedAt is null)
-        {
-            return "00:00";
-        }
-
-        var elapsed = DateTimeOffset.Now - _trackingStartedAt.Value;
-        return $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
     }
 
     /// <summary>

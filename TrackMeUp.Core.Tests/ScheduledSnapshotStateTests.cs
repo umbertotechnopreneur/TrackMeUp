@@ -31,7 +31,7 @@ public sealed class ScheduledSnapshotStateTests
             await using var application = new TrackMeUpApplication(
                 store,
                 utilities,
-                new TrackingDomainService(store, utilities),
+                new TrackingDomainService(store),
                 new ScreenCaptureService(utilities.GetAppVersion()),
                 new SystemSnapshotService(),
                 new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion()), new SystemSnapshotService()),
@@ -71,7 +71,7 @@ public sealed class ScheduledSnapshotStateTests
             await using var application = new TrackMeUpApplication(
                 store,
                 utilities,
-                new TrackingDomainService(store, utilities),
+                new TrackingDomainService(store),
                 new ScreenCaptureService(utilities.GetAppVersion()),
                 new SystemSnapshotService(),
                 new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion()), new SystemSnapshotService()),
@@ -126,7 +126,7 @@ public sealed class ScheduledSnapshotStateTests
             await using var application = new TrackMeUpApplication(
                 store,
                 utilities,
-                new TrackingDomainService(store, utilities),
+                new TrackingDomainService(store),
                 capture,
                 new SystemSnapshotService(),
                 analysis,

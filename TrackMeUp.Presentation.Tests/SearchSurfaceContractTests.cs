@@ -148,8 +148,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(options.Descendants(), element => HasName(element, "SearchTypoToleranceSwitch"));
         Assert.Contains(options.Descendants(), element => HasName(element, "OcrEnabledSwitch"));
         Assert.DoesNotContain(options.Descendants(), element => HasName(element, "SearchEnabledSwitch"));
-        Assert.Contains("[\"ocr.enabled\"] = OcrEnabledSwitch.IsOn.ToString()", source, StringComparison.Ordinal);
-        Assert.Contains("[\"search.synonyms\"] = SearchSynonymsSwitch.IsOn.ToString()", source, StringComparison.Ordinal);
+        Assert.Contains("[\"ocr.enabled\"] = OcrEnabledSwitch.IsOn ? \"true\" : \"false\"", source, StringComparison.Ordinal);
+        Assert.Contains("[\"search.synonyms\"] = SearchSynonymsSwitch.IsOn ? \"true\" : \"false\"", source, StringComparison.Ordinal);
         Assert.Contains("SearchIndexingRequested?.Invoke", source, StringComparison.Ordinal);
         Assert.Contains("DeclaredChildren(root)", localization, StringComparison.Ordinal);
         Assert.Contains("case Panel panel:", localization, StringComparison.Ordinal);

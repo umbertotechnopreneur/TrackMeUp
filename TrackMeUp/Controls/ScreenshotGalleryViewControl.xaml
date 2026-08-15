@@ -22,10 +22,10 @@
                 <ResourceDictionary x:Key="Dark">
                     <AcrylicBrush
                         x:Key="ScreenshotMetadataBackdropBrush"
-                        FallbackColor="#EA1B1E24"
-                        TintColor="#FF15191F"
-                        TintLuminosityOpacity="0.12"
-                        TintOpacity="0.09" />
+                        FallbackColor="#F0181D24"
+                        TintColor="#FF10151B"
+                        TintLuminosityOpacity="0.24"
+                        TintOpacity="0.15" />
                     <LinearGradientBrush x:Key="ScreenshotMetadataBorderBrush" StartPoint="0,0" EndPoint="1,1">
                         <GradientStop Color="#62FFFFFF" Offset="0" />
                         <GradientStop Color="#16FFFFFF" Offset="1" />

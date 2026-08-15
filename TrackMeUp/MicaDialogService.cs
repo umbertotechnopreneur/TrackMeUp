@@ -4,7 +4,6 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
 using TrackMeUp.Services;
@@ -195,7 +194,11 @@ internal sealed class MicaDialogService
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(overview);
         ArgumentNullException.ThrowIfNull(strings);
-        await ShowPricingWindowAsync(application, owner, overview, theme, strings);
+        await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new AiPricingDialogWindow(application, overview, theme, strings, ownerAppWindow, ownerHandle);
+            await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
     }
 
     /// <summary>Shows the native rolling activity calendar in the shared acrylic dialog queue.</summary>
@@ -207,7 +210,29 @@ internal sealed class MicaDialogService
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(strings);
-        await ShowActivityCalendarWindowAsync(application, owner, theme, strings);
+        await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle);
+            var result = await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+            if (result is null || _isShuttingDown)
+            {
+                return;
+            }
+
+            // Both surfaces retain the same queue lease, so the chained modal flow cannot interleave with another dialog.
+            var reprocessingDialog = new AiScreenshotReprocessingDialogWindow(
+                application,
+                result.Date,
+                theme,
+                strings,
+                ownerAppWindow,
+                ownerHandle);
+            await ShowDialogWindowAsync(
+                reprocessingDialog,
+                reprocessingDialog.WindowHandle,
+                reprocessingDialog.ShowAsync,
+                reprocessingDialog.DisposePlacement);
+        });
     }
 
     /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
@@ -218,46 +243,11 @@ internal sealed class MicaDialogService
         var settings = await application.GetSettingsAsync(CancellationToken.None);
         // If settings cannot be read, system language is the safe presentation-only fallback.
         var strings = new LocalizationService(settings is { Succeeded: true, Value: { } value } ? value.UiLanguage : "system");
-        await _queue.WaitAsync();
-        var ownerContent = owner.Content as UIElement;
-        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
-        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-        AiConnectionTestDialogWindow? dialog = null;
-        List<IntPtr>? disabledPeerWindows = null;
-        try
+        await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
         {
-            if (_isShuttingDown)
-            {
-                return;
-            }
-
-            if (ownerContent is not null)
-            {
-                ownerContent.IsHitTestVisible = false;
-            }
-
-            var ownerAppWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(ownerHandle));
-            dialog = new AiConnectionTestDialogWindow(application, theme, ownerAppWindow, ownerHandle, strings);
-            _activeWindow = dialog;
-            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
-            await dialog.ShowAsync();
-        }
-        finally
-        {
-            _activeWindow = null;
-            dialog?.DisposePlacement();
-            if (disabledPeerWindows is not null)
-            {
-                RestoreDialogPeerWindows(disabledPeerWindows);
-            }
-
-            if (ownerContent is not null)
-            {
-                ownerContent.IsHitTestVisible = ownerWasInteractive;
-            }
-
-            _queue.Release();
-        }
+            var dialog = new AiConnectionTestDialogWindow(application, theme, ownerAppWindow, ownerHandle, strings);
+            await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
     }
 
     /// <summary>Closes the current dialog during application shutdown.</summary>
@@ -269,19 +259,41 @@ internal sealed class MicaDialogService
 
     private async Task<MicaDialogResult> ShowAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
     {
-        ArgumentNullException.ThrowIfNull(owner);
         Validate(request);
+        return await RunModalSessionAsync(owner, MicaDialogResult.Cancel, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new MicaDialogWindow(application, request, theme, ownerAppWindow, ownerHandle);
+            return await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
+    }
+
+    private async Task RunModalSessionAsync(
+        Window owner,
+        Func<AppWindow, IntPtr, Task> showAsync)
+    {
+        ArgumentNullException.ThrowIfNull(showAsync);
+        _ = await RunModalSessionAsync(owner, false, async (ownerAppWindow, ownerHandle) =>
+        {
+            await showAsync(ownerAppWindow, ownerHandle);
+            return true;
+        });
+    }
+
+    private async Task<TResult> RunModalSessionAsync<TResult>(
+        Window owner,
+        TResult shutdownResult,
+        Func<AppWindow, IntPtr, Task<TResult>> showAsync)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(showAsync);
         await _queue.WaitAsync();
         var ownerContent = owner.Content as UIElement;
         var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
-        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-        MicaDialogWindow? dialog = null;
-        List<IntPtr>? disabledPeerWindows = null;
         try
         {
             if (_isShuttingDown)
             {
-                return MicaDialogResult.Cancel;
+                return shutdownResult;
             }
 
             if (ownerContent is not null)
@@ -289,24 +301,13 @@ internal sealed class MicaDialogService
                 ownerContent.IsHitTestVisible = false;
             }
 
+            var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
             var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
             var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
-            dialog = new MicaDialogWindow(application, request, theme, ownerAppWindow, ownerHandle);
-            _activeWindow = dialog;
-            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
-
-            var result = await dialog.ShowAsync();
-            return result;
+            return await showAsync(ownerAppWindow, ownerHandle);
         }
         finally
         {
-            _activeWindow = null;
-            dialog?.DisposePlacement();
-            if (disabledPeerWindows is not null)
-            {
-                RestoreDialogPeerWindows(disabledPeerWindows);
-            }
-
             if (ownerContent is not null)
             {
                 ownerContent.IsHitTestVisible = ownerWasInteractive;
@@ -316,119 +317,49 @@ internal sealed class MicaDialogService
         }
     }
 
-    private async Task ShowPricingWindowAsync(
-        ITrackMeUpApplication application,
-        Window owner,
-        AiPricingOverview overview,
-        ElementTheme theme,
-        LocalizationService strings)
+    private async Task ShowDialogWindowAsync(
+        Window dialog,
+        IntPtr dialogHandle,
+        Func<Task> showAsync,
+        Action disposePlacement)
     {
-        ArgumentNullException.ThrowIfNull(owner);
-        await _queue.WaitAsync();
-        var ownerContent = owner.Content as UIElement;
-        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
-        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-        AiPricingDialogWindow? dialog = null;
-        List<IntPtr>? disabledPeerWindows = null;
-        try
+        _ = await ShowDialogWindowAsync(dialog, dialogHandle, async () =>
         {
-            if (_isShuttingDown)
-            {
-                return;
-            }
-
-            if (ownerContent is not null)
-            {
-                ownerContent.IsHitTestVisible = false;
-            }
-
-            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
-            var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
-            dialog = new AiPricingDialogWindow(application, overview, theme, strings, ownerAppWindow, ownerHandle);
-            _activeWindow = dialog;
-            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
-            await dialog.ShowAsync();
-        }
-        finally
-        {
-            _activeWindow = null;
-            dialog?.DisposePlacement();
-            if (disabledPeerWindows is not null)
-            {
-                RestoreDialogPeerWindows(disabledPeerWindows);
-            }
-
-            if (ownerContent is not null)
-            {
-                ownerContent.IsHitTestVisible = ownerWasInteractive;
-            }
-
-            _queue.Release();
-        }
+            await showAsync();
+            return true;
+        }, disposePlacement);
     }
 
-    private async Task ShowActivityCalendarWindowAsync(
-        ITrackMeUpApplication application,
-        Window owner,
-        ElementTheme theme,
-        LocalizationService strings)
+    private async Task<TResult> ShowDialogWindowAsync<TResult>(
+        Window dialog,
+        IntPtr dialogHandle,
+        Func<Task<TResult>> showAsync,
+        Action disposePlacement)
     {
-        ArgumentNullException.ThrowIfNull(owner);
-        await _queue.WaitAsync();
-        var ownerContent = owner.Content as UIElement;
-        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
-        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-        ActivityCalendarDialogWindow? dialog = null;
-        AiScreenshotReprocessingDialogWindow? reprocessingDialog = null;
-        List<IntPtr>? disabledPeerWindows = null;
+        ArgumentNullException.ThrowIfNull(dialog);
+        ArgumentNullException.ThrowIfNull(showAsync);
+        ArgumentNullException.ThrowIfNull(disposePlacement);
+        IReadOnlyList<IntPtr>? disabledPeerWindows = null;
         try
         {
-            if (_isShuttingDown)
-            {
-                return;
-            }
-
-            if (ownerContent is not null)
-            {
-                ownerContent.IsHitTestVisible = false;
-            }
-
-            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
-            var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
-            dialog = new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle);
             _activeWindow = dialog;
-            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
-            var result = await dialog.ShowAsync();
-            if (result is not null && !_isShuttingDown)
-            {
-                // The calendar and reprocessing surfaces share this queue acquisition so no nested modal wait can deadlock.
-                reprocessingDialog = new AiScreenshotReprocessingDialogWindow(
-                    application,
-                    result.Date,
-                    theme,
-                    strings,
-                    ownerAppWindow,
-                    ownerHandle);
-                _activeWindow = reprocessingDialog;
-                await reprocessingDialog.ShowAsync();
-            }
+            disabledPeerWindows = WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle);
+            return await showAsync();
         }
         finally
         {
             _activeWindow = null;
-            dialog?.DisposePlacement();
-            reprocessingDialog?.DisposePlacement();
-            if (disabledPeerWindows is not null)
+            try
             {
-                RestoreDialogPeerWindows(disabledPeerWindows);
+                disposePlacement();
             }
-
-            if (ownerContent is not null)
+            finally
             {
-                ownerContent.IsHitTestVisible = ownerWasInteractive;
+                if (disabledPeerWindows is not null)
+                {
+                    WindowInteropService.RestoreWindows(disabledPeerWindows);
+                }
             }
-
-            _queue.Release();
         }
     }
 
@@ -443,54 +374,6 @@ internal sealed class MicaDialogService
         }
     }
 
-    private static List<IntPtr> DisableDialogPeerWindows(IntPtr dialogHandle)
-    {
-        var disabled = new List<IntPtr>();
-        EnumThreadWindows(GetCurrentThreadId(), (windowHandle, _) =>
-        {
-            if (windowHandle == dialogHandle || !IsWindowEnabled(windowHandle))
-            {
-                return true;
-            }
-
-            EnableWindow(windowHandle, false);
-            disabled.Add(windowHandle);
-            return true;
-        }, IntPtr.Zero);
-        return disabled;
-    }
-
-    private static void RestoreDialogPeerWindows(IEnumerable<IntPtr> disabledPeerWindows)
-    {
-        foreach (var windowHandle in disabledPeerWindows)
-        {
-            if (IsWindow(windowHandle))
-            {
-                EnableWindow(windowHandle, true);
-            }
-        }
-    }
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool EnumThreadWindows(uint dwThreadId, EnumThreadDelegate lpfn, IntPtr lParam);
-
-    [DllImport("kernel32.dll")]
-    private static extern uint GetCurrentThreadId();
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindowEnabled(IntPtr hWnd);
-
-    private delegate bool EnumThreadDelegate(IntPtr hWnd, IntPtr lParam);
 }
 
 internal enum MicaDialogResult

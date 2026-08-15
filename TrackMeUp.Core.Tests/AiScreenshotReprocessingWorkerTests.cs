@@ -472,7 +472,7 @@ public sealed class AiScreenshotReprocessingWorkerTests
         return new TrackMeUpApplication(
             store,
             utilities,
-            new TrackingDomainService(store, utilities),
+            new TrackingDomainService(store),
             new UnexpectedCaptureService(),
             new SystemSnapshotService(),
             analysis,

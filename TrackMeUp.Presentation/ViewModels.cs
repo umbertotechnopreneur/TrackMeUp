@@ -138,59 +138,6 @@ public sealed class MainViewModel : ViewModelBase
     private void OnRuntimeStateChanged(object? sender, RuntimeStateChangedEventArgs eventArgs) => Dashboard = eventArgs.Dashboard;
 }
 
-/// <summary>Provides typed editable settings to a view without persistence dependencies.</summary>
-public sealed class OptionsViewModel : ViewModelBase
-{
-    private readonly ITrackMeUpApplication _application;
-    private AppSettings? _settings;
-
-    /// <summary>Initializes the options view model.</summary>
-    public OptionsViewModel(ITrackMeUpApplication application) => _application = application;
-
-    /// <summary>Gets the current editable settings snapshot.</summary>
-    public AppSettings? Settings { get => _settings; private set => Set(ref _settings, value); }
-
-    /// <summary>Loads settings into the presentation snapshot.</summary>
-    public async Task<OperationResult<AppSettings>> LoadAsync(CancellationToken cancellationToken)
-    {
-        var result = await _application.GetSettingsAsync(cancellationToken);
-        if (result.Succeeded) Settings = result.Value;
-        return result;
-    }
-
-    /// <summary>Validates and saves an allowed patch.</summary>
-    public async Task<OperationResult<AppSettings>> SaveAsync(SettingsPatch patch, CancellationToken cancellationToken)
-    {
-        var result = await _application.PatchSettingsAsync(patch, cancellationToken);
-        if (result.Succeeded) Settings = result.Value;
-        return result;
-    }
-}
-
-/// <summary>Provides immutable product metadata to an About view.</summary>
-public sealed class AboutViewModel
-{
-    private readonly ITrackMeUpApplication _application;
-
-    /// <summary>Initializes the About view model.</summary>
-    public AboutViewModel(ITrackMeUpApplication application) => _application = application;
-
-    /// <summary>Loads product details and safe links.</summary>
-    public Task<OperationResult<ProductInformation>> LoadAsync(CancellationToken cancellationToken) => _application.GetProductInformationAsync(cancellationToken);
-}
-
-/// <summary>Provides privacy-rule operations.</summary>
-public sealed class PrivacyViewModel
-{
-    private readonly ITrackMeUpApplication _application;
-
-    /// <summary>Initializes the privacy view model.</summary>
-    public PrivacyViewModel(ITrackMeUpApplication application) => _application = application;
-
-    /// <summary>Loads privacy rules.</summary>
-    public Task<OperationResult<IReadOnlyList<PrivacyRule>>> LoadAsync(CancellationToken cancellationToken) => _application.GetPrivacyRulesAsync(cancellationToken);
-}
-
 /// <summary>Provides typed report queries and progress ownership to a presentation view.</summary>
 public sealed class ReportViewModel : ViewModelBase
 {
@@ -244,7 +191,4 @@ public sealed class ReportViewModel : ViewModelBase
             IsLoading = false;
         }
     }
-
-    /// <summary>Generates today's report.</summary>
-    public Task<OperationResult<string>> GenerateTodayAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => _application.GenerateTodayReportAsync(outputDirectory, open, cancellationToken);
 }

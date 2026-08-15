@@ -25,16 +25,6 @@ public static class SettingsCatalog
     private static readonly string[] ApiKeyVariables = ["OPENAI_API_KEY", "TRACKMEUP_OPENAI_APIKEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
     private static readonly string[] OutputDetails = ["compact", "balanced", "detailed"];
     private static readonly string[] ReasoningEfforts = ["auto", "none", "low", "medium", "high", "xhigh", "max"];
-    private static readonly IReadOnlyDictionary<string, string> LegacyLocaleIds =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["en"] = "en-US",
-            ["it"] = "it-IT",
-            ["fr"] = "fr-FR",
-            ["de"] = "de-DE",
-            ["es"] = "es-ES",
-            ["vi"] = "vi-VN"
-        };
     private static readonly string[] Themes = ["system", "light", "dark"];
     private static readonly string[] ScreenshotModes = ["all-screens", "active-window"];
     private static readonly string[] FlyoutAnchors = [FlyoutPositions.BottomCenter, FlyoutPositions.BottomLeft, FlyoutPositions.BottomRight, FlyoutPositions.TopLeft, FlyoutPositions.TopRight];
@@ -49,6 +39,7 @@ public static class SettingsCatalog
         Choice("screenshots.mode", "Select all displays or only the active window.", ScreenshotModes),
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
         Integer("screenshots.interval_minutes", "Minutes between scheduled eligible screenshots."),
+        Boolean("screenshots.details_pane_open", "Keep the snapshot-details sidebar open when the gallery reopens."),
         Boolean("ocr.enabled", "Extract searchable text locally from captured screenshots.", requiresRestart: true),
         Choice("ocr.language", "Preferred installed Windows OCR recognizer language.", ProductLanguageCatalog.OcrChoices, requiresRestart: true),
         Choice("search.language", "Language used for local query analysis and stemming.", ProductLanguageCatalog.SearchChoices),
@@ -117,6 +108,7 @@ public static class SettingsCatalog
             "screenshots.mode" => settings.ScreenshotCaptureMode,
             "screenshots.directory" => settings.ScreenshotDirectory,
             "screenshots.interval_minutes" => settings.ScreenshotIntervalMinutes,
+            "screenshots.details_pane_open" => settings.ScreenshotDetailsPaneOpen,
             "ocr.enabled" => settings.OcrEnabled,
             "ocr.language" => settings.OcrLanguage,
             "search.language" => settings.SearchLanguage,
@@ -229,6 +221,7 @@ public static class SettingsCatalog
                 case "screenshots.mode" when Canonical(ScreenshotModes, value) is { } screenshotMode: current = current with { ScreenshotCaptureMode = screenshotMode }; break;
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
                 case "screenshots.interval_minutes" when TryInteger(value, 1, 1440, out var screenshotIntervalMinutes): current = current with { ScreenshotIntervalMinutes = screenshotIntervalMinutes }; break;
+                case "screenshots.details_pane_open" when TryBoolean(value, out var detailsPaneOpen): current = current with { ScreenshotDetailsPaneOpen = detailsPaneOpen }; break;
                 case "ocr.enabled" when TryBoolean(value, out var ocrEnabled): current = current with { OcrEnabled = ocrEnabled }; break;
                 case "ocr.language" when Canonical(ProductLanguageCatalog.OcrChoices, value) is { } ocrLanguage: current = current with { OcrLanguage = ocrLanguage }; break;
                 case "search.language" when Canonical(ProductLanguageCatalog.SearchChoices, value) is { } searchLanguage: current = current with { SearchLanguage = searchLanguage }; break;
@@ -302,7 +295,7 @@ public static class SettingsCatalog
             ScreenshotIntervalMinutes = settings.ScreenshotIntervalMinutes <= 0
                 ? 15
                 : Math.Min(settings.ScreenshotIntervalMinutes, 1440),
-            // Persisted locale identifiers are contracts after the explicit load-time migration has run.
+            // Persisted locale identifiers are contracts and unsupported values fail fast.
             OcrLanguage = RequiredPersistedChoice(ProductLanguageCatalog.OcrChoices, settings.OcrLanguage, "ocr.language"),
             SearchLanguage = RequiredPersistedChoice(ProductLanguageCatalog.SearchChoices, settings.SearchLanguage, "search.language"),
             AiProvider = provider,
@@ -363,61 +356,14 @@ public static class SettingsCatalog
     private static string? Canonical(IEnumerable<string> values, string? value) =>
         value is null ? null : values.FirstOrDefault(candidate => candidate.Equals(value.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Migrates only locale identifiers written by the immediately preceding settings contract.</summary>
-    internal static AppSettings MigrateLegacyPersistedLocaleIds(AppSettings settings, out bool migrated)
-    {
-        ArgumentNullException.ThrowIfNull(settings);
-
-        var uiLanguage = MigrateLegacyLocaleId(settings.UiLanguage);
-        var searchLanguage = MigrateLegacyLocaleId(settings.SearchLanguage);
-        var persistedOcrLanguage = settings.OcrLanguage
-            ?? throw new InvalidDataException("Persisted setting 'ocr.language' is missing.");
-        // The superseded contract exposed Vietnamese for OCR even though the current Windows OCR
-        // capability catalog cannot guarantee that recognizer. Preserve startup by migrating it to
-        // the documented system recognizer instead of inventing an unsupported canonical locale.
-        var ocrLanguage = string.Equals(persistedOcrLanguage.Trim(), "vi", StringComparison.OrdinalIgnoreCase)
-            ? ProductLanguageCatalog.SystemLanguage
-            : MigrateLegacyLocaleId(persistedOcrLanguage);
-        migrated = !string.Equals(uiLanguage, settings.UiLanguage, StringComparison.Ordinal) ||
-                   !string.Equals(searchLanguage, settings.SearchLanguage, StringComparison.Ordinal) ||
-                   !string.Equals(ocrLanguage, settings.OcrLanguage, StringComparison.Ordinal);
-        return migrated
-            ? settings with
-            {
-                UiLanguage = uiLanguage,
-                SearchLanguage = searchLanguage,
-                OcrLanguage = ocrLanguage
-            }
-            : settings;
-    }
-
-    private static string MigrateLegacyLocaleId(string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        var trimmed = value.Trim();
-        return LegacyLocaleIds.TryGetValue(trimmed, out var migrated)
-            ? migrated
-            : value;
-    }
-
     private static string RequiredPersistedChoice(IEnumerable<string> values, string? value, string key) =>
         Canonical(values, value)
         ?? throw new InvalidDataException($"Persisted setting '{key}' contains unsupported value '{value ?? "<null>"}'.");
 
     private static bool TryBoolean(string? value, out bool parsed)
     {
-        if (bool.TryParse(value, out parsed))
-        {
-            return true;
-        }
-
-        parsed = value?.ToLowerInvariant() switch
-        {
-            "1" or "yes" or "on" => true,
-            "0" or "no" or "off" => false,
-            _ => false
-        };
-        return value?.ToLowerInvariant() is "1" or "yes" or "on" or "0" or "no" or "off";
+        parsed = value == "true";
+        return value is "true" or "false";
     }
 
     private static bool TryInteger(string? value, int minimum, int maximum, out int parsed) =>

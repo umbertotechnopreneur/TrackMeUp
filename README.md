@@ -198,6 +198,7 @@ Quick Setup validation checklist:
 - [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
 - [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
 - [ ] In each supported non-English locale, open Local search/OCR, Operations, and the AI provider connection test: every heading, action, result banner, and dialog control is localized, with no raw result codes shown to the user.
+- [ ] A persisted language-only locale such as `it` makes settings loading fail without rewriting the file, and settings patches accept boolean values only as lowercase `true` or `false` (rejecting aliases such as `1`, `yes`, and `on`).
 - [ ] In AI options, the daily visual-provider-request quota remains visible before and after the limit is reached; it counts AI OCR refinement plus successful and failed visual-analysis attempts while excluding connection tests, its expander accepts and persists only whole values from 0 through 400 (default 20), and it refreshes used versus configured capacity, accessible progress, and limit state.
 - [ ] Take a manual snapshot near the end of its deletion window: the localized delete label may trim, but the complete `mm:ss` countdown and the accessible delete action remain visible and correct.
 - [ ] From **Activity > Activity calendar**, recorded days are marked in the rolling twelve-month calendar; selecting a day shows its exact 0–100 activity-intensity score and the active, idle, tracked, keyboard, and mouse totals, while a date without samples remains explicitly marked as no data.
@@ -211,6 +212,8 @@ Quick Setup validation checklist:
 - [ ] When an OS or file-system screenshot capture fails, a Windows notification shows the localized failure title and the captured exception details.
 - [ ] If activity hooks cannot start, Windows sign-in startup cannot initialize, or screenshot storage drops below 512 MiB, TrackMeUp shows a toast with actionable failure details and no dialog.
 - [ ] In the screenshot inspector, metadata chips and the toolbar start hidden; entering the window with the mouse reveals the chips first and the toolbar shortly after, while leaving reverses the sequence.
+- [ ] In **Captured moments**, open or close snapshot details, close and reopen the inspector, and visit a temporarily empty day: the saved sidebar preference returns as soon as captures are available again.
+- [ ] In dark mode, the selected screenshot has no visible frame, border, or internal padding; it has a clear theme-aware elevation, readable overlay/sidebar text, and a calendar action below the date and capture count with the localized **Select date** label.
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 

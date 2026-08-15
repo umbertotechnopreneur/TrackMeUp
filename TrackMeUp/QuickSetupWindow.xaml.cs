@@ -4,7 +4,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using System.Runtime.InteropServices;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 
@@ -16,7 +15,6 @@ internal sealed partial class QuickSetupWindow : Window
     private const int LogicalWindowWidth = 860;
     private const int LogicalWindowHeight = 650;
     private const int LogicalScreenMargin = 24;
-    private const int GwlHwndParent = -8;
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
     private readonly WindowPlacementService _placement;
@@ -65,7 +63,7 @@ internal sealed partial class QuickSetupWindow : Window
             LogicalWindowHeight,
             LogicalScreenMargin,
             ownerAppWindow.Id);
-        SetWindowOwner(windowHandle, ownerHandle);
+        WindowInteropService.SetOwner(windowHandle, ownerHandle);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
 
@@ -285,21 +283,4 @@ internal sealed partial class QuickSetupWindow : Window
 
     private string T(string key) => _strings.Translate(key);
 
-    private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
-    {
-        if (ownerHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        _ = IntPtr.Size == 8
-            ? SetWindowLongPtr64(windowHandle, GwlHwndParent, ownerHandle)
-            : new IntPtr(SetWindowLongPtr32(windowHandle, GwlHwndParent, ownerHandle.ToInt32()));
-    }
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    private static extern int SetWindowLongPtr32(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 }

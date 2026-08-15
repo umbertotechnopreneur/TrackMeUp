@@ -246,6 +246,7 @@
   "Screenshots.Date.Header": "Data",
   "Screenshots.Date": "Data dello screenshot",
   "Screenshots.Date.Choose": "Scegli la data degli screenshot",
+  "Screenshots.Date.Select": "Seleziona data",
   "Screenshots.Date.Placeholder": "Seleziona un giorno",
   "Screenshots.Empty": "Nessuno screenshot per questa giornata.",
   "Screenshots.Count.Zero": "Nessuna cattura",

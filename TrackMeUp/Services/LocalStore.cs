@@ -359,16 +359,8 @@ public sealed class LocalStore
                 ?? throw new InvalidOperationException("The TrackMeUp settings file must contain a JSON object.")
             : new AppSettings();
 
-        var migrated = SettingsCatalog.MigrateLegacyPersistedLocaleIds(settings, out var localeIdsMigrated);
-        var normalized = SettingsCatalog.NormalizePersisted(migrated, _utilities.GetDefaultScreenshotDirectory());
-        var payload = EnsureInstallationId(normalized);
-        if (localeIdsMigrated)
-        {
-            // The atomic replacement makes this a one-shot migration; later loads see only canonical locale IDs.
-            WriteSettingsFile(payload);
-        }
-
-        return payload;
+        var normalized = SettingsCatalog.NormalizePersisted(settings, _utilities.GetDefaultScreenshotDirectory());
+        return EnsureInstallationId(normalized);
     });
 
     /// <summary>
@@ -1126,20 +1118,6 @@ public sealed class LocalStore
         }
 
         return removed;
-    }
-
-    /// <summary>
-    /// Returns samples that overlap today's local interval from SQLite activity history.
-    /// </summary>
-    public IReadOnlyList<ActivitySample> GetTodaySamples()
-    {
-        var localStart = DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Unspecified);
-        var localEnd = localStart.AddDays(1);
-        var startUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localStart, TimeZoneInfo.Local));
-        var endUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localEnd, TimeZoneInfo.Local));
-        var samples = new List<ActivitySample>();
-        _activity.VisitOverlapping(startUtc, endUtc, samples.Add, CancellationToken.None);
-        return samples;
     }
 
     /// <summary>

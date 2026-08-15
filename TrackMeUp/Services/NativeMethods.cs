@@ -13,10 +13,6 @@ internal static class NativeMethods
     internal const int WmLButtonDown = 0x0201;
     internal const int WmRButtonDown = 0x0204;
     internal const int WmMButtonDown = 0x0207;
-    internal const int SmXVirtualScreen = 76;
-    internal const int SmYVirtualScreen = 77;
-    internal const int SmCxVirtualScreen = 78;
-    internal const int SmCyVirtualScreen = 79;
 
     internal delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
     internal delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, ref Rect rectangle, IntPtr data);
@@ -81,9 +77,6 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern bool GetWindowRect(IntPtr hWnd, out Rect rectangle);
-
-    [DllImport("user32.dll")]
-    internal static extern int GetSystemMetrics(int index);
 
     [DllImport("user32.dll")]
     internal static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc callback, IntPtr data);

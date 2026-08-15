@@ -375,6 +375,7 @@ public sealed class WinUiOperationsSurfaceContractTests
     public void DialogEngine_IsAcrylicQueuedAccessibleAndFacadeBacked()
     {
         var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
+        var interop = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "WindowInteropService.cs"));
         var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
         var dialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml"));
         var connectionDialog = File.ReadAllText(RepositoryFile("TrackMeUp", "AiConnectionTestDialogWindow.xaml.cs"));
@@ -385,11 +386,11 @@ public sealed class WinUiOperationsSurfaceContractTests
 
         Assert.Contains("SemaphoreSlim", service, StringComparison.Ordinal);
         Assert.Contains("AccentColor", service, StringComparison.Ordinal);
-        Assert.Contains("DisableDialogPeerWindows(dialog.WindowHandle)", service, StringComparison.Ordinal);
-        Assert.Contains("RestoreDialogPeerWindows(disabledPeerWindows)", service, StringComparison.Ordinal);
-        Assert.Contains("EnumThreadWindows", service, StringComparison.Ordinal);
-        Assert.Contains("EnableWindow(windowHandle, false)", service, StringComparison.Ordinal);
-        Assert.Contains("EnableWindow(windowHandle, true)", service, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle)", service, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.RestoreWindows(disabledPeerWindows)", service, StringComparison.Ordinal);
+        Assert.Contains("EnumThreadWindows", interop, StringComparison.Ordinal);
+        Assert.Contains("EnableWindow(windowHandle, false)", interop, StringComparison.Ordinal);
+        Assert.Contains("EnableWindow(windowHandle, true)", interop, StringComparison.Ordinal);
         Assert.Contains("return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
         Assert.DoesNotContain("SavePlacementAsync", service, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element =>
@@ -411,9 +412,11 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain(dialogXaml.Descendants(), element => element.Attribute("Style")?.Value == "{StaticResource DialogActionButtonStyle}");
         Assert.Contains(dialogXaml.Descendants(), element => HasName(element, "PrimaryButton") && element.Attribute("Style")?.Value == "{StaticResource AccentButtonStyle}");
         Assert.Contains("ExtendsContentIntoTitleBar = true;", dialog, StringComparison.Ordinal);
-        Assert.Contains("SetWindowLongPtr", dialog, StringComparison.Ordinal);
-        Assert.Contains("HwndTopMost", dialog, StringComparison.Ordinal);
-        Assert.Contains("SetWindowPos(_windowHandle, HwndTopMost", dialog, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.SetOwner(_windowHandle, ownerHandle)", dialog, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.MakeTopmostWithoutActivation(_windowHandle)", dialog, StringComparison.Ordinal);
+        Assert.Contains("SetWindowLongPtr64", interop, StringComparison.Ordinal);
+        Assert.Contains("SetWindowPos(windowHandle, HwndTopMost", interop, StringComparison.Ordinal);
+        Assert.DoesNotContain("DllImport", dialog, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
         Assert.Contains("await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);", dialog, StringComparison.Ordinal);
         Assert.Contains("Closed += (_, _) => _completion.TrySetResult(_result);", dialog, StringComparison.Ordinal);

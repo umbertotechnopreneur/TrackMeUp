@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
@@ -19,11 +18,6 @@ internal sealed partial class AiPricingDialogWindow : Window
     private const int LogicalWidth = 680;
     private const int LogicalHeight = 590;
     private const int LogicalScreenMargin = 24;
-    private const int GwlHwndParent = -8;
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoActivate = 0x0010;
-    private static readonly IntPtr HwndTopMost = new(-1);
     private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly AiPricingOverview _overview;
     private readonly LocalizationService _strings;
@@ -54,7 +48,7 @@ internal sealed partial class AiPricingDialogWindow : Window
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.AiPricing, LogicalWidth, LogicalHeight, LogicalScreenMargin, ownerAppWindow.Id);
-        SetWindowOwner(_windowHandle, ownerHandle);
+        WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
@@ -70,7 +64,7 @@ internal sealed partial class AiPricingDialogWindow : Window
     /// <summary>Activates the detached acrylic surface and completes after closure.</summary>
     internal Task ShowAsync()
     {
-        SetWindowPos(_windowHandle, HwndTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+        WindowInteropService.MakeTopmostWithoutActivation(_windowHandle);
         Activate();
         return _completion.Task;
     }
@@ -251,25 +245,4 @@ internal sealed partial class AiPricingDialogWindow : Window
             ? brush
             : new SolidColorBrush(Colors.Transparent);
 
-    private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
-    {
-        if (ownerHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        _ = IntPtr.Size == 8
-            ? SetWindowLongPtr64(windowHandle, GwlHwndParent, ownerHandle)
-            : new IntPtr(SetWindowLongPtr32(windowHandle, GwlHwndParent, ownerHandle.ToInt32()));
-    }
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    private static extern int SetWindowLongPtr32(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 }

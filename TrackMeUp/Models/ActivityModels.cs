@@ -119,7 +119,8 @@ public sealed record AppSettings(
     IReadOnlyList<ActiveHoursDay>? ActiveHours = null,
     bool IncludeDeviceLocation = false,
     bool QuickSetupCompleted = false,
-    IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null);
+    IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null,
+    bool ScreenshotDetailsPaneOpen = false);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,
@@ -137,8 +138,6 @@ public sealed record AiAnalysis(
 public sealed record ApplicationSummary(string Application, long ActiveSeconds);
 
 public sealed record DailySummary(long ActiveSeconds, long IdleSeconds, long KeyPresses, long MouseClicks, IReadOnlyList<ApplicationSummary> Applications);
-
-public sealed record DailyActivityWindow(string Application, string Context, long ActiveSeconds);
 
 /// <summary>Describes the local daily guardrail for visual requests sent to the configured AI provider.</summary>
 public sealed record AnalysisCostGate(

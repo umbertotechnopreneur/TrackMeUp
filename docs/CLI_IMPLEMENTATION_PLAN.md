@@ -59,13 +59,10 @@ Use stable versions only and pin exact versions. At design time, the NuGet stabl
 | Package | Version | Project |
 | --- | ---: | --- |
 | `Spectre.Console` | `0.57.2` | `TrackMeUp.Cli` |
-| `Spectre.Console.Cli` | `0.55.0` | `TrackMeUp.Cli` |
 | `Spectre.Console.Testing` | `0.57.2` | `TrackMeUp.Cli.Tests` |
-| `Microsoft.Extensions.DependencyInjection` | `10.0.10` | composition roots |
+| `Microsoft.Extensions.DependencyInjection` | `10.0.10` | `TrackMeUp` composition root |
 
-`Spectre.Console.Cli 0.55.0` accepts `Spectre.Console >= 0.55.0`, so the direct `0.57.2` reference is intentional. Restore must not produce package-downgrade warnings.
-
-Implementation verification on 2026-08-05: `dotnet list .\TrackMeUp.slnx package --outdated` reported no newer stable packages from the configured feeds before CLI package integration. The implementation pins `Spectre.Console` 0.57.2, `Spectre.Console.Cli` 0.55.0, `Spectre.Console.Testing` 0.57.2, and `Microsoft.Extensions.DependencyInjection` 10.0.10.
+Implementation verification on 2026-08-05: `dotnet list .\TrackMeUp.slnx package --outdated` reported no newer stable packages from the configured feeds before CLI package integration. The CLI pins `Spectre.Console` 0.57.2 and `Spectre.Console.Testing` 0.57.2; command routing is implemented directly by `CliRouter`, without a CLI dependency-injection container.
 
 Before implementation, run the repository's standard outdated-package check once. Change the pinned versions only if newer stable versions are then available, and record the selected versions in this document and the pull request.
 
@@ -234,7 +231,7 @@ Add a launch parser that runs before any window is created.
 | `-h`, `--help` | Show launch help without opening a window |
 | `--version` | Print product and protocol versions |
 
-Strip `-cli` or `--cli` before passing remaining arguments to `Spectre.Console.Cli`.
+Strip `-cli` or `--cli` before passing the remaining arguments to `CliRouter`.
 
 Recommended packaged invocation:
 
@@ -677,7 +674,6 @@ Stop and request review if satisfying a command would require business logic in 
 
 ## 24. Primary references
 
-- Spectre.Console CLI documentation: https://spectreconsole.net/cli/
-- Spectre.Console.Cli NuGet package: https://www.nuget.org/packages/Spectre.Console.Cli/0.55.0
+- Spectre.Console documentation: https://spectreconsole.net/
 - Windows `AttachConsole`: https://learn.microsoft.com/windows/console/attachconsole
 - Windows packaged app execution aliases: https://learn.microsoft.com/windows/apps/desktop/modernize/desktop-to-uwp-extensions

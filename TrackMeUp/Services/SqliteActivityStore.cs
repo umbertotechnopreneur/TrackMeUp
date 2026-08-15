@@ -1078,14 +1078,6 @@ internal sealed class SqliteActivityStore
         transaction.Commit();
     }
 
-    /// <summary>Lists sanitized AI request telemetry inside a half-open UTC interval for aggregate reporting.</summary>
-    internal IReadOnlyList<AiRequestUsageRecord> ListAiRequestUsage(DateTimeOffset fromUtc, DateTimeOffset toUtc)
-    {
-        var results = new List<AiRequestUsageRecord>();
-        VisitAiUsage(fromUtc, toUtc, results.Add, CancellationToken.None);
-        return results;
-    }
-
     /// <summary>Replaces every cached AI pricing row for one provider inside a single transaction.</summary>
     internal void ReplaceAiModelPricing(string provider, IReadOnlyList<AiModelPricing> prices)
     {

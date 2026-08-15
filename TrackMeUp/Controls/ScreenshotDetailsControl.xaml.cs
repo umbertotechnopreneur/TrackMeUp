@@ -50,10 +50,11 @@ public sealed partial class ScreenshotDetailsControl : UserControl
             Margin = block.Kind is SafeMarkdownBlockKind.Bullet or SafeMarkdownBlockKind.Numbered
                 ? new Thickness(4, 0, 0, 0)
                 : new Thickness(0),
-            FontSize = isHeading ? 15 : 13,
+            FontSize = isHeading ? 16 : 14,
             FontWeight = isHeading ? FontWeights.SemiBold : FontWeights.Normal,
             IsTextSelectionEnabled = true,
-            Opacity = isHeading ? 1d : 0.82d,
+            LineHeight = isHeading ? 22 : 20,
+            Opacity = 1d,
             Text = prefix + block.Text,
             TextWrapping = TextWrapping.Wrap
         };

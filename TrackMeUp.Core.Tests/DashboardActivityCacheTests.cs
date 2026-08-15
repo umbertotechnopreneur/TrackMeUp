@@ -54,7 +54,7 @@ public sealed class DashboardActivityCacheTests
         {
             var store = new LocalStore(dataDirectory);
             store.AppendSample(Sample(DateTimeOffset.Now, keyPresses: 2, mouseClicks: 1));
-            using var tracking = new TrackingDomainService(store, new UtilityService());
+            using var tracking = new TrackingDomainService(store);
 
             var first = tracking.LoadCurrentDashboardState();
             var databasePath = Path.Combine(dataDirectory, SqliteActivityStore.DatabaseFileName);

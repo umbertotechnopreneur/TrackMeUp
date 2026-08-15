@@ -19,24 +19,24 @@
 
             <Style x:Key="ScreenshotDetailSectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="55" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="CharacterSpacing" Value="25" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
             <Style x:Key="ScreenshotDetailLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="45" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="CharacterSpacing" Value="20" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
             <Style x:Key="ScreenshotDetailValueStyle" TargetType="TextBlock">
                 <Setter Property="Margin" Value="0,3,0,0" />
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="15" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="IsTextSelectionEnabled" Value="True" />
                 <Setter Property="TextWrapping" Value="Wrap" />
@@ -60,14 +60,14 @@
         <StackPanel Padding="24,22,24,28" Spacing="20">
             <StackPanel Spacing="4">
                 <TextBlock
-                    FontSize="20"
+                    FontSize="22"
                     FontWeight="SemiBold"
                     Tag="Screenshots.Details.Title"
                     Text="Snapshot details" />
                 <TextBlock
                     x:Name="CapturedAtSummaryText"
-                    FontSize="13"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    FontSize="14"
+                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                     Text="--"
                     TextTrimming="CharacterEllipsis" />
             </StackPanel>
@@ -93,8 +93,8 @@
                             Text="ACTIVITY INDEX" />
                         <TextBlock
                             Margin="0,3,0,0"
-                            FontSize="13"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                             Tag="Screenshots.ActivityIndex.Description"
                             Text="Input activity near this capture"
                             TextWrapping="Wrap" />
@@ -167,7 +167,7 @@
                 <TextBlock
                     x:Name="NoAiDescriptionText"
                     FontSize="14"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                     Tag="Screenshots.AiDescription.Empty"
                     Text="No AI description is available for this capture."
                     TextWrapping="Wrap" />
@@ -177,14 +177,14 @@
                     Spacing="5"
                     Visibility="Collapsed">
                     <TextBlock
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                         Tag="Screenshots.AiAnalyzedAt"
                         Text="Analyzed" />
                     <TextBlock
                         x:Name="AnalysisTimeValueText"
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                         Text="--" />
                 </StackPanel>
             </StackPanel>

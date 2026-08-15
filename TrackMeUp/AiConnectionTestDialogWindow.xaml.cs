@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
@@ -17,10 +16,6 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     private const int LogicalHeight = 480;
     private const int LogicalScreenMargin = 24;
     private static readonly TimeSpan TypeDelay = TimeSpan.FromMilliseconds(14);
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoActivate = 0x0010;
-    private static readonly IntPtr HwndTopMost = new(-1);
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
@@ -53,7 +48,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.AiConnectionTest, LogicalWidth, LogicalHeight, LogicalScreenMargin, ownerAppWindow.Id);
-        SetWindowOwner(_windowHandle, ownerHandle);
+        WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
@@ -79,7 +74,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     /// <summary>Activates the topmost dialog and completes after the user dismisses it.</summary>
     internal Task ShowAsync()
     {
-        SetWindowPos(_windowHandle, HwndTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+        WindowInteropService.MakeTopmostWithoutActivation(_windowHandle);
         Activate();
         return _completion.Task;
     }
@@ -199,15 +194,4 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         Close();
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-    private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
-    {
-        const int GwlHwndParent = -8;
-        _ = SetWindowLongPtr(windowHandle, GwlHwndParent, ownerHandle);
-    }
 }

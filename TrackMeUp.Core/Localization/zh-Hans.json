@@ -225,6 +225,7 @@
   "Screenshots.Date.Header": "日期",
   "Screenshots.Date": "屏幕截图日期",
   "Screenshots.Date.Choose": "选择屏幕截图日期",
+  "Screenshots.Date.Select": "选择日期",
   "Screenshots.Date.Placeholder": "选择日期",
   "Screenshots.Empty": "当天没有屏幕截图。",
   "Screenshots.Count.Zero": "无截图",

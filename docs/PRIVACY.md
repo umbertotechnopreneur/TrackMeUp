@@ -81,12 +81,11 @@ The following are the direct packages declared in the repository at the time of 
 | Package | Version | Role and network behavior |
 | --- | ---: | --- |
 | `Spectre.Console` | 0.57.2 | Local terminal presentation. |
-| `Spectre.Console.Cli` | 0.55.0 | Local CLI command routing. |
 | `vue` | 3.5.40 | Bundled reports UI. |
 | `vuetify` | 4.1.7 | Bundled reports components and styling. |
 | `echarts` | 6.1.0 | Bundled local charts. |
 | `vue-echarts` | 8.0.1 | Vue integration for local charts. |
-| `@mdi/font` | 7.4.47 | Bundled icons. |
+| `@mdi/js` | 7.4.47 | Bundled SVG icon paths. |
 | `vite`, `@vitejs/plugin-vue`, `vite-plugin-vuetify`, `typescript`, `vue-tsc` | Pinned in `package.json` | Build and type-check tooling; not runtime services. |
 
 ### AI providers

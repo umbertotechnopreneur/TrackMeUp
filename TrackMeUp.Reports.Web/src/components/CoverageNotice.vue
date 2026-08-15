@@ -6,6 +6,7 @@ import {
   type ReportDataQuality,
 } from '../reporting'
 import { tr } from '../localization'
+import { reportIcons } from '../icons'
 
 const props = defineProps<{
   quality: ReportDataQuality
@@ -30,7 +31,7 @@ const description = computed(() => {
   <v-alert
     class="coverage-notice mt-4"
     color="primary"
-    :icon="quality.hasData ? 'mdi-information-outline' : 'mdi-database-off-outline'"
+    :icon="quality.hasData ? reportIcons.information : reportIcons.databaseUnavailable"
     variant="tonal"
     :title="title"
     :text="description"

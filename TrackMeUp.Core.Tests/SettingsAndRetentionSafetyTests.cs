@@ -91,6 +91,68 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
+    public void ScreenshotDetailsPanePreference_RoundTripsThroughTheSettingsCatalog()
+    {
+        var defaults = Assert.IsType<AppSettings>(
+            JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var opened = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["screenshots.details_pane_open"] = "true"
+            }));
+
+        Assert.False(defaults.ScreenshotDetailsPaneOpen);
+        Assert.True(opened.Succeeded);
+        var openSettings = Assert.IsType<AppSettings>(opened.Value);
+        Assert.True(openSettings.ScreenshotDetailsPaneOpen);
+        Assert.True(SettingsCatalog.TryGetValue(openSettings, "screenshots.details_pane_open", out var storedPreference));
+        Assert.Equal(true, storedPreference);
+
+        var restored = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>(
+            JsonSerializer.Serialize(openSettings, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.True(restored.ScreenshotDetailsPaneOpen);
+
+        var closed = SettingsCatalog.Apply(
+            restored,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["screenshots.details_pane_open"] = "false"
+            }));
+        Assert.True(closed.Succeeded);
+        Assert.False(closed.Value?.ScreenshotDetailsPaneOpen);
+
+        var invalid = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["screenshots.details_pane_open"] = "yes"
+            }));
+        Assert.False(invalid.Succeeded);
+        Assert.Contains(invalid.Issues, issue => issue.Field == "screenshots.details_pane_open");
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("0")]
+    [InlineData("yes")]
+    [InlineData("no")]
+    [InlineData("on")]
+    [InlineData("off")]
+    [InlineData("TRUE")]
+    [InlineData("False")]
+    public void Apply_RejectsNonCanonicalBooleanValues(string value)
+    {
+        var result = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?> { ["screenshots.enabled"] = value }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Issues, issue => issue.Field == "screenshots.enabled");
+    }
+
+    [Fact]
     public void Apply_RestrictsDailyAiProcessingLimitToFourHundred()
     {
         var accepted = SettingsCatalog.Apply(

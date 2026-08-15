@@ -51,14 +51,6 @@ public sealed class UtilityService
     }
 
     /// <summary>
-    /// Stores OPENAI_API_KEY in User+Process scope.
-    /// </summary>
-    public void SetOpenAiApiKey(string value)
-    {
-        SetApiKey("OPENAI_API_KEY", value);
-    }
-
-    /// <summary>
     /// Formats seconds as a compact duration (e.g., "2 h 35 min").
     /// </summary>
     public string FormatDuration(long seconds) => seconds >= 3600 ? $"{seconds / 3600} h {(seconds % 3600) / 60} min" : $"{Math.Max(0, seconds / 60)} min";

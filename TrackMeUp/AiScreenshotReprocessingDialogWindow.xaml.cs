@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -17,12 +16,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
     private const int LogicalWidth = 780;
     private const int LogicalHeight = 700;
     private const int LogicalScreenMargin = 24;
-    private const int GwlHwndParent = -8;
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoActivate = 0x0010;
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
-    private static readonly IntPtr HwndTopMost = new(-1);
 
     private readonly ITrackMeUpApplication _application;
     private readonly DateOnly _date;
@@ -73,7 +67,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
             LogicalHeight,
             LogicalScreenMargin,
             ownerAppWindow.Id);
-        SetWindowOwner(_windowHandle, ownerHandle);
+        WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
@@ -89,7 +83,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
     /// <summary>Activates the queued acrylic surface and completes after the window closes.</summary>
     internal Task ShowAsync()
     {
-        SetWindowPos(_windowHandle, HwndTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+        WindowInteropService.MakeTopmostWithoutActivation(_windowHandle);
         Activate();
         return _completion.Task;
     }
@@ -619,25 +613,4 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
         _completion.TrySetResult();
     }
 
-    private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
-    {
-        if (ownerHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        _ = IntPtr.Size == 8
-            ? SetWindowLongPtr64(windowHandle, GwlHwndParent, ownerHandle)
-            : new IntPtr(SetWindowLongPtr32(windowHandle, GwlHwndParent, ownerHandle.ToInt32()));
-    }
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    private static extern int SetWindowLongPtr32(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 }

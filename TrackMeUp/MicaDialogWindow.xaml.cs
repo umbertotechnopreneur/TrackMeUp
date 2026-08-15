@@ -4,8 +4,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using System.Runtime.InteropServices;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 using Windows.Graphics;
 using Windows.System;
 using Windows.UI;
@@ -21,11 +21,6 @@ internal sealed partial class MicaDialogWindow : Window
     private const int LogicalTitleBarHeight = 44;
     private const int LogicalScreenMargin = 24;
     private const int LogicalWindowChromeAllowance = 8;
-    private const int GwlHwndParent = -8;
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoActivate = 0x0010;
-    private static readonly IntPtr HwndTopMost = new(-1);
     private readonly TaskCompletionSource<MicaDialogResult> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly AppWindow _appWindow;
     private readonly AppWindow _ownerAppWindow;
@@ -49,7 +44,7 @@ internal sealed partial class MicaDialogWindow : Window
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Dialog, LogicalWidth, LogicalMinimumHeight, LogicalScreenMargin, ownerAppWindow.Id);
-        SetWindowOwner(_windowHandle, ownerHandle);
+        WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
@@ -88,7 +83,7 @@ internal sealed partial class MicaDialogWindow : Window
     /// <summary>Activates the detached acrylic surface and completes after its explicit action or closure.</summary>
     internal Task<MicaDialogResult> ShowAsync()
     {
-        SetWindowPos(_windowHandle, HwndTopMost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+        WindowInteropService.MakeTopmostWithoutActivation(_windowHandle);
         Activate();
         return _completion.Task;
     }
@@ -226,25 +221,4 @@ internal sealed partial class MicaDialogWindow : Window
         _ => Color.FromArgb(255, 91, 111, 214)
     };
 
-    private static void SetWindowOwner(IntPtr windowHandle, IntPtr ownerHandle)
-    {
-        if (ownerHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        _ = IntPtr.Size == 8
-            ? SetWindowLongPtr64(windowHandle, GwlHwndParent, ownerHandle)
-            : new IntPtr(SetWindowLongPtr32(windowHandle, GwlHwndParent, ownerHandle.ToInt32()));
-    }
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
-    private static extern int SetWindowLongPtr32(IntPtr hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 }

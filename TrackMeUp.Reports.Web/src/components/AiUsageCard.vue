@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { formatDateTime, formatInteger, type AiUsageOrigin, type AiUsageSummary } from '../reporting'
 import { reportLocale, tr } from '../localization'
+import { reportIcons } from '../icons'
 
 const props = defineProps<{
   aiUsage: AiUsageSummary
@@ -38,7 +39,7 @@ const costNotice = computed(() => {
   if (usage.requestCount === 0) {
     return {
       color: 'primary',
-      icon: 'mdi-information-outline',
+      icon: reportIcons.information,
       title: tr('No AI requests in the period'),
       text: tr('There are no AI requests to account for in the selected period.'),
     }
@@ -47,7 +48,9 @@ const costNotice = computed(() => {
   if (usage.estimatedCostRequestCount > 0 && usage.actualCostRequestCount === 0) {
     return {
       color: usage.estimatedCostRequestCount === usage.requestCount ? 'success' : 'warning',
-      icon: usage.estimatedCostRequestCount === usage.requestCount ? 'mdi-cash-sync' : 'mdi-cash-clock',
+      icon: usage.estimatedCostRequestCount === usage.requestCount
+        ? reportIcons.aiCostEstimated
+        : reportIcons.aiCostPartial,
       title: tr('Estimated cost'),
       text: tr('No AI provider returned a per-request cost. The local pricing table estimates {estimated} of {total} requests.', {
         estimated: formatInteger(usage.estimatedCostRequestCount),
@@ -59,7 +62,7 @@ const costNotice = computed(() => {
   if (usage.actualCostRequestCount === 0 || usage.actualCostUsd === null) {
     return {
       color: 'warning',
-      icon: 'mdi-cash-remove',
+      icon: reportIcons.aiCostUnavailable,
       title: tr('Cost unavailable'),
       text: tr('No AI provider returned a per-request cost. Token counts remain available for usage analysis.'),
     }
@@ -68,7 +71,7 @@ const costNotice = computed(() => {
   if (usage.estimatedCostRequestCount > 0 && usage.actualCostRequestCount < usage.requestCount) {
     return {
       color: 'warning',
-      icon: 'mdi-cash-sync',
+      icon: reportIcons.aiCostEstimated,
       title: tr('Reported and estimated cost'),
       text: tr('The AI provider reported {reported} costs, and the local pricing table estimated {estimated} requests.', {
         reported: formatInteger(usage.actualCostRequestCount),
@@ -80,7 +83,7 @@ const costNotice = computed(() => {
   if (usage.actualCostRequestCount < usage.requestCount) {
     return {
       color: 'warning',
-      icon: 'mdi-cash-clock',
+      icon: reportIcons.aiCostPartial,
       title: tr('Partial cost'),
       text: tr('The AI provider reported a cost for {reported} of {total} requests. The displayed total does not cover the other requests.', {
         reported: formatInteger(usage.actualCostRequestCount),
@@ -91,7 +94,7 @@ const costNotice = computed(() => {
 
   return {
     color: 'success',
-    icon: 'mdi-cash-check',
+    icon: reportIcons.aiCostAvailable,
     title: tr('AI-provider-reported cost'),
     text: tr('The AI provider returned a cost for every AI request in the period.'),
   }
@@ -149,7 +152,7 @@ const summaryItems = computed(() => [
               {{ tr('Data collected for snapshot analysis. Costs use AI-provider-reported values when available and local pricing estimates otherwise.') }}
             </p>
           </div>
-          <v-icon color="primary" icon="mdi-chart-donut-variant" size="28" aria-hidden="true" />
+          <v-icon color="primary" :icon="reportIcons.aiUsage" size="28" aria-hidden="true" />
         </div>
 
         <v-row class="mt-1" dense>

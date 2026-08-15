@@ -70,10 +70,10 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains("internal async Task ShowActivityCalendarAsync", dialogs, StringComparison.Ordinal);
         Assert.Contains("new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle)", dialogs, StringComparison.Ordinal);
         Assert.Contains("await _queue.WaitAsync()", dialogs, StringComparison.Ordinal);
-        Assert.Contains("DisableDialogPeerWindows(dialog.WindowHandle)", dialogs, StringComparison.Ordinal);
-        Assert.Contains("var result = await dialog.ShowAsync()", dialogs, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle)", dialogs, StringComparison.Ordinal);
+        Assert.Contains("var result = await ShowDialogWindowAsync(dialog", dialogs, StringComparison.Ordinal);
         Assert.Contains("new AiScreenshotReprocessingDialogWindow(", dialogs, StringComparison.Ordinal);
-        Assert.Contains("share this queue acquisition", dialogs, StringComparison.Ordinal);
+        Assert.Contains("retain the same queue lease", dialogs, StringComparison.Ordinal);
     }
 
     private static string RepositoryFile(params string[] pathSegments)

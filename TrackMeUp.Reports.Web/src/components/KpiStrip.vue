@@ -7,6 +7,7 @@ import {
   type ReportSnapshot,
 } from '../reporting'
 import { tr } from '../localization'
+import { reportIcons } from '../icons'
 
 const props = defineProps<{
   snapshot: ReportSnapshot
@@ -24,19 +25,19 @@ const items = computed(() => {
 
   return [
     {
-      icon: 'mdi-clock-check-outline',
+      icon: reportIcons.activeTime,
       label: tr('Active time'),
       value: hasData.value ? formatDuration(props.snapshot.totals.activeSeconds) : unavailable,
       detail: tr('In the selected period'),
     },
     {
-      icon: 'mdi-coffee-outline',
+      icon: reportIcons.idleTime,
       label: tr('Idle time'),
       value: hasData.value ? formatDuration(props.snapshot.totals.idleSeconds) : unavailable,
       detail: tr('While tracking'),
     },
     {
-      icon: 'mdi-calendar-check-outline',
+      icon: reportIcons.activeDays,
       label: tr('Active days'),
       value: hasData.value
         ? `${formatInteger(activeDays)} / ${formatInteger(props.snapshot.range.dayCount)}`
@@ -44,19 +45,19 @@ const items = computed(() => {
       detail: tr('Days with activity'),
     },
     {
-      icon: 'mdi-chart-timeline-variant',
+      icon: reportIcons.dailyAverage,
       label: tr('Daily average'),
       value: hasData.value ? formatDuration(averageSeconds) : unavailable,
       detail: tr('Across active days'),
     },
     {
-      icon: 'mdi-apps',
+      icon: reportIcons.applications,
       label: tr('Top application'),
       value: hasData.value && topApplication ? topApplication.application : unavailable,
       detail: topApplication ? formatDuration(topApplication.activeSeconds) : tr('No data available'),
     },
     {
-      icon: 'mdi-radar',
+      icon: reportIcons.coverage,
       label: tr('Coverage'),
       value: hasData.value ? formatPercent(props.snapshot.quality.coverageRatio) : unavailable,
       detail: tr('{count} samples', { count: formatInteger(props.snapshot.quality.sampleCount) }),

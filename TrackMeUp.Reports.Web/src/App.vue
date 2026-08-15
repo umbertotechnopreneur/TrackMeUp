@@ -8,6 +8,7 @@ import CoverageNotice from './components/CoverageNotice.vue'
 import HourOfWeekHeatmap from './components/HourOfWeekHeatmap.vue'
 import KpiStrip from './components/KpiStrip.vue'
 import TrendChart from './components/TrendChart.vue'
+import { reportIcons } from './icons'
 import {
   formatRange,
   type ReportEnvelope,
@@ -247,7 +248,7 @@ onBeforeUnmount(() => {
               v-model="searchQuery"
               class="report-search"
               :label="searchLabel"
-              prepend-inner-icon="mdi-magnify"
+              :prepend-inner-icon="reportIcons.search"
               clearable
               hide-details
               density="compact"
@@ -261,7 +262,7 @@ onBeforeUnmount(() => {
               item-title="title"
               item-value="value"
               :label="tr('Theme')"
-              prepend-inner-icon="mdi-theme-light-dark"
+              :prepend-inner-icon="reportIcons.theme"
               hide-details
               density="compact"
               variant="outlined"
@@ -287,7 +288,7 @@ onBeforeUnmount(() => {
             v-if="developmentFixtureTitle"
             class="mb-4"
             color="primary"
-            icon="mdi-flask-outline"
+            :icon="reportIcons.developmentFixture"
             variant="tonal"
             :title="developmentFixtureTitle"
             :text="developmentFixtureDescription"
@@ -313,7 +314,7 @@ onBeforeUnmount(() => {
             class="state-alert"
             type="error"
             variant="tonal"
-            icon="mdi-alert-circle-outline"
+            :icon="reportIcons.error"
             :title="tr('Unable to display the report')"
             :text="errorMessage"
           />
@@ -328,7 +329,7 @@ onBeforeUnmount(() => {
               <v-chip
                 class="report-timezone"
                 color="primary"
-                prepend-icon="mdi-map-clock-outline"
+                :prepend-icon="reportIcons.timeZone"
                 size="small"
                 variant="tonal"
               >
@@ -369,7 +370,7 @@ onBeforeUnmount(() => {
             <v-empty-state
               v-else
               class="report-card empty-state"
-              icon="mdi-chart-box-outline"
+              :icon="reportIcons.emptyChart"
               :headline="emptyStateTitle"
               :text="emptyStateText"
             />

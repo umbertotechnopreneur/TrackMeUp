@@ -14,8 +14,7 @@ namespace TrackMeUp.Controls;
 /// <summary>Displays one selected screenshot in a passive zoomable viewer.</summary>
 public sealed partial class ScreenshotImageViewerControl : UserControl
 {
-    private const double ScreenshotFrameMargin = 28d;
-    private const double ScreenshotFramePadding = 8d;
+    private const double ScreenshotFrameMargin = 36d;
     private const float MinimumZoomFactor = 1f;
     private const float MaximumZoomFactor = 5f;
     private const float ZoomStep = 0.25f;
@@ -292,13 +291,13 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
             return;
         }
 
-        var availableWidth = Math.Max(1d, viewportWidth - (ScreenshotFrameMargin * 2d) - (ScreenshotFramePadding * 2d));
-        var availableHeight = Math.Max(1d, viewportHeight - (ScreenshotFrameMargin * 2d) - (ScreenshotFramePadding * 2d));
+        var availableWidth = Math.Max(1d, viewportWidth - (ScreenshotFrameMargin * 2d));
+        var availableHeight = Math.Max(1d, viewportHeight - (ScreenshotFrameMargin * 2d));
         var containScale = Math.Min(availableWidth / _imagePixelWidth, availableHeight / _imagePixelHeight);
         var imageWidth = _imagePixelWidth * containScale;
         var imageHeight = _imagePixelHeight * containScale;
-        ScreenshotFrame.Width = imageWidth + (ScreenshotFramePadding * 2d);
-        ScreenshotFrame.Height = imageHeight + (ScreenshotFramePadding * 2d);
+        ScreenshotFrame.Width = imageWidth;
+        ScreenshotFrame.Height = imageHeight;
         ImageHost.Width = Math.Max(viewportWidth, ScreenshotFrame.Width + (ScreenshotFrameMargin * 2d));
         ImageHost.Height = Math.Max(viewportHeight, ScreenshotFrame.Height + (ScreenshotFrameMargin * 2d));
     }

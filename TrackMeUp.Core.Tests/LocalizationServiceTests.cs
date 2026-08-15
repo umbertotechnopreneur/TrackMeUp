@@ -139,23 +139,19 @@ public sealed class LocalizationServiceTests
         Assert.Throws<InvalidDataException>(() => SettingsCatalog.NormalizePersisted(
             new AppSettings { UiLanguage = "it" },
             Path.GetTempPath()));
-        var unsupportedLegacyOcr = SettingsCatalog.MigrateLegacyPersistedLocaleIds(
+        Assert.Throws<InvalidDataException>(() => SettingsCatalog.NormalizePersisted(
             new AppSettings { OcrLanguage = "vi" },
-            out var migrated);
-        Assert.True(migrated);
-        Assert.Equal("system", SettingsCatalog.NormalizePersisted(
-            unsupportedLegacyOcr,
-            Path.GetTempPath()).OcrLanguage);
+            Path.GetTempPath()));
     }
 
     [Theory]
-    [InlineData("en", "en-US")]
-    [InlineData("it", "it-IT")]
-    [InlineData("fr", "fr-FR")]
-    [InlineData("de", "de-DE")]
-    [InlineData("es", "es-ES")]
-    [InlineData("vi", "vi-VN")]
-    public void LoadingLegacyLocaleIds_RewritesCanonicalSettingsExactlyOnce(string legacyLocale, string canonicalLocale)
+    [InlineData("en")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("de")]
+    [InlineData("es")]
+    [InlineData("vi")]
+    public void LoadingLegacyLocaleIds_FailsWithoutRewritingSettings(string legacyLocale)
     {
         var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
         var settingsPath = Path.Combine(dataDirectory, "appsettings.json");
@@ -169,25 +165,11 @@ public sealed class LocalizationServiceTests
                 UiLanguage: legacyLocale,
                 OcrLanguage: legacyLocale,
                 SearchLanguage: legacyLocale);
-            File.WriteAllText(settingsPath, JsonSerializer.Serialize(legacy, serializerOptions));
+            var persisted = JsonSerializer.Serialize(legacy, serializerOptions);
+            File.WriteAllText(settingsPath, persisted);
 
-            var loaded = new LocalStore(dataDirectory).LoadSettings();
-            var persisted = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(settingsPath), serializerOptions);
-
-            var expectedOcrLocale = legacyLocale == "vi" ? "system" : canonicalLocale;
-            Assert.Equal(canonicalLocale, loaded.UiLanguage);
-            Assert.Equal(expectedOcrLocale, loaded.OcrLanguage);
-            Assert.Equal(canonicalLocale, loaded.SearchLanguage);
-            Assert.Equal(installationId, loaded.InstallationId);
-            Assert.Equal(canonicalLocale, persisted?.UiLanguage);
-            Assert.Equal(expectedOcrLocale, persisted?.OcrLanguage);
-            Assert.Equal(canonicalLocale, persisted?.SearchLanguage);
-
-            var sentinelWriteTime = DateTime.UtcNow.AddDays(-2);
-            File.SetLastWriteTimeUtc(settingsPath, sentinelWriteTime);
-            var persistedWriteTime = File.GetLastWriteTimeUtc(settingsPath);
-            _ = new LocalStore(dataDirectory).LoadSettings();
-            Assert.Equal(persistedWriteTime, File.GetLastWriteTimeUtc(settingsPath));
+            Assert.Throws<InvalidDataException>(() => new LocalStore(dataDirectory).LoadSettings());
+            Assert.Equal(persisted, File.ReadAllText(settingsPath));
         }
         finally
         {

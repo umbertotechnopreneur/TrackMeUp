@@ -26,7 +26,6 @@ public static class ThirdPartyLicenseCatalog
         new("SkiaSharp", "4.151.0", "MIT"),
         new("SkiaSharp.NativeAssets.Win32", "4.151.0", "MIT"),
         new("Spectre.Console", "0.57.2", "MIT"),
-        new("Spectre.Console.Cli", "0.55.0", "MIT"),
         new("SQLitePCLRaw.lib.e_sqlite3", "2.1.12", "Apache-2.0"),
         new("System.Diagnostics.PerformanceCounter", "10.0.10", "MIT"),
         new("System.Drawing.Common", "10.0.10", "MIT"),

@@ -1,6 +1,6 @@
 import { createApp, watch } from 'vue'
 import { createVuetify } from 'vuetify'
-import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { mdi } from 'vuetify/iconsets/mdi-svg'
 import { de, en, es, fr, it, ko, pt, vi, zhHans } from 'vuetify/locale'
 import { use } from 'echarts/core'
 import { BarChart, HeatmapChart } from 'echarts/charts'
@@ -15,9 +15,9 @@ import {
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import 'vuetify/styles'
-import '@mdi/font/css/materialdesignicons.css'
 import App from './App.vue'
 import './styles.css'
+import { vuetifyIconAliases } from './icons'
 import {
   resolveThemeName,
   themePreference,
@@ -54,7 +54,7 @@ const vuetifyMessages = {
 const vuetify = createVuetify({
   icons: {
     defaultSet: 'mdi',
-    aliases,
+    aliases: vuetifyIconAliases,
     sets: { mdi },
   },
   locale: {

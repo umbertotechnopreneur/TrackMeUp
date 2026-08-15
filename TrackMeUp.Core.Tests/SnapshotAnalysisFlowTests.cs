@@ -817,7 +817,7 @@ public sealed class SnapshotAnalysisFlowTests
         return new TrackMeUpApplication(
             store,
             utilities,
-            new TrackingDomainService(store, utilities),
+            new TrackingDomainService(store),
             capture,
             new SystemSnapshotService(),
             analysis,

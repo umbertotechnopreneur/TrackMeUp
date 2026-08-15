@@ -19,31 +19,22 @@
                         <GradientStop Color="#A8FFFFFF" Offset="0" />
                         <GradientStop Color="#28717A84" Offset="1" />
                     </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotFrameBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#E6FFFFFF" Offset="0" />
-                        <GradientStop Color="#6A71808A" Offset="1" />
-                    </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <AcrylicBrush
                         x:Key="ScreenshotViewerOverlayBrush"
-                        FallbackColor="#EA1B1E24"
-                        TintColor="#FF15191F"
-                        TintLuminosityOpacity="0.14"
-                        TintOpacity="0.10" />
+                        FallbackColor="#F0181D24"
+                        TintColor="#FF10151B"
+                        TintLuminosityOpacity="0.26"
+                        TintOpacity="0.15" />
                     <LinearGradientBrush x:Key="ScreenshotViewerOverlayBorderBrush" StartPoint="0,0" EndPoint="1,1">
                         <GradientStop Color="#62FFFFFF" Offset="0" />
                         <GradientStop Color="#16FFFFFF" Offset="1" />
-                    </LinearGradientBrush>
-                    <LinearGradientBrush x:Key="ScreenshotFrameBorderBrush" StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#A8FFFFFF" Offset="0" />
-                        <GradientStop Color="#3AFFFFFF" Offset="1" />
                     </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="ScreenshotViewerOverlayBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="ScreenshotViewerOverlayBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
-                    <StaticResource x:Key="ScreenshotFrameBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
@@ -149,12 +140,8 @@
                     x:Name="ScreenshotFrame"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                    BorderBrush="{ThemeResource ScreenshotFrameBorderBrush}"
-                    BorderThickness="2"
-                    CornerRadius="4"
-                    Padding="16"
-                    Translation="0,0,10"
+                    Background="Transparent"
+                    Translation="0,0,32"
                     Visibility="Collapsed">
                     <Border.Shadow>
                         <ThemeShadow />
@@ -206,8 +193,9 @@
                     ToolTipService.ToolTip="Reset zoom to 100%">
                     <TextBlock
                         x:Name="ZoomPercentText"
-                        FontSize="12"
+                        FontSize="13"
                         FontWeight="SemiBold"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                         Text="100%" />
                 </Button>
                 <Button
@@ -260,7 +248,7 @@
                         AutomationProperties.AccessibilityView="Raw"
                         FontFamily="Segoe Fluent Icons"
                         FontSize="15"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                         Glyph="&#xE74E;" />
                 </Button>
                 <Button
@@ -274,7 +262,7 @@
                         AutomationProperties.AccessibilityView="Raw"
                         FontFamily="Segoe Fluent Icons"
                         FontSize="15"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                         Glyph="&#xE72D;" />
                 </Button>
                 <Button
@@ -288,7 +276,7 @@
                         AutomationProperties.AccessibilityView="Raw"
                         FontFamily="Segoe Fluent Icons"
                         FontSize="15"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                         Glyph="&#xE8B7;" />
                 </Button>
                 <Border

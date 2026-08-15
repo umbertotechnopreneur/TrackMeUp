@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useChartSettings } from '../composables/useChartSettings'
+import { reportIcons } from '../icons'
 import { reportDayNames, reportHourLabel, tr } from '../localization'
 import {
   formatDate,
@@ -116,7 +117,7 @@ const items = computed<Record<string, string>[]>(() => {
       <v-expansion-panel :value="0">
         <v-expansion-panel-title>
           <span>
-            <v-icon icon="mdi-table-eye" start color="primary" aria-hidden="true" />
+            <v-icon :icon="reportIcons.table" start color="primary" aria-hidden="true" />
             {{ tr('Tabular data') }}
           </span>
         </v-expansion-panel-title>

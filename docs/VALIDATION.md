@@ -8,8 +8,8 @@ Use these checks for behavior and visual acceptance after changing the correspon
 - Use the mouse wheel over different image points and confirm that zoom follows the pointer. Verify click-drag, touch, and trackpad navigation through 500%.
 - Confirm that the frosted command rail and metadata fade in only while the pointer or keyboard focus is inside the image area.
 - Confirm that grouped colored icons expose localized tooltips and that no overflow menu remains in the title bar.
-- Open the details sidebar, resize it with drag and keyboard input, and confirm that it never exceeds 50% of the available width.
-- Repeat in light, dark, High Contrast, and with Windows transparency effects disabled. The rail, metadata, sidebar, and full-width filmstrip must remain readable through native Acrylic or its system fallback.
+- Open the details sidebar, resize it with drag and keyboard input, and confirm that it never exceeds 50% of the available width. Close and reopen the inspector, including after visiting an empty day, and confirm that the saved open/closed preference returns when captures are available.
+- Repeat in light, dark, High Contrast, and with Windows transparency effects disabled. The rail, metadata, sidebar, and full-width filmstrip must remain readable through native Acrylic or its system fallback; the selected screenshot must have no visible frame, border, or internal padding while retaining a clear theme-aware elevation.
 
 ## Settings and operational tools
 

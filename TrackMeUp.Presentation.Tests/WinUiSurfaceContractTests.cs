@@ -392,10 +392,22 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("RootGrid.ActualWidth * MaximumDetailsPaneWidthRatio", source, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp(requestedWidth, minimumWidth, maximumWidth)", source, StringComparison.Ordinal);
         Assert.Contains("ScreenshotDetailsProjection.Create", source, StringComparison.Ordinal);
+        Assert.Contains("_detailsPaneOpenPreference = result.Value.ScreenshotDetailsPaneOpen;", source, StringComparison.Ordinal);
+        Assert.Contains("SetDetailsPaneVisibility(hasItems && _detailsPaneOpenPreference);", source, StringComparison.Ordinal);
+        Assert.Contains("_application.PatchSettingsAsync(", source, StringComparison.Ordinal);
+        Assert.Contains("[\"screenshots.details_pane_open\"] = isVisible ? \"true\" : \"false\"", source, StringComparison.Ordinal);
         Assert.Contains(header.Descendants(), element =>
             HasName(element, "ExtendedDateText")
             && element.Attribute("FontSize")?.Value == "34"
-            && element.Attribute("FontWeight")?.Value == "Light");
+            && element.Attribute("FontWeight")?.Value == "SemiLight");
+        Assert.Contains(header.Descendants(), element =>
+            element.Name.LocalName == "TextBlock"
+            && element.Attribute("Tag")?.Value == "Screenshots.Date.Select");
+        Assert.Contains(header.Descendants(), element =>
+            element.Name.LocalName == "Button"
+            && element.Attribute("Click")?.Value == "OpenDatePickerButton_Click"
+            && element.Attribute("Width")?.Value == "104"
+            && element.Attribute("Height")?.Value == "52");
         Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotImageViewerControl");
         Assert.Equal(3, gallery.Descendants().Count(element =>
             element.Attribute("Style")?.Value.Contains("ScreenshotMetadataChipStyle", StringComparison.Ordinal) == true));
@@ -693,7 +705,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Null(visibilitySwitch.Attribute("IsOn"));
         Assert.Equal("False", positionPicker.Attribute("IsEnabled")?.Value);
         Assert.Equal(["left", "right"], positions);
-        Assert.Contains("[\"taskbar.widget.visible\"] = TaskbarWidgetVisibleSwitch.IsOn.ToString()", source, StringComparison.Ordinal);
+        Assert.Contains("[\"taskbar.widget.visible\"] = TaskbarWidgetVisibleSwitch.IsOn ? \"true\" : \"false\"", source, StringComparison.Ordinal);
         Assert.Contains("TaskbarWidgetPositionBox.IsEnabled = TaskbarWidgetVisibleSwitch.IsOn;", source, StringComparison.Ordinal);
     }
 
@@ -701,13 +713,10 @@ public sealed class WinUiSurfaceContractTests
     public void TaskbarSurface_UsesAnAlphaCapableWpfHost()
     {
         var widget = XDocument.Load(RepositoryFile("TrackMeUp.Taskbar", "TaskbarWidgetWindow.xaml"));
-        var hostSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "TaskbarWidgetHost.cs"));
-
         Assert.Equal("True", widget.Root?.Attribute("AllowsTransparency")?.Value);
         Assert.Equal("Transparent", widget.Root?.Attribute("Background")?.Value);
         Assert.Equal("None", widget.Root?.Attribute("WindowStyle")?.Value);
         Assert.Equal("False", widget.Root?.Attribute("ShowInTaskbar")?.Value);
-        Assert.Contains("WsExNoActivate", hostSource, StringComparison.Ordinal);
     }
 
     [Fact]

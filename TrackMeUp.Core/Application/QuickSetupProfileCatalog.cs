@@ -26,11 +26,11 @@ public static class QuickSetupProfileCatalog
 
         var patch = new SettingsPatch(new Dictionary<string, string?>
         {
-            ["ai.enabled"] = profile.Value.AiEnabled.ToString(),
-            ["screenshots.enabled"] = profile.Value.ScreenshotsEnabled.ToString(),
-            ["screenshots.keep"] = profile.Value.ScreenshotsEnabled.ToString(),
-            ["startup.enabled"] = request.StartWithWindows.ToString(),
-            ["quick_setup.completed"] = bool.TrueString
+            ["ai.enabled"] = profile.Value.AiEnabled ? "true" : "false",
+            ["screenshots.enabled"] = profile.Value.ScreenshotsEnabled ? "true" : "false",
+            ["screenshots.keep"] = profile.Value.ScreenshotsEnabled ? "true" : "false",
+            ["startup.enabled"] = request.StartWithWindows ? "true" : "false",
+            ["quick_setup.completed"] = "true"
         });
         return OperationResult<SettingsPatch>.Success(
             "quick_setup.profile.validated",

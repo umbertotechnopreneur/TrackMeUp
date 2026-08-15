@@ -24,7 +24,7 @@ public static class TrackMeUpApplicationFactory
         var logger = loggerFactory?.CreateLogger<TrackMeUpApplication>() ?? NullLogger<TrackMeUpApplication>.Instance;
         var utilities = new UtilityService();
         var store = new LocalStore();
-        var tracking = new TrackingDomainService(store, utilities);
+        var tracking = new TrackingDomainService(store);
         var capture = new ScreenCaptureService(utilities.GetAppVersion());
         var snapshot = new SystemSnapshotService();
         var deviceContext = new DeviceContextService();

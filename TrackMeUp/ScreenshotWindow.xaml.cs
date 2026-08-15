@@ -43,6 +43,8 @@ public sealed partial class ScreenshotWindow : Window
     private ScreenshotDetailsViewState? _selectedDetailsState;
     private bool _initialized;
     private bool _settingSelectedDate;
+    private bool _detailsPaneOpenPreference;
+    private bool _isSavingDetailsPanePreference;
     private uint? _detailsResizePointerId;
     private double _detailsResizeStartPointerX;
     private double _detailsResizeStartWidth;
@@ -185,6 +187,7 @@ public sealed partial class ScreenshotWindow : Window
             if (result.Succeeded && result.Value is not null)
             {
                 _theme = result.Value.Theme;
+                _detailsPaneOpenPreference = result.Value.ScreenshotDetailsPaneOpen;
                 _strings = new LocalizationService(result.Value.UiLanguage);
                 ApplyTheme(_theme);
                 ApplyLocalization();
@@ -363,15 +366,12 @@ public sealed partial class ScreenshotWindow : Window
         EmptyGalleryPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
         ScreenshotViewer.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         FilmstripStrip.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
-        if (!hasItems)
-        {
-            SetDetailsPaneVisibility(isVisible: false);
-        }
         EmptyGalleryText.Text = error ?? (_items.Count == 0 ? T("Screenshots.Empty") : string.Empty);
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
         TimelineSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
         RenderSelectedScreenshot();
+        SetDetailsPaneVisibility(hasItems && _detailsPaneOpenPreference);
         UpdateDetailsToggleAccessibility();
     }
 
@@ -442,8 +442,65 @@ public sealed partial class ScreenshotWindow : Window
             _strings.Translate(_aiDescriptionEmptyMessageKey));
     }
 
-    private void ScreenshotViewer_DetailsVisibilityRequested(bool isVisible) =>
-        SetDetailsPaneVisibility(isVisible);
+    private async void ScreenshotViewer_DetailsVisibilityRequested(bool isVisible)
+    {
+        if (_isSavingDetailsPanePreference)
+        {
+            return;
+        }
+
+        var previousPreference = _detailsPaneOpenPreference;
+        _isSavingDetailsPanePreference = true;
+        _detailsPaneOpenPreference = isVisible;
+        SetDetailsPaneVisibility(_items.Count > 0 && isVisible);
+        try
+        {
+            var result = await _application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?>
+                {
+                    ["screenshots.details_pane_open"] = isVisible ? "true" : "false"
+                }),
+                _lifetimeCancellation.Token);
+            if (!result.Succeeded || result.Value is null)
+            {
+                RestoreDetailsPanePreference(previousPreference);
+                ShowDetailsPanePreferenceFailure();
+                return;
+            }
+
+            _detailsPaneOpenPreference = result.Value.ScreenshotDetailsPaneOpen;
+            SetDetailsPaneVisibility(_items.Count > 0 && _detailsPaneOpenPreference);
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // The window is closing; the shared runtime owns the final persisted state.
+        }
+        catch (Exception)
+        {
+            RestoreDetailsPanePreference(previousPreference);
+            ShowDetailsPanePreferenceFailure();
+        }
+        finally
+        {
+            _isSavingDetailsPanePreference = false;
+            if (!_lifetimeCancellation.IsCancellationRequested)
+            {
+                UpdateDetailsToggleAccessibility();
+            }
+        }
+    }
+
+    private void RestoreDetailsPanePreference(bool preference)
+    {
+        _detailsPaneOpenPreference = preference;
+        SetDetailsPaneVisibility(_items.Count > 0 && preference);
+    }
+
+    private void ShowDetailsPanePreferenceFailure() =>
+        _dialogs.ShowErrorBanner(
+            ScreenshotActionBanner,
+            T("Screenshots.Caption"),
+            T("Screenshots.Action.Failed"));
 
     private void SetDetailsPaneVisibility(bool isVisible)
     {
@@ -463,7 +520,10 @@ public sealed partial class ScreenshotWindow : Window
             ? "Screenshots.Details.Hide"
             : "Screenshots.Details.Show";
         var label = _strings.Translate(key);
-        ScreenshotViewer.SetDetailsState(_items.Count > 0, DetailsPane.Visibility == Visibility.Visible, label);
+        ScreenshotViewer.SetDetailsState(
+            _items.Count > 0 && !_isSavingDetailsPanePreference,
+            DetailsPane.Visibility == Visibility.Visible,
+            label);
     }
 
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)

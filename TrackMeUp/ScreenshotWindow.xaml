@@ -33,10 +33,10 @@
                     <ResourceDictionary x:Key="Dark">
                         <AcrylicBrush
                             x:Key="ScreenshotSidebarBackdropBrush"
-                            FallbackColor="#EE1B1F24"
-                            TintColor="#FF14191F"
-                            TintLuminosityOpacity="0.16"
-                            TintOpacity="0.11" />
+                            FallbackColor="#F0181D24"
+                            TintColor="#FF10151B"
+                            TintLuminosityOpacity="0.26"
+                            TintOpacity="0.15" />
                         <LinearGradientBrush x:Key="ScreenshotSidebarBorderBrush" StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#58FFFFFF" Offset="0" />
                             <GradientStop Color="#16FFFFFF" Offset="1" />
