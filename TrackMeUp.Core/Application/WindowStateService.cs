@@ -21,6 +21,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the screenshot gallery window.</summary>
     public const string Screenshots = "screenshots";
 
+    /// <summary>Identifies the selectable OCR text window.</summary>
+    public const string OcrText = "ocr-text";
+
     /// <summary>Identifies the about window.</summary>
     public const string About = "about";
 
@@ -76,6 +79,7 @@ public sealed class WindowStateService
             WindowStateKeys.ActivityCalendar => new(760, 560),
             WindowStateKeys.AiScreenshotReprocessing => new(640, 560),
             WindowStateKeys.Screenshots => new(760, 540),
+            WindowStateKeys.OcrText => new(560, 360),
             WindowStateKeys.About => new(360, 420),
             WindowStateKeys.Licenses => new(720, 520),
             WindowStateKeys.Search => new(780, 140),

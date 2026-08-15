@@ -14,13 +14,11 @@ public sealed class CliOptionsTests
     }
 
     [Fact]
-    public void JsonMode_DisablesColorAndAnimationAndRetainsCommand()
+    public void JsonMode_RetainsCommand()
     {
         var options = CliOptions.Parse(["--json", "--language", "pt-br", "status"], redirected: false);
 
         Assert.Equal(CliFormat.Json, options.Format);
-        Assert.True(options.NoColor);
-        Assert.True(options.NoAnimation);
         Assert.Equal("pt-BR", options.Language);
         Assert.Equal(["status"], options.CommandArguments);
     }

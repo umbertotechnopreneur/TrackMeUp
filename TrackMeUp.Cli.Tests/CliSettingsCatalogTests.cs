@@ -41,7 +41,7 @@ public sealed class CliSettingsCatalogTests
         var values = CliSettingsCatalog.ReadAll(new AppSettings(Theme: "dark"))
             .Where(value => value.Key == "theme")
             .ToArray();
-        var options = new CliOptions(CliFormat.Rich, "en-US", false, false, true, false, false, 5, false, []);
+        var options = new CliOptions(CliFormat.Rich, "en-US", false, false, 5, false, []);
         var console = new TestConsole();
 
         console.Write(new CliOutput(options).RenderSettings(values));
@@ -52,16 +52,9 @@ public sealed class CliSettingsCatalogTests
     }
 
     [Fact]
-    public void HelpSummary_UsesCoreAiQualityDefinitions()
-    {
-        Assert.Contains("ai.output_detail <compact|balanced|detailed>", CliSettingsCatalog.HelpSummary);
-        Assert.Contains("ai.reasoning_effort <auto|none|low|medium|high|xhigh|max>", CliSettingsCatalog.HelpSummary);
-    }
-
-    [Fact]
     public void GenericRichResult_RendersFacadeValueAndEscapesMarkup()
     {
-        var options = new CliOptions(CliFormat.Rich, "en-US", false, false, true, false, false, 5, false, []);
+        var options = new CliOptions(CliFormat.Rich, "en-US", false, false, 5, false, []);
         var result = OperationResult<object>.Success("test.loaded", "TestLoaded", new { state = "[ready]" });
         var console = new TestConsole();
 

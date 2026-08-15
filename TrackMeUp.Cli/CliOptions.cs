@@ -17,9 +17,6 @@ public enum CliFormat
 public sealed record CliOptions(
     CliFormat Format,
     string Language,
-    bool NoColor,
-    bool NoEmoji,
-    bool NoAnimation,
     bool Quiet,
     bool Yes,
     int TimeoutSeconds,
@@ -34,9 +31,6 @@ public sealed record CliOptions(
     {
         var format = redirected ? CliFormat.Plain : CliFormat.Rich;
         var language = "system";
-        var noColor = redirected;
-        var noEmoji = false;
-        var noAnimation = redirected;
         var quiet = false;
         var yes = false;
         var timeout = 5;
@@ -53,9 +47,6 @@ public sealed record CliOptions(
                     break;
                 case "--json": format = CliFormat.Json; break;
                 case "--language": language = ReadRequiredValue(arguments, ref index, "language"); break;
-                case "--no-color": noColor = true; break;
-                case "--no-emoji": noEmoji = true; break;
-                case "--no-animation": noAnimation = true; break;
                 case "--quiet": quiet = true; break;
                 case "--yes": yes = true; break;
                 case "--timeout":
@@ -71,19 +62,13 @@ public sealed record CliOptions(
             }
         }
 
-        if (format is CliFormat.Plain or CliFormat.Json)
-        {
-            noColor = true;
-            noAnimation = true;
-        }
-
         var canonicalLanguage = ProductLanguageCatalog.CanonicalUiChoice(language);
         if (canonicalLanguage is null)
         {
             throw new ArgumentException($"Unsupported CLI locale '{language}'. Use one of: {string.Join(", ", SupportedLanguages)}.");
         }
 
-        return new CliOptions(format, canonicalLanguage, noColor, noEmoji, noAnimation, quiet, yes, timeout, verbose, remaining);
+        return new CliOptions(format, canonicalLanguage, quiet, yes, timeout, verbose, remaining);
     }
 
     private static string ReadRequiredValue(IReadOnlyList<string> arguments, ref int index, string option)

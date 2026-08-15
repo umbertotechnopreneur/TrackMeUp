@@ -11,28 +11,96 @@
     <Grid>
         <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
 
-        <StackPanel x:Name="SectionBody" Spacing="14">
+        <StackPanel x:Name="SectionBody" Spacing="20">
             <StackPanel Spacing="4">
                 <TextBlock Tag="Operations.Reports" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Reports" />
                 <TextBlock
                     Tag="Operations.Reports.Description"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="Create today's report or a digest for a selected date from activity already stored on this PC, then open the generated file or its folder."
+                    Text="Create focused files from activity already saved locally. Report generation does not capture or upload new data."
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <CheckBox x:Name="OpenGeneratedReportBox" Tag="Operations.OpenGenerated" Content="Open the report after generation" />
-            <Button Tag="Operations.TodayReport" Click="TodayReportButton_Click" Content="Generate today's report" HorizontalAlignment="Left" />
-            <CalendarDatePicker x:Name="DigestDatePicker" Tag="Operations.DigestDate" HorizontalAlignment="Stretch" Header="Digest date" PlaceholderText="Select a date" />
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Button Tag="Operations.GenerateDigest" Click="DigestButton_Click" Content="Generate digest" HorizontalAlignment="Stretch" />
-                <Button Tag="Operations.OpenFolder" Grid.Column="1" Click="OpenReportsFolderButton_Click" Content="Open folder" HorizontalAlignment="Stretch" />
-            </Grid>
-            <TextBlock x:Name="ReportResultText" Tag="Operations.Initial.Report" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="No report generated." TextWrapping="Wrap" />
+            <StackPanel Spacing="3">
+                <CheckBox x:Name="OpenGeneratedReportBox" Tag="Operations.OpenGenerated" Content="Open generated files automatically" />
+                <TextBlock
+                    Margin="28,0,0,0"
+                    Tag="Operations.OpenGenerated.Description"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="Applies to both creation actions. Turn it off to leave the file in the reports folder."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <StackPanel Spacing="10">
+                <StackPanel Spacing="3">
+                    <TextBlock Tag="Operations.Reports.Today.Title" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Today's report" />
+                    <TextBlock
+                        Tag="Operations.Reports.Today.Description"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Summarizes today's activity already saved on this PC."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Tag="Operations.TodayReport" Click="TodayReportButton_Click" Content="Create today's report" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <StackPanel Spacing="10">
+                <StackPanel Spacing="3">
+                    <TextBlock Tag="Operations.Reports.Digest.Title" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Daily digest" />
+                    <TextBlock
+                        Tag="Operations.Reports.Digest.Description"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Builds a digest from activity saved for the date you choose."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <CalendarDatePicker
+                    x:Name="DigestDatePicker"
+                    MaxWidth="360"
+                    HorizontalAlignment="Stretch"
+                    Header="Digest date"
+                    PlaceholderText="Select a date"
+                    Tag="Operations.DigestDate" />
+                <Button Tag="Operations.GenerateDigest" Click="DigestButton_Click" Content="Create digest for selected date" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <StackPanel Spacing="10">
+                <StackPanel Spacing="3">
+                    <TextBlock Tag="Operations.Reports.Folder.Title" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Reports folder" />
+                    <TextBlock
+                        Tag="Operations.Reports.Folder.Description"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Opens the local folder where reports and digests are stored."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Tag="Operations.Reports.OpenFolder" Click="OpenReportsFolderButton_Click" Content="Open reports folder" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel Spacing="3">
+                <TextBlock
+                    x:Name="ReportResultText"
+                    Tag="Operations.Initial.Report"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="No report generated."
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    x:Name="ReportResultPathText"
+                    FontFamily="Cascadia Mono"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    IsTextSelectionEnabled="True"
+                    MaxLines="1"
+                    TextTrimming="CharacterEllipsis"
+                    Visibility="Collapsed" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

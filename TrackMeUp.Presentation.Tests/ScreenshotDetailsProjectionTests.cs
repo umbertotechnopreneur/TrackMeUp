@@ -72,5 +72,80 @@ public sealed class ScreenshotDetailsProjectionTests
         Assert.Equal("Review", state.ActivityLabels);
         Assert.Empty(state.AiDescription);
         Assert.Null(state.AnalysisTime);
+        Assert.Null(state.OcrText);
+    }
+
+    [Fact]
+    public void Create_PrefersAiCorrectedOcrTextOverRawText()
+    {
+        var capturedAt = new DateTimeOffset(2026, 8, 9, 2, 21, 0, TimeSpan.Zero);
+        var item = CreateItemWithOcr(
+            capturedAt,
+            rawText: "Riunone proggeto",
+            correctedText: "Riunione progetto");
+
+        var state = CreateState(item);
+
+        Assert.Equal("Riunione progetto", state.OcrText);
+    }
+
+    [Fact]
+    public void Create_FallsBackToRawOcrTextWhenAiCorrectionIsUnavailable()
+    {
+        var capturedAt = new DateTimeOffset(2026, 8, 9, 2, 21, 0, TimeSpan.Zero);
+        var item = CreateItemWithOcr(
+            capturedAt,
+            rawText: "Raw OCR text",
+            correctedText: "   ");
+
+        var state = CreateState(item);
+
+        Assert.Equal("Raw OCR text", state.OcrText);
+    }
+
+    private static ScreenshotGalleryItem CreateItemWithOcr(
+        DateTimeOffset capturedAt,
+        string rawText,
+        string? correctedText)
+    {
+        var ocr = new OcrRawSnapshot(
+            ScreenshotTextExtractionStatus.Succeeded,
+            rawText,
+            "it-IT",
+            TextAngleDegrees: null,
+            capturedAt,
+            "Windows.Media.Ocr",
+            PixelWidth: 1920,
+            PixelHeight: 1080,
+            Lines: Array.Empty<OcrLineSnapshot>());
+        var refinement = correctedText is null
+            ? null
+            : new OcrAiRefinement(
+                correctedText,
+                "it-IT",
+                new OcrStructuredSummary(
+                    "Overview",
+                    Array.Empty<string>(),
+                    Array.Empty<string>(),
+                    Array.Empty<string>()),
+                capturedAt.AddSeconds(1));
+
+        return new ScreenshotGalleryItem(
+            capturedAt,
+            "C:\\captures\\frame.webp",
+            "TrackMeUp",
+            "monitor",
+            "scheduled",
+            TextSnapshot: new ScreenshotTextSnapshot("C:\\captures\\frame.webp", ocr, refinement));
+    }
+
+    private static ScreenshotDetailsViewState CreateState(ScreenshotGalleryItem item)
+    {
+        return ScreenshotDetailsProjection.Create(
+            item,
+            CultureInfo.GetCultureInfo("it-IT"),
+            "Schermo",
+            "Pianificata",
+            "--");
     }
 }

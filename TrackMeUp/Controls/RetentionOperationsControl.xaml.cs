@@ -23,7 +23,7 @@ public sealed partial class RetentionOperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
-        AutomationProperties.SetName(RetentionPathsList, _strings.Translate("Operations.Retention.Preview"));
+        AutomationProperties.SetName(RetentionPathsList, _strings.Translate("Operations.Retention.Preview.Paths"));
     }
 
     internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar banner) =>
@@ -46,8 +46,10 @@ public sealed partial class RetentionOperationsControl : UserControl
             RetentionStatusText.Text = _strings.Format(
                 "Operations.Retention.Status",
                 status.DataRetentionDays,
-                status.ScreenshotRetentionDays,
-                status.ScreenshotDirectory);
+                status.ScreenshotRetentionDays);
+            RetentionDirectoryText.Text = status.ScreenshotDirectory;
+            AutomationProperties.SetName(RetentionDirectoryText, status.ScreenshotDirectory);
+            ToolTipService.SetToolTip(RetentionDirectoryText, status.ScreenshotDirectory);
         }
     }
 

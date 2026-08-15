@@ -436,24 +436,17 @@ public sealed partial class MainWindow : Window
     /// <summary>Persists a confirmed schedule and starts or stops its timer from the main runtime owner.</summary>
     private async void ScheduleWindow_ScheduleConfirmed(object? sender, ScheduleConfigurationEventArgs eventArgs)
     {
-        var patch = new SettingsPatch(new Dictionary<string, string?>
+        var activeHoursByDay = eventArgs.ActiveHours.ToDictionary(day => day.Day, StringComparer.Ordinal);
+        var patchValues = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var day in ActiveHoursSchedule.Days)
         {
-            ["active_hours.monday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "monday").ActivePeriod,
-            ["active_hours.monday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "monday").BreakPeriods,
-            ["active_hours.tuesday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "tuesday").ActivePeriod,
-            ["active_hours.tuesday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "tuesday").BreakPeriods,
-            ["active_hours.wednesday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "wednesday").ActivePeriod,
-            ["active_hours.wednesday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "wednesday").BreakPeriods,
-            ["active_hours.thursday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "thursday").ActivePeriod,
-            ["active_hours.thursday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "thursday").BreakPeriods,
-            ["active_hours.friday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "friday").ActivePeriod,
-            ["active_hours.friday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "friday").BreakPeriods,
-            ["active_hours.saturday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "saturday").ActivePeriod,
-            ["active_hours.saturday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "saturday").BreakPeriods,
-            ["active_hours.sunday.active"] = eventArgs.ActiveHours.Single(day => day.Day == "sunday").ActivePeriod,
-            ["active_hours.sunday.breaks"] = eventArgs.ActiveHours.Single(day => day.Day == "sunday").BreakPeriods,
-            ["screenshots.interval_minutes"] = eventArgs.IntervalMinutes.ToString(CultureInfo.InvariantCulture)
-        });
+            var configuredDay = activeHoursByDay[day];
+            patchValues.Add($"active_hours.{day}.active", configuredDay.ActivePeriod);
+            patchValues.Add($"active_hours.{day}.breaks", configuredDay.BreakPeriods);
+        }
+
+        patchValues.Add("screenshots.interval_minutes", eventArgs.IntervalMinutes.ToString(CultureInfo.InvariantCulture));
+        var patch = new SettingsPatch(patchValues);
         var saveResult = await _application.PatchSettingsAsync(patch, CancellationToken.None);
         if (!saveResult.Succeeded || saveResult.Value is null)
         {
@@ -738,8 +731,12 @@ public sealed partial class MainWindow : Window
     private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        _aboutWindow ??= new AboutWindow(_application, _theme, _strings.RequestedLanguage);
-        _aboutWindow.Closed += (_, _) => _aboutWindow = null;
+        if (_aboutWindow is null)
+        {
+            _aboutWindow = new AboutWindow(_application, _theme, _strings.RequestedLanguage);
+            _aboutWindow.Closed += (_, _) => _aboutWindow = null;
+        }
+
         _aboutWindow.Activate();
     }
 

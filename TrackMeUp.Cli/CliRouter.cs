@@ -190,10 +190,7 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
                     variable = status.Value.KeyVariable;
                 }
                 var secret = AnsiConsole.Prompt(new TextPrompt<string>($"[yellow]{Markup.Escape(_output.Text("prompt.apiKey"))}:[/] ").Secret());
-                try { return await WriteAsync(_application.SetAiKeyAsync(variable, secret, cancellationToken)); }
-                finally
-                {
-                }
+                return await WriteAsync(_application.SetAiKeyAsync(variable, secret, cancellationToken));
             default: return InvalidCommand();
         }
     }

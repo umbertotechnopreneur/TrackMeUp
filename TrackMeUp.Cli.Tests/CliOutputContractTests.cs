@@ -29,9 +29,6 @@ public sealed class CliOutputContractTests
         var output = new CliOutput(new CliOptions(
             CliFormat.Plain,
             locale,
-            true,
-            true,
-            true,
             false,
             false,
             5,
@@ -60,9 +57,6 @@ public sealed class CliOutputContractTests
         var output = new CliOutput(new CliOptions(
             CliFormat.Plain,
             locale,
-            true,
-            true,
-            true,
             false,
             false,
             5,

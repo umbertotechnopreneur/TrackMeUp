@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="TrackMeUp.OcrTextWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="OCR text">
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            x:Name="TitleBarDragRegion"
+            Height="48"
+            Loaded="TitleBarDragRegion_Loaded"
+            SizeChanged="TitleBarDragRegion_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                x:Name="TitleBarText"
+                Grid.Column="1"
+                Margin="24,0,12,0"
+                VerticalAlignment="Center"
+                AutomationProperties.AccessibilityView="Raw"
+                CharacterSpacing="80"
+                FontSize="13"
+                FontWeight="SemiBold"
+                IsHitTestVisible="False"
+                Text="OCR TEXT" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <ScrollViewer
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+                <TextBlock
+                    x:Name="OcrTextBlock"
+                    Margin="28,76,28,28"
+                    FontFamily="Cascadia Mono"
+                    FontSize="15"
+                    IsTextSelectionEnabled="True"
+                    LineHeight="23"
+                    TextWrapping="Wrap" />
+            </ScrollViewer>
+
+            <AutoSuggestBox
+                x:Name="SearchBox"
+                Width="320"
+                MinHeight="40"
+                Margin="0,18,28,0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                AutomationProperties.Name="Search OCR text"
+                PlaceholderText="Search OCR text"
+                TextChanged="SearchBox_TextChanged"
+                ToolTipService.ToolTip="Search OCR text">
+                <AutoSuggestBox.QueryIcon>
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        Glyph="&#xE721;" />
+                </AutoSuggestBox.QueryIcon>
+            </AutoSuggestBox>
+        </Grid>
+    </Grid>
+</Window>

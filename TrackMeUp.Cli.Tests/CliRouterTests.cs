@@ -200,7 +200,7 @@ public sealed class CliRouterTests
 
     private static CliRouter CreateRouter(RecordingApplication application)
     {
-        var options = new CliOptions(CliFormat.Plain, "en-US", true, true, true, true, false, 5, false, []);
+        var options = new CliOptions(CliFormat.Plain, "en-US", true, false, 5, false, []);
         return new CliRouter(application, new CliOutput(options), options);
     }
 

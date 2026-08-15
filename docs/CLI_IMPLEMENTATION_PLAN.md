@@ -266,9 +266,6 @@ Do not use fixed sleeps to simulate animation. Spinners and progress must reflec
 | `--format <rich|plain|json>` | Output contract; default is `rich` on a terminal and `plain` when redirected |
 | `--json` | Alias for `--format json` |
 | `--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>` | Output locale for this invocation |
-| `--no-color` | Disable ANSI color |
-| `--no-emoji` | Replace emoji with text-safe symbols |
-| `--no-animation` | Disable spinner/live animation |
 | `--quiet` | Print only final result or error |
 | `--yes` | Confirm eligible destructive operations non-interactively |
 | `--timeout <seconds>` | IPC/external-operation timeout |
@@ -426,7 +423,7 @@ Interactive commands may be entered as normal command text or selected from prom
 
 Do not persist interactive command history in the MVP. This avoids retaining document names, paths, or accidental secrets.
 
-The startup animation lasts at most 700 ms and is skipped with `--no-animation`, redirected output, JSON mode, or reduced-motion configuration. Long operations use real progress. No artificial waiting is allowed.
+The startup animation lasts at most 700 ms and is skipped for redirected output, JSON mode, or reduced-motion configuration. Long operations use real progress. No artificial waiting is allowed.
 
 ## 16. Privacy and security requirements
 

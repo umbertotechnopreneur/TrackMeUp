@@ -165,7 +165,6 @@ Global output and safety switches can be combined with a command or quick switch
 | --- | --- |
 | `--format <rich|plain|json>` / `--json` | Select interactive, plain-text, or machine-readable output. |
 | `--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>` | Select the CLI display locale. Language-only legacy values such as `en`, `pt`, and `zh` are rejected. |
-| `--no-color`, `--no-emoji`, `--no-animation` | Adapt rendering for a terminal or accessibility preference. |
 | `--quiet`, `--verbose` | Reduce successful output or add diagnostics in plain mode. |
 | `--yes` | Explicitly confirm a command that requires confirmation. |
 | `--timeout <1-300>` | Set the shared-runtime connection timeout in seconds. |
@@ -192,11 +191,13 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 Quick Setup validation checklist:
 
 - [ ] In PowerShell 7, run `trackmeup.exe -cli` with no command, use the interactive command center to refresh the dashboard and open help, then exit without starting a second tracking runtime.
+- [ ] In PowerShell 7, confirm CLI help lists only supported global switches and that redirected and JSON output remain ANSI-free, with JSON producing exactly one valid document.
 - [ ] With a clean settings file, the acrylic four-profile chooser opens once; applying a profile persists AI, screenshot, local-retention, and Windows-startup choices together.
 - [ ] The four Quick Setup profile cards are fully visible without vertical scrolling, and the main window has a 20-DIP margin below its measured content.
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
 - [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
 - [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
+- [ ] Trigger informational, success, warning, and error banners in light and dark themes: each keeps its text and accessible severity while using the same neutral translucent surface, theme foreground icon, one-pixel theme border, and neutral timeout indicator.
 - [ ] In each supported non-English locale, open Local search/OCR, Operations, and the AI provider connection test: every heading, action, result banner, and dialog control is localized, with no raw result codes shown to the user.
 - [ ] A persisted language-only locale such as `it` makes settings loading fail without rewriting the file, and settings patches accept boolean values only as lowercase `true` or `false` (rejecting aliases such as `1`, `yes`, and `on`).
 - [ ] In AI options, the daily visual-provider-request quota remains visible before and after the limit is reached; it counts AI OCR refinement plus successful and failed visual-analysis attempts while excluding connection tests, its expander accepts and persists only whole values from 0 through 400 (default 20), and it refreshes used versus configured capacity, accessible progress, and limit state.
@@ -213,6 +214,10 @@ Quick Setup validation checklist:
 - [ ] If activity hooks cannot start, Windows sign-in startup cannot initialize, or screenshot storage drops below 512 MiB, TrackMeUp shows a toast with actionable failure details and no dialog.
 - [ ] In the screenshot inspector, metadata chips and the toolbar start hidden; entering the window with the mouse reveals the chips first and the toolbar shortly after, while leaving reverses the sequence.
 - [ ] In **Captured moments**, open or close snapshot details, close and reopen the inspector, and visit a temporarily empty day: the saved sidebar preference returns as soon as captures are available again.
+- [ ] In **Captured moments**, a snapshot with OCR shows a localized foreground-only action with the external-window icon; opening it reuses one OCR window, selecting another snapshot and opening again replaces the text, and snapshots without OCR do not show the action.
+- [ ] In **Captures and AI descriptions**, actions use explicit verbs, the latest capture occupies one ellipsized filename line with its full path in the tooltip, and progress stays aligned with the transparent Mica header without adding card backgrounds.
+- [ ] In **Reports**, today, selected-date digest, and reports-folder actions appear as three separated sections; automatic opening is explained, the date follows the app language, and each returned path stays on one ellipsized line with its full value in the tooltip.
+- [ ] In **Keep or delete data**, load current criteria, preview eligible deletions, and permanent deletion appear in order as separate sections; preview removes nothing, deletion still requires confirmation, and folder/candidate paths remain compact with full-path tooltips.
 - [ ] In dark mode, the selected screenshot has no visible frame, border, or internal padding; it has a clear theme-aware elevation, readable overlay/sidebar text, and a calendar action below the date and capture count with the localized **Select date** label.
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.

@@ -1,8 +1,10 @@
 using System;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
+using Windows.Globalization.DateTimeFormatting;
 
 namespace TrackMeUp.Controls;
 
@@ -20,6 +22,8 @@ public sealed partial class ReportsOperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        DigestDatePicker.Language = _strings.Language;
+        DigestDatePicker.DateFormat = new DateTimeFormatter("shortdate", [_strings.Language]).Patterns[0];
     }
 
     /// <summary>Connects the passive surface to the application facade owned by the composition root.</summary>
@@ -41,7 +45,7 @@ public sealed partial class ReportsOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GenerateTodayReportAsync(null, open, token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ReportResultText.Text = _strings.Format("Operations.Reports.Today", path);
+            ShowResult(_strings.Translate("Operations.Reports.Today"), path);
         }
     }
 
@@ -61,7 +65,7 @@ public sealed partial class ReportsOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GenerateDailyDigestAsync(date, open, token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ReportResultText.Text = _strings.Format("Operations.Reports.Digest", date, path);
+            ShowResult(_strings.Format("Operations.Reports.Digest", date), path);
         }
     }
 
@@ -70,7 +74,16 @@ public sealed partial class ReportsOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.OpenReportsFolderAsync(token));
         if (result is { Succeeded: true, Value: { } path })
         {
-            ReportResultText.Text = _strings.Format("Operations.Reports.FolderOpened", path);
+            ShowResult(_strings.Translate("Operations.Reports.FolderOpened"), path);
         }
+    }
+
+    private void ShowResult(string message, string path)
+    {
+        ReportResultText.Text = message;
+        ReportResultPathText.Text = path;
+        ReportResultPathText.Visibility = Visibility.Visible;
+        AutomationProperties.SetName(ReportResultPathText, path);
+        ToolTipService.SetToolTip(ReportResultPathText, path);
     }
 }

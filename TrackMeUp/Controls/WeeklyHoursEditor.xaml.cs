@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -14,7 +13,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
     private const int SlotsPerDay = 48;
     private const double SlotWidth = 14d;
     private const double SlotHeight = 28d;
-    private static readonly string[] Days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    private static IReadOnlyList<string> Days => ActiveHoursSchedule.Days;
     private readonly Dictionary<string, ToggleButton[]> _daySlots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TextBlock> _dayLabels = new(StringComparer.Ordinal);
     private LocalizationService _strings = new("system");
@@ -66,7 +65,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
     /// <summary>Replaces the grid with a Monday-Friday 09:00-18:00 work week and clears weekends.</summary>
     public void ApplyStandardWorkWeek()
     {
-        for (var dayIndex = 0; dayIndex < Days.Length; dayIndex++)
+        for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
         {
             for (var slot = 0; slot < SlotsPerDay; slot++)
             {
@@ -185,7 +184,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
         var position = e.GetCurrentPoint(DaysHost).Position;
         var dayIndex = (int)Math.Floor(position.Y / SlotHeight);
         var slotIndex = (int)Math.Floor((position.X - 64d) / SlotWidth);
-        if (dayIndex < 0 || dayIndex >= Days.Length || slotIndex < 0 || slotIndex >= SlotsPerDay)
+        if (dayIndex < 0 || dayIndex >= Days.Count || slotIndex < 0 || slotIndex >= SlotsPerDay)
         {
             slot = null!;
             return false;
@@ -198,7 +197,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
     private static bool[] ParseSelectedSlots(ActiveHoursDay day)
     {
         var slots = new bool[SlotsPerDay];
-        if (!TryParseRange(day.ActivePeriod, out var activeStart, out var activeEnd))
+        if (!ActiveHoursSchedule.TryParseRange(day.ActivePeriod, out var activeStart, out var activeEnd))
         {
             return slots;
         }
@@ -206,7 +205,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
         SetRange(slots, activeStart, activeEnd, true);
         foreach (var period in day.BreakPeriods.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
-            if (TryParseRange(period, out var breakStart, out var breakEnd))
+            if (ActiveHoursSchedule.TryParseRange(period, out var breakStart, out var breakEnd))
             {
                 SetRange(slots, breakStart, breakEnd, false);
             }
@@ -273,34 +272,6 @@ public sealed partial class WeeklyHoursEditor : UserControl
                     _strings.Format("Schedule.Slot.Accessible", dayName, CreateSlotLabel(slot), CreateSlotLabel(slot + 1)));
             }
         }
-    }
-
-    private static bool TryParseRange(string value, out int start, out int end)
-    {
-        start = default;
-        end = default;
-        var parts = value.Split('-', StringSplitOptions.TrimEntries);
-        return parts.Length == 2
-            && TryParseBoundary(parts[0], allowEndOfDay: false, out start)
-            && TryParseBoundary(parts[1], allowEndOfDay: true, out end);
-    }
-
-    private static bool TryParseBoundary(string value, bool allowEndOfDay, out int minutes)
-    {
-        if (allowEndOfDay && string.Equals(value, "24:00", StringComparison.Ordinal))
-        {
-            minutes = 24 * 60;
-            return true;
-        }
-
-        if (TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
-        {
-            minutes = (time.Hour * 60) + time.Minute;
-            return true;
-        }
-
-        minutes = default;
-        return false;
     }
 
     private static string CreateSlotLabel(int slot) => $"{slot / 2:00}:{(slot % 2) * 30:00}";

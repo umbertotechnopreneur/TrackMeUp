@@ -613,24 +613,47 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void InfoBars_UseGlobalSemanticGlassAndSoftElevation()
+    public void InfoBars_UseGlobalNeutralGlassAndSoftElevation()
     {
         var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
         var infoBarStyle = app.Descendants().Single(element =>
             element.Name.LocalName == "Style" && element.Attribute("TargetType")?.Value == "InfoBar");
-        var semanticBrushKeys = app.Descendants()
-            .Where(element => element.Name.LocalName == "AcrylicBrush")
-            .SelectMany(element => element.Attributes())
-            .Where(attribute => attribute.Name.LocalName == "Key")
-            .Select(attribute => attribute.Value)
+        var severityResources = app.Descendants()
+            .Where(element => element.Name.LocalName == "StaticResource")
+            .Where(element => element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "Key" && attribute.Value.StartsWith("InfoBar", StringComparison.Ordinal)))
+            .ToArray();
+        var severityBackgrounds = severityResources
+            .Where(element => element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "Key" && attribute.Value.EndsWith("SeverityBackgroundBrush", StringComparison.Ordinal)))
+            .ToArray();
+        var severityIconBackgrounds = severityResources
+            .Where(element => element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "Key" && attribute.Value.EndsWith("SeverityIconBackground", StringComparison.Ordinal)))
+            .ToArray();
+        var severityIconForegrounds = severityResources
+            .Where(element => element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "Key" && attribute.Value.EndsWith("SeverityIconForeground", StringComparison.Ordinal)))
             .ToArray();
 
-        Assert.Contains("InfoBarInformationalSeverityBackgroundBrush", semanticBrushKeys);
-        Assert.Contains("InfoBarSuccessSeverityBackgroundBrush", semanticBrushKeys);
-        Assert.Contains("InfoBarWarningSeverityBackgroundBrush", semanticBrushKeys);
-        Assert.Contains("InfoBarErrorSeverityBackgroundBrush", semanticBrushKeys);
+        Assert.Equal(12, severityBackgrounds.Length);
+        Assert.Equal(8, severityBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "AcrylicInAppFillColorDefaultBrush"));
+        Assert.Equal(4, severityBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush"));
+        Assert.Equal(12, severityIconBackgrounds.Length);
+        Assert.Equal(8, severityIconBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "ControlFillColorTransparentBrush"));
+        Assert.Equal(4, severityIconBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush"));
+        Assert.Equal(12, severityIconForegrounds.Length);
+        Assert.Equal(8, severityIconForegrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "TextFillColorPrimaryBrush"));
+        Assert.Equal(4, severityIconForegrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "SystemColorWindowTextColorBrush"));
+        Assert.DoesNotContain(app.Descendants(), element =>
+            (element.Name.LocalName is "AcrylicBrush" or "SolidColorBrush" or "LinearGradientBrush") &&
+            element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "Key" && attribute.Value.StartsWith("InfoBar", StringComparison.Ordinal)));
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "ThemeShadow");
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "BorderBrush" && element.Attribute("Value")?.Value == "{ThemeResource SurfaceStrokeColorDefaultBrush}");
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "BorderThickness" && element.Attribute("Value")?.Value == "1");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "CornerRadius" && element.Attribute("Value")?.Value == "12");
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "Foreground" && element.Attribute("Value")?.Value == "{ThemeResource TextFillColorPrimaryBrush}");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "local:InfoBarElevationBehavior.IsEnabled" && element.Attribute("Value")?.Value == "True");
     }
 

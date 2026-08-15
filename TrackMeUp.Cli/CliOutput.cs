@@ -202,8 +202,7 @@ public sealed class CliOutput(CliOptions options)
     /// <summary>Renders a generic application result, including its value when no specialized widget was supplied.</summary>
     internal IRenderable RenderResult<T>(OperationResult<T> result, IRenderable? richContent = null)
     {
-        var status = result.Succeeded ? "[green]✓[/]" : "[red]✗[/]";
-        var icon = _options.NoEmoji ? status : result.Succeeded ? "[green]✓[/]" : "[red]✗[/]";
+        var icon = result.Succeeded ? "[green]✓[/]" : "[red]✗[/]";
         var valueText = result.Value is null
             ? string.Empty
             : "\n\n" + JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
@@ -233,9 +232,6 @@ public sealed class CliOutput(CliOptions options)
         ("--format <rich|plain|json>", "option.format"),
         ("--json", "option.json"),
         ("--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>", "option.language"),
-        ("--no-color", "option.noColor"),
-        ("--no-emoji", "option.noEmoji"),
-        ("--no-animation", "option.noAnimation"),
         ("--quiet", "option.quiet"),
         ("--yes", "option.yes"),
         ("--timeout <1-300>", "option.timeout"),

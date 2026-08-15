@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10" IgnorableNamespaces="uap uap5 desktop rescap systemai">
-  <Identity Name="824b187b-e347-4efa-9275-d4c169a4eb9e" Publisher="CN=umber" Version="1.0.349.0" />
+  <Identity Name="824b187b-e347-4efa-9275-d4c169a4eb9e" Publisher="CN=umber" Version="1.0.519.0" />
   <mp:PhoneIdentity PhoneProductId="824b187b-e347-4efa-9275-d4c169a4eb9e" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>TrackMeUp</DisplayName>
@@ -12,7 +12,16 @@
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
   </Dependencies>
   <Resources>
-    <Resource Language="x-generate" />
+    <Resource Language="en-US" />
+    <Resource Language="it-IT" />
+    <Resource Language="fr-FR" />
+    <Resource Language="de-DE" />
+    <Resource Language="es-ES" />
+    <Resource Language="zh-Hans" />
+    <Resource Language="vi-VN" />
+    <Resource Language="ko-KR" />
+    <Resource Language="pt-PT" />
+    <Resource Language="pt-BR" />
   </Resources>
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">

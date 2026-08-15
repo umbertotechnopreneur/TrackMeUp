@@ -40,6 +40,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
         var snapshots = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "SnapshotAiOperationsControl.xaml"));
+        var snapshotSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "SnapshotAiOperationsControl.xaml.cs"));
         var reports = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml"));
         var privacy = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml"));
         var retention = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
@@ -92,6 +93,32 @@ public sealed class WinUiOperationsSurfaceContractTests
             Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true);
         });
         Assert.DoesNotContain(snapshots.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.TakeSnapshotNow");
+
+        var snapshotRoot = snapshots.Root!.Elements().Single(element => element.Name.LocalName == "Grid");
+        var snapshotProgress = snapshots.Descendants().Single(element => HasName(element, "Progress"));
+        var latestCapture = snapshots.Descendants().Single(element => HasName(element, "ScreenshotResultText"));
+        var latestButton = snapshots.Descendants().Single(element => HasName(element, "OpenLatestCaptureButton"));
+        var folderButton = snapshots.Descendants().Single(element => HasName(element, "OpenCapturesFolderButton"));
+        var analyzeButton = snapshots.Descendants().Single(element => HasName(element, "GenerateDescriptionButton"));
+        Assert.Null(snapshotRoot.Attribute("Background"));
+        Assert.Equal("Raw", snapshotProgress.Attribute("AutomationProperties.AccessibilityView")?.Value);
+        Assert.Equal("Find latest capture", latestButton.Attribute("Content")?.Value);
+        Assert.Equal("Open captures folder", folderButton.Attribute("Content")?.Value);
+        Assert.Equal("Generate AI description", analyzeButton.Attribute("Content")?.Value);
+        Assert.Equal("{StaticResource AccentButtonStyle}", analyzeButton.Attribute("Style")?.Value);
+        Assert.Equal("CharacterEllipsis", latestCapture.Attribute("TextTrimming")?.Value);
+        Assert.Equal("NoWrap", latestCapture.Attribute("TextWrapping")?.Value);
+        Assert.Equal("1", latestCapture.Attribute("MaxLines")?.Value);
+        Assert.Contains(snapshots.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.Snapshot.LatestLabel");
+        Assert.All(snapshots.Descendants().Where(element => element.Name.LocalName == "Border"), divider =>
+        {
+            Assert.Equal("1", divider.Attribute("Height")?.Value);
+            Assert.Equal("{ThemeResource DividerStrokeColorDefaultBrush}", divider.Attribute("Background")?.Value);
+        });
+        Assert.Contains("ScreenshotResultText.Text = FileNameFromPath(screenshotPath);", snapshotSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetHelpText(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Operations.Snapshot.FolderOpened", snapshotSource, StringComparison.Ordinal);
         Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
 
@@ -159,7 +186,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain("result.Code", pluginSource, StringComparison.Ordinal);
     }
 
-    /// <summary>Guards the shared overlay, single-layer Acrylic material, subtle geometry, and configurable timeout.</summary>
+    /// <summary>Guards the shared overlay, neutral single-layer Acrylic material, severity semantics, and configurable timeout.</summary>
     [Fact]
     public void CentralBanners_UseOneTimedAcrylicOverlay()
     {
@@ -185,67 +212,35 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Single(banner.Descendants(), element => element.Name.LocalName == "InfoBar");
         var infoBar = banner.Descendants().Single(element => element.Name.LocalName == "InfoBar");
         var bannerSurface = banner.Descendants().Single(element => HasName(element, "BannerSurface"));
-        var acrylicBackdrop = banner.Descendants().Single(element => HasName(element, "AcrylicBackdrop"));
         var progress = banner.Descendants().Single(element => element.Name.LocalName == "ProgressBar");
         Assert.Equal("620", banner.Root?.Attribute("MaxWidth")?.Value);
         Assert.Equal("Stretch", banner.Root?.Attribute("HorizontalAlignment")?.Value);
-        Assert.Equal("{ThemeResource TimedInfoBarBackdropBrush}", acrylicBackdrop.Attribute("Background")?.Value);
-        Assert.Equal("{ThemeResource TimedInfoBarGlassBorderBrush}", acrylicBackdrop.Attribute("BorderBrush")?.Value);
-        Assert.Equal("1", acrylicBackdrop.Attribute("BorderThickness")?.Value);
-        Assert.Equal("14", acrylicBackdrop.Attribute("CornerRadius")?.Value);
+        Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "Border");
+        Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "InfoBar.Resources");
         Assert.Equal("14", infoBar.Attribute("CornerRadius")?.Value);
         Assert.Equal("82", infoBar.Attribute("MinHeight")?.Value);
         Assert.Equal("6,4,6,10", infoBar.Attribute("Padding")?.Value);
         Assert.DoesNotContain(banner.Descendants(), element => HasName(element, "FrostedVeil"));
         Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName.Contains("GradientBrush", StringComparison.Ordinal));
-        Assert.Equal("Transparent", infoBar.Attribute("Background")?.Value);
-        Assert.Equal("Transparent", infoBar.Attribute("BorderBrush")?.Value);
-        Assert.Equal("0", infoBar.Attribute("BorderThickness")?.Value);
+        Assert.Null(infoBar.Attribute("Background"));
+        Assert.Null(infoBar.Attribute("BorderBrush"));
+        Assert.Null(infoBar.Attribute("BorderThickness"));
+        Assert.Null(infoBar.Attribute("Foreground"));
+        Assert.Equal("Polite", infoBar.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
+        Assert.Equal("True", infoBar.Attribute("IsClosable")?.Value);
         Assert.Equal("BannerInfoBar_Closing", infoBar.Attribute("Closing")?.Value);
-        var transparentSemanticBackgrounds = infoBar.Descendants()
-            .Where(element => element.Name.LocalName == "SolidColorBrush")
-            .Where(element => element.Attribute("Color")?.Value == "Transparent")
-            .SelectMany(element => element.Attributes().Where(attribute => attribute.Name.LocalName == "Key"))
-            .Select(attribute => attribute.Value)
-            .ToArray();
-        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarInformationalSeverityBackgroundBrush"));
-        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarSuccessSeverityBackgroundBrush"));
-        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarWarningSeverityBackgroundBrush"));
-        Assert.Equal(2, transparentSemanticBackgrounds.Count(key => key == "InfoBarErrorSeverityBackgroundBrush"));
         Assert.Equal("0", bannerSurface.Attribute("Opacity")?.Value);
         Assert.Equal("2", progress.Attribute("Height")?.Value);
         Assert.Equal("16,0,16,8", progress.Attribute("Margin")?.Value);
         Assert.Equal("{ThemeResource DividerStrokeColorDefaultBrush}", progress.Attribute("Background")?.Value);
-        Assert.Equal("{ThemeResource BrandCoralBrush}", progress.Attribute("Foreground")?.Value);
+        Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", progress.Attribute("Foreground")?.Value);
         Assert.Equal("Raw", progress.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
-
-        var coralBrushes = app.Descendants()
-            .Where(element => element.Name.LocalName == "SolidColorBrush" &&
-                              element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "BrandCoralBrush"))
-            .ToArray();
-        Assert.Equal(2, coralBrushes.Length);
-        Assert.All(coralBrushes, brush => Assert.Equal("#FFF9665B", brush.Attribute("Color")?.Value));
-        Assert.Contains(app.Descendants(), element =>
-            element.Name.LocalName == "StaticResource" &&
-            element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "BrandCoralBrush") &&
-            element.Attribute("ResourceKey")?.Value == "SystemColorHighlightColorBrush");
-
-        var timedBackdropBrushes = app.Descendants()
-            .Where(element => element.Name.LocalName == "AcrylicBrush" && HasKey(element, "TimedInfoBarBackdropBrush"))
-            .ToArray();
-        var timedBorders = app.Descendants()
-            .Where(element => element.Name.LocalName == "SolidColorBrush" && HasKey(element, "TimedInfoBarGlassBorderBrush"))
-            .ToArray();
-        Assert.Equal(2, timedBackdropBrushes.Length);
-        Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.68");
-        Assert.Contains(timedBackdropBrushes, brush => brush.Attribute("TintOpacity")?.Value == "0.60");
-        Assert.DoesNotContain(app.Descendants(), element => HasKey(element, "TimedInfoBarGlassVeilBrush"));
-        Assert.Equal(2, timedBorders.Length);
-        Assert.Contains(timedBorders, brush => brush.Attribute("Color")?.Value == "#4D727C78");
-        Assert.Contains(timedBorders, brush => brush.Attribute("Color")?.Value == "#3DFFFFFF");
-        Assert.Contains(app.Descendants(), element =>
-            element.Name.LocalName == "StaticResource" && HasKey(element, "TimedInfoBarBackdropBrush") &&
-            element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
+        Assert.DoesNotContain(banner.Descendants().Attributes(), attribute =>
+            attribute.Value.StartsWith('#'));
+        Assert.DoesNotContain(app.Descendants(), element =>
+            HasKey(element, "TimedInfoBarBackdropBrush") ||
+            HasKey(element, "TimedInfoBarGlassBorderBrush") ||
+            HasKey(element, "TimedInfoBarGlassVeilBrush"));
 
         Assert.Contains("TimeSpan.FromSeconds(10)", service, StringComparison.Ordinal);
         Assert.Contains("TimeSpan? timeout = null", service, StringComparison.Ordinal);
@@ -257,6 +252,11 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("countdown.Generation != generation", service, StringComparison.Ordinal);
         Assert.Contains("TimeSpan.FromMilliseconds(80)", bannerSource, StringComparison.Ordinal);
         Assert.Contains("private const float BannerElevation = 18f;", bannerSource, StringComparison.Ordinal);
+        Assert.Contains("BannerInfoBar.Severity = severity;", bannerSource, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Informational", service, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Success", service, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Warning", service, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Error", service, StringComparison.Ordinal);
         Assert.Contains("args.Cancel = true;", bannerSource, StringComparison.Ordinal);
         Assert.Contains("new UISettings().AnimationsEnabled", bannerSource, StringComparison.Ordinal);
         Assert.Contains("_transitionGeneration", bannerSource, StringComparison.Ordinal);
@@ -321,6 +321,92 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
         Assert.DoesNotContain("LocalStore", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenCaptureService", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Guards the report workflow hierarchy, localized date formatting, and compact path presentation.</summary>
+    [Fact]
+    public void ReportsSurface_SeparatesCreationAndFolderActionsWithoutOpaqueCards()
+    {
+        var surface = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml.cs"));
+        var sectionTags = new[]
+        {
+            "Operations.Reports.Today.Title",
+            "Operations.Reports.Digest.Title",
+            "Operations.Reports.Folder.Title"
+        };
+
+        Assert.All(sectionTags, tag => Assert.Contains(surface.Descendants(), element =>
+            element.Attribute("Tag")?.Value == tag
+            && element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "AutomationProperties.HeadingLevel"
+                && attribute.Value == "Level3")));
+        Assert.True(surface.Descendants().Count(element => element.Name.LocalName == "Rectangle") >= 3);
+        Assert.DoesNotContain(surface.Descendants(), element => element.Name.LocalName == "Border");
+        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.OpenGenerated.Description");
+        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.Reports.OpenFolder");
+
+        var digestButton = surface.Descendants().Single(element => element.Attribute("Tag")?.Value == "Operations.GenerateDigest");
+        var folderButton = surface.Descendants().Single(element => element.Attribute("Tag")?.Value == "Operations.Reports.OpenFolder");
+        Assert.NotSame(digestButton.Parent, folderButton.Parent);
+        Assert.Equal("Left", digestButton.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Left", folderButton.Attribute("HorizontalAlignment")?.Value);
+
+        var path = surface.Descendants().Single(element => HasName(element, "ReportResultPathText"));
+        Assert.Equal("CharacterEllipsis", path.Attribute("TextTrimming")?.Value);
+        Assert.Equal("1", path.Attribute("MaxLines")?.Value);
+        Assert.Contains("new DateTimeFormatter(\"shortdate\", [_strings.Language]).Patterns[0]", source, StringComparison.Ordinal);
+        Assert.Contains("DigestDatePicker.Language = _strings.Language", source, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(ReportResultPathText, path)", source, StringComparison.Ordinal);
+        Assert.Contains("ShowResult(_strings.Translate(\"Operations.Reports.Today\"), path)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Guards the ordered retention workflow and compact full-path disclosure.</summary>
+    [Fact]
+    public void RetentionSurface_SeparatesCriteriaPreviewAndConfirmedDeletion()
+    {
+        var surface = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml.cs"));
+        var sectionTags = new[]
+        {
+            "Operations.Retention.Policy",
+            "Operations.Retention.Preview",
+            "Operations.Retention.Cleanup"
+        };
+
+        Assert.All(sectionTags, tag => Assert.Contains(surface.Descendants(), element =>
+            element.Attribute("Tag")?.Value == tag
+            && element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "AutomationProperties.HeadingLevel"
+                && attribute.Value == "Level3")));
+        Assert.True(surface.Descendants().Count(element => element.Name.LocalName == "Rectangle") >= 2);
+        Assert.DoesNotContain(surface.Descendants(), element => element.Name.LocalName == "Border");
+        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.Retention.Preview.Description");
+        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.Retention.Cleanup.Description");
+
+        Assert.All(new[]
+        {
+            "Operations.Retention.LoadPolicyAction",
+            "Operations.Retention.PreviewAction",
+            "Operations.Retention.CleanupAction"
+        }, tag =>
+        {
+            var button = surface.Descendants().Single(element => element.Attribute("Tag")?.Value == tag);
+            Assert.Equal("Left", button.Attribute("HorizontalAlignment")?.Value);
+        });
+
+        var directory = surface.Descendants().Single(element => HasName(element, "RetentionDirectoryText"));
+        var candidatePath = surface.Descendants().Single(element =>
+            element.Name.LocalName == "TextBlock" && element.Attribute("ToolTipService.ToolTip")?.Value == "{Binding}");
+        Assert.Equal("CharacterEllipsis", directory.Attribute("TextTrimming")?.Value);
+        Assert.Equal("1", directory.Attribute("MaxLines")?.Value);
+        Assert.Equal("CharacterEllipsis", candidatePath.Attribute("TextTrimming")?.Value);
+        Assert.Equal("1", candidatePath.Attribute("MaxLines")?.Value);
+        Assert.Contains("RetentionDirectoryText.Text = status.ScreenshotDirectory", source, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(RetentionDirectoryText, status.ScreenshotDirectory)", source, StringComparison.Ordinal);
+        Assert.Contains("Operations.Retention.Preview.Paths", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
     }
 
     /// <summary>Ensures destructive retention execution cannot be triggered without a safe-default dialog.</summary>

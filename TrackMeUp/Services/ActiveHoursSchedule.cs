@@ -2,23 +2,15 @@ using System.Globalization;
 
 namespace TrackMeUp.Services;
 
-/// <summary>Normalizes the optional, informational weekly schedule shared by settings and AI prompts.</summary>
-internal static class ActiveHoursSchedule
+/// <summary>Normalizes the optional, informational weekly schedule shared by settings, UI, and AI prompts.</summary>
+public static class ActiveHoursSchedule
 {
-    internal static readonly IReadOnlyList<string> Days =
-    [
-        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
-    ];
+    /// <summary>Gets the canonical lowercase English weekday identifiers in display order.</summary>
+    public static IReadOnlyList<string> Days { get; } = Array.AsReadOnly(
+        new[] { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" });
+
     private static readonly IReadOnlyList<ActiveHoursDay> DefaultSchedule =
-    [
-        new("monday", "00:00-24:00"),
-        new("tuesday", "00:00-24:00"),
-        new("wednesday", "00:00-24:00"),
-        new("thursday", "00:00-24:00"),
-        new("friday", "00:00-24:00"),
-        new("saturday", "00:00-24:00"),
-        new("sunday", "00:00-24:00")
-    ];
+        Days.Select(static day => new ActiveHoursDay(day, "00:00-24:00")).ToArray();
 
     internal static IReadOnlyList<ActiveHoursDay> Normalize(IReadOnlyList<ActiveHoursDay>? configuredDays)
     {
@@ -176,7 +168,12 @@ internal static class ActiveHoursSchedule
                 && breakEnd <= activeEnd);
     }
 
-    private static bool TryParseRange(string value, out int start, out int end)
+    /// <summary>Parses an <c>HH:mm-HH:mm</c> range into minute boundaries.</summary>
+    /// <param name="value">Range to parse.</param>
+    /// <param name="start">Start boundary in minutes after midnight.</param>
+    /// <param name="end">End boundary in minutes after midnight; <c>24:00</c> is supported.</param>
+    /// <returns><see langword="true"/> when both boundaries are valid.</returns>
+    public static bool TryParseRange(string value, out int start, out int end)
     {
         start = default;
         end = default;

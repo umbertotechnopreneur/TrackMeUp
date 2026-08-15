@@ -8,33 +8,116 @@
     d:DesignHeight="600"
     d:DesignWidth="520"
     mc:Ignorable="d">
-    <Grid>
-        <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
+    <Grid RowSpacing="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-        <StackPanel x:Name="SectionBody" Spacing="14">
+        <Grid x:Name="HeaderRow" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
             <StackPanel Spacing="4">
-                <TextBlock Tag="Operations.SnapshotAi" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Screen captures and AI" />
+                <TextBlock Tag="Operations.SnapshotAi" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Captures and AI descriptions" />
                 <TextBlock
                     Tag="Operations.SnapshotAi.Description"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="Inspect the latest retained capture, open the screen-capture folder, or ask the configured AI provider to describe the current context."
+                    Text="Find the latest capture, open its folder, or ask your AI provider to describe the current activity."
                     TextWrapping="Wrap" />
             </StackPanel>
+            <ProgressRing
+                x:Name="Progress"
+                Grid.Column="1"
+                Width="20"
+                Height="20"
+                Margin="0,3,0,0"
+                VerticalAlignment="Top"
+                AutomationProperties.AccessibilityView="Raw"
+                IsActive="False"
+                Visibility="Collapsed" />
+        </Grid>
 
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Button Tag="Operations.LatestSnapshot" AutomationProperties.Name="Latest screen capture" Click="LatestScreenshotButton_Click" Content="Latest screen capture" HorizontalAlignment="Stretch" />
-                <Button Tag="Operations.OpenFolder" Grid.Column="1" AutomationProperties.Name="Open folder" Click="OpenScreenshotFolderButton_Click" Content="Open folder" HorizontalAlignment="Stretch" />
-            </Grid>
-            <TextBlock x:Name="ScreenshotResultText" Tag="Operations.Initial.Snapshot" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="No screen capture yet." TextWrapping="Wrap" />
+        <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="18">
+            <StackPanel Spacing="10">
+                <TextBlock
+                    AutomationProperties.HeadingLevel="Level3"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Tag="Operations.Snapshot.Section"
+                    Text="Saved captures" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        x:Name="OpenLatestCaptureButton"
+                        MinHeight="36"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Find latest capture"
+                        Click="LatestScreenshotButton_Click"
+                        Content="Find latest capture"
+                        Tag="Operations.LatestSnapshot" />
+                    <Button
+                        x:Name="OpenCapturesFolderButton"
+                        Grid.Column="1"
+                        MinHeight="36"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Open captures folder"
+                        Click="OpenScreenshotFolderButton_Click"
+                        Content="Open captures folder"
+                        Tag="Operations.OpenFolder" />
+                </Grid>
+                <StackPanel Spacing="2">
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Tag="Operations.Snapshot.LatestLabel"
+                        Text="Latest saved capture" />
+                    <TextBlock
+                        x:Name="ScreenshotResultText"
+                        AutomationProperties.LiveSetting="Polite"
+                        FontWeight="SemiBold"
+                        IsTextSelectionEnabled="True"
+                        MaxLines="1"
+                        Tag="Operations.Initial.Snapshot"
+                        Text="Latest capture not loaded."
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
+                </StackPanel>
+            </StackPanel>
 
-            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-            <CheckBox x:Name="AllowAiCaptureBox" Tag="Operations.AllowCapture" Content="Allow a new screen capture for this action" IsChecked="True" />
-            <Button Tag="Operations.Analyze" AutomationProperties.Name="Describe current context" Click="AnalyzeButton_Click" Content="Describe current context" HorizontalAlignment="Left" />
-            <TextBlock x:Name="AiAnalysisText" Tag="Operations.Initial.Analysis" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="No AI description yet." TextWrapping="Wrap" />
+            <Border Height="1" Opacity="0.65" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <StackPanel Spacing="10">
+                <TextBlock
+                    AutomationProperties.HeadingLevel="Level3"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Tag="Operations.Analysis.Section"
+                    Text="AI description" />
+                <CheckBox
+                    x:Name="AllowAiCaptureBox"
+                    Content="Take a new capture for this description"
+                    IsChecked="True"
+                    Tag="Operations.AllowCapture" />
+                <Button
+                    x:Name="GenerateDescriptionButton"
+                    HorizontalAlignment="Left"
+                    AutomationProperties.Name="Generate AI description"
+                    Click="AnalyzeButton_Click"
+                    Content="Generate AI description"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Tag="Operations.Analyze" />
+                <TextBlock
+                    x:Name="AiAnalysisText"
+                    AutomationProperties.LiveSetting="Polite"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    IsTextSelectionEnabled="True"
+                    Tag="Operations.Initial.Analysis"
+                    Text="No description generated."
+                    TextWrapping="Wrap" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

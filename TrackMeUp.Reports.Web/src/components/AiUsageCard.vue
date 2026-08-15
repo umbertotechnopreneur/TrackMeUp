@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { formatDateTime, formatInteger, type AiUsageOrigin, type AiUsageSummary } from '../reporting'
 import { reportLocale, tr } from '../localization'
 import { reportIcons } from '../icons'
+import AiUsageBreakdownTable from './AiUsageBreakdownTable.vue'
 
 const props = defineProps<{
   aiUsage: AiUsageSummary
@@ -33,6 +34,11 @@ const formatOriginLabel = (origin: AiUsageOrigin): string => {
     case 'unknown': return tr('Unknown')
   }
 }
+
+const originRows = computed(() => props.aiUsage.byOrigin.map((slice) => ({
+  ...slice,
+  displayLabel: formatOriginLabel(slice.label),
+})))
 
 const costNotice = computed(() => {
   const usage = props.aiUsage
@@ -185,71 +191,27 @@ const summaryItems = computed(() => [
 
         <v-row class="mt-1" dense>
           <v-col cols="12" lg="6">
-            <section class="ai-usage-table" aria-labelledby="ai-usage-provider-title">
-              <h3 id="ai-usage-provider-title" class="ai-usage-table__title">{{ tr('By AI provider') }}</h3>
-              <v-table density="compact" class="ai-usage-table__table">
-                <caption class="visually-hidden">{{ tr('AI usage broken down by provider') }}</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{{ tr('AI provider') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Requests') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Input') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Output') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Total') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Reported') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Estimated') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="slice in aiUsage.byProvider" :key="slice.label">
-                    <th scope="row">{{ slice.label }}</th>
-                    <td class="text-right">{{ formatInteger(slice.requestCount) }}</td>
-                    <td class="text-right">{{ formatInteger(slice.inputTokens) }}</td>
-                    <td class="text-right">{{ formatInteger(slice.outputTokens) }}</td>
-                    <td class="text-right">{{ formatInteger(slice.totalTokens) }}</td>
-                    <td class="text-right">{{ formatUsd(slice.actualCostUsd) }}</td>
-                    <td class="text-right">{{ formatUsd(slice.estimatedCostUsd) }}</td>
-                  </tr>
-                  <tr v-if="aiUsage.byProvider.length === 0">
-                    <td colspan="7" class="text-medium-emphasis">{{ tr('No AI-provider details available.') }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </section>
+            <AiUsageBreakdownTable
+              title-id="ai-usage-provider-title"
+              :title="tr('By AI provider')"
+              :caption="tr('AI usage broken down by provider')"
+              :first-column-label="tr('AI provider')"
+              :rows="aiUsage.byProvider"
+              :empty-text="tr('No AI-provider details available.')"
+              :format-cost="formatUsd"
+            />
           </v-col>
 
           <v-col cols="12" lg="6">
-            <section class="ai-usage-table" aria-labelledby="ai-usage-origin-title">
-              <h3 id="ai-usage-origin-title" class="ai-usage-table__title">{{ tr('By origin') }}</h3>
-              <v-table density="compact" class="ai-usage-table__table">
-                <caption class="visually-hidden">{{ tr('AI usage broken down by request origin') }}</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{{ tr('Origin') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Requests') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Input') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Output') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Total') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Reported') }}</th>
-                    <th scope="col" class="text-right">{{ tr('Estimated') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="slice in aiUsage.byOrigin" :key="slice.label">
-                    <th scope="row">{{ formatOriginLabel(slice.label) }}</th>
-                    <td class="text-right">{{ formatInteger(slice.requestCount) }}</td>
-                    <td class="text-right">{{ formatInteger(slice.inputTokens) }}</td>
-                    <td class="text-right">{{ formatInteger(slice.outputTokens) }}</td>
-                    <td class="text-right">{{ formatInteger(slice.totalTokens) }}</td>
-                    <td class="text-right">{{ formatUsd(slice.actualCostUsd) }}</td>
-                    <td class="text-right">{{ formatUsd(slice.estimatedCostUsd) }}</td>
-                  </tr>
-                  <tr v-if="aiUsage.byOrigin.length === 0">
-                    <td colspan="7" class="text-medium-emphasis">{{ tr('No origin details available.') }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </section>
+            <AiUsageBreakdownTable
+              title-id="ai-usage-origin-title"
+              :title="tr('By origin')"
+              :caption="tr('AI usage broken down by request origin')"
+              :first-column-label="tr('Origin')"
+              :rows="originRows"
+              :empty-text="tr('No origin details available.')"
+              :format-cost="formatUsd"
+            />
           </v-col>
         </v-row>
       </v-card-text>
@@ -318,45 +280,4 @@ const summaryItems = computed(() => [
   font-size: 0.72rem;
 }
 
-.ai-usage-table {
-  overflow: hidden;
-  border: 1px solid rgb(var(--v-theme-outline-variant));
-  border-radius: 10px;
-}
-
-.ai-usage-table__title {
-  margin: 0;
-  padding: 12px 12px 5px;
-  color: rgb(var(--v-theme-on-surface));
-  font-size: 0.88rem;
-  font-weight: 680;
-}
-
-.ai-usage-table__table {
-  font-size: 0.78rem;
-}
-
-.ai-usage-table__table :deep(th),
-.ai-usage-table__table :deep(td) {
-  padding-inline: 8px;
-  white-space: nowrap;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@media (max-width: 640px) {
-  .ai-usage-table {
-    overflow-x: auto;
-  }
-}
 </style>

@@ -201,6 +201,27 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void OcrTextWindow_CopyIsAvailableInEverySupportedLanguage()
+    {
+        string[] keys =
+        [
+            "Screenshots.OcrText.Details.Title",
+            "Screenshots.OcrText.Details.Action",
+            "Screenshots.OcrText.Details.Open",
+            "Screenshots.OcrText.WindowTitle",
+            "Screenshots.OcrText.Search.Placeholder",
+            "Screenshots.OcrText.Search.AccessibleName",
+            "Screenshots.OcrText.Search.Tooltip"
+        ];
+
+        Assert.All(LocalizationService.SupportedLanguages, language =>
+        {
+            var strings = new LocalizationService(language);
+            Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(strings.Translate(key))));
+        });
+    }
+
+    [Fact]
     public void SettingsCatalog_AcceptsSystemLanguageAsTheGreenfieldDefault()
     {
         var settings = new AppSettings();
@@ -440,10 +461,10 @@ public sealed class LocalizationServiceTests
         (string Key, string English, string Italian)[] descriptions =
         [
             ("Operations.Runtime.Description", "Review the TrackMeUp runtime, protocol and capabilities, logging status, and a current snapshot of CPU, GPU, memory, network, and local storage. These diagnostics are read from this PC.", "Controlla il runtime di TrackMeUp, il protocollo e le funzionalità, lo stato dei log e una fotografia attuale di CPU, GPU, memoria, rete e archiviazione locale. Questi dati diagnostici vengono letti da questo PC."),
-            ("Operations.SnapshotAi.Description", "Inspect the latest retained capture, open the screen-capture folder, or ask the configured AI provider to describe the current context. A new capture is created for analysis only when you allow it.", "Controlla l'ultima cattura conservata, apri la cartella delle catture oppure chiedi al provider AI configurato di descrivere il contesto corrente. Una nuova cattura per l'analisi viene creata solo quando lo consenti."),
-            ("Operations.Reports.Description", "Create today's report or a digest for a selected date from activity already stored on this PC. Open the generated file automatically or browse the reports folder.", "Crea il report di oggi o il digest di una data scelta usando l'attività già salvata su questo PC. Apri automaticamente il file generato oppure consulta la cartella dei report."),
+            ("Operations.SnapshotAi.Description", "Find the latest capture, open its folder, or ask your AI provider to describe the current activity.", "Trova l'ultima cattura, apri la sua cartella o chiedi al provider AI di descrivere l'attività corrente."),
+            ("Operations.Reports.Description", "Create focused files from activity already saved locally. Report generation does not capture or upload new data.", "Crea file mirati dall'attività già salvata in locale. La generazione dei report non acquisisce né carica nuovi dati."),
             ("Operations.Privacy.Description", "Create local rules that exclude matching app names, window titles, or context details before TrackMeUp stores the context or shares it with an AI provider. Review existing rules and test whether the current context would be skipped.", "Crea regole locali che escludono nomi di app, titoli di finestre o dettagli di contesto corrispondenti prima che TrackMeUp salvi il contesto o lo condivida con un provider AI. Controlla le regole esistenti e verifica se il contesto corrente verrebbe ignorato."),
-            ("Operations.Retention.Description", "Review how long activity data and screen captures remain on this PC. Preview exactly which records and files are eligible for cleanup; deletion always requires your explicit confirmation.", "Controlla per quanto tempo dati di attività e catture schermo restano su questo PC. Visualizza in anteprima quali record e file possono essere rimossi: l'eliminazione richiede sempre una conferma esplicita."),
+            ("Operations.Retention.Description", "Review local retention rules, preview eligible items, then choose whether to permanently delete them. Preview never deletes data; deletion always asks for confirmation.", "Controlla i criteri locali, visualizza gli elementi idonei e poi scegli se eliminarli definitivamente. L'anteprima non elimina dati e l'eliminazione richiede sempre una conferma."),
             ("Operations.Plugins.Description", "Enable or disable local, app-specific context enrichers. Each plugin can add details from a supported app; disabling it stops that enrichment while core activity tracking continues.", "Abilita o disabilita gli arricchimenti locali del contesto specifici per app. Ogni plugin può aggiungere dettagli da un'app supportata; disabilitarlo interrompe quell'arricchimento senza fermare il monitoraggio attività di base.")
         ];
 

@@ -1,5 +1,6 @@
 using System;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -40,19 +41,28 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.GetLatestScreenshotAsync(token));
         if (result is { Succeeded: true })
         {
-            ScreenshotResultText.Text = string.IsNullOrWhiteSpace(result.Value)
-                ? _strings.Translate("Operations.Snapshot.None")
-                : _strings.Format("Operations.Snapshot.Latest", result.Value);
+            RenderLatestScreenshot(result.Value);
         }
     }
 
     private async void OpenScreenshotFolderButton_Click(object sender, RoutedEventArgs e)
     {
-        var result = await Context.ExecuteAsync((application, token) => application.OpenScreenshotFolderAsync(token));
-        if (result is { Succeeded: true, Value: { } path })
+        await Context.ExecuteAsync((application, token) => application.OpenScreenshotFolderAsync(token));
+    }
+
+    private void RenderLatestScreenshot(string? screenshotPath)
+    {
+        if (string.IsNullOrWhiteSpace(screenshotPath))
         {
-            ScreenshotResultText.Text = _strings.Format("Operations.Snapshot.FolderOpened", path);
+            ScreenshotResultText.Text = _strings.Translate("Operations.Snapshot.None");
+            ToolTipService.SetToolTip(ScreenshotResultText, null);
+            AutomationProperties.SetHelpText(ScreenshotResultText, string.Empty);
+            return;
         }
+
+        ScreenshotResultText.Text = FileNameFromPath(screenshotPath);
+        ToolTipService.SetToolTip(ScreenshotResultText, screenshotPath);
+        AutomationProperties.SetHelpText(ScreenshotResultText, screenshotPath);
     }
 
     private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
@@ -63,5 +73,13 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
         {
             AiAnalysisText.Text = $"{analysis.Application} · {analysis.Context}\n{analysis.Summary}";
         }
+    }
+
+    private static string FileNameFromPath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var trimmedPath = path.TrimEnd('\\', '/');
+        var separatorIndex = Math.Max(trimmedPath.LastIndexOf('\\'), trimmedPath.LastIndexOf('/'));
+        return separatorIndex >= 0 ? trimmedPath[(separatorIndex + 1)..] : trimmedPath;
     }
 }

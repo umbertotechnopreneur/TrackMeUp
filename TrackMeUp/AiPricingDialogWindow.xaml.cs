@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
-using Windows.Graphics;
 using Windows.System;
 
 namespace TrackMeUp;
@@ -22,7 +21,6 @@ internal sealed partial class AiPricingDialogWindow : Window
     private readonly AiPricingOverview _overview;
     private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
-    private readonly AppWindow _ownerAppWindow;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private bool _isCompleting;
@@ -39,7 +37,7 @@ internal sealed partial class AiPricingDialogWindow : Window
         ArgumentNullException.ThrowIfNull(application);
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
-        _ownerAppWindow = ownerAppWindow ?? throw new ArgumentNullException(nameof(ownerAppWindow));
+        ArgumentNullException.ThrowIfNull(ownerAppWindow);
         InitializeComponent();
         Title = T("AiPricing.Title");
         RootGrid.RequestedTheme = theme;
@@ -75,19 +73,7 @@ internal sealed partial class AiPricingDialogWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? 1d);
-        var area = DisplayArea.GetFromWindowId(_ownerAppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var margin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var width = Math.Clamp(
-            (int)Math.Ceiling(LogicalWidth * scale),
-            1,
-            Math.Max(1, area.Width - (margin * 2)));
-        var height = Math.Clamp(
-            (int)Math.Ceiling(LogicalHeight * scale),
-            1,
-            Math.Max(1, area.Height - (margin * 2)));
-        _appWindow.Resize(new SizeInt32(width, height));
-
+        _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
         CloseButton.Focus(FocusState.Programmatic);
     }

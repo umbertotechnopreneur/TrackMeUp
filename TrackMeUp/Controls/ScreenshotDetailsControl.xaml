@@ -188,6 +188,39 @@
                         Text="--" />
                 </StackPanel>
             </StackPanel>
+
+            <StackPanel
+                x:Name="OcrTextSection"
+                Spacing="6"
+                Visibility="Collapsed">
+                <TextBlock
+                    Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
+                    Tag="Screenshots.OcrText.Details.Title"
+                    Text="OCR TEXT" />
+                <Button
+                    x:Name="OpenOcrTextButton"
+                    MinHeight="36"
+                    Padding="0,6"
+                    HorizontalAlignment="Left"
+                    AutomationProperties.Name="Open OCR text in a new window"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Click="OpenOcrTextButton_Click"
+                    Tag="Screenshots.OcrText.Details.Open"
+                    ToolTipService.ToolTip="Open OCR text in a new window">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock
+                            Tag="Screenshots.OcrText.Details.Action"
+                            Text="Open OCR text" />
+                        <FontIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="13"
+                            Glyph="&#xE8A7;" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

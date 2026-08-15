@@ -23,12 +23,6 @@ internal static class CliSettingsCatalog
             ? $"{setting.Key} <{setting.ValueType}>"
             : $"{setting.Key} <{string.Join('|', setting.AllowedValues)}>"));
 
-    /// <summary>Gets the English help sentence retained for contract-level tests.</summary>
-    internal static string HelpSummary => string.Format(
-        System.Globalization.CultureInfo.InvariantCulture,
-        CliStrings.Get("en-US", "detail.configWritable"),
-        HelpValueSummary);
-
     /// <summary>Finds a descriptor by stable public key.</summary>
     internal static bool TryGet(string key, out SettingDescriptor? descriptor) =>
         (descriptor = SettingsCatalog.Definitions.FirstOrDefault(setting => setting.Key.Equals(key, StringComparison.OrdinalIgnoreCase))) is not null;

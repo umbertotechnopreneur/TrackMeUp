@@ -33,7 +33,8 @@ public sealed record ScreenshotDetailsViewState(
     string ActivityIndex,
     string ActivityLabels,
     string? AnalysisTime,
-    IReadOnlyList<SafeMarkdownBlock> AiDescription);
+    IReadOnlyList<SafeMarkdownBlock> AiDescription,
+    string? OcrText);
 
 /// <summary>Builds safe screenshot-detail and Markdown projections without presentation-framework dependencies.</summary>
 public static partial class ScreenshotDetailsProjection
@@ -64,6 +65,11 @@ public static partial class ScreenshotDetailsProjection
         var labels = item.SpanLabels is { Count: > 0 }
             ? string.Join("  ·  ", item.SpanLabels.Select(label => label.Label))
             : missingValue;
+        var correctedOcrText = item.TextSnapshot?.AiRefinement?.CorrectedText;
+        var rawOcrText = item.TextSnapshot?.Ocr.RawText;
+        var ocrText = !string.IsNullOrWhiteSpace(correctedOcrText)
+            ? correctedOcrText
+            : string.IsNullOrWhiteSpace(rawOcrText) ? null : rawOcrText;
         return new ScreenshotDetailsViewState(
             localTime.ToString(culture.DateTimeFormat.LongDatePattern, culture),
             localTime.ToString("T", culture),
@@ -73,7 +79,8 @@ public static partial class ScreenshotDetailsProjection
             item.ActivityIndex is { } index ? index.ToString(culture) : missingValue,
             labels,
             item.AiAnalyzedAt?.ToLocalTime().ToString("g", culture),
-            ParseMarkdown(item.AiDescriptionMarkdown));
+            ParseMarkdown(item.AiDescriptionMarkdown),
+            ocrText);
     }
 
     /// <summary>

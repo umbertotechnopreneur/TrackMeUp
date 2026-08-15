@@ -155,7 +155,18 @@ public sealed class LocalSearchAndOcrIntegrationTests
             store.SaveSettings(store.LoadSettings() with { ScreenshotDirectory = screenshotDirectory });
             var capturedAt = DateTimeOffset.Now.AddSeconds(-1);
             var screenshotPath = CreateOwnedScreenshot(screenshotDirectory, 'a', capturedAt);
-            var snapshot = CreateTextSnapshot(screenshotPath, "Riunione progetto TrackMeUp");
+            var snapshot = CreateTextSnapshot(screenshotPath, "Riunone proggeto TrackMeUp") with
+            {
+                AiRefinement = new OcrAiRefinement(
+                    "Riunione progetto TrackMeUp",
+                    "it-IT",
+                    new OcrStructuredSummary(
+                        "Riunione di progetto.",
+                        Array.Empty<string>(),
+                        Array.Empty<string>(),
+                        Array.Empty<string>()),
+                    capturedAt.AddSeconds(1))
+            };
 
             store.UpsertScreenshotTextSnapshot(new string('a', 32), snapshot);
             store.UpsertScreenshotIntervalTelemetry(
@@ -169,7 +180,9 @@ public sealed class LocalSearchAndOcrIntegrationTests
             Assert.Equal(snapshot.SourceScreenshotPath, loaded?.SourceScreenshotPath);
             Assert.Equal(snapshot.Ocr.RawText, loaded?.Ocr.RawText);
             Assert.Equal(snapshot.Ocr.Lines[0].Words[0], loaded?.Ocr.Lines[0].Words[0]);
-            Assert.Equal("Riunione progetto TrackMeUp", item.TextSnapshot?.Ocr.RawText);
+            Assert.Equal("Riunone proggeto TrackMeUp", item.TextSnapshot?.Ocr.RawText);
+            Assert.Equal("Riunione progetto TrackMeUp", loaded?.AiRefinement?.CorrectedText);
+            Assert.Equal("Riunione progetto TrackMeUp", item.TextSnapshot?.AiRefinement?.CorrectedText);
             Assert.Equal(42, item.TextSnapshot?.Ocr.Lines[0].Words[0].X);
             Assert.Equal(50, item.CpuUsagePercent);
             Assert.Equal(50, item.GpuUsagePercent);

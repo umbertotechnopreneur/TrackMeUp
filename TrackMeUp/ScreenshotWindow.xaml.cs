@@ -41,6 +41,7 @@ public sealed partial class ScreenshotWindow : Window
     private string _theme = "system";
     private string _aiDescriptionEmptyMessageKey = DefaultAiDescriptionEmptyMessageKey;
     private ScreenshotDetailsViewState? _selectedDetailsState;
+    private OcrTextWindow? _ocrTextWindow;
     private bool _initialized;
     private bool _settingSelectedDate;
     private bool _detailsPaneOpenPreference;
@@ -128,6 +129,7 @@ public sealed partial class ScreenshotWindow : Window
         ScreenshotViewer.DeleteScreenshotRequested += ScreenshotViewer_DeleteScreenshotRequested;
         ScreenshotViewer.DeleteSnapshotRequested += ScreenshotViewer_DeleteSnapshotRequested;
         ScreenshotViewer.DetailsVisibilityRequested += ScreenshotViewer_DetailsVisibilityRequested;
+        DetailsSection.OcrTextRequested += DetailsSection_OcrTextRequested;
         TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
         FilmstripToggleButton.Click += FilmstripToggleButton_Click;
     }
@@ -440,6 +442,40 @@ public sealed partial class ScreenshotWindow : Window
         DetailsSection.Render(
             _selectedDetailsState,
             _strings.Translate(_aiDescriptionEmptyMessageKey));
+    }
+
+    private void DetailsSection_OcrTextRequested(string ocrText)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ocrText);
+
+        var requestedTheme = RootGrid.RequestedTheme;
+        if (_ocrTextWindow is null)
+        {
+            _ocrTextWindow = new OcrTextWindow(
+                _application,
+                _appWindow,
+                ocrText,
+                requestedTheme,
+                _strings.Language);
+            _ocrTextWindow.Closed += OcrTextWindow_Closed;
+        }
+        else
+        {
+            _ocrTextWindow.UpdateContent(ocrText, requestedTheme, _strings.Language);
+        }
+
+        _ocrTextWindow.Activate();
+    }
+
+    private void OcrTextWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (!ReferenceEquals(sender, _ocrTextWindow))
+        {
+            return;
+        }
+
+        _ocrTextWindow.Closed -= OcrTextWindow_Closed;
+        _ocrTextWindow = null;
     }
 
     private async void ScreenshotViewer_DetailsVisibilityRequested(bool isVisible)
@@ -804,6 +840,14 @@ public sealed partial class ScreenshotWindow : Window
 
     private async void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
     {
+        DetailsSection.OcrTextRequested -= DetailsSection_OcrTextRequested;
+        if (_ocrTextWindow is { } ocrTextWindow)
+        {
+            ocrTextWindow.Closed -= OcrTextWindow_Closed;
+            _ocrTextWindow = null;
+            ocrTextWindow.Close();
+        }
+
         await _placement.SaveAsync(CancellationToken.None);
         _placement.Dispose();
 

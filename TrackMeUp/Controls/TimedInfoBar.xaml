@@ -13,50 +13,16 @@
         <Grid.Shadow>
             <ThemeShadow />
         </Grid.Shadow>
-        <Border
-            x:Name="AcrylicBackdrop"
-            Background="{ThemeResource TimedInfoBarBackdropBrush}"
-            BorderBrush="{ThemeResource TimedInfoBarGlassBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="14" />
         <InfoBar
             x:Name="BannerInfoBar"
             AutomationProperties.LiveSetting="Polite"
-            Background="Transparent"
-            BorderBrush="Transparent"
-            BorderThickness="0"
             Closing="BannerInfoBar_Closing"
             CornerRadius="14"
             IsClosable="True"
             IsOpen="False"
             MinHeight="82"
             Padding="6,4,6,10"
-            local:InfoBarElevationBehavior.IsEnabled="False">
-            <InfoBar.Resources>
-                <ResourceDictionary>
-                    <ResourceDictionary.ThemeDictionaries>
-                        <ResourceDictionary x:Key="Light">
-                            <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="Transparent" />
-                        </ResourceDictionary>
-                        <ResourceDictionary x:Key="Dark">
-                            <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="Transparent" />
-                        </ResourceDictionary>
-                        <ResourceDictionary x:Key="HighContrast">
-                            <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
-                            <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
-                            <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
-                            <StaticResource x:Key="InfoBarErrorSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
-                        </ResourceDictionary>
-                    </ResourceDictionary.ThemeDictionaries>
-                </ResourceDictionary>
-            </InfoBar.Resources>
-        </InfoBar>
+            local:InfoBarElevationBehavior.IsEnabled="False" />
         <ProgressBar
             x:Name="CountdownProgress"
             Canvas.ZIndex="1"
@@ -67,7 +33,7 @@
             AutomationProperties.AccessibilityView="Raw"
             Background="{ThemeResource DividerStrokeColorDefaultBrush}"
             CornerRadius="1"
-            Foreground="{ThemeResource BrandCoralBrush}"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             IsHitTestVisible="False"
             Maximum="100"
             Minimum="0"

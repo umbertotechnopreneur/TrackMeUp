@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
-using Windows.Graphics;
 using Windows.System;
 using Windows.UI;
 
@@ -28,7 +27,6 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private readonly LocalizationService _strings;
     private readonly CultureInfo _culture;
     private readonly AppWindow _appWindow;
-    private readonly AppWindow _ownerAppWindow;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private IReadOnlyDictionary<DateOnly, ReportCalendarCell> _recordedDays = new Dictionary<DateOnly, ReportCalendarCell>();
@@ -47,7 +45,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
-        _ownerAppWindow = ownerAppWindow ?? throw new ArgumentNullException(nameof(ownerAppWindow));
+        ArgumentNullException.ThrowIfNull(ownerAppWindow);
         _culture = _strings.Culture;
         InitializeComponent();
         Title = T("ActivityCalendar.Title");
@@ -103,19 +101,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         }
 
         _isLoaded = true;
-        var scale = Math.Max(0.1d, RootGrid.XamlRoot?.RasterizationScale ?? 1d);
-        var area = DisplayArea.GetFromWindowId(_ownerAppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var margin = (int)Math.Ceiling(LogicalScreenMargin * scale);
-        var width = Math.Clamp(
-            (int)Math.Ceiling(LogicalWidth * scale),
-            1,
-            Math.Max(1, area.Width - (margin * 2)));
-        var height = Math.Clamp(
-            (int)Math.Ceiling(LogicalHeight * scale),
-            1,
-            Math.Max(1, area.Height - (margin * 2)));
-        _appWindow.Resize(new SizeInt32(width, height));
-
+        _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
         CloseButton.Focus(FocusState.Programmatic);
         await LoadCalendarAsync();
