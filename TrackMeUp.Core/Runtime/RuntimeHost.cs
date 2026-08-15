@@ -12,7 +12,8 @@ namespace TrackMeUp.Runtime;
 /// <summary>Owns the single local runtime and serves versioned requests over a same-user named pipe.</summary>
 public sealed class RuntimeHost : IAsyncDisposable
 {
-    private readonly ITrackMeUpApplication _application;
+    private ITrackMeUpApplication _application;
+    private readonly Func<ITrackMeUpApplication>? _applicationFactory;
     private readonly RuntimeEndpoint _endpoint;
     private readonly ILogger<RuntimeHost> _logger;
     private readonly CancellationTokenSource _shutdown = new();
@@ -25,13 +26,31 @@ public sealed class RuntimeHost : IAsyncDisposable
     /// <summary>Initializes a runtime host for a single application installation.</summary>
     public RuntimeHost(ITrackMeUpApplication application, string installationId, ILogger<RuntimeHost>? logger = null)
     {
-        _application = application;
+        _application = application ?? throw new ArgumentNullException(nameof(application));
+        _endpoint = RuntimeProtocol.CreateEndpoint(installationId);
+        _logger = logger ?? NullLogger<RuntimeHost>.Instance;
+    }
+
+    /// <summary>
+    /// Initializes a host that creates its local application only after runtime ownership is acquired.
+    /// </summary>
+    public RuntimeHost(
+        Func<ITrackMeUpApplication> applicationFactory,
+        string installationId,
+        ILogger<RuntimeHost>? logger = null)
+    {
+        _application = null!;
+        _applicationFactory = applicationFactory ?? throw new ArgumentNullException(nameof(applicationFactory));
         _endpoint = RuntimeProtocol.CreateEndpoint(installationId);
         _logger = logger ?? NullLogger<RuntimeHost>.Instance;
     }
 
     /// <summary>Gets the endpoint used by this host.</summary>
     public RuntimeEndpoint Endpoint => _endpoint;
+
+    /// <summary>Gets the local application after this host has acquired runtime ownership.</summary>
+    public ITrackMeUpApplication Application =>
+        _application ?? throw new InvalidOperationException("The runtime host does not own a local application.");
 
     /// <summary>Occurs after a successful reset-preparation response has been flushed to its caller.</summary>
     public event Action<AtomicResetPlan>? AtomicResetPrepared;
@@ -47,6 +66,18 @@ public sealed class RuntimeHost : IAsyncDisposable
             _mutexLease.Dispose();
             _mutexLease = null;
             return false;
+        }
+
+        try
+        {
+            _application ??= _applicationFactory?.Invoke()
+                ?? throw new InvalidOperationException("The runtime application factory returned no application.");
+        }
+        catch
+        {
+            _mutexLease.Dispose();
+            _mutexLease = null;
+            throw;
         }
 
         // One background loop owns pipe acceptance; mutations themselves remain serialized in the facade.
@@ -229,6 +260,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
                 "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "diagnostics.log.open" => ToResponse(request, await _application.OpenApplicationLogAsync(cancellationToken)),
+                "diagnostics.log.open_folder" => ToResponse(request, await _application.OpenApplicationLogFolderAsync(cancellationToken)),
                 "diagnostics.log.share" => ToResponse(request, await _application.ShareApplicationLogAsync(ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
                 "notifications.drain" => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
@@ -531,6 +563,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => SendAsync<string>("screenshot.share", new { screenshotPath, windowHandle }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.open", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> OpenApplicationLogFolderAsync(CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.open_folder", null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.share", new { windowHandle }, cancellationToken);
     /// <inheritdoc />

@@ -29,6 +29,7 @@ const calendar: ReportCalendarCell[] = Array.from({ length: 14 }, (_, index) => 
     mouseClicks: hasData ? 115 + index * 19 : 0,
     sampleCount: hasData ? Math.round((activeSeconds + idleSeconds) / 5) : 0,
     hasData,
+    activityScore: hasData ? Math.min(100, 24 + index * 5) : null,
   }
 })
 
@@ -120,7 +121,7 @@ export function buildDevelopmentEnvelope(): ReportEnvelope {
     type: 'report.snapshot',
     view: 'calendar',
     snapshot: {
-      contractVersion: 3,
+      contractVersion: 4,
       range: {
         from: '2026-07-23',
         toInclusive: '2026-08-05',

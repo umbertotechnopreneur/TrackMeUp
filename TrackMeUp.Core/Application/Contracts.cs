@@ -453,6 +453,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Opens the newest application log with the Windows shell.</summary>
     Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken);
 
+    /// <summary>Opens the directory that contains the rolling application logs.</summary>
+    Task<OperationResult<bool>> OpenApplicationLogFolderAsync(CancellationToken cancellationToken);
+
     /// <summary>Creates a bounded redacted application-log copy and opens the Windows Share UI.</summary>
     Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken);
 

@@ -514,11 +514,14 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         var loggerFactory = _services.GetRequiredService<ILoggerFactory>();
         var observability = _services.GetRequiredService<ObservabilityHealth>();
-        var localApplication = TrackMeUpApplicationFactory.Create(loggerFactory, observability);
-        var settings = localApplication.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult().Value ?? new AppSettings();
-        var host = new RuntimeHost(localApplication, settings.InstallationId, loggerFactory.CreateLogger<RuntimeHost>());
+        var installationId = TrackMeUpApplicationFactory.LoadInstallationId();
+        var host = new RuntimeHost(
+            () => TrackMeUpApplicationFactory.Create(loggerFactory, observability),
+            installationId,
+            loggerFactory.CreateLogger<RuntimeHost>());
         if (host.TryStart())
         {
+            var localApplication = host.Application;
             _logger.LogInformation("Runtime ownership acquired for this installation.");
             host.AtomicResetPrepared += RuntimeHost_AtomicResetPrepared;
             _runtimeHost = host;
@@ -528,10 +531,9 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
 
         // A separate process owns hooks and persistence; this frontend uses the same facade through its pipe.
-        _ = localApplication.DisposeAsync();
         _ = host.DisposeAsync();
         _logger.LogInformation("Runtime ownership is held by another process; connecting through the named pipe.");
-        _applicationFacade = new RuntimeClient(settings.InstallationId, TimeSpan.FromSeconds(5), loggerFactory.CreateLogger<RuntimeClient>());
+        _applicationFacade = new RuntimeClient(installationId, TimeSpan.FromSeconds(5), loggerFactory.CreateLogger<RuntimeClient>());
         return _applicationFacade;
     }
 

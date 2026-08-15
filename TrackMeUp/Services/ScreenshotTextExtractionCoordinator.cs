@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using TrackMeUp.Application;
@@ -38,6 +39,7 @@ public sealed class ScreenshotTextExtractionCoordinator
             return capture;
         }
 
+        long startedTimestamp = Stopwatch.GetTimestamp();
         var snapshots = new List<ScreenshotTextSnapshot>(capture.AnalysisScreenshotPaths.Count);
         foreach (var sourcePath in capture.AnalysisScreenshotPaths.Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -74,6 +76,13 @@ public sealed class ScreenshotTextExtractionCoordinator
             _store.UpsertScreenshotTextSnapshot(capture.CaptureId, snapshot);
             snapshots.Add(snapshot);
         }
+
+        _logger.LogInformation(
+            "Local screenshot OCR completed. Capture={Capture} Artifacts={ArtifactCount} Failed={FailedCount} ElapsedMilliseconds={ElapsedMilliseconds}",
+            CorrelationToken(capture.CaptureId),
+            snapshots.Count,
+            snapshots.Count(static snapshot => snapshot.Ocr.Status == ScreenshotTextExtractionStatus.Failed),
+            (long)Stopwatch.GetElapsedTime(startedTimestamp).TotalMilliseconds);
 
         return capture with { TextSnapshots = snapshots };
     }

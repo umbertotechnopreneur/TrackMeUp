@@ -301,6 +301,7 @@ public sealed class CliRouterTests
         public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => Unsupported<bool>();
+        public Task<OperationResult<bool>> OpenApplicationLogFolderAsync(CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => Unsupported<string>();

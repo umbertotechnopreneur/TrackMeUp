@@ -198,6 +198,7 @@ public sealed class OpenAiAnalysisCleanupTests
             AppSettings settings,
             string apiKey,
             string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new AiProviderResult(
                 "analyzed",
@@ -227,6 +228,7 @@ public sealed class OpenAiAnalysisCleanupTests
             AppSettings settings,
             string apiKey,
             string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default)
         {
             _entered.TrySetResult(true);
@@ -253,6 +255,7 @@ public sealed class OpenAiAnalysisCleanupTests
             AppSettings settings,
             string apiKey,
             string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) =>
             Task.FromException<AiProviderResult>(new AiProviderRequestException(
                 "Provider rate limit.",

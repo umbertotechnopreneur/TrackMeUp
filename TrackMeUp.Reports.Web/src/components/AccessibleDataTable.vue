@@ -37,6 +37,7 @@ const headers = computed<DataTableHeader[]>(() => {
       return [
         { title: tr('Date', 'Data'), key: 'period' },
         { title: tr('Availability', 'Disponibilità'), key: 'availability' },
+        { title: tr('Activity score', 'Punteggio attività'), key: 'score' },
         { title: tr('Active', 'Attivo'), key: 'active' },
         { title: tr('Idle', 'Inattivo'), key: 'idle' },
         { title: tr('Tracked', 'Tracciato'), key: 'tracked' },
@@ -74,6 +75,7 @@ const items = computed<Record<string, string>[]>(() => {
       return props.snapshot.calendar.map((cell) => ({
         period: formatDate(cell.date),
         availability: cell.hasData ? tr('Data available', 'Dati presenti') : tr('No data', 'Nessun dato'),
+        score: cell.activityScore === null ? '—' : `${formatInteger(cell.activityScore)}/100`,
         active: cell.hasData ? formatDuration(cell.activeSeconds) : '—',
         idle: cell.hasData ? formatDuration(cell.idleSeconds) : '—',
         tracked: cell.hasData ? formatDuration(cell.trackedSeconds) : '—',

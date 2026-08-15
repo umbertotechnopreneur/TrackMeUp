@@ -104,7 +104,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                 settings.ScreenshotDirectory,
                 settings.ScreenshotCaptureMode,
                 settings.WatermarkScreenshots,
-                origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
+                captureOrigin: origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
             : new ScreenshotCaptureResult(
                 Guid.NewGuid().ToString("N"),
                 Array.Empty<string>(),
@@ -232,7 +232,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                     settings,
                     apiKey,
                     captureResult.CaptureId,
-                    cancellationToken);
+                    cancellationToken: cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -499,9 +499,9 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             imageCount,
             promptCharacters,
             maxOutputTokens,
-            result?.Usage ?? new AiUsageMetrics(),
-            result?.FinishReason,
-            result is not null,
+            result?.Usage ?? failure?.Usage ?? new AiUsageMetrics(),
+            result?.FinishReason ?? failure?.FinishReason,
+            result is not null && failure is null,
             failure?.FailureCode);
     }
 

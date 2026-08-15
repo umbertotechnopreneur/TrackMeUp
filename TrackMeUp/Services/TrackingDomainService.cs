@@ -15,8 +15,10 @@ public sealed class TrackingDomainService : IDisposable
     private readonly InputHookService _inputHooks = new();
     private readonly ActivityMonitorService _monitor;
     private readonly ActivityScoreService _activityScore = new();
+    private readonly object _dashboardActivityCacheLock = new();
     private ActivitySample? _latestSample;
     private DateTimeOffset? _trackingStartedAt;
+    private DashboardActivityCache? _dashboardActivityCache;
 
     /// <summary>
     /// Initializes a new tracking domain service.
@@ -94,7 +96,6 @@ public sealed class TrackingDomainService : IDisposable
     /// </summary>
     public DashboardState LoadCurrentDashboardState()
     {
-        var summary = _store.GetTodaySummary();
         var settings = _store.LoadSettings();
         var sample = _latestSample;
         var status = IsTracking && sample?.State == "active" ? "RUNNING" : "PAUSED";
@@ -103,19 +104,20 @@ public sealed class TrackingDomainService : IDisposable
             ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2)
             : IsTracking ? 5 : 5;
         var utcNow = DateTimeOffset.UtcNow;
+        var activity = LoadDashboardActivityProjection(utcNow);
 
         return new DashboardState(
             status,
             context,
-            summary.KeyPresses,
-            summary.MouseClicks,
-            summary.ActiveSeconds,
+            activity.Summary.KeyPresses,
+            activity.Summary.MouseClicks,
+            activity.Summary.ActiveSeconds,
             intensity,
             IsTracking,
             sample?.Timestamp,
             utcNow.ToLocalTime(),
             utcNow,
-            _store.Get24HourActivityTrend(utcNow),
+            activity.Trend,
             ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
             SpanLabel: settings.SpanLabel);
     }
@@ -190,6 +192,7 @@ public sealed class TrackingDomainService : IDisposable
     {
         _latestSample = sample;
         _activityScore.RecordSample(sample);
+        UpdateDashboardActivityCache(sample);
         DashboardStateChanged?.Invoke(BuildDashboardState(sample));
     }
 
@@ -200,27 +203,156 @@ public sealed class TrackingDomainService : IDisposable
     /// <returns>Computed dashboard representation.</returns>
     private DashboardState BuildDashboardState(ActivitySample sample)
     {
-        var summary = _store.GetTodaySummary();
         var settings = _store.LoadSettings();
         var status = sample.State == "active" ? "RUNNING" : "PAUSED";
         var context = sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
         var intensity = sample.State == "active" ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2) : 5;
         var utcNow = DateTimeOffset.UtcNow;
+        var activity = LoadDashboardActivityProjection(utcNow);
 
         return new DashboardState(
             status,
             context,
-            summary.KeyPresses,
-            summary.MouseClicks,
-            summary.ActiveSeconds,
+            activity.Summary.KeyPresses,
+            activity.Summary.MouseClicks,
+            activity.Summary.ActiveSeconds,
             intensity,
             true,
             sample.Timestamp,
             utcNow.ToLocalTime(),
             utcNow,
-            _store.Get24HourActivityTrend(utcNow),
+            activity.Trend,
             ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
             SpanLabel: settings.SpanLabel);
+    }
+
+    private DashboardActivityProjection LoadDashboardActivityProjection(DateTimeOffset utcNow)
+    {
+        lock (_dashboardActivityCacheLock)
+        {
+            var localDate = DateOnly.FromDateTime(utcNow.ToLocalTime().DateTime);
+            var revision = _store.ActivityRevision;
+            if (_dashboardActivityCache is null ||
+                _dashboardActivityCache.Revision != revision ||
+                _dashboardActivityCache.LocalDate != localDate ||
+                utcNow < _dashboardActivityCache.LastWindowEndUtc)
+            {
+                _dashboardActivityCache = LoadStableDashboardActivityCache(utcNow, localDate);
+            }
+
+            var cache = _dashboardActivityCache
+                ?? throw new InvalidOperationException("Dashboard activity cache initialization did not complete.");
+            var retentionBoundary = utcNow.AddHours(-26);
+            var expiredCount = 0;
+            while (expiredCount < cache.Samples.Count && cache.Samples[expiredCount].Timestamp <= retentionBoundary)
+            {
+                expiredCount++;
+            }
+
+            if (expiredCount > 0)
+            {
+                cache.Samples.RemoveRange(0, expiredCount);
+            }
+
+            var summary = cache.Summary;
+            if (summary is null || cache.SummaryRevision != cache.Revision)
+            {
+                summary = LocalStore.BuildDailySummary(cache.Samples, localDate);
+                cache.Summary = summary;
+                cache.SummaryRevision = cache.Revision;
+            }
+
+            cache.LastWindowEndUtc = utcNow;
+            return new DashboardActivityProjection(
+                summary,
+                LocalStore.Build24HourActivityTrend(cache.Samples, utcNow));
+        }
+    }
+
+    private DashboardActivityCache LoadStableDashboardActivityCache(DateTimeOffset utcNow, DateOnly localDate)
+    {
+        while (true)
+        {
+            var revisionBeforeRead = _store.ActivityRevision;
+            // One minimal SQLite projection seeds the cache; subsequent one-second reads remain in memory.
+            var samples = _store.LoadDashboardActivitySamples(utcNow).ToList();
+            var revisionAfterRead = _store.ActivityRevision;
+            if (revisionBeforeRead == revisionAfterRead)
+            {
+                return new DashboardActivityCache(revisionAfterRead, localDate, utcNow, samples);
+            }
+
+            // A concurrent durable append makes this read ambiguous; retry from the new committed revision.
+        }
+    }
+
+    private void UpdateDashboardActivityCache(ActivitySample sample)
+    {
+        lock (_dashboardActivityCacheLock)
+        {
+            if (_dashboardActivityCache is null)
+            {
+                return;
+            }
+
+            var revision = _store.ActivityRevision;
+            if (revision == _dashboardActivityCache.Revision)
+            {
+                // A concurrent cache seed already observed this committed sample.
+                return;
+            }
+
+            if (revision != _dashboardActivityCache.Revision + 1)
+            {
+                _dashboardActivityCache = null;
+                return;
+            }
+
+            var projection = new ReportSourceSample(
+                sample.Timestamp,
+                sample.DurationSeconds,
+                sample.State,
+                sample.Application,
+                sample.KeyPresses,
+                sample.MouseClicks);
+            var samples = _dashboardActivityCache.Samples;
+            if (samples.Count == 0 || samples[^1].Timestamp <= projection.Timestamp)
+            {
+                samples.Add(projection);
+            }
+            else
+            {
+                var insertionIndex = samples.BinarySearch(projection, DashboardSampleTimestampComparer.Instance);
+                samples.Insert(insertionIndex < 0 ? ~insertionIndex : insertionIndex, projection);
+            }
+
+            _dashboardActivityCache.Revision = revision;
+            _dashboardActivityCache.Summary = null;
+        }
+    }
+
+    private sealed record DashboardActivityProjection(DailySummary Summary, ActivityTrendState Trend);
+
+    private sealed class DashboardActivityCache(
+        long revision,
+        DateOnly localDate,
+        DateTimeOffset lastWindowEndUtc,
+        List<ReportSourceSample> samples)
+    {
+        internal long Revision { get; set; } = revision;
+        internal DateOnly LocalDate { get; } = localDate;
+        internal DateTimeOffset LastWindowEndUtc { get; set; } = lastWindowEndUtc;
+        internal List<ReportSourceSample> Samples { get; } = samples;
+        internal long SummaryRevision { get; set; } = -1;
+        internal DailySummary? Summary { get; set; }
+    }
+
+    private sealed class DashboardSampleTimestampComparer : IComparer<ReportSourceSample>
+    {
+        internal static DashboardSampleTimestampComparer Instance { get; } = new();
+
+        public int Compare(ReportSourceSample? left, ReportSourceSample? right) =>
+            Nullable.Compare(left?.Timestamp, right?.Timestamp);
     }
 
     /// <summary>

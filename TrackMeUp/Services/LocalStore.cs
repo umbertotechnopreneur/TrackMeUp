@@ -21,7 +21,9 @@ public sealed class LocalStore
     private readonly string _settingsPath;
     private readonly string _settingsBootstrapMutexName;
     private readonly object _fileLock = new();
+    private readonly SemaphoreSlim _screenshotProjectionGate = new(1, 1);
     private readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
+    private long _activityRevision;
 
     /// <summary>
     /// Initializes persistence file paths in the user app data folder.
@@ -54,7 +56,15 @@ public sealed class LocalStore
     /// <summary>
     /// Appends one activity sample to the SQLite activity store.
     /// </summary>
-    public void AppendSample(ActivitySample sample) => _activity.Append(sample);
+    public void AppendSample(ActivitySample sample)
+    {
+        _activity.Append(sample);
+        // The revision changes only after SQLite commits, so readers can safely refresh from durable state.
+        Interlocked.Increment(ref _activityRevision);
+    }
+
+    /// <summary>Gets the in-process revision of the durable activity rows used by the live dashboard cache.</summary>
+    internal long ActivityRevision => Interlocked.Read(ref _activityRevision);
 
     /// <summary>Gets the dedicated directory used by the reconstructible Lucene search index.</summary>
     internal string SearchIndexRootDirectory => Path.Combine(_dataDirectory, "search");
@@ -393,8 +403,26 @@ public sealed class LocalStore
     /// Lists owned screenshot artifacts for one local calendar date without exposing unrelated files.
     /// </summary>
     /// <param name="date">The local date represented by the gallery.</param>
+    /// <param name="cancellationToken">Stops directory enumeration and SQLite projection work.</param>
     /// <returns>A presentation-neutral screenshot projection ordered newest first.</returns>
-    public ScreenshotGallery GetScreenshotGallery(DateOnly date)
+    public ScreenshotGallery GetScreenshotGallery(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        // Search-index refreshes and the gallery can otherwise project the same retained captures
+        // concurrently. Serialize this bounded, read-only workload so opening two surfaces cannot
+        // multiply SQLite, JSON, and filesystem pressure on the workstation.
+        _screenshotProjectionGate.Wait(cancellationToken);
+        try
+        {
+            return GetScreenshotGalleryCore(date, cancellationToken);
+        }
+        finally
+        {
+            _screenshotProjectionGate.Release();
+        }
+    }
+
+    private ScreenshotGallery GetScreenshotGalleryCore(DateOnly date, CancellationToken cancellationToken)
     {
         var settings = LoadSettings();
         var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
@@ -408,6 +436,7 @@ public sealed class LocalStore
         var files = new List<FileInfo>();
         foreach (var path in Directory.EnumerateFiles(directory))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!ScreenCaptureService.IsOwnedArtifact(path))
             {
                 continue;
@@ -429,42 +458,86 @@ public sealed class LocalStore
                 .First())
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
         var analyses = _activity.LoadLatestAiAnalysesForScreenshots(retainedFiles.Select(file => file.FullName));
-        var items = retainedFiles
+        var artifactIdentities = retainedFiles
+            .ToDictionary(
+                file => file.FullName,
+                file => ScreenshotIdentity(file.Name),
+                StringComparer.OrdinalIgnoreCase);
+        var telemetryByIdentity = _activity.LoadScreenshotIntervalTelemetry(
+            artifactIdentities.Values,
+            cancellationToken);
+        var textByIdentity = _activity.LoadScreenshotTextSnapshots(
+            artifactIdentities.Values,
+            cancellationToken);
+        var sources = retainedFiles
             .Select(file =>
             {
-                var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
-                var telemetry = LoadScreenshotIntervalTelemetry(file.FullName);
-                var activity = FindScreenshotActivity(capturedAt, settings.ScreenshotIntervalMinutes, telemetry);
-                analyses.TryGetValue(file.FullName, out var analysis);
-                var textSnapshot = LoadScreenshotTextSnapshot(file.FullName);
-                return new ScreenshotGalleryItem(
-                    capturedAt,
-                    file.FullName,
-                    activity.ForegroundApplication,
-                    GetCaptureKind(file.Name),
-                    GetCaptureOrigin(file.Name),
-                    activity.SpanLabels,
-                    analysis?.Summary,
-                    analysis?.Timestamp,
-                    activity.ActivityIndex,
-                    textSnapshot,
-                    activity.ForegroundWindowTitle,
-                    GetScreenIndex(file.Name),
-                    GetScreenName(file.Name),
-                    activity.MouseClicks,
-                    telemetry?.CpuUsagePercent,
-                    telemetry?.GpuUsagePercent);
+                var artifactIdentity = artifactIdentities[file.FullName];
+                telemetryByIdentity.TryGetValue(artifactIdentity, out var telemetry);
+                return CreateScreenshotGallerySource(
+                    file,
+                    artifactIdentity,
+                    settings.ScreenshotIntervalMinutes,
+                    telemetry);
             })
             .ToArray();
+        var activitySamples = new List<ActivitySample>();
+        if (sources.Length > 0)
+        {
+            // A gallery day shares one SQLite read. Querying the same activity table once per
+            // screenshot caused hundreds of indexed scans and blocked the presentation caller.
+            _activity.VisitOverlapping(
+                sources.Min(source => source.FromUtc),
+                sources.Max(source => source.ToUtc),
+                activitySamples.Add,
+                cancellationToken);
+        }
+
+        var items = new List<ScreenshotGalleryItem>(sources.Length);
+        foreach (var source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var samples = activitySamples
+                .Where(sample => SampleOverlaps(sample, source.FromUtc, source.ToUtc))
+                .ToArray();
+            var activity = BuildScreenshotActivity(
+                source.CapturedAt,
+                source.Telemetry,
+                source.FromUtc,
+                source.ToUtc,
+                samples);
+            analyses.TryGetValue(source.File.FullName, out var analysis);
+            textByIdentity.TryGetValue(source.ArtifactIdentity, out var textSnapshot);
+            items.Add(new ScreenshotGalleryItem(
+                source.CapturedAt,
+                source.File.FullName,
+                activity.ForegroundApplication,
+                GetCaptureKind(source.File.Name),
+                GetCaptureOrigin(source.File.Name),
+                activity.SpanLabels,
+                analysis?.Summary,
+                analysis?.Timestamp,
+                activity.ActivityIndex,
+                textSnapshot,
+                activity.ForegroundWindowTitle,
+                GetScreenIndex(source.File.Name),
+                GetScreenName(source.File.Name),
+                activity.MouseClicks,
+                source.Telemetry?.CpuUsagePercent,
+                source.Telemetry?.GpuUsagePercent));
+        }
 
         return new ScreenshotGallery(date, items);
     }
 
     /// <summary>Loads the most recent local day that still has retained screenshot artifacts.</summary>
+    /// <param name="cancellationToken">Stops gallery projection work.</param>
     /// <returns>The latest populated gallery, or today's empty gallery when no retained capture exists.</returns>
-    public ScreenshotGallery GetLatestScreenshotGallery()
+    public ScreenshotGallery GetLatestScreenshotGallery(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var latestPath = LoadLatestPrimaryScreenshot();
         if (latestPath is null)
         {
@@ -473,7 +546,55 @@ public sealed class LocalStore
 
         // File timestamps remain the capture-time source used by the date-filtered gallery.
         var capturedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(latestPath), TimeSpan.Zero);
-        return GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+        return GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime), cancellationToken);
+    }
+
+    /// <summary>Counts retained screenshot captures without loading their SQLite-backed gallery metadata.</summary>
+    internal (int TotalSnapshotCount, int TodaySnapshotCount) GetScreenshotAvailabilityCounts(
+        DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var settings = LoadSettings();
+        var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
+            ? _utilities.GetDefaultScreenshotDirectory()
+            : settings.ScreenshotDirectory;
+        if (!Directory.Exists(directory))
+        {
+            return (0, 0);
+        }
+
+        var retainedFiles = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!ScreenCaptureService.IsOwnedArtifact(path))
+            {
+                continue;
+            }
+
+            var candidate = new FileInfo(path);
+            var identity = ScreenshotIdentity(candidate.Name);
+            if (!retainedFiles.TryGetValue(identity, out var current) ||
+                IsPreferredStoredArtifact(candidate.Name) && !IsPreferredStoredArtifact(current.Name) ||
+                IsPreferredStoredArtifact(candidate.Name) == IsPreferredStoredArtifact(current.Name) &&
+                candidate.LastWriteTimeUtc > current.LastWriteTimeUtc)
+            {
+                retainedFiles[identity] = candidate;
+            }
+        }
+
+        var todaySnapshotCount = 0;
+        foreach (var file in retainedFiles.Values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
+            if (DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime) == today)
+            {
+                todaySnapshotCount++;
+            }
+        }
+
+        return (retainedFiles.Count, todaySnapshotCount);
     }
 
     /// <summary>Loads every retained screenshot projection for deterministic search-index rebuilds.</summary>
@@ -497,16 +618,26 @@ public sealed class LocalStore
             .ToArray();
     }
 
-    private ScreenshotActivityContext FindScreenshotActivity(
-        DateTimeOffset capturedAt,
+    private static ScreenshotGallerySource CreateScreenshotGallerySource(
+        FileInfo file,
+        string artifactIdentity,
         int screenshotIntervalMinutes,
         ScreenshotIntervalTelemetry? telemetry)
     {
-        var samples = new List<ActivitySample>();
+        var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
         var fromUtc = telemetry?.IntervalStartedAt.ToUniversalTime()
             ?? capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
         var toUtc = telemetry?.CapturedAt.ToUniversalTime() ?? capturedAt.ToUniversalTime();
-        _activity.VisitOverlapping(fromUtc, toUtc, samples.Add, CancellationToken.None);
+        return new ScreenshotGallerySource(file, artifactIdentity, capturedAt, telemetry, fromUtc, toUtc);
+    }
+
+    private static ScreenshotActivityContext BuildScreenshotActivity(
+        DateTimeOffset capturedAt,
+        ScreenshotIntervalTelemetry? telemetry,
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        IReadOnlyList<ActivitySample> samples)
+    {
         var foregroundSample = samples
             .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
             .FirstOrDefault(sample => !string.IsNullOrWhiteSpace(sample.Application) || !string.IsNullOrWhiteSpace(sample.WindowTitle));
@@ -550,6 +681,21 @@ public sealed class LocalStore
             : samples.Aggregate(0L, (total, sample) => checked(total + sample.MouseClicks));
         return new ScreenshotActivityContext(foregroundApplication, labels, activityIndex, foregroundWindowTitle, mouseClicks);
     }
+
+    private static bool SampleOverlaps(ActivitySample sample, DateTimeOffset fromUtc, DateTimeOffset toUtc)
+    {
+        var sampleEnd = sample.Timestamp.ToUniversalTime();
+        var sampleStart = sampleEnd.AddSeconds(-sample.DurationSeconds);
+        return sampleEnd > fromUtc && sampleStart < toUtc;
+    }
+
+    private sealed record ScreenshotGallerySource(
+        FileInfo File,
+        string ArtifactIdentity,
+        DateTimeOffset CapturedAt,
+        ScreenshotIntervalTelemetry? Telemetry,
+        DateTimeOffset FromUtc,
+        DateTimeOffset ToUtc);
 
     private sealed record ScreenshotActivityContext(
         string ForegroundApplication,
@@ -648,7 +794,17 @@ public sealed class LocalStore
     /// <summary>Removes expired records from the current SQLite store.</summary>
     /// <param name="cutoffUtc">Records older than this instant are removed.</param>
     /// <returns>Number of expired records removed across local data files.</returns>
-    public int ApplyRetention(DateTimeOffset cutoffUtc) => _activity.ApplyRetention(cutoffUtc);
+    public int ApplyRetention(DateTimeOffset cutoffUtc)
+    {
+        var removed = _activity.ApplyRetention(cutoffUtc);
+        if (removed > 0)
+        {
+            // Retention can invalidate an already materialized dashboard window; force one bounded reload.
+            Interlocked.Increment(ref _activityRevision);
+        }
+
+        return removed;
+    }
 
     /// <summary>
     /// Returns samples that overlap today's local interval from SQLite activity history.
@@ -671,16 +827,103 @@ public sealed class LocalStore
     /// <returns>A 24-point trend whose levels are percentages of active seconds per hour.</returns>
     public ActivityTrendState Get24HourActivityTrend(DateTimeOffset? windowEndUtc = null)
     {
-        const int hourCount = 24;
         var windowEnd = (windowEndUtc ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        var samples = LoadDashboardActivitySamples(windowEnd.AddHours(-24), windowEnd);
+        return Build24HourActivityTrend(samples, windowEnd);
+    }
+
+    /// <summary>Loads the minimal persisted activity projection needed by the in-memory dashboard cache.</summary>
+    internal IReadOnlyList<ReportSourceSample> LoadDashboardActivitySamples(DateTimeOffset windowEndUtc)
+    {
+        var windowEnd = windowEndUtc.ToUniversalTime();
+        var localDate = DateOnly.FromDateTime(windowEnd.ToLocalTime().DateTime);
+        var todayStartUtc = ConvertLocalBoundaryToUtc(localDate);
+        var todayEndUtc = ConvertLocalBoundaryToUtc(localDate.AddDays(1));
+        var trendStartUtc = windowEnd.AddHours(-24);
+        var windowStart = todayStartUtc < trendStartUtc ? todayStartUtc : trendStartUtc;
+        var queryEnd = todayEndUtc > windowEnd ? todayEndUtc : windowEnd;
+        return LoadDashboardActivitySamples(windowStart, queryEnd);
+    }
+
+    private IReadOnlyList<ReportSourceSample> LoadDashboardActivitySamples(
+        DateTimeOffset windowStartUtc,
+        DateTimeOffset windowEndUtc)
+    {
+        var samples = new List<ReportSourceSample>();
+        _activity.VisitReportOverlapping(windowStartUtc, windowEndUtc, samples.Add, CancellationToken.None);
+        samples.Sort(static (left, right) => left.Timestamp.CompareTo(right.Timestamp));
+        return samples;
+    }
+
+    /// <summary>Builds today's exact counters from the minimal cached activity projection.</summary>
+    internal static DailySummary BuildDailySummary(
+        IReadOnlyList<ReportSourceSample> samples,
+        DateOnly date)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        var fromUtcTicks = ConvertLocalBoundaryToUtc(date).UtcDateTime.Ticks;
+        var toUtcTicks = ConvertLocalBoundaryToUtc(date.AddDays(1)).UtcDateTime.Ticks;
+        long activeTicks = 0;
+        long idleTicks = 0;
+        long keyPresses = 0;
+        long mouseClicks = 0;
+        var applicationTicks = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sample in samples)
+        {
+            var originalDurationTicks = checked((long)sample.DurationSeconds * TimeSpan.TicksPerSecond);
+            var originalEndTicks = sample.Timestamp.UtcDateTime.Ticks;
+            var originalStartTicks = checked(originalEndTicks - originalDurationTicks);
+            var clippedStartTicks = Math.Max(originalStartTicks, fromUtcTicks);
+            var clippedEndTicks = Math.Min(originalEndTicks, toUtcTicks);
+            if (clippedStartTicks >= clippedEndTicks)
+            {
+                continue;
+            }
+
+            var includedTicks = clippedEndTicks - clippedStartTicks;
+            keyPresses += ScaleCount(sample.KeyPresses, includedTicks, originalDurationTicks);
+            mouseClicks += ScaleCount(sample.MouseClicks, includedTicks, originalDurationTicks);
+            if (string.Equals(sample.State, "active", StringComparison.OrdinalIgnoreCase))
+            {
+                activeTicks += includedTicks;
+                var application = string.IsNullOrWhiteSpace(sample.Application) ? "Unknown" : sample.Application.Trim();
+                applicationTicks[application] = applicationTicks.GetValueOrDefault(application) + includedTicks;
+            }
+            else if (string.Equals(sample.State, "idle", StringComparison.OrdinalIgnoreCase))
+            {
+                idleTicks += includedTicks;
+            }
+        }
+
+        var applications = applicationTicks
+            .Select(pair => new ApplicationSummary(pair.Key, pair.Value / TimeSpan.TicksPerSecond))
+            .Where(application => application.ActiveSeconds > 0)
+            .OrderByDescending(application => application.ActiveSeconds)
+            .ThenBy(application => application.Application, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return new DailySummary(
+            activeTicks / TimeSpan.TicksPerSecond,
+            idleTicks / TimeSpan.TicksPerSecond,
+            keyPresses,
+            mouseClicks,
+            applications);
+    }
+
+    /// <summary>Builds the exact rolling trend from a timestamp-ordered minimal activity projection.</summary>
+    internal static ActivityTrendState Build24HourActivityTrend(
+        IReadOnlyList<ReportSourceSample> samples,
+        DateTimeOffset windowEndUtc)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        const int hourCount = 24;
+        var windowEnd = windowEndUtc.ToUniversalTime();
         var windowStart = windowEnd.AddHours(-hourCount);
-        var samples = new List<ActivitySample>();
-        _activity.VisitOverlapping(windowStart, windowEnd, samples.Add, CancellationToken.None);
 
         var activeSecondsByHour = new double[hourCount];
         var coveredSeconds = 0d;
         var coveredUntil = windowStart;
-        foreach (var sample in samples.OrderBy(sample => sample.Timestamp))
+        foreach (var sample in samples)
         {
             var sampleEnd = sample.Timestamp.ToUniversalTime();
             var sampleStart = sampleEnd.AddSeconds(-sample.DurationSeconds);
@@ -724,6 +967,32 @@ public sealed class LocalStore
         return new ActivityTrendState(windowStart, windowEnd, hasCompleteCoverage, hourlyLevels);
     }
 
+    private static long ScaleCount(long count, long includedTicks, long originalTicks) =>
+        includedTicks == originalTicks
+            ? count
+            : decimal.ToInt64(decimal.Round(
+                (decimal)count * includedTicks / originalTicks,
+                0,
+                MidpointRounding.AwayFromZero));
+
+    private static DateTimeOffset ConvertLocalBoundaryToUtc(DateOnly date)
+    {
+        var timeZone = TimeZoneInfo.Local;
+        var local = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+        while (timeZone.IsInvalidTime(local))
+        {
+            local = local.AddMinutes(1);
+        }
+
+        if (timeZone.IsAmbiguousTime(local))
+        {
+            // The larger offset selects the first occurrence of a repeated local boundary.
+            return new DateTimeOffset(local, timeZone.GetAmbiguousTimeOffsets(local).Max()).ToUniversalTime();
+        }
+
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, timeZone));
+    }
+
     /// <summary>
     /// Returns latest sample, if any.
     /// </summary>
@@ -745,23 +1014,10 @@ public sealed class LocalStore
     /// <returns>Aggregated activity values for the requested date.</returns>
     public DailySummary GetSummary(DateOnly date)
     {
-        var report = new ReportAggregationService(this).Build(
-            new ReportQuery(date, date, string.Empty),
-            applicationLimit: int.MaxValue,
-            cancellationToken: CancellationToken.None);
-        if (!report.Succeeded || report.Value is null)
-        {
-            throw new InvalidOperationException("The local daily activity query was rejected.");
-        }
-
-        return new DailySummary(
-            report.Value.Totals.ActiveSeconds,
-            report.Value.Totals.IdleSeconds,
-            report.Value.Totals.KeyPresses,
-            report.Value.Totals.MouseClicks,
-            report.Value.Applications
-                .Select(application => new ApplicationSummary(application.Application, application.ActiveSeconds))
-                .ToArray());
+        var fromUtc = ConvertLocalBoundaryToUtc(date);
+        var toUtc = ConvertLocalBoundaryToUtc(date.AddDays(1));
+        var samples = LoadDashboardActivitySamples(fromUtc, toUtc);
+        return BuildDailySummary(samples, date);
     }
 
     /// <summary>Streams privacy-minimized activity and AI usage from one consistent SQLite snapshot.</summary>

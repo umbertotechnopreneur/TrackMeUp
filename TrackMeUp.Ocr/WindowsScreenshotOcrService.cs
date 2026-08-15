@@ -18,12 +18,16 @@ namespace TrackMeUp.Ocr;
 /// </remarks>
 public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
 {
+    private const uint RecognitionDimensionBudget = 2560;
+
     /// <summary>
     /// Identifies the engine recorded in extraction results.
     /// </summary>
     public const string EngineName = "Windows.Media.Ocr";
 
     private readonly OcrOptions _options;
+    private readonly SemaphoreSlim _extractionGate = new(1, 1);
+    private OcrEngine? _engine;
 
     /// <summary>
     /// Initializes a Windows screenshot OCR service with an immutable option snapshot.
@@ -52,7 +56,26 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
         cancellationToken.ThrowIfCancellationRequested();
         string? preferredLanguageTag = ValidatePreferredLanguageTag(_options.PreferredLanguageTag);
         string fullImagePath = ValidateImagePath(imagePath);
-        OcrEngine engine = CreateEngine(preferredLanguageTag);
+
+        await _extractionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Reuse one agile WinRT engine, but serialize decode/recognition to bound peak bitmap memory.
+            return await ExtractSerializedAsync(fullImagePath, preferredLanguageTag, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            _extractionGate.Release();
+        }
+    }
+
+    private async Task<ScreenshotOcrResult> ExtractSerializedAsync(
+        string fullImagePath,
+        string? preferredLanguageTag,
+        CancellationToken cancellationToken)
+    {
+        OcrEngine engine = _engine ??= CreateEngine(preferredLanguageTag);
 
         using IRandomAccessStream stream = await OpenImageAsync(fullImagePath, cancellationToken)
             .ConfigureAwait(false);
@@ -61,7 +84,6 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
 
         uint pixelWidth = decoder.PixelWidth;
         uint pixelHeight = decoder.PixelHeight;
-        uint maximumDimension = OcrEngine.MaxImageDimension;
         if (pixelWidth == 0 || pixelHeight == 0)
         {
             throw new ScreenshotOcrInteropException(
@@ -70,13 +92,16 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
                 new InvalidDataException("Decoded image dimensions must be positive."));
         }
 
-        if (pixelWidth > maximumDimension || pixelHeight > maximumDimension)
-        {
-            throw new ScreenshotOcrImageTooLargeException(pixelWidth, pixelHeight, maximumDimension);
-        }
+        uint maximumDimension = Math.Min(OcrEngine.MaxImageDimension, RecognitionDimensionBudget);
+        (uint recognitionWidth, uint recognitionHeight) = CalculateRecognitionDimensions(
+            pixelWidth,
+            pixelHeight,
+            maximumDimension);
 
         using SoftwareBitmap bitmap = await DecodeCompatibleBitmapAsync(
                 decoder,
+                recognitionWidth,
+                recognitionHeight,
                 fullImagePath,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -87,7 +112,13 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
                 cancellationToken)
             .ConfigureAwait(false);
 
-        ImmutableArray<OcrTextLine> lines = ProjectLines(windowsResult, fullImagePath);
+        double sourceScaleX = (double)pixelWidth / recognitionWidth;
+        double sourceScaleY = (double)pixelHeight / recognitionHeight;
+        ImmutableArray<OcrTextLine> lines = ProjectLines(
+            windowsResult,
+            fullImagePath,
+            sourceScaleX,
+            sourceScaleY);
         string rawText = windowsResult.Text
             ?? throw CreateProjectionFailure(fullImagePath, "Windows OCR returned a null text value.");
         string effectiveLanguageTag = engine.RecognizerLanguage.LanguageTag;
@@ -101,6 +132,64 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
             pixelWidth,
             pixelHeight,
             lines);
+    }
+
+    internal static (uint Width, uint Height) CalculateRecognitionDimensions(
+        uint sourceWidth,
+        uint sourceHeight,
+        uint maximumDimension)
+    {
+        if (sourceWidth == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceWidth), "Source width must be positive.");
+        }
+
+        if (sourceHeight == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceHeight), "Source height must be positive.");
+        }
+
+        if (maximumDimension == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumDimension), "Maximum dimension must be positive.");
+        }
+
+        if (sourceWidth <= maximumDimension && sourceHeight <= maximumDimension)
+        {
+            return (sourceWidth, sourceHeight);
+        }
+
+        double scale = Math.Min(
+            (double)maximumDimension / sourceWidth,
+            (double)maximumDimension / sourceHeight);
+        uint width = Math.Max(1u, (uint)Math.Floor(sourceWidth * scale));
+        uint height = Math.Max(1u, (uint)Math.Floor(sourceHeight * scale));
+        return (Math.Min(width, maximumDimension), Math.Min(height, maximumDimension));
+    }
+
+    internal static OcrTextRectangle ProjectRectangleToSource(
+        double x,
+        double y,
+        double width,
+        double height,
+        double sourceScaleX,
+        double sourceScaleY)
+    {
+        if (!double.IsFinite(sourceScaleX) || sourceScaleX <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceScaleX), "Source scale must be finite and positive.");
+        }
+
+        if (!double.IsFinite(sourceScaleY) || sourceScaleY <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceScaleY), "Source scale must be finite and positive.");
+        }
+
+        return new OcrTextRectangle(
+            x * sourceScaleX,
+            y * sourceScaleY,
+            width * sourceScaleX,
+            height * sourceScaleY);
     }
 
     private static string? ValidatePreferredLanguageTag(string? preferredLanguageTag)
@@ -244,23 +333,48 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
 
     private static async Task<SoftwareBitmap> DecodeCompatibleBitmapAsync(
         BitmapDecoder decoder,
+        uint recognitionWidth,
+        uint recognitionHeight,
         string fullImagePath,
         CancellationToken cancellationToken)
     {
         try
         {
             // Request the same BGRA8 premultiplied SoftwareBitmap format used by the Windows OCR sample.
-            SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(
-                    BitmapPixelFormat.Bgra8,
-                    BitmapAlphaMode.Premultiplied)
-                .AsTask(cancellationToken)
-                .ConfigureAwait(false);
+            SoftwareBitmap bitmap;
+            if (decoder.PixelWidth == recognitionWidth && decoder.PixelHeight == recognitionHeight)
+            {
+                bitmap = await decoder.GetSoftwareBitmapAsync(
+                        BitmapPixelFormat.Bgra8,
+                        BitmapAlphaMode.Premultiplied)
+                    .AsTask(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                var transform = new BitmapTransform
+                {
+                    ScaledWidth = recognitionWidth,
+                    ScaledHeight = recognitionHeight,
+                    InterpolationMode = BitmapInterpolationMode.Fant,
+                };
+                bitmap = await decoder.GetSoftwareBitmapAsync(
+                        BitmapPixelFormat.Bgra8,
+                        BitmapAlphaMode.Premultiplied,
+                        transform,
+                        ExifOrientationMode.IgnoreExifOrientation,
+                        ColorManagementMode.DoNotColorManage)
+                    .AsTask(cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             if (bitmap.BitmapPixelFormat != BitmapPixelFormat.Bgra8 ||
-                bitmap.BitmapAlphaMode != BitmapAlphaMode.Premultiplied)
+                bitmap.BitmapAlphaMode != BitmapAlphaMode.Premultiplied ||
+                bitmap.PixelWidth != checked((int)recognitionWidth) ||
+                bitmap.PixelHeight != checked((int)recognitionHeight))
             {
                 bitmap.Dispose();
-                throw new InvalidDataException("The decoder did not produce the requested OCR bitmap format.");
+                throw new InvalidDataException("The decoder did not produce the requested OCR bitmap format and dimensions.");
             }
 
             return bitmap;
@@ -306,7 +420,9 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
 
     private static ImmutableArray<OcrTextLine> ProjectLines(
         Windows.Media.Ocr.OcrResult windowsResult,
-        string fullImagePath)
+        string fullImagePath,
+        double sourceScaleX,
+        double sourceScaleY)
     {
         try
         {
@@ -321,11 +437,13 @@ public sealed class WindowsScreenshotOcrService : IScreenshotOcrService
                         ?? throw new InvalidDataException("Windows OCR returned a null word value.");
                     words.Add(new OcrTextWord(
                         wordText,
-                        new OcrTextRectangle(
+                        ProjectRectangleToSource(
                             rectangle.X,
                             rectangle.Y,
                             rectangle.Width,
-                            rectangle.Height)));
+                            rectangle.Height,
+                            sourceScaleX,
+                            sourceScaleY)));
                 }
 
                 string lineText = line.Text

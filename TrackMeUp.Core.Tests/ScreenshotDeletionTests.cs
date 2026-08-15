@@ -218,6 +218,46 @@ public sealed class ScreenshotDeletionTests
     }
 
     [Fact]
+    public void ScreenshotGallery_BatchesDailyActivityWithoutCrossingCaptureIntervals()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with { ScreenshotIntervalMinutes = 5 });
+            var earlierCapture = CreateCapture(dataDirectory);
+            var laterCapture = CreateCapture(dataDirectory);
+            var laterCapturedAt = new DateTimeOffset(DateTime.Today.AddHours(12)).ToUniversalTime();
+            var earlierCapturedAt = laterCapturedAt.AddMinutes(-20);
+            foreach (var path in earlierCapture.AllScreenshotPaths)
+            {
+                File.SetLastWriteTimeUtc(path, earlierCapturedAt.UtcDateTime);
+            }
+
+            foreach (var path in laterCapture.AllScreenshotPaths)
+            {
+                File.SetLastWriteTimeUtc(path, laterCapturedAt.UtcDateTime);
+            }
+
+            store.AppendSample(CreateActivitySample(earlierCapturedAt.AddMinutes(-1), "Earlier work"));
+            store.AppendSample(CreateActivitySample(laterCapturedAt.AddMinutes(-1), "Later work"));
+
+            var gallery = store.GetScreenshotGallery(
+                DateOnly.FromDateTime(laterCapturedAt.ToLocalTime().DateTime),
+                CancellationToken.None);
+
+            var earlierItem = Assert.Single(gallery.Items, item => item.Path == earlierCapture.StoredScreenshotPaths[0]);
+            var laterItem = Assert.Single(gallery.Items, item => item.Path == laterCapture.StoredScreenshotPaths[0]);
+            Assert.Equal("Earlier work", Assert.Single(earlierItem.SpanLabels!).Label);
+            Assert.Equal("Later work", Assert.Single(laterItem.SpanLabels!).Label);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ScreenshotGallery_EnrichesOnlyTheExactCaptureWithPersistedAiMarkdownAndActivityIndex()
     {
         var dataDirectory = CreateTemporaryDirectory();
@@ -369,6 +409,7 @@ public sealed class ScreenshotDeletionTests
             AppSettings settings,
             string apiKey,
             string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new AiProviderResult(
                 "## Activity\n\n- Coding.",

@@ -12,6 +12,11 @@ public sealed class ActivityScoreService
     public const int WindowMinutes = 30;
 
     private const int MaximumSnapshotIntervalMinutes = WindowMinutes / 2;
+    private const double MaximumInputContribution = 86d;
+    private const double MaximumActiveContribution = 8d;
+    private const double MaximumCpuContribution = 4d;
+    private const double MaximumGpuContribution = 2d;
+    private const double MaximumDurableActivityContribution = MaximumInputContribution + MaximumActiveContribution;
     private readonly object _gate = new();
     private readonly Dictionary<DateTimeOffset, MinuteAggregate> _minutes = new();
     private readonly List<SystemTelemetryPoint> _telemetryPoints = new();
@@ -150,6 +155,49 @@ public sealed class ActivityScoreService
             gpuUsagePercent);
     }
 
+    /// <summary>
+    /// Calculates a normalized 0-100 score for one local day using only durable activity-history counters.
+    /// </summary>
+    internal static int CalculateDailyActivityScore(
+        long keyPresses,
+        long mouseClicks,
+        double activeSeconds,
+        double trackedSeconds)
+    {
+        if (keyPresses < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(keyPresses));
+        }
+
+        if (mouseClicks < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mouseClicks));
+        }
+
+        if (!double.IsFinite(activeSeconds) || activeSeconds < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(activeSeconds));
+        }
+
+        if (!double.IsFinite(trackedSeconds) || trackedSeconds < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(trackedSeconds));
+        }
+
+        var trackedMinutes = Math.Max(1d, trackedSeconds / 60d);
+        var inputContribution = Math.Min(
+            MaximumInputContribution,
+            (keyPresses / trackedMinutes * 0.55d) + (mouseClicks / trackedMinutes * 3.5d));
+        var activeRatio = trackedSeconds <= 0d
+            ? 0d
+            : Math.Clamp(activeSeconds / trackedSeconds, 0d, 1d);
+        var activeContribution = activeRatio * MaximumActiveContribution;
+
+        // Daily history has no complete CPU/GPU series, so normalize the durable 94-point budget to 0-100.
+        var normalizedScore = (inputContribution + activeContribution) * 100d / MaximumDurableActivityContribution;
+        return (int)Math.Round(Math.Clamp(normalizedScore, 0d, 100d));
+    }
+
     private MinuteAggregate GetOrCreate(DateTimeOffset minuteUtc)
     {
         if (_minutes.TryGetValue(minuteUtc, out var aggregate))
@@ -209,10 +257,10 @@ public sealed class ActivityScoreService
         int? gpuUsagePercent)
     {
         // Input is deliberately dominant; CPU and GPU together can add at most six points.
-        var inputContribution = Math.Min(86d, (keyPresses * 0.55d) + (mouseClicks * 3.5d));
-        var activeContribution = Math.Clamp(activeRatio, 0d, 1d) * 8d;
-        var cpuContribution = Math.Clamp(cpuUsagePercent ?? 0, 0, 100) * 0.04d;
-        var gpuContribution = Math.Clamp(gpuUsagePercent ?? 0, 0, 100) * 0.02d;
+        var inputContribution = Math.Min(MaximumInputContribution, (keyPresses * 0.55d) + (mouseClicks * 3.5d));
+        var activeContribution = Math.Clamp(activeRatio, 0d, 1d) * MaximumActiveContribution;
+        var cpuContribution = Math.Clamp(cpuUsagePercent ?? 0, 0, 100) * MaximumCpuContribution / 100d;
+        var gpuContribution = Math.Clamp(gpuUsagePercent ?? 0, 0, 100) * MaximumGpuContribution / 100d;
         return (int)Math.Round(Math.Clamp(inputContribution + activeContribution + cpuContribution + gpuContribution, 0d, 100d));
     }
 

@@ -320,6 +320,47 @@ internal sealed class SqliteActivityStore
             : null;
     }
 
+    /// <summary>Loads interval telemetry for a bounded set of screenshot artifact identities.</summary>
+    internal IReadOnlyDictionary<string, ScreenshotIntervalTelemetry> LoadScreenshotIntervalTelemetry(
+        IEnumerable<string> artifactIdentities,
+        CancellationToken cancellationToken)
+    {
+        var identities = NormalizeArtifactIdentities(artifactIdentities);
+        var telemetry = new Dictionary<string, ScreenshotIntervalTelemetry>(StringComparer.OrdinalIgnoreCase);
+        if (identities.Length == 0)
+        {
+            return telemetry;
+        }
+
+        using var connection = OpenConnection();
+        foreach (var batch in identities.Chunk(400))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var command = connection.CreateCommand();
+            var parameters = AddIdentityParameters(command, batch);
+            command.CommandText = $"""
+                SELECT artifact_identity, interval_started_utc_ticks, captured_utc_ticks,
+                       cpu_usage_percent, gpu_usage_percent
+                FROM screenshot_interval_telemetry
+                WHERE artifact_identity IN ({parameters});
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                telemetry.Add(
+                    reader.GetString(0),
+                    new ScreenshotIntervalTelemetry(
+                        new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero),
+                        new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero),
+                        ReadNullableInt(reader, 3),
+                        ReadNullableInt(reader, 4)));
+            }
+        }
+
+        return telemetry;
+    }
+
     /// <summary>Loads the latest persisted screenshot boundary.</summary>
     internal DateTimeOffset? LoadLatestScreenshotTelemetryCapturedAt()
     {
@@ -361,6 +402,43 @@ internal sealed class SqliteActivityStore
             ? null
             : JsonSerializer.Deserialize<ScreenshotTextSnapshot>(payload, _json)
                 ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
+    }
+
+    /// <summary>Loads OCR snapshots for a bounded set of screenshot artifact identities.</summary>
+    internal IReadOnlyDictionary<string, ScreenshotTextSnapshot> LoadScreenshotTextSnapshots(
+        IEnumerable<string> artifactIdentities,
+        CancellationToken cancellationToken)
+    {
+        var identities = NormalizeArtifactIdentities(artifactIdentities);
+        var snapshots = new Dictionary<string, ScreenshotTextSnapshot>(StringComparer.OrdinalIgnoreCase);
+        if (identities.Length == 0)
+        {
+            return snapshots;
+        }
+
+        using var connection = OpenConnection();
+        foreach (var batch in identities.Chunk(400))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var command = connection.CreateCommand();
+            var parameters = AddIdentityParameters(command, batch);
+            command.CommandText = $"""
+                SELECT artifact_identity, snapshot_json
+                FROM screenshot_text_snapshots
+                WHERE artifact_identity IN ({parameters});
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                snapshots.Add(
+                    reader.GetString(0),
+                    JsonSerializer.Deserialize<ScreenshotTextSnapshot>(reader.GetString(1), _json)
+                        ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid."));
+            }
+        }
+
+        return snapshots;
     }
 
     /// <summary>Visits every persisted screenshot text snapshot for deterministic search-index rebuilds.</summary>
@@ -831,6 +909,33 @@ internal sealed class SqliteActivityStore
             cancellationToken.ThrowIfCancellationRequested();
             visitor(ReadAiRequestUsage(reader));
         }
+    }
+
+    private static string[] NormalizeArtifactIdentities(IEnumerable<string> artifactIdentities)
+    {
+        ArgumentNullException.ThrowIfNull(artifactIdentities);
+        var identities = artifactIdentities
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (identities.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("Screenshot artifact identities cannot be empty.", nameof(artifactIdentities));
+        }
+
+        return identities;
+    }
+
+    private static string AddIdentityParameters(SqliteCommand command, IReadOnlyList<string> identities)
+    {
+        var parameterNames = new string[identities.Count];
+        for (var index = 0; index < identities.Count; index++)
+        {
+            var name = $"$identity{index}";
+            parameterNames[index] = name;
+            command.Parameters.AddWithValue(name, identities[index]);
+        }
+
+        return string.Join(", ", parameterNames);
     }
 
     private static void ValidateInterval(DateTimeOffset fromUtc, DateTimeOffset toUtc, string description)

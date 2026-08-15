@@ -83,4 +83,56 @@ public sealed class WindowsScreenshotOcrServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => service.ExtractAsync("invalid\0path", cancellation.Token));
     }
+
+    [Theory]
+    [InlineData(1920u, 1080u, 2560u, 1920u, 1080u)]
+    [InlineData(2560u, 1440u, 2560u, 2560u, 1440u)]
+    [InlineData(3840u, 2160u, 2560u, 2560u, 1440u)]
+    [InlineData(2160u, 3840u, 2560u, 1440u, 2560u)]
+    [InlineData(10000u, 1u, 2560u, 2560u, 1u)]
+    public void CalculateRecognitionDimensions_BoundsTheLongEdgeWithoutUpscaling(
+        uint sourceWidth,
+        uint sourceHeight,
+        uint maximumDimension,
+        uint expectedWidth,
+        uint expectedHeight)
+    {
+        (uint width, uint height) = WindowsScreenshotOcrService.CalculateRecognitionDimensions(
+            sourceWidth,
+            sourceHeight,
+            maximumDimension);
+
+        Assert.Equal(expectedWidth, width);
+        Assert.Equal(expectedHeight, height);
+    }
+
+    [Theory]
+    [InlineData(0u, 1080u, 2560u)]
+    [InlineData(1920u, 0u, 2560u)]
+    [InlineData(1920u, 1080u, 0u)]
+    public void CalculateRecognitionDimensions_WithInvalidDimensions_Throws(
+        uint sourceWidth,
+        uint sourceHeight,
+        uint maximumDimension)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => WindowsScreenshotOcrService.CalculateRecognitionDimensions(
+                sourceWidth,
+                sourceHeight,
+                maximumDimension));
+    }
+
+    [Fact]
+    public void ProjectRectangleToSource_RestoresSourceImageCoordinates()
+    {
+        OcrTextRectangle rectangle = WindowsScreenshotOcrService.ProjectRectangleToSource(
+            100,
+            50,
+            200,
+            80,
+            1.5,
+            1.5);
+
+        Assert.Equal(new OcrTextRectangle(150, 75, 300, 120), rectangle);
+    }
 }

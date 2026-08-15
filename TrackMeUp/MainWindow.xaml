@@ -30,6 +30,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
             </Grid.ColumnDefinitions>
             <Button
@@ -111,7 +112,6 @@
                 Grid.Column="6"
                 Width="40"
                 Height="40"
-                Margin="0,0,8,0"
                 Padding="8"
                 AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Reports"
@@ -126,6 +126,28 @@
                     FontFamily="Segoe Fluent Icons"
                     FontSize="17"
                     Glyph="&#xE9F9;" />
+            </Button>
+            <Button
+                x:Name="TitleBarMinimizeToTrayButton"
+                Grid.Column="7"
+                Width="40"
+                Height="40"
+                Margin="0,0,8,0"
+                Padding="8"
+                AllowFocusOnInteraction="False"
+                AutomationProperties.Name="Minimize to notification area"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="MinimizeToTrayButton_Click"
+                IsTabStop="False"
+                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Tag="Main.Menu.MinimizeToTray"
+                ToolTipService.ToolTip="Minimize to notification area">
+                <FontIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="17"
+                    Glyph="&#xE921;" />
             </Button>
         </Grid>
 
@@ -302,12 +324,21 @@
                                         Text="Reports"
                                         KeyboardAcceleratorTextOverride="Ctrl+Shift+R"
                                         Click="ReportsMenuItem_Click">
-                                        <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
-                                        </MenuFlyoutItem.Icon>
-                                    </MenuFlyoutItem>
-                                    <MenuFlyoutItem
-                                        x:Name="ScreenshotsMenuItem"
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    x:Name="ActivityCalendarMenuItem"
+                                    Tag="ActivityCalendar.MenuTitle"
+                                    Text="Activity calendar"
+                                    Click="ActivityCalendarMenuItem_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    x:Name="ScreenshotsMenuItem"
                                         Tag="Screenshots.Caption"
                                         Text="Captured moments"
                                         KeyboardAcceleratorTextOverride="Ctrl+Shift+G"
@@ -396,15 +427,6 @@
                                 </MenuFlyoutSubItem>
 
                                 <MenuFlyoutSeparator />
-                                <MenuFlyoutItem
-                                    x:Name="MinimizeToTrayMenuItem"
-                                    Tag="Main.Menu.MinimizeToTray"
-                                    Text="Minimize to notification area"
-                                    Click="MinimizeToTrayMenuItem_Click">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Foreground="#FF85A8DB" Glyph="&#xE921;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
                                 <MenuFlyoutItem
                                     x:Name="AboutMenuItem"
                                     Tag="MenuTitleAbout"

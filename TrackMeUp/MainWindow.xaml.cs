@@ -523,7 +523,8 @@ public sealed partial class MainWindow : Window
         {
             ElementRect(TitleBarMoreButton, scale),
             ElementRect(TitleBarSearchButton, scale),
-            ElementRect(TitleBarReportButton, scale)
+            ElementRect(TitleBarReportButton, scale),
+            ElementRect(TitleBarMinimizeToTrayButton, scale)
         };
         if (TitleBarBackButton.Visibility == Visibility.Visible)
         {
@@ -616,6 +617,13 @@ public sealed partial class MainWindow : Window
 
     private void RequestReports() => ReportsRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Shows the native aggregate activity calendar through the shared dialog coordinator.</summary>
+    private async void ActivityCalendarMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        await _dialogs.ShowActivityCalendarAsync(_application, this, RootGrid.RequestedTheme, _strings);
+    }
+
     /// <summary>Forwards search-window activation to the application composition root.</summary>
     private void SearchMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -669,9 +677,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Hides the player from the taskbar while retaining its notification-area activation icon.</summary>
-    private async void MinimizeToTrayMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void MinimizeToTrayButton_Click(object sender, RoutedEventArgs e)
     {
-        MoreButton.Flyout.Hide();
         try
         {
             HideToNotificationArea();
@@ -792,6 +799,7 @@ public sealed partial class MainWindow : Window
         AiProviderMenu.Text = T("Main.Menu.AiProvider");
         SearchMenuItem.Text = T("Search.Title");
         ReportsMenuItem.Text = T("Reports.Title");
+        ActivityCalendarMenuItem.Text = T("ActivityCalendar.MenuTitle");
         ScreenshotsMenuItem.Text = T("Screenshots.Caption");
         ScheduleMenuItem.Text = T("Schedule.Snapshots");
         ScreenshotsMenuToggle.Text = T("MenuToggleScreenshot");
@@ -800,7 +808,6 @@ public sealed partial class MainWindow : Window
         OperationsMenuItem.Text = T("Main.Menu.Operations");
         OpenAiMenuToggle.Text = T("MenuToggleOpenAi");
         AiPricingMenuItem.Text = T("AiPricing.MenuTitle");
-        MinimizeToTrayMenuItem.Text = T("Main.Menu.MinimizeToTray");
         AboutMenuItem.Text = T("MenuTitleAbout");
     }
 

@@ -30,6 +30,7 @@ public sealed class OpenAiDecoder : IAIDecoder
     /// <param name="settings">Current settings.</param>
     /// <param name="apiKey">Resolved API key.</param>
     /// <param name="correlationId">Business identifier echoed to OpenAI through the documented client-request header.</param>
+    /// <param name="requestOptions">Optional per-request output and reasoning overrides.</param>
     /// <param name="cancellationToken">Cancels local file reads and the provider request.</param>
     /// <returns>Model output plus nullable provider telemetry.</returns>
     public async Task<AiProviderResult> DecodeAsync(
@@ -38,6 +39,7 @@ public sealed class OpenAiDecoder : IAIDecoder
         AppSettings settings,
         string apiKey,
         string correlationId,
+        AiProviderRequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
     {
         var imageDataUrls = new List<string>();
@@ -52,7 +54,7 @@ public sealed class OpenAiDecoder : IAIDecoder
         // Keep auth/configuration in request headers so body remains deterministic for snapshots.
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Headers.TryAddWithoutValidation("X-Client-Request-Id", correlationId);
-        request.Content = new StringContent(SerializePayload(prompt, imageDataUrls, settings), Encoding.UTF8, "application/json");
+        request.Content = new StringContent(SerializePayload(prompt, imageDataUrls, settings, requestOptions), Encoding.UTF8, "application/json");
 
         var timer = AiProviderTelemetry.StartTimer();
         try
@@ -76,17 +78,11 @@ public sealed class OpenAiDecoder : IAIDecoder
                         providerProcessingMilliseconds));
             }
 
-            using var document = JsonDocument.Parse(responseBody);
-            var root = document.RootElement;
-            return new AiProviderResult(
-                ReadOutputText(root) ?? "The model did not return text.",
-                ReadUsage(root),
-                AiProviderTelemetry.ReadString(root, "id"),
-                providerRequestId,
-                AiProviderTelemetry.ReadString(root, "model"),
-                AiProviderTelemetry.ReadString(root, "status"),
+            return ParseSuccessfulResponse(
+                responseBody,
                 (int)response.StatusCode,
                 timer.ElapsedMilliseconds,
+                providerRequestId,
                 providerProcessingMilliseconds);
         }
         catch (AiProviderRequestException)
@@ -123,7 +119,11 @@ public sealed class OpenAiDecoder : IAIDecoder
         }
     }
 
-    internal static string SerializePayload(string prompt, IReadOnlyList<string> imageDataUrls, AppSettings settings)
+    internal static string SerializePayload(
+        string prompt,
+        IReadOnlyList<string> imageDataUrls,
+        AppSettings settings,
+        AiProviderRequestOptions? requestOptions = null)
     {
         var profile = AiAnalysisProfileCatalog.Resolve(settings.AiOutputDetail);
         var content = new List<object>
@@ -156,14 +156,19 @@ public sealed class OpenAiDecoder : IAIDecoder
                     ["content"] = content
                 }
             },
-            ["max_output_tokens"] = profile.MaxOutputTokens,
             ["text"] = new Dictionary<string, object?>
             {
                 ["verbosity"] = profile.TextVerbosity
             }
         };
 
-        var reasoningEffort = AiAnalysisProfileCatalog.ResolveReasoningEffort(settings.AiReasoningEffort);
+        if (requestOptions?.OmitOutputTokenLimitWhenSupported != true)
+        {
+            payload["max_output_tokens"] = profile.MaxOutputTokens;
+        }
+
+        var reasoningEffort = AiAnalysisProfileCatalog.ResolveReasoningEffort(
+            requestOptions?.ReasoningEffort ?? settings.AiReasoningEffort);
         if (reasoningEffort is not null)
         {
             payload["reasoning"] = new Dictionary<string, object?>
@@ -173,6 +178,57 @@ public sealed class OpenAiDecoder : IAIDecoder
         }
 
         return JsonSerializer.Serialize(payload);
+    }
+
+    internal static AiProviderResult ParseSuccessfulResponse(
+        string responseBody,
+        int httpStatusCode,
+        long elapsedMilliseconds,
+        string? providerRequestId = null,
+        long? providerProcessingMilliseconds = null)
+    {
+        using var document = JsonDocument.Parse(responseBody);
+        var root = document.RootElement;
+        var usage = ReadUsage(root);
+        var status = AiProviderTelemetry.ReadString(root, "status");
+        var providerResponseId = AiProviderTelemetry.ReadString(root, "id");
+        if (string.Equals(status, "incomplete", StringComparison.OrdinalIgnoreCase))
+        {
+            var incompleteReason = ReadIncompleteReason(root);
+            var failureCode = incompleteReason is null ? "incomplete" : $"incomplete.{incompleteReason}";
+            throw new AiProviderRequestException(
+                "OpenAI returned an incomplete response.",
+                new AiProviderFailure(
+                    failureCode,
+                    httpStatusCode,
+                    elapsedMilliseconds,
+                    providerResponseId,
+                    providerRequestId,
+                    providerProcessingMilliseconds,
+                    usage,
+                    status));
+        }
+
+        return new AiProviderResult(
+            ReadOutputText(root) ?? "The model did not return text.",
+            usage,
+            providerResponseId,
+            providerRequestId,
+            AiProviderTelemetry.ReadString(root, "model"),
+            status,
+            httpStatusCode,
+            elapsedMilliseconds,
+            providerProcessingMilliseconds);
+    }
+
+    private static string? ReadIncompleteReason(JsonElement root)
+    {
+        if (!root.TryGetProperty("incomplete_details", out var details) || details.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return AiProviderTelemetry.SafeToken(AiProviderTelemetry.ReadString(details, "reason"), 64);
     }
 
     /// <summary>

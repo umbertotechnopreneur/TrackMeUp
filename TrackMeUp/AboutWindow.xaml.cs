@@ -24,6 +24,7 @@ public sealed partial class AboutWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private ThirdPartyLicensesWindow? _licensesWindow;
     private XamlRoot? _xamlRoot;
     private ElementTheme? _heroTheme;
 
@@ -53,6 +54,7 @@ public sealed partial class AboutWindow : Window
         await _placement.SaveAsync(CancellationToken.None);
         _placement.Dispose();
         _lifetimeCancellation.Cancel();
+        _licensesWindow?.Close();
         RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
         if (_xamlRoot is not null)
         {
@@ -95,8 +97,8 @@ public sealed partial class AboutWindow : Window
     private async void ShowLogButton_Click(object sender, RoutedEventArgs e)
     {
         await RunDiagnosticsActionAsync(
-            cancellationToken => _application.OpenApplicationLogAsync(cancellationToken),
-            "About.LogOpened");
+            cancellationToken => _application.OpenApplicationLogFolderAsync(cancellationToken),
+            "About.LogFolderOpened");
     }
 
     private async void ShareLogButton_Click(object sender, RoutedEventArgs e)
@@ -107,16 +109,32 @@ public sealed partial class AboutWindow : Window
             "About.LogShared");
     }
 
-    private async void ContactButton_Click(object sender, RoutedEventArgs e) =>
+    private async void WebsiteButton_Click(object sender, RoutedEventArgs e) =>
         await RunProductLinkActionAsync("author");
+
+    private async void IssuesButton_Click(object sender, RoutedEventArgs e) =>
+        await RunProductLinkActionAsync("issues");
 
     private async void RepositoryButton_Click(object sender, RoutedEventArgs e) =>
         await RunProductLinkActionAsync("repository");
 
+    private void LicensesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_licensesWindow is not null)
+        {
+            _licensesWindow.Activate();
+            return;
+        }
+
+        _licensesWindow = new ThirdPartyLicensesWindow(_application, RootGrid.ActualTheme, _strings.RequestedLanguage, _appWindow);
+        _licensesWindow.Closed += (_, _) => _licensesWindow = null;
+        _licensesWindow.Activate();
+    }
+
     private async Task RunProductLinkActionAsync(string linkKey)
     {
-        ContactButton.IsEnabled = false;
-        RepositoryButton.IsEnabled = false;
+        IssuesButton.IsEnabled = false;
+        RepositoryFooterButton.IsEnabled = false;
         CreatedByButton.IsEnabled = false;
         try
         {
@@ -144,8 +162,8 @@ public sealed partial class AboutWindow : Window
         {
             if (!_lifetimeCancellation.IsCancellationRequested)
             {
-                ContactButton.IsEnabled = true;
-                RepositoryButton.IsEnabled = true;
+                IssuesButton.IsEnabled = true;
+                RepositoryFooterButton.IsEnabled = true;
                 CreatedByButton.IsEnabled = true;
             }
         }

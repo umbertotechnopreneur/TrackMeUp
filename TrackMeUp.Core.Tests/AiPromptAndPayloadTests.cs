@@ -109,6 +109,37 @@ public sealed class AiPromptAndPayloadTests
     }
 
     [Fact]
+    public void OpenAiIncompleteResponse_IsTypedAndPreservesUsage()
+    {
+        const string response = """
+            {
+              "id": "resp_test",
+              "model": "gpt-5.4",
+              "status": "incomplete",
+              "incomplete_details": { "reason": "max_output_tokens" },
+              "usage": {
+                "input_tokens": 120,
+                "output_tokens": 2048,
+                "total_tokens": 2168,
+                "output_tokens_details": { "reasoning_tokens": 2048 }
+              },
+              "output": []
+            }
+            """;
+
+        var exception = Assert.Throws<AiProviderRequestException>(() =>
+            OpenAiDecoder.ParseSuccessfulResponse(response, 200, 37, "req_test", 11));
+
+        Assert.Equal("incomplete.max_output_tokens", exception.Failure.FailureCode);
+        Assert.Equal(200, exception.Failure.HttpStatusCode);
+        Assert.Equal("resp_test", exception.Failure.ProviderResponseId);
+        Assert.Equal("req_test", exception.Failure.ProviderRequestId);
+        Assert.Equal("incomplete", exception.Failure.FinishReason);
+        Assert.Equal(2048, exception.Failure.Usage?.OutputTokens);
+        Assert.Equal(2048, exception.Failure.Usage?.ReasoningTokens);
+    }
+
+    [Fact]
     public void AnthropicHeaders_UseProviderRequiredApiKeyHeader()
     {
         using var request = new System.Net.Http.HttpRequestMessage();
@@ -138,6 +169,54 @@ public sealed class AiPromptAndPayloadTests
         Assert.Equal("high", root.GetProperty("text").GetProperty("verbosity").GetString());
         Assert.Equal("high", root.GetProperty("reasoning").GetProperty("effort").GetString());
         Assert.Equal("high", root.GetProperty("input")[0].GetProperty("content")[1].GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public void OpenAiPayload_OcrOverrideOmitsAppOutputLimitAndDisablesReasoning()
+    {
+        var settings = new AppSettings(
+            Model: "gpt-5.4",
+            AiOutputDetail: "detailed",
+            AiReasoningEffort: "medium");
+
+        using var payload = JsonDocument.Parse(OpenAiDecoder.SerializePayload(
+            "refine OCR",
+            [],
+            settings,
+            new AiProviderRequestOptions(
+                OmitOutputTokenLimitWhenSupported: true,
+                ReasoningEffort: "none")));
+
+        var root = payload.RootElement;
+        Assert.False(root.TryGetProperty("max_output_tokens", out _));
+        Assert.Equal("none", root.GetProperty("reasoning").GetProperty("effort").GetString());
+    }
+
+    [Fact]
+    public void ThirdPartyPayloads_OcrOverrideOmitsOpenRouterLimitButKeepsAnthropicLimit()
+    {
+        var settings = new AppSettings(
+            AiOutputDetail: "detailed",
+            AiReasoningEffort: "medium");
+        var options = new AiProviderRequestOptions(
+            OmitOutputTokenLimitWhenSupported: true,
+            ReasoningEffort: "none");
+
+        using var openRouterPayload = JsonDocument.Parse(OpenRouterDecoder.SerializePayload(
+            "refine OCR",
+            [],
+            settings,
+            options));
+        Assert.False(openRouterPayload.RootElement.TryGetProperty("max_tokens", out _));
+        Assert.Equal("none", openRouterPayload.RootElement.GetProperty("reasoning").GetProperty("effort").GetString());
+
+        using var anthropicPayload = JsonDocument.Parse(AnthropicDecoder.SerializePayload(
+            "refine OCR",
+            [],
+            settings,
+            options));
+        Assert.Equal(2048, anthropicPayload.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.False(anthropicPayload.RootElement.TryGetProperty("reasoning", out _));
     }
 
     [Theory]

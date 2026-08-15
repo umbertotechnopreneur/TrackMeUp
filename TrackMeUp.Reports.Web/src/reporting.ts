@@ -29,6 +29,7 @@ export interface ReportCalendarCell {
   mouseClicks: number
   sampleCount: number
   hasData: boolean
+  activityScore: number | null
 }
 
 export interface ReportHourCell {
@@ -162,6 +163,8 @@ const isCalendarCell = (value: unknown): value is ReportCalendarCell => {
   if (!isObject(value)) return false
   return isDateText(value.date)
     && typeof value.hasData === 'boolean'
+    && isNullableActivityScore(value.activityScore)
+    && (value.hasData ? value.activityScore !== null : value.activityScore === null)
     && hasNumericFields(value, [
       'activeSeconds',
       'idleSeconds',
@@ -219,6 +222,9 @@ const isQuality = (value: unknown): value is ReportDataQuality => {
 const isNullableNonNegative = (value: unknown): value is number | null =>
   value === null || isFiniteNonNegative(value)
 
+const isNullableActivityScore = (value: unknown): value is number | null =>
+  value === null || isIntegerInRange(value, 0, 100)
+
 const isAiUsageSlice = (value: unknown): value is AiUsageSlice => {
   if (!isObject(value)) return false
   return typeof value.label === 'string'
@@ -271,7 +277,7 @@ export function validateReportEnvelope(value: unknown): EnvelopeValidationResult
     return { error: tr('The report does not contain a valid snapshot.', 'Il report non contiene uno snapshot valido.') }
   }
 
-  if (snapshot.contractVersion !== 3) {
+  if (snapshot.contractVersion !== 4) {
     return { error: tr('The report version is not compatible with this application.', 'La versione del report non è compatibile con questa applicazione.') }
   }
 

@@ -193,6 +193,11 @@ Quick Setup validation checklist:
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
 - [ ] With the latest-session section open, an automatic screenshot replaces the placeholder with the focused-monitor preview without collapsing or reopening the section.
 - [ ] With the main window visible, a frame-analysis failure shows a subtle single-layer Acrylic banner and never opens a modal dialog.
+- [ ] From **Activity > Activity calendar**, recorded days are marked in the rolling twelve-month calendar; selecting a day shows its exact 0–100 activity-intensity score and the active, idle, tracked, keyboard, and mouse totals, while a date without samples remains explicitly marked as no data.
+- [ ] With AI descriptions and OCR refinement enabled, an incomplete OCR-provider response is recorded as a failed refinement but the raw OCR remains available and the visual screenshot description is still requested and saved.
+- [ ] With a full day of retained captures, opening **Captured moments** keeps pointer and window interaction responsive while the cancellable gallery projection loads in the background; each capture still shows only the activity from its own interval.
+- [ ] With a large retained screenshot history, opening local search remains responsive and its availability summary appears without loading OCR, AI, activity, or thumbnail metadata for every capture.
+- [ ] While tracking a large activity history, keep the main dashboard open through several system samples and one screenshot: counters continue updating while repeated one-second refreshes do not rescan SQLite history or make pointer input stutter.
 - [ ] Starting TrackMeUp while tracking is disabled shows one Windows notification explaining that the app started paused and is not recording.
 - [ ] When an OS or file-system screenshot capture fails, a Windows notification shows the localized failure title and the captured exception details.
 - [ ] If activity hooks cannot start, Windows sign-in startup cannot initialize, or screenshot storage drops below 512 MiB, TrackMeUp shows a toast with actionable failure details and no dialog.
@@ -212,6 +217,8 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation g
 - [IP provenance](IP_PROVENANCE.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Publication checklist](PUBLICATION_CHECKLIST.md)
+
+The About window provides quick access to the log folder, issue tracker, product links, and the runtime third-party license inventory.
 
 ## Repository map
 

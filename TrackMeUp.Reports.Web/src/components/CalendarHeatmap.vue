@@ -41,6 +41,7 @@ const option = computed<EChartsOption>(() => {
         if (!cell) return tr('Data unavailable', 'Dato non disponibile')
         return [
           formatDate(cell.date),
+          `${tr('Activity score', 'Punteggio attività')}: ${formatInteger(cell.activityScore ?? 0)}/100`,
           `${tr('Active', 'Attivo')}: ${formatDuration(cell.activeSeconds)}`,
           `${tr('Idle', 'Inattivo')}: ${formatDuration(cell.idleSeconds)}`,
           `${tr('Coverage', 'Copertura')}: ${formatDuration(cell.trackedSeconds)}`,

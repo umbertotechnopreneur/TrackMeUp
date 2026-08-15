@@ -198,6 +198,18 @@ internal sealed class MicaDialogService
         await ShowPricingWindowAsync(application, owner, overview, theme, strings);
     }
 
+    /// <summary>Shows the native rolling activity calendar in the shared acrylic dialog queue.</summary>
+    internal async Task ShowActivityCalendarAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(strings);
+        await ShowActivityCalendarWindowAsync(application, owner, theme, strings);
+    }
+
     /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
     internal async Task ShowAiConnectionTestAsync(ITrackMeUpApplication application, Window owner, ElementTheme theme)
     {
@@ -330,6 +342,56 @@ internal sealed class MicaDialogService
             var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
             var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
             dialog = new AiPricingDialogWindow(application, overview, theme, strings, ownerAppWindow, ownerHandle);
+            _activeWindow = dialog;
+            disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
+            await dialog.ShowAsync();
+        }
+        finally
+        {
+            _activeWindow = null;
+            dialog?.DisposePlacement();
+            if (disabledPeerWindows is not null)
+            {
+                RestoreDialogPeerWindows(disabledPeerWindows);
+            }
+
+            if (ownerContent is not null)
+            {
+                ownerContent.IsHitTestVisible = ownerWasInteractive;
+            }
+
+            _queue.Release();
+        }
+    }
+
+    private async Task ShowActivityCalendarWindowAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        await _queue.WaitAsync();
+        var ownerContent = owner.Content as UIElement;
+        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
+        var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+        ActivityCalendarDialogWindow? dialog = null;
+        List<IntPtr>? disabledPeerWindows = null;
+        try
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            if (ownerContent is not null)
+            {
+                ownerContent.IsHitTestVisible = false;
+            }
+
+            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
+            var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
+            dialog = new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle);
             _activeWindow = dialog;
             disabledPeerWindows = DisableDialogPeerWindows(dialog.WindowHandle);
             await dialog.ShowAsync();

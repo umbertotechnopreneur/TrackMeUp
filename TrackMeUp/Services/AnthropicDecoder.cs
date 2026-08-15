@@ -29,6 +29,7 @@ public sealed class AnthropicDecoder : IAIDecoder
     /// <param name="settings">Current settings.</param>
     /// <param name="apiKey">Resolved API key.</param>
     /// <param name="correlationId">Business correlation identifier for the snapshot.</param>
+    /// <param name="requestOptions">Optional per-request overrides; Anthropic still requires an explicit output maximum.</param>
     /// <param name="cancellationToken">Cancels local file reads and the provider request.</param>
     /// <returns>Model output plus nullable provider telemetry.</returns>
     public async Task<AiProviderResult> DecodeAsync(
@@ -37,6 +38,7 @@ public sealed class AnthropicDecoder : IAIDecoder
         AppSettings settings,
         string apiKey,
         string correlationId,
+        AiProviderRequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
     {
         _ = correlationId; // Anthropic has no documented generic client-correlation header for this endpoint.
@@ -50,7 +52,7 @@ public sealed class AnthropicDecoder : IAIDecoder
         using var request = new HttpRequestMessage(HttpMethod.Post, settings.AiEndpoint);
         // Keep auth + protocol version explicit for stable response behavior.
         ApplyRequiredHeaders(request, apiKey);
-        request.Content = new StringContent(SerializePayload(prompt, base64Images, settings), Encoding.UTF8, "application/json");
+        request.Content = new StringContent(SerializePayload(prompt, base64Images, settings, requestOptions), Encoding.UTF8, "application/json");
 
         var timer = AiProviderTelemetry.StartTimer();
         try
@@ -125,8 +127,13 @@ public sealed class AnthropicDecoder : IAIDecoder
         request.Headers.Add("anthropic-version", "2023-06-01");
     }
 
-    internal static string SerializePayload(string prompt, IReadOnlyList<string> base64Images, AppSettings settings)
+    internal static string SerializePayload(
+        string prompt,
+        IReadOnlyList<string> base64Images,
+        AppSettings settings,
+        AiProviderRequestOptions? requestOptions = null)
     {
+        _ = requestOptions; // The Messages API requires max_tokens, so the selected detail profile remains authoritative.
         var profile = AiAnalysisProfileCatalog.Resolve(settings.AiOutputDetail);
         var content = new List<object>
         {

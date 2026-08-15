@@ -63,6 +63,49 @@ public sealed class ActivityScoreServiceTests
     }
 
     [Fact]
+    public void CalculateDailyActivityScore_NormalizesDurableHistoryToOneHundredPoints()
+    {
+        var score = ActivityScoreService.CalculateDailyActivityScore(
+            keyPresses: 40,
+            mouseClicks: 8,
+            activeSeconds: 60,
+            trackedSeconds: 60);
+
+        // Input contributes 50 of 86 points and active time contributes 8 of 8; 58/94 normalizes to 62/100.
+        Assert.Equal(62, score);
+    }
+
+    [Fact]
+    public void CalculateDailyActivityScore_UsesOneMinuteFloorAndSaturatesAtOneHundred()
+    {
+        var shortObservedInterval = ActivityScoreService.CalculateDailyActivityScore(
+            keyPresses: 40,
+            mouseClicks: 8,
+            activeSeconds: 1,
+            trackedSeconds: 1);
+        var saturated = ActivityScoreService.CalculateDailyActivityScore(
+            keyPresses: 10_000,
+            mouseClicks: 10_000,
+            activeSeconds: 60,
+            trackedSeconds: 60);
+
+        Assert.Equal(62, shortObservedInterval);
+        Assert.Equal(100, saturated);
+    }
+
+    [Fact]
+    public void CalculateDailyActivityScore_RecordedIdleWithoutInputIsZero()
+    {
+        var score = ActivityScoreService.CalculateDailyActivityScore(
+            keyPresses: 0,
+            mouseClicks: 0,
+            activeSeconds: 0,
+            trackedSeconds: 60);
+
+        Assert.Equal(0, score);
+    }
+
+    [Fact]
     public void BuildScreenshotIntervalTelemetry_AveragesOnlyPointsAfterPreviousCapture()
     {
         var service = new ActivityScoreService();

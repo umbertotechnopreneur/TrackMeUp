@@ -99,6 +99,44 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task ReportSnapshotV4_RoundTripsNullableDailyActivityScores()
+    {
+        var snapshot = new ReportSnapshot(
+            4,
+            new ReportRange(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 2), "UTC", 2),
+            new ReportTotals(60, 0, 60, 40, 8, 1),
+            [
+                new ReportCalendarCell(new DateOnly(2026, 2, 1), 60, 0, 60, 40, 8, 1, true, 62),
+                new ReportCalendarCell(new DateOnly(2026, 2, 2), 0, 0, 0, 0, 0, 0, false, null)
+            ],
+            [],
+            [],
+            [],
+            new ReportDataQuality(true, null, null, 1, 60, 172_800, 60d / 172_800d),
+            AiUsageSummary.Empty);
+        var response = new RuntimeResponseEnvelope(
+            RuntimeProtocol.ProtocolVersion,
+            Guid.NewGuid(),
+            true,
+            "report.loaded",
+            "ReportLoaded",
+            snapshot,
+            []);
+        await using var stream = new MemoryStream();
+
+        await RuntimeProtocol.WriteAsync(stream, response, CancellationToken.None);
+        stream.Position = 0;
+        var actualEnvelope = await RuntimeProtocol.ReadAsync<RuntimeResponseEnvelope>(stream, CancellationToken.None);
+        var payload = Assert.IsType<JsonElement>(actualEnvelope.Payload);
+        var actual = payload.Deserialize<ReportSnapshot>(RuntimeProtocol.SerializerOptions);
+
+        Assert.NotNull(actual);
+        Assert.Equal(4, actual.ContractVersion);
+        Assert.Equal(62, actual.Calendar[0].ActivityScore);
+        Assert.Null(actual.Calendar[1].ActivityScore);
+    }
+
+    [Fact]
     public async Task RuntimeHost_KeepsServingHealthAndCancelsReportWhenClientDisconnects()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, ConcurrentRuntimeProxy>();
@@ -121,6 +159,26 @@ public sealed class RuntimeProtocolTests
         Assert.False(report.Succeeded);
         Assert.Equal("operation.cancelled", report.Code);
         await proxy.ReportCancelled.Task.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task RuntimeHost_DoesNotCreateASecondApplicationWhenOwnershipIsAlreadyHeld()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, ConcurrentRuntimeProxy>();
+        var installationId = $"runtime-ownership-test-{Guid.NewGuid():N}";
+        await using var owner = new RuntimeHost(application, installationId);
+        Assert.True(owner.TryStart());
+        var factoryCalls = 0;
+        await using var contender = new RuntimeHost(
+            () =>
+            {
+                factoryCalls++;
+                return application;
+            },
+            installationId);
+
+        Assert.False(contender.TryStart());
+        Assert.Equal(0, factoryCalls);
     }
 
     [Fact]

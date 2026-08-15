@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
+using TrackMeUp.Ocr;
 using TrackMeUp.Services;
 using Xunit;
 
@@ -130,6 +131,126 @@ public sealed class SnapshotAnalysisFlowTests
         }
         finally
         {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CaptureScreenshot_UnexpectedOcrFailureCleansRawAndReturnsFailure()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = false,
+                ScreenshotDirectory = dataDirectory
+            });
+            var capture = new ArtifactCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(
+                store,
+                capture,
+                analysis,
+                screenshotOcr: new UnexpectedFailureOcrService());
+
+            var result = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: true, ScreenshotCaptureOrigins.Manual),
+                CancellationToken.None);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("screenshot.capture.failed", result.Code);
+            Assert.NotNull(capture.RawPath);
+            Assert.NotNull(capture.StoredPath);
+            Assert.False(File.Exists(capture.RawPath));
+            Assert.True(File.Exists(capture.StoredPath));
+            Assert.Equal(0, analysis.CallCount);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DeferredCapture_StillSavesVisualDescription_WhenOcrRefinementFails()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+            var capture = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(
+                store,
+                capture,
+                analysis,
+                ocrRefinement: new FailingOcrRefinementService());
+
+            var result = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(capture.Result, KeepCapture: true),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal("analyzed", result.Value?.Summary);
+            Assert.Equal(1, analysis.CallCount);
+            Assert.Same(capture.Result, analysis.Capture);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CaptureScreenshot_StillSavesVisualDescription_WhenOcrRefinementFails()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+            var capture = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(
+                store,
+                capture,
+                analysis,
+                ocrRefinement: new FailingOcrRefinementService());
+
+            var result = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(1, analysis.CallCount);
+            Assert.Same(capture.Result, analysis.Capture);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
             Directory.Delete(dataDirectory, recursive: true);
         }
     }
@@ -622,11 +743,61 @@ public sealed class SnapshotAnalysisFlowTests
         }
     }
 
+    [Fact]
+    public async Task DeferredAnalysis_CostGuardrailDeletesRawAndRetainsStoredArtifact()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                OpenAiEnabled = true,
+                OpenAiDailyLimit = 0,
+                AiApiKeyName = TestApiKeyVariable,
+                ScreenshotDirectory = dataDirectory
+            });
+            var captureService = new RecordingCaptureService(dataDirectory);
+            var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
+            await using var application = CreateApplication(store, captureService, analysis);
+            var captureId = Guid.NewGuid().ToString("N");
+            var rawPath = Path.Combine(dataDirectory, $"{captureId}_1.0.0_scheduled_monitor-1-raw.webp");
+            var storedPath = Path.Combine(dataDirectory, $"{captureId}_1.0.0_scheduled_monitor-1.webp");
+            await File.WriteAllBytesAsync(rawPath, [1, 2, 3]);
+            await File.WriteAllBytesAsync(storedPath, [4, 5, 6]);
+            var capture = new ScreenshotCaptureResult(
+                captureId,
+                [rawPath],
+                [storedPath],
+                ScreenshotCaptureOrigins.Scheduled);
+
+            var result = await application.AnalyzeCapturedScreenshotAsync(
+                new AnalyzeCapturedScreenshotRequest(capture, KeepCapture: true, Origin: "snapshot.scheduled"),
+                CancellationToken.None);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("ai.cost_guardrail", result.Code);
+            Assert.False(File.Exists(rawPath));
+            Assert.True(File.Exists(storedPath));
+            Assert.Equal(0, analysis.CallCount);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
     private static TrackMeUpApplication CreateApplication(
         LocalStore store,
         IScreenCaptureService capture,
         IAiAnalysisService analysis,
-        ApplicationLogService? applicationLogs = null)
+        ApplicationLogService? applicationLogs = null,
+        IAiOcrRefinementService? ocrRefinement = null,
+        IScreenshotOcrService? screenshotOcr = null)
     {
         var utilities = new UtilityService();
         return new TrackMeUpApplication(
@@ -638,7 +809,9 @@ public sealed class SnapshotAnalysisFlowTests
             analysis,
             new StartupService(),
             new BuildInformationService(),
-            applicationLogs: applicationLogs);
+            applicationLogs: applicationLogs,
+            screenshotOcr: screenshotOcr,
+            ocrRefinement: ocrRefinement);
     }
 
     private static string CreateTemporaryDirectory()
@@ -675,6 +848,40 @@ public sealed class SnapshotAnalysisFlowTests
             LastCaptureMode = captureMode;
             return Result;
         }
+    }
+
+    private sealed class ArtifactCaptureService(string directory) : IScreenCaptureService
+    {
+        public string? RawPath { get; private set; }
+
+        public string? StoredPath { get; private set; }
+
+        public ScreenshotCaptureResult CaptureByMode(string requestedDirectory, string captureMode, bool includeWatermark, string captureOrigin)
+        {
+            var captureId = Guid.NewGuid().ToString("N");
+            RawPath = Path.Combine(directory, $"{captureId}_1.0.0_{captureOrigin}_monitor-1-raw.webp");
+            StoredPath = Path.Combine(directory, $"{captureId}_1.0.0_{captureOrigin}_monitor-1.webp");
+            File.WriteAllBytes(RawPath, [1, 2, 3]);
+            File.WriteAllBytes(StoredPath, [4, 5, 6]);
+            return new ScreenshotCaptureResult(captureId, [RawPath], [StoredPath], captureOrigin);
+        }
+    }
+
+    private sealed class UnexpectedFailureOcrService : IScreenshotOcrService
+    {
+        public bool IsEnabled => true;
+
+        public Task<ScreenshotOcrResult> ExtractAsync(string imagePath, CancellationToken cancellationToken = default) =>
+            Task.FromException<ScreenshotOcrResult>(new InvalidDataException("Unexpected OCR failure."));
+    }
+
+    private sealed class FailingOcrRefinementService : IAiOcrRefinementService
+    {
+        public Task<ScreenshotCaptureResult> RefineAsync(
+            ScreenshotCaptureResult capture,
+            AppSettings settings,
+            CancellationToken cancellationToken) =>
+            Task.FromException<ScreenshotCaptureResult>(new InvalidDataException("Truncated OCR JSON."));
     }
 
     private sealed class RecordingAnalysisService(string installationId) : IAiAnalysisService

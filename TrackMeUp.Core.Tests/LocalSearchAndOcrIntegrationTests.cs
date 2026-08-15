@@ -42,6 +42,108 @@ public sealed class LocalSearchAndOcrIntegrationTests
     }
 
     [Fact]
+    public async Task SearchCoordinator_CoalescesWritesThatContinueDuringARebuild()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var service = new ThreadRecordingSearchService
+            {
+                RebuildAction = () => store.AppendSample(new ActivitySample(
+                    DateTimeOffset.UtcNow,
+                    1,
+                    "active",
+                    "test",
+                    "Test",
+                    "Tracking continued during index rebuild",
+                    "Search",
+                    store.LoadSettings().InstallationId,
+                    0,
+                    0))
+            };
+            await using var coordinator = new LocalSearchCoordinator(store, service);
+
+            _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
+            store.AppendSample(new ActivitySample(
+                DateTimeOffset.UtcNow.AddSeconds(1),
+                1,
+                "active",
+                "test",
+                "Test",
+                "A second write in the refresh window",
+                "Search",
+                store.LoadSettings().InstallationId,
+                0,
+                0));
+            _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
+
+            Assert.Equal(1, service.RebuildCount);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
+    public void ScreenshotAvailabilityCounts_DeduplicatesArtifactsWithoutLoadingGalleryMetadata()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
+            Directory.CreateDirectory(screenshotDirectory);
+            store.SaveSettings(store.LoadSettings() with { ScreenshotDirectory = screenshotDirectory });
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var todayCapture = new DateTimeOffset(DateTime.Today.AddHours(12));
+            var firstCaptureId = new string('e', 32);
+            var storedPath = CreateOwnedScreenshot(screenshotDirectory, 'e', todayCapture);
+            var firstArtifactIdentity = Path.GetFileNameWithoutExtension(storedPath);
+            var rawPath = Path.Combine(
+                screenshotDirectory,
+                $"{firstCaptureId}_1.0.0_manual_monitor-1-raw.webp");
+            File.WriteAllBytes(rawPath, [4, 5, 6]);
+            File.SetLastWriteTimeUtc(rawPath, todayCapture.AddDays(-1).UtcDateTime);
+            _ = CreateOwnedScreenshot(screenshotDirectory, 'f', todayCapture.AddDays(-1));
+            File.WriteAllText(Path.Combine(screenshotDirectory, "unrelated.png"), "not a TrackMeUp capture");
+
+            using (var connection = new SqliteConnection(
+                       $"Data Source={Path.Combine(dataDirectory, "activity.sqlite3")};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    INSERT INTO screenshot_text_snapshots (
+                        artifact_identity,
+                        capture_id,
+                        source_path,
+                        extracted_utc_ticks,
+                        snapshot_json,
+                        updated_utc_ticks)
+                    VALUES ($identity, $captureId, $sourcePath, $ticks, $json, $ticks);
+                    """;
+                command.Parameters.AddWithValue("$identity", firstArtifactIdentity);
+                command.Parameters.AddWithValue("$captureId", firstCaptureId);
+                command.Parameters.AddWithValue("$sourcePath", storedPath);
+                command.Parameters.AddWithValue("$ticks", todayCapture.UtcTicks);
+                command.Parameters.AddWithValue("$json", "not-json");
+                command.ExecuteNonQuery();
+            }
+
+            var counts = store.GetScreenshotAvailabilityCounts(today, CancellationToken.None);
+
+            Assert.Equal(2, counts.TotalSnapshotCount);
+            Assert.Equal(1, counts.TodaySnapshotCount);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
+    [Fact]
     public void ScreenshotTextSnapshot_RoundTripsThroughSqliteAndGallery()
     {
         var dataDirectory = CreateDataDirectory();
@@ -336,6 +438,8 @@ public sealed class LocalSearchAndOcrIntegrationTests
             var result = Assert.Single(refined.TextSnapshots!);
             Assert.Contains("Riunlone proggetto", decoder.Prompt, StringComparison.Ordinal);
             Assert.Equal([screenshotPath], decoder.ScreenshotPaths);
+            Assert.True(decoder.RequestOptions?.OmitOutputTokenLimitWhenSupported);
+            Assert.Equal("none", decoder.RequestOptions?.ReasoningEffort);
             Assert.Equal("Riunione progetto", result.AiRefinement?.CorrectedText);
             Assert.Equal("Preparazione della riunione.", result.AiRefinement?.Summary.Overview);
             Assert.Equal("Riunione progetto", store.LoadScreenshotTextSnapshot(screenshotPath)?.AiRefinement?.CorrectedText);
@@ -462,6 +566,10 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
         internal int SuggestionThreadId { get; private set; }
 
+        internal int RebuildCount { get; private set; }
+
+        internal Action? RebuildAction { get; init; }
+
         public Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
@@ -470,8 +578,14 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
         public Task RebuildAsync(
             IEnumerable<SearchDocument> documents,
-            CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = documents.ToArray();
+            RebuildCount++;
+            RebuildAction?.Invoke();
+            return Task.CompletedTask;
+        }
 
         public Task<SearchResponse> SearchAsync(
             SearchRequest request,
@@ -519,10 +633,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
             AppSettings settings,
             string apiKey,
             string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default)
         {
             Prompt = prompt;
             ScreenshotPaths = screenshotPaths;
+            RequestOptions = requestOptions;
             const string response = """
                 {
                   "items": [
@@ -551,5 +667,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 5,
                 4));
         }
+
+        public AiProviderRequestOptions? RequestOptions { get; private set; }
     }
 }

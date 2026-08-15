@@ -19,6 +19,10 @@
                         <GradientStop Color="#A8FFFFFF" Offset="0" />
                         <GradientStop Color="#28717A84" Offset="1" />
                     </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="ScreenshotFrameBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#E6FFFFFF" Offset="0" />
+                        <GradientStop Color="#6A71808A" Offset="1" />
+                    </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <AcrylicBrush
@@ -31,10 +35,15 @@
                         <GradientStop Color="#62FFFFFF" Offset="0" />
                         <GradientStop Color="#16FFFFFF" Offset="1" />
                     </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="ScreenshotFrameBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#A8FFFFFF" Offset="0" />
+                        <GradientStop Color="#3AFFFFFF" Offset="1" />
+                    </LinearGradientBrush>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="ScreenshotViewerOverlayBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="ScreenshotViewerOverlayBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ScreenshotFrameBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
@@ -77,7 +86,9 @@
         x:Name="ViewerRoot"
         Background="Transparent"
         GotFocus="ViewerRoot_GotFocus"
-        LostFocus="ViewerRoot_LostFocus">
+        LostFocus="ViewerRoot_LostFocus"
+        PointerEntered="ViewerRoot_PointerEntered"
+        PointerExited="ViewerRoot_PointerExited">
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="OverlayVisibilityStates">
                 <VisualStateGroup.Transitions>
@@ -134,13 +145,28 @@
                 MinHeight="1"
                 Background="Transparent"
                 PointerWheelChanged="ImageHost_PointerWheelChanged">
-                <Image
-                    x:Name="ScreenshotImage"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    AutomationProperties.Name="No screenshot selected"
-                    ImageOpened="ScreenshotImage_ImageOpened"
-                    Stretch="Uniform" />
+                <Border
+                    x:Name="ScreenshotFrame"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                    BorderBrush="{ThemeResource ScreenshotFrameBorderBrush}"
+                    BorderThickness="2"
+                    CornerRadius="4"
+                    Padding="16"
+                    Translation="0,0,10"
+                    Visibility="Collapsed">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <Image
+                        x:Name="ScreenshotImage"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        AutomationProperties.Name="No screenshot selected"
+                        ImageOpened="ScreenshotImage_ImageOpened"
+                        Stretch="Uniform" />
+                </Border>
             </Grid>
         </ScrollViewer>
 

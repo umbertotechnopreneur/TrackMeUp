@@ -13,6 +13,11 @@ namespace TrackMeUp.Application;
 /// <summary>Creates the application facade and keeps concrete infrastructure construction in one composition boundary.</summary>
 public static class TrackMeUpApplicationFactory
 {
+    /// <summary>
+    /// Loads only the stable installation identity needed to arbitrate runtime ownership.
+    /// </summary>
+    public static string LoadInstallationId() => new LocalStore().LoadSettings().InstallationId;
+
     /// <summary>Creates the in-process runtime application used by the Windows host.</summary>
     public static ITrackMeUpApplication Create(ILoggerFactory? loggerFactory = null, ObservabilityHealth? observability = null)
     {
@@ -128,6 +133,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
+    private readonly SemaphoreSlim _captureWorker = new(1, 1);
+    private readonly SemaphoreSlim _systemSnapshotGate = new(1, 1);
     private readonly ConcurrentQueue<ApplicationNotification> _notifications = new();
     private readonly Timer _scheduledSnapshotTimer;
     private DateTimeOffset? _nextScheduledSnapshotAt;
@@ -139,13 +146,17 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private bool _atomicResetPrepared;
     private readonly object _activityScoreTelemetryGate = new();
     private DateTimeOffset? _nextActivityScoreTelemetryAt;
+    private SystemSnapshot? _recentSystemSnapshot;
+    private int _runtimeTimerActive;
     private DateTimeOffset _lastScreenshotStorageWarningAt = DateTimeOffset.MinValue;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private const int MaximumPendingNotifications = 32;
     private const long MinimumScreenshotFreeBytes = 512L * 1024 * 1024;
     private static readonly TimeSpan ScreenshotStorageNotificationInterval = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan SystemSnapshotReuseWindow = TimeSpan.FromSeconds(75);
     private const string ProductRepositoryUrl = "https://github.com/umbertotechnopreneur/TrackMeUp";
-    private const string ProductAuthorUrl = "https://umbertogiacobbi.com";
+    private const string ProductIssuesUrl = "https://github.com/umbertotechnopreneur/TrackMeUp/issues";
+    private const string ProductAuthorUrl = "https://umbertogiacobbi.biz";
     private bool _disposed;
 
     /// <summary>Initializes an application facade with infrastructure owned by the runtime host.</summary>
@@ -267,10 +278,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         : StartTrackingAsync(new StartTrackingRequest(), cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken)
+    public async Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<DashboardState>.Success("dashboard.loaded", "DashboardLoaded", LoadDashboardState()));
+        // Cache reloads are rare but may touch SQLite; the one-second UI refresh never performs them on its dispatcher.
+        var state = await Task.Run(LoadDashboardState, cancellationToken).ConfigureAwait(false);
+        return OperationResult<DashboardState>.Success("dashboard.loaded", "DashboardLoaded", state);
     }
 
     /// <inheritdoc />
@@ -302,10 +315,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         try
         {
             var settings = _store.LoadSettings();
-            var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
-            var snapshot = _snapshot.Capture();
+            var snapshot = await CaptureAndRecordSystemSnapshotAsync(allowRecent: false, cancellationToken).ConfigureAwait(false);
+            var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken).ConfigureAwait(false);
             var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, snapshot.Timestamp);
-            _tracking.RecordSystemSnapshot(snapshot);
             return OperationResult<SystemSnapshot>.Success(
                 "system.snapshot.captured",
                 "SystemSnapshotCaptured",
@@ -381,25 +393,32 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<ScreenshotCaptureResult>.Failure("screenshot.storage.low", "ScreenshotStorageLow");
         }
 
+        long pipelineStartedTimestamp = Stopwatch.GetTimestamp();
         var telemetryIntervalStartedAt = ResolveScreenshotTelemetryIntervalStart(settings.ScreenshotIntervalMinutes);
+        long telemetryStartedTimestamp = Stopwatch.GetTimestamp();
         try
         {
-            _tracking.RecordSystemSnapshot(_snapshot.Capture());
+            // Host telemetry is sampled off the caller thread and shared with a nearby minute sample.
+            _ = await CaptureAndRecordSystemSnapshotAsync(allowRecent: true, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
             // Screenshot capture remains available when optional host telemetry cannot be sampled.
             _logger.LogWarning("Screenshot telemetry sample failed. ExceptionType={ExceptionType}", exception.GetType().Name);
         }
+        long telemetryElapsedMilliseconds = (long)Stopwatch.GetElapsedTime(telemetryStartedTimestamp).TotalMilliseconds;
 
         ScreenshotCaptureResult result;
+        long captureStartedTimestamp = Stopwatch.GetTimestamp();
         try
         {
-            result = _capture.CaptureByMode(
-                settings.ScreenshotDirectory,
-                mode,
-                request.Watermark && settings.WatermarkScreenshots,
-                request.CaptureOrigin);
+            result = await RunCaptureWorkAsync(
+                () => _capture.CaptureByMode(
+                    settings.ScreenshotDirectory,
+                    mode,
+                    request.Watermark && settings.WatermarkScreenshots,
+                    request.CaptureOrigin),
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -407,18 +426,50 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             EnqueueScreenshotCaptureFailure(exception);
             return OperationResult<ScreenshotCaptureResult>.Failure("screenshot.capture.failed", "ScreenshotCaptureFailed");
         }
+        long captureElapsedMilliseconds = (long)Stopwatch.GetElapsedTime(captureStartedTimestamp).TotalMilliseconds;
+
+        long persistenceStartedTimestamp = Stopwatch.GetTimestamp();
         if (request.Keep)
         {
             PersistScreenshotIntervalTelemetry(result, telemetryIntervalStartedAt, DateTimeOffset.UtcNow);
         }
+        long persistenceElapsedMilliseconds = (long)Stopwatch.GetElapsedTime(persistenceStartedTimestamp).TotalMilliseconds;
 
-        result = await _textExtraction.AttachAsync(result, cancellationToken);
+        long ocrStartedTimestamp = Stopwatch.GetTimestamp();
+        try
+        {
+            result = await _textExtraction.AttachAsync(result, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            CleanupCaptureArtifacts(result, request.Keep);
+            return OperationResult<ScreenshotCaptureResult>.Failure("operation.cancelled", "OperationCancelled");
+        }
+        catch (Exception exception)
+        {
+            // A failed enrichment must not leak raw files or escape into the WinUI event loop.
+            CleanupCaptureArtifacts(result, request.Keep);
+            _logger.LogWarning("Screenshot OCR enrichment failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            EnqueueScreenshotCaptureFailure(exception);
+            return OperationResult<ScreenshotCaptureResult>.Failure("screenshot.capture.failed", "ScreenshotCaptureFailed");
+        }
+        long ocrElapsedMilliseconds = (long)Stopwatch.GetElapsedTime(ocrStartedTimestamp).TotalMilliseconds;
+        _logger.LogInformation(
+            "Local screenshot pipeline completed. Origin={Origin} Mode={Mode} Artifacts={ArtifactCount} TelemetryMs={TelemetryMilliseconds} CaptureMs={CaptureMilliseconds} PersistenceMs={PersistenceMilliseconds} OcrMs={OcrMilliseconds} TotalMs={TotalMilliseconds}",
+            request.CaptureOrigin,
+            mode,
+            result.AnalysisScreenshotPaths.Count,
+            telemetryElapsedMilliseconds,
+            captureElapsedMilliseconds,
+            persistenceElapsedMilliseconds,
+            ocrElapsedMilliseconds,
+            (long)Stopwatch.GetElapsedTime(pipelineStartedTimestamp).TotalMilliseconds);
 
         if (settings.OpenAiEnabled && !request.DeferAiAnalysis)
         {
             try
             {
-                result = await _ocrRefinement.RefineAsync(result, settings, cancellationToken);
+                result = await RefineScreenshotTextOrContinueAsync(result, settings, cancellationToken);
                 var analysisOrigin = result.CaptureOrigin == ScreenshotCaptureOrigins.Scheduled
                     ? "snapshot.scheduled"
                     : "snapshot.manual";
@@ -456,12 +507,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 CleanupCaptureArtifacts(result, request.Keep);
             }
         }
-        else if (!request.Keep)
+        else if (!request.Keep || !settings.OpenAiEnabled)
         {
-            foreach (var file in result.AllScreenshotPaths.Where(File.Exists))
-            {
-                File.Delete(file);
-            }
+            // With no later AI pass, raw analysis artifacts have no owner even when stored copies are retained.
+            CleanupCaptureArtifacts(result, request.Keep);
         }
 
         await Task.CompletedTask;
@@ -550,80 +599,84 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         string? aiFailureDetail = null;
         var operation = await MutateAsync(async () =>
         {
-            if (request.Capture is null)
+            var capture = request.Capture;
+            if (capture is null)
             {
                 return OperationResult<AiAnalysis>.Failure("ai.capture.invalid", "AiConfigurationInvalid");
             }
 
-            var settings = _store.LoadSettings();
-            if (!settings.OpenAiEnabled)
-            {
-                return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
-            }
-
-            aiEnabledForAnalysis = true;
-
-            if (IsCurrentContextPrivate(settings))
-            {
-                return OperationResult<AiAnalysis>.Failure("privacy.blocked", "PrivacyBlocked");
-            }
-
-            if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
-            {
-                return OperationResult<AiAnalysis>.Failure(
-                    "ai.configuration.invalid",
-                    "AiConfigurationInvalid",
-                    validationIssue!);
-            }
-
-            if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
-            {
-                _store.SaveSettings(validatedSettings);
-            }
-
-            settings = validatedSettings;
-            var gate = BuildCostGate(settings);
-            if (!gate.Allowed)
-            {
-                return OperationResult<AiAnalysis>.Failure("ai.cost_guardrail", "AiCostGuardrail");
-            }
-
             try
             {
-                var origin = NormalizeAnalysisOrigin(request.Origin);
-                var refinedCapture = await _ocrRefinement.RefineAsync(request.Capture, settings, cancellationToken);
-                var result = await _analysis.AnalyzeCapturedScreenAsync(
-                    _tracking.LatestAnalysisContext,
-                    refinedCapture,
-                    request.KeepCapture,
-                    origin,
-                    cancellationToken);
-                return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
-            }
-            catch (OperationCanceledException)
-            {
-                return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
-            }
-            catch (AiProviderRequestException exception)
-            {
-                LogAiProviderFailure("screenshot.analyze", exception);
-                aiFailureDetail = BuildAiProviderFailureDetail(exception);
-                return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
-            }
-            catch (InvalidOperationException)
-            {
-                return OperationResult<AiAnalysis>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
-            }
-            catch (Exception exception)
-            {
-                // Provider/network errors remain stable to callers; the capture service owns cleanup behavior.
-                _logger.LogWarning("Deferred snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
-                return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
+                var settings = _store.LoadSettings();
+                if (!settings.OpenAiEnabled)
+                {
+                    return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
+                }
+
+                aiEnabledForAnalysis = true;
+
+                if (IsCurrentContextPrivate(settings))
+                {
+                    return OperationResult<AiAnalysis>.Failure("privacy.blocked", "PrivacyBlocked");
+                }
+
+                if (!TryValidateOpenAiConfiguration(settings, requireImageInput: true, out var validatedSettings, out var validationIssue))
+                {
+                    return OperationResult<AiAnalysis>.Failure(
+                        "ai.configuration.invalid",
+                        "AiConfigurationInvalid",
+                        validationIssue!);
+                }
+
+                if (!string.Equals(settings.Model, validatedSettings.Model, StringComparison.Ordinal))
+                {
+                    _store.SaveSettings(validatedSettings);
+                }
+
+                settings = validatedSettings;
+                var gate = BuildCostGate(settings);
+                if (!gate.Allowed)
+                {
+                    return OperationResult<AiAnalysis>.Failure("ai.cost_guardrail", "AiCostGuardrail");
+                }
+
+                try
+                {
+                    var origin = NormalizeAnalysisOrigin(request.Origin);
+                    var refinedCapture = await RefineScreenshotTextOrContinueAsync(capture, settings, cancellationToken);
+                    var result = await _analysis.AnalyzeCapturedScreenAsync(
+                        _tracking.LatestAnalysisContext,
+                        refinedCapture,
+                        request.KeepCapture,
+                        origin,
+                        cancellationToken);
+                    return OperationResult<AiAnalysis>.Success("ai.analyzed", "AiAnalyzed", result);
+                }
+                catch (OperationCanceledException)
+                {
+                    return OperationResult<AiAnalysis>.Failure("operation.cancelled", "OperationCancelled");
+                }
+                catch (AiProviderRequestException exception)
+                {
+                    LogAiProviderFailure("screenshot.analyze", exception);
+                    aiFailureDetail = BuildAiProviderFailureDetail(exception);
+                    return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
+                }
+                catch (InvalidOperationException)
+                {
+                    return OperationResult<AiAnalysis>.Failure("ai.configuration.invalid", "AiConfigurationInvalid");
+                }
+                catch (Exception exception)
+                {
+                    // Provider/network errors remain stable to callers; the capture service owns cleanup behavior.
+                    _logger.LogWarning("Deferred snapshot AI analysis failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                    return OperationResult<AiAnalysis>.Failure("ai.provider.failed", "AiProviderFailed");
+                }
             }
             finally
             {
-                // Refinement may fail before the analysis service assumes cleanup ownership.
-                CleanupCaptureArtifacts(request.Capture, request.KeepCapture);
+                // Every preflight outcome owns cleanup, including disabled AI, privacy, configuration and cost gates.
+                CleanupCaptureArtifacts(capture, request.KeepCapture);
             }
         }, cancellationToken);
 
@@ -694,17 +747,19 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken)
+    public async Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var snapshots = _store.GetAllScreenshotGalleryItems();
         var today = DateOnly.FromDateTime(DateTime.Now);
-        var todaySnapshotCount = snapshots.Count(snapshot =>
-            DateOnly.FromDateTime(snapshot.CapturedAt.LocalDateTime) == today);
-        return Task.FromResult(OperationResult<SearchAvailability>.Success(
+        // Opening search only needs counts. Enumerate retained artifacts once off the UI/pipe thread;
+        // loading every gallery projection would also deserialize OCR and query activity per screenshot.
+        var counts = await Task.Run(
+            () => _store.GetScreenshotAvailabilityCounts(today, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+        return OperationResult<SearchAvailability>.Success(
             "search.availability.loaded",
             "SearchAvailabilityLoaded",
-            new SearchAvailability(snapshots.Count, todaySnapshotCount, _textExtraction.IsEnabled)));
+            new SearchAvailability(counts.TotalSnapshotCount, counts.TodaySnapshotCount, _textExtraction.IsEnabled));
     }
 
     /// <inheritdoc />
@@ -808,23 +863,32 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken)
+    public async Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<ScreenshotGallery>.Success(
+        // Gallery projection performs directory enumeration, OCR deserialization, and SQLite reads;
+        // keep all of that work off the WinUI/pipe caller and cancel superseded date requests.
+        var gallery = await Task.Run(
+            () => _store.GetScreenshotGallery(date, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+        return OperationResult<ScreenshotGallery>.Success(
             "screenshot.gallery.loaded",
             "ScreenshotGalleryLoaded",
-            _store.GetScreenshotGallery(date)));
+            gallery);
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken)
+    public async Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<ScreenshotGallery>.Success(
+        // The latest-gallery lookup shares the same potentially large local projection path.
+        var gallery = await Task.Run(
+            () => _store.GetLatestScreenshotGallery(cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+        return OperationResult<ScreenshotGallery>.Success(
             "screenshot.gallery.latest.loaded",
             "LatestScreenshotGalleryLoaded",
-            _store.GetLatestScreenshotGallery()));
+            gallery);
     }
 
     /// <inheritdoc />
@@ -885,6 +949,29 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 System.ComponentModel.Win32Exception)
         {
             _logger.LogWarning("Application log could not be opened. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return Task.FromResult(OperationResult<bool>.Failure("diagnostics.log.unavailable", "ApplicationLogUnavailable"));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> OpenApplicationLogFolderAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            _ = _applicationLogs.OpenLogDirectory();
+            _logger.LogInformation("Application log directory opened through the diagnostics facade.");
+            return Task.FromResult(OperationResult<bool>.Success("diagnostics.log.folder.opened", "ApplicationLogFolderOpened", true));
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+                UnauthorizedAccessException or
+                InvalidOperationException or
+                NotSupportedException or
+                System.Runtime.InteropServices.COMException or
+                System.ComponentModel.Win32Exception)
+        {
+            _logger.LogWarning("Application log directory could not be opened. ExceptionType={ExceptionType}", exception.GetType().Name);
             return Task.FromResult(OperationResult<bool>.Failure("diagnostics.log.unavailable", "ApplicationLogUnavailable"));
         }
     }
@@ -1036,7 +1123,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 validatedSettings,
                 apiKey!,
                 Guid.NewGuid().ToString("N"),
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
             return OperationResult<AiConnectionTestResult>.Success(
                 "ai.connection.succeeded",
@@ -1173,7 +1260,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                     var telemetryIntervalStartedAt = ResolveScreenshotTelemetryIntervalStart(settings.ScreenshotIntervalMinutes);
                     try
                     {
-                        _tracking.RecordSystemSnapshot(_snapshot.Capture());
+                        _ = await CaptureAndRecordSystemSnapshotAsync(allowRecent: true, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {
@@ -1182,13 +1269,15 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
                     try
                     {
-                        capture = _capture.CaptureByMode(
-                            settings.ScreenshotDirectory,
-                            settings.ScreenshotCaptureMode,
-                            settings.WatermarkScreenshots,
-                            string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
-                                ? ScreenshotCaptureOrigins.Scheduled
-                                : ScreenshotCaptureOrigins.Manual);
+                        capture = await RunCaptureWorkAsync(
+                            () => _capture.CaptureByMode(
+                                settings.ScreenshotDirectory,
+                                settings.ScreenshotCaptureMode,
+                                settings.WatermarkScreenshots,
+                                captureOrigin: string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
+                                    ? ScreenshotCaptureOrigins.Scheduled
+                                    : ScreenshotCaptureOrigins.Manual),
+                            cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {
@@ -1202,7 +1291,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                     }
 
                     capture = await _textExtraction.AttachAsync(capture, cancellationToken);
-                    capture = await _ocrRefinement.RefineAsync(capture, settings, cancellationToken);
+                    capture = await RefineScreenshotTextOrContinueAsync(capture, settings, cancellationToken);
                     result = await _analysis.AnalyzeCapturedScreenAsync(
                         _tracking.LatestAnalysisContext,
                         capture,
@@ -1631,6 +1720,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             "author" => ProductAuthorUrl,
             "repository" => ProductRepositoryUrl,
+            "issues" => ProductIssuesUrl,
             _ => null
         };
         if (target is null)
@@ -1667,13 +1757,58 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         _disposed = true;
-        _scheduledSnapshotTimer.Dispose();
+        await _scheduledSnapshotTimer.DisposeAsync().ConfigureAwait(false);
         _tracking.DashboardStateChanged -= OnDashboardStateChanged;
         _tracking.TrackingStateChanged -= OnTrackingStateChanged;
         _pricingRefresh?.Dispose();
         _tracking.Dispose();
         await _search.DisposeAsync().ConfigureAwait(false);
+        _captureWorker.Dispose();
+        _systemSnapshotGate.Dispose();
         _mutations.Dispose();
+    }
+
+    private async Task<SystemSnapshot> CaptureAndRecordSystemSnapshotAsync(
+        bool allowRecent,
+        CancellationToken cancellationToken)
+    {
+        await _systemSnapshotGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (allowRecent && _recentSystemSnapshot is { } recent)
+            {
+                var age = DateTimeOffset.UtcNow - recent.Timestamp.ToUniversalTime();
+                if (age >= TimeSpan.Zero && age <= SystemSnapshotReuseWindow)
+                {
+                    return recent;
+                }
+            }
+
+            // WMI and performance-counter enumeration are blocking OS calls; never run them on a presentation caller.
+            var snapshot = await Task.Run(_snapshot.Capture, cancellationToken).ConfigureAwait(false);
+            _tracking.RecordSystemSnapshot(snapshot);
+            _recentSystemSnapshot = snapshot;
+            return snapshot;
+        }
+        finally
+        {
+            _systemSnapshotGate.Release();
+        }
+    }
+
+    private async Task<T> RunCaptureWorkAsync<T>(Func<T> operation, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        await _captureWorker.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // The bounded worker keeps synchronous desktop capture and codecs off WinUI and prevents overlap.
+            return await Task.Run(operation, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _captureWorker.Release();
+        }
     }
 
     private async Task<OperationResult<T>> MutateAsync<T>(Func<Task<OperationResult<T>>> operation, CancellationToken cancellationToken)
@@ -1689,10 +1824,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
     }
 
-    private DashboardState LoadDashboardState()
+    private DashboardState LoadDashboardState() => EnrichDashboardState(_tracking.LoadCurrentDashboardState());
+
+    private DashboardState EnrichDashboardState(DashboardState state)
     {
         var settings = _store.LoadSettings();
-        return _tracking.LoadCurrentDashboardState() with
+        return state with
         {
             ScheduledSnapshotRemaining = GetScheduledSnapshotRemaining(),
             PendingManualScreenshot = GetPendingManualScreenshotState(),
@@ -1768,7 +1905,30 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _pausedScheduledSnapshotRemaining = null;
     }
 
-    private void HandleScheduledSnapshotTimerTick(object? state) => _ = ProcessRuntimeTimerAsync();
+    private void HandleScheduledSnapshotTimerTick(object? state) => _ = ProcessRuntimeTimerSingleFlightAsync();
+
+    private async Task ProcessRuntimeTimerSingleFlightAsync()
+    {
+        if (Interlocked.CompareExchange(ref _runtimeTimerActive, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            // A slow capture skips later one-second ticks instead of building an unbounded mutation backlog.
+            await ProcessRuntimeTimerAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            // Timer callbacks are fire-and-forget; contain failures here so they never become unobserved exceptions.
+            _logger.LogError("Runtime timer processing failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+        }
+        finally
+        {
+            Volatile.Write(ref _runtimeTimerActive, 0);
+        }
+    }
 
     private async Task ProcessRuntimeTimerAsync()
     {
@@ -1850,11 +2010,39 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 .AddMinutes(1);
         }
 
-        var result = await CaptureSystemSnapshotAsync(CancellationToken.None);
-        if (!result.Succeeded)
+        try
+        {
+            // Minute telemetry never needs location and can be reused by a screenshot due a few seconds later.
+            // Preserve one real telemetry point per minute; the screenshot pass immediately reuses this sample.
+            _ = await CaptureAndRecordSystemSnapshotAsync(allowRecent: false, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
         {
             // The score keeps its input-only data for this minute when optional telemetry is unavailable.
-            _logger.LogWarning("Activity score telemetry sample failed. Code={Code}", result.Code);
+            _logger.LogWarning("Activity score telemetry sample failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+        }
+    }
+
+    private async Task<ScreenshotCaptureResult> RefineScreenshotTextOrContinueAsync(
+        ScreenshotCaptureResult capture,
+        AppSettings settings,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _ocrRefinement.RefineAsync(capture, settings, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // OCR enrichment is optional: raw local OCR remains stored and visual description must still run.
+            _logger.LogWarning(
+                "AI OCR refinement failed; visual screenshot analysis will continue. ExceptionType={ExceptionType}",
+                exception.GetType().Name);
+            return capture;
         }
     }
 
@@ -1907,13 +2095,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 return;
             }
 
-            // Scheduled capture is runtime-owned; pause clears its deadline before another tick can become due.
-            var systemSnapshot = await CaptureSystemSnapshotAsync(CancellationToken.None);
-            if (!systemSnapshot.Succeeded)
-            {
-                _logger.LogWarning("Scheduled system snapshot failed. Code={Code}", systemSnapshot.Code);
-            }
-
             if (settings.ScreenshotsEnabled)
             {
                 // The retained image is the primary result. AI enrichment is attempted only after local capture succeeds.
@@ -1931,16 +2112,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                     return;
                 }
 
-                if (settings.OpenAiEnabled)
+                var analysis = await AnalyzeCapturedScreenshotAsync(
+                    new AnalyzeCapturedScreenshotRequest(retainedCapture, KeepCapture: true, Origin: "snapshot.scheduled"),
+                    CancellationToken.None);
+                if (!analysis.Succeeded && analysis.Code != "ai.disabled")
                 {
-                    var analysis = await AnalyzeCapturedScreenshotAsync(
-                        new AnalyzeCapturedScreenshotRequest(retainedCapture, KeepCapture: true, Origin: "snapshot.scheduled"),
-                        CancellationToken.None);
-                    if (!analysis.Succeeded)
-                    {
-                        // Missing keys, cost limits, and provider failures never remove the already retained snapshot.
-                        _logger.LogWarning("Scheduled snapshot retained without AI analysis. Code={Code}", analysis.Code);
-                    }
+                    // Missing keys, cost limits, and provider failures never remove the already retained snapshot.
+                    _logger.LogWarning("Scheduled snapshot retained without AI analysis. Code={Code}", analysis.Code);
                 }
             }
         }
@@ -2225,7 +2403,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         return true;
     }
 
-    private void OnDashboardStateChanged(DashboardState state) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(LoadDashboardState(), "runtime.dashboard.changed"));
+    private void OnDashboardStateChanged(DashboardState state) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(EnrichDashboardState(state), "runtime.dashboard.changed"));
 
     private void OnTrackingStateChanged(bool isTracking) => RuntimeStateChanged?.Invoke(this, new RuntimeStateChangedEventArgs(LoadDashboardState(), isTracking ? "tracking.started" : "tracking.paused"));
 

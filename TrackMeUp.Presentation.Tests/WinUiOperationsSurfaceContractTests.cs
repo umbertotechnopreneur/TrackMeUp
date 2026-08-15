@@ -17,17 +17,19 @@ public sealed class WinUiOperationsSurfaceContractTests
         var runtime = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
         var logs = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "ApplicationLogService.cs"));
 
-        Assert.Contains("_application.OpenApplicationLogAsync", about, StringComparison.Ordinal);
+        Assert.Contains("_application.OpenApplicationLogFolderAsync", about, StringComparison.Ordinal);
         Assert.Contains("_application.ShareApplicationLogAsync", about, StringComparison.Ordinal);
         Assert.Contains("_application.OpenProductLinkAsync", about, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Process.", about, StringComparison.Ordinal);
         Assert.Contains("\"diagnostics.log.open\"", runtime, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics.log.open_folder\"", runtime, StringComparison.Ordinal);
         Assert.Contains("\"diagnostics.log.share\"", runtime, StringComparison.Ordinal);
         Assert.Contains("\"product.link.open\"", runtime, StringComparison.Ordinal);
         Assert.Contains("MaximumSharedSourceBytes", logs, StringComparison.Ordinal);
         Assert.Contains("CreateRedactedExport", logs, StringComparison.Ordinal);
         Assert.Contains("RedactForSharing", logs, StringComparison.Ordinal);
+        Assert.Contains("OpenLogDirectory", logs, StringComparison.Ordinal);
     }
 
     /// <summary>Ensures operational tools are separate, reachable from settings, and usable at narrow widths.</summary>

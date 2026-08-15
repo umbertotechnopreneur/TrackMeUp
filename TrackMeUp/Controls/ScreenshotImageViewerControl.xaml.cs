@@ -14,6 +14,8 @@ namespace TrackMeUp.Controls;
 /// <summary>Displays one selected screenshot in a passive zoomable viewer.</summary>
 public sealed partial class ScreenshotImageViewerControl : UserControl
 {
+    private const double ScreenshotFrameMargin = 28d;
+    private const double ScreenshotFramePadding = 8d;
     private const float MinimumZoomFactor = 1f;
     private const float MaximumZoomFactor = 5f;
     private const float ZoomStep = 0.25f;
@@ -127,6 +129,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
         _imagePixelWidth = 0d;
         _imagePixelHeight = 0d;
         ScreenshotImage.Source = null;
+        ScreenshotFrame.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(ScreenshotImage, "No screenshot selected");
         ResetZoom(disableAnimation: true);
     }
@@ -142,6 +145,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
         _imagePixelWidth = bitmap.PixelWidth;
         _imagePixelHeight = bitmap.PixelHeight;
+        ScreenshotFrame.Visibility = Visibility.Visible;
         UpdateBaseContentSize();
         if (!DispatcherQueue.TryEnqueue(() => ResetZoom(disableAnimation: true)))
         {
@@ -281,13 +285,20 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
         {
             ImageHost.Width = viewportWidth;
             ImageHost.Height = viewportHeight;
+            ScreenshotFrame.Width = Math.Max(1d, viewportWidth - (ScreenshotFrameMargin * 2d));
+            ScreenshotFrame.Height = Math.Max(1d, viewportHeight - (ScreenshotFrameMargin * 2d));
             return;
         }
 
-        // The content owns the cover-sized rectangle, so the ScrollViewer clips it without discarding source pixels.
-        var coverScale = Math.Max(viewportWidth / _imagePixelWidth, viewportHeight / _imagePixelHeight);
-        ImageHost.Width = Math.Max(viewportWidth, _imagePixelWidth * coverScale);
-        ImageHost.Height = Math.Max(viewportHeight, _imagePixelHeight * coverScale);
+        var availableWidth = Math.Max(1d, viewportWidth - (ScreenshotFrameMargin * 2d) - (ScreenshotFramePadding * 2d));
+        var availableHeight = Math.Max(1d, viewportHeight - (ScreenshotFrameMargin * 2d) - (ScreenshotFramePadding * 2d));
+        var containScale = Math.Min(availableWidth / _imagePixelWidth, availableHeight / _imagePixelHeight);
+        var imageWidth = _imagePixelWidth * containScale;
+        var imageHeight = _imagePixelHeight * containScale;
+        ScreenshotFrame.Width = imageWidth + (ScreenshotFramePadding * 2d);
+        ScreenshotFrame.Height = imageHeight + (ScreenshotFramePadding * 2d);
+        ImageHost.Width = Math.Max(viewportWidth, ScreenshotFrame.Width + (ScreenshotFrameMargin * 2d));
+        ImageHost.Height = Math.Max(viewportHeight, ScreenshotFrame.Height + (ScreenshotFrameMargin * 2d));
     }
 
     private (double Width, double Height) GetViewportSize() =>
@@ -373,6 +384,22 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
     {
         _hasKeyboardFocus = true;
         UpdateOverlayVisibility();
+    }
+
+    private void ViewerRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse)
+        {
+            SetPointerInside(true);
+        }
+    }
+
+    private void ViewerRoot_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse)
+        {
+            SetPointerInside(false);
+        }
     }
 
     private void ViewerRoot_LostFocus(object sender, RoutedEventArgs e)

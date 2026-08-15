@@ -229,6 +229,7 @@ public sealed class ScheduledSnapshotStateTests
             AppSettings settings,
             string apiKey,
             string correlationId,
+            AiProviderRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new AiProviderResult(
                 "## Activity\n\n- Scheduled work.",

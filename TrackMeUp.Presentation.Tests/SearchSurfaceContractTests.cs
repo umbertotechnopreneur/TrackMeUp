@@ -82,6 +82,8 @@ public sealed class SearchSurfaceContractTests
         Assert.DoesNotContain(resultControl.Descendants(), element => element.Attribute("Text")?.Value?.Contains("CPU", StringComparison.Ordinal) == true);
         Assert.Contains("SnippetText.TextHighlighters", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("HoverThumbnailElevation = 18f", resultControlSource, StringComparison.Ordinal);
+        Assert.Contains("SemanticScoreColor", resultControlSource, StringComparison.Ordinal);
+        Assert.Contains("SmoothStep", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(HoverThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(RestingThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ElementCompositionPreview.SetIsTranslationEnabled", resultControlSource, StringComparison.Ordinal);

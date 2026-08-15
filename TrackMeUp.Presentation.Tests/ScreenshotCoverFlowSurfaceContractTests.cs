@@ -23,6 +23,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var screenshotImage = viewer.Descendants().Single(element => HasName(element, "ScreenshotImage"));
         var viewerRoot = viewer.Descendants().Single(element => HasName(element, "ViewerRoot"));
         var imageHost = viewer.Descendants().Single(element => HasName(element, "ImageHost"));
+        var screenshotFrame = viewer.Descendants().Single(element => HasName(element, "ScreenshotFrame"));
         var zoomRail = viewer.Descendants().Single(element => HasName(element, "ZoomRail"));
         var viewerOverlayTransitions = viewer.Descendants().Where(element => element.Name.LocalName == "VisualTransition").ToArray();
         var metadataPanel = gallery.Descendants().Single(element => HasName(element, "MetadataPanel"));
@@ -33,6 +34,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             element.Name.LocalName == "Border"
             && element.Attribute("Background")?.Value == "{ThemeResource AcrylicInAppFillColorBaseBrush}");
         var gallerySection = window.Descendants().Single(element => HasName(element, "GallerySection"));
+        var detailsPane = window.Descendants().Single(element => HasName(element, "DetailsPane"));
 
         Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotImageViewerControl");
         Assert.DoesNotContain(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotCoverFlowControl");
@@ -46,10 +48,16 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("Uniform", screenshotImage.Attribute("Stretch")?.Value);
         Assert.Equal("ScreenshotImage_ImageOpened", screenshotImage.Attribute("ImageOpened")?.Value);
         Assert.Equal("ImageHost_PointerWheelChanged", imageHost.Attribute("PointerWheelChanged")?.Value);
-        Assert.Null(viewerRoot.Attribute("PointerEntered"));
-        Assert.Null(viewerRoot.Attribute("PointerExited"));
-        Assert.Equal("RootGrid_PointerEntered", rootGrid.Attribute("PointerEntered")?.Value);
-        Assert.Equal("RootGrid_PointerExited", rootGrid.Attribute("PointerExited")?.Value);
+        Assert.Equal("ViewerRoot_PointerEntered", viewerRoot.Attribute("PointerEntered")?.Value);
+        Assert.Equal("ViewerRoot_PointerExited", viewerRoot.Attribute("PointerExited")?.Value);
+        Assert.Null(rootGrid.Attribute("PointerEntered"));
+        Assert.Null(rootGrid.Attribute("PointerExited"));
+        Assert.Equal("16", screenshotFrame.Attribute("Padding")?.Value);
+        Assert.Equal("2", screenshotFrame.Attribute("BorderThickness")?.Value);
+        Assert.Equal("4", screenshotFrame.Attribute("CornerRadius")?.Value);
+        Assert.Equal("0,0,10", screenshotFrame.Attribute("Translation")?.Value);
+        Assert.Equal("Collapsed", screenshotFrame.Attribute("Visibility")?.Value);
+        Assert.Contains(screenshotFrame.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Equal("ViewerRoot_GotFocus", viewerRoot.Attribute("GotFocus")?.Value);
         Assert.Equal("ViewerRoot_LostFocus", viewerRoot.Attribute("LostFocus")?.Value);
         Assert.Contains(viewer.Descendants(), element => HasName(element, "OverlayHidden"));
@@ -119,6 +127,11 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("3", gallerySection.Attribute("Grid.RowSpan")?.Value);
         Assert.Contains(window.Descendants(), element =>
             HasName(element, "TimelineSection") && element.Attribute("Margin")?.Value == "0");
+        Assert.Equal("0", detailsPane.Attribute("Margin")?.Value);
+        Assert.Equal("1,0,0,0", detailsPane.Attribute("BorderThickness")?.Value);
+        Assert.Equal("0", detailsPane.Attribute("CornerRadius")?.Value);
+        Assert.Equal("0,0,0", detailsPane.Attribute("Translation")?.Value);
+        Assert.DoesNotContain(detailsPane.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Contains("public void SetItem(ScreenshotGalleryItem? item", viewerSource, StringComparison.Ordinal);
         Assert.Contains("public event EventHandler? SaveRequested", viewerSource, StringComparison.Ordinal);
         Assert.Contains("private const float MouseWheelDeltaPerNotch = 120f;", viewerSource, StringComparison.Ordinal);
@@ -130,15 +143,19 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("var contentAnchorY = (ImageScroller.VerticalOffset + anchorY) / currentZoom;", viewerSource, StringComparison.Ordinal);
         Assert.Contains("e.Handled = true;", viewerSource, StringComparison.Ordinal);
         Assert.Contains("var isVisible = _isPointerInside || _hasKeyboardFocus;", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.SetPointerInside(true);", windowSource, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.SetPointerInside(false);", windowSource, StringComparison.Ordinal);
-        Assert.Contains("e.Pointer.PointerDeviceType == PointerDeviceType.Mouse", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ScreenshotViewer.SetPointerInside(true);", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ScreenshotViewer.SetPointerInside(false);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("private void ViewerRoot_PointerEntered", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("private void ViewerRoot_PointerExited", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("SetPointerInside(true);", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("SetPointerInside(false);", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("e.Pointer.PointerDeviceType == PointerDeviceType.Mouse", viewerSource, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager.GoToState(this, isVisible ? \"OverlayVisible\" : \"OverlayHidden\", true);", viewerSource, StringComparison.Ordinal);
         Assert.Contains("ImageViewer.OverlayVisibilityChanged += SetOverlayVisibility;", File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml.cs")), StringComparison.Ordinal);
         Assert.Contains("ImageScroller.ChangeView", viewerSource, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage", viewerSource, StringComparison.Ordinal);
         Assert.Contains("bitmap.PixelWidth", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("var coverScale = Math.Max", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("var containScale = Math.Min", viewerSource, StringComparison.Ordinal);
         Assert.Contains("PointerDeviceType.Mouse", viewerSource, StringComparison.Ordinal);
         Assert.Contains("ImageScroller.CapturePointer(e.Pointer)", viewerSource, StringComparison.Ordinal);
         Assert.Contains("ImageScroller.ReleasePointerCapture(e.Pointer)", viewerSource, StringComparison.Ordinal);

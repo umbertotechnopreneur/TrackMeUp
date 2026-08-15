@@ -38,7 +38,9 @@ internal sealed record AiProviderFailure(
     long ElapsedMilliseconds,
     string? ProviderResponseId = null,
     string? ProviderRequestId = null,
-    long? ProviderProcessingMilliseconds = null);
+    long? ProviderProcessingMilliseconds = null,
+    AiUsageMetrics? Usage = null,
+    string? FinishReason = null);
 
 /// <summary>Represents a provider failure while retaining only persistence-safe telemetry.</summary>
 internal sealed class AiProviderRequestException : InvalidOperationException

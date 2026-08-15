@@ -84,10 +84,10 @@ public sealed class LocalizationServiceTests
         var english = new LocalizationService("en");
         var italian = new LocalizationService("it");
 
-        Assert.Equal("Show log", english.Translate("About.ShowLog"));
-        Assert.Equal("Share log", english.Translate("About.ShareLog"));
-        Assert.Equal("Mostra log", italian.Translate("About.ShowLog"));
-        Assert.Equal("Condividi log", italian.Translate("About.ShareLog"));
+        Assert.Equal("View logs", english.Translate("About.ShowLogs"));
+        Assert.Equal("Report a problem", english.Translate("About.ShareLog"));
+        Assert.Equal("Visualizza i log", italian.Translate("About.ShowLogs"));
+        Assert.Equal("Segnala problema", italian.Translate("About.ShareLog"));
         Assert.Contains("segreti", italian.Translate("About.Diagnostics.Description"), StringComparison.Ordinal);
     }
 
@@ -111,6 +111,24 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Suggerimenti di ricerca", italian.Translate("SearchIndex.Suggestions.Title"));
         Assert.Equal("Ricerca nell'indice locale", italian.Translate("Search.Working"));
         Assert.Equal("Annulla", italian.Translate("SearchIndex.Cancel"));
+    }
+
+    [Fact]
+    public void ActivityCalendar_IsLocalizedInEnglishAndItalian()
+    {
+        var english = new LocalizationService("en");
+        var italian = new LocalizationService("it");
+
+        Assert.Equal("Activity calendar", english.Translate("ActivityCalendar.MenuTitle"));
+        Assert.Equal("Calendario attività", italian.Translate("ActivityCalendar.MenuTitle"));
+        Assert.Equal("DAY SCORE", english.Translate("ActivityCalendar.Score"));
+        Assert.Equal("PUNTEGGIO GIORNALIERO", italian.Translate("ActivityCalendar.Score"));
+        Assert.Contains("out of 100", english.Translate("ActivityCalendar.Day.ScoreAccessible"), StringComparison.Ordinal);
+        Assert.Contains("su 100", italian.Translate("ActivityCalendar.Day.ScoreAccessible"), StringComparison.Ordinal);
+        Assert.Contains("last 12 months", english.Translate("ActivityCalendar.Empty"), StringComparison.Ordinal);
+        Assert.Contains("ultimi 12 mesi", italian.Translate("ActivityCalendar.Empty"), StringComparison.Ordinal);
+        Assert.Contains("not productivity", english.Translate("ActivityCalendar.Subtitle"), StringComparison.Ordinal);
+        Assert.Contains("non la produttività", italian.Translate("ActivityCalendar.Subtitle"), StringComparison.Ordinal);
     }
 
     [Fact]

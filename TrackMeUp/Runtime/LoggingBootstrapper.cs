@@ -10,8 +10,8 @@ namespace TrackMeUp.Runtime;
 /// <summary>Creates the process-wide logging pipeline used by both packaged and unpackaged launches.</summary>
 internal static class LoggingBootstrapper
 {
-    private const int RetainedFileCount = 7;
-    private static readonly TimeSpan RetainedFileTime = TimeSpan.FromDays(7);
+    private const int RetainedFileCount = 15;
+    private static readonly TimeSpan RetainedFileTime = TimeSpan.FromDays(15);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
     private static readonly Regex WindowsPath = new(@"\b[a-z]:\\[^\r\n]*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private static readonly Regex SecretAssignment = new(@"\b(?:api[_-]?key|token|secret|authorization|dsn)\b\s*[:=]\s*\S+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);

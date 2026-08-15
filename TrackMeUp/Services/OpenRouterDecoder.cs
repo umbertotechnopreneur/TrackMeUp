@@ -30,6 +30,7 @@ public sealed class OpenRouterDecoder : IAIDecoder
     /// <param name="settings">Current settings.</param>
     /// <param name="apiKey">Resolved API key.</param>
     /// <param name="correlationId">Business correlation identifier for the snapshot.</param>
+    /// <param name="requestOptions">Optional per-request output and reasoning overrides.</param>
     /// <param name="cancellationToken">Cancels local file reads and the provider request.</param>
     /// <returns>Model output plus nullable provider telemetry.</returns>
     public async Task<AiProviderResult> DecodeAsync(
@@ -38,6 +39,7 @@ public sealed class OpenRouterDecoder : IAIDecoder
         AppSettings settings,
         string apiKey,
         string correlationId,
+        AiProviderRequestOptions? requestOptions = null,
         CancellationToken cancellationToken = default)
     {
         _ = correlationId; // Correlation remains local because this endpoint documents no generic client-request header.
@@ -53,7 +55,7 @@ public sealed class OpenRouterDecoder : IAIDecoder
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Headers.Add("HTTP-Referer", "https://trackmeup.local");
         request.Headers.Add("X-Title", "TrackMeUp");
-        request.Content = new StringContent(SerializePayload(prompt, imageDataUrls, settings), Encoding.UTF8, "application/json");
+        request.Content = new StringContent(SerializePayload(prompt, imageDataUrls, settings, requestOptions), Encoding.UTF8, "application/json");
 
         var timer = AiProviderTelemetry.StartTimer();
         try
@@ -123,7 +125,11 @@ public sealed class OpenRouterDecoder : IAIDecoder
         }
     }
 
-    internal static string SerializePayload(string prompt, IReadOnlyList<string> imageDataUrls, AppSettings settings)
+    internal static string SerializePayload(
+        string prompt,
+        IReadOnlyList<string> imageDataUrls,
+        AppSettings settings,
+        AiProviderRequestOptions? requestOptions = null)
     {
         var profile = AiAnalysisProfileCatalog.Resolve(settings.AiOutputDetail);
         var content = new List<object>
@@ -158,9 +164,22 @@ public sealed class OpenRouterDecoder : IAIDecoder
                     ["role"] = "user",
                     ["content"] = content
                 }
-            },
-            ["max_tokens"] = profile.MaxOutputTokens
+            }
         };
+
+        if (requestOptions?.OmitOutputTokenLimitWhenSupported != true)
+        {
+            payload["max_tokens"] = profile.MaxOutputTokens;
+        }
+
+        var reasoningEffort = AiAnalysisProfileCatalog.ResolveReasoningEffort(requestOptions?.ReasoningEffort);
+        if (reasoningEffort is not null)
+        {
+            payload["reasoning"] = new Dictionary<string, object?>
+            {
+                ["effort"] = reasoningEffort
+            };
+        }
 
         return JsonSerializer.Serialize(payload);
     }

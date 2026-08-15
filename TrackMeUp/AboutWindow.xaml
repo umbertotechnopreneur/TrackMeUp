@@ -112,25 +112,25 @@
 
                     <StackPanel Orientation="Horizontal" Spacing="18">
                         <Button
-                            x:Name="ContactButton"
+                            x:Name="IssuesButton"
                             Padding="0,5"
                             Background="Transparent"
                             BorderThickness="0"
-                            Click="ContactButton_Click">
+                            Click="IssuesButton_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon FontSize="15" Glyph="&#xE715;" />
-                                <TextBlock Tag="About.Contact" Text="Contact" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="15" Glyph="&#xE783;" />
+                                <TextBlock Tag="About.Issues" Text="Report a problem" />
                             </StackPanel>
                         </Button>
                         <Button
-                            x:Name="RepositoryButton"
+                            x:Name="LicensesButton"
                             Padding="0,5"
                             Background="Transparent"
                             BorderThickness="0"
-                            Click="RepositoryButton_Click">
+                            Click="LicensesButton_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon FontSize="15" Glyph="&#xE71B;" />
-                                <TextBlock Tag="About.Repository" Text="GitHub repository" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="15" Glyph="&#xE8A7;" />
+                                <TextBlock Tag="About.OpenSourceLicenses" Text="Open source licenses" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -157,12 +157,12 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button
                             x:Name="ShowLogButton"
-                            Tag="About.ShowLog"
+                            Tag="About.ShowLogs"
                             MinWidth="128"
                             MinHeight="38"
                             HorizontalContentAlignment="Center"
                             Click="ShowLogButton_Click"
-                            Content="Show log" />
+                            Content="View logs" />
                         <Button
                             x:Name="ShareLogButton"
                             Tag="About.ShareLog"
@@ -182,6 +182,7 @@
 
             <Grid Grid.Row="3" Margin="0,22,0,0" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -193,13 +194,36 @@
                         HorizontalAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="ContactButton_Click"
-                        Content="Umberto Giacobbi" />
+                        Click="WebsiteButton_Click"
+                        Content="umbertogiacobbi.biz" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="21" Foreground="#FFFFD12E" Glyph="&#xE735;" />
+                    <TextBlock
+                        Tag="About.FavoriteMessage"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Like the app? Star it on GitHub,&#xA;or leave a review on the Microsoft Store!"
+                        TextWrapping="WrapWholeWords" />
+                    <Button
+                        x:Name="RepositoryFooterButton"
+                        Padding="12,7"
+                        Click="RepositoryButton_Click"
+                        Content="GitHub repository"
+                        Tag="About.Repository">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon AutomationProperties.AccessibilityView="Raw" Glyph="&#xE8A7;" />
+                                    <TextBlock Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
                 </StackPanel>
                 <Button
                     x:Name="CloseButton"
                     Tag="About.Close"
-                    Grid.Column="1"
+                    Grid.Column="2"
                     MinWidth="120"
                     MinHeight="40"
                     HorizontalAlignment="Right"

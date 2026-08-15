@@ -9,10 +9,12 @@ namespace TrackMeUp.Services;
 /// <summary>Builds the mandatory Lucene projection from durable TrackMeUp sources and executes local queries.</summary>
 internal sealed class LocalSearchCoordinator : IAsyncDisposable
 {
+    private static readonly TimeSpan AutomaticRefreshInterval = TimeSpan.FromMinutes(1);
     private readonly LocalStore _store;
     private readonly ILocalSearchService _search;
     private readonly SemaphoreSlim _indexGate = new(1, 1);
     private string? _indexedSourceStamp;
+    private DateTimeOffset _lastIndexedAtUtc = DateTimeOffset.MinValue;
     private bool _disposed;
 
     /// <summary>Creates the runtime-owned local search coordinator.</summary>
@@ -80,7 +82,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         await _indexGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await RebuildStableSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            return await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -104,7 +106,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     private async Task EnsureCurrentAsync(CancellationToken cancellationToken)
     {
         var sourceStamp = _store.GetSearchSourceStamp();
-        if (string.Equals(sourceStamp, _indexedSourceStamp, StringComparison.Ordinal))
+        if (CanUseCurrentIndex(sourceStamp))
         {
             return;
         }
@@ -113,9 +115,9 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         try
         {
             sourceStamp = _store.GetSearchSourceStamp();
-            if (!string.Equals(sourceStamp, _indexedSourceStamp, StringComparison.Ordinal))
+            if (!CanUseCurrentIndex(sourceStamp))
             {
-                _ = await RebuildStableSnapshotAsync(cancellationToken).ConfigureAwait(false);
+                _ = await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
             }
         }
         finally
@@ -124,23 +126,24 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         }
     }
 
-    private async Task<int> RebuildStableSnapshotAsync(CancellationToken cancellationToken)
-    {
-        for (var attempt = 0; attempt < 3; attempt++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var sourceStamp = _store.GetSearchSourceStamp();
-            var documents = BuildDocuments(cancellationToken);
-            await _search.RebuildAsync(documents, cancellationToken).ConfigureAwait(false);
-            var completedStamp = _store.GetSearchSourceStamp();
-            if (string.Equals(sourceStamp, completedStamp, StringComparison.Ordinal))
-            {
-                _indexedSourceStamp = completedStamp;
-                return documents.Count;
-            }
-        }
+    private bool CanUseCurrentIndex(string sourceStamp) =>
+        string.Equals(sourceStamp, _indexedSourceStamp, StringComparison.Ordinal)
+        || _indexedSourceStamp is not null
+        && DateTimeOffset.UtcNow - _lastIndexedAtUtc < AutomaticRefreshInterval;
 
-        throw new InvalidOperationException("Local search sources changed repeatedly while rebuilding the index.");
+    private async Task<int> RebuildCurrentSnapshotAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var sourceStamp = _store.GetSearchSourceStamp();
+        var documents = BuildDocuments(cancellationToken);
+        await _search.RebuildAsync(documents, cancellationToken).ConfigureAwait(false);
+
+        // Tracking writes continuously, so requiring a byte-for-byte stable database stamp would
+        // rebuild forever under normal use. Commit one coherent projection, remember the stamp it
+        // started from, and coalesce subsequent mutations into the next bounded refresh window.
+        _indexedSourceStamp = sourceStamp;
+        _lastIndexedAtUtc = DateTimeOffset.UtcNow;
+        return documents.Count;
     }
 
     private IReadOnlyList<SearchDocument> BuildDocuments(CancellationToken cancellationToken)

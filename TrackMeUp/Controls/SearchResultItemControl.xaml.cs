@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Presentation;
+using Windows.Foundation;
+using Windows.UI;
 
 namespace TrackMeUp.Controls;
 
@@ -40,7 +42,61 @@ public sealed partial class SearchResultItemControl : UserControl
         var control = (SearchResultItemControl)dependencyObject;
         var result = (ScreenshotSearchResult?)args.NewValue;
         control.DataContext = result;
+        control.ApplyMatchScoreStyle(result?.MatchPercent ?? 0);
         control.RenderSnippet(result);
+    }
+
+    private void ApplyMatchScoreStyle(int matchPercent)
+    {
+        var position = Math.Clamp(matchPercent, 0, 100) / 100d;
+        var center = SemanticScoreColor(position);
+        var gradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0)
+        };
+        gradient.GradientStops.Add(new GradientStop
+        {
+            Color = WithAlpha(SemanticScoreColor(Math.Max(0d, position - 0.18d)), 48),
+            Offset = 0d
+        });
+        gradient.GradientStops.Add(new GradientStop
+        {
+            Color = WithAlpha(center, 68),
+            Offset = 0.5d
+        });
+        gradient.GradientStops.Add(new GradientStop
+        {
+            Color = WithAlpha(SemanticScoreColor(Math.Min(1d, position + 0.18d)), 48),
+            Offset = 1d
+        });
+        MatchScoreChip.Background = gradient;
+        MatchScoreChip.BorderBrush = new SolidColorBrush(WithAlpha(center, 170));
+    }
+
+    private static Color SemanticScoreColor(double position)
+    {
+        var normalized = Math.Clamp(position, 0d, 1d);
+        if (normalized <= 0.5d)
+        {
+            return Blend(Color.FromArgb(255, 220, 76, 62), Color.FromArgb(255, 245, 191, 66), SmoothStep(normalized * 2d));
+        }
+
+        return Blend(Color.FromArgb(255, 245, 191, 66), Color.FromArgb(255, 66, 173, 103), SmoothStep((normalized - 0.5d) * 2d));
+    }
+
+    private static Color Blend(Color from, Color to, double amount) => Color.FromArgb(
+        from.A,
+        (byte)Math.Round(from.R + ((to.R - from.R) * amount)),
+        (byte)Math.Round(from.G + ((to.G - from.G) * amount)),
+        (byte)Math.Round(from.B + ((to.B - from.B) * amount)));
+
+    private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
+
+    private static double SmoothStep(double value)
+    {
+        var normalized = Math.Clamp(value, 0d, 1d);
+        return normalized * normalized * (3d - (2d * normalized));
     }
 
     private void RenderSnippet(ScreenshotSearchResult? result)

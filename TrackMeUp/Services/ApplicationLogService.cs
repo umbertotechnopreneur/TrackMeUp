@@ -40,6 +40,20 @@ public sealed partial class ApplicationLogService
         return path;
     }
 
+    /// <summary>Opens the directory that contains the rolling application logs.</summary>
+    public string OpenLogDirectory()
+    {
+        if (string.IsNullOrWhiteSpace(_logDirectory) || !Directory.Exists(_logDirectory))
+        {
+            throw new DirectoryNotFoundException("The application log directory is unavailable.");
+        }
+
+        // Shell invocation remains inside infrastructure; the application facade exposes only the operation result.
+        _ = Process.Start(new ProcessStartInfo { FileName = _logDirectory, UseShellExecute = true })
+            ?? throw new InvalidOperationException("Windows did not open the application log directory.");
+        return _logDirectory;
+    }
+
     /// <summary>Creates a bounded redacted copy and opens the Windows Share UI for that copy only.</summary>
     public string ShareLatestRedactedLog(IntPtr windowHandle)
     {

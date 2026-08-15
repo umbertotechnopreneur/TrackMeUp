@@ -40,6 +40,7 @@ public sealed record ReportTotals(
     int ActiveDays);
 
 /// <summary>Contains aggregate activity for one local calendar date.</summary>
+/// <param name="ActivityScore">Normalized 0-100 daily activity intensity, or <see langword="null"/> when the date has no recorded samples.</param>
 public sealed record ReportCalendarCell(
     DateOnly Date,
     long ActiveSeconds,
@@ -48,7 +49,8 @@ public sealed record ReportCalendarCell(
     long KeyPresses,
     long MouseClicks,
     int SampleCount,
-    bool HasData);
+    bool HasData,
+    int? ActivityScore);
 
 /// <summary>Contains mean activity for one weekday-and-hour bucket across observed local dates.</summary>
 /// <remarks>The second counters are arithmetic means rounded to the nearest whole second; <see cref="ReportHourCell.ObservationDays"/> is their denominator.</remarks>

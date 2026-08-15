@@ -8,7 +8,7 @@ public sealed class ReportAggregationService
     /// <summary>Gets the maximum inclusive local-date range accepted by a report query.</summary>
     public const int MaximumRangeDays = 366;
 
-    private const int ContractVersion = 3;
+    private const int ContractVersion = 4;
     private const int DefaultApplicationLimit = 12;
     private readonly LocalStore _store;
 
@@ -466,15 +466,27 @@ public sealed class ReportAggregationService
         internal long MouseClicks { get; set; }
         internal int SampleCount { get; set; }
 
-        internal ReportCalendarCell ToCalendarCell(DateOnly date) => new(
-            date,
-            ActiveTicks / TimeSpan.TicksPerSecond,
-            IdleTicks / TimeSpan.TicksPerSecond,
-            TrackedTicks / TimeSpan.TicksPerSecond,
-            KeyPresses,
-            MouseClicks,
-            SampleCount,
-            SampleCount > 0);
+        internal ReportCalendarCell ToCalendarCell(DateOnly date)
+        {
+            var hasData = SampleCount > 0;
+            int? activityScore = hasData
+                ? ActivityScoreService.CalculateDailyActivityScore(
+                    KeyPresses,
+                    MouseClicks,
+                    ActiveTicks / (double)TimeSpan.TicksPerSecond,
+                    TrackedTicks / (double)TimeSpan.TicksPerSecond)
+                : null;
+            return new ReportCalendarCell(
+                date,
+                ActiveTicks / TimeSpan.TicksPerSecond,
+                IdleTicks / TimeSpan.TicksPerSecond,
+                TrackedTicks / TimeSpan.TicksPerSecond,
+                KeyPresses,
+                MouseClicks,
+                SampleCount,
+                hasData,
+                activityScore);
+        }
     }
 
     private sealed class HourAccumulator

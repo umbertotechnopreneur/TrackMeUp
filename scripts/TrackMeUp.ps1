@@ -845,6 +845,7 @@ function Invoke-TrackMeUpUnpackagedPublish {
 
 function Resolve-TrackMeUpPackageCertificate {
     $certificate = $null
+    $isLocalTestCertificate = [string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)
     if (-not [string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)) {
         $normalizedThumbprint = $PackageCertificateThumbprint.Replace(' ', '').ToUpperInvariant()
         $certificate = Get-ChildItem Cert:\CurrentUser\My -ErrorAction Stop |
@@ -888,11 +889,19 @@ function Resolve-TrackMeUpPackageCertificate {
     $publicCertificatePath = Join-Path $certificateDirectory 'TrackMeUp-Test-Signing.cer'
     Export-Certificate -Cert $certificate -FilePath $publicCertificatePath -Force | Out-Null
 
-    $trustedCertificate = Get-ChildItem Cert:\CurrentUser\TrustedPeople -ErrorAction Stop |
-        Where-Object { $_.Thumbprint -eq $certificate.Thumbprint } |
-        Select-Object -First 1
-    if ($null -eq $trustedCertificate) {
-        Import-Certificate -FilePath $publicCertificatePath -CertStoreLocation 'Cert:\CurrentUser\TrustedPeople' | Out-Null
+    $trustStores = @('Cert:\CurrentUser\TrustedPeople')
+    if ($isLocalTestCertificate) {
+        # AppX sideload verification checks the self-signed root chain; TrustedPeople alone is insufficient here.
+        $trustStores += 'Cert:\CurrentUser\Root'
+    }
+
+    foreach ($trustStore in $trustStores) {
+        $trustedCertificate = Get-ChildItem $trustStore -ErrorAction Stop |
+            Where-Object { $_.Thumbprint -eq $certificate.Thumbprint } |
+            Select-Object -First 1
+        if ($null -eq $trustedCertificate) {
+            Import-Certificate -FilePath $publicCertificatePath -CertStoreLocation $trustStore | Out-Null
+        }
     }
 
     Write-Host "Using package signing certificate $($certificate.Thumbprint) ($($certificate.Subject))." -ForegroundColor DarkCyan

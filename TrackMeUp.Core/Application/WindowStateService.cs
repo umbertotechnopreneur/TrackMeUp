@@ -12,11 +12,17 @@ public static class WindowStateKeys
     /// <summary>Identifies the reports window.</summary>
     public const string Reports = "reports";
 
+    /// <summary>Identifies the native activity-calendar dialog window.</summary>
+    public const string ActivityCalendar = "activity-calendar";
+
     /// <summary>Identifies the screenshot gallery window.</summary>
     public const string Screenshots = "screenshots";
 
     /// <summary>Identifies the about window.</summary>
     public const string About = "about";
+
+    /// <summary>Identifies the third-party licenses window.</summary>
+    public const string Licenses = "licenses";
 
     /// <summary>Identifies the local search window.</summary>
     public const string Search = "search";
@@ -64,8 +70,10 @@ public sealed class WindowStateService
         return windowKey switch
         {
             WindowStateKeys.Reports => new(720, 520),
+            WindowStateKeys.ActivityCalendar => new(760, 560),
             WindowStateKeys.Screenshots => new(760, 540),
             WindowStateKeys.About => new(360, 420),
+            WindowStateKeys.Licenses => new(720, 520),
             WindowStateKeys.Search => new(780, 140),
             WindowStateKeys.SearchIndexing => new(560, 420),
             WindowStateKeys.Schedule => new(620, 480),

@@ -19,6 +19,9 @@ public interface IAiOcrRefinementService
 internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
 {
     private const int MaximumRawOcrCharacters = 200_000;
+    private static readonly AiProviderRequestOptions RefinementRequestOptions = new(
+        OmitOutputTokenLimitWhenSupported: true,
+        ReasoningEffort: "none");
     private readonly LocalStore _store;
     private readonly IAIDecoder? _decoder;
     private readonly ILogger<OpenAiOcrRefinementService> _logger;
@@ -75,6 +78,13 @@ internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
         var requestSettings = settings with { AiOutputDetail = "detailed" };
         var profile = AiAnalysisProfileCatalog.Resolve(requestSettings.AiOutputDetail);
         var decoder = _decoder ?? AIDecoderFactory.Create(requestSettings);
+        var outputTokenLimitCanBeOmitted =
+            string.Equals(decoder.Provider, "openai", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(decoder.Provider, "openrouter", StringComparison.OrdinalIgnoreCase);
+        var requestedMaxOutputTokens = RefinementRequestOptions.OmitOutputTokenLimitWhenSupported
+            && outputTokenLimitCanBeOmitted
+            ? 0
+            : profile.MaxOutputTokens;
         var attemptId = Guid.NewGuid().ToString("N");
         var attemptedAt = DateTimeOffset.UtcNow;
         AiProviderResult providerResult;
@@ -87,6 +97,7 @@ internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
                 requestSettings,
                 apiKey,
                 capture.CaptureId,
+                RefinementRequestOptions,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (AiProviderRequestException exception)
@@ -99,10 +110,36 @@ internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
                 requestSettings,
                 screenshotPaths.Length,
                 prompt.Length,
-                profile.MaxOutputTokens,
+                requestedMaxOutputTokens,
                 null,
                 exception.Failure));
             throw;
+        }
+
+        if (string.Equals(decoder.Provider, "openai", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(providerResult.FinishReason, "incomplete", StringComparison.OrdinalIgnoreCase))
+        {
+            var failure = new AiProviderFailure(
+                "incomplete",
+                providerResult.HttpStatusCode,
+                providerResult.ElapsedMilliseconds,
+                providerResult.ProviderResponseId,
+                providerResult.ProviderRequestId,
+                providerResult.ProviderProcessingMilliseconds,
+                providerResult.Usage,
+                providerResult.FinishReason);
+            AppendUsage(CreateUsage(
+                attemptId,
+                capture.CaptureId,
+                attemptedAt,
+                decoder.Provider,
+                requestSettings,
+                screenshotPaths.Length,
+                prompt.Length,
+                requestedMaxOutputTokens,
+                null,
+                failure));
+            throw new AiProviderRequestException("OpenAI returned an incomplete OCR refinement.", failure);
         }
 
         AppendUsage(CreateUsage(
@@ -113,7 +150,7 @@ internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
             requestSettings,
             screenshotPaths.Length,
             prompt.Length,
-            profile.MaxOutputTokens,
+            requestedMaxOutputTokens,
             providerResult,
             null));
 
@@ -274,9 +311,9 @@ internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
             imageCount,
             promptCharacters,
             maxOutputTokens,
-            result?.Usage ?? new AiUsageMetrics(),
-            result?.FinishReason,
-            result is not null,
+            result?.Usage ?? failure?.Usage ?? new AiUsageMetrics(),
+            result?.FinishReason ?? failure?.FinishReason,
+            result is not null && failure is null,
             failure?.FailureCode);
 
     private static string CorrelationToken(string value) =>
