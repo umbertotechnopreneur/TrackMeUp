@@ -33,16 +33,16 @@ public static class RuntimeProtocol
 
         var length = new byte[sizeof(int)];
         BinaryPrimitives.WriteInt32LittleEndian(length, payload.Length);
-        await stream.WriteAsync(length, cancellationToken);
-        await stream.WriteAsync(payload, cancellationToken);
-        await stream.FlushAsync(cancellationToken);
+        await stream.WriteAsync(length, cancellationToken).ConfigureAwait(false);
+        await stream.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
+        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Reads one validated length-prefixed JSON envelope.</summary>
     public static async Task<T> ReadAsync<T>(Stream stream, CancellationToken cancellationToken)
     {
         var length = new byte[sizeof(int)];
-        await ReadExactlyAsync(stream, length, cancellationToken);
+        await ReadExactlyAsync(stream, length, cancellationToken).ConfigureAwait(false);
         var count = BinaryPrimitives.ReadInt32LittleEndian(length);
         if (count <= 0 || count > MaximumMessageBytes)
         {
@@ -50,7 +50,7 @@ public static class RuntimeProtocol
         }
 
         var payload = new byte[count];
-        await ReadExactlyAsync(stream, payload, cancellationToken);
+        await ReadExactlyAsync(stream, payload, cancellationToken).ConfigureAwait(false);
         return JsonSerializer.Deserialize<T>(payload, SerializerOptions) ?? throw new InvalidOperationException("IPC message payload is invalid.");
     }
 
@@ -62,7 +62,7 @@ public static class RuntimeProtocol
         var consumed = 0;
         while (consumed < buffer.Length)
         {
-            var read = await stream.ReadAsync(buffer[consumed..], cancellationToken);
+            var read = await stream.ReadAsync(buffer[consumed..], cancellationToken).ConfigureAwait(false);
             if (read == 0)
             {
                 throw new EndOfStreamException("The runtime closed the pipe before its message completed.");

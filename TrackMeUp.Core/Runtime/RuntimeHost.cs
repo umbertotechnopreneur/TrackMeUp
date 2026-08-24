@@ -697,10 +697,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
         try
         {
             await using var pipe = new NamedPipeClientStream(".", _endpoint.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            await pipe.ConnectAsync(timeout.Token);
+            await pipe.ConnectAsync(timeout.Token).ConfigureAwait(false);
             var request = new RuntimeRequestEnvelope(RuntimeProtocol.ProtocolVersion, Guid.NewGuid(), operation, JsonSerializer.SerializeToElement(payload, RuntimeProtocol.SerializerOptions), null, null);
-            await RuntimeProtocol.WriteAsync(pipe, request, timeout.Token);
-            var response = await RuntimeProtocol.ReadAsync<RuntimeResponseEnvelope>(pipe, timeout.Token);
+            await RuntimeProtocol.WriteAsync(pipe, request, timeout.Token).ConfigureAwait(false);
+            var response = await RuntimeProtocol.ReadAsync<RuntimeResponseEnvelope>(pipe, timeout.Token).ConfigureAwait(false);
             if (response.ProtocolVersion != RuntimeProtocol.ProtocolVersion)
             {
                 return OperationResult<T>.Failure("ipc.protocol.unsupported", "IpcProtocolUnsupported");

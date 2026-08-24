@@ -199,6 +199,46 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task RuntimeClient_DoesNotCaptureABlockedCallerSynchronizationContext()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, DelayedHealthRuntimeProxy>();
+        var installationId = $"runtime-context-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+        using var completed = new ManualResetEventSlim();
+        OperationResult<RuntimeHealth>? result = null;
+        Exception? failure = null;
+        var caller = new Thread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
+            try
+            {
+                result = client.GetRuntimeHealthAsync(CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                completed.Set();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "TrackMeUp runtime blocked-context test"
+        };
+
+        caller.Start();
+
+        Assert.True(completed.Wait(TimeSpan.FromSeconds(5)), "RuntimeClient captured the caller synchronization context and deadlocked.");
+        Assert.Null(failure);
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
     public async Task AiModelCatalog_RoundTripsThroughTheRuntimeFacade()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, CatalogRuntimeProxy>();
@@ -332,6 +372,39 @@ public sealed class RuntimeProtocolTests
                 ReportCancelled.TrySetResult(true);
                 throw;
             }
+        }
+    }
+
+    public class DelayedHealthRuntimeProxy : DispatchProxy
+    {
+        /// <inheritdoc />
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetRuntimeHealthAsync) => GetHealthAsync(),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private static async Task<OperationResult<RuntimeHealth>> GetHealthAsync()
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false);
+            return OperationResult<RuntimeHealth>.Success(
+                "runtime.healthy",
+                "RuntimeHealthy",
+                new RuntimeHealth("test", RuntimeProtocol.ProtocolVersion, "test", true, ["runtime.health"]));
+        }
+    }
+
+    private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+    {
+        /// <inheritdoc />
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            // Deliberately never pump queued callbacks: production IPC must not depend on a UI dispatcher continuation.
         }
     }
 

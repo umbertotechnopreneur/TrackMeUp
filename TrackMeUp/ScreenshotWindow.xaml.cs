@@ -47,6 +47,8 @@ public sealed partial class ScreenshotWindow : Window
     private bool _settingSelectedDate;
     private bool _detailsPaneOpenPreference;
     private bool _isSavingDetailsPanePreference;
+    private bool _closeInProgress;
+    private bool _allowClose;
     private uint? _detailsResizePointerId;
     private double _detailsResizeStartPointerX;
     private double _detailsResizeStartWidth;
@@ -110,6 +112,7 @@ public sealed partial class ScreenshotWindow : Window
         ApplyTheme(_theme);
         ApplyLocalization();
         _placement.ApplyDefaultBounds(RootGrid);
+        _appWindow.Closing += ScreenshotWindow_Closing;
         Closed += ScreenshotWindow_Closed;
     }
 
@@ -594,6 +597,14 @@ public sealed partial class ScreenshotWindow : Window
         }
     }
 
+    /// <summary>Closes the inspector without starting persistence while the owning application is shutting down.</summary>
+    internal void CloseForShutdown()
+    {
+        _allowClose = true;
+        _lifetimeCancellation.Cancel();
+        Close();
+    }
+
     private void RestoreDetailsPanePreference(bool preference)
     {
         _detailsPaneOpenPreference = preference;
@@ -912,8 +923,50 @@ public sealed partial class ScreenshotWindow : Window
 
     }
 
-    private async void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
+    private async void ScreenshotWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
+        if (_allowClose)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        if (_closeInProgress)
+        {
+            return;
+        }
+
+        _closeInProgress = true;
+        var cancellationToken = _lifetimeCancellation.Token;
+        try
+        {
+            await _placement.SaveAsync(cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _allowClose = true;
+            Close();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Application shutdown owns the final close and intentionally skips optional placement persistence.
+        }
+        catch (Exception exception)
+        {
+            _closeInProgress = false;
+            _allowClose = true;
+            _dialogs.ShowErrorBanner(
+                ScreenshotActionBanner,
+                T("Screenshots.Error.Unavailable"),
+                $"{T("Screenshots.Action.Failed")} ({exception.GetType().Name})");
+        }
+    }
+
+    private void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
+    {
+        _appWindow.Closing -= ScreenshotWindow_Closing;
         DetailsSection.OcrTextRequested -= DetailsSection_OcrTextRequested;
         ScreenshotViewer.ZoomStateChanged -= ScreenshotViewer_ZoomStateChanged;
         DayOverviewSection.SelectedIndexChanged -= DayOverviewSection_SelectedIndexChanged;
@@ -924,7 +977,6 @@ public sealed partial class ScreenshotWindow : Window
             ocrTextWindow.Close();
         }
 
-        await _placement.SaveAsync(CancellationToken.None);
         _placement.Dispose();
 
         _lifetimeCancellation.Cancel();

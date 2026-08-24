@@ -899,6 +899,9 @@ public sealed class WinUiSurfaceContractTests
         var startUiSource = appSource[startUiStart..startUiEnd];
         var applyWidgetSource = appSource[applyWidgetStart..applyWidgetEnd];
         Assert.Contains("_window.Activate();", startUiSource, StringComparison.Ordinal);
+        Assert.Contains("_ = CompleteUiStartupAsync(application, options);", startUiSource, StringComparison.Ordinal);
+        Assert.Contains("private async Task CompleteUiStartupAsync", startUiSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetAwaiter().GetResult()", startUiSource, StringComparison.Ordinal);
         Assert.True(
             startUiSource.IndexOf("_window.Activate();", StringComparison.Ordinal) < startUiSource.IndexOf("ApplyTaskbarWidgetSettings(settings);", StringComparison.Ordinal),
             "MainWindow must activate before optional taskbar-widget initialization.");
@@ -908,6 +911,29 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("HideTopLevelWindow", startUiSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FirstRun", startUiSource, StringComparison.Ordinal);
         Assert.DoesNotContain("AlwaysShowInTaskbar", startUiSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScreenshotWindow_SavesPlacementBeforeItsNativeHandleIsDestroyed()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var closingStart = source.IndexOf("private async void ScreenshotWindow_Closing", StringComparison.Ordinal);
+        var closedStart = source.IndexOf("private void ScreenshotWindow_Closed", StringComparison.Ordinal);
+
+        Assert.True(closingStart >= 0 && closedStart > closingStart, "Screenshot close lifecycle source contract was not found.");
+        var closingSource = source[closingStart..closedStart];
+        var closedSource = source[closedStart..];
+        Assert.Contains("_appWindow.Closing += ScreenshotWindow_Closing;", source, StringComparison.Ordinal);
+        Assert.Contains("args.Cancel = true;", closingSource, StringComparison.Ordinal);
+        Assert.Contains("await _placement.SaveAsync(cancellationToken);", closingSource, StringComparison.Ordinal);
+        Assert.True(
+            closingSource.IndexOf("await _placement.SaveAsync", StringComparison.Ordinal) < closingSource.IndexOf("Close();", StringComparison.Ordinal),
+            "Placement must be persisted while the screenshot window handle is still valid.");
+        Assert.Contains("catch (Exception exception)", closingSource, StringComparison.Ordinal);
+        Assert.Contains("ShowErrorBanner", closingSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("_placement.SaveAsync", closedSource, StringComparison.Ordinal);
+        Assert.Contains("_placement.Dispose();", closedSource, StringComparison.Ordinal);
+        Assert.Contains("_screenshotsWindow.CloseForShutdown();", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);
     }
 
     [Fact]

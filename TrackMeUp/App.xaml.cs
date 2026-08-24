@@ -148,17 +148,32 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.Activate();
         }
 
-        var settings = application.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult().Value;
-        if (settings is null)
-        {
-            DisposeTaskbarWidget();
-            return;
-        }
+        _ = CompleteUiStartupAsync(application, options);
+    }
 
-        ApplyTaskbarWidgetSettings(settings);
-        if (!settings.QuickSetupCompleted && !options.StartWithWindows)
+    private async Task CompleteUiStartupAsync(ITrackMeUpApplication application, LaunchOptions options)
+    {
+        try
         {
-            ShowQuickSetupWindow(application, settings, firstRun: true);
+            var settingsResult = await application.GetSettingsAsync(CancellationToken.None);
+            if (!settingsResult.Succeeded || settingsResult.Value is null)
+            {
+                _logger.LogWarning("UI startup settings could not be loaded. Code={Code}", settingsResult.Code);
+                DisposeTaskbarWidget();
+                return;
+            }
+
+            var settings = settingsResult.Value;
+            ApplyTaskbarWidgetSettings(settings);
+            if (!settings.QuickSetupCompleted && !options.StartWithWindows)
+            {
+                ShowQuickSetupWindow(application, settings, firstRun: true);
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "UI startup preparation failed after the main window was activated.");
+            DisposeTaskbarWidget();
         }
     }
 
@@ -484,7 +499,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (_screenshotsWindow is not null)
         {
             _screenshotsWindow.Closed -= ScreenshotsWindow_Closed;
-            _screenshotsWindow.Close();
+            _screenshotsWindow.CloseForShutdown();
             _screenshotsWindow = null;
         }
 
