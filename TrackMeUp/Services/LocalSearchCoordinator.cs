@@ -151,6 +151,13 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         var documents = new List<SearchDocument>();
         var settings = _store.LoadSettings();
         var defaultLanguage = ResolveDefaultLanguage(settings);
+        var installationProfiles = _store.GetInstallationProfiles()
+            .ToDictionary(profile => profile.InstallationId, StringComparer.Ordinal);
+        InstallationProfile RequireInstallation(string installationId) =>
+            installationProfiles.TryGetValue(installationId, out var profile)
+                ? profile
+                : throw new InvalidDataException($"Search source references an unknown installation '{installationId}'.");
+
         _store.VisitAllActivitySamples((id, sample) => documents.Add(new SearchDocument
         {
             Id = $"activity:{id}",
@@ -161,11 +168,13 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             ProcessName = sample.ProcessName,
             Context = sample.Context,
             WindowTitle = sample.WindowTitle,
-            AttributesRaw = sample.Attributes?.ToImmutableDictionary(
-                    pair => pair.Key,
-                    pair => (string?)pair.Value,
-                    StringComparer.OrdinalIgnoreCase)
-                ?? ImmutableDictionary<string, string?>.Empty,
+            AttributesRaw = AddInstallationAttributes(
+                sample.Attributes?.ToImmutableDictionary(
+                        pair => pair.Key,
+                        pair => (string?)pair.Value,
+                        StringComparer.OrdinalIgnoreCase)
+                    ?? ImmutableDictionary<string, string?>.Empty,
+                RequireInstallation(sample.InstallationId)),
             SpanLabels = sample.Attributes is not null
                 && sample.Attributes.TryGetValue(ActivityAttributeKeys.SpanLabel, out var label)
                 && !string.IsNullOrWhiteSpace(label)
@@ -195,7 +204,8 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                     item.ActivityIndex,
                     item.MouseClicks,
                     item.CpuUsagePercent,
-                    item.GpuUsagePercent),
+                    item.GpuUsagePercent,
+                    item.Installation ?? throw new InvalidDataException("Screenshot search source has no installation provenance.")),
                 SpanLabels = (item.SpanLabels ?? Array.Empty<ActivityLabelSample>())
                     .Select(label => label.Label)
                     .Where(label => !string.IsNullOrWhiteSpace(label))
@@ -223,7 +233,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 Kind = "screenshot-text",
                 Timestamp = text.Ocr.ExtractedAt,
                 Language = text.AiRefinement?.LanguageTag ?? text.Ocr.LanguageTag ?? defaultLanguage,
-                AttributesRaw = BuildOcrAttributes(captureId, text, null, null, null, null),
+                AttributesRaw = BuildOcrAttributes(captureId, text, null, null, null, null, null),
                 CapturePath = text.SourceScreenshotPath,
                 OcrRawText = text.Ocr.RawText,
                 OcrCorrectedText = text.AiRefinement?.CorrectedText,
@@ -240,6 +250,9 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             Application = analysis.Application,
             Context = analysis.Context,
             CaptureOrigin = analysis.Origin,
+            AttributesRaw = AddInstallationAttributes(
+                ImmutableDictionary<string, string?>.Empty,
+                RequireInstallation(analysis.InstallationId)),
             AiDescription = analysis.Summary
         }), cancellationToken);
         return documents;
@@ -254,7 +267,8 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         int? activityIndex,
         long? mouseClicks,
         int? cpuUsagePercent,
-        int? gpuUsagePercent)
+        int? gpuUsagePercent,
+        InstallationProfile? installation)
     {
         var attributes = ImmutableDictionary.CreateBuilder<string, string?>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(captureId))
@@ -283,6 +297,11 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             attributes[SearchAttributeKeys.GpuUsagePercent] = gpuUsagePercent.Value.ToString(CultureInfo.InvariantCulture);
         }
 
+        if (installation is not null)
+        {
+            AddInstallationAttributes(attributes, installation);
+        }
+
         if (text is null)
         {
             return attributes.ToImmutable();
@@ -299,6 +318,27 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         attributes["ocr.angle"] = text.Ocr.TextAngleDegrees?.ToString(CultureInfo.InvariantCulture);
         attributes["ocr.failure"] = text.Ocr.FailureCode;
         return attributes.ToImmutable();
+    }
+
+    private static ImmutableDictionary<string, string?> AddInstallationAttributes(
+        ImmutableDictionary<string, string?> attributes,
+        InstallationProfile installation)
+    {
+        var builder = attributes.ToBuilder();
+        AddInstallationAttributes(builder, installation);
+        return builder.ToImmutable();
+    }
+
+    private static void AddInstallationAttributes(
+        ImmutableDictionary<string, string?>.Builder attributes,
+        InstallationProfile installation)
+    {
+        var validated = InstallationProfileCatalog.ValidatePersisted(installation);
+        attributes[SearchAttributeKeys.InstallationId] = validated.InstallationId;
+        attributes[SearchAttributeKeys.InstallationFriendlyName] = validated.FriendlyName;
+        attributes[SearchAttributeKeys.InstallationMachineName] = validated.MachineName;
+        attributes[SearchAttributeKeys.InstallationColor] = validated.Color;
+        attributes[SearchAttributeKeys.InstallationIcon] = validated.Icon;
     }
 
     private static string? StructuredSummary(ScreenshotTextSnapshot? text) =>

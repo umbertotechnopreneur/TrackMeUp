@@ -135,6 +135,41 @@
                     Grid.Row="2"
                     Orientation="Horizontal"
                     Spacing="14">
+                    <StackPanel
+                        x:Name="InstallationSourcePanel"
+                        MaxWidth="190"
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        Visibility="Collapsed">
+                        <Border
+                            x:Name="InstallationSourceBadge"
+                            Width="18"
+                            Height="18"
+                            VerticalAlignment="Center"
+                            CornerRadius="9">
+                            <FontIcon
+                                x:Name="InstallationSourceIcon"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="8"
+                                Foreground="White" />
+                        </Border>
+                        <TextBlock
+                            x:Name="InstallationSourceText"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Rectangle
+                        x:Name="InstallationSourceSeparator"
+                        Width="1"
+                        Height="14"
+                        VerticalAlignment="Center"
+                        Fill="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        Visibility="Collapsed" />
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon
                             VerticalAlignment="Center"

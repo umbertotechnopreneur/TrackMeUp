@@ -47,10 +47,18 @@ public sealed class LocalStore
             throw new InvalidOperationException($"Legacy storage '{Path.GetFileName(unsupportedLegacyPath)}' is not supported; remove it before starting TrackMeUp.");
         }
 
-        _activity = new SqliteActivityStore(Path.Combine(resolvedDataDirectory, SqliteActivityStore.DatabaseFileName));
         _settingsPath = Path.Combine(resolvedDataDirectory, "appsettings.json");
+        var settingsExisted = File.Exists(_settingsPath);
         var settingsFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(_settingsPath.ToUpperInvariant())))[..32];
         _settingsBootstrapMutexName = $"Local\\TrackMeUp.Settings.{settingsFingerprint}";
+        var settings = LoadSettings();
+        var activityPath = Path.Combine(resolvedDataDirectory, SqliteActivityStore.DatabaseFileName);
+        var activityExisted = File.Exists(activityPath);
+        _activity = new SqliteActivityStore(activityPath);
+        var initialScreenshotRoot = settingsExisted || dataDirectory is null
+            ? settings.ScreenshotDirectory
+            : Path.Combine(resolvedDataDirectory, "screenshots");
+        InitializeInstallationMetadata(settings, activityExisted, initialScreenshotRoot);
     }
 
     /// <summary>
@@ -66,11 +74,131 @@ public sealed class LocalStore
     /// <summary>Gets the in-process revision of the durable activity rows used by the live dashboard cache.</summary>
     internal long ActivityRevision => Interlocked.Read(ref _activityRevision);
 
+    /// <summary>Invalidates in-process projections after an atomic history import commits.</summary>
+    internal void NotifyHistoryImported() => Interlocked.Increment(ref _activityRevision);
+
     /// <summary>Gets the dedicated directory used by the reconstructible Lucene search index.</summary>
     internal string SearchIndexRootDirectory => Path.Combine(_dataDirectory, "search");
 
     /// <summary>Gets the absolute root containing all application-owned local data.</summary>
     internal string DataDirectory => _dataDirectory;
+
+    /// <summary>Gets the absolute path of the current SQLite history store.</summary>
+    internal string ActivityDatabasePath => _activity.DatabasePath;
+
+    /// <summary>Lists local and imported installation profiles without exposing settings persistence.</summary>
+    internal IReadOnlyList<InstallationProfile> GetInstallationProfiles()
+    {
+        var currentInstallationId = LoadSettings().InstallationId;
+        return _activity.ListInstallationProfiles(currentInstallationId);
+    }
+
+    /// <summary>Loads one installation profile and marks it when it owns this runtime.</summary>
+    internal InstallationProfile? GetInstallationProfile(string installationId)
+    {
+        var currentInstallationId = LoadSettings().InstallationId;
+        return _activity.LoadInstallationProfile(installationId, currentInstallationId);
+    }
+
+    /// <summary>Persists a validated optimistic profile update.</summary>
+    internal InstallationProfile SaveInstallationProfile(InstallationProfile profile, long previousRevision)
+    {
+        var saved = _activity.SaveInstallationProfile(profile with { IsCurrent = false }, previousRevision);
+        return saved with
+        {
+            IsCurrent = string.Equals(saved.InstallationId, LoadSettings().InstallationId, StringComparison.Ordinal)
+        };
+    }
+
+    /// <summary>Registers immutable screenshot capture provenance before dependent telemetry is persisted.</summary>
+    internal void RegisterScreenshotCapture(
+        string captureId,
+        string installationId,
+        DateTimeOffset capturedAt,
+        string origin) =>
+        _activity.RegisterScreenshotCapture(captureId, installationId, capturedAt, origin);
+
+    private void InitializeInstallationMetadata(
+        AppSettings settings,
+        bool activityDatabaseExisted,
+        string initialScreenshotRoot)
+    {
+        var observedAt = DateTimeOffset.UtcNow;
+        var firstSeenAt = activityDatabaseExisted
+            ? _activity.LoadEarliestInstallationHistoryTimestamp(settings.InstallationId) ?? observedAt
+            : observedAt;
+        var profile = InstallationProfileCatalog.CreateDefault(
+            settings.InstallationId,
+            _utilities.GetMachineName(),
+            firstSeenAt) with
+        {
+            UpdatedAt = firstSeenAt > observedAt ? firstSeenAt : observedAt
+        };
+        _activity.EnsureCurrentInstallationProfile(profile);
+        if (_activity.IsScreenshotCaptureBackfillComplete())
+        {
+            return;
+        }
+
+        if (!activityDatabaseExisted)
+        {
+            _activity.BackfillLocalScreenshotCaptures(
+                settings.InstallationId,
+                Array.Empty<ScreenshotCaptureRegistration>());
+            return;
+        }
+
+        var root = ScreenshotStorageLayout.NormalizeRoot(initialScreenshotRoot);
+        var artifacts = ScreenshotStorageLayout.EnumerateOwnedArtifacts(root)
+            .Select(path =>
+            {
+                var fileName = Path.GetFileName(path);
+                var artifactIdentity = ScreenshotIdentity(fileName);
+                var captureId = TryGetCaptureId(artifactIdentity)
+                    ?? throw new InvalidDataException($"Screenshot artifact has no valid capture identity: {fileName}");
+                return new
+                {
+                    ArtifactIdentity = artifactIdentity,
+                    CaptureId = captureId,
+                    Origin = GetCaptureOrigin(fileName)
+                };
+            })
+            .GroupBy(artifact => artifact.ArtifactIdentity, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.Aggregate((left, right) =>
+                string.Equals(left.CaptureId, right.CaptureId, StringComparison.Ordinal)
+                && string.Equals(left.Origin, right.Origin, StringComparison.Ordinal)
+                    ? left
+                    : throw new InvalidDataException("Screenshot artifact variants contain conflicting provenance.")))
+            .ToArray();
+        var captureTimestamps = _activity.LoadScreenshotCaptureTimestampsFromTelemetry();
+        var registrations = artifacts
+            .GroupBy(artifact => artifact.CaptureId, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var origins = group
+                    .Select(artifact => artifact.Origin)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
+                if (origins.Length != 1)
+                {
+                    throw new InvalidDataException(
+                        $"Screenshot capture has conflicting origins: {group.Key}");
+                }
+
+                if (!captureTimestamps.TryGetValue(group.Key, out var capturedAt))
+                {
+                    throw new InvalidDataException(
+                        $"Screenshot capture has no persisted telemetry timestamp: {group.Key}");
+                }
+
+                return new ScreenshotCaptureRegistration(
+                    group.Key,
+                    capturedAt.ToUniversalTime(),
+                    origins[0]);
+            })
+            .ToArray();
+        _activity.BackfillLocalScreenshotCaptures(settings.InstallationId, registrations);
+    }
 
     /// <summary>Inspects owned screenshot artifacts that are outside the current calendar layout.</summary>
     internal ScreenshotStorageMigrationStatus GetScreenshotStorageMigrationStatus(CancellationToken cancellationToken)
@@ -226,13 +354,36 @@ public sealed class LocalStore
             throw new ArgumentException("Screenshot telemetry requires a capture identifier and retained artifacts.");
         }
 
-        foreach (var path in screenshotPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+        var distinctPaths = screenshotPaths.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var origins = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in distinctPaths)
         {
             if (!ScreenCaptureService.IsOwnedArtifact(path))
             {
                 throw new ArgumentException("Screenshot telemetry can only reference TrackMeUp-owned artifacts.", nameof(screenshotPaths));
             }
 
+            var artifactIdentity = ScreenshotIdentity(Path.GetFileName(path));
+            if (!string.Equals(TryGetCaptureId(artifactIdentity), captureId, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Screenshot telemetry capture identity does not match its artifact names.");
+            }
+
+            origins.Add(GetCaptureOrigin(Path.GetFileName(path)));
+        }
+
+        if (origins.Count != 1)
+        {
+            throw new InvalidDataException("Screenshot telemetry artifacts contain conflicting capture origins.");
+        }
+
+        RegisterScreenshotCapture(
+            captureId,
+            LoadSettings().InstallationId,
+            telemetry.CapturedAt,
+            origins.Single());
+        foreach (var path in distinctPaths)
+        {
             _activity.UpsertScreenshotIntervalTelemetry(
                 ScreenshotIdentity(Path.GetFileName(path)),
                 captureId,
@@ -709,16 +860,39 @@ public sealed class LocalStore
         var textByIdentity = _activity.LoadScreenshotTextSnapshots(
             artifactIdentities.Values,
             cancellationToken);
+        var captureIds = artifactIdentities.Values
+            .Select(identity => TryGetCaptureId(identity)
+                ?? throw new InvalidDataException($"Screenshot artifact has no valid capture identity: {identity}"))
+            .ToArray();
+        var provenanceByCapture = _activity.LoadScreenshotCaptures(captureIds);
         var sources = retainedFiles
             .Select(file =>
             {
                 var artifactIdentity = artifactIdentities[file.FullName];
+                var captureId = TryGetCaptureId(artifactIdentity)
+                    ?? throw new InvalidDataException($"Screenshot artifact has no valid capture identity: {artifactIdentity}");
+                if (!provenanceByCapture.TryGetValue(captureId, out var persistedProvenance))
+                {
+                    throw new InvalidDataException($"Screenshot capture has no persisted installation provenance: {captureId}");
+                }
+
+                var provenance = persistedProvenance with
+                {
+                    Installation = persistedProvenance.Installation with
+                    {
+                        IsCurrent = string.Equals(
+                            persistedProvenance.Installation.InstallationId,
+                            settings.InstallationId,
+                            StringComparison.Ordinal)
+                    }
+                };
                 telemetryByIdentity.TryGetValue(artifactIdentity, out var telemetry);
                 return CreateScreenshotGallerySource(
                     file,
                     artifactIdentity,
                     settings.ScreenshotIntervalMinutes,
-                    telemetry);
+                    telemetry,
+                    provenance);
             })
             .ToArray();
         var activitySamples = new List<ActivitySample>();
@@ -738,14 +912,20 @@ public sealed class LocalStore
         {
             cancellationToken.ThrowIfCancellationRequested();
             var samples = activitySamples
-                .Where(sample => SampleOverlaps(sample, source.FromUtc, source.ToUtc))
+                .Where(sample =>
+                    string.Equals(
+                        sample.InstallationId,
+                        source.Provenance.Installation.InstallationId,
+                        StringComparison.Ordinal)
+                    && SampleOverlaps(sample, source.FromUtc, source.ToUtc))
                 .ToArray();
             var activity = BuildScreenshotActivity(
                 source.CapturedAt,
                 source.Telemetry,
                 source.FromUtc,
                 source.ToUtc,
-                samples);
+                samples,
+                source.Provenance.Installation);
             analyses.TryGetValue(source.File.FullName, out var analysis);
             textByIdentity.TryGetValue(source.ArtifactIdentity, out var textSnapshot);
             items.Add(new ScreenshotGalleryItem(
@@ -753,7 +933,7 @@ public sealed class LocalStore
                 source.File.FullName,
                 activity.ForegroundApplication,
                 GetCaptureKind(source.File.Name),
-                GetCaptureOrigin(source.File.Name),
+                source.Provenance.Origin,
                 activity.SpanLabels,
                 analysis?.Summary,
                 analysis?.Timestamp,
@@ -764,7 +944,8 @@ public sealed class LocalStore
                 GetScreenName(source.File.Name),
                 activity.MouseClicks,
                 source.Telemetry?.CpuUsagePercent,
-                source.Telemetry?.GpuUsagePercent));
+                source.Telemetry?.GpuUsagePercent,
+                source.Provenance.Installation));
         }
 
         return new ScreenshotGallery(date, items);
@@ -992,13 +1173,20 @@ public sealed class LocalStore
         FileInfo file,
         string artifactIdentity,
         int screenshotIntervalMinutes,
-        ScreenshotIntervalTelemetry? telemetry)
+        ScreenshotIntervalTelemetry? telemetry,
+        ScreenshotCaptureProvenance provenance)
     {
-        var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
+        var capturedAt = provenance.CapturedAt.ToUniversalTime();
+        if (telemetry is { } persistedTelemetry
+            && persistedTelemetry.CapturedAt.ToUniversalTime() != capturedAt)
+        {
+            throw new InvalidDataException("Screenshot capture provenance conflicts with interval telemetry.");
+        }
+
         var fromUtc = telemetry?.IntervalStartedAt.ToUniversalTime()
             ?? capturedAt.ToUniversalTime().AddMinutes(-Math.Max(1, screenshotIntervalMinutes));
         var toUtc = telemetry?.CapturedAt.ToUniversalTime() ?? capturedAt.ToUniversalTime();
-        return new ScreenshotGallerySource(file, artifactIdentity, capturedAt, telemetry, fromUtc, toUtc);
+        return new ScreenshotGallerySource(file, artifactIdentity, capturedAt, telemetry, fromUtc, toUtc, provenance);
     }
 
     private static ScreenshotActivityContext BuildScreenshotActivity(
@@ -1006,7 +1194,8 @@ public sealed class LocalStore
         ScreenshotIntervalTelemetry? telemetry,
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
-        IReadOnlyList<ActivitySample> samples)
+        IReadOnlyList<ActivitySample> samples,
+        InstallationProfile installation)
     {
         var foregroundSample = samples
             .OrderBy(sample => Math.Abs((sample.Timestamp - capturedAt).TotalMilliseconds))
@@ -1034,7 +1223,7 @@ public sealed class LocalStore
                 {
                     if (distinct.Count == 0 || !string.Equals(distinct[^1].Label, entry.Label, StringComparison.Ordinal))
                     {
-                        distinct.Add(new ActivityLabelSample(entry.Timestamp, entry.Label));
+                        distinct.Add(new ActivityLabelSample(entry.Timestamp, entry.Label, installation));
                     }
 
                     return distinct;
@@ -1073,7 +1262,8 @@ public sealed class LocalStore
         DateTimeOffset CapturedAt,
         ScreenshotIntervalTelemetry? Telemetry,
         DateTimeOffset FromUtc,
-        DateTimeOffset ToUtc);
+        DateTimeOffset ToUtc,
+        ScreenshotCaptureProvenance Provenance);
 
     private sealed record ScreenshotActivityContext(
         string ForegroundApplication,

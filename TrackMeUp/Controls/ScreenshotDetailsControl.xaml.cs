@@ -1,6 +1,8 @@
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 
 namespace TrackMeUp.Controls;
@@ -35,6 +37,15 @@ public sealed partial class ScreenshotDetailsControl : UserControl
         ScreenValueText.Text = state?.Screen ?? "--";
         CaptureKindValueText.Text = state?.CaptureKind ?? "--";
         OriginValueText.Text = state?.Origin ?? "--";
+        InstallationNameValueText.Text = state?.InstallationName ?? "--";
+        InstallationMachineValueText.Text = state?.InstallationMachineName ?? "--";
+        InstallationBadge.Background = InstallationAppearance.CreateAccentBrush(
+            state?.InstallationColor ?? InstallationProfileCatalog.Colors[0]);
+        InstallationIcon.Glyph = InstallationAppearance.GetIconGlyph(
+            state?.InstallationIcon ?? InstallationProfileCatalog.Icons[0]);
+        AutomationProperties.SetName(
+            InstallationBadge,
+            state is null ? "--" : $"{state.InstallationName} · {state.InstallationMachineName}");
         ActivityLabelsValueText.Text = state?.ActivityLabels ?? "--";
         MouseClicksValueText.Text = state?.MouseClicks ?? "--";
         CpuUsageValueText.Text = state?.CpuUsage ?? "--";

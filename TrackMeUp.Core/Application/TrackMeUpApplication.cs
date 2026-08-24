@@ -129,6 +129,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly AtomicResetService _atomicReset;
     private readonly OpenAiPricingRefreshService? _pricingRefresh;
     private readonly AiScreenshotReprocessingService _screenshotReprocessing;
+    private readonly DataArchiveService _archives;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -217,6 +218,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             TrackingDomainService.IsHistoricalContextPrivate,
             model => ResolveAiModel(model)?.Key ?? model.Trim(),
             _logger);
+        _archives = new DataArchiveService(store);
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
         _tracking.TrackingStateChanged += OnTrackingStateChanged;
@@ -239,7 +241,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.storage-migration.v1", "snapshots.delete", "screenshots.analyze", "screenshots.reprocess.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.storage-migration.v1", "snapshots.delete", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -956,6 +958,209 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 return OperationResult<ScreenshotStorageMigrationResult>.Failure(
                     "screenshot.storage_migration.failed",
                     "ScreenshotStorageMigrationFailed");
+            }
+        }, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var profiles = await Task.Run(_store.GetInstallationProfiles, cancellationToken).ConfigureAwait(false);
+            return OperationResult<IReadOnlyList<InstallationProfile>>.Success(
+                "installation.profiles.loaded",
+                "InstallationProfilesLoaded",
+                profiles);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Installation profiles could not be loaded. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<IReadOnlyList<InstallationProfile>>.Failure(
+                "installation.profiles.load_failed",
+                "InstallationProfilesLoadFailed");
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<InstallationProfile>> UpdateInstallationProfileAsync(
+        UpdateInstallationProfileRequest request,
+        CancellationToken cancellationToken) =>
+        MutateVisualStateAsync(async () =>
+        {
+            try
+            {
+                var existing = _store.GetInstallationProfile(request.InstallationId);
+                if (existing is null)
+                {
+                    return OperationResult<InstallationProfile>.Failure(
+                        "installation.profile.not_found",
+                        "InstallationProfileNotFound");
+                }
+
+                var applied = InstallationProfileCatalog.Apply(existing, request, DateTimeOffset.UtcNow);
+                if (!applied.Succeeded || applied.Value is null)
+                {
+                    return applied;
+                }
+
+                var saved = await Task.Run(
+                    () => _store.SaveInstallationProfile(applied.Value, existing.Revision),
+                    cancellationToken).ConfigureAwait(false);
+                return OperationResult<InstallationProfile>.Success(
+                    "installation.profile.updated",
+                    "InstallationProfileUpdated",
+                    saved);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Installation profile update failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                return OperationResult<InstallationProfile>.Failure(
+                    "installation.profile.update_failed",
+                    "InstallationProfileUpdateFailed");
+            }
+        }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<DataArchiveExportResult>> ExportDataArchiveAsync(
+        DataArchiveExportRequest request,
+        CancellationToken cancellationToken) =>
+        MutateVisualStateAsync(async () =>
+        {
+            try
+            {
+                var result = await Task.Run(
+                    () => _archives.Export(request, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation(
+                    "Private data archive exported. Installations={InstallationCount} ActivitySamples={ActivitySampleCount} Screenshots={ScreenshotCount}",
+                    result.InstallationCount,
+                    result.ActivitySampleCount,
+                    result.ScreenshotFileCount);
+                return OperationResult<DataArchiveExportResult>.Success(
+                    "archive.export.completed",
+                    "DataArchiveExportCompleted",
+                    result);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Data archive export failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                return OperationResult<DataArchiveExportResult>.Failure(
+                    "archive.export.failed",
+                    "DataArchiveExportFailed");
+            }
+        }, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<OperationResult<DataArchiveImportPlan>> PreviewDataArchiveImportAsync(
+        DataArchiveImportPreviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var plan = await Task.Run(
+                () => _archives.PreviewImport(request, cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            return OperationResult<DataArchiveImportPlan>.Success(
+                "archive.import.previewed",
+                "DataArchiveImportPreviewed",
+                plan);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Data archive import preview failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<DataArchiveImportPlan>.Failure(
+                "archive.import.preview_failed",
+                "DataArchiveImportPreviewFailed");
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<DataArchiveImportResult>> ImportDataArchiveAsync(
+        DataArchiveImportRequest request,
+        CancellationToken cancellationToken) =>
+        MutateVisualStateAsync(async () =>
+        {
+            var wasTracking = _tracking.IsTracking;
+            if (wasTracking)
+            {
+                PauseScheduledSnapshots();
+                _tracking.Stop();
+            }
+
+            try
+            {
+                var result = await Task.Run(
+                    () => _archives.Import(request.PlanId, cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    // The merge is already durable at this point. Rebuild the derived index without
+                    // allowing late caller cancellation to misreport the committed import as canceled.
+                    _ = await _search.RebuildAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(
+                        exception,
+                        "Data archive merged, but the derived search index could not be rebuilt. ExceptionType={ExceptionType}",
+                        exception.GetType().Name);
+                }
+
+                _logger.LogInformation(
+                    "Private data archive merged. AddedActivitySamples={ActivitySampleCount} AddedScreenshots={ScreenshotCount}",
+                    result.AddedActivitySampleCount,
+                    result.AddedScreenshotFileCount);
+                return OperationResult<DataArchiveImportResult>.Success(
+                    "archive.import.completed",
+                    "DataArchiveImportCompleted",
+                    result);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Data archive import failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                return OperationResult<DataArchiveImportResult>.Failure(
+                    "archive.import.failed",
+                    "DataArchiveImportFailed");
+            }
+            finally
+            {
+                if (wasTracking)
+                {
+                    try
+                    {
+                        _tracking.Start();
+                        ResumeScheduledSnapshots();
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(
+                            exception,
+                            "Tracking could not resume after archive import. ExceptionType={ExceptionType}",
+                            exception.GetType().Name);
+                        EnqueueTrackingUnavailable(exception);
+                    }
+                }
             }
         }, cancellationToken);
 
@@ -2117,7 +2322,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         DateTimeOffset intervalStartedAt,
         DateTimeOffset capturedAt)
     {
-        var telemetry = _tracking.BuildScreenshotIntervalTelemetry(intervalStartedAt, capturedAt);
+        var retainedPath = capture.StoredScreenshotPaths.FirstOrDefault(File.Exists);
+        var provenanceCapturedAt = (capture.CapturedAt
+            ?? (retainedPath is null
+                ? capturedAt
+                : new DateTimeOffset(File.GetLastWriteTimeUtc(retainedPath), TimeSpan.Zero)))
+            .ToUniversalTime();
+        var telemetry = _tracking.BuildScreenshotIntervalTelemetry(intervalStartedAt, provenanceCapturedAt);
         _store.UpsertScreenshotIntervalTelemetry(capture.CaptureId, capture.StoredScreenshotPaths, telemetry);
     }
 

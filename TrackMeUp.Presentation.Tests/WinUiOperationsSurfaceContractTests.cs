@@ -45,6 +45,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         var privacy = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml"));
         var retention = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
         var plugins = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PluginOperationsControl.xaml"));
+        var installationTransfer = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "InstallationTransferOperationsControl.xaml"));
 
         Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
@@ -87,7 +88,7 @@ public sealed class WinUiOperationsSurfaceContractTests
             Assert.Equal("\uE76C", icons[1].Attribute("Glyph")?.Value);
         });
 
-        Assert.All(new[] { snapshots, reports, privacy, retention, plugins }, document =>
+        Assert.All(new[] { snapshots, reports, privacy, retention, plugins, installationTransfer }, document =>
         {
             Assert.DoesNotContain(document.Descendants(), element => element.Name.LocalName == "InfoBar");
             Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true);
@@ -119,7 +120,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("ToolTipService.SetToolTip(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Operations.Snapshot.FolderOpened", snapshotSource, StringComparison.Ordinal);
-        Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection" },
+        Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection", "InstallationTransferSection" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
 
         var operationLinkIcons = new[]
@@ -128,7 +129,8 @@ public sealed class WinUiOperationsSurfaceContractTests
             (Name: "OpenReportsLink", Color: "#FF7D9FF8", Glyph: "\uE787"),
             (Name: "OpenPrivacyLink", Color: "#FFA97BEA", Glyph: "\uE72E"),
             (Name: "OpenRetentionLink", Color: "#FF85A8DB", Glyph: "\uE823"),
-            (Name: "OpenPluginsLink", Color: "#FF71CBB7", Glyph: "\uE90F")
+            (Name: "OpenPluginsLink", Color: "#FF71CBB7", Glyph: "\uE90F"),
+            (Name: "OpenInstallationTransferLink", Color: "#FF5CC2C7", Glyph: "\uE8B5")
         };
         Assert.All(operationLinkIcons, expected =>
         {
@@ -140,6 +142,52 @@ public sealed class WinUiOperationsSurfaceContractTests
             Assert.Equal("Raw", icons[0].Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
             Assert.Equal("\uE76C", icons[1].Attribute("Glyph")?.Value);
         });
+    }
+
+    /// <summary>Guards passive installation identity editing and preview-before-merge archive transfer.</summary>
+    [Fact]
+    public void InstallationTransfer_UsesArchivePickersAndFacadeBackedPreviewMerge()
+    {
+        var surface = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "InstallationTransferOperationsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "InstallationTransferOperationsControl.xaml.cs"));
+        var appearance = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "InstallationAppearance.cs"));
+        var operationsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
+        var mergeButton = surface.Descendants().Single(element => HasName(element, "MergeImportButton"));
+
+        Assert.DoesNotContain(surface.Descendants(), element => element.Name.LocalName == "InfoBar");
+        Assert.Contains(surface.Descendants(), element => HasName(element, "InstallationsList"));
+        Assert.Contains(surface.Descendants(), element => HasName(element, "FriendlyNameBox"));
+        Assert.Contains(surface.Descendants(), element => HasName(element, "ColorBox"));
+        Assert.Contains(surface.Descendants(), element => HasName(element, "IconBox"));
+        Assert.Contains(surface.Descendants(), element => HasName(element, "ImportPreviewPanel"));
+        Assert.Equal("False", mergeButton.Attribute("IsEnabled")?.Value);
+        Assert.All(surface.Descendants().Where(element => element.Name.LocalName == "Button"), button =>
+            Assert.False(string.IsNullOrWhiteSpace(button.Attribute("Content")?.Value)));
+        Assert.True(surface.Descendants().Count(element => element.Name.LocalName == "Rectangle") >= 2);
+
+        Assert.Contains("private const string ArchiveExtension = \".tmuarchive\";", source, StringComparison.Ordinal);
+        Assert.Contains("FileTypeChoices.Add", source, StringComparison.Ordinal);
+        Assert.Contains("FileTypeFilter.Add(ArchiveExtension)", source, StringComparison.Ordinal);
+        Assert.Contains("WinRT.Interop.InitializeWithWindow.Initialize", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveImportPreviewRequest(archivePath)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveImportRequest(plan.PlanId)", source, StringComparison.Ordinal);
+        Assert.Contains("plan.AlreadyImported", source, StringComparison.Ordinal);
+        Assert.Contains("imported.AddedInstallationCount", source, StringComparison.Ordinal);
+        Assert.Contains("imported.SkippedScreenshotFileCount", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("imported.SkippedAiAnalysisCount + imported.SkippedScreenshotFileCount", source, StringComparison.Ordinal);
+        Assert.Contains("Context.Dialogs.ConfirmAsync", source, StringComparison.Ordinal);
+        Assert.Contains("InstallationAppearance.CreateAccentBrush", source, StringComparison.Ordinal);
+        Assert.Contains("InstallationAppearance.GetIconGlyph", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static SolidColorBrush CreateBrush", source, StringComparison.Ordinal);
+        Assert.All(
+            new[] { "desktop", "laptop", "workstation", "home", "tablet", "phone", "server", "cloud", "office", "briefcase", "terminal", "gaming", "travel", "school", "studio", "camera" },
+            icon => Assert.Contains($"\"{icon}\" =>", appearance, StringComparison.Ordinal));
+        Assert.Contains("_ = InstallationTransferSection.LoadAsync();", operationsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Directory.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Process.", source, StringComparison.Ordinal);
     }
 
     /// <summary>Guards automatic plugin loading and direct, per-plugin switch updates.</summary>
@@ -274,7 +322,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("_dialogs.ShowErrorBanner(MainNotificationBanner, title, message);", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
-        Assert.Equal(5, CountOccurrences(operationsSource, "ownerWindow, OperationBanner"));
+        Assert.Equal(6, CountOccurrences(operationsSource, "ownerWindow, OperationBanner"));
     }
 
     /// <summary>Ensures every requested operation remains delegated through the shared facade.</summary>
@@ -288,7 +336,8 @@ public sealed class WinUiOperationsSurfaceContractTests
             "ReportsOperationsControl.xaml.cs",
             "PrivacyOperationsControl.xaml.cs",
             "RetentionOperationsControl.xaml.cs",
-            "PluginOperationsControl.xaml.cs"
+            "PluginOperationsControl.xaml.cs",
+            "InstallationTransferOperationsControl.xaml.cs"
         }.Select(file => File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", file))).ToArray();
         var source = string.Join(Environment.NewLine, sources);
         string[] requiredFacadeCalls =
@@ -310,7 +359,12 @@ public sealed class WinUiOperationsSurfaceContractTests
             "RunRetentionAsync",
             "PrepareAtomicResetAsync",
             "GetPluginsAsync",
-            "SetPluginEnabledAsync"
+            "SetPluginEnabledAsync",
+            "GetInstallationProfilesAsync",
+            "UpdateInstallationProfileAsync",
+            "ExportDataArchiveAsync",
+            "PreviewDataArchiveImportAsync",
+            "ImportDataArchiveAsync"
         ];
 
         Assert.All(requiredFacadeCalls, call => Assert.Contains(call, source, StringComparison.Ordinal));

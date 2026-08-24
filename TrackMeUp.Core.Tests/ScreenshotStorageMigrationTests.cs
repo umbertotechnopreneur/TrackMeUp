@@ -32,6 +32,11 @@ public sealed class ScreenshotStorageMigrationTests
             File.SetLastWriteTimeUtc(rawPath, capturedAt.AddDays(-1).UtcDateTime);
             File.SetLastWriteTimeUtc(storedPath, capturedAt.UtcDateTime);
             File.SetLastWriteTimeUtc(secondStoredPath, capturedAt.UtcDateTime);
+            store.RegisterScreenshotCapture(
+                captureId,
+                store.LoadSettings().InstallationId,
+                capturedAt,
+                ScreenshotCaptureOrigins.Manual);
             var storedLastWrite = File.GetLastWriteTimeUtc(storedPath);
             var unrelatedPath = Path.Combine(screenshotRoot, "notes.txt");
             File.WriteAllText(unrelatedPath, "keep");

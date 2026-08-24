@@ -91,7 +91,15 @@ public sealed class ReportAggregationService
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        var aggregation = new AggregationState(query.From, dayCount, timeZoneResult.TimeZone, fromUtc, toUtc);
+        var installationProfiles = _store.GetInstallationProfiles()
+            .ToDictionary(profile => profile.InstallationId, StringComparer.Ordinal);
+        var aggregation = new AggregationState(
+            query.From,
+            dayCount,
+            timeZoneResult.TimeZone,
+            fromUtc,
+            toUtc,
+            installationProfiles);
         var aiUsage = new AiUsageAccumulator(new AiTokenCostEstimator(_store.ListAiModelPricing(AiPricingProviders.OpenAi)));
 
         // Both forward-only readers share one SQLite read transaction; no raw activity sample crosses this boundary.
@@ -152,12 +160,11 @@ public sealed class ReportAggregationService
         private readonly TimeZoneInfo _timeZone;
         private readonly long _fromUtcTicks;
         private readonly long _toUtcTicks;
+        private readonly IReadOnlyDictionary<string, InstallationProfile> _installationProfiles;
         private readonly Dictionary<DateOnly, DayAccumulator> _days;
         private readonly Dictionary<(int DayOfWeek, int Hour), HourAccumulator> _hours;
-        private readonly Dictionary<string, long> _applicationTicks = new(StringComparer.OrdinalIgnoreCase);
-        private long? _coverageStartTicks;
-        private long _coverageEndTicks;
-        private long _coveredTicks;
+        private readonly Dictionary<string, OrderedIntervalUnionAccumulator> _applicationIntervals = new(StringComparer.OrdinalIgnoreCase);
+        private readonly OrderedIntervalUnionAccumulator _coverage = new();
         private DateTimeOffset? _firstSampleAt;
         private DateTimeOffset? _lastSampleAt;
         private int _sampleCount;
@@ -167,13 +174,15 @@ public sealed class ReportAggregationService
             int dayCount,
             TimeZoneInfo timeZone,
             DateTimeOffset fromUtc,
-            DateTimeOffset toUtc)
+            DateTimeOffset toUtc,
+            IReadOnlyDictionary<string, InstallationProfile> installationProfiles)
         {
             _from = from;
             _dayCount = dayCount;
             _timeZone = timeZone;
             _fromUtcTicks = fromUtc.UtcDateTime.Ticks;
             _toUtcTicks = toUtc.UtcDateTime.Ticks;
+            _installationProfiles = installationProfiles ?? throw new ArgumentNullException(nameof(installationProfiles));
             _days = Enumerable.Range(0, dayCount)
                 .ToDictionary(offset => from.AddDays(offset), _ => new DayAccumulator());
             _hours = Enumerable.Range(0, 7)
@@ -213,7 +222,6 @@ public sealed class ReportAggregationService
             var mouseClicks = AllocateCount(includedMouseClicks, segments, includedDurationTicks);
             var sampleDates = new HashSet<DateOnly>();
             var isActive = string.Equals(sample.State, "active", StringComparison.OrdinalIgnoreCase);
-            var isIdle = string.Equals(sample.State, "idle", StringComparison.OrdinalIgnoreCase);
 
             for (var index = 0; index < segments.Count; index++)
             {
@@ -223,29 +231,20 @@ public sealed class ReportAggregationService
                     throw new InvalidOperationException("An activity segment fell outside the normalized report range.");
                 }
 
-                var durationTicks = segment.EndTicks - segment.StartTicks;
-                day.TrackedTicks += durationTicks;
+                day.TrackedIntervals.Add(segment.StartTicks, segment.EndTicks);
                 day.KeyPresses += keyPresses[index];
                 day.MouseClicks += mouseClicks[index];
                 if (isActive)
                 {
-                    day.ActiveTicks += durationTicks;
-                }
-                else if (isIdle)
-                {
-                    day.IdleTicks += durationTicks;
+                    day.ActiveIntervals.Add(segment.StartTicks, segment.EndTicks);
                 }
 
                 var hour = _hours[(segment.Bucket.DayOfWeek, segment.Bucket.Hour)];
-                hour.TrackedTicks += durationTicks;
+                hour.TrackedIntervals.Add(segment.StartTicks, segment.EndTicks);
                 hour.ObservationDates.Add(segment.Bucket.Date);
                 if (isActive)
                 {
-                    hour.ActiveTicks += durationTicks;
-                }
-                else if (isIdle)
-                {
-                    hour.IdleTicks += durationTicks;
+                    hour.ActiveIntervals.Add(segment.StartTicks, segment.EndTicks);
                 }
 
                 sampleDates.Add(segment.Bucket.Date);
@@ -253,13 +252,26 @@ public sealed class ReportAggregationService
 
             foreach (var date in sampleDates)
             {
-                _days[date].SampleCount++;
+                var day = _days[date];
+                day.SampleCount++;
+                if (!_installationProfiles.TryGetValue(sample.InstallationId, out var installation))
+                {
+                    throw new InvalidDataException("An activity sample references an unknown installation profile.");
+                }
+
+                day.AddInstallation(installation);
             }
 
             if (isActive)
             {
                 var application = string.IsNullOrWhiteSpace(sample.Application) ? "Unknown" : sample.Application.Trim();
-                _applicationTicks[application] = _applicationTicks.GetValueOrDefault(application) + includedDurationTicks;
+                if (!_applicationIntervals.TryGetValue(application, out var intervals))
+                {
+                    intervals = new OrderedIntervalUnionAccumulator();
+                    _applicationIntervals.Add(application, intervals);
+                }
+
+                intervals.Add(clippedStartTicks, clippedEndTicks);
             }
         }
 
@@ -269,7 +281,6 @@ public sealed class ReportAggregationService
             int applicationLimit,
             AiUsageSummary aiUsage)
         {
-            FinishCoverage();
             var calendar = _days
                 .OrderBy(pair => pair.Key)
                 .Select(pair => pair.Value.ToCalendarCell(pair.Key))
@@ -295,7 +306,7 @@ public sealed class ReportAggregationService
             var idleSeconds = calendar.Sum(day => day.IdleSeconds);
             var trackedSeconds = calendar.Sum(day => day.TrackedSeconds);
             var requestedSeconds = (_toUtcTicks - _fromUtcTicks) / TimeSpan.TicksPerSecond;
-            var coveredSeconds = _coveredTicks / TimeSpan.TicksPerSecond;
+            var coveredSeconds = _coverage.Complete() / TimeSpan.TicksPerSecond;
             var coverageRatio = requestedSeconds == 0
                 ? 0d
                 : Math.Clamp(coveredSeconds / (double)requestedSeconds, 0d, 1d);
@@ -327,8 +338,10 @@ public sealed class ReportAggregationService
 
         private IReadOnlyList<ReportApplicationSlice> BuildApplications(int applicationLimit)
         {
-            var ordered = _applicationTicks
-                .Select(pair => new ReportApplicationSlice(pair.Key, pair.Value / TimeSpan.TicksPerSecond))
+            // Each application is unioned independently. Parallel different applications can therefore
+            // exceed the wall-clock active total; the v4 contract has no cross-application attribution model.
+            var ordered = _applicationIntervals
+                .Select(pair => new ReportApplicationSlice(pair.Key, pair.Value.Complete() / TimeSpan.TicksPerSecond))
                 .Where(slice => slice.ActiveSeconds > 0)
                 .OrderByDescending(slice => slice.ActiveSeconds)
                 .ThenBy(slice => slice.Application, StringComparer.OrdinalIgnoreCase)
@@ -344,36 +357,7 @@ public sealed class ReportAggregationService
         }
 
         private void AddCoverage(long startTicks, long endTicks)
-        {
-            if (_coverageStartTicks is null)
-            {
-                _coverageStartTicks = startTicks;
-                _coverageEndTicks = endTicks;
-                return;
-            }
-
-            if (startTicks <= _coverageEndTicks)
-            {
-                _coverageEndTicks = Math.Max(_coverageEndTicks, endTicks);
-                return;
-            }
-
-            _coveredTicks += _coverageEndTicks - _coverageStartTicks.Value;
-            _coverageStartTicks = startTicks;
-            _coverageEndTicks = endTicks;
-        }
-
-        private void FinishCoverage()
-        {
-            if (_coverageStartTicks is null)
-            {
-                return;
-            }
-
-            _coveredTicks += _coverageEndTicks - _coverageStartTicks.Value;
-            _coverageStartTicks = null;
-            _coverageEndTicks = 0;
-        }
+            => _coverage.Add(startTicks, endTicks);
     }
 
     private static List<ActivitySegment> SplitIntoLocalHourSegments(
@@ -459,57 +443,161 @@ public sealed class ReportAggregationService
 
     private sealed class DayAccumulator
     {
-        internal long ActiveTicks { get; set; }
-        internal long IdleTicks { get; set; }
-        internal long TrackedTicks { get; set; }
+        private readonly Dictionary<string, InstallationProfile> _installations = new(StringComparer.Ordinal);
+
+        internal OrderedIntervalUnionAccumulator ActiveIntervals { get; } = new();
+        internal OrderedIntervalUnionAccumulator TrackedIntervals { get; } = new();
         internal long KeyPresses { get; set; }
         internal long MouseClicks { get; set; }
         internal int SampleCount { get; set; }
 
+        internal void AddInstallation(InstallationProfile installation)
+        {
+            if (_installations.TryGetValue(installation.InstallationId, out var existing)
+                && existing != installation)
+            {
+                throw new InvalidDataException("An installation profile changed inside one report snapshot.");
+            }
+
+            _installations[installation.InstallationId] = installation;
+        }
+
         internal ReportCalendarCell ToCalendarCell(DateOnly date)
         {
             var hasData = SampleCount > 0;
+            var trackedTicks = TrackedIntervals.Complete();
+            var activeTicks = ActiveIntervals.Complete();
+            if (activeTicks > trackedTicks)
+            {
+                throw new InvalidOperationException("Active report coverage cannot exceed tracked coverage.");
+            }
+
+            var trackedSeconds = trackedTicks / TimeSpan.TicksPerSecond;
+            var activeSeconds = Math.Min(trackedSeconds, activeTicks / TimeSpan.TicksPerSecond);
+            var idleSeconds = trackedSeconds - activeSeconds;
             int? activityScore = hasData
                 ? ActivityScoreService.CalculateDailyActivityScore(
                     KeyPresses,
                     MouseClicks,
-                    ActiveTicks / (double)TimeSpan.TicksPerSecond,
-                    TrackedTicks / (double)TimeSpan.TicksPerSecond)
+                    activeTicks / (double)TimeSpan.TicksPerSecond,
+                    trackedTicks / (double)TimeSpan.TicksPerSecond)
                 : null;
             return new ReportCalendarCell(
                 date,
-                ActiveTicks / TimeSpan.TicksPerSecond,
-                IdleTicks / TimeSpan.TicksPerSecond,
-                TrackedTicks / TimeSpan.TicksPerSecond,
+                activeSeconds,
+                idleSeconds,
+                trackedSeconds,
                 KeyPresses,
                 MouseClicks,
                 SampleCount,
                 hasData,
-                activityScore);
+                activityScore,
+                _installations.Values
+                    .OrderBy(profile => profile.FriendlyName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(profile => profile.MachineName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(profile => profile.InstallationId, StringComparer.Ordinal)
+                    .ToArray());
         }
     }
 
     private sealed class HourAccumulator
     {
-        internal long ActiveTicks { get; set; }
-        internal long IdleTicks { get; set; }
-        internal long TrackedTicks { get; set; }
+        internal OrderedIntervalUnionAccumulator ActiveIntervals { get; } = new();
+        internal OrderedIntervalUnionAccumulator TrackedIntervals { get; } = new();
         internal HashSet<DateOnly> ObservationDates { get; } = [];
 
-        internal ReportHourCell ToHourCell(int dayOfWeek, int hour) => new(
-            dayOfWeek,
-            hour,
-            MeanSeconds(ActiveTicks),
-            MeanSeconds(IdleTicks),
-            MeanSeconds(TrackedTicks),
-            ObservationDates.Count,
-            ObservationDates.Count > 0);
+        internal ReportHourCell ToHourCell(int dayOfWeek, int hour)
+        {
+            var trackedTicks = TrackedIntervals.Complete();
+            var activeTicks = ActiveIntervals.Complete();
+            if (activeTicks > trackedTicks)
+            {
+                throw new InvalidOperationException("Active hourly coverage cannot exceed tracked coverage.");
+            }
+
+            var trackedSeconds = MeanSeconds(trackedTicks);
+            var activeSeconds = Math.Min(trackedSeconds, MeanSeconds(activeTicks));
+            return new ReportHourCell(
+                dayOfWeek,
+                hour,
+                activeSeconds,
+                trackedSeconds - activeSeconds,
+                trackedSeconds,
+                ObservationDates.Count,
+                ObservationDates.Count > 0);
+        }
 
         private long MeanSeconds(long ticks) => ObservationDates.Count == 0
             ? 0
             : checked((long)Math.Round(
                 ticks / (double)TimeSpan.TicksPerSecond / ObservationDates.Count,
                 MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>Merges a start-ordered interval stream without retaining raw report samples.</summary>
+    private sealed class OrderedIntervalUnionAccumulator
+    {
+        private long? _openStartTicks;
+        private long _openEndTicks;
+        private long _lastStartTicks;
+        private long _completedTicks;
+        private bool _hasLastStart;
+        private bool _completed;
+
+        internal void Add(long startTicks, long endTicks)
+        {
+            if (_completed)
+            {
+                throw new InvalidOperationException("Completed report interval coverage cannot accept more samples.");
+            }
+
+            if (startTicks >= endTicks)
+            {
+                throw new ArgumentOutOfRangeException(nameof(endTicks), "Report intervals must have positive duration.");
+            }
+
+            if (_hasLastStart && startTicks < _lastStartTicks)
+            {
+                throw new InvalidOperationException("Report intervals must be supplied in start-time order.");
+            }
+
+            _hasLastStart = true;
+            _lastStartTicks = startTicks;
+            if (_openStartTicks is null)
+            {
+                _openStartTicks = startTicks;
+                _openEndTicks = endTicks;
+                return;
+            }
+
+            if (startTicks <= _openEndTicks)
+            {
+                _openEndTicks = Math.Max(_openEndTicks, endTicks);
+                return;
+            }
+
+            _completedTicks = checked(_completedTicks + _openEndTicks - _openStartTicks.Value);
+            _openStartTicks = startTicks;
+            _openEndTicks = endTicks;
+        }
+
+        internal long Complete()
+        {
+            if (_completed)
+            {
+                return _completedTicks;
+            }
+
+            if (_openStartTicks is not null)
+            {
+                _completedTicks = checked(_completedTicks + _openEndTicks - _openStartTicks.Value);
+                _openStartTicks = null;
+                _openEndTicks = 0;
+            }
+
+            _completed = true;
+            return _completedTicks;
+        }
     }
 
     private sealed class AiUsageAccumulator(AiTokenCostEstimator estimator)

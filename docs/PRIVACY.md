@@ -30,6 +30,7 @@ TrackMeUp is an internal tool that we use to make workdays easier to understand 
 | Device measurements | Used for local reports and optional AI context | Local records and, only when AI is enabled, the selected provider request | Disable AI; location is a separate opt-in |
 | Windows location | Off | Only the selected AI request when enabled | Windows permission plus TrackMeUp setting |
 | Diagnostic logs | Local logging is enabled for troubleshooting | `%LOCALAPPDATA%\TrackMeUp\logs` | Use the local log directory setting; delete local logs normally |
+| Portable data archive | Created only on explicit export | The `.tmuarchive` path selected by the user | Preview the destination and keep or delete the file normally |
 
 Window titles and document names can be sensitive. Privacy rules can block by process name, window-title text, or context hint. Those checks happen before a screenshot is taken and again before an AI request is made.
 
@@ -37,10 +38,11 @@ Window titles and document names can be sensitive. Privacy rules can block by pr
 
 Nothing is sent to a TrackMeUp server.
 
-Data can leave the PC only through an explicitly enabled integration:
+Data can leave the PC only through an explicit user action or enabled integration:
 
-1. **AI provider request.** When AI is enabled and an analysis is requested, TrackMeUp sends the selected local context, system context, and screenshots allowed by the settings directly to the selected provider. The default provider is OpenAI at `https://api.openai.com/v1/responses`. OpenRouter and Anthropic are explicit alternatives.
-2. **Optional Sentry diagnostics.** If `TRACKMEUP_SENTRY_DSN` is set, Sentry receives configured error events and breadcrumbs. It is not active by default.
+1. **Portable archive export.** From Operations, the user can create a private `.tmuarchive` containing the selected local history and, when included, retained screenshots. It contains installation provenance (machine name, friendly name, color, and icon) so records remain attributable after merge. It excludes settings, API keys, cached provider pricing, reprocessing jobs, diagnostics, and derived search indexes. Import validates and previews the archive before a separately confirmed idempotent merge.
+2. **AI provider request.** When AI is enabled and an analysis is requested, TrackMeUp sends the selected local context, system context, and screenshots allowed by the settings directly to the selected provider. The default provider is OpenAI at `https://api.openai.com/v1/responses`. OpenRouter and Anthropic are explicit alternatives.
+3. **Optional Sentry diagnostics.** If `TRACKMEUP_SENTRY_DSN` is set, Sentry receives configured error events and breadcrumbs. It is not active by default.
 
 Reports are generated from local data. The bundled reports interface does not start a local HTTP server and does not contact a TrackMeUp service.
 

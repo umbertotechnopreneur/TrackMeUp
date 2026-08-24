@@ -301,7 +301,8 @@ public sealed class TrackingDomainService : IDisposable
                 sample.State,
                 sample.Application,
                 sample.KeyPresses,
-                sample.MouseClicks);
+                sample.MouseClicks,
+                sample.InstallationId);
             var samples = _dashboardActivityCache.Samples;
             if (samples.Count == 0 || samples[^1].Timestamp <= projection.Timestamp)
             {

@@ -44,11 +44,18 @@ public sealed partial class OperationsControl : UserControl
         PrivacySection.ApplyLanguage(language);
         RetentionSection.ApplyLanguage(language);
         PluginsSection.ApplyLanguage(language);
+        InstallationTransferSection.ApplyLanguage(language);
         ApplyNavigationAccessibility(OpenSnapshotAiLink, "Options.Navigation.SnapshotAi.Action", "Options.Navigation.SnapshotAi.Description");
         ApplyNavigationAccessibility(OpenReportsLink, "Options.Navigation.Reports.Action", "Options.Navigation.Reports.Description");
         ApplyNavigationAccessibility(OpenPrivacyLink, "Options.Navigation.Privacy.Action", "Options.Navigation.Privacy.Description");
         ApplyNavigationAccessibility(OpenRetentionLink, "Options.Navigation.Retention.Action", "Options.Navigation.Retention.Description");
         ApplyNavigationAccessibility(OpenPluginsLink, "Options.Navigation.Plugins.Action", "Options.Navigation.Plugins.Description");
+        ApplyOptionalNavigationAccessibility(
+            OpenInstallationTransferLink,
+            "Operations.InstallationTransfer.Navigation.Action",
+            "Manage installations and archives",
+            "Operations.InstallationTransfer.Navigation.Description",
+            "Name installations and transfer local data and screenshots between systems.");
         AutomationProperties.SetName(OperationProgress, _strings.Translate("Operations.Status.InProgress.Title"));
         AutomationProperties.SetName(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Action"));
         AutomationProperties.SetHelpText(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Description"));
@@ -65,6 +72,7 @@ public sealed partial class OperationsControl : UserControl
         PrivacySection.Initialize(application, dialogs, ownerWindow, OperationBanner);
         RetentionSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
         PluginsSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
+        InstallationTransferSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
     }
 
     /// <summary>Returns to the landing page for local tool navigation, or to the surface that opened a direct settings link.</summary>
@@ -90,6 +98,7 @@ public sealed partial class OperationsControl : UserControl
         PrivacySection.Visibility = section == OperationsSection.Privacy ? Visibility.Visible : Visibility.Collapsed;
         RetentionSection.Visibility = section == OperationsSection.Retention ? Visibility.Visible : Visibility.Collapsed;
         PluginsSection.Visibility = section == OperationsSection.Plugins ? Visibility.Visible : Visibility.Collapsed;
+        InstallationTransferSection.Visibility = Visibility.Collapsed;
         DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         NotifyLayoutChanged();
         if (section == OperationsSection.Plugins)
@@ -175,6 +184,23 @@ public sealed partial class OperationsControl : UserControl
 
     private void OpenPluginsLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Plugins, sender);
 
+    private void OpenInstallationTransferLink_Click(object sender, RoutedEventArgs e)
+    {
+        _lastLandingLink = sender as Control;
+        _returnToOverviewOnBack = true;
+        OperationsScroll.Visibility = Visibility.Collapsed;
+        DetailScroll.Visibility = Visibility.Visible;
+        SnapshotAiSection.Visibility = Visibility.Collapsed;
+        ReportsSection.Visibility = Visibility.Collapsed;
+        PrivacySection.Visibility = Visibility.Collapsed;
+        RetentionSection.Visibility = Visibility.Collapsed;
+        PluginsSection.Visibility = Visibility.Collapsed;
+        InstallationTransferSection.Visibility = Visibility.Visible;
+        DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
+        NotifyLayoutChanged();
+        _ = InstallationTransferSection.LoadAsync();
+    }
+
     private async void AtomicNukeButton_Click(object sender, RoutedEventArgs e)
     {
         if (_operationInProgress)
@@ -239,6 +265,7 @@ public sealed partial class OperationsControl : UserControl
         PrivacySection.Visibility = Visibility.Collapsed;
         RetentionSection.Visibility = Visibility.Collapsed;
         PluginsSection.Visibility = Visibility.Collapsed;
+        InstallationTransferSection.Visibility = Visibility.Collapsed;
         DetailScroll.Visibility = Visibility.Collapsed;
         OperationsScroll.Visibility = Visibility.Visible;
         OperationsScroll.ChangeView(null, 0, null, disableAnimation: true);
@@ -253,6 +280,17 @@ public sealed partial class OperationsControl : UserControl
     {
         AutomationProperties.SetName(link, _strings.Translate(actionKey));
         AutomationProperties.SetHelpText(link, _strings.Translate(descriptionKey));
+    }
+
+    private void ApplyOptionalNavigationAccessibility(
+        Control link,
+        string actionKey,
+        string actionFallback,
+        string descriptionKey,
+        string descriptionFallback)
+    {
+        AutomationProperties.SetName(link, _strings.TryTranslate(actionKey, out var action) ? action : actionFallback);
+        AutomationProperties.SetHelpText(link, _strings.TryTranslate(descriptionKey, out var description) ? description : descriptionFallback);
     }
 
     private void NotifyLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);

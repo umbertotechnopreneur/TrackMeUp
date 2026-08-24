@@ -122,6 +122,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _window.ReportsRequested += MainWindow_ReportsRequested;
         _window.SearchRequested += MainWindow_SearchRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
+        _window.ScreenshotGalleryDateRequested += MainWindow_ScreenshotGalleryDateRequested;
         _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
         _window.ExitRequested += MainWindow_ExitRequested;
         _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
@@ -335,6 +336,9 @@ public partial class App : Microsoft.UI.Xaml.Application
     private async void MainWindow_ScreenshotGalleryRequested(object? sender, EventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null);
 
+    private async void MainWindow_ScreenshotGalleryDateRequested(object? sender, ScreenshotGalleryDateRequestedEventArgs eventArgs)
+        => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.Date);
+
     private async void MainWindow_ScreenshotsRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
 
@@ -450,6 +454,23 @@ public partial class App : Microsoft.UI.Xaml.Application
         _screenshotsWindow.Activate();
     }
 
+    private async Task ShowScreenshotWindowAsync(
+        ITrackMeUpApplication application,
+        string? launchTheme,
+        DateOnly selectedDate)
+    {
+        if (_screenshotsWindow is not null)
+        {
+            await _screenshotsWindow.FocusDateAsync(selectedDate);
+            _screenshotsWindow.Activate();
+            return;
+        }
+
+        _screenshotsWindow = new ScreenshotWindow(application, launchTheme, requestedDate: selectedDate);
+        _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
+        _screenshotsWindow.Activate();
+    }
+
     private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
     {
         if (_reportsWindow is not null)
@@ -474,6 +495,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.ReportsRequested -= MainWindow_ReportsRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
+            _window.ScreenshotGalleryDateRequested -= MainWindow_ScreenshotGalleryDateRequested;
             _window.ScreenshotsRequested -= MainWindow_ScreenshotsRequested;
             _window.ExitRequested -= MainWindow_ExitRequested;
             _window.AtomicResetPrepared -= MainWindow_AtomicResetPrepared;

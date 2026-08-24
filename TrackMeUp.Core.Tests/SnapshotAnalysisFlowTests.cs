@@ -834,14 +834,12 @@ public sealed class SnapshotAnalysisFlowTests
 
     private sealed class RecordingCaptureService : IScreenCaptureService
     {
+        private readonly string _directory;
+
         public RecordingCaptureService(string directory)
         {
-            var path = Path.Combine(directory, $"{Guid.NewGuid():N}_1.0.0_manual_monitor-1.webp");
-            Result = new ScreenshotCaptureResult(
-                Guid.NewGuid().ToString("N"),
-                [path],
-                [path],
-                ScreenshotCaptureOrigins.Manual);
+            _directory = directory;
+            Result = CreateResult(ScreenshotCaptureOrigins.Manual);
         }
 
         public int CallCount { get; private set; }
@@ -850,14 +848,27 @@ public sealed class SnapshotAnalysisFlowTests
 
         public string? LastCaptureMode { get; private set; }
 
-        public ScreenshotCaptureResult Result { get; }
+        public ScreenshotCaptureResult Result { get; private set; }
 
         public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin)
         {
             CallCount++;
             LastCaptureOrigin = captureOrigin;
             LastCaptureMode = captureMode;
+            Result = CreateResult(captureOrigin);
             return Result;
+        }
+
+        private ScreenshotCaptureResult CreateResult(string captureOrigin)
+        {
+            var captureId = Guid.NewGuid().ToString("N");
+            var path = Path.Combine(_directory, $"{captureId}_1.0.0_{captureOrigin}_monitor-1.webp");
+            return new ScreenshotCaptureResult(
+                captureId,
+                [path],
+                [path],
+                captureOrigin,
+                CapturedAt: DateTimeOffset.UtcNow);
         }
     }
 

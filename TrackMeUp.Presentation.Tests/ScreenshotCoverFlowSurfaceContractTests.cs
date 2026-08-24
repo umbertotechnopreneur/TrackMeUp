@@ -10,6 +10,46 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class ScreenshotCoverFlowSurfaceContractTests
 {
     [Fact]
+    public void ScreenshotHeader_RendersSelectedInstallationProvenanceWithAccessibleAppearance()
+    {
+        var header = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml"));
+        var headerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml.cs"));
+        var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var badge = header.Descendants().Single(element => HasName(element, "InstallationProvenanceBadge"));
+        var iconBadge = header.Descendants().Single(element => HasName(element, "InstallationIconBadge"));
+        var icon = header.Descendants().Single(element => HasName(element, "InstallationIcon"));
+
+        Assert.Equal("Collapsed", badge.Attribute("Visibility")?.Value);
+        Assert.Equal("Polite", badge.Attribute("AutomationProperties.LiveSetting")?.Value);
+        Assert.Equal("Raw", icon.Attribute("AutomationProperties.AccessibilityView")?.Value);
+        Assert.Contains(header.Descendants(), element => HasName(element, "InstallationFriendlyNameText"));
+        Assert.Contains(header.Descendants(), element => HasName(element, "InstallationMachineNameText"));
+        Assert.Equal("2", iconBadge.Attribute("BorderThickness")?.Value);
+        Assert.Contains("InstallationAppearance.CreateAccentBrush(installation.Color)", headerSource, StringComparison.Ordinal);
+        Assert.Contains("InstallationAppearance.GetIconGlyph(installation.Icon)", headerSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(InstallationProvenanceBadge", headerSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(InstallationProvenanceBadge", headerSource, StringComparison.Ordinal);
+        Assert.Contains("var installation = item.Installation", windowSource, StringComparison.Ordinal);
+        Assert.Contains("installation);", windowSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScreenshotDetails_RendersInstallationProvenanceWithValidatedAppearance()
+    {
+        var details = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml"));
+        var detailsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml.cs"));
+
+        Assert.Contains(details.Descendants(), element => HasName(element, "InstallationBadge"));
+        Assert.Contains(details.Descendants(), element => HasName(element, "InstallationIcon"));
+        Assert.Contains(details.Descendants(), element => HasName(element, "InstallationNameValueText"));
+        Assert.Contains(details.Descendants(), element => HasName(element, "InstallationMachineValueText"));
+        Assert.Contains("InstallationProfileCatalog.Colors", detailsSource, StringComparison.Ordinal);
+        Assert.Contains("InstallationAppearance.CreateAccentBrush", detailsSource, StringComparison.Ordinal);
+        Assert.Contains("InstallationAppearance.GetIconGlyph", detailsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName", detailsSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ScreenshotDetails_UsesCurrentDailyGateForTheLocalizedEmptyDescription()
     {
         var details = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml"));
@@ -101,6 +141,8 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var timelineImageFrame = timelineImage.Ancestors().First(element => element.Name.LocalName == "Border");
         var timelineSelectionGlow = timeline.Descendants().Single(element => HasName(element, "TimelineSelectionGlow"));
         var timelineSelectionChrome = timeline.Descendants().Single(element => HasName(element, "TimelineSelectionChrome"));
+        var timelineInstallationBadge = timeline.Descendants().Single(element => HasName(element, "TimelineInstallationBadge"));
+        var timelineInstallationIcon = timeline.Descendants().Single(element => HasName(element, "TimelineInstallationIcon"));
         var timelineClockIcon = timeline.Descendants().Single(element =>
             element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE823");
         var timelineTimeText = timeline.Descendants().Single(element =>
@@ -198,6 +240,11 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
                 child.Name.LocalName == "ScalarTransition"
                 && child.Attribute("Duration")?.Value == "0:0:0.16"));
         Assert.Equal("11", timelineClockIcon.Attribute("FontSize")?.Value);
+        Assert.Equal("{Binding InstallationBrush}", timelineInstallationBadge.Attribute("Background")?.Value);
+        Assert.Equal("{Binding InstallationGlyph}", timelineInstallationIcon.Attribute("Glyph")?.Value);
+        Assert.Equal("Raw", timelineInstallationIcon.Attribute("AutomationProperties.AccessibilityView")?.Value);
+        Assert.Contains("InstallationAppearance.CreateAccentBrush(installation.Color)", timelineSource, StringComparison.Ordinal);
+        Assert.Contains("InstallationAppearance.GetIconGlyph(installation.Icon)", timelineSource, StringComparison.Ordinal);
         Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", timelineClockIcon.Attribute("Foreground")?.Value);
         Assert.Equal("Raw", timelineClockIcon.Attribute("AutomationProperties.AccessibilityView")?.Value);
         Assert.Equal("12", timelineTimeText.Attribute("FontSize")?.Value);

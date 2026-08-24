@@ -32,51 +32,61 @@
         <Grid
             x:Name="DialogBody"
             Grid.Row="1"
-            Padding="26,8,26,24"
-            RowSpacing="18">
+            Padding="34,12,34,26"
+            RowSpacing="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid ColumnSpacing="14">
+            <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="38" />
+                    <ColumnDefinition Width="40" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <FontIcon
-                    Width="38"
-                    Height="38"
-                    VerticalAlignment="Center"
+                    Width="40"
+                    Height="40"
+                    VerticalAlignment="Top"
+                    Margin="0,4,0,0"
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
-                    FontSize="20"
-                    Foreground="#FF7D9FF8"
+                    FontSize="22"
+                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                     Glyph="&#xE787;" />
                 <StackPanel
                     Grid.Column="1"
-                    Spacing="3">
+                    Spacing="5">
+                    <TextBlock
+                        x:Name="DialogEyebrowText"
+                        CharacterSpacing="150"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        FontSize="11"
+                        FontWeight="SemiBold" />
                     <TextBlock
                         x:Name="DialogTitleText"
                         AutomationProperties.LiveSetting="Assertive"
-                        FontSize="22"
+                        FontSize="28"
                         FontWeight="SemiBold"
                         TextWrapping="WrapWholeWords" />
                     <TextBlock
                         x:Name="DialogSubtitleText"
+                        MaxWidth="760"
+                        HorizontalAlignment="Left"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        LineHeight="20"
+                        FontSize="14"
+                        LineHeight="22"
                         TextWrapping="WrapWholeWords" />
                 </StackPanel>
             </Grid>
 
             <Grid
                 Grid.Row="1"
-                ColumnSpacing="24">
+                ColumnSpacing="30">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="5*" />
-                    <ColumnDefinition Width="4*" />
+                    <ColumnDefinition Width="11*" />
+                    <ColumnDefinition Width="9*" />
                 </Grid.ColumnDefinitions>
 
                 <Grid
@@ -92,32 +102,42 @@
                         VerticalAlignment="Top"
                         AutomationProperties.Name="Activity calendar"
                         CalendarViewDayItemChanging="ActivityCalendarView_CalendarViewDayItemChanging"
+                        DoubleTapped="ActivityCalendarView_DoubleTapped"
                         IsGroupLabelVisible="True"
+                        IsDoubleTapEnabled="True"
                         IsOutOfScopeEnabled="False"
                         IsTodayHighlighted="True"
                         NumberOfWeeksInView="6"
                         SelectedDatesChanged="ActivityCalendarView_SelectedDatesChanged"
                         SelectionMode="Single" />
-                    <TextBlock
-                        x:Name="CalendarLegendText"
+                    <StackPanel
                         Grid.Row="1"
-                        Margin="12,8,12,0"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        FontSize="12"
-                        TextWrapping="WrapWholeWords" />
+                        Margin="12,10,12,0"
+                        Spacing="3">
+                        <TextBlock
+                            x:Name="CalendarLegendText"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            FontSize="12"
+                            TextWrapping="WrapWholeWords" />
+                        <TextBlock
+                            x:Name="CalendarHintText"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            FontSize="12"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
                 </Grid>
 
                 <Border
                     x:Name="DayDetailsBorder"
                     Grid.Column="1"
-                    Padding="24,2,0,0"
+                    Padding="30,4,0,0"
                     BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     BorderThickness="1,0,0,0"
                     Visibility="Collapsed">
-                    <StackPanel Spacing="12">
+                    <StackPanel Spacing="14">
                         <TextBlock
                             x:Name="SelectedDateText"
-                            FontSize="18"
+                            FontSize="21"
                             FontWeight="SemiBold"
                             TextWrapping="WrapWholeWords" />
                         <TextBlock
@@ -130,7 +150,7 @@
                             x:Name="DayMetricsPanel"
                             Spacing="14"
                             Visibility="Collapsed">
-                            <StackPanel Spacing="6">
+                            <StackPanel Spacing="7">
                                 <TextBlock
                                     x:Name="ScoreLabelText"
                                     CharacterSpacing="90"
@@ -143,7 +163,7 @@
                                     <TextBlock
                                         x:Name="ScoreValueText"
                                         FontFamily="Consolas"
-                                        FontSize="42"
+                                        FontSize="46"
                                         FontWeight="SemiBold" />
                                     <TextBlock
                                         VerticalAlignment="Bottom"
@@ -165,7 +185,7 @@
 
                             <Grid
                                 ColumnSpacing="12"
-                                RowSpacing="11">
+                                RowSpacing="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -192,7 +212,88 @@
                                 <TextBlock x:Name="SamplesLabelText" Grid.Row="5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock x:Name="SamplesValueText" Grid.Row="5" Grid.Column="1" FontFamily="Consolas" FontWeight="SemiBold" />
                             </Grid>
+
+                            <StackPanel
+                                x:Name="InstallationLegendSection"
+                                Spacing="7">
+                                <TextBlock
+                                    x:Name="InstallationLegendTitleText"
+                                    CharacterSpacing="90"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    FontSize="12"
+                                    FontWeight="SemiBold" />
+                                <ScrollViewer
+                                    MaxHeight="112"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl x:Name="InstallationLegendItems">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid
+                                                    Margin="0,2,0,5"
+                                                    AutomationProperties.Name="{Binding AccessibleName}"
+                                                    ColumnSpacing="9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="26" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border
+                                                        Width="24"
+                                                        Height="24"
+                                                        VerticalAlignment="Center"
+                                                        Background="{Binding AccentBrush}"
+                                                        CornerRadius="12">
+                                                        <FontIcon
+                                                            AutomationProperties.AccessibilityView="Raw"
+                                                            FontFamily="Segoe Fluent Icons"
+                                                            FontSize="12"
+                                                            Foreground="White"
+                                                            Glyph="{Binding IconGlyph}" />
+                                                    </Border>
+                                                    <StackPanel
+                                                        Grid.Column="1"
+                                                        VerticalAlignment="Center"
+                                                        Spacing="0">
+                                                        <TextBlock
+                                                            FontSize="13"
+                                                            FontWeight="SemiBold"
+                                                            Text="{Binding FriendlyName}"
+                                                            TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock
+                                                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                            FontSize="11"
+                                                            Text="{Binding MachineName}"
+                                                            TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
                         </StackPanel>
+
+                        <Border
+                            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                            BorderThickness="0,1,0,0" />
+
+                        <Button
+                            x:Name="OpenGalleryButton"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Click="OpenGalleryButton_Click"
+                            Style="{StaticResource AccentButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="9">
+                                <FontIcon
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    FontFamily="Segoe Fluent Icons"
+                                    FontSize="15"
+                                    Glyph="&#xE8B9;" />
+                                <TextBlock
+                                    x:Name="OpenGalleryButtonText"
+                                    TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+                        </Button>
 
                         <Button
                             x:Name="ReprocessAiButton"
@@ -207,7 +308,6 @@
                                     Glyph="&#xE895;" />
                                 <TextBlock
                                     x:Name="ReprocessAiButtonText"
-                                    Text="Reprocess screenshots without an AI description"
                                     TextWrapping="WrapWholeWords" />
                             </StackPanel>
                         </Button>
@@ -251,8 +351,7 @@
                 <Button
                     x:Name="CloseButton"
                     MinWidth="96"
-                    Click="CloseButton_Click"
-                    Style="{StaticResource AccentButtonStyle}" />
+                    Click="CloseButton_Click" />
             </StackPanel>
         </Grid>
     </Grid>

@@ -4,22 +4,40 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
+using TrackMeUp.Controls;
 using TrackMeUp.Services;
 using Windows.System;
 using Windows.UI;
 
 namespace TrackMeUp;
 
-/// <summary>Returns the day selected for AI screenshot reprocessing.</summary>
-internal sealed record ActivityCalendarDialogResult(DateOnly Date);
+/// <summary>Identifies the follow-up experience selected from the activity calendar.</summary>
+internal enum ActivityCalendarAction
+{
+    OpenScreenshots,
+    ReprocessDescriptions
+}
+
+/// <summary>Returns the selected day and requested follow-up experience.</summary>
+internal sealed record ActivityCalendarDialogResult(DateOnly Date, ActivityCalendarAction Action);
+
+/// <summary>Contains passive presentation values for one installation in the selected-day legend.</summary>
+internal sealed record ActivityCalendarInstallationLegendItem(
+    string FriendlyName,
+    string MachineName,
+    string IconGlyph,
+    SolidColorBrush AccentBrush,
+    string AccessibleName);
 
 /// <summary>Shows a native rolling activity calendar backed only by aggregate application-layer report data.</summary>
 internal sealed partial class ActivityCalendarDialogWindow : Window
 {
     private const int ExpectedReportContractVersion = 4;
-    private const int LogicalWidth = 860;
-    private const int LogicalHeight = 620;
+    private const int LogicalWidth = 920;
+    private const int LogicalHeight = 660;
     private const int LogicalScreenMargin = 24;
     private readonly TaskCompletionSource<ActivityCalendarDialogResult?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -175,9 +193,26 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         cell.KeyPresses >= 0 &&
         cell.MouseClicks >= 0 &&
         cell.SampleCount >= 0 &&
+        cell.Installations is { } installations &&
+        installations.All(IsValidInstallationProfile) &&
+        installations.Select(profile => profile.InstallationId).Distinct(StringComparer.Ordinal).Count() == installations.Count &&
         (cell.HasData
-            ? cell.ActivityScore is >= 0 and <= 100
-            : cell.ActivityScore is null);
+            ? cell.SampleCount > 0 && cell.ActivityScore is >= 0 and <= 100 && installations.Count > 0
+            : cell.SampleCount == 0 && cell.ActivityScore is null && installations.Count == 0);
+
+    private static bool IsValidInstallationProfile(InstallationProfile profile) =>
+        profile is not null &&
+        Guid.TryParseExact(profile.InstallationId, "N", out _) &&
+        profile.MachineName.Length is >= 1 and <= 128 &&
+        profile.MachineName == profile.MachineName.Trim() &&
+        profile.FriendlyName.Length is >= 1 and <= 64 &&
+        profile.FriendlyName == profile.FriendlyName.Trim() &&
+        InstallationProfileCatalog.Colors.Contains(profile.Color, StringComparer.Ordinal) &&
+        InstallationProfileCatalog.Icons.Contains(profile.Icon, StringComparer.Ordinal) &&
+        profile.FirstSeenAt.Offset == TimeSpan.Zero &&
+        profile.UpdatedAt.Offset == TimeSpan.Zero &&
+        profile.UpdatedAt >= profile.FirstSeenAt &&
+        profile.Revision >= 1;
 
     private void ShowCalendar(DateOnly from, DateOnly today)
     {
@@ -220,15 +255,18 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         }
 
         var score = cell.ActivityScore!.Value;
-        var densityCount = Math.Clamp(((score + 24) / 25), 1, 4);
-        args.Item.SetDensityColors(Enumerable.Repeat(ActivityDensityColor(), densityCount));
+        var installations = cell.Installations!;
+        args.Item.SetDensityColors(installations
+            .Select(profile => InstallationAppearance.CreateAccentBrush(profile.Color).Color));
         var label = string.Format(
             _culture,
             T("ActivityCalendar.Day.ScoreAccessible"),
             date.ToString("D", _culture),
             score);
-        AutomationProperties.SetName(args.Item, label);
-        ToolTipService.SetToolTip(args.Item, label);
+        var provenanceLabel = BuildInstallationAccessibleLabel(installations);
+        var accessibleLabel = $"{label}. {T("Operations.InstallationTransfer.Installations.List")}: {provenanceLabel}.";
+        AutomationProperties.SetName(args.Item, accessibleLabel);
+        ToolTipService.SetToolTip(args.Item, accessibleLabel);
     }
 
     private void ActivityCalendarView_SelectedDatesChanged(
@@ -241,6 +279,30 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         }
     }
 
+    private async void ActivityCalendarView_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (FindCalendarDayItem(e.OriginalSource as DependencyObject) is not { } dayItem)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        await OpenScreenshotsAsync(FromCalendarDate(dayItem.Date));
+    }
+
+    private static CalendarViewDayItem? FindCalendarDayItem(DependencyObject? source)
+    {
+        for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is CalendarViewDayItem dayItem)
+            {
+                return dayItem;
+            }
+        }
+
+        return null;
+    }
+
     private void UpdateSelectedDay(DateOnly date)
     {
         _selectedDate = date;
@@ -249,6 +311,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         {
             DayStatusText.Text = T("ActivityCalendar.NoActivity");
             DayMetricsPanel.Visibility = Visibility.Collapsed;
+            InstallationLegendItems.ItemsSource = null;
             AutomationProperties.SetName(
                 DayDetailsBorder,
                 string.Format(_culture, T("ActivityCalendar.Day.NoDataAccessible"), SelectedDateText.Text));
@@ -265,17 +328,30 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         KeyPressesValueText.Text = cell.KeyPresses.ToString("N0", _culture);
         MouseClicksValueText.Text = cell.MouseClicks.ToString("N0", _culture);
         SamplesValueText.Text = cell.SampleCount.ToString("N0", _culture);
+        InstallationLegendItems.ItemsSource = cell.Installations!
+            .Select(profile => new ActivityCalendarInstallationLegendItem(
+                profile.FriendlyName,
+                profile.MachineName,
+                InstallationAppearance.GetIconGlyph(profile.Icon),
+                InstallationAppearance.CreateAccentBrush(profile.Color),
+                $"{profile.FriendlyName}, {profile.MachineName}"))
+            .ToArray();
         DayMetricsPanel.Visibility = Visibility.Visible;
 
         var scoreLabel = string.Format(_culture, T("ActivityCalendar.ScoreAccessible"), score);
+        var provenanceLabel = BuildInstallationAccessibleLabel(cell.Installations!);
         AutomationProperties.SetName(ScoreValueText, scoreLabel);
-        AutomationProperties.SetName(DayDetailsBorder, $"{SelectedDateText.Text}. {scoreLabel}");
+        AutomationProperties.SetName(
+            DayDetailsBorder,
+            $"{SelectedDateText.Text}. {scoreLabel}. {T("Operations.InstallationTransfer.Installations.List")}: {provenanceLabel}.");
     }
 
     private void ApplyLocalizedContent()
     {
+        DialogEyebrowText.Text = T("ActivityCalendar.Eyebrow");
         DialogTitleText.Text = T("ActivityCalendar.Title");
         DialogSubtitleText.Text = T("ActivityCalendar.Subtitle");
+        CalendarHintText.Text = T("ActivityCalendar.CalendarHint");
         StatusText.Text = T("ActivityCalendar.Loading");
         ScoreLabelText.Text = T("ActivityCalendar.Score");
         ActiveTimeLabelText.Text = T("ActivityCalendar.ActiveTime");
@@ -284,12 +360,15 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         KeyPressesLabelText.Text = T("ActivityCalendar.KeyPresses");
         MouseClicksLabelText.Text = T("ActivityCalendar.MouseClicks");
         SamplesLabelText.Text = T("ActivityCalendar.Samples");
+        InstallationLegendTitleText.Text = T("Operations.InstallationTransfer.Installations.List");
+        OpenGalleryButtonText.Text = T("ActivityCalendar.OpenGallery");
         ReprocessAiButtonText.Text = T("ActivityCalendar.Reprocess");
         CloseButton.Content = T("About.Close");
         AutomationProperties.SetName(RootGrid, T("ActivityCalendar.Title"));
         AutomationProperties.SetName(DialogTitleText, DialogTitleText.Text);
         AutomationProperties.SetName(DialogSubtitleText, DialogSubtitleText.Text);
         AutomationProperties.SetName(ActivityCalendarView, T("ActivityCalendar.Title"));
+        AutomationProperties.SetName(OpenGalleryButton, OpenGalleryButtonText.Text);
         AutomationProperties.SetName(ReprocessAiButton, ReprocessAiButtonText.Text);
         AutomationProperties.SetName(CloseButton, T("About.Close"));
     }
@@ -322,10 +401,11 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
     private static DateOnly FromCalendarDate(DateTimeOffset date) => DateOnly.FromDateTime(date.Date);
 
-    private static Color ActivityDensityColor() =>
-        Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue("SystemAccentColor", out var resource) && resource is Color color
-            ? color
-            : Colors.CornflowerBlue;
+    private static string BuildInstallationAccessibleLabel(IEnumerable<InstallationProfile> installations) =>
+        string.Join(", ", installations.Select(profile =>
+            string.Equals(profile.FriendlyName, profile.MachineName, StringComparison.OrdinalIgnoreCase)
+                ? profile.FriendlyName
+                : $"{profile.FriendlyName} ({profile.MachineName})"));
 
     private async void CloseButton_Click(object sender, RoutedEventArgs e)
     {
@@ -334,7 +414,22 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
     private async void ReprocessAiButton_Click(object sender, RoutedEventArgs e)
     {
-        _result = new ActivityCalendarDialogResult(_selectedDate);
+        _result = new ActivityCalendarDialogResult(_selectedDate, ActivityCalendarAction.ReprocessDescriptions);
+        await CompleteAsync();
+    }
+
+    private async void OpenGalleryButton_Click(object sender, RoutedEventArgs e) =>
+        await OpenScreenshotsAsync(_selectedDate);
+
+    private async Task OpenScreenshotsAsync(DateOnly date)
+    {
+        if (_isCompleting)
+        {
+            return;
+        }
+
+        _selectedDate = date;
+        _result = new ActivityCalendarDialogResult(date, ActivityCalendarAction.OpenScreenshots);
         await CompleteAsync();
     }
 
@@ -358,6 +453,8 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
         _isCompleting = true;
         CloseButton.IsEnabled = false;
+        OpenGalleryButton.IsEnabled = false;
+        ReprocessAiButton.IsEnabled = false;
         _lifetimeCancellation.Cancel();
         await _placement.SaveAsync(CancellationToken.None);
         Close();

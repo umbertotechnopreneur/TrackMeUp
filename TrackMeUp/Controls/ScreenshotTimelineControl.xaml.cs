@@ -83,10 +83,14 @@ public sealed partial class ScreenshotTimelineControl : UserControl
         }
 
         var localTime = item.CapturedAt.ToLocalTime();
+        var installation = item.Installation
+            ?? throw new InvalidDataException("Screenshot installation provenance is required by the timeline.");
         return new ScreenshotTimelineEntry(
             item.Path,
             _strings.Format("Screenshots.Timeline.Time", localTime),
-            _strings.Format("Screenshots.Timeline.ItemAccessible", index + 1, localTime));
+            $"{_strings.Format("Screenshots.Timeline.ItemAccessible", index + 1, localTime)} · {installation.FriendlyName} · {installation.MachineName}",
+            InstallationAppearance.CreateAccentBrush(installation.Color),
+            InstallationAppearance.GetIconGlyph(installation.Icon));
     }
 
     private void FilmstripList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -505,5 +509,7 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     private sealed record ScreenshotTimelineEntry(
         string Path,
         string TimeText,
-        string AutomationName);
+        string AutomationName,
+        SolidColorBrush InstallationBrush,
+        string InstallationGlyph);
 }

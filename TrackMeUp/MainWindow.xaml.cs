@@ -98,6 +98,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the user requests the retained screenshot gallery surface.</summary>
     public event EventHandler? ScreenshotGalleryRequested;
 
+    /// <summary>Occurs when the user requests the retained screenshot gallery for a specific day.</summary>
+    public event EventHandler<ScreenshotGalleryDateRequestedEventArgs>? ScreenshotGalleryDateRequested;
+
     /// <summary>Occurs when the user requests the retained screenshot gallery.</summary>
     public event EventHandler<ScreenshotPreviewRequestedEventArgs>? ScreenshotsRequested;
 
@@ -742,7 +745,11 @@ public sealed partial class MainWindow : Window
     private async void ActivityCalendarMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        await _dialogs.ShowActivityCalendarAsync(_application, this, RootGrid.RequestedTheme, _strings);
+        var selectedDate = await _dialogs.ShowActivityCalendarAsync(_application, this, RootGrid.RequestedTheme, _strings);
+        if (selectedDate is { } date)
+        {
+            ScreenshotGalleryDateRequested?.Invoke(this, new ScreenshotGalleryDateRequestedEventArgs(date));
+        }
     }
 
     /// <summary>Forwards search-window activation to the application composition root.</summary>
@@ -1844,4 +1851,10 @@ public sealed class ScreenshotPreviewRequestedEventArgs(string screenshotPath, D
     public string ScreenshotPath { get; } = screenshotPath;
 
     public DateTimeOffset CapturedAt { get; } = capturedAt;
+}
+
+/// <summary>Identifies the day that the screenshot inspector should explore.</summary>
+public sealed class ScreenshotGalleryDateRequestedEventArgs(DateOnly date) : EventArgs
+{
+    public DateOnly Date { get; } = date;
 }

@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using TrackMeUp.Application;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
@@ -64,19 +65,35 @@ public sealed partial class ScreenshotHeaderControl : UserControl
         SetCommandLabel(DeleteSnapshotButton, "Screenshots.Toolbar.DeleteSnapshot");
         AutomationProperties.SetName(ScreenshotToolbar, _strings.Translate("Screenshots.Metadata"));
         UpdateMetadataAccessibility();
+        UpdateInstallationAccessibility();
     }
 
     /// <summary>Renders the selected capture metadata as plain toolbar content.</summary>
-    public void SetMetadata(string dateText, string timeText, string applicationText)
+    public void SetMetadata(
+        string dateText,
+        string timeText,
+        string applicationText,
+        InstallationProfile installation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dateText);
         ArgumentException.ThrowIfNullOrWhiteSpace(timeText);
         ArgumentException.ThrowIfNullOrWhiteSpace(applicationText);
+        ArgumentNullException.ThrowIfNull(installation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(installation.FriendlyName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(installation.MachineName);
         MetadataDateValueText.Text = dateText;
         MetadataTimeValueText.Text = timeText;
         MetadataAppValueText.Text = applicationText;
         MetadataPanel.Visibility = Visibility.Visible;
+        InstallationFriendlyNameText.Text = installation.FriendlyName;
+        InstallationMachineNameText.Text = installation.MachineName;
+        var accentBrush = InstallationAppearance.CreateAccentBrush(installation.Color);
+        InstallationIconBadge.BorderBrush = accentBrush;
+        InstallationIcon.Foreground = accentBrush;
+        InstallationIcon.Glyph = InstallationAppearance.GetIconGlyph(installation.Icon);
+        InstallationProvenanceBadge.Visibility = Visibility.Visible;
         UpdateMetadataAccessibility();
+        UpdateInstallationAccessibility();
     }
 
     /// <summary>Clears toolbar metadata when no screenshot is selected.</summary>
@@ -86,7 +103,11 @@ public sealed partial class ScreenshotHeaderControl : UserControl
         MetadataTimeValueText.Text = "--";
         MetadataAppValueText.Text = "--";
         MetadataPanel.Visibility = Visibility.Collapsed;
+        InstallationFriendlyNameText.Text = string.Empty;
+        InstallationMachineNameText.Text = string.Empty;
+        InstallationProvenanceBadge.Visibility = Visibility.Collapsed;
         UpdateMetadataAccessibility();
+        UpdateInstallationAccessibility();
     }
 
     /// <summary>Synchronizes zoom and selected-image command state with the passive viewer.</summary>
@@ -147,6 +168,16 @@ public sealed partial class ScreenshotHeaderControl : UserControl
         AutomationProperties.SetName(MetadataDateItem, $"{_strings.Translate("Screenshots.DateLabel")}: {MetadataDateValueText.Text}");
         AutomationProperties.SetName(MetadataTimeItem, $"{_strings.Translate("Screenshots.TimeLabel")}: {MetadataTimeValueText.Text}");
         AutomationProperties.SetName(MetadataApplicationItem, $"{_strings.Translate("Screenshots.ApplicationLabel")}: {MetadataAppValueText.Text}");
+    }
+
+    private void UpdateInstallationAccessibility()
+    {
+        var accessibleName = InstallationProvenanceBadge.Visibility == Visibility.Visible
+            ? $"{_strings.Translate("Screenshots.Installation")}: {InstallationFriendlyNameText.Text} · {InstallationMachineNameText.Text}"
+            : _strings.Translate("Screenshots.Installation");
+        AutomationProperties.SetName(InstallationProvenanceBadge, accessibleName);
+        AutomationProperties.SetHelpText(InstallationProvenanceBadge, accessibleName);
+        ToolTipService.SetToolTip(InstallationProvenanceBadge, accessibleName);
     }
 
     private void ZoomOutButton_Click(object sender, RoutedEventArgs e) => ZoomOutRequested?.Invoke(this, EventArgs.Empty);

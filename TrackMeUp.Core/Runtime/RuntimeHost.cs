@@ -257,6 +257,23 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.gallery.latest" => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
                 "screenshot.storage_migration.status.v1" => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
                 "screenshot.storage_migration.run.v1" => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
+                "installations.list.v1" => ToResponse(request, await _application.GetInstallationProfilesAsync(cancellationToken)),
+                "installations.update.v1" => ToResponse(request, await _application.UpdateInstallationProfileAsync(
+                    Read<UpdateInstallationProfileRequest>(request.Payload)
+                        ?? throw new InvalidDataException("An installation profile update payload is required."),
+                    cancellationToken)),
+                "archive.export.v1" => ToResponse(request, await _application.ExportDataArchiveAsync(
+                    Read<DataArchiveExportRequest>(request.Payload)
+                        ?? throw new InvalidDataException("An archive export payload is required."),
+                    cancellationToken)),
+                "archive.import.preview.v1" => ToResponse(request, await _application.PreviewDataArchiveImportAsync(
+                    Read<DataArchiveImportPreviewRequest>(request.Payload)
+                        ?? throw new InvalidDataException("An archive import preview payload is required."),
+                    cancellationToken)),
+                "archive.import.merge.v1" => ToResponse(request, await _application.ImportDataArchiveAsync(
+                    Read<DataArchiveImportRequest>(request.Payload)
+                        ?? throw new InvalidDataException("An archive import payload is required."),
+                    cancellationToken)),
                 "screenshot.delete" => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "snapshot.delete" => ToResponse(request, await _application.DeleteSnapshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
@@ -510,6 +527,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotReprocessPreviewTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotStorageMigrationTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
@@ -581,6 +599,29 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) =>
         SendAsync<ScreenshotStorageMigrationResult>("screenshot.storage_migration.run.v1", null, cancellationToken, ScreenshotStorageMigrationTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(CancellationToken cancellationToken) =>
+        SendAsync<IReadOnlyList<InstallationProfile>>("installations.list.v1", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<InstallationProfile>> UpdateInstallationProfileAsync(
+        UpdateInstallationProfileRequest request,
+        CancellationToken cancellationToken) =>
+        SendAsync<InstallationProfile>("installations.update.v1", request, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<DataArchiveExportResult>> ExportDataArchiveAsync(
+        DataArchiveExportRequest request,
+        CancellationToken cancellationToken) =>
+        SendAsync<DataArchiveExportResult>("archive.export.v1", request, cancellationToken, DataArchiveTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<DataArchiveImportPlan>> PreviewDataArchiveImportAsync(
+        DataArchiveImportPreviewRequest request,
+        CancellationToken cancellationToken) =>
+        SendAsync<DataArchiveImportPlan>("archive.import.preview.v1", request, cancellationToken, DataArchiveTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<DataArchiveImportResult>> ImportDataArchiveAsync(
+        DataArchiveImportRequest request,
+        CancellationToken cancellationToken) =>
+        SendAsync<DataArchiveImportResult>("archive.import.merge.v1", request, cancellationToken, DataArchiveTimeout);
     /// <inheritdoc />
     public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.delete", new { screenshotPath }, cancellationToken);
     /// <inheritdoc />

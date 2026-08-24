@@ -56,6 +56,7 @@ public sealed class ReportAggregationTests
             Assert.Single(snapshot.Calendar);
             Assert.False(snapshot.Calendar[0].HasData);
             Assert.Null(snapshot.Calendar[0].ActivityScore);
+            Assert.Empty(snapshot.Calendar[0].Installations!);
             Assert.Equal(168, snapshot.HourOfWeek.Count);
             Assert.All(snapshot.HourOfWeek, cell => Assert.False(cell.HasData));
             Assert.Empty(snapshot.Applications);
@@ -67,13 +68,13 @@ public sealed class ReportAggregationTests
     {
         WithStore((store, reports) =>
         {
-            store.AppendSample(Sample(
+            store.AppendSample(Sample(store,
                 new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero),
                 durationSeconds: 60,
                 application: "Editor",
                 keyPresses: 40,
                 mouseClicks: 8));
-            store.AppendSample(Sample(
+            store.AppendSample(Sample(store,
                 new DateTimeOffset(2026, 2, 2, 12, 0, 0, TimeSpan.Zero),
                 durationSeconds: 60,
                 application: "Desktop",
@@ -95,13 +96,129 @@ public sealed class ReportAggregationTests
     }
 
     [Fact]
+    public void Build_UnionsOverlappingInstallationsAndKeepsEventCountsAdditive()
+    {
+        WithStore((store, reports) =>
+        {
+            var intervalEnd = new DateTimeOffset(2026, 2, 1, 12, 1, 0, TimeSpan.Zero);
+            var installationA = InsertInstallationProfile(store, "Work laptop");
+            var installationB = InsertInstallationProfile(store, "Home desktop");
+            store.AppendSample(Sample(store,
+                intervalEnd,
+                durationSeconds: 60,
+                application: "Editor",
+                keyPresses: 4,
+                mouseClicks: 1,
+                installationId: installationA.InstallationId));
+            store.AppendSample(Sample(store,
+                intervalEnd,
+                durationSeconds: 60,
+                application: "Desktop",
+                keyPresses: 6,
+                mouseClicks: 2,
+                state: "idle",
+                installationId: installationB.InstallationId));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(4, snapshot.ContractVersion);
+            Assert.Equal(60, snapshot.Totals.TrackedSeconds);
+            Assert.Equal(60, snapshot.Totals.ActiveSeconds);
+            Assert.Equal(0, snapshot.Totals.IdleSeconds);
+            Assert.Equal(10, snapshot.Totals.KeyPresses);
+            Assert.Equal(3, snapshot.Totals.MouseClicks);
+            Assert.Equal(2, snapshot.Quality.SampleCount);
+            Assert.Equal(60, snapshot.Quality.CoveredSeconds);
+
+            var day = Assert.Single(snapshot.Calendar);
+            Assert.Equal(2, day.SampleCount);
+            Assert.Equal(day.TrackedSeconds, day.ActiveSeconds + day.IdleSeconds);
+            Assert.Equal(
+                [installationB.InstallationId, installationA.InstallationId],
+                day.Installations!.Select(profile => profile.InstallationId));
+            Assert.Equal(["Home desktop", "Work laptop"], day.Installations!.Select(profile => profile.FriendlyName));
+            var sundayNoon = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 12);
+            Assert.Equal(60, sundayNoon.TrackedSeconds);
+            Assert.Equal(60, sundayNoon.ActiveSeconds);
+            Assert.Equal(0, sundayNoon.IdleSeconds);
+        });
+    }
+
+    [Fact]
+    public void Build_FailsFastWhenActivityReferencesUnknownInstallationProfile()
+    {
+        WithStore((store, reports) =>
+        {
+            store.AppendSample(Sample(
+                store,
+                new DateTimeOffset(2026, 2, 1, 12, 1, 0, TimeSpan.Zero),
+                durationSeconds: 60,
+                application: "Editor",
+                installationId: Guid.NewGuid().ToString("N")));
+
+            var exception = Assert.Throws<InvalidDataException>(() => reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None));
+
+            Assert.Contains("unknown installation profile", exception.Message, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void Build_UnionsPartialCoverageButKeepsApplicationSlicesIndependent()
+    {
+        WithStore((store, reports) =>
+        {
+            var intervalStart = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero);
+            var installationA = InsertInstallationProfile(store, "Editing PC");
+            var installationB = InsertInstallationProfile(store, "Browser PC");
+            var installationC = InsertInstallationProfile(store, "Idle PC");
+            store.AppendSample(Sample(store,
+                intervalStart.AddSeconds(5),
+                durationSeconds: 5,
+                application: "Editor",
+                installationId: installationA.InstallationId));
+            store.AppendSample(Sample(store,
+                intervalStart.AddSeconds(8),
+                durationSeconds: 5,
+                application: "Browser",
+                installationId: installationB.InstallationId));
+            store.AppendSample(Sample(store,
+                intervalStart.AddSeconds(12),
+                durationSeconds: 5,
+                application: "Desktop",
+                state: "idle",
+                installationId: installationC.InstallationId));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 1), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(12, snapshot.Totals.TrackedSeconds);
+            Assert.Equal(8, snapshot.Totals.ActiveSeconds);
+            Assert.Equal(4, snapshot.Totals.IdleSeconds);
+            Assert.Equal(3, snapshot.Quality.SampleCount);
+            Assert.Equal(12, snapshot.Quality.CoveredSeconds);
+            Assert.Equal(5, Assert.Single(snapshot.Applications, item => item.Application == "Editor").ActiveSeconds);
+            Assert.Equal(5, Assert.Single(snapshot.Applications, item => item.Application == "Browser").ActiveSeconds);
+            Assert.Equal(10, snapshot.Applications.Sum(item => item.ActiveSeconds));
+        });
+    }
+
+    [Fact]
     public void Get24HourActivityTrend_RequiresFullCoverageAndBucketsActiveSeconds()
     {
         WithStore((store, _) =>
         {
             var windowEnd = new DateTimeOffset(2026, 2, 2, 0, 0, 0, TimeSpan.Zero);
             var windowStart = windowEnd.AddHours(-24);
-            store.AppendSample(Sample(windowStart.AddHours(1), 3600, "first-hour"));
+            store.AppendSample(Sample(store, windowStart.AddHours(1), 3600, "first-hour"));
 
             var incomplete = store.Get24HourActivityTrend(windowEnd);
 
@@ -109,7 +226,7 @@ public sealed class ReportAggregationTests
 
             for (var hour = 0; hour < 24; hour++)
             {
-                store.AppendSample(Sample(windowStart.AddHours(hour + 1), 3600, $"hour-{hour}"));
+                store.AppendSample(Sample(store, windowStart.AddHours(hour + 1), 3600, $"hour-{hour}"));
             }
 
             var trend = store.Get24HourActivityTrend(windowEnd);
@@ -340,7 +457,7 @@ public sealed class ReportAggregationTests
     {
         WithStore((store, reports) =>
         {
-            store.AppendSample(Sample(
+            store.AppendSample(Sample(store,
                 new DateTimeOffset(2026, 2, 2, 0, 0, 5, TimeSpan.Zero),
                 durationSeconds: 10,
                 application: "Editor",
@@ -378,7 +495,7 @@ public sealed class ReportAggregationTests
     {
         WithStore((store, reports) =>
         {
-            store.AppendSample(Sample(
+            store.AppendSample(Sample(store,
                 new DateTimeOffset(2026, 3, 8, 7, 0, 5, TimeSpan.Zero),
                 durationSeconds: 10,
                 application: "Editor"));
@@ -404,7 +521,7 @@ public sealed class ReportAggregationTests
         {
             for (var index = 1; index <= 14; index++)
             {
-                store.AppendSample(Sample(
+                store.AppendSample(Sample(store,
                     new DateTimeOffset(2026, 2, 1, 12, index, 0, TimeSpan.Zero),
                     durationSeconds: index,
                     application: $"App{index:00}"));
@@ -430,11 +547,11 @@ public sealed class ReportAggregationTests
     {
         WithStore((store, reports) =>
         {
-            store.AppendSample(Sample(
+            store.AppendSample(Sample(store,
                 new DateTimeOffset(2026, 2, 1, 12, 0, 10, TimeSpan.Zero),
                 durationSeconds: 10,
                 application: "Editor"));
-            store.AppendSample(Sample(
+            store.AppendSample(Sample(store,
                 new DateTimeOffset(2026, 2, 8, 12, 0, 21, TimeSpan.Zero),
                 durationSeconds: 21,
                 application: "Editor"));
@@ -677,12 +794,14 @@ public sealed class ReportAggregationTests
     }
 
     private static ActivitySample Sample(
+        LocalStore store,
         DateTimeOffset timestamp,
         int durationSeconds,
         string application,
         long keyPresses = 0,
         long mouseClicks = 0,
-        string state = "active") => new(
+        string state = "active",
+        string? installationId = null) => new(
             timestamp,
             durationSeconds,
             state,
@@ -690,9 +809,40 @@ public sealed class ReportAggregationTests
             application,
             "private context",
             "private window title",
-            "test-installation",
+            installationId ?? store.LoadSettings().InstallationId,
             keyPresses,
             mouseClicks);
+
+    private static InstallationProfile InsertInstallationProfile(LocalStore store, string friendlyName)
+    {
+        var observedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var profile = InstallationProfileCatalog.CreateDefault(
+            Guid.NewGuid().ToString("N"),
+            friendlyName.Replace(' ', '-'),
+            observedAt) with
+        {
+            FriendlyName = friendlyName
+        };
+        using var connection = new SqliteConnection($"Data Source={store.ActivityDatabasePath};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO installation_profiles (
+                installation_id, machine_name, friendly_name, color, icon,
+                first_seen_utc_ticks, updated_utc_ticks, profile_revision)
+            VALUES ($id, $machine, $friendly, $color, $icon, $firstSeen, $updated, $revision);
+            """;
+        command.Parameters.AddWithValue("$id", profile.InstallationId);
+        command.Parameters.AddWithValue("$machine", profile.MachineName);
+        command.Parameters.AddWithValue("$friendly", profile.FriendlyName);
+        command.Parameters.AddWithValue("$color", profile.Color);
+        command.Parameters.AddWithValue("$icon", profile.Icon);
+        command.Parameters.AddWithValue("$firstSeen", profile.FirstSeenAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$updated", profile.UpdatedAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$revision", profile.Revision);
+        command.ExecuteNonQuery();
+        return profile;
+    }
 
     private static AiRequestUsageRecord AiUsage(
         DateTimeOffset occurredAt,

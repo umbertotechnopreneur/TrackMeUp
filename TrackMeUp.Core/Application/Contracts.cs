@@ -146,7 +146,8 @@ public sealed record ScreenshotGalleryItem(
     string? ScreenName = null,
     long? MouseClicks = null,
     int? CpuUsagePercent = null,
-    int? GpuUsagePercent = null);
+    int? GpuUsagePercent = null,
+    InstallationProfile? Installation = null);
 
 /// <summary>Contains telemetry averaged between the previous retained screenshot and the current capture.</summary>
 public sealed record ScreenshotIntervalTelemetry(
@@ -156,7 +157,10 @@ public sealed record ScreenshotIntervalTelemetry(
     int? GpuUsagePercent);
 
 /// <summary>Describes one distinct local activity label observed during a screenshot interval.</summary>
-public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label);
+public sealed record ActivityLabelSample(
+    DateTimeOffset SampledAt,
+    string Label,
+    InstallationProfile? Installation = null);
 
 /// <summary>Contains the retained screenshot projection for one local calendar date.</summary>
 public sealed record ScreenshotGallery(
@@ -168,6 +172,91 @@ public sealed record ScreenshotStorageMigrationStatus(bool Required, int Artifac
 
 /// <summary>Reports the number of owned screenshot artifacts moved by one completed layout migration.</summary>
 public sealed record ScreenshotStorageMigrationResult(int MovedArtifactCount);
+
+/// <summary>Contains the durable identity and user-selected appearance of one TrackMeUp installation.</summary>
+public sealed record InstallationProfile(
+    string InstallationId,
+    string MachineName,
+    string FriendlyName,
+    string Color,
+    string Icon,
+    DateTimeOffset FirstSeenAt,
+    DateTimeOffset UpdatedAt,
+    long Revision = 1,
+    bool IsCurrent = false);
+
+/// <summary>Requests validated user-facing appearance changes for one known installation.</summary>
+public sealed record UpdateInstallationProfileRequest(
+    string InstallationId,
+    string FriendlyName,
+    string Color,
+    string Icon);
+
+/// <summary>Requests a portable archive for all data or one inclusive local-date range.</summary>
+public sealed record DataArchiveExportRequest(
+    string DestinationPath,
+    DateOnly? From = null,
+    DateOnly? ToInclusive = null,
+    bool IncludeScreenshots = true);
+
+/// <summary>Summarizes one successfully written portable TrackMeUp archive.</summary>
+public sealed record DataArchiveExportResult(
+    Guid ArchiveId,
+    string Path,
+    DateTimeOffset CreatedAt,
+    DateOnly? From,
+    DateOnly? ToInclusive,
+    int InstallationCount,
+    int ActivitySampleCount,
+    int AiRequestCount,
+    int AiAnalysisCount,
+    int ScreenshotFileCount,
+    long ScreenshotBytes);
+
+/// <summary>Requests a validated, non-mutating preview of one portable TrackMeUp archive.</summary>
+public sealed record DataArchiveImportPreviewRequest(string ArchivePath);
+
+/// <summary>Describes one installation contained in a portable archive.</summary>
+public sealed record DataArchiveInstallationSummary(
+    string InstallationId,
+    string MachineName,
+    string FriendlyName,
+    string Color,
+    string Icon);
+
+/// <summary>Contains a short-lived immutable plan that must be confirmed before archive merge.</summary>
+public sealed record DataArchiveImportPlan(
+    Guid PlanId,
+    Guid ArchiveId,
+    DateTimeOffset ExpiresAt,
+    string ArchiveFingerprint,
+    DateTimeOffset CreatedAt,
+    DateOnly? From,
+    DateOnly? ToInclusive,
+    IReadOnlyList<DataArchiveInstallationSummary> Installations,
+    int ActivitySampleCount,
+    int AiRequestCount,
+    int AiAnalysisCount,
+    int ScreenshotFileCount,
+    long ScreenshotBytes,
+    bool AlreadyImported);
+
+/// <summary>Requests the confirmed merge of a previously previewed archive plan.</summary>
+public sealed record DataArchiveImportRequest(Guid PlanId);
+
+/// <summary>Reports inserted and idempotently skipped records after one atomic archive merge.</summary>
+public sealed record DataArchiveImportResult(
+    Guid ArchiveId,
+    int AddedInstallationCount,
+    int AddedActivitySampleCount,
+    int SkippedActivitySampleCount,
+    int AddedAiRequestCount,
+    int SkippedAiRequestCount,
+    int AddedAiAnalysisCount,
+    int SkippedAiAnalysisCount,
+    int AddedScreenshotFileCount,
+    int SkippedScreenshotFileCount,
+    long AddedScreenshotBytes);
 
 /// <summary>Requests a preview of retained screenshots without AI descriptions for one local calendar date.</summary>
 public sealed record AiScreenshotReprocessRequest(DateOnly Date);
@@ -540,6 +629,29 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Migrates owned screenshot artifacts and their durable path references to the current layout.</summary>
     Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken);
+
+    /// <summary>Lists every local or imported installation profile used to identify activity provenance.</summary>
+    Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(CancellationToken cancellationToken);
+
+    /// <summary>Updates the user-facing name, color, and icon of one known installation.</summary>
+    Task<OperationResult<InstallationProfile>> UpdateInstallationProfileAsync(
+        UpdateInstallationProfileRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>Writes one portable SQLite and screenshot archive to the requested destination.</summary>
+    Task<OperationResult<DataArchiveExportResult>> ExportDataArchiveAsync(
+        DataArchiveExportRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>Validates an archive without changing local data and creates a short-lived merge plan.</summary>
+    Task<OperationResult<DataArchiveImportPlan>> PreviewDataArchiveImportAsync(
+        DataArchiveImportPreviewRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>Merges a previously previewed archive after fingerprint and collision revalidation.</summary>
+    Task<OperationResult<DataArchiveImportResult>> ImportDataArchiveAsync(
+        DataArchiveImportRequest request,
+        CancellationToken cancellationToken);
 
     /// <summary>Builds a short-lived, provider-call-free plan for screenshots without AI descriptions on one local date.</summary>
     Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(

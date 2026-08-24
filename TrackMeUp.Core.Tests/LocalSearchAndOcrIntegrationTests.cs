@@ -211,7 +211,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             }
 
             var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
-            Assert.Contains("Unsupported activity database schema version 5; expected 7", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("Unsupported activity database schema version 5; expected 8", exception.Message, StringComparison.Ordinal);
         }
         finally
         {

@@ -53,6 +53,7 @@ public sealed partial class ScreenshotWindow : Window
     private double _detailsResizeStartPointerX;
     private double _detailsResizeStartWidth;
     private string? _requestedScreenshotPath;
+    private DateOnly? _requestedDate;
 
     private CalendarDatePicker SelectedDatePicker => HeaderSection.DatePicker;
 
@@ -81,7 +82,8 @@ public sealed partial class ScreenshotWindow : Window
         ITrackMeUpApplication application,
         string? launchTheme = null,
         string? requestedScreenshotPath = null,
-        DateTimeOffset? requestedCapturedAt = null)
+        DateTimeOffset? requestedCapturedAt = null,
+        DateOnly? requestedDate = null)
     {
         if ((requestedScreenshotPath is null) != (requestedCapturedAt is null))
         {
@@ -93,12 +95,22 @@ public sealed partial class ScreenshotWindow : Window
             throw new ArgumentException("The targeted screenshot path cannot be empty.", nameof(requestedScreenshotPath));
         }
 
+        if (requestedDate is not null && requestedScreenshotPath is not null)
+        {
+            throw new ArgumentException("A gallery request cannot target both a day and a screenshot.");
+        }
+
         _application = application;
         _launchTheme = launchTheme;
         _requestedScreenshotPath = requestedScreenshotPath;
+        _requestedDate = requestedDate;
         if (requestedCapturedAt is { } capturedAt)
         {
             _selectedDate = DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime);
+        }
+        else if (requestedDate is { } date)
+        {
+            _selectedDate = date;
         }
 
         InitializeComponent();
@@ -140,6 +152,7 @@ public sealed partial class ScreenshotWindow : Window
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(screenshotPath);
         _requestedScreenshotPath = screenshotPath;
+        _requestedDate = null;
         var selectedDate = DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime);
         SetSelectedDate(selectedDate);
         if (_initialized)
@@ -153,10 +166,24 @@ public sealed partial class ScreenshotWindow : Window
     public async Task FocusLatestAsync()
     {
         _requestedScreenshotPath = null;
+        _requestedDate = null;
         if (_initialized)
         {
             await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
             await LoadGalleryAsync(null);
+        }
+    }
+
+    /// <summary>Selects a day when an already-open screenshot inspector is reused.</summary>
+    public async Task FocusDateAsync(DateOnly date)
+    {
+        _requestedScreenshotPath = null;
+        _requestedDate = date;
+        SetSelectedDate(date);
+        if (_initialized)
+        {
+            await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
+            await LoadGalleryAsync(date);
         }
     }
 
@@ -210,7 +237,7 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
-        await LoadGalleryAsync(_requestedScreenshotPath is null ? null : _selectedDate);
+        await LoadGalleryAsync(_requestedScreenshotPath is null && _requestedDate is null ? null : _selectedDate);
     }
 
     private async Task RefreshPrivacyStatusAsync(CancellationToken cancellationToken)
@@ -463,12 +490,15 @@ public sealed partial class ScreenshotWindow : Window
 
         var culture = _strings.Culture;
         var localTime = item.CapturedAt.ToLocalTime();
+        var installation = item.Installation
+            ?? throw new InvalidDataException("Screenshot installation provenance is required by the header.");
         HeaderSection.SetMetadata(
             FormatMetadataDate(localTime, culture),
             localTime.ToString("t", culture),
             string.IsNullOrWhiteSpace(item.ForegroundApplication)
                 ? T("Screenshots.Application.Desktop")
-                : item.ForegroundApplication);
+                : item.ForegroundApplication,
+            installation);
         var captureOrigin = FormatCaptureOrigin(item.CaptureOrigin);
         _selectedDetailsState = ScreenshotDetailsProjection.Create(
             item,

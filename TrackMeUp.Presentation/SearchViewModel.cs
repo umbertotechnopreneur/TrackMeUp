@@ -19,10 +19,21 @@ public sealed record ScreenshotSearchResult(
     string ActivityDisplay,
     string MatchLabel,
     float Score,
-    int MatchPercent)
+    int MatchPercent,
+    string? InstallationName = null,
+    string? InstallationMachineName = null,
+    string? InstallationColor = null,
+    string? InstallationIcon = null)
 {
     /// <summary>Gets the Lucene relevance normalized against the best hit in the current query.</summary>
     public string MatchPercentDisplay => $"{MatchPercent}%";
+
+    /// <summary>Gets the compact installation provenance rendered beside the capture timestamp.</summary>
+    public string InstallationDisplay => string.IsNullOrWhiteSpace(InstallationName)
+        ? string.Empty
+        : string.Equals(InstallationName, InstallationMachineName, StringComparison.Ordinal)
+            ? InstallationName
+            : $"{InstallationName} · {InstallationMachineName}";
 }
 
 /// <summary>Contains one safe, compact suggestion prepared for the command-palette popup.</summary>
@@ -291,6 +302,7 @@ public sealed class SearchViewModel : ViewModelBase
         var mouseClicks = ReadNonNegativeInt64(document, SearchAttributeKeys.MouseClicks);
         var cpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.CpuUsagePercent);
         var gpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.GpuUsagePercent);
+        var installation = ReadInstallation(document);
         var snippet = BuildSnippet(document, query);
         var activeWindowDisplay = windowTitle == "—" || SnippetRepresentsWindowTitle(snippet, windowTitle)
             ? application
@@ -308,7 +320,35 @@ public sealed class SearchViewModel : ViewModelBase
             FormatActivity(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture, formatClickCount),
             matchLabel,
             hit.Score,
-            matchPercent);
+            matchPercent,
+            installation?.FriendlyName,
+            installation?.MachineName,
+            installation?.Color,
+            installation?.Icon);
+    }
+
+    private static SearchInstallation? ReadInstallation(SearchDocument document)
+    {
+        document.AttributesRaw.TryGetValue(SearchAttributeKeys.InstallationId, out var installationId);
+        document.AttributesRaw.TryGetValue(SearchAttributeKeys.InstallationFriendlyName, out var friendlyName);
+        document.AttributesRaw.TryGetValue(SearchAttributeKeys.InstallationMachineName, out var machineName);
+        document.AttributesRaw.TryGetValue(SearchAttributeKeys.InstallationColor, out var color);
+        document.AttributesRaw.TryGetValue(SearchAttributeKeys.InstallationIcon, out var icon);
+        if (installationId is null && friendlyName is null && machineName is null && color is null && icon is null)
+        {
+            return null;
+        }
+
+        if (!Guid.TryParseExact(installationId, "N", out _)
+            || string.IsNullOrWhiteSpace(friendlyName)
+            || string.IsNullOrWhiteSpace(machineName)
+            || !InstallationProfileCatalog.Colors.Contains(color, StringComparer.Ordinal)
+            || !InstallationProfileCatalog.Icons.Contains(icon, StringComparer.Ordinal))
+        {
+            throw new InvalidDataException($"Search document '{document.Id}' has invalid installation provenance.");
+        }
+
+        return new SearchInstallation(friendlyName, machineName, color!, icon!);
     }
 
     private static int CalculateMatchPercent(float score, float highestScore)
@@ -406,4 +446,10 @@ public sealed class SearchViewModel : ViewModelBase
         var snippet = compact.Substring(start, length).Trim();
         return $"{(start > 0 ? "…" : string.Empty)}{snippet}{(start + length < compact.Length ? "…" : string.Empty)}";
     }
+
+    private sealed record SearchInstallation(
+        string FriendlyName,
+        string MachineName,
+        string Color,
+        string Icon);
 }

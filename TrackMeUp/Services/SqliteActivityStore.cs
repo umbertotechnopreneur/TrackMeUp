@@ -11,10 +11,12 @@ namespace TrackMeUp.Services;
 internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
-    private const int SchemaVersion = 7;
-    private const int PreviousSchemaVersion = 6;
+    private const int SchemaVersion = 8;
+    private const int PreviousSchemaVersion = 7;
     private const long FixedEstimatedRowBytes = 96;
-    private static readonly SchemaColumn[] ExpectedActivityColumns =
+    private const string LegacyActivitySampleIdentityNamespace = "trackmeup.activity-sample.v1";
+    private const string ScreenshotCaptureBackfillMarker = "installation.capture_backfill.v1";
+    private static readonly SchemaColumn[] ExpectedActivityColumnsV7 =
     [
         new("id", "INTEGER", false, 1),
         new("timestamp_utc_ticks", "INTEGER", true, 0),
@@ -31,6 +33,46 @@ internal sealed class SqliteActivityStore
         new("mouse_clicks", "INTEGER", true, 0),
         new("attributes_json", "TEXT", false, 0),
         new("estimated_bytes", "INTEGER", true, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedActivityColumns =
+    [
+        new("id", "INTEGER", false, 1),
+        new("sample_id", "TEXT", true, 0),
+        .. ExpectedActivityColumnsV7[1..]
+    ];
+
+    private static readonly SchemaColumn[] ExpectedInstallationProfileColumns =
+    [
+        new("installation_id", "TEXT", true, 1),
+        new("machine_name", "TEXT", true, 0),
+        new("friendly_name", "TEXT", true, 0),
+        new("color", "TEXT", true, 0),
+        new("icon", "TEXT", true, 0),
+        new("first_seen_utc_ticks", "INTEGER", true, 0),
+        new("updated_utc_ticks", "INTEGER", true, 0),
+        new("profile_revision", "INTEGER", true, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedScreenshotCaptureColumns =
+    [
+        new("capture_id", "TEXT", true, 1),
+        new("installation_id", "TEXT", true, 0),
+        new("captured_utc_ticks", "INTEGER", true, 0),
+        new("origin", "TEXT", true, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedArchiveImportColumns =
+    [
+        new("archive_id", "TEXT", true, 1),
+        new("archive_fingerprint", "TEXT", true, 0),
+        new("imported_utc_ticks", "INTEGER", true, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedStoreMetadataColumns =
+    [
+        new("key", "TEXT", true, 1),
+        new("value", "TEXT", true, 0)
     ];
 
     private static readonly string[] ExpectedAiRequestUsageColumns =
@@ -124,10 +166,16 @@ internal sealed class SqliteActivityStore
         new("source_retrieved_utc_ticks", "INTEGER", true, 0)
     ];
 
-    private static readonly HashSet<string> ExpectedActivityIndexes =
+    private static readonly HashSet<string> ExpectedActivityIndexesV7 =
     [
         "ix_activity_samples_start",
         "ix_activity_samples_timestamp"
+    ];
+
+    private static readonly HashSet<string> ExpectedActivityIndexes =
+    [
+        .. ExpectedActivityIndexesV7,
+        "sqlite_autoindex_activity_samples_1"
     ];
 
     private static readonly HashSet<string> ExpectedAiRequestUsageIndexes =
@@ -209,7 +257,7 @@ internal sealed class SqliteActivityStore
         "ix_screenshot_interval_telemetry_capture"
     ];
 
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV7 =
     [
         .. ExpectedApplicationSchemaObjectsV6,
         "ix_screenshot_interval_telemetry_captured",
@@ -219,6 +267,17 @@ internal sealed class SqliteActivityStore
         "ux_ai_reprocess_jobs_active_slot",
         "ai_reprocess_job_items",
         "ix_ai_reprocess_job_items_next"
+    ];
+
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    [
+        .. ExpectedApplicationSchemaObjectsV7,
+        "installation_profiles",
+        "screenshot_captures",
+        "ix_screenshot_captures_installation",
+        "ix_screenshot_captures_captured",
+        "archive_imports",
+        "store_metadata"
     ];
 
     private readonly string _databasePath;
@@ -245,6 +304,468 @@ internal sealed class SqliteActivityStore
     /// <summary>Gets the absolute path of the SQLite activity database.</summary>
     internal string DatabasePath => _databasePath;
 
+    /// <summary>Creates or refreshes the profile tied to the runtime installation without changing its identity.</summary>
+    internal InstallationProfile EnsureCurrentInstallationProfile(InstallationProfile requested)
+    {
+        var profile = InstallationProfileCatalog.ValidatePersisted(requested);
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var existing = LoadInstallationProfile(connection, transaction, profile.InstallationId);
+        InstallationProfile persisted;
+        if (existing is null)
+        {
+            InsertInstallationProfile(connection, transaction, profile);
+            persisted = profile;
+        }
+        else if (!string.Equals(existing.MachineName, profile.MachineName, StringComparison.Ordinal))
+        {
+            var updated = existing with
+            {
+                MachineName = profile.MachineName,
+                FriendlyName = string.Equals(existing.FriendlyName, existing.MachineName, StringComparison.Ordinal)
+                    ? profile.MachineName
+                    : existing.FriendlyName,
+                UpdatedAt = profile.UpdatedAt,
+                Revision = checked(existing.Revision + 1)
+            };
+            UpdateInstallationProfile(connection, transaction, updated, existing.Revision);
+            persisted = updated;
+        }
+        else
+        {
+            persisted = existing;
+        }
+
+        transaction.Commit();
+        return persisted with { IsCurrent = true };
+    }
+
+    /// <summary>Loads the earliest durable timestamp attributable to one installation, when history exists.</summary>
+    internal DateTimeOffset? LoadEarliestInstallationHistoryTimestamp(string installationId)
+    {
+        if (!Guid.TryParseExact(installationId, "N", out var parsedInstallationId))
+        {
+            throw new InvalidDataException("The installation identifier is invalid.");
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT MIN(history_utc_ticks)
+            FROM (
+                SELECT MIN(start_utc_ticks) AS history_utc_ticks
+                FROM activity_samples
+                WHERE installation_id = $installationId
+
+                UNION ALL
+
+                SELECT MIN(timestamp_utc_ticks) AS history_utc_ticks
+                FROM ai_analysis_results
+                WHERE installation_id = $installationId
+
+                UNION ALL
+
+                SELECT MIN(captured_utc_ticks) AS history_utc_ticks
+                FROM screenshot_captures
+                WHERE installation_id = $installationId
+
+                UNION ALL
+
+                SELECT MIN(telemetry.captured_utc_ticks) AS history_utc_ticks
+                FROM screenshot_interval_telemetry AS telemetry
+                WHERE NOT EXISTS (SELECT 1 FROM screenshot_captures)
+            )
+            WHERE history_utc_ticks IS NOT NULL;
+            """;
+        command.Parameters.AddWithValue("$installationId", parsedInstallationId.ToString("N"));
+        // A freshly migrated v7 store has no capture-provenance rows yet, so its legacy telemetry belongs
+        // to the sole local installation and participates until the strict provenance backfill commits.
+        var value = command.ExecuteScalar();
+        return value is null or DBNull
+            ? null
+            : new DateTimeOffset(Convert.ToInt64(value, CultureInfo.InvariantCulture), TimeSpan.Zero);
+    }
+
+    /// <summary>Lists all known installation profiles and marks only the runtime installation as current.</summary>
+    internal IReadOnlyList<InstallationProfile> ListInstallationProfiles(string currentInstallationId)
+    {
+        if (!Guid.TryParseExact(currentInstallationId, "N", out var currentId))
+        {
+            throw new InvalidDataException("The current installation identity is invalid.");
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT installation_id, machine_name, friendly_name, color, icon,
+                   first_seen_utc_ticks, updated_utc_ticks, profile_revision
+            FROM installation_profiles
+            ORDER BY friendly_name COLLATE NOCASE, installation_id;
+            """;
+        var profiles = new List<InstallationProfile>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var profile = ReadInstallationProfile(reader);
+            profiles.Add(profile with
+            {
+                IsCurrent = string.Equals(profile.InstallationId, currentId.ToString("N"), StringComparison.Ordinal)
+            });
+        }
+
+        return profiles;
+    }
+
+    /// <summary>Loads one installation profile, returning null for an unknown identity.</summary>
+    internal InstallationProfile? LoadInstallationProfile(string installationId, string currentInstallationId)
+    {
+        if (!Guid.TryParseExact(installationId, "N", out var parsed)
+            || !Guid.TryParseExact(currentInstallationId, "N", out var current))
+        {
+            throw new InvalidDataException("The installation identity is invalid.");
+        }
+
+        using var connection = OpenConnection();
+        var profile = LoadInstallationProfile(connection, null, parsed.ToString("N"));
+        return profile is null
+            ? null
+            : profile with { IsCurrent = parsed == current };
+    }
+
+    /// <summary>Persists a validated optimistic profile revision.</summary>
+    internal InstallationProfile SaveInstallationProfile(InstallationProfile profile, long previousRevision)
+    {
+        var validated = InstallationProfileCatalog.ValidatePersisted(profile);
+        if (previousRevision < 1 || validated.Revision != checked(previousRevision + 1))
+        {
+            throw new InvalidOperationException("The installation profile revision is invalid.");
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        UpdateInstallationProfile(connection, transaction, validated, previousRevision);
+        transaction.Commit();
+        return validated;
+    }
+
+    /// <summary>Registers the immutable owner and acquisition facts of one retained screenshot capture.</summary>
+    internal void RegisterScreenshotCapture(
+        string captureId,
+        string installationId,
+        DateTimeOffset capturedAt,
+        string origin)
+    {
+        var capture = new ScreenshotCaptureRegistration(captureId, capturedAt, origin).Validate();
+        if (!Guid.TryParseExact(installationId, "N", out var parsedInstallation))
+        {
+            throw new InvalidDataException("Screenshot capture provenance contains an invalid identifier.");
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO screenshot_captures (capture_id, installation_id, captured_utc_ticks, origin)
+            VALUES ($captureId, $installationId, $capturedAt, $origin)
+            ON CONFLICT(capture_id) DO UPDATE SET
+                installation_id = excluded.installation_id,
+                captured_utc_ticks = excluded.captured_utc_ticks,
+                origin = excluded.origin
+            WHERE screenshot_captures.installation_id = excluded.installation_id
+              AND screenshot_captures.captured_utc_ticks = excluded.captured_utc_ticks
+              AND screenshot_captures.origin = excluded.origin;
+            """;
+        command.Parameters.AddWithValue("$captureId", capture.CaptureId);
+        command.Parameters.AddWithValue("$installationId", parsedInstallation.ToString("N"));
+        command.Parameters.AddWithValue("$capturedAt", capture.CapturedAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$origin", capture.Origin);
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidDataException("Screenshot capture provenance conflicts with an existing capture.");
+        }
+    }
+
+    /// <summary>Returns screenshot capture provenance for the requested capture identifiers.</summary>
+    internal IReadOnlyDictionary<string, ScreenshotCaptureProvenance> LoadScreenshotCaptures(
+        IEnumerable<string> captureIds)
+    {
+        ArgumentNullException.ThrowIfNull(captureIds);
+        var ids = captureIds
+            .Distinct(StringComparer.Ordinal)
+            .Select(id => Guid.TryParseExact(id, "N", out var parsed)
+                ? parsed.ToString("N")
+                : throw new InvalidDataException("Screenshot capture provenance contains an invalid identifier."))
+            .ToArray();
+        var result = new Dictionary<string, ScreenshotCaptureProvenance>(StringComparer.Ordinal);
+        if (ids.Length == 0)
+        {
+            return result;
+        }
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        var parameters = AddTextParameters(command, ids, "$capture");
+        command.CommandText = $"""
+            SELECT capture.capture_id, capture.installation_id, capture.captured_utc_ticks, capture.origin,
+                   profile.machine_name, profile.friendly_name, profile.color, profile.icon,
+                   profile.first_seen_utc_ticks, profile.updated_utc_ticks, profile.profile_revision
+            FROM screenshot_captures AS capture
+            JOIN installation_profiles AS profile ON profile.installation_id = capture.installation_id
+            WHERE capture.capture_id IN ({parameters});
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var capture = new ScreenshotCaptureRegistration(
+                reader.GetString(0),
+                new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero),
+                reader.GetString(3)).Validate();
+            var profile = InstallationProfileCatalog.ValidatePersisted(new InstallationProfile(
+                reader.GetString(1),
+                reader.GetString(4),
+                reader.GetString(5),
+                reader.GetString(6),
+                reader.GetString(7),
+                new DateTimeOffset(reader.GetInt64(8), TimeSpan.Zero),
+                new DateTimeOffset(reader.GetInt64(9), TimeSpan.Zero),
+                reader.GetInt64(10)));
+            var provenance = new ScreenshotCaptureProvenance(
+                capture.CaptureId,
+                profile,
+                capture.CapturedAt,
+                capture.Origin);
+            result.Add(provenance.CaptureId, provenance);
+        }
+
+        return result;
+    }
+
+    /// <summary>Reports whether the one-time retained screenshot provenance backfill has committed.</summary>
+    internal bool IsScreenshotCaptureBackfillComplete()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM store_metadata WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", ScreenshotCaptureBackfillMarker);
+        return command.ExecuteScalar() is string;
+    }
+
+    /// <summary>
+    /// Loads the single durable telemetry timestamp for each capture and rejects ambiguous historical rows.
+    /// </summary>
+    internal IReadOnlyDictionary<string, DateTimeOffset> LoadScreenshotCaptureTimestampsFromTelemetry()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT capture_id, MIN(captured_utc_ticks), MAX(captured_utc_ticks)
+            FROM screenshot_interval_telemetry
+            GROUP BY capture_id
+            ORDER BY capture_id;
+            """;
+        var result = new Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var storedCaptureId = reader.GetString(0);
+            if (!Guid.TryParseExact(storedCaptureId, "N", out var parsedCaptureId)
+                || !string.Equals(storedCaptureId, parsedCaptureId.ToString("N"), StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Screenshot telemetry contains an invalid capture identifier.");
+            }
+
+            var minimumCapturedTicks = reader.GetInt64(1);
+            var maximumCapturedTicks = reader.GetInt64(2);
+            if (minimumCapturedTicks != maximumCapturedTicks)
+            {
+                throw new InvalidDataException(
+                    $"Screenshot telemetry contains conflicting capture timestamps for '{storedCaptureId}'.");
+            }
+
+            result.Add(storedCaptureId, new DateTimeOffset(minimumCapturedTicks, TimeSpan.Zero));
+        }
+
+        return result;
+    }
+
+    /// <summary>Performs the strict one-installation screenshot provenance backfill exactly once.</summary>
+    internal void BackfillLocalScreenshotCaptures(
+        string installationId,
+        IReadOnlyList<ScreenshotCaptureRegistration> captures)
+    {
+        ArgumentNullException.ThrowIfNull(captures);
+        if (!Guid.TryParseExact(installationId, "N", out var parsedInstallation))
+        {
+            throw new InvalidDataException("The current installation identity is invalid.");
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using (var check = connection.CreateCommand())
+        {
+            check.Transaction = transaction;
+            check.CommandText = "SELECT value FROM store_metadata WHERE key = $key;";
+            check.Parameters.AddWithValue("$key", ScreenshotCaptureBackfillMarker);
+            if (check.ExecuteScalar() is string)
+            {
+                transaction.Commit();
+                return;
+            }
+        }
+
+        using (var distinctInstallations = connection.CreateCommand())
+        {
+            distinctInstallations.Transaction = transaction;
+            distinctInstallations.CommandText = """
+                SELECT installation_id FROM activity_samples
+                UNION
+                SELECT installation_id FROM ai_analysis_results;
+                """;
+            using var reader = distinctInstallations.ExecuteReader();
+            while (reader.Read())
+            {
+                if (!string.Equals(reader.GetString(0), parsedInstallation.ToString("N"), StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException("Local history contains more than the current installation and cannot be backfilled automatically.");
+                }
+            }
+        }
+
+        var normalized = captures
+            .Select(capture => capture.Validate())
+            .GroupBy(capture => capture.CaptureId, StringComparer.Ordinal)
+            .Select(group => group.Aggregate((left, right) => left == right
+                ? left
+                : throw new InvalidDataException("Retained screenshot capture provenance is inconsistent.")))
+            .ToArray();
+        foreach (var capture in normalized)
+        {
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = """
+                INSERT INTO screenshot_captures (capture_id, installation_id, captured_utc_ticks, origin)
+                VALUES ($captureId, $installationId, $capturedAt, $origin);
+                """;
+            insert.Parameters.AddWithValue("$captureId", capture.CaptureId);
+            insert.Parameters.AddWithValue("$installationId", parsedInstallation.ToString("N"));
+            insert.Parameters.AddWithValue("$capturedAt", capture.CapturedAt.UtcDateTime.Ticks);
+            insert.Parameters.AddWithValue("$origin", capture.Origin);
+            insert.ExecuteNonQuery();
+        }
+
+        using (var mark = connection.CreateCommand())
+        {
+            mark.Transaction = transaction;
+            mark.CommandText = "INSERT INTO store_metadata (key, value) VALUES ($key, $value);";
+            mark.Parameters.AddWithValue("$key", ScreenshotCaptureBackfillMarker);
+            mark.Parameters.AddWithValue("$value", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            mark.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    private static InstallationProfile? LoadInstallationProfile(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        string installationId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT installation_id, machine_name, friendly_name, color, icon,
+                   first_seen_utc_ticks, updated_utc_ticks, profile_revision
+            FROM installation_profiles
+            WHERE installation_id = $installationId;
+            """;
+        command.Parameters.AddWithValue("$installationId", installationId);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var profile = ReadInstallationProfile(reader);
+        if (reader.Read())
+        {
+            throw new InvalidDataException("The installation profile identity is not unique.");
+        }
+
+        return profile;
+    }
+
+    private static InstallationProfile ReadInstallationProfile(SqliteDataReader reader)
+        => InstallationProfileCatalog.ValidatePersisted(new InstallationProfile(
+            reader.GetString(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetString(4),
+            new DateTimeOffset(reader.GetInt64(5), TimeSpan.Zero),
+            new DateTimeOffset(reader.GetInt64(6), TimeSpan.Zero),
+            reader.GetInt64(7)));
+
+    private static void InsertInstallationProfile(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        InstallationProfile profile)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO installation_profiles (
+                installation_id, machine_name, friendly_name, color, icon,
+                first_seen_utc_ticks, updated_utc_ticks, profile_revision)
+            VALUES (
+                $installationId, $machineName, $friendlyName, $color, $icon,
+                $firstSeenAt, $updatedAt, $revision);
+            """;
+        AddInstallationProfileParameters(command, profile);
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("The installation profile could not be created.");
+        }
+    }
+
+    private static void UpdateInstallationProfile(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        InstallationProfile profile,
+        long previousRevision)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            UPDATE installation_profiles
+            SET machine_name = $machineName,
+                friendly_name = $friendlyName,
+                color = $color,
+                icon = $icon,
+                first_seen_utc_ticks = $firstSeenAt,
+                updated_utc_ticks = $updatedAt,
+                profile_revision = $revision
+            WHERE installation_id = $installationId
+              AND profile_revision = $previousRevision;
+            """;
+        AddInstallationProfileParameters(command, profile);
+        command.Parameters.AddWithValue("$previousRevision", previousRevision);
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException("The installation profile was changed by another operation.");
+        }
+    }
+
+    private static void AddInstallationProfileParameters(SqliteCommand command, InstallationProfile profile)
+    {
+        command.Parameters.AddWithValue("$installationId", profile.InstallationId);
+        command.Parameters.AddWithValue("$machineName", profile.MachineName);
+        command.Parameters.AddWithValue("$friendlyName", profile.FriendlyName);
+        command.Parameters.AddWithValue("$color", profile.Color);
+        command.Parameters.AddWithValue("$icon", profile.Icon);
+        command.Parameters.AddWithValue("$firstSeenAt", profile.FirstSeenAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$updatedAt", profile.UpdatedAt.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$revision", profile.Revision);
+    }
+
     /// <summary>Appends one complete activity sample in a single SQLite statement.</summary>
     internal void Append(ActivitySample sample)
     {
@@ -263,12 +784,13 @@ internal sealed class SqliteActivityStore
         using var command = connection.CreateCommand();
         command.CommandText = """
             INSERT INTO activity_samples (
-                timestamp_utc_ticks, start_utc_ticks, timestamp_offset_minutes, duration_seconds, state, process_name,
+                sample_id, timestamp_utc_ticks, start_utc_ticks, timestamp_offset_minutes, duration_seconds, state, process_name,
                 application, context, window_title, installation_id, key_presses, mouse_clicks, attributes_json, estimated_bytes)
             VALUES (
-                $timestamp, $start, $offset, $duration, $state, $process,
+                $sampleId, $timestamp, $start, $offset, $duration, $state, $process,
                 $application, $context, $windowTitle, $installation, $keyPresses, $mouseClicks, $attributes, $estimatedBytes);
             """;
+        command.Parameters.AddWithValue("$sampleId", Guid.NewGuid().ToString("N"));
         command.Parameters.AddWithValue("$timestamp", timestampUtcTicks);
         command.Parameters.AddWithValue("$start", checked(timestampUtcTicks - durationTicks));
         command.Parameters.AddWithValue("$offset", checked((int)sample.Timestamp.Offset.TotalMinutes));
@@ -1611,7 +2133,8 @@ internal sealed class SqliteActivityStore
         }
 
         command.CommandText = """
-            SELECT timestamp_utc_ticks, timestamp_offset_minutes, duration_seconds, state, application, key_presses, mouse_clicks
+            SELECT timestamp_utc_ticks, timestamp_offset_minutes, duration_seconds, state, application,
+                   key_presses, mouse_clicks, installation_id
             FROM activity_samples
             WHERE timestamp_utc_ticks > $from AND start_utc_ticks < $to
             ORDER BY start_utc_ticks, timestamp_utc_ticks, id;
@@ -1631,7 +2154,8 @@ internal sealed class SqliteActivityStore
                 reader.GetString(3),
                 reader.GetString(4),
                 reader.GetInt64(5),
-                reader.GetInt64(6)));
+                reader.GetInt64(6),
+                reader.GetString(7)));
         }
     }
 
@@ -1900,8 +2424,8 @@ internal sealed class SqliteActivityStore
 
             if (version == PreviousSchemaVersion)
             {
-                ValidateSchemaV6(connection);
-                MigrateSchemaV6ToV7(connection);
+                ValidateSchemaV7(connection);
+                MigrateSchemaV7ToV8(connection);
                 version = ReadSchemaVersion(connection);
             }
 
@@ -1937,86 +2461,80 @@ internal sealed class SqliteActivityStore
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql
-            + ScreenshotIntervalTelemetrySchemaSql + AiReprocessingSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+            + ScreenshotIntervalTelemetrySchemaSql + AiReprocessingSchemaSql + InstallationArchiveSchemaSql
+            + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
     }
 
-    private static void MigrateSchemaV6ToV7(SqliteConnection connection)
+    private static void MigrateSchemaV7ToV8(SqliteConnection connection)
     {
+        connection.CreateFunction<string, long, string>(
+            "trackmeup_legacy_sample_id",
+            CreateLegacyActivitySampleId,
+            isDeterministic: true);
         using var transaction = connection.BeginTransaction();
-        using (var command = connection.CreateCommand())
-        {
-            command.Transaction = transaction;
-            command.CommandText = """
-                CREATE INDEX ix_screenshot_interval_telemetry_captured
-                    ON screenshot_interval_telemetry (captured_utc_ticks, capture_id, artifact_identity);
-                """ + AiReprocessingSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
-            command.ExecuteNonQuery();
-        }
-
-        // Backfill runs in the schema transaction: malformed legacy relations leave the v6 database untouched.
-        using (var select = connection.CreateCommand())
-        {
-            select.Transaction = transaction;
-            select.CommandText = """
-                SELECT correlation_id, screenshot_paths
-                FROM ai_analysis_results
-                WHERE screenshot_paths IS NOT NULL
-                ORDER BY correlation_id;
-                """;
-            var rows = new List<(string CorrelationId, string ScreenshotPaths)>();
-            using (var reader = select.ExecuteReader())
-            {
-                while (reader.Read())
-                {
-                    rows.Add((reader.GetString(0), reader.GetString(1)));
-                }
-            }
-
-            foreach (var row in rows)
-            {
-                var analysis = new AiAnalysis(
-                    DateTimeOffset.UnixEpoch,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    row.ScreenshotPaths,
-                    CorrelationId: row.CorrelationId);
-                InsertAiAnalysisArtifacts(connection, transaction, analysis);
-            }
-        }
-
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            DROP INDEX ix_activity_samples_start;
+            DROP INDEX ix_activity_samples_timestamp;
+            ALTER TABLE activity_samples RENAME TO activity_samples_v7;
+            """ + ActivitySchemaSql + """
+            INSERT INTO activity_samples (
+                id, sample_id, timestamp_utc_ticks, start_utc_ticks, timestamp_offset_minutes, duration_seconds,
+                state, process_name, application, context, window_title, installation_id, key_presses,
+                mouse_clicks, attributes_json, estimated_bytes)
+            SELECT
+                id, trackmeup_legacy_sample_id(installation_id, id), timestamp_utc_ticks, start_utc_ticks, timestamp_offset_minutes,
+                duration_seconds, state, process_name, application, context, window_title, installation_id,
+                key_presses, mouse_clicks, attributes_json, estimated_bytes
+            FROM activity_samples_v7
+            ORDER BY id;
+            DROP TABLE activity_samples_v7;
+            """ + InstallationArchiveSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
+        command.ExecuteNonQuery();
         transaction.Commit();
     }
 
-    private static void ValidateSchemaV6(SqliteConnection connection)
+    private static string CreateLegacyActivitySampleId(string installationId, long legacyId)
     {
-        ValidateBaseSchema(connection);
-        ValidateScreenshotTextSchema(connection);
-        ValidateCreateStatement(connection, "screenshot_interval_telemetry", ScreenshotIntervalTelemetrySchemaSql);
-        if (!ReadColumns(connection, "screenshot_interval_telemetry").SequenceEqual(ExpectedScreenshotIntervalTelemetryColumns)
-            || !ReadIndexes(connection, "screenshot_interval_telemetry").SetEquals(ExpectedScreenshotIntervalTelemetryIndexesV6))
+        if (!Guid.TryParseExact(installationId, "N", out var parsedInstallationId) || legacyId <= 0)
         {
-            throw new InvalidOperationException("The screenshot interval telemetry schema does not match schema version 6.");
+            throw new InvalidDataException("A legacy activity sample has invalid identity components.");
         }
 
+        var identityMaterial = string.Concat(
+            LegacyActivitySampleIdentityNamespace,
+            "\0",
+            parsedInstallationId.ToString("N"),
+            "\0",
+            legacyId.ToString(CultureInfo.InvariantCulture));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identityMaterial))).ToLowerInvariant();
+    }
+
+    private static void ValidateSchemaV7(SqliteConnection connection)
+    {
+        ValidateBaseSchema(connection, ActivitySchemaSqlV7, ExpectedActivityColumnsV7, ExpectedActivityIndexesV7);
+        ValidateScreenshotTextSchema(connection);
+        ValidateScreenshotIntervalTelemetrySchema(connection);
+        ValidateAiReprocessingSchema(connection);
         ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
         if (!ReadColumns(connection, "ai_model_pricing").SequenceEqual(ExpectedAiModelPricingColumns)
             || !ReadIndexes(connection, "ai_model_pricing").SetEquals(ExpectedAiModelPricingIndexes)
-            || !ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjectsV6))
+            || !ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjectsV7))
         {
-            throw new InvalidOperationException("The activity database does not match schema version 6.");
+            throw new InvalidOperationException("The activity database does not match schema version 7.");
         }
     }
 
     private static void ValidateSchema(SqliteConnection connection)
     {
-        ValidateBaseSchema(connection);
+        ValidateBaseSchema(connection, ActivitySchemaSql, ExpectedActivityColumns, ExpectedActivityIndexes);
         ValidateScreenshotTextSchema(connection);
         ValidateScreenshotIntervalTelemetrySchema(connection);
         ValidateAiReprocessingSchema(connection);
+        ValidateInstallationArchiveSchema(connection);
         ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
 
         var actualAiModelPricingColumns = ReadColumns(connection, "ai_model_pricing");
@@ -2035,6 +2553,28 @@ internal sealed class SqliteActivityStore
         if (!schemaObjects.SetEquals(ExpectedApplicationSchemaObjects))
         {
             throw new InvalidOperationException("The activity database contains unsupported schema objects.");
+        }
+    }
+
+    private static void ValidateInstallationArchiveSchema(SqliteConnection connection)
+    {
+        ValidateCreateStatement(connection, "installation_profiles", InstallationArchiveSchemaSql);
+        ValidateCreateStatement(connection, "screenshot_captures", InstallationArchiveSchemaSql);
+        ValidateCreateStatement(connection, "archive_imports", InstallationArchiveSchemaSql);
+        ValidateCreateStatement(connection, "store_metadata", InstallationArchiveSchemaSql);
+        if (!ReadColumns(connection, "installation_profiles").SequenceEqual(ExpectedInstallationProfileColumns)
+            || !ReadColumns(connection, "screenshot_captures").SequenceEqual(ExpectedScreenshotCaptureColumns)
+            || !ReadColumns(connection, "archive_imports").SequenceEqual(ExpectedArchiveImportColumns)
+            || !ReadColumns(connection, "store_metadata").SequenceEqual(ExpectedStoreMetadataColumns)
+            || !ReadIndexes(connection, "installation_profiles").SetEquals(["sqlite_autoindex_installation_profiles_1"])
+            || !ReadIndexes(connection, "screenshot_captures").SetEquals([
+                "sqlite_autoindex_screenshot_captures_1",
+                "ix_screenshot_captures_installation",
+                "ix_screenshot_captures_captured"])
+            || !ReadIndexes(connection, "archive_imports").SetEquals(["sqlite_autoindex_archive_imports_1"])
+            || !ReadIndexes(connection, "store_metadata").SetEquals(["sqlite_autoindex_store_metadata_1"]))
+        {
+            throw new InvalidOperationException("The installation and archive schema does not match the supported schema.");
         }
     }
 
@@ -2070,15 +2610,19 @@ internal sealed class SqliteActivityStore
         }
     }
 
-    private static void ValidateBaseSchema(SqliteConnection connection)
+    private static void ValidateBaseSchema(
+        SqliteConnection connection,
+        string activitySchemaSql,
+        IReadOnlyList<SchemaColumn> expectedActivityColumns,
+        IReadOnlySet<string> expectedActivityIndexes)
     {
-        ValidateCreateStatement(connection, "activity_samples", ActivitySchemaSql);
+        ValidateCreateStatement(connection, "activity_samples", activitySchemaSql);
         ValidateCreateStatement(connection, "ai_request_usage", AiSchemaSql);
         ValidateCreateStatement(connection, "ai_analysis_results", AiSchemaSql);
         ValidateCreateStatement(connection, "ai_analysis_search", AiSchemaSql);
 
         var actualActivityColumns = ReadColumns(connection, "activity_samples");
-        if (!actualActivityColumns.SequenceEqual(ExpectedActivityColumns))
+        if (!actualActivityColumns.SequenceEqual(expectedActivityColumns))
         {
             throw new InvalidOperationException("The activity database schema does not match the supported greenfield schema.");
         }
@@ -2087,7 +2631,7 @@ internal sealed class SqliteActivityStore
         ValidateColumnNames(connection, "ai_analysis_results", ExpectedAiAnalysisResultColumns);
 
         var activityIndexes = ReadIndexes(connection, "activity_samples");
-        if (!activityIndexes.SetEquals(ExpectedActivityIndexes))
+        if (!activityIndexes.SetEquals(expectedActivityIndexes))
         {
             throw new InvalidOperationException("The activity database indexes do not match the supported greenfield schema.");
         }
@@ -2508,9 +3052,32 @@ internal sealed class SqliteActivityStore
             + (attributesJson is null ? 0 : Encoding.UTF8.GetByteCount(attributesJson));
     }
 
+    private const string ActivitySchemaSqlV7 = """
+        CREATE TABLE activity_samples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp_utc_ticks INTEGER NOT NULL,
+            start_utc_ticks INTEGER NOT NULL,
+            timestamp_offset_minutes INTEGER NOT NULL,
+            duration_seconds INTEGER NOT NULL CHECK (duration_seconds > 0),
+            state TEXT NOT NULL,
+            process_name TEXT NOT NULL,
+            application TEXT NOT NULL,
+            context TEXT NOT NULL,
+            window_title TEXT NOT NULL,
+            installation_id TEXT NOT NULL,
+            key_presses INTEGER NOT NULL CHECK (key_presses >= 0),
+            mouse_clicks INTEGER NOT NULL CHECK (mouse_clicks >= 0),
+            attributes_json TEXT NULL,
+            estimated_bytes INTEGER NOT NULL CHECK (estimated_bytes > 0)
+        );
+        CREATE INDEX ix_activity_samples_start ON activity_samples (start_utc_ticks, timestamp_utc_ticks);
+        CREATE INDEX ix_activity_samples_timestamp ON activity_samples (timestamp_utc_ticks);
+        """;
+
     private const string ActivitySchemaSql = """
         CREATE TABLE activity_samples (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sample_id TEXT NOT NULL UNIQUE,
             timestamp_utc_ticks INTEGER NOT NULL,
             start_utc_ticks INTEGER NOT NULL,
             timestamp_offset_minutes INTEGER NOT NULL,
@@ -2693,7 +3260,73 @@ internal sealed class SqliteActivityStore
             ON ai_reprocess_job_items (job_id, state, ordinal);
         """;
 
+    private const string InstallationArchiveSchemaSql = """
+        CREATE TABLE installation_profiles (
+            installation_id TEXT NOT NULL PRIMARY KEY,
+            machine_name TEXT NOT NULL,
+            friendly_name TEXT NOT NULL,
+            color TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            first_seen_utc_ticks INTEGER NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL CHECK (updated_utc_ticks >= first_seen_utc_ticks),
+            profile_revision INTEGER NOT NULL CHECK (profile_revision > 0)
+        );
+
+        CREATE TABLE screenshot_captures (
+            capture_id TEXT NOT NULL PRIMARY KEY,
+            installation_id TEXT NOT NULL,
+            captured_utc_ticks INTEGER NOT NULL,
+            origin TEXT NOT NULL,
+            FOREIGN KEY (installation_id) REFERENCES installation_profiles(installation_id)
+        );
+        CREATE INDEX ix_screenshot_captures_installation
+            ON screenshot_captures (installation_id, captured_utc_ticks, capture_id);
+        CREATE INDEX ix_screenshot_captures_captured
+            ON screenshot_captures (captured_utc_ticks, capture_id);
+
+        CREATE TABLE archive_imports (
+            archive_id TEXT NOT NULL PRIMARY KEY,
+            archive_fingerprint TEXT NOT NULL,
+            imported_utc_ticks INTEGER NOT NULL
+        );
+
+        CREATE TABLE store_metadata (
+            key TEXT NOT NULL PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        """;
+
     private readonly record struct SchemaColumn(string Name, string Type, bool NotNull, int PrimaryKeyOrder);
+}
+
+/// <summary>Contains the immutable installation owner and acquisition facts for one retained screenshot capture.</summary>
+internal sealed record ScreenshotCaptureProvenance(
+    string CaptureId,
+    InstallationProfile Installation,
+    DateTimeOffset CapturedAt,
+    string Origin);
+
+/// <summary>Contains one local screenshot provenance row prepared for the one-time database backfill.</summary>
+internal sealed record ScreenshotCaptureRegistration(
+    string CaptureId,
+    DateTimeOffset CapturedAt,
+    string Origin)
+{
+    /// <summary>Returns the canonical durable representation or rejects malformed retained-file metadata.</summary>
+    internal ScreenshotCaptureRegistration Validate()
+    {
+        if (!Guid.TryParseExact(CaptureId, "N", out var parsedCaptureId) || CapturedAt == default)
+        {
+            throw new InvalidDataException("Retained screenshot capture provenance is invalid.");
+        }
+
+        return this with
+        {
+            CaptureId = parsedCaptureId.ToString("N"),
+            CapturedAt = CapturedAt.ToUniversalTime(),
+            Origin = ScreenshotCaptureOrigins.Validate(Origin)
+        };
+    }
 }
 
 /// <summary>Contains the minimal activity projection needed to build aggregate reports.</summary>
@@ -2703,7 +3336,8 @@ internal sealed record ReportSourceSample(
     string State,
     string Application,
     long KeyPresses,
-    long MouseClicks);
+    long MouseClicks,
+    string InstallationId);
 
 /// <summary>Groups persisted screenshot artifact identities by their original capture.</summary>
 internal sealed record AiReprocessCatalogRecord(

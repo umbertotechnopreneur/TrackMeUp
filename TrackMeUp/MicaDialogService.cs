@@ -201,8 +201,8 @@ internal sealed class MicaDialogService
         });
     }
 
-    /// <summary>Shows the native rolling activity calendar in the shared acrylic dialog queue.</summary>
-    internal async Task ShowActivityCalendarAsync(
+    /// <summary>Shows the native rolling activity calendar and returns a day requested for screenshot exploration.</summary>
+    internal async Task<DateOnly?> ShowActivityCalendarAsync(
         ITrackMeUpApplication application,
         Window owner,
         ElementTheme theme,
@@ -210,13 +210,23 @@ internal sealed class MicaDialogService
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(strings);
-        await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
+        return await RunModalSessionAsync<DateOnly?>(owner, null, async (ownerAppWindow, ownerHandle) =>
         {
             var dialog = new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle);
             var result = await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
             if (result is null || _isShuttingDown)
             {
-                return;
+                return null;
+            }
+
+            if (result.Action == ActivityCalendarAction.OpenScreenshots)
+            {
+                return result.Date;
+            }
+
+            if (result.Action != ActivityCalendarAction.ReprocessDescriptions)
+            {
+                throw new InvalidOperationException($"Unsupported activity-calendar action: {result.Action}.");
             }
 
             // Both surfaces retain the same queue lease, so the chained modal flow cannot interleave with another dialog.
@@ -232,6 +242,7 @@ internal sealed class MicaDialogService
                 reprocessingDialog.WindowHandle,
                 reprocessingDialog.ShowAsync,
                 reprocessingDialog.DisposePlacement);
+            return null;
         });
     }
 

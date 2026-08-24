@@ -64,4 +64,16 @@ public sealed class UtilityService
     /// Returns a random, non-identifying installation identifier.
     /// </summary>
     public string GenerateInstallationId() => Guid.NewGuid().ToString("N");
+
+    /// <summary>Returns the current Windows machine name used as immutable installation provenance.</summary>
+    public string GetMachineName()
+    {
+        var machineName = Environment.MachineName.Trim();
+        if (machineName.Length is < 1 or > 128)
+        {
+            throw new InvalidOperationException("Windows returned an invalid machine name.");
+        }
+
+        return machineName;
+    }
 }

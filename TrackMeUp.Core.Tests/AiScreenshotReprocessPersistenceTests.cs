@@ -295,109 +295,26 @@ public sealed class AiScreenshotReprocessPersistenceTests
     }
 
     [Fact]
-    public void SchemaVersionSix_MigratesAndBackfillsArtifactRelations()
+    public void SchemaVersionSix_IsRejectedWithoutMutation()
     {
         var directory = CreateTemporaryDirectory();
         try
         {
-            var store = CreateStore(directory);
-            var captureId = Guid.NewGuid().ToString("N");
-            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-            var paths = CreateCapturePaths(directory, captureId, 1);
-            store.UpsertScreenshotIntervalTelemetry(
-                captureId,
-                paths,
-                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, null, null));
-            store.AppendAiAnalysisAndUsage(
-                SuccessfulUsage(captureId, capturedAt, paths.Count),
-                SuccessfulAnalysis(captureId, capturedAt, paths));
-            DowngradeSchemaToVersionSix(directory);
-
-            var migrated = new LocalStore(directory);
-
-            Assert.True(migrated.HasAiDescription(captureId));
-            using var connection = OpenDatabase(directory);
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version;";
-            Assert.Equal(7L, Convert.ToInt64(command.ExecuteScalar()));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void SchemaVersionSix_MalformedBackfillRollsBackMigration()
-    {
-        var directory = CreateTemporaryDirectory();
-        try
-        {
-            var store = CreateStore(directory);
-            var captureId = Guid.NewGuid().ToString("N");
-            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-            var paths = CreateCapturePaths(directory, captureId, 1);
-            store.AppendAiAnalysisAndUsage(
-                SuccessfulUsage(captureId, capturedAt, paths.Count),
-                SuccessfulAnalysis(captureId, capturedAt, paths));
-            DowngradeSchemaToVersionSix(directory);
+            _ = CreateStore(directory);
             using (var connection = OpenDatabase(directory))
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = "UPDATE ai_analysis_results SET screenshot_paths = 'C:\\outside\\invalid.png';";
+                command.CommandText = "PRAGMA user_version = 6;";
                 command.ExecuteNonQuery();
             }
 
-            var exception = Assert.ThrowsAny<Exception>(() => new LocalStore(directory));
+            var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(directory));
 
-            Assert.Contains("invalid", exception.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Unsupported activity database schema version 6; expected 8", exception.Message, StringComparison.Ordinal);
             using var check = OpenDatabase(directory);
             using var version = check.CreateCommand();
             version.CommandText = "PRAGMA user_version;";
             Assert.Equal(6L, Convert.ToInt64(version.ExecuteScalar()));
-            using var objects = check.CreateCommand();
-            objects.CommandText = "SELECT COUNT(*) FROM sqlite_schema WHERE name = 'ai_analysis_artifacts';";
-            Assert.Equal(0L, Convert.ToInt64(objects.ExecuteScalar()));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void SchemaVersionSix_MismatchedCapturePrefixRollsBackMigration()
-    {
-        var directory = CreateTemporaryDirectory();
-        try
-        {
-            var store = CreateStore(directory);
-            var captureId = Guid.NewGuid().ToString("N");
-            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-            var paths = CreateCapturePaths(directory, captureId, 1);
-            store.AppendAiAnalysisAndUsage(
-                SuccessfulUsage(captureId, capturedAt, paths.Count),
-                SuccessfulAnalysis(captureId, capturedAt, paths));
-            DowngradeSchemaToVersionSix(directory);
-            var unrelatedPaths = CreateCapturePaths(directory, Guid.NewGuid().ToString("N"), 1);
-            using (var connection = OpenDatabase(directory))
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = "UPDATE ai_analysis_results SET screenshot_paths = $paths;";
-                command.Parameters.AddWithValue("$paths", string.Join(';', unrelatedPaths));
-                command.ExecuteNonQuery();
-            }
-
-            var exception = Assert.ThrowsAny<Exception>(() => new LocalStore(directory));
-
-            Assert.Contains("capture correlation", exception.Message, StringComparison.OrdinalIgnoreCase);
-            using var check = OpenDatabase(directory);
-            using var version = check.CreateCommand();
-            version.CommandText = "PRAGMA user_version;";
-            Assert.Equal(6L, Convert.ToInt64(version.ExecuteScalar()));
-            using var objects = check.CreateCommand();
-            objects.CommandText = "SELECT COUNT(*) FROM sqlite_schema WHERE name = 'ai_analysis_artifacts';";
-            Assert.Equal(0L, Convert.ToInt64(objects.ExecuteScalar()));
         }
         finally
         {
@@ -697,20 +614,6 @@ public sealed class AiScreenshotReprocessPersistenceTests
             0,
             null,
             at);
-    }
-
-    private static void DowngradeSchemaToVersionSix(string directory)
-    {
-        using var connection = OpenDatabase(directory);
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            DROP TABLE ai_reprocess_job_items;
-            DROP TABLE ai_reprocess_jobs;
-            DROP TABLE ai_analysis_artifacts;
-            DROP INDEX ix_screenshot_interval_telemetry_captured;
-            PRAGMA user_version = 6;
-            """;
-        command.ExecuteNonQuery();
     }
 
     private static SqliteConnection OpenDatabase(string directory)

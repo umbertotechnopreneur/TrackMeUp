@@ -1,9 +1,11 @@
 using System.Numerics;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using Windows.Foundation;
 using Windows.UI;
@@ -43,7 +45,33 @@ public sealed partial class SearchResultItemControl : UserControl
         var result = (ScreenshotSearchResult?)args.NewValue;
         control.DataContext = result;
         control.ApplyMatchScoreStyle(result?.MatchPercent ?? 0);
+        control.RenderInstallation(result);
         control.RenderSnippet(result);
+    }
+
+    private void RenderInstallation(ScreenshotSearchResult? result)
+    {
+        if (result is null || string.IsNullOrWhiteSpace(result.InstallationName))
+        {
+            InstallationSourcePanel.Visibility = Visibility.Collapsed;
+            InstallationSourceSeparator.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (!InstallationProfileCatalog.Colors.Contains(result.InstallationColor, StringComparer.Ordinal)
+            || !InstallationProfileCatalog.Icons.Contains(result.InstallationIcon, StringComparer.Ordinal))
+        {
+            throw new InvalidDataException("Search result installation appearance is invalid.");
+        }
+
+        InstallationSourceBadge.Background = InstallationAppearance.CreateAccentBrush(result.InstallationColor!);
+        InstallationSourceIcon.Glyph = InstallationAppearance.GetIconGlyph(result.InstallationIcon!);
+        InstallationSourceText.Text = result.InstallationName;
+        var accessibleName = result.InstallationDisplay;
+        AutomationProperties.SetName(InstallationSourcePanel, accessibleName);
+        ToolTipService.SetToolTip(InstallationSourcePanel, accessibleName);
+        InstallationSourcePanel.Visibility = Visibility.Visible;
+        InstallationSourceSeparator.Visibility = Visibility.Visible;
     }
 
     private void ApplyMatchScoreStyle(int matchPercent)

@@ -417,16 +417,18 @@ public sealed class LocalizationServiceTests
         var english = new LocalizationService("en-US");
         var italian = new LocalizationService("it-IT");
 
-        Assert.Equal("Activity calendar", english.Translate("ActivityCalendar.MenuTitle"));
-        Assert.Equal("Calendario attività", italian.Translate("ActivityCalendar.MenuTitle"));
-        Assert.Equal("DAY SCORE", english.Translate("ActivityCalendar.Score"));
-        Assert.Equal("PUNTEGGIO GIORNALIERO", italian.Translate("ActivityCalendar.Score"));
+        Assert.Equal("Activity history", english.Translate("ActivityCalendar.MenuTitle"));
+        Assert.Equal("Cronologia attività", italian.Translate("ActivityCalendar.MenuTitle"));
+        Assert.Equal("ACTIVITY INDEX", english.Translate("ActivityCalendar.Score"));
+        Assert.Equal("INDICE DI ATTIVITÀ", italian.Translate("ActivityCalendar.Score"));
+        Assert.Equal("Explore screenshots", english.Translate("ActivityCalendar.OpenGallery"));
+        Assert.Equal("Esplora gli screenshot", italian.Translate("ActivityCalendar.OpenGallery"));
         Assert.Contains("out of 100", english.Translate("ActivityCalendar.Day.ScoreAccessible"), StringComparison.Ordinal);
         Assert.Contains("su 100", italian.Translate("ActivityCalendar.Day.ScoreAccessible"), StringComparison.Ordinal);
         Assert.Contains("last 12 months", english.Translate("ActivityCalendar.Empty"), StringComparison.Ordinal);
         Assert.Contains("ultimi 12 mesi", italian.Translate("ActivityCalendar.Empty"), StringComparison.Ordinal);
-        Assert.Contains("not productivity", english.Translate("ActivityCalendar.Subtitle"), StringComparison.Ordinal);
-        Assert.Contains("non la produttività", italian.Translate("ActivityCalendar.Subtitle"), StringComparison.Ordinal);
+        Assert.Contains("never productivity", english.Translate("ActivityCalendar.Subtitle"), StringComparison.Ordinal);
+        Assert.Contains("mai la produttività", italian.Translate("ActivityCalendar.Subtitle"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -435,8 +437,8 @@ public sealed class LocalizationServiceTests
         var english = new LocalizationService("en-US");
         var italian = new LocalizationService("it-IT");
 
-        Assert.Equal("Reprocess missing AI descriptions", english.Translate("ActivityCalendar.Reprocess"));
-        Assert.Equal("Riprocessa descrizioni AI mancanti", italian.Translate("ActivityCalendar.Reprocess"));
+        Assert.Equal("Complete missing AI descriptions", english.Translate("ActivityCalendar.Reprocess"));
+        Assert.Equal("Completa le descrizioni AI", italian.Translate("ActivityCalendar.Reprocess"));
         Assert.Equal("SCREENSHOTS", english.Translate("AiReprocess.Screenshots"));
         Assert.Equal("SCHERMATE", italian.Translate("AiReprocess.Screenshots"));
         Assert.Equal("ACQUISITIONS", english.Translate("AiReprocess.Captures"));

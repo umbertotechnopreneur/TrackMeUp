@@ -151,6 +151,22 @@
                         VerticalAlignment="Bottom"
                         Orientation="Horizontal"
                         Spacing="5">
+                        <Border
+                            x:Name="TimelineInstallationBadge"
+                            Width="18"
+                            Height="18"
+                            Background="{Binding InstallationBrush}"
+                            CornerRadius="9">
+                            <FontIcon
+                                x:Name="TimelineInstallationIcon"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="8"
+                                Foreground="White"
+                                Glyph="{Binding InstallationGlyph}" />
+                        </Border>
                         <FontIcon
                             AutomationProperties.AccessibilityView="Raw"
                             FontFamily="Segoe Fluent Icons"

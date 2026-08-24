@@ -9,6 +9,8 @@
                 <VisualState x:Name="CompactHeader">
                     <VisualState.Setters>
                         <Setter Target="DateSummaryPanel.Width" Value="220" />
+                        <Setter Target="InstallationFriendlyNameText.MaxWidth" Value="78" />
+                        <Setter Target="InstallationMachineNameText.MaxWidth" Value="78" />
                         <Setter Target="PrivacyStatusBadge.MaxWidth" Value="24" />
                         <Setter Target="PrivacyStatusText.Visibility" Value="Collapsed" />
                         <Setter Target="SelectedDatePicker.Width" Value="160" />
@@ -20,6 +22,8 @@
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="DateSummaryPanel.Width" Value="300" />
+                        <Setter Target="InstallationFriendlyNameText.MaxWidth" Value="130" />
+                        <Setter Target="InstallationMachineNameText.MaxWidth" Value="120" />
                         <Setter Target="PrivacyStatusBadge.MaxWidth" Value="170" />
                         <Setter Target="PrivacyStatusText.Visibility" Value="Visible" />
                         <Setter Target="SelectedDatePicker.Width" Value="200" />
@@ -60,6 +64,57 @@
                     LineHeight="18"
                     Text="0 captures" />
             </StackPanel>
+            <Grid
+                x:Name="InstallationProvenanceBadge"
+                MaxWidth="300"
+                HorizontalAlignment="Left"
+                AutomationProperties.LiveSetting="Polite"
+                ColumnSpacing="7"
+                Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border
+                    x:Name="InstallationIconBadge"
+                    Width="22"
+                    Height="22"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                    BorderThickness="2"
+                    CornerRadius="11">
+                    <FontIcon
+                        x:Name="InstallationIcon"
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="11" />
+                </Border>
+                <StackPanel
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="4">
+                    <TextBlock
+                        x:Name="InstallationFriendlyNameText"
+                        MaxWidth="130"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        AutomationProperties.AccessibilityView="Raw"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="·" />
+                    <TextBlock
+                        x:Name="InstallationMachineNameText"
+                        MaxWidth="120"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
         </StackPanel>
 
         <CommandBar

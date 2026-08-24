@@ -45,6 +45,11 @@ public sealed class SearchViewModelTests
         Assert.Equal(4.5f, item.Score);
         Assert.Equal(100, item.MatchPercent);
         Assert.Equal("100%", item.MatchPercentDisplay);
+        Assert.Equal("Office laptop", item.InstallationName);
+        Assert.Equal("TRACKMEUP-OFFICE", item.InstallationMachineName);
+        Assert.Equal("Office laptop · TRACKMEUP-OFFICE", item.InstallationDisplay);
+        Assert.Equal("#5B8DEF", item.InstallationColor);
+        Assert.Equal("laptop", item.InstallationIcon);
         Assert.Equal("1 localized click · CPU — · GPU —", viewModel.Results[1].ActivityDisplay);
         Assert.Equal(3f, viewModel.Results[1].Score);
         Assert.Equal(67, viewModel.Results[1].MatchPercent);
@@ -150,7 +155,12 @@ public sealed class SearchViewModelTests
                                 AttributesRaw = ImmutableDictionary<string, string?>.Empty
                                     .Add(SearchAttributeKeys.MouseClicks, "42")
                                     .Add(SearchAttributeKeys.CpuUsagePercent, "37")
-                                    .Add(SearchAttributeKeys.GpuUsagePercent, "61"),
+                                    .Add(SearchAttributeKeys.GpuUsagePercent, "61")
+                                    .Add(SearchAttributeKeys.InstallationId, "11111111111111111111111111111111")
+                                    .Add(SearchAttributeKeys.InstallationFriendlyName, "Office laptop")
+                                    .Add(SearchAttributeKeys.InstallationMachineName, "TRACKMEUP-OFFICE")
+                                    .Add(SearchAttributeKeys.InstallationColor, "#5B8DEF")
+                                    .Add(SearchAttributeKeys.InstallationIcon, "laptop"),
                                 CapturePath = @"C:\captures\meeting.png"
                             },
                             Score = 4.5f

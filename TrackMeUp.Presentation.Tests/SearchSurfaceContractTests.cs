@@ -81,6 +81,9 @@ public sealed class SearchSurfaceContractTests
         Assert.DoesNotContain(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "MATCH");
         Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding MatchPercentDisplay}");
         Assert.Contains(resultControl.Descendants(), element => element.Attribute("Text")?.Value == "{Binding ActivityDisplay}");
+        Assert.Contains(resultControl.Descendants(), element => HasName(element, "InstallationSourceBadge"));
+        Assert.Contains(resultControl.Descendants(), element => HasName(element, "InstallationSourceIcon"));
+        Assert.Contains(resultControl.Descendants(), element => HasName(element, "InstallationSourceText"));
         Assert.DoesNotContain(resultControl.Descendants(), element => element.Attribute("Text")?.Value?.Contains("CPU", StringComparison.Ordinal) == true);
         Assert.Contains("SnippetText.TextHighlighters", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("HoverThumbnailElevation = 18f", resultControlSource, StringComparison.Ordinal);
@@ -88,6 +91,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("SmoothStep", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(HoverThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("SetThumbnailElevation(RestingThumbnailElevation)", resultControlSource, StringComparison.Ordinal);
+        Assert.Contains("RenderInstallation(result);", resultControlSource, StringComparison.Ordinal);
+        Assert.Contains("InstallationProfileCatalog.Colors", resultControlSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ElementCompositionPreview.SetIsTranslationEnabled", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsAlwaysOnTop = true;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", windowSource, StringComparison.Ordinal);

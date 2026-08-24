@@ -13,6 +13,21 @@ public static class SearchAttributeKeys
 
     /// <summary>Stores average GPU usage observed since the previous screenshot.</summary>
     public const string GpuUsagePercent = "telemetry.gpu-usage-percent";
+
+    /// <summary>Stores the durable installation identifier that produced the record.</summary>
+    public const string InstallationId = "installation.id";
+
+    /// <summary>Stores the user-selected installation name rendered as provenance.</summary>
+    public const string InstallationFriendlyName = "installation.friendly-name";
+
+    /// <summary>Stores the originating Windows machine name.</summary>
+    public const string InstallationMachineName = "installation.machine-name";
+
+    /// <summary>Stores the validated installation color identifier.</summary>
+    public const string InstallationColor = "installation.color";
+
+    /// <summary>Stores the validated installation icon identifier.</summary>
+    public const string InstallationIcon = "installation.icon";
 }
 
 /// <summary>

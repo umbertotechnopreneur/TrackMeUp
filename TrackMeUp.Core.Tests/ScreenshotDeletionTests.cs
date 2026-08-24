@@ -21,7 +21,7 @@ public sealed class ScreenshotDeletionTests
         try
         {
             var store = CreateStore(dataDirectory);
-            var capture = CreateCapture(dataDirectory);
+            var capture = CreateCapture(store, dataDirectory);
             var unrelatedPath = Path.Combine(dataDirectory, "unrelated.webp");
             File.WriteAllBytes(unrelatedPath, [7, 8, 9]);
             await using var application = CreateApplication(store);
@@ -53,7 +53,7 @@ public sealed class ScreenshotDeletionTests
                 OpenAiEnabled = true,
                 AiApiKeyName = TestApiKeyVariable
             });
-            var capture = CreateCapture(dataDirectory);
+            var capture = CreateCapture(store, dataDirectory);
             var analysis = new OpenAiAnalysisService(
                 store,
                 new UnexpectedCaptureService(),
@@ -87,8 +87,8 @@ public sealed class ScreenshotDeletionTests
         try
         {
             var store = CreateStore(dataDirectory);
-            var older = CreateCapture(dataDirectory);
-            var latest = CreateCapture(dataDirectory);
+            var older = CreateCapture(store, dataDirectory);
+            var latest = CreateCapture(store, dataDirectory);
             foreach (var path in older.AllScreenshotPaths)
             {
                 File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(-5));
@@ -119,8 +119,8 @@ public sealed class ScreenshotDeletionTests
             var store = CreateStore(dataDirectory);
             var olderLocalTime = DateTime.Today.AddDays(-2).AddHours(12);
             var latestLocalTime = DateTime.Today.AddDays(-1).AddHours(16);
-            var older = CreateCapture(dataDirectory, new DateTimeOffset(olderLocalTime));
-            var latest = CreateCapture(dataDirectory, new DateTimeOffset(latestLocalTime));
+            var older = CreateCapture(store, dataDirectory, new DateTimeOffset(olderLocalTime));
+            var latest = CreateCapture(store, dataDirectory, new DateTimeOffset(latestLocalTime));
             foreach (var path in older.AllScreenshotPaths)
             {
                 File.SetLastWriteTime(path, olderLocalTime);
@@ -153,16 +153,22 @@ public sealed class ScreenshotDeletionTests
         {
             var store = CreateStore(dataDirectory);
             var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
-            var monitorCapture = CreateCapture(dataDirectory, capturedAt);
+            var monitorCapture = CreateCapture(store, dataDirectory, capturedAt);
             var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(dataDirectory, capturedAt);
+            var activeWindowCaptureId = Guid.NewGuid().ToString("N");
             var activeWindowPath = Path.Combine(
                 dayDirectory,
-                $"{Guid.NewGuid():N}_1.0.0_scheduled_active-window.webp");
+                $"{activeWindowCaptureId}_1.0.0_scheduled_active-window.webp");
             File.WriteAllBytes(activeWindowPath, [7, 8, 9]);
             foreach (var path in monitorCapture.AllScreenshotPaths.Append(activeWindowPath))
             {
                 File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
             }
+            store.RegisterScreenshotCapture(
+                activeWindowCaptureId,
+                store.LoadSettings().InstallationId,
+                capturedAt,
+                ScreenshotCaptureOrigins.Scheduled);
 
             var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
 
@@ -189,17 +195,18 @@ public sealed class ScreenshotDeletionTests
         {
             var store = CreateStore(dataDirectory);
             store.SaveSettings(store.LoadSettings() with { ScreenshotIntervalMinutes = 15 });
-            var capture = CreateCapture(dataDirectory);
             var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var capture = CreateCapture(store, dataDirectory, capturedAt);
             foreach (var path in capture.AllScreenshotPaths)
             {
                 File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
             }
 
-            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-14), "Planning"));
-            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-8), "Planning"));
-            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-4), "Implementation"));
-            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-1), "Implementation"));
+            var installationId = store.LoadSettings().InstallationId;
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-14), "Planning", installationId));
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-8), "Planning", installationId));
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-4), "Implementation", installationId));
+            store.AppendSample(CreateActivitySample(capturedAt.AddMinutes(-1), "Implementation", installationId));
 
             var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
 
@@ -226,10 +233,10 @@ public sealed class ScreenshotDeletionTests
         {
             var store = CreateStore(dataDirectory);
             store.SaveSettings(store.LoadSettings() with { ScreenshotIntervalMinutes = 5 });
-            var earlierCapture = CreateCapture(dataDirectory);
-            var laterCapture = CreateCapture(dataDirectory);
             var laterCapturedAt = new DateTimeOffset(DateTime.Today.AddHours(12)).ToUniversalTime();
             var earlierCapturedAt = laterCapturedAt.AddMinutes(-20);
+            var earlierCapture = CreateCapture(store, dataDirectory, earlierCapturedAt);
+            var laterCapture = CreateCapture(store, dataDirectory, laterCapturedAt);
             foreach (var path in earlierCapture.AllScreenshotPaths)
             {
                 File.SetLastWriteTimeUtc(path, earlierCapturedAt.UtcDateTime);
@@ -240,8 +247,9 @@ public sealed class ScreenshotDeletionTests
                 File.SetLastWriteTimeUtc(path, laterCapturedAt.UtcDateTime);
             }
 
-            store.AppendSample(CreateActivitySample(earlierCapturedAt.AddMinutes(-1), "Earlier work"));
-            store.AppendSample(CreateActivitySample(laterCapturedAt.AddMinutes(-1), "Later work"));
+            var installationId = store.LoadSettings().InstallationId;
+            store.AppendSample(CreateActivitySample(earlierCapturedAt.AddMinutes(-1), "Earlier work", installationId));
+            store.AppendSample(CreateActivitySample(laterCapturedAt.AddMinutes(-1), "Later work", installationId));
 
             var gallery = store.GetScreenshotGallery(
                 DateOnly.FromDateTime(laterCapturedAt.ToLocalTime().DateTime),
@@ -273,9 +281,9 @@ public sealed class ScreenshotDeletionTests
                 AiApiKeyName = TestApiKeyVariable,
                 ScreenshotIntervalMinutes = 15
             });
-            var analyzedCapture = CreateCapture(dataDirectory);
-            var unrelatedCapture = CreateCapture(dataDirectory);
             var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var analyzedCapture = CreateCapture(store, dataDirectory, capturedAt);
+            var unrelatedCapture = CreateCapture(store, dataDirectory, capturedAt);
             foreach (var path in analyzedCapture.AllScreenshotPaths.Concat(unrelatedCapture.AllScreenshotPaths))
             {
                 File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
@@ -284,6 +292,7 @@ public sealed class ScreenshotDeletionTests
             store.AppendSample(CreateActivitySample(
                 capturedAt.AddMinutes(-1),
                 "Implementation",
+                store.LoadSettings().InstallationId,
                 keyPresses: 300,
                 mouseClicks: 30));
             var analysisService = new OpenAiAnalysisService(
@@ -327,7 +336,10 @@ public sealed class ScreenshotDeletionTests
         return store;
     }
 
-    private static ScreenshotCaptureResult CreateCapture(string directory, DateTimeOffset? capturedAt = null)
+    private static ScreenshotCaptureResult CreateCapture(
+        LocalStore store,
+        string directory,
+        DateTimeOffset? capturedAt = null)
     {
         var timestamp = capturedAt ?? DateTimeOffset.Now;
         var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, timestamp);
@@ -339,16 +351,24 @@ public sealed class ScreenshotDeletionTests
         File.WriteAllBytes(storedPath, [4, 5, 6]);
         File.SetLastWriteTimeUtc(rawPath, timestamp.UtcDateTime);
         File.SetLastWriteTimeUtc(storedPath, timestamp.UtcDateTime);
-        return new ScreenshotCaptureResult(
+        var result = new ScreenshotCaptureResult(
             captureId,
             [rawPath],
             [storedPath],
+            ScreenshotCaptureOrigins.Manual,
+            CapturedAt: timestamp);
+        store.RegisterScreenshotCapture(
+            captureId,
+            store.LoadSettings().InstallationId,
+            timestamp,
             ScreenshotCaptureOrigins.Manual);
+        return result;
     }
 
     private static ActivitySample CreateActivitySample(
         DateTimeOffset timestamp,
         string spanLabel,
+        string installationId,
         long keyPresses = 1,
         long mouseClicks = 1) => new(
         timestamp,
@@ -358,7 +378,7 @@ public sealed class ScreenshotDeletionTests
         "Test",
         "Test",
         "Test",
-        "installation",
+        installationId,
         keyPresses,
         mouseClicks,
         new Dictionary<string, string> { [ActivityAttributeKeys.SpanLabel] = spanLabel });

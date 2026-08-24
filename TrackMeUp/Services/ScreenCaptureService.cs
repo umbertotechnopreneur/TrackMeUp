@@ -148,7 +148,8 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             analysis.AsReadOnly(),
             storage.AsReadOnly(),
             validatedOrigin,
-            FocusMetadata: focusMetadata);
+            FocusMetadata: focusMetadata,
+            CapturedAt: capturedAt);
     }
 
     /// <summary>
@@ -189,7 +190,8 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             paths.Analysis,
             paths.Stored,
             validatedOrigin,
-            FocusMetadata: focusMetadata);
+            FocusMetadata: focusMetadata,
+            CapturedAt: capturedAt);
     }
 
     /// <summary>Returns the zero-based display index that contains the largest foreground-window area.</summary>
@@ -424,7 +426,8 @@ public sealed record ScreenshotCaptureResult(
     IReadOnlyList<string> StoredScreenshotPaths,
     string CaptureOrigin,
     IReadOnlyList<TrackMeUp.Application.ScreenshotTextSnapshot>? TextSnapshots = null,
-    ScreenshotFocusMetadata? FocusMetadata = null)
+    ScreenshotFocusMetadata? FocusMetadata = null,
+    DateTimeOffset? CapturedAt = null)
 {
     /// <summary>
     /// Returns all generated files, used for retention and cleanup.
