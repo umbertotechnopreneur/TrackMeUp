@@ -233,7 +233,7 @@ Il nuovo caso d'uso deve invece:
 2. ricostruire il gruppo multi-monitor tramite `capture_id`;
 3. ricostruire il contesto storico dai campioni che circondano `captured_utc_ticks` e dalla telemetria persistita;
 4. riusare l'OCR già salvato, senza rifare OCR salvo futura opzione esplicita;
-5. usare le immagini conservate come input di analisi, accettando che possano contenere il watermark locale perché i raw originali sono già stati eliminati;
+5. usare le immagini conservate come input di analisi, accettando che i soli artefatti storici possano ancora contenere la vecchia etichetta incorporata perché i raw originali sono già stati eliminati;
 6. invocare la logica comune di descrizione con origine stabile `snapshot.reprocess`;
 7. persistere usage, risultato e relazione artifact prima del checkpoint; se il runtime termina tra i due commit, il recovery riconcilia l'item `running` come riuscito dalla relazione normalizzata e non ripete la richiesta.
 

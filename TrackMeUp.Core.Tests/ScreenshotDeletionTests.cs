@@ -117,10 +117,10 @@ public sealed class ScreenshotDeletionTests
         try
         {
             var store = CreateStore(dataDirectory);
-            var older = CreateCapture(dataDirectory);
-            var latest = CreateCapture(dataDirectory);
             var olderLocalTime = DateTime.Today.AddDays(-2).AddHours(12);
             var latestLocalTime = DateTime.Today.AddDays(-1).AddHours(16);
+            var older = CreateCapture(dataDirectory, new DateTimeOffset(olderLocalTime));
+            var latest = CreateCapture(dataDirectory, new DateTimeOffset(latestLocalTime));
             foreach (var path in older.AllScreenshotPaths)
             {
                 File.SetLastWriteTime(path, olderLocalTime);
@@ -152,12 +152,13 @@ public sealed class ScreenshotDeletionTests
         try
         {
             var store = CreateStore(dataDirectory);
-            var monitorCapture = CreateCapture(dataDirectory);
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var monitorCapture = CreateCapture(dataDirectory, capturedAt);
+            var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(dataDirectory, capturedAt);
             var activeWindowPath = Path.Combine(
-                dataDirectory,
+                dayDirectory,
                 $"{Guid.NewGuid():N}_1.0.0_scheduled_active-window.webp");
             File.WriteAllBytes(activeWindowPath, [7, 8, 9]);
-            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
             foreach (var path in monitorCapture.AllScreenshotPaths.Append(activeWindowPath))
             {
                 File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
@@ -326,13 +327,18 @@ public sealed class ScreenshotDeletionTests
         return store;
     }
 
-    private static ScreenshotCaptureResult CreateCapture(string directory)
+    private static ScreenshotCaptureResult CreateCapture(string directory, DateTimeOffset? capturedAt = null)
     {
+        var timestamp = capturedAt ?? DateTimeOffset.Now;
+        var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, timestamp);
+        Directory.CreateDirectory(dayDirectory);
         var captureId = Guid.NewGuid().ToString("N");
-        var rawPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1-raw.webp");
-        var storedPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1.webp");
+        var rawPath = Path.Combine(dayDirectory, $"{captureId}_1.0.0_manual_monitor-1-raw.webp");
+        var storedPath = Path.Combine(dayDirectory, $"{captureId}_1.0.0_manual_monitor-1.webp");
         File.WriteAllBytes(rawPath, [1, 2, 3]);
         File.WriteAllBytes(storedPath, [4, 5, 6]);
+        File.SetLastWriteTimeUtc(rawPath, timestamp.UtcDateTime);
+        File.SetLastWriteTimeUtc(storedPath, timestamp.UtcDateTime);
         return new ScreenshotCaptureResult(
             captureId,
             [rawPath],
@@ -377,7 +383,7 @@ public sealed class ScreenshotDeletionTests
 
     private sealed class UnexpectedCaptureService : IScreenCaptureService
     {
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin) =>
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin) =>
             throw new InvalidOperationException("The deletion tests must not capture a new screenshot.");
     }
 

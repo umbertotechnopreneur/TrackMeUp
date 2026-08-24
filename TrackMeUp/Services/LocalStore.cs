@@ -72,6 +72,112 @@ public sealed class LocalStore
     /// <summary>Gets the absolute root containing all application-owned local data.</summary>
     internal string DataDirectory => _dataDirectory;
 
+    /// <summary>Inspects owned screenshot artifacts that are outside the current calendar layout.</summary>
+    internal ScreenshotStorageMigrationStatus GetScreenshotStorageMigrationStatus(CancellationToken cancellationToken)
+    {
+        _screenshotProjectionGate.Wait(cancellationToken);
+        try
+        {
+            var settings = LoadSettings();
+            var moves = ScreenshotStorageLayout.BuildMigrationPlan(settings.ScreenshotDirectory);
+            return new ScreenshotStorageMigrationStatus(moves.Count > 0, moves.Count);
+        }
+        finally
+        {
+            _screenshotProjectionGate.Release();
+        }
+    }
+
+    /// <summary>Moves owned artifacts into the current layout and remaps every durable absolute-path reference.</summary>
+    internal ScreenshotStorageMigrationResult MigrateScreenshotStorage(CancellationToken cancellationToken)
+    {
+        _screenshotProjectionGate.Wait(cancellationToken);
+        try
+        {
+            var settings = LoadSettings();
+            var root = ScreenshotStorageLayout.NormalizeRoot(settings.ScreenshotDirectory);
+            var moves = ScreenshotStorageLayout.BuildMigrationPlan(root);
+            var completedMoves = new List<ScreenshotStorageMove>(moves.Count);
+            try
+            {
+                foreach (var move in moves)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var destinationDirectory = Path.GetDirectoryName(move.DestinationPath)
+                        ?? throw new InvalidDataException("A screenshot migration destination has no parent directory.");
+                    // Every move is preflighted and non-overwriting; any storage failure aborts the complete migration.
+                    Directory.CreateDirectory(destinationDirectory);
+                    File.Move(move.SourcePath, move.DestinationPath);
+                    completedMoves.Add(move);
+                }
+
+                var pathRemaps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var move in moves)
+                {
+                    pathRemaps[Path.GetFullPath(move.SourcePath)] = Path.GetFullPath(move.DestinationPath);
+                }
+
+                var currentArtifacts = ScreenshotStorageLayout.EnumerateOwnedArtifacts(root)
+                    .Select(Path.GetFullPath)
+                    .ToArray();
+                var duplicateName = currentArtifacts
+                    .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault(group => group.Count() > 1);
+                if (duplicateName is not null)
+                {
+                    throw new InvalidDataException($"Screenshot artifact name is not unique: '{duplicateName.Key}'.");
+                }
+
+                foreach (var currentPath in currentArtifacts)
+                {
+                    var legacyPath = Path.Combine(root, Path.GetFileName(currentPath));
+                    if (!string.Equals(legacyPath, currentPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Reapplying the legacy-root mapping repairs metadata after an interrupted prior startup.
+                        pathRemaps[legacyPath] = currentPath;
+                    }
+                }
+
+                _activity.RemapScreenshotPaths(pathRemaps);
+                return new ScreenshotStorageMigrationResult(completedMoves.Count);
+            }
+            catch (Exception migrationException)
+            {
+                var rollbackFailures = new List<Exception>();
+                foreach (var move in completedMoves.AsEnumerable().Reverse())
+                {
+                    try
+                    {
+                        if (File.Exists(move.DestinationPath) && !File.Exists(move.SourcePath))
+                        {
+                            var sourceDirectory = Path.GetDirectoryName(move.SourcePath)
+                                ?? throw new InvalidDataException("A screenshot rollback source has no parent directory.");
+                            Directory.CreateDirectory(sourceDirectory);
+                            File.Move(move.DestinationPath, move.SourcePath);
+                        }
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        rollbackFailures.Add(rollbackException);
+                    }
+                }
+
+                if (rollbackFailures.Count > 0)
+                {
+                    throw new AggregateException(
+                        "Screenshot storage migration failed and could not be rolled back completely.",
+                        new[] { migrationException }.Concat(rollbackFailures));
+                }
+
+                throw;
+            }
+        }
+        finally
+        {
+            _screenshotProjectionGate.Release();
+        }
+    }
+
     /// <summary>Persists raw local OCR and optional AI refinement for one owned screenshot source.</summary>
     internal void UpsertScreenshotTextSnapshot(string captureId, ScreenshotTextSnapshot snapshot)
     {
@@ -309,20 +415,25 @@ public sealed class LocalStore
 
         var settings = LoadSettings();
         var screenshotFiles = Directory.Exists(settings.ScreenshotDirectory)
-            ? Directory.EnumerateFiles(settings.ScreenshotDirectory, "*", SearchOption.TopDirectoryOnly)
-                .Where(ScreenCaptureService.IsOwnedArtifact)
+            ? ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory)
                 .Select(path => new FileInfo(path))
                 .ToArray()
             : Array.Empty<FileInfo>();
         var latestScreenshotWrite = screenshotFiles.Length == 0
             ? 0
             : screenshotFiles.Max(file => file.LastWriteTimeUtc.Ticks);
+        var screenshotLayoutStamp = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join(
+            '\n',
+            screenshotFiles
+                .Select(file => $"{Path.GetRelativePath(settings.ScreenshotDirectory, file.FullName).Replace('\\', '/')}:{file.Length}:{file.LastWriteTimeUtc.Ticks}")
+                .Order(StringComparer.OrdinalIgnoreCase)))));
         return string.Join(
             "|",
             FileStamp(_activity.DatabasePath),
             FileStamp(_activity.DatabasePath + "-wal"),
             screenshotFiles.Length,
             latestScreenshotWrite,
+            screenshotLayoutStamp,
             settings.ScreenshotDirectory.ToUpperInvariant(),
             settings.SearchLanguage.ToUpperInvariant());
     }
@@ -481,16 +592,21 @@ public sealed class LocalStore
         }
 
         // Retained files are the source of truth; AI rows enrich them but do not control their visibility after restart.
-        return Directory.EnumerateFiles(directory)
-            .Where(ScreenCaptureService.IsOwnedArtifact)
+        return ScreenshotStorageLayout.EnumerateOwnedArtifacts(directory)
             .Select(path => new FileInfo(path))
             .GroupBy(file => ScreenshotIdentity(file.Name), StringComparer.OrdinalIgnoreCase)
             .Select(group => group
                 .OrderByDescending(file => IsPreferredStoredArtifact(file.Name))
                 .ThenByDescending(file => file.LastWriteTimeUtc)
                 .First())
-            .OrderByDescending(file => file.LastWriteTimeUtc)
-            .Select(file => file.FullName)
+            .Select(file => new
+            {
+                File = file,
+                Day = ScreenshotStorageLayout.GetDay(directory, file.FullName)
+            })
+            .OrderByDescending(candidate => candidate.Day)
+            .ThenByDescending(candidate => candidate.File.LastWriteTimeUtc)
+            .Select(candidate => candidate.File.FullName)
             .FirstOrDefault();
     }
 
@@ -514,18 +630,17 @@ public sealed class LocalStore
         var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
             ? _utilities.GetDefaultScreenshotDirectory()
             : settings.ScreenshotDirectory;
-        var configuredDirectory = Path.GetFullPath(directory)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var artifactDirectory = Path.GetDirectoryName(fullPath)?
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!string.Equals(configuredDirectory, artifactDirectory, StringComparison.OrdinalIgnoreCase))
+        var configuredDirectory = ScreenshotStorageLayout.NormalizeRoot(directory);
+        var artifactDirectory = Path.GetDirectoryName(fullPath) is { } parentDirectory
+            ? ScreenshotStorageLayout.NormalizeRoot(parentDirectory)
+            : null;
+        if (artifactDirectory is null || !ScreenshotStorageLayout.IsSameOrDescendant(artifactDirectory, configuredDirectory))
         {
             return Array.Empty<string>();
         }
 
         var identity = ScreenshotIdentity(Path.GetFileName(fullPath));
-        return Directory.EnumerateFiles(configuredDirectory, "*", SearchOption.TopDirectoryOnly)
-            .Where(ScreenCaptureService.IsOwnedArtifact)
+        return ScreenshotStorageLayout.EnumerateOwnedArtifactsInDirectory(artifactDirectory)
             .Where(path => string.Equals(ScreenshotIdentity(Path.GetFileName(path)), identity, StringComparison.OrdinalIgnoreCase))
             .ToArray();
     }
@@ -559,26 +674,18 @@ public sealed class LocalStore
         var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
             ? _utilities.GetDefaultScreenshotDirectory()
             : settings.ScreenshotDirectory;
-        if (!Directory.Exists(directory))
+        var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, date);
+        if (!Directory.Exists(dayDirectory))
         {
             return new ScreenshotGallery(date, Array.Empty<ScreenshotGalleryItem>());
         }
 
         var files = new List<FileInfo>();
-        foreach (var path in Directory.EnumerateFiles(directory))
+        foreach (var path in ScreenshotStorageLayout.EnumerateOwnedArtifactsInDirectory(dayDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!ScreenCaptureService.IsOwnedArtifact(path))
-            {
-                continue;
-            }
-
             var file = new FileInfo(path);
-            var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
-            if (DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime) == date)
-            {
-                files.Add(file);
-            }
+            files.Add(file);
         }
 
         var retainedFiles = files
@@ -675,9 +782,11 @@ public sealed class LocalStore
             return new ScreenshotGallery(DateOnly.FromDateTime(DateTime.Today), Array.Empty<ScreenshotGalleryItem>());
         }
 
-        // File timestamps remain the capture-time source used by the date-filtered gallery.
-        var capturedAt = new DateTimeOffset(File.GetLastWriteTimeUtc(latestPath), TimeSpan.Zero);
-        return GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime), cancellationToken);
+        var settings = LoadSettings();
+        var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
+            ? _utilities.GetDefaultScreenshotDirectory()
+            : settings.ScreenshotDirectory;
+        return GetScreenshotGallery(ScreenshotStorageLayout.GetDay(directory, latestPath), cancellationToken);
     }
 
     /// <summary>Counts retained screenshot captures without loading their SQLite-backed gallery metadata.</summary>
@@ -695,14 +804,9 @@ public sealed class LocalStore
         }
 
         var retainedFiles = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+        foreach (var path in ScreenshotStorageLayout.EnumerateOwnedArtifacts(directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!ScreenCaptureService.IsOwnedArtifact(path))
-            {
-                continue;
-            }
-
             var candidate = new FileInfo(path);
             var identity = ScreenshotIdentity(candidate.Name);
             if (!retainedFiles.TryGetValue(identity, out var current) ||
@@ -718,8 +822,7 @@ public sealed class LocalStore
         foreach (var file in retainedFiles.Values)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var capturedAt = new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
-            if (DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime) == today)
+            if (ScreenshotStorageLayout.GetDay(directory, file.FullName) == today)
             {
                 todaySnapshotCount++;
             }
@@ -737,9 +840,8 @@ public sealed class LocalStore
             return Array.Empty<ScreenshotGalleryItem>();
         }
 
-        var dates = Directory.EnumerateFiles(settings.ScreenshotDirectory, "*", SearchOption.TopDirectoryOnly)
-            .Where(ScreenCaptureService.IsOwnedArtifact)
-            .Select(path => DateOnly.FromDateTime(File.GetLastWriteTime(path).Date))
+        var dates = ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory)
+            .Select(path => ScreenshotStorageLayout.GetDay(settings.ScreenshotDirectory, path))
             .Distinct()
             .Order()
             .ToArray();
@@ -831,14 +933,9 @@ public sealed class LocalStore
             return retainedByIdentity;
         }
 
-        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+        foreach (var path in ScreenshotStorageLayout.EnumerateOwnedArtifacts(directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!ScreenCaptureService.IsOwnedArtifact(path))
-            {
-                continue;
-            }
-
             var candidate = new FileInfo(path);
             var identity = ScreenshotIdentity(candidate.Name);
             if (!retainedByIdentity.TryGetValue(identity, out var current)
@@ -858,53 +955,21 @@ public sealed class LocalStore
         IReadOnlyList<string> artifactIdentities,
         CancellationToken cancellationToken)
     {
-        var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
-            ? _utilities.GetDefaultScreenshotDirectory()
-            : settings.ScreenshotDirectory;
         var retainedByIdentity = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
-        if (!Directory.Exists(directory))
-        {
-            return retainedByIdentity;
-        }
+        var requestedIdentities = artifactIdentities
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(identity =>
+                !string.IsNullOrWhiteSpace(identity)
+                && string.Equals(Path.GetFileName(identity), identity, StringComparison.Ordinal)
+                && ScreenCaptureService.IsOwnedArtifact(identity + ".webp"))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var identity in artifactIdentities.Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var (identity, candidate) in EnumerateRetainedScreenshotArtifacts(settings, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (string.IsNullOrWhiteSpace(identity)
-                || !string.Equals(Path.GetFileName(identity), identity, StringComparison.Ordinal)
-                || !ScreenCaptureService.IsOwnedArtifact(identity + ".webp"))
+            if (requestedIdentities.Contains(identity))
             {
-                continue;
-            }
-
-            FileInfo? selected = null;
-            foreach (var fileName in new[]
-                     {
-                         identity + ".webp",
-                         identity + ".png",
-                         identity + "-raw.webp",
-                         identity + "-raw.png"
-                     })
-            {
-                var path = Path.Combine(directory, fileName);
-                if (!File.Exists(path) || !ScreenCaptureService.IsOwnedArtifact(path))
-                {
-                    continue;
-                }
-
-                var candidate = new FileInfo(path);
-                if (selected is null
-                    || IsPreferredStoredArtifact(candidate.Name) && !IsPreferredStoredArtifact(selected.Name)
-                    || IsPreferredStoredArtifact(candidate.Name) == IsPreferredStoredArtifact(selected.Name)
-                    && candidate.LastWriteTimeUtc > selected.LastWriteTimeUtc)
-                {
-                    selected = candidate;
-                }
-            }
-
-            if (selected is not null)
-            {
-                retainedByIdentity[identity] = selected;
+                retainedByIdentity[identity] = candidate;
             }
         }
 

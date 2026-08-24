@@ -35,6 +35,9 @@
             <uap5:ExecutionAlias Alias="trackmeup.exe" />
           </uap5:AppExecutionAlias>
         </uap5:Extension>
+        <uap5:Extension Category="windows.startupTask" Executable="TrackMeUp.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="TrackMeUpStartup" Enabled="false" DisplayName="TrackMeUp" />
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>

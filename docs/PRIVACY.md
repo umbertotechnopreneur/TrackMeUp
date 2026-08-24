@@ -69,7 +69,7 @@ The following are the direct packages declared in the repository at the time of 
 | `SQLitePCLRaw.lib.e_sqlite3` | 2.1.12 | SQLite native engine used by the local store. |
 | `SkiaSharp` | 4.151.0 | Local image conversion and rendering. |
 | `SkiaSharp.NativeAssets.Win32` | 4.151.0 | Windows native assets for SkiaSharp. |
-| `System.Drawing.Common` | 10.0.10 | Local image and watermark operations. |
+| `System.Drawing.Common` | 10.0.10 | Local screen-pixel acquisition before WebP encoding. |
 | `System.Management` | 10.0.10 | Reads local Windows/system information. |
 | `System.Diagnostics.PerformanceCounter` | 10.0.10 | Reads local performance counters. |
 | `Microsoft.WindowsAppSDK` | 2.3.1 | Windows desktop UI and platform integration. |

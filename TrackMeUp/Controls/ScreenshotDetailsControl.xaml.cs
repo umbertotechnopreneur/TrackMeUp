@@ -19,16 +19,27 @@ public sealed partial class ScreenshotDetailsControl : UserControl
     /// <summary>Replaces every displayed value with one immutable screenshot-detail projection.</summary>
     /// <param name="state">The selected screenshot details, or <see langword="null"/> when no screenshot is selected.</param>
     /// <param name="emptyAiDescriptionText">Localized contextual copy to show when the description has no rendered blocks.</param>
-    public void Render(ScreenshotDetailsViewState? state, string emptyAiDescriptionText)
+    /// <param name="privacyStatusText">Localized application-wide privacy-filter status.</param>
+    public void Render(
+        ScreenshotDetailsViewState? state,
+        string emptyAiDescriptionText,
+        string privacyStatusText)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(emptyAiDescriptionText);
+        ArgumentException.ThrowIfNullOrWhiteSpace(privacyStatusText);
 
         CapturedAtSummaryText.Text = state is null ? "--" : $"{state.CapturedDate} · {state.CapturedTime}";
         ActivityIndexValueText.Text = state?.ActivityIndex ?? "--";
         ApplicationValueText.Text = state?.Application ?? "--";
+        WindowTitleValueText.Text = state?.WindowTitle ?? "--";
+        ScreenValueText.Text = state?.Screen ?? "--";
         CaptureKindValueText.Text = state?.CaptureKind ?? "--";
         OriginValueText.Text = state?.Origin ?? "--";
         ActivityLabelsValueText.Text = state?.ActivityLabels ?? "--";
+        MouseClicksValueText.Text = state?.MouseClicks ?? "--";
+        CpuUsageValueText.Text = state?.CpuUsage ?? "--";
+        GpuUsageValueText.Text = state?.GpuUsage ?? "--";
+        PrivacyStatusValueText.Text = privacyStatusText;
         AnalysisTimeValueText.Text = state?.AnalysisTime ?? "--";
         AnalysisTimePanel.Visibility = string.IsNullOrWhiteSpace(state?.AnalysisTime)
             ? Visibility.Collapsed

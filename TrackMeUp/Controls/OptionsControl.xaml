@@ -594,22 +594,6 @@
                             <ComboBoxItem Content="Active window" Tag="active-window" />
                         </ComboBox>
                         <TextBox x:Name="ScreenshotModeHintBox" Tag="Options.SnapshotResult" Header="Result" IsReadOnly="True" IsTabStop="False" TextWrapping="Wrap" />
-                        <Grid MinHeight="44" ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Tag="Options.Watermark.Header" Text="Screen-capture label" TextWrapping="Wrap" />
-                            <ToggleSwitch
-                                x:Name="WatermarkSwitch"
-                                Grid.Column="1"
-                                MinWidth="0"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                AutomationProperties.Name="Screen-capture label"
-                                OffContent=""
-                                OnContent="" />
-                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

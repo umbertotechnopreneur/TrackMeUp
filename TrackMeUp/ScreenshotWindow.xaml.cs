@@ -40,6 +40,7 @@ public sealed partial class ScreenshotWindow : Window
     private XamlRoot? _xamlRoot;
     private string _theme = "system";
     private string _aiDescriptionEmptyMessageKey = DefaultAiDescriptionEmptyMessageKey;
+    private int? _privacyRuleCount;
     private ScreenshotDetailsViewState? _selectedDetailsState;
     private OcrTextWindow? _ocrTextWindow;
     private bool _initialized;
@@ -58,14 +59,6 @@ public sealed partial class ScreenshotWindow : Window
     private TextBlock ExtendedDateText => HeaderSection.DisplayDateText;
 
     private Controls.ScreenshotImageViewerControl ScreenshotViewer => GallerySection.Viewer;
-
-    private Grid MetadataPanel => GallerySection.MetadataContainer;
-
-    private TextBlock MetadataDateValueText => GallerySection.MetadataDateText;
-
-    private TextBlock MetadataTimeValueText => GallerySection.MetadataTimeText;
-
-    private TextBlock MetadataAppValueText => GallerySection.MetadataApplicationText;
 
     private Grid EmptyGalleryPanel => GallerySection.EmptyPanel;
 
@@ -123,14 +116,19 @@ public sealed partial class ScreenshotWindow : Window
     private void WireViewEvents()
     {
         SelectedDatePicker.DateChanged += SelectedDatePicker_DateChanged;
-        ScreenshotViewer.SaveRequested += ScreenshotViewer_SaveRequested;
-        ScreenshotViewer.ShareRequested += ScreenshotViewer_ShareRequested;
-        ScreenshotViewer.OpenFolderRequested += ScreenshotViewer_OpenFolderRequested;
-        ScreenshotViewer.DeleteScreenshotRequested += ScreenshotViewer_DeleteScreenshotRequested;
-        ScreenshotViewer.DeleteSnapshotRequested += ScreenshotViewer_DeleteSnapshotRequested;
-        ScreenshotViewer.DetailsVisibilityRequested += ScreenshotViewer_DetailsVisibilityRequested;
+        HeaderSection.ZoomOutRequested += HeaderSection_ZoomOutRequested;
+        HeaderSection.ZoomResetRequested += HeaderSection_ZoomResetRequested;
+        HeaderSection.ZoomInRequested += HeaderSection_ZoomInRequested;
+        HeaderSection.SaveRequested += HeaderSection_SaveRequested;
+        HeaderSection.ShareRequested += HeaderSection_ShareRequested;
+        HeaderSection.OpenFolderRequested += HeaderSection_OpenFolderRequested;
+        HeaderSection.DeleteScreenshotRequested += HeaderSection_DeleteScreenshotRequested;
+        HeaderSection.DeleteSnapshotRequested += HeaderSection_DeleteSnapshotRequested;
+        HeaderSection.DetailsVisibilityRequested += HeaderSection_DetailsVisibilityRequested;
+        ScreenshotViewer.ZoomStateChanged += ScreenshotViewer_ZoomStateChanged;
         DetailsSection.OcrTextRequested += DetailsSection_OcrTextRequested;
         TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
+        DayOverviewSection.SelectedIndexChanged += DayOverviewSection_SelectedIndexChanged;
         FilmstripToggleButton.Click += FilmstripToggleButton_Click;
     }
 
@@ -143,6 +141,7 @@ public sealed partial class ScreenshotWindow : Window
         SetSelectedDate(selectedDate);
         if (_initialized)
         {
+            await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
             await LoadGalleryAsync(selectedDate);
         }
     }
@@ -153,6 +152,7 @@ public sealed partial class ScreenshotWindow : Window
         _requestedScreenshotPath = null;
         if (_initialized)
         {
+            await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
             await LoadGalleryAsync(null);
         }
     }
@@ -206,7 +206,32 @@ public sealed partial class ScreenshotWindow : Window
             ApplyLocalization();
         }
 
+        await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
         await LoadGalleryAsync(_requestedScreenshotPath is null ? null : _selectedDate);
+    }
+
+    private async Task RefreshPrivacyStatusAsync(CancellationToken cancellationToken)
+    {
+        _privacyRuleCount = null;
+        try
+        {
+            var result = await _application.GetPrivacyRulesAsync(cancellationToken);
+            if (result.Succeeded && result.Value is not null)
+            {
+                _privacyRuleCount = result.Value.Count;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // Privacy status is supplementary inspector context; an unavailable query stays visibly unknown.
+            _privacyRuleCount = null;
+        }
+
+        ApplyPrivacyStatus();
     }
 
     private async void SelectedDatePicker_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
@@ -315,8 +340,11 @@ public sealed partial class ScreenshotWindow : Window
 
     private void ApplyHeaderLocalization()
     {
+        HeaderSection.ApplyToolbarLocalization(_strings);
         SelectedDatePicker.PlaceholderText = T("Screenshots.Date.Placeholder");
-        AutomationProperties.SetName(SelectedDatePicker, T("Screenshots.Date"));
+        var selectDateLabel = T("Screenshots.Date.Select");
+        AutomationProperties.SetName(SelectedDatePicker, selectDateLabel);
+        ToolTipService.SetToolTip(SelectedDatePicker, selectDateLabel);
         UpdateDisplayedDate();
         UpdateDetailsToggleAccessibility();
         UpdateFilmstripToggleAccessibility();
@@ -329,6 +357,7 @@ public sealed partial class ScreenshotWindow : Window
         var resizeLabel = T("Screenshots.Details.Resize");
         AutomationProperties.SetName(DetailsResizeGrip, resizeLabel);
         ToolTipService.SetToolTip(DetailsResizeGrip, resizeLabel);
+        ApplyPrivacyStatus();
         ApplyHeaderLocalization();
     }
 
@@ -372,6 +401,7 @@ public sealed partial class ScreenshotWindow : Window
 
         _selectedIndex = hasItems ? Math.Clamp(_selectedIndex, 0, _items.Count - 1) : 0;
         TimelineSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
+        DayOverviewSection.SetItems(_items, hasItems ? _selectedIndex : -1, _strings.Language);
         RenderSelectedScreenshot();
         SetDetailsPaneVisibility(hasItems && _detailsPaneOpenPreference);
         UpdateDetailsToggleAccessibility();
@@ -387,6 +417,20 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         _selectedIndex = selectedIndex;
+        DayOverviewSection.SetItems(_items, _selectedIndex, _strings.Language);
+        RenderSelectedScreenshot();
+    }
+
+    private void DayOverviewSection_SelectedIndexChanged(int selectedIndex)
+    {
+        if (selectedIndex < 0 || selectedIndex >= _items.Count)
+        {
+            return;
+        }
+
+        _selectedIndex = selectedIndex;
+        TimelineSection.SetItems(_items, _selectedIndex, _strings.Language);
+        DayOverviewSection.SetItems(_items, _selectedIndex, _strings.Language);
         RenderSelectedScreenshot();
     }
 
@@ -408,22 +452,20 @@ public sealed partial class ScreenshotWindow : Window
     {
         if (item is null)
         {
-            MetadataDateValueText.Text = "--";
-            MetadataTimeValueText.Text = "--";
-            MetadataAppValueText.Text = "--";
+            HeaderSection.ClearMetadata();
             _selectedDetailsState = null;
             RenderDetails();
-            MetadataPanel.Visibility = Visibility.Collapsed;
             return;
         }
 
         var culture = _strings.Culture;
         var localTime = item.CapturedAt.ToLocalTime();
-        MetadataDateValueText.Text = FormatMetadataDate(localTime, culture);
-        MetadataTimeValueText.Text = localTime.ToString("t", culture);
-        MetadataAppValueText.Text = string.IsNullOrWhiteSpace(item.ForegroundApplication)
-            ? T("Screenshots.Application.Desktop")
-            : item.ForegroundApplication;
+        HeaderSection.SetMetadata(
+            FormatMetadataDate(localTime, culture),
+            localTime.ToString("t", culture),
+            string.IsNullOrWhiteSpace(item.ForegroundApplication)
+                ? T("Screenshots.Application.Desktop")
+                : item.ForegroundApplication);
         var captureOrigin = FormatCaptureOrigin(item.CaptureOrigin);
         _selectedDetailsState = ScreenshotDetailsProjection.Create(
             item,
@@ -432,7 +474,6 @@ public sealed partial class ScreenshotWindow : Window
             captureOrigin,
             "--");
         RenderDetails();
-        MetadataPanel.Visibility = Visibility.Visible;
     }
 
     private void RenderDetails()
@@ -441,8 +482,20 @@ public sealed partial class ScreenshotWindow : Window
         UiLocalization.Apply(DetailsSection, _strings);
         DetailsSection.Render(
             _selectedDetailsState,
-            _strings.Translate(_aiDescriptionEmptyMessageKey));
+            _strings.Translate(_aiDescriptionEmptyMessageKey),
+            FormatPrivacyStatus());
     }
+
+    private void ApplyPrivacyStatus() =>
+        HeaderSection.SetPrivacyStatus(FormatPrivacyStatus(), _privacyRuleCount is > 0);
+
+    private string FormatPrivacyStatus() => _privacyRuleCount switch
+    {
+        null => T("Screenshots.Privacy.Unavailable"),
+        0 => T("Screenshots.Privacy.None"),
+        1 => T("Screenshots.Privacy.One"),
+        var count => _strings.Format("Screenshots.Privacy.Many", count)
+    };
 
     private void DetailsSection_OcrTextRequested(string ocrText)
     {
@@ -478,7 +531,22 @@ public sealed partial class ScreenshotWindow : Window
         _ocrTextWindow = null;
     }
 
-    private async void ScreenshotViewer_DetailsVisibilityRequested(bool isVisible)
+    private void HeaderSection_ZoomOutRequested(object? sender, EventArgs e) => ScreenshotViewer.ZoomOut();
+
+    private void HeaderSection_ZoomResetRequested(object? sender, EventArgs e) => ScreenshotViewer.ResetZoom();
+
+    private void HeaderSection_ZoomInRequested(object? sender, EventArgs e) => ScreenshotViewer.ZoomIn();
+
+    private void ScreenshotViewer_ZoomStateChanged(object? sender, EventArgs e) => UpdateScreenshotToolbarState();
+
+    private void UpdateScreenshotToolbarState() =>
+        HeaderSection.SetViewerState(
+            ScreenshotViewer.ZoomText,
+            ScreenshotViewer.HasImage,
+            ScreenshotViewer.CanZoomOut,
+            ScreenshotViewer.CanZoomIn);
+
+    private async void HeaderSection_DetailsVisibilityRequested(bool isVisible)
     {
         if (_isSavingDetailsPanePreference)
         {
@@ -556,7 +624,7 @@ public sealed partial class ScreenshotWindow : Window
             ? "Screenshots.Details.Hide"
             : "Screenshots.Details.Show";
         var label = _strings.Translate(key);
-        ScreenshotViewer.SetDetailsState(
+        HeaderSection.SetDetailsState(
             _items.Count > 0 && !_isSavingDetailsPanePreference,
             DetailsPane.Visibility == Visibility.Visible,
             label);
@@ -673,7 +741,7 @@ public sealed partial class ScreenshotWindow : Window
         };
     }
 
-    private async void ScreenshotViewer_DeleteScreenshotRequested(object? sender, EventArgs e)
+    private async void HeaderSection_DeleteScreenshotRequested(object? sender, EventArgs e)
     {
         var selected = GetSelectedItem();
         var result = await _application.DeleteScreenshotAsync(selected.Path, _lifetimeCancellation.Token);
@@ -685,14 +753,14 @@ public sealed partial class ScreenshotWindow : Window
         ShowActionResult(result, "Screenshots.Action.ScreenshotDeleted");
     }
 
-    private async void ScreenshotViewer_DeleteSnapshotRequested(object? sender, EventArgs e)
+    private async void HeaderSection_DeleteSnapshotRequested(object? sender, EventArgs e)
     {
         var selected = GetSelectedItem();
         var result = await _application.DeleteSnapshotAsync(selected.Path, _lifetimeCancellation.Token);
         ShowActionResult(result, "Screenshots.Action.SnapshotDeleted");
     }
 
-    private async void ScreenshotViewer_SaveRequested(object? sender, EventArgs e) =>
+    private async void HeaderSection_SaveRequested(object? sender, EventArgs e) =>
         await SaveSelectedScreenshotAsync();
 
     private async Task SaveSelectedScreenshotAsync()
@@ -721,13 +789,13 @@ public sealed partial class ScreenshotWindow : Window
         ShowActionResult(result, "Screenshots.Action.Saved");
     }
 
-    private async void ScreenshotViewer_OpenFolderRequested(object? sender, EventArgs e)
+    private async void HeaderSection_OpenFolderRequested(object? sender, EventArgs e)
     {
         var result = await _application.OpenScreenshotFolderAsync(_lifetimeCancellation.Token);
         ShowActionResult(result, "Screenshots.Action.FolderOpened");
     }
 
-    private async void ScreenshotViewer_ShareRequested(object? sender, EventArgs e)
+    private async void HeaderSection_ShareRequested(object? sender, EventArgs e)
     {
         var selected = GetSelectedItem();
         var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64();
@@ -777,6 +845,12 @@ public sealed partial class ScreenshotWindow : Window
     {
         GalleryProgressRing.IsActive = isLoading;
         GalleryProgressRing.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
+        if (isLoading)
+        {
+            ScreenshotViewer.Visibility = Visibility.Collapsed;
+            EmptyGalleryPanel.Visibility = Visibility.Collapsed;
+        }
+
         SelectedDatePicker.IsEnabled = !isLoading;
     }
 
@@ -841,6 +915,8 @@ public sealed partial class ScreenshotWindow : Window
     private async void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
     {
         DetailsSection.OcrTextRequested -= DetailsSection_OcrTextRequested;
+        ScreenshotViewer.ZoomStateChanged -= ScreenshotViewer_ZoomStateChanged;
+        DayOverviewSection.SelectedIndexChanged -= DayOverviewSection_SelectedIndexChanged;
         if (_ocrTextWindow is { } ocrTextWindow)
         {
             ocrTextWindow.Closed -= OcrTextWindow_Closed;

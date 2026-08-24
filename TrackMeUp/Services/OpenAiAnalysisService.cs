@@ -115,7 +115,6 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             ? _capture.CaptureByMode(
                 settings.ScreenshotDirectory,
                 settings.ScreenshotCaptureMode,
-                settings.WatermarkScreenshots,
                 captureOrigin: origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
             : new ScreenshotCaptureResult(
                 Guid.NewGuid().ToString("N"),

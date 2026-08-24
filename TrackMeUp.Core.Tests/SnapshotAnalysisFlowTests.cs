@@ -38,7 +38,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.True(result.Succeeded);
@@ -79,7 +79,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var captureResult = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual, DeferAiAnalysis: true),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual, DeferAiAnalysis: true),
                 CancellationToken.None);
 
             Assert.True(captureResult.Succeeded);
@@ -122,7 +122,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.True(result.Succeeded);
@@ -157,7 +157,7 @@ public sealed class SnapshotAnalysisFlowTests
                 screenshotOcr: new UnexpectedFailureOcrService());
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: true, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.False(result.Succeeded);
@@ -241,7 +241,7 @@ public sealed class SnapshotAnalysisFlowTests
                 ocrRefinement: new FailingOcrRefinementService());
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.True(result.Succeeded);
@@ -277,13 +277,12 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, new ProviderFailureAnalysisService());
 
             var captureResult = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
             var deferredCapture = await application.CaptureScreenshotAsync(
                 new CaptureScreenshotRequest(
                     "all-screens",
                     Keep: true,
-                    Watermark: false,
                     ScreenshotCaptureOrigins.Manual,
                     DeferAiAnalysis: true),
                 CancellationToken.None);
@@ -368,7 +367,6 @@ public sealed class SnapshotAnalysisFlowTests
                 new CaptureScreenshotRequest(
                     Mode: null,
                     Keep: true,
-                    Watermark: false,
                     CaptureOrigin: ScreenshotCaptureOrigins.Scheduled,
                     DeferAiAnalysis: true),
                 CancellationToken.None);
@@ -486,7 +484,6 @@ public sealed class SnapshotAnalysisFlowTests
                 new CaptureScreenshotRequest(
                     Mode: null,
                     Keep: true,
-                    Watermark: false,
                     CaptureOrigin: ScreenshotCaptureOrigins.Scheduled,
                     DeferAiAnalysis: true),
                 CancellationToken.None);
@@ -522,7 +519,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("unsupported-mode", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("unsupported-mode", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.False(result.Succeeded);
@@ -565,7 +562,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.False(result.Succeeded);
@@ -606,7 +603,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.False(result.Succeeded);
@@ -647,7 +644,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.False(result.Succeeded);
@@ -687,7 +684,7 @@ public sealed class SnapshotAnalysisFlowTests
             await using var application = CreateApplication(store, capture, analysis);
 
             var result = await application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 CancellationToken.None);
 
             Assert.True(result.Succeeded);
@@ -725,7 +722,7 @@ public sealed class SnapshotAnalysisFlowTests
             using var cancellation = new CancellationTokenSource();
 
             var captureTask = application.CaptureScreenshotAsync(
-                new CaptureScreenshotRequest("all-screens", Keep: true, Watermark: false, ScreenshotCaptureOrigins.Manual),
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
                 cancellation.Token);
             await analysis.Entered;
             cancellation.Cancel();
@@ -855,7 +852,7 @@ public sealed class SnapshotAnalysisFlowTests
 
         public ScreenshotCaptureResult Result { get; }
 
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin)
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin)
         {
             CallCount++;
             LastCaptureOrigin = captureOrigin;
@@ -870,7 +867,7 @@ public sealed class SnapshotAnalysisFlowTests
 
         public string? StoredPath { get; private set; }
 
-        public ScreenshotCaptureResult CaptureByMode(string requestedDirectory, string captureMode, bool includeWatermark, string captureOrigin)
+        public ScreenshotCaptureResult CaptureByMode(string requestedDirectory, string captureMode, string captureOrigin)
         {
             var captureId = Guid.NewGuid().ToString("N");
             RawPath = Path.Combine(directory, $"{captureId}_1.0.0_{captureOrigin}_monitor-1-raw.webp");

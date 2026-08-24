@@ -10,7 +10,7 @@
                     <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FF4E8DEB" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FFFFA45E" />
+                    <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FF6AA9FF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
                     <SolidColorBrush x:Key="ScreenshotDetailAccentBrush" Color="#FF4E8DEB" />
@@ -21,29 +21,27 @@
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="25" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
             <Style x:Key="ScreenshotDetailLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="CharacterSpacing" Value="20" />
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
             <Style x:Key="ScreenshotDetailValueStyle" TargetType="TextBlock">
-                <Setter Property="Margin" Value="0,3,0,0" />
+                <Setter Property="Margin" Value="0,2,0,0" />
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="IsTextSelectionEnabled" Value="True" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
             <Style x:Key="ScreenshotDetailRowStyle" TargetType="Border">
-                <Setter Property="MinHeight" Value="60" />
-                <Setter Property="Padding" Value="0,12" />
+                <Setter Property="MinHeight" Value="58" />
+                <Setter Property="Padding" Value="0,11" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="0,0,0,1" />
@@ -57,170 +55,225 @@
         HorizontalScrollMode="Disabled"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
-        <StackPanel Padding="24,22,24,28" Spacing="20">
-            <StackPanel Spacing="4">
-                <TextBlock
-                    FontSize="22"
-                    FontWeight="SemiBold"
-                    Tag="Screenshots.Details.Title"
-                    Text="Snapshot details" />
-                <TextBlock
-                    x:Name="CapturedAtSummaryText"
-                    FontSize="14"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                    Text="--"
-                    TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-
-            <Border Style="{StaticResource ScreenshotDetailRowStyle}">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <FontIcon
-                        VerticalAlignment="Center"
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="22"
-                        Foreground="{ThemeResource ScreenshotDetailAccentBrush}"
-                        Glyph="&#xE9D9;" />
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock
-                            Style="{StaticResource ScreenshotDetailLabelStyle}"
-                            Tag="Screenshots.ActivityIndex"
-                            Text="ACTIVITY INDEX" />
-                        <TextBlock
-                            Margin="0,3,0,0"
-                            FontSize="14"
-                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                            Tag="Screenshots.ActivityIndex.Description"
-                            Text="Input activity near this capture"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
+        <StackPanel Padding="24,22,24,28" Spacing="18">
+            <Grid ColumnSpacing="15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="72" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border
+                    Width="68"
+                    Height="68"
+                    VerticalAlignment="Center"
+                    BorderBrush="{ThemeResource ScreenshotDetailAccentBrush}"
+                    BorderThickness="4"
+                    CornerRadius="34">
                     <TextBlock
                         x:Name="ActivityIndexValueText"
-                        Grid.Column="2"
+                        HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        FontSize="30"
+                        FontSize="28"
                         FontWeight="SemiBold"
                         Foreground="{ThemeResource ScreenshotDetailAccentBrush}"
                         Text="--" />
-                </Grid>
-            </Border>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock
+                        Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
+                        Tag="Screenshots.Details.Summary"
+                        Text="Activity summary" />
+                    <TextBlock
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Tag="Screenshots.ActivityIndex.Description"
+                        Text="Input activity near this capture"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        x:Name="CapturedAtSummaryText"
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="--"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
 
-            <StackPanel Spacing="10">
+            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <StackPanel Spacing="0">
                 <TextBlock
+                    Margin="0,0,0,4"
                     Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
-                    Tag="Screenshots.Metadata"
-                    Text="CAPTURE DETAILS" />
+                    Tag="Screenshots.Details.Context"
+                    Text="Verifiable context" />
 
-                <Grid ColumnSpacing="10" RowSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <Border Style="{StaticResource ScreenshotDetailRowStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.ApplicationLabel" Text="FOREGROUND APP" />
+                <Border Style="{StaticResource ScreenshotDetailRowStyle}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource ScreenshotDetailAccentBrush}" Glyph="&#xE7F4;" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.ApplicationLabel" Text="Foreground app" />
                             <TextBlock x:Name="ApplicationValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                         </StackPanel>
-                    </Border>
+                    </Grid>
+                </Border>
 
-                    <Border Grid.Column="1" Style="{StaticResource ScreenshotDetailRowStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.CaptureKind" Text="CAPTURE" />
-                            <TextBlock x:Name="CaptureKindValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                <Border Style="{StaticResource ScreenshotDetailRowStyle}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource ScreenshotDetailAccentBrush}" Glyph="&#xE8A7;" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.WindowTitle" Text="Window" />
+                            <TextBlock x:Name="WindowTitleValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                         </StackPanel>
-                    </Border>
+                    </Grid>
+                </Border>
 
-                    <Border Grid.Row="1" Style="{StaticResource ScreenshotDetailRowStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.OriginLabel" Text="ORIGIN" />
+                <Border Style="{StaticResource ScreenshotDetailRowStyle}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource ScreenshotDetailAccentBrush}" Glyph="&#xE7F8;" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.Screen" Text="Screen" />
+                            <TextBlock x:Name="ScreenValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                            <TextBlock x:Name="CaptureKindValueText" Margin="0,1,0,0" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="--" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource ScreenshotDetailRowStyle}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource ScreenshotDetailAccentBrush}" Glyph="&#xE823;" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.OriginLabel" Text="Capture source" />
                             <TextBlock x:Name="OriginValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                         </StackPanel>
-                    </Border>
+                    </Grid>
+                </Border>
+            </StackPanel>
 
-                    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ScreenshotDetailRowStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.SpanLabels" Text="ACTIVITY LABELS" />
-                            <TextBlock x:Name="ActivityLabelsValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
-                        </StackPanel>
-                    </Border>
+            <StackPanel Spacing="8">
+                <TextBlock
+                    Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
+                    Tag="Screenshots.Details.Privacy"
+                    Text="Privacy applied" />
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="17" Foreground="{ThemeResource ScreenshotDetailAccentBrush}" Glyph="&#xE73E;" />
+                    <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Tag="Screenshots.Details.Privacy.Check"
+                            Text="Capture passed privacy checks"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="PrivacyStatusValueText"
+                            FontSize="13"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="--"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Tag="Screenshots.Details.Privacy.Description"
+                            Text="Protected matching contexts are excluded before capture."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
                 </Grid>
             </StackPanel>
 
-            <StackPanel Spacing="9">
-                <TextBlock
-                    Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
-                    Tag="Screenshots.AiDescription"
-                    Text="AI DESCRIPTION" />
-                <StackPanel
-                    x:Name="AiMarkdownHost"
-                    Spacing="8" />
-                <TextBlock
-                    x:Name="NoAiDescriptionText"
-                    FontSize="14"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                    Tag="Screenshots.AiDescription.Empty"
-                    Text="No AI description is available for this capture."
-                    TextWrapping="Wrap" />
-                <StackPanel
-                    x:Name="AnalysisTimePanel"
-                    Orientation="Horizontal"
-                    Spacing="5"
-                    Visibility="Collapsed">
+            <Expander
+                x:Name="AnalysisSourcesExpander"
+                Background="Transparent"
+                HorizontalAlignment="Stretch"
+                IsExpanded="False">
+                <Expander.Header>
                     <TextBlock
-                        FontSize="13"
-                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                        Tag="Screenshots.AiAnalyzedAt"
-                        Text="Analyzed" />
-                    <TextBlock
-                        x:Name="AnalysisTimeValueText"
-                        FontSize="13"
-                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                        Text="--" />
-                </StackPanel>
-            </StackPanel>
-
-            <StackPanel
-                x:Name="OcrTextSection"
-                Spacing="6"
-                Visibility="Collapsed">
-                <TextBlock
-                    Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
-                    Tag="Screenshots.OcrText.Details.Title"
-                    Text="OCR TEXT" />
-                <Button
-                    x:Name="OpenOcrTextButton"
-                    MinHeight="36"
-                    Padding="0,6"
-                    HorizontalAlignment="Left"
-                    AutomationProperties.Name="Open OCR text in a new window"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    BorderThickness="0"
-                    Click="OpenOcrTextButton_Click"
-                    Tag="Screenshots.OcrText.Details.Open"
-                    ToolTipService.ToolTip="Open OCR text in a new window">
-                    <StackPanel Orientation="Horizontal" Spacing="7">
-                        <TextBlock
-                            Tag="Screenshots.OcrText.Details.Action"
-                            Text="Open OCR text" />
-                        <FontIcon
-                            AutomationProperties.AccessibilityView="Raw"
-                            FontFamily="Segoe Fluent Icons"
-                            FontSize="13"
-                            Glyph="&#xE8A7;" />
+                        Style="{StaticResource ScreenshotDetailSectionTitleStyle}"
+                        Tag="Screenshots.Details.AnalysisSources"
+                        Text="Analysis and sources" />
+                </Expander.Header>
+                <StackPanel Padding="0,8,0,0" Spacing="14">
+                    <StackPanel Spacing="8">
+                        <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.SpanLabels" Text="Activity labels" />
+                        <TextBlock x:Name="ActivityLabelsValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.MouseClicks" Text="Mouse" />
+                                <TextBlock x:Name="MouseClicksValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.CpuUsage" Text="CPU" />
+                                <TextBlock x:Name="CpuUsageValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.GpuUsage" Text="GPU" />
+                                <TextBlock x:Name="GpuUsageValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
-                </Button>
-            </StackPanel>
+
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <StackPanel Spacing="9">
+                        <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.AiDescription" Text="AI description" />
+                        <StackPanel x:Name="AiMarkdownHost" Spacing="8" />
+                        <TextBlock
+                            x:Name="NoAiDescriptionText"
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Tag="Screenshots.AiDescription.Empty"
+                            Text="No AI description is available for this capture."
+                            TextWrapping="Wrap" />
+                        <StackPanel x:Name="AnalysisTimePanel" Orientation="Horizontal" Spacing="5" Visibility="Collapsed">
+                            <TextBlock FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Tag="Screenshots.AiAnalyzedAt" Text="Analyzed" />
+                            <TextBlock x:Name="AnalysisTimeValueText" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="--" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel x:Name="OcrTextSection" Spacing="6" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.OcrText.Details.Title" Text="OCR text" />
+                        <Button
+                            x:Name="OpenOcrTextButton"
+                            MinHeight="36"
+                            Padding="0,6"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Open OCR text in a new window"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            BorderThickness="0"
+                            Click="OpenOcrTextButton_Click"
+                            Tag="Screenshots.OcrText.Details.Open"
+                            ToolTipService.ToolTip="Open OCR text in a new window">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <TextBlock Tag="Screenshots.OcrText.Details.Action" Text="Open OCR text" />
+                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="13" Glyph="&#xE8A7;" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Expander>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

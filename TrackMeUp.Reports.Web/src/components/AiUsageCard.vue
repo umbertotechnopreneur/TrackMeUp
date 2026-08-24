@@ -30,6 +30,7 @@ const formatOriginLabel = (origin: AiUsageOrigin): string => {
     case 'snapshot.scheduled': return tr('Scheduled snapshot')
     case 'snapshot.reprocess': return tr('Reprocessed snapshot')
     case 'runtime.ai': return tr('Runtime AI')
+    case 'ocr.refinement': return tr('OCR refinement')
     case 'manual': return tr('Manual')
     case 'unknown': return tr('Unknown')
   }

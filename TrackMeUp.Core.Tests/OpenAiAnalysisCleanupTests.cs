@@ -14,7 +14,7 @@ public sealed class OpenAiAnalysisCleanupTests
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
 
     [Fact]
-    public async Task RetainedWatermarkedCapture_DeletesRawAnalysisArtifact()
+    public async Task RetainedCapture_WithDistinctAnalysisArtifact_DeletesOnlyAnalysisArtifact()
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
@@ -23,7 +23,7 @@ public sealed class OpenAiAnalysisCleanupTests
         try
         {
             var store = CreateStore(dataDirectory, openAiEnabled: true);
-            var capture = CreateWatermarkedCapture(dataDirectory);
+            var capture = CreateDistinctArtifactCapture(dataDirectory);
             var service = new OpenAiAnalysisService(store, new UnexpectedCaptureService(), decoder: new SuccessfulDecoder());
 
             var analysis = await service.AnalyzeCapturedScreenAsync(
@@ -51,7 +51,7 @@ public sealed class OpenAiAnalysisCleanupTests
         try
         {
             var store = CreateStore(dataDirectory, openAiEnabled: false);
-            var capture = CreateWatermarkedCapture(dataDirectory);
+            var capture = CreateDistinctArtifactCapture(dataDirectory);
             var service = new OpenAiAnalysisService(store, new UnexpectedCaptureService(), decoder: new SuccessfulDecoder());
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.AnalyzeCapturedScreenAsync(
@@ -79,7 +79,7 @@ public sealed class OpenAiAnalysisCleanupTests
         try
         {
             var store = CreateStore(dataDirectory, openAiEnabled: true);
-            var capture = CreateWatermarkedCapture(dataDirectory);
+            var capture = CreateDistinctArtifactCapture(dataDirectory);
             var decoder = new CancellationDecoder();
             var service = new OpenAiAnalysisService(store, new UnexpectedCaptureService(), decoder: decoder);
             using var cancellation = new CancellationTokenSource();
@@ -114,7 +114,7 @@ public sealed class OpenAiAnalysisCleanupTests
         try
         {
             var store = CreateStore(dataDirectory, openAiEnabled: true);
-            var capture = CreateWatermarkedCapture(dataDirectory);
+            var capture = CreateDistinctArtifactCapture(dataDirectory);
             using var cancellation = new CancellationTokenSource();
             var service = new OpenAiAnalysisService(
                 store,
@@ -150,7 +150,7 @@ public sealed class OpenAiAnalysisCleanupTests
         try
         {
             var store = CreateStore(dataDirectory, openAiEnabled: true);
-            var capture = CreateWatermarkedCapture(dataDirectory);
+            var capture = CreateDistinctArtifactCapture(dataDirectory);
             var logger = new RecordingLogger<OpenAiAnalysisService>();
             var service = new OpenAiAnalysisService(
                 store,
@@ -196,16 +196,16 @@ public sealed class OpenAiAnalysisCleanupTests
         return store;
     }
 
-    private static ScreenshotCaptureResult CreateWatermarkedCapture(string directory)
+    private static ScreenshotCaptureResult CreateDistinctArtifactCapture(string directory)
     {
         var captureId = Guid.NewGuid().ToString("N");
-        var rawPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1-raw.webp");
+        var analysisPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1-raw.webp");
         var storedPath = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1.webp");
-        File.WriteAllBytes(rawPath, [1, 2, 3]);
+        File.WriteAllBytes(analysisPath, [1, 2, 3]);
         File.WriteAllBytes(storedPath, [4, 5, 6]);
         return new ScreenshotCaptureResult(
             captureId,
-            [rawPath],
+            [analysisPath],
             [storedPath],
             ScreenshotCaptureOrigins.Manual);
     }
@@ -219,7 +219,7 @@ public sealed class OpenAiAnalysisCleanupTests
 
     private sealed class UnexpectedCaptureService : IScreenCaptureService
     {
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin) =>
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin) =>
             throw new InvalidOperationException("The supplied capture must be reused.");
     }
 

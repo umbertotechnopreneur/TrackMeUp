@@ -11,6 +11,7 @@ import {
   formatInteger,
   formatPercent,
   formatRange,
+  aiUsageOrigins,
   validateReportEnvelope,
 } from './reporting'
 
@@ -60,7 +61,10 @@ describe('locale-aware report formatting', () => {
 describe('localized report-envelope validation', () => {
   it('accepts every supported AI origin in the development fixture', () => {
     setReportLanguage('en-US')
-    const result = validateReportEnvelope(buildDevelopmentEnvelope())
+    const envelope = structuredClone(buildDevelopmentEnvelope())
+    const template = envelope.snapshot.aiUsage.byOrigin[0]
+    envelope.snapshot.aiUsage.byOrigin = aiUsageOrigins.map((label) => ({ ...template, label }))
+    const result = validateReportEnvelope(envelope)
     expect(result.error).toBeUndefined()
     expect(result.envelope).toBeDefined()
   })

@@ -10,6 +10,7 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="Controls/TitleBarOverflowButtonStyles.xaml"/>
                 <ResourceDictionary Source="Controls/SurfaceChipStyles.xaml"/>
+                <ResourceDictionary Source="Controls/ScreenshotChromeStyles.xaml"/>
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>

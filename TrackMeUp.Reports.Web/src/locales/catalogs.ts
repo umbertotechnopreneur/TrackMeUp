@@ -139,6 +139,7 @@ const translationRows = [
   ['Scheduled snapshot', 'Snapshot pianificato', 'Instantané planifié', 'Geplanter Snapshot', 'Instantánea programada', '计划快照', 'Bản chụp nhanh theo lịch', '예약 스냅샷', 'Instantâneo agendado', 'Instantâneo agendado'],
   ['Reprocessed snapshot', 'Snapshot rielaborato', 'Instantané retraité', 'Neu verarbeiteter Snapshot', 'Instantánea reprocesada', '重新处理的快照', 'Bản chụp nhanh được xử lý lại', '재처리된 스냅샷', 'Instantâneo reprocessado', 'Instantâneo reprocessado'],
   ['Runtime AI', 'AI del runtime', 'IA du moteur d’exécution', 'Laufzeit-KI', 'IA del entorno de ejecución', '运行时 AI', 'AI thời gian chạy', '런타임 AI', 'IA do runtime', 'IA do runtime'],
+  ['OCR refinement', 'Perfezionamento OCR', 'Affinage OCR', 'OCR-Verfeinerung', 'Mejora del OCR', 'OCR 优化', 'Tinh chỉnh OCR', 'OCR 보정', 'Aperfeiçoamento de OCR', 'Aprimoramento de OCR'],
   ['Manual', 'Manuale', 'Manuel', 'Manuell', 'Manual', '手动', 'Thủ công', '수동', 'Manual', 'Manual'],
   ['Unknown', 'Sconosciuta', 'Inconnu', 'Unbekannt', 'Desconocido', '未知', 'Không xác định', '알 수 없음', 'Desconhecido', 'Desconhecido'],
 

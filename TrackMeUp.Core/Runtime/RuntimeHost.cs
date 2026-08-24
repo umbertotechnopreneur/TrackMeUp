@@ -255,6 +255,8 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "screenshot.latest" => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
                 "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
                 "screenshot.gallery.latest" => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
+                "screenshot.storage_migration.status.v1" => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
+                "screenshot.storage_migration.run.v1" => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
                 "screenshot.delete" => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "snapshot.delete" => ToResponse(request, await _application.DeleteSnapshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
                 "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
@@ -507,6 +509,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotReprocessPreviewTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ScreenshotStorageMigrationTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
@@ -572,6 +575,12 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery", new ScreenshotGalleryRequest(date), cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery.latest", null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken) =>
+        SendAsync<ScreenshotStorageMigrationStatus>("screenshot.storage_migration.status.v1", null, cancellationToken, ScreenshotStorageMigrationTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) =>
+        SendAsync<ScreenshotStorageMigrationResult>("screenshot.storage_migration.run.v1", null, cancellationToken, ScreenshotStorageMigrationTimeout);
     /// <inheritdoc />
     public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.delete", new { screenshotPath }, cancellationToken);
     /// <inheritdoc />

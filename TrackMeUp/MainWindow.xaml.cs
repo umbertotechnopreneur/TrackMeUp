@@ -71,6 +71,7 @@ public sealed partial class MainWindow : Window
     private int _lastSessionRefreshInProgress;
     private DateTimeOffset _nextLastSessionRefreshAt = DateTimeOffset.MinValue;
     private bool _startupAiWarningShown;
+    private bool _screenshotStorageReady;
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
     private int _aiSpendRefreshInProgress;
@@ -125,6 +126,7 @@ public sealed partial class MainWindow : Window
         _viewModel = new MainViewModel(application);
         AiState = new AiApplicationState(application);
         InitializeComponent();
+        SetScreenshotStorageReady(false);
         UiLocalization.Apply(RootGrid, _strings);
         ApplyMainAccessibility();
         AiState.PropertyChanged += AiState_PropertyChanged;
@@ -162,7 +164,6 @@ public sealed partial class MainWindow : Window
         _refreshTimer = DispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(1);
         _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
-        _refreshTimer.Start();
 
         _windowResizeAnimationTimer = DispatcherQueue.CreateTimer();
         _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
@@ -184,6 +185,14 @@ public sealed partial class MainWindow : Window
 
     private async Task InitializeAsync(LaunchOptions options)
     {
+        await _rootLoaded.Task;
+        var startupRegistrationFailureCode = await ReconcileWindowsStartupAsync(options);
+        if (!await EnsureScreenshotStorageMigratedAsync())
+        {
+            // Tracking and periodic refresh stay stopped until the explicit storage migration succeeds.
+            return;
+        }
+
         var initialization = await _viewModel.InitializeAsync(options, CancellationToken.None);
         if (initialization.Succeeded && initialization.Value is not null)
         {
@@ -197,7 +206,21 @@ public sealed partial class MainWindow : Window
             await RefreshDashboardAsync();
         }
 
-        await _rootLoaded.Task;
+        SetScreenshotStorageReady(true);
+        _refreshTimer.Start();
+        if (startupRegistrationFailureCode is not null)
+        {
+            await _dialogs.ShowInformativeAsync(
+                _application,
+                this,
+                MicaDialogRequest.Informative(
+                    T("Notification.WindowsStartupFailed.Title"),
+                    $"{T("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{startupRegistrationFailureCode}",
+                    MicaDialogSeverity.Warning,
+                    T("Dialog.Ok")),
+                RootGrid.RequestedTheme);
+        }
+
         if (initialization.Succeeded && initialization.Value?.StartedPaused == true)
         {
             _windowsNotifications.TryShow(T("Notification.TrackingPaused.Title"), T("Notification.TrackingPaused.Message"));
@@ -205,6 +228,94 @@ public sealed partial class MainWindow : Window
 
         await ShowStartupAiWarningAsync();
         await DrainApplicationNotificationsAsync();
+    }
+
+    private async Task<string?> ReconcileWindowsStartupAsync(LaunchOptions options)
+    {
+        var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
+        if (!settingsResult.Succeeded || settingsResult.Value is null)
+        {
+            return null;
+        }
+
+        var effectiveLanguage = options.Language ?? settingsResult.Value.UiLanguage;
+        var effectiveTheme = options.Theme ?? settingsResult.Value.Theme;
+        _strings = new LocalizationService(effectiveLanguage);
+        RootGrid.RequestedTheme = effectiveTheme switch
+        {
+            "light" => ElementTheme.Light,
+            "dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default
+        };
+
+        // Reapplying the persisted choice repairs stale paths and removes stale disabled registrations.
+        var startupResult = await _application.SetStartupEnabledAsync(
+            settingsResult.Value.StartWithWindows,
+            CancellationToken.None);
+        return startupResult.Succeeded ? null : startupResult.Code;
+    }
+
+    private async Task<bool> EnsureScreenshotStorageMigratedAsync()
+    {
+        var status = await _application.GetScreenshotStorageMigrationStatusAsync(CancellationToken.None);
+        if (!status.Succeeded || status.Value is null)
+        {
+            await ShowScreenshotStorageMigrationFailureAsync(status.Code);
+            return false;
+        }
+
+        OperationResult<ScreenshotStorageMigrationResult> migration;
+        if (status.Value.Required)
+        {
+            migration = await _dialogs.ShowScreenshotStorageMigrationAsync(
+                _application,
+                this,
+                RootGrid.RequestedTheme,
+                _strings);
+        }
+        else
+        {
+            // An idempotent silent run repairs metadata after a process interruption even when every file was already moved.
+            migration = await _application.MigrateScreenshotStorageAsync(CancellationToken.None);
+        }
+
+        if (migration.Succeeded)
+        {
+            return true;
+        }
+
+        await ShowScreenshotStorageMigrationFailureAsync(migration.Code);
+        return false;
+    }
+
+    private async Task ShowScreenshotStorageMigrationFailureAsync(string code)
+    {
+        await _dialogs.ShowInformativeAsync(
+            _application,
+            this,
+            MicaDialogRequest.Informative(
+                T("Dialog.DataMigration.Failed.Title"),
+                _strings.Format("Dialog.DataMigration.Failed.Message", code),
+                MicaDialogSeverity.Error,
+                T("Dialog.Ok")),
+            RootGrid.RequestedTheme);
+    }
+
+    private void SetScreenshotStorageReady(bool isReady)
+    {
+        _screenshotStorageReady = isReady;
+        TrackingButton.IsEnabled = isReady;
+        MoreButton.IsEnabled = isReady;
+        TitleBarMoreButton.IsEnabled = isReady;
+        TitleBarSearchButton.IsEnabled = isReady;
+        TitleBarReportButton.IsEnabled = isReady;
+        ScreenshotPreviewButton.IsEnabled = isReady;
+        CaptureMenu.IsEnabled = isReady;
+        OperationsMenuItem.IsEnabled = isReady;
+        TakeScreenshotButton.IsEnabled = isReady
+            && !_pendingSnapshotDeleteInProgress
+            && DeleteSnapshotButton.Visibility != Visibility.Visible;
+        DeleteSnapshotButton.IsEnabled = isReady && DeleteSnapshotButton.Visibility == Visibility.Visible;
     }
 
     #endregion
@@ -375,7 +486,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
     private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!TakeScreenshotButton.IsEnabled)
+        if (!_screenshotStorageReady || !TakeScreenshotButton.IsEnabled)
         {
             return;
         }
@@ -403,6 +514,11 @@ public sealed partial class MainWindow : Window
 
     private async Task OpenScheduleWindowAsync()
     {
+        if (!_screenshotStorageReady)
+        {
+            return;
+        }
+
         if (MoreButton.Flyout is Flyout flyout)
         {
             flyout.Hide();
@@ -551,6 +667,11 @@ public sealed partial class MainWindow : Window
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!_screenshotStorageReady)
+        {
+            return;
+        }
+
         var state = await _viewModel.ToggleTrackingAsync(CancellationToken.None);
         if (state.Succeeded && state.Value is not null)
         {
@@ -640,6 +761,11 @@ public sealed partial class MainWindow : Window
     private void MainKeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
+        if (!_screenshotStorageReady)
+        {
+            return;
+        }
+
         switch (sender.Key)
         {
             case Windows.System.VirtualKey.F3:
@@ -769,7 +895,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Forwards the screenshot-capture toggle to the validated settings application service.</summary>
     private async void ScreenshotsMenuToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (_updatingMenuState)
+        if (!_screenshotStorageReady || _updatingMenuState)
         {
             return;
         }
@@ -1085,7 +1211,7 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetHelpText(DeleteSnapshotButton, accessibleStatus);
         AutomationProperties.SetName(DeleteSnapshotButton, deleteLabel);
         ToolTipService.SetToolTip(DeleteSnapshotButton, deleteLabel);
-        DeleteSnapshotButton.IsEnabled = true;
+        DeleteSnapshotButton.IsEnabled = _screenshotStorageReady;
         DeleteSnapshotButton.Visibility = Visibility.Visible;
         TakeScreenshotButton.IsEnabled = false;
         SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: true);
@@ -1095,7 +1221,7 @@ public sealed partial class MainWindow : Window
     {
         SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
         DeleteSnapshotButton.Visibility = Visibility.Collapsed;
-        TakeScreenshotButton.IsEnabled = enableCapture;
+        TakeScreenshotButton.IsEnabled = _screenshotStorageReady && enableCapture;
         AutomationProperties.SetName(PendingSnapshotPanel, string.Empty);
         AutomationProperties.SetHelpText(DeleteSnapshotButton, string.Empty);
     }
@@ -1517,7 +1643,12 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Starts the Windows-sign-in instance in the notification area without first creating a taskbar button.</summary>
-    internal void StartMinimizedToNotificationArea() => HideToNotificationArea();
+    internal void StartMinimizedToNotificationArea()
+    {
+        // Activating and hiding in the same dispatcher turn composes Loaded without leaving a taskbar window visible.
+        Activate();
+        HideToNotificationArea();
+    }
 
     private void HideToNotificationArea()
     {

@@ -56,8 +56,7 @@ public sealed class AtomicResetService
 
         if (!IsSameOrDescendant(screenshots, dataRoot) && Directory.Exists(screenshots))
         {
-            foreach (var path in Directory.EnumerateFiles(screenshots, "*", SearchOption.TopDirectoryOnly)
-                         .Where(ScreenCaptureService.IsOwnedArtifact))
+            foreach (var path in ScreenshotStorageLayout.EnumerateOwnedArtifacts(screenshots))
             {
                 File.Delete(path);
             }

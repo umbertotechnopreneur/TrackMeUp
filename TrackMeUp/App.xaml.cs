@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Dispatching;
+using Microsoft.Windows.AppLifecycle;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -60,8 +61,14 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         try
         {
-            var options = LaunchOptions.Parse(Environment.GetCommandLineArgs().Skip(1).ToArray());
-            _logger.LogInformation("Launch requested. Mode={Mode}", options.Mode);
+            var activationKind = ReadActivationKind();
+            var options = StartupActivationPolicy.Apply(
+                LaunchOptions.Parse(Environment.GetCommandLineArgs().Skip(1).ToArray()),
+                activationKind);
+            _logger.LogInformation(
+                "Launch requested. Mode={Mode} ActivationKind={ActivationKind}",
+                options.Mode,
+                activationKind);
             switch (options.Mode)
             {
                 case LaunchMode.Cli:
@@ -88,6 +95,19 @@ public partial class App : Microsoft.UI.Xaml.Application
         {
             _logger.LogCritical(exception, "Launch failed before the main window was created.");
             throw;
+        }
+    }
+
+    private static ExtendedActivationKind ReadActivationKind()
+    {
+        try
+        {
+            return AppInstance.GetCurrent().GetActivatedEventArgs()?.Kind ?? ExtendedActivationKind.Launch;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or COMException)
+        {
+            // Plain command-line launches still have complete bootstrap arguments when rich activation is unavailable.
+            return ExtendedActivationKind.Launch;
         }
     }
 
@@ -142,11 +162,74 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    private void StartReports(LaunchOptions options)
+    private void StartReports(LaunchOptions options) => _ = StartReportsAsync(options);
+
+    private async Task StartReportsAsync(LaunchOptions options)
     {
         _reportsOnly = true;
-        ShowReportsWindow(StartOrConnectRuntime(), options.Theme);
+        var application = StartOrConnectRuntime();
+        try
+        {
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (!settings.Succeeded || settings.Value is null)
+            {
+                _logger.LogWarning("Reports startup settings could not be loaded. Code={Code}", settings.Code);
+                await ShutdownRuntimeAsync();
+                Exit();
+                return;
+            }
+
+            var startup = await application.SetStartupEnabledAsync(
+                settings.Value.StartWithWindows,
+                CancellationToken.None);
+            if (!startup.Succeeded)
+            {
+                _logger.LogWarning("Windows startup registration reconciliation failed. Code={Code}", startup.Code);
+            }
+
+            var strings = new LocalizationService(settings.Value.UiLanguage);
+            var migrationTheme = (options.Theme ?? settings.Value.Theme) switch
+            {
+                "light" => ElementTheme.Light,
+                "dark" => ElementTheme.Dark,
+                _ => ElementTheme.Default
+            };
+            var migrationStatus = await application.GetScreenshotStorageMigrationStatusAsync(CancellationToken.None);
+            if (!migrationStatus.Succeeded || migrationStatus.Value is null)
+            {
+                NotifyScreenshotStorageMigrationFailure(strings, migrationStatus.Code);
+                await ShutdownRuntimeAsync();
+                Exit();
+                return;
+            }
+
+            // A reports-only launch has no owner window yet, but still exposes required file moves visibly.
+            var migration = migrationStatus.Value.Required
+                ? await _dialogs.ShowStandaloneScreenshotStorageMigrationAsync(application, migrationTheme, strings)
+                : await application.MigrateScreenshotStorageAsync(CancellationToken.None);
+            if (!migration.Succeeded)
+            {
+                _logger.LogError("Reports startup screenshot migration failed. Code={Code}", migration.Code);
+                NotifyScreenshotStorageMigrationFailure(strings, migration.Code);
+                await ShutdownRuntimeAsync();
+                Exit();
+                return;
+            }
+
+            ShowReportsWindow(application, options.Theme);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Reports startup preparation failed; no report window was opened.");
+            await ShutdownRuntimeAsync();
+            Exit();
+        }
     }
+
+    private void NotifyScreenshotStorageMigrationFailure(LocalizationService strings, string code) =>
+        _windowsNotifications.TryShow(
+            strings.Translate("Dialog.DataMigration.Failed.Title"),
+            strings.Format("Dialog.DataMigration.Failed.Message", code));
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
@@ -483,25 +566,58 @@ public partial class App : Microsoft.UI.Xaml.Application
         _taskbarWidgetSurface = null;
     }
 
-    private void StartBackgroundRuntime(LaunchOptions options)
+    private void StartBackgroundRuntime(LaunchOptions options) => _ = StartBackgroundRuntimeAsync(options);
+
+    private async Task StartBackgroundRuntimeAsync(LaunchOptions options)
     {
-        var application = StartOrConnectRuntime();
-        if (!ReferenceEquals(application, _runtimeApplication))
+        try
         {
-            return;
-        }
+            var application = StartOrConnectRuntime();
+            if (!ReferenceEquals(application, _runtimeApplication))
+            {
+                return;
+            }
 
-        var settings = application.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult();
-        if (!settings.Succeeded || settings.Value is null)
-        {
-            // A headless launch cannot present recovery UI, so leave tracking paused and record the explicit failure.
-            _logger.LogWarning("Background startup settings could not be loaded. Code={Code}", settings.Code);
-            return;
-        }
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (!settings.Succeeded || settings.Value is null)
+            {
+                // A headless launch cannot present recovery UI, so leave tracking paused and record the explicit failure.
+                _logger.LogWarning("Background startup settings could not be loaded. Code={Code}", settings.Code);
+                return;
+            }
 
-        if (TrackingStartupPolicy.ShouldStart(options, settings.Value))
+            var startup = await application.SetStartupEnabledAsync(
+                settings.Value.StartWithWindows,
+                CancellationToken.None);
+            if (!startup.Succeeded)
+            {
+                // Startup reconciliation is recoverable: the runtime may track, but diagnostics retain the OS integration failure.
+                _logger.LogWarning("Background Windows startup registration reconciliation failed. Code={Code}", startup.Code);
+            }
+
+            var migration = await application.MigrateScreenshotStorageAsync(CancellationToken.None);
+            if (!migration.Succeeded)
+            {
+                // A headless process cannot ask for recovery; fail paused so captures never mix old and new layouts.
+                _logger.LogError("Background screenshot storage migration failed. Code={Code}", migration.Code);
+                return;
+            }
+
+            if (TrackingStartupPolicy.ShouldStart(options, settings.Value))
+            {
+                var started = await application.StartTrackingAsync(
+                    new StartTrackingRequest(options.SafeMode, "background"),
+                    CancellationToken.None);
+                if (!started.Succeeded)
+                {
+                    _logger.LogError("Background tracking startup failed. Code={Code}", started.Code);
+                }
+            }
+        }
+        catch (Exception exception)
         {
-            _ = application.StartTrackingAsync(new StartTrackingRequest(options.SafeMode, "background"), CancellationToken.None);
+            // Fire-and-forget launch tasks must retain an explicit paused failure path instead of surfacing an unobserved exception.
+            _logger.LogError(exception, "Background startup preparation failed; tracking remains paused.");
         }
     }
 
@@ -622,5 +738,16 @@ public partial class App : Microsoft.UI.Xaml.Application
             await LoggingBootstrapper.ShutdownAsync(_services);
             Exit();
         }
+    }
+}
+
+internal static class StartupActivationPolicy
+{
+    internal static LaunchOptions Apply(LaunchOptions options, ExtendedActivationKind activationKind)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return activationKind == ExtendedActivationKind.StartupTask
+            ? options with { Mode = LaunchMode.Ui, StartWithWindows = true }
+            : options;
     }
 }

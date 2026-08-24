@@ -239,7 +239,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "snapshots.delete", "screenshots.analyze", "screenshots.reprocess.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.storage-migration.v1", "snapshots.delete", "screenshots.analyze", "screenshots.reprocess.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
     }
@@ -419,7 +419,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 () => _capture.CaptureByMode(
                     settings.ScreenshotDirectory,
                     mode,
-                    request.Watermark && settings.WatermarkScreenshots,
                     request.CaptureOrigin),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -541,7 +540,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 // The player is foreground when its capture button runs, so active-window would capture TrackMeUp itself.
                 Mode: "all-screens",
                 Keep: true,
-                Watermark: true,
                 CaptureOrigin: ScreenshotCaptureOrigins.Manual,
                 DeferAiAnalysis: true),
             cancellationToken);
@@ -906,6 +904,60 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             "LatestScreenshotGalleryLoaded",
             gallery);
     }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var status = await Task.Run(
+                () => _store.GetScreenshotStorageMigrationStatus(cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            return OperationResult<ScreenshotStorageMigrationStatus>.Success(
+                "screenshot.storage_migration.inspected",
+                "ScreenshotStorageMigrationInspected",
+                status);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Screenshot storage migration inspection failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<ScreenshotStorageMigrationStatus>.Failure(
+                "screenshot.storage_migration.inspect_failed",
+                "ScreenshotStorageMigrationFailed");
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) =>
+        MutateVisualStateAsync(async () =>
+        {
+            try
+            {
+                var result = await Task.Run(
+                    () => _store.MigrateScreenshotStorage(cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Screenshot storage migration completed. MovedArtifactCount={MovedArtifactCount}", result.MovedArtifactCount);
+                return OperationResult<ScreenshotStorageMigrationResult>.Success(
+                    "screenshot.storage_migration.completed",
+                    "ScreenshotStorageMigrationCompleted",
+                    result);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Screenshot storage migration failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                return OperationResult<ScreenshotStorageMigrationResult>.Failure(
+                    "screenshot.storage_migration.failed",
+                    "ScreenshotStorageMigrationFailed");
+            }
+        }, cancellationToken);
 
     /// <inheritdoc />
     public Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(
@@ -1319,7 +1371,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                             () => _capture.CaptureByMode(
                                 settings.ScreenshotDirectory,
                                 settings.ScreenshotCaptureMode,
-                                settings.WatermarkScreenshots,
                                 captureOrigin: string.Equals(origin, "snapshot.scheduled", StringComparison.Ordinal)
                                     ? ScreenshotCaptureOrigins.Scheduled
                                     : ScreenshotCaptureOrigins.Manual),
@@ -1574,7 +1625,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<AtomicResetPlan>.Failure("app.atomic_reset.unavailable", "AtomicResetUnavailable");
         }
 
-        if (!_startup.SetEnabled(false))
+        if (!await _startup.SetEnabledAsync(false, cancellationToken).ConfigureAwait(false))
         {
             return OperationResult<AtomicResetPlan>.Failure("app.atomic_reset.startup_cleanup_failed", "AtomicResetStartupCleanupFailed");
         }
@@ -1675,7 +1726,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         current = validatedSettings;
         var startupChanged = current.StartWithWindows != settings.StartWithWindows;
-        if (startupChanged && !_startup.SetEnabled(current.StartWithWindows))
+        var startupNeedsRepair = current.StartWithWindows
+            && !await _startup.IsEnabledAsync(cancellationToken).ConfigureAwait(false);
+        var startupUpdated = StartupRegistrationPolicy.RequiresUpdate(
+            settings.StartWithWindows,
+            current.StartWithWindows,
+            !startupNeedsRepair);
+        if (startupUpdated
+            && !await _startup.SetEnabledAsync(current.StartWithWindows, cancellationToken).ConfigureAwait(false))
         {
             return OperationResult<AppSettings>.Failure(
                 "startup.update.failed",
@@ -1689,7 +1747,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
         catch
         {
-            if (startupChanged && !_startup.SetEnabled(settings.StartWithWindows))
+            if (startupChanged
+                && !await _startup.SetEnabledAsync(settings.StartWithWindows, CancellationToken.None).ConfigureAwait(false))
             {
                 _logger.LogError("Startup state rollback failed after settings persistence error.");
             }
@@ -1697,9 +1756,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             throw;
         }
 
-        if (current.StartWithWindows != settings.StartWithWindows)
+        if (startupUpdated)
         {
-            _logger.LogInformation("Windows startup state updated. Enabled={Enabled}", current.StartWithWindows);
+            _logger.LogInformation(
+                "Windows startup state updated. Enabled={Enabled}; Repaired={Repaired}",
+                current.StartWithWindows,
+                startupNeedsRepair);
         }
         ConfigureScheduledSnapshots(current, restartCountdown: current.ScreenshotIntervalMinutes != settings.ScreenshotIntervalMinutes);
         await Task.CompletedTask;
@@ -1726,17 +1788,18 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken)
+    public async Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<bool>.Success("startup.status.loaded", "StartupStatusLoaded", _startup.IsEnabled()));
+        var enabled = await _startup.IsEnabledAsync(cancellationToken).ConfigureAwait(false);
+        return OperationResult<bool>.Success("startup.status.loaded", "StartupStatusLoaded", enabled);
     }
 
     /// <inheritdoc />
     public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _store.LoadSettings();
-        var success = _startup.SetEnabled(enabled);
+        var success = await _startup.SetEnabledAsync(enabled, cancellationToken).ConfigureAwait(false);
         if (!success)
         {
             return OperationResult<bool>.Failure("startup.failed", "StartupUpdateFailed");
@@ -1748,7 +1811,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
         catch
         {
-            if (!_startup.SetEnabled(settings.StartWithWindows))
+            if (!await _startup.SetEnabledAsync(settings.StartWithWindows, CancellationToken.None).ConfigureAwait(false))
             {
                 _logger.LogError("Startup state rollback failed after settings persistence error.");
             }
@@ -2239,7 +2302,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                     new CaptureScreenshotRequest(
                         Mode: null,
                         Keep: true,
-                        Watermark: true,
                         CaptureOrigin: ScreenshotCaptureOrigins.Scheduled,
                         DeferAiAnalysis: true),
                     CancellationToken.None);
@@ -2513,8 +2575,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         var screenshotCutoff = DateTimeOffset.Now.AddDays(-settings.ScreenshotRetentionDays);
         var dataCutoff = DateTimeOffset.Now.AddDays(-settings.DataRetentionDays);
         var screenshotPaths = Directory.Exists(settings.ScreenshotDirectory)
-            ? Directory.EnumerateFiles(settings.ScreenshotDirectory, "*", SearchOption.TopDirectoryOnly)
-                .Where(ScreenCaptureService.IsOwnedArtifact)
+            ? ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory)
                 .Where(path => File.GetLastWriteTimeUtc(path) < screenshotCutoff.UtcDateTime)
                 .ToArray()
             : Array.Empty<string>();

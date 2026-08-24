@@ -3,8 +3,37 @@
     x:Class="TrackMeUp.Controls.ScreenshotHeaderControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid MinHeight="146" VerticalAlignment="Center">
-        <StackPanel VerticalAlignment="Center" Spacing="6">
+    <Grid MinHeight="92" ColumnSpacing="16">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="HeaderWidthStates">
+                <VisualState x:Name="CompactHeader">
+                    <VisualState.Setters>
+                        <Setter Target="DateSummaryPanel.Width" Value="220" />
+                        <Setter Target="PrivacyStatusBadge.MaxWidth" Value="24" />
+                        <Setter Target="PrivacyStatusText.Visibility" Value="Collapsed" />
+                        <Setter Target="SelectedDatePicker.Width" Value="160" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WideHeader">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="900" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DateSummaryPanel.Width" Value="300" />
+                        <Setter Target="PrivacyStatusBadge.MaxWidth" Value="170" />
+                        <Setter Target="PrivacyStatusText.Visibility" Value="Visible" />
+                        <Setter Target="SelectedDatePicker.Width" Value="200" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel x:Name="DateSummaryPanel" Width="300" VerticalAlignment="Center" Spacing="5">
             <TextBlock
                 x:Name="ExtendedDateText"
                 FontFamily="{ThemeResource ContentControlThemeFontFamily}"
@@ -19,7 +48,7 @@
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
                     FontSize="13"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     Glyph="&#xE8B9;" />
                 <TextBlock
                     x:Name="GalleryCountText"
@@ -27,56 +56,253 @@
                     FontFamily="{ThemeResource ContentControlThemeFontFamily}"
                     FontSize="13"
                     FontWeight="SemiBold"
-                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     LineHeight="18"
                     Text="0 captures" />
             </StackPanel>
-            <Grid Width="104" Height="52" Margin="0,4,0,0" HorizontalAlignment="Left">
-                <CalendarDatePicker
-                    x:Name="SelectedDatePicker"
-                    Width="1"
-                    Height="1"
-                    MinWidth="0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    AutomationProperties.Name="Screenshot date"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    DateFormat="{}{dayofweek.abbreviated}, {day.integer} {month.full} {year.full}"
-                    IsTabStop="False"
-                    Opacity="0"
-                    PlaceholderText="Select a day" />
-                <Button
-                    Width="104"
-                    Height="52"
-                    Padding="0"
-                    HorizontalAlignment="Left"
-                    AutomationProperties.Name="Choose screenshot date"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="OpenDatePickerButton_Click"
-                    CornerRadius="8"
-                    Tag="Screenshots.Date.Choose"
-                    ToolTipService.ToolTip="Choose screenshot date">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
+        </StackPanel>
+
+        <CommandBar
+            x:Name="ScreenshotToolbar"
+            Grid.Column="1"
+            MinWidth="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Center"
+            Background="Transparent"
+            BorderThickness="0"
+            ClosedDisplayMode="Compact"
+            DefaultLabelPosition="Collapsed"
+            IsDynamicOverflowEnabled="True"
+            OverflowButtonVisibility="Auto">
+            <AppBarElementContainer
+                x:Name="MetadataElementContainer"
+                DynamicOverflowOrder="1">
+                <StackPanel
+                    x:Name="MetadataPanel"
+                    MaxWidth="260"
+                    Margin="4,0,8,0"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="14"
+                    Visibility="Collapsed">
+                    <StackPanel
+                        x:Name="MetadataDateItem"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Spacing="6">
                         <FontIcon
-                            HorizontalAlignment="Center"
                             AutomationProperties.AccessibilityView="Raw"
                             FontFamily="Segoe Fluent Icons"
-                            FontSize="18"
-                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Glyph="&#xE787;" />
                         <TextBlock
-                            HorizontalAlignment="Center"
-                            FontFamily="{ThemeResource ContentControlThemeFontFamily}"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                            Tag="Screenshots.Date.Select"
-                            Text="Select date" />
+                            x:Name="MetadataDateValueText"
+                            MaxWidth="86"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Text="--"
+                            TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                </Button>
-            </Grid>
+                    <StackPanel
+                        x:Name="MetadataTimeItem"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Spacing="6">
+                        <FontIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Glyph="&#xE823;" />
+                        <TextBlock
+                            x:Name="MetadataTimeValueText"
+                            MaxWidth="48"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Text="--"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel
+                        x:Name="MetadataApplicationItem"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Spacing="6">
+                        <FontIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="14"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Glyph="&#xE7F4;" />
+                        <TextBlock
+                            x:Name="MetadataAppValueText"
+                            MaxWidth="76"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Text="--"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </StackPanel>
+            </AppBarElementContainer>
+
+            <AppBarButton
+                x:Name="ZoomOutButton"
+                AutomationProperties.Name="Zoom out"
+                Click="ZoomOutButton_Click"
+                IsEnabled="False"
+                Label="Zoom out"
+                Tag="Screenshots.Toolbar.ZoomOut"
+                ToolTipService.ToolTip="Zoom out">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE71F;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton
+                x:Name="ZoomResetButton"
+                AutomationProperties.Name="Reset zoom to 100 percent"
+                Click="ZoomResetButton_Click"
+                IsEnabled="False"
+                Label="Reset zoom to 100%"
+                Tag="Screenshots.Toolbar.ZoomReset"
+                ToolTipService.ToolTip="Reset zoom to 100%">
+                <AppBarButton.Icon>
+                    <FontIcon
+                        x:Name="ZoomPercentIcon"
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Glyph="100%" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton
+                x:Name="ZoomInButton"
+                AutomationProperties.Name="Zoom in"
+                Click="ZoomInButton_Click"
+                IsEnabled="False"
+                Label="Zoom in"
+                Tag="Screenshots.Toolbar.ZoomIn"
+                ToolTipService.ToolTip="Zoom in">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE8A3;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarToggleButton
+                x:Name="DetailsToggleButton"
+                AutomationProperties.Name="Show snapshot details"
+                Click="DetailsToggleButton_Click"
+                IsEnabled="False"
+                Label="Show snapshot details"
+                Tag="Screenshots.Details.Show"
+                ToolTipService.ToolTip="Show snapshot details">
+                <AppBarToggleButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE8A0;" />
+                </AppBarToggleButton.Icon>
+            </AppBarToggleButton>
+            <AppBarSeparator />
+            <AppBarButton
+                x:Name="SaveButton"
+                AutomationProperties.Name="Save selected image"
+                Click="SaveButton_Click"
+                IsEnabled="False"
+                Label="Save selected image"
+                Tag="Screenshots.Toolbar.Save"
+                ToolTipService.ToolTip="Save selected image">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE74E;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton
+                x:Name="ShareButton"
+                AutomationProperties.Name="Share with another app"
+                Click="ShareButton_Click"
+                IsEnabled="False"
+                Label="Share with another app"
+                Tag="Screenshots.Toolbar.Share"
+                ToolTipService.ToolTip="Share with another app">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE72D;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton
+                x:Name="OpenFolderButton"
+                AutomationProperties.Name="Open containing folder"
+                Click="OpenFolderButton_Click"
+                Label="Open containing folder"
+                Tag="Screenshots.Toolbar.OpenFolder"
+                ToolTipService.ToolTip="Open containing folder">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE8B7;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton
+                x:Name="DeleteScreenshotButton"
+                AutomationProperties.Name="Delete screenshot"
+                Click="DeleteScreenshotButton_Click"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                IsEnabled="False"
+                Label="Delete screenshot"
+                Tag="Screenshots.Toolbar.DeleteScreenshot"
+                ToolTipService.ToolTip="Delete screenshot">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE74D;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton
+                x:Name="DeleteSnapshotButton"
+                AutomationProperties.Name="Delete snapshot"
+                Click="DeleteSnapshotButton_Click"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                IsEnabled="False"
+                Label="Delete snapshot"
+                Tag="Screenshots.Toolbar.DeleteSnapshot"
+                ToolTipService.ToolTip="Delete snapshot">
+                <AppBarButton.Icon>
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE823;" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+        </CommandBar>
+
+        <StackPanel
+            Grid.Column="2"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Orientation="Horizontal"
+            Spacing="12">
+            <StackPanel
+                x:Name="PrivacyStatusBadge"
+                MaxWidth="170"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="8">
+                <FontIcon
+                    x:Name="PrivacyStatusIcon"
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="16"
+                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    Glyph="&#xE83D;" />
+                <TextBlock
+                    x:Name="PrivacyStatusText"
+                    MaxWidth="146"
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Text="Privacy status unavailable"
+                    TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <CalendarDatePicker
+                x:Name="SelectedDatePicker"
+                Width="200"
+                Height="40"
+                HorizontalAlignment="Left"
+                AutomationProperties.Name="Screenshot date"
+                DateFormat="{}{day.integer} {month.full} {year.full}"
+                PlaceholderText="Select a day"
+                ToolTipService.ToolTip="Select date" />
         </StackPanel>
     </Grid>
 </UserControl>

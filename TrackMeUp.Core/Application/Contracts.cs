@@ -28,13 +28,11 @@ public sealed record StartTrackingRequest(bool SafeMode = false, string? Source 
 /// <summary>Requests screenshot capture without passing presentation objects into the application layer.</summary>
 /// <param name="Mode">The explicit capture mode, or <see langword="null"/> to use the persisted application setting.</param>
 /// <param name="Keep">Whether retained screenshot artifacts should remain after optional analysis.</param>
-/// <param name="Watermark">Whether the capture may include the configured watermark.</param>
 /// <param name="CaptureOrigin">The stable origin recorded with the capture.</param>
 /// <param name="DeferAiAnalysis">Whether AI analysis must wait for an explicit later request.</param>
 public sealed record CaptureScreenshotRequest(
     string? Mode,
     bool Keep,
-    bool Watermark,
     string CaptureOrigin,
     bool DeferAiAnalysis = false);
 
@@ -164,6 +162,12 @@ public sealed record ActivityLabelSample(DateTimeOffset SampledAt, string Label)
 public sealed record ScreenshotGallery(
     DateOnly Date,
     IReadOnlyList<ScreenshotGalleryItem> Items);
+
+/// <summary>Reports whether owned screenshot artifacts still need the current calendar directory layout.</summary>
+public sealed record ScreenshotStorageMigrationStatus(bool Required, int ArtifactCount);
+
+/// <summary>Reports the number of owned screenshot artifacts moved by one completed layout migration.</summary>
+public sealed record ScreenshotStorageMigrationResult(int MovedArtifactCount);
 
 /// <summary>Requests a preview of retained screenshots without AI descriptions for one local calendar date.</summary>
 public sealed record AiScreenshotReprocessRequest(DateOnly Date);
@@ -530,6 +534,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the retained screenshot gallery for the most recent local calendar date that contains a capture.</summary>
     Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken);
+
+    /// <summary>Inspects screenshot storage without moving files.</summary>
+    Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken);
+
+    /// <summary>Migrates owned screenshot artifacts and their durable path references to the current layout.</summary>
+    Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken);
 
     /// <summary>Builds a short-lived, provider-call-free plan for screenshots without AI descriptions on one local date.</summary>
     Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(

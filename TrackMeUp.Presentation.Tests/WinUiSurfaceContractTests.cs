@@ -109,7 +109,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(options.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Section.Snapshots");
         Assert.DoesNotContain(options.Descendants(), element => element.Attribute("Tag")?.Value == "Options.ExportReport");
         Assert.DoesNotContain("ExportReportButton_Click", optionsSource, StringComparison.Ordinal);
-        foreach (var compactSwitchName in new[] { "StartWithWindowsSwitch", "StartTrackingOnLaunchSwitch", "ScreenshotsEnabledSwitch", "WatermarkSwitch" })
+        foreach (var compactSwitchName in new[] { "StartWithWindowsSwitch", "StartTrackingOnLaunchSwitch", "ScreenshotsEnabledSwitch" })
         {
             var compactSwitch = options.Descendants().Single(element => HasName(element, compactSwitchName));
             Assert.Equal("1", compactSwitch.Attribute("Grid.Column")?.Value);
@@ -215,7 +215,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "ProgressBar");
         Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE74D");
         Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("TakeScreenshotButton.IsEnabled = enableCapture;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TakeScreenshotButton.IsEnabled = _screenshotStorageReady && enableCapture;", mainSource, StringComparison.Ordinal);
         Assert.Contains("HidePendingSnapshotDeleteUi(enableCapture: true);", mainSource, StringComparison.Ordinal);
         Assert.Contains("HidePendingSnapshotDeleteUi(enableCapture: false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("FormatPendingSnapshotCountdown(remaining)", mainSource, StringComparison.Ordinal);
@@ -269,17 +269,19 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void ScreenshotWindow_GroupsFileAndDeletionActionsInTheViewerToolbar()
+    public void ScreenshotWindow_GroupsViewerCommandsInTheNativeHeaderToolbar()
     {
         var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
+        var header = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml"));
         var viewer = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var headerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml.cs"));
         var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
         var actionBanner = screenshotWindow.Descendants().Single(element => HasName(element, "ScreenshotActionBanner"));
-        var toolbar = viewer.Descendants().Single(element => HasName(element, "ZoomRail"));
+        var toolbar = header.Descendants().Single(element => HasName(element, "ScreenshotToolbar"));
         var namedToolbarControls = toolbar
             .Descendants()
-            .Where(element => element.Name.LocalName is "Button" or "ToggleButton")
+            .Where(element => element.Name.LocalName is "AppBarButton" or "AppBarToggleButton")
             .Select(element => element.Attributes().Single(attribute => attribute.Name.LocalName == "Name").Value)
             .ToArray();
         var actionButtons = new[]
@@ -301,30 +303,38 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal(
             Array.IndexOf(namedToolbarControls, "SaveButton") - 1,
             Array.IndexOf(namedToolbarControls, "DetailsToggleButton"));
-        Assert.Equal(3, toolbar.Descendants().Count(element =>
-            element.Name.LocalName == "Border"
-            && element.Attribute("Width")?.Value == "1"
-            && element.Attribute("Height")?.Value == "22"));
+        Assert.Equal("CommandBar", toolbar.Name.LocalName);
+        Assert.Equal("Transparent", toolbar.Attribute("Background")?.Value);
+        Assert.Equal("0", toolbar.Attribute("BorderThickness")?.Value);
+        Assert.Equal(3, toolbar.Descendants().Count(element => element.Name.LocalName == "AppBarSeparator"));
+        Assert.DoesNotContain(toolbar.Descendants(), element => element.Name.LocalName is "Border" or "ThemeShadow");
         foreach (var action in actionButtons)
         {
             var button = toolbar.Descendants().Single(element => HasName(element, action.Name));
             Assert.Equal(action.Tag, button.Attribute("Tag")?.Value);
             Assert.Equal(action.Click, button.Attribute("Click")?.Value);
             Assert.Contains(button.Descendants(), element =>
-                element.Name.LocalName == "FontIcon" && element.Attribute("Foreground") is not null);
+                element.Name.LocalName == "FontIcon"
+                && element.Attribute("AutomationProperties.AccessibilityView")?.Value == "Raw");
         }
 
-        Assert.Contains("ScreenshotViewer.SaveRequested += ScreenshotViewer_SaveRequested;", source, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.ShareRequested += ScreenshotViewer_ShareRequested;", source, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.OpenFolderRequested += ScreenshotViewer_OpenFolderRequested;", source, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.DeleteScreenshotRequested += ScreenshotViewer_DeleteScreenshotRequested;", source, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.DeleteSnapshotRequested += ScreenshotViewer_DeleteSnapshotRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.SaveRequested += HeaderSection_SaveRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.ShareRequested += HeaderSection_ShareRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.OpenFolderRequested += HeaderSection_OpenFolderRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.DeleteScreenshotRequested += HeaderSection_DeleteScreenshotRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.DeleteSnapshotRequested += HeaderSection_DeleteSnapshotRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.ZoomOutRequested += HeaderSection_ZoomOutRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.ZoomResetRequested += HeaderSection_ZoomResetRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.ZoomInRequested += HeaderSection_ZoomInRequested;", source, StringComparison.Ordinal);
         Assert.Contains("await SaveSelectedScreenshotAsync();", source, StringComparison.Ordinal);
-        Assert.Contains("public event EventHandler? SaveRequested;", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("public event EventHandler? ShareRequested;", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("public event EventHandler? OpenFolderRequested;", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("public event EventHandler? DeleteScreenshotRequested;", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("public event EventHandler? DeleteSnapshotRequested;", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? SaveRequested;", headerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? ShareRequested;", headerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? OpenFolderRequested;", headerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? DeleteScreenshotRequested;", headerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? DeleteSnapshotRequested;", headerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SaveRequested", viewerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(viewer.Descendants(), element =>
+            element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton" or "CommandBar");
         Assert.Contains("ShowActionResult(result", source, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
@@ -340,9 +350,12 @@ public sealed class WinUiSurfaceContractTests
         var gallery = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml"));
         var viewer = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml"));
         var details = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDetailsControl.xaml"));
+        var dayOverview = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDayOverviewControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var headerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml.cs"));
         var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
-        var detailsToggle = viewer.Descendants().Single(element => HasName(element, "DetailsToggleButton"));
+        var detailsToggle = header.Descendants().Single(element => HasName(element, "DetailsToggleButton"));
+        var toolbar = header.Descendants().Single(element => HasName(element, "ScreenshotToolbar"));
         var detailsPane = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsPane"));
         var resizeGrip = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsResizeGrip"));
         var gallerySection = screenshotWindow.Descendants().Single(element => HasName(element, "GallerySection"));
@@ -353,11 +366,11 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Contains(screenshotWindow.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.DoesNotContain(screenshotWindow.Descendants(), element => element.Name.LocalName == "Rectangle");
-        Assert.Equal("ToggleButton", detailsToggle.Name.LocalName);
+        Assert.Equal("AppBarToggleButton", detailsToggle.Name.LocalName);
         Assert.Equal("DetailsToggleButton_Click", detailsToggle.Attribute("Click")?.Value);
         Assert.Equal("Collapsed", detailsPane.Attribute("Visibility")?.Value);
         Assert.Equal("0", detailsPane.Attribute("Grid.Row")?.Value);
-        Assert.Equal("5", detailsPane.Attribute("Grid.RowSpan")?.Value);
+        Assert.Equal("6", detailsPane.Attribute("Grid.RowSpan")?.Value);
         Assert.Equal("{ThemeResource ScreenshotSidebarBackdropBrush}", detailsPane.Attribute("Background")?.Value);
         Assert.Equal("{ThemeResource ScreenshotSidebarBorderBrush}", detailsPane.Attribute("BorderBrush")?.Value);
         Assert.Equal("1,0,0,0", detailsPane.Attribute("BorderThickness")?.Value);
@@ -372,7 +385,8 @@ public sealed class WinUiSurfaceContractTests
             0.15d));
         Assert.Equal(2, screenshotWindow.Descendants().Count(element =>
             element.Name.LocalName == "LinearGradientBrush" && HasKey(element, "ScreenshotSidebarBorderBrush")));
-        Assert.Equal("2", gallerySection.Attribute("Grid.ColumnSpan")?.Value);
+        Assert.Null(gallerySection.Attribute("Grid.ColumnSpan"));
+        Assert.Equal("0", gallerySection.Attribute("Grid.Column")?.Value);
         Assert.Equal("2", timeline.Attribute("Grid.ColumnSpan")?.Value);
         Assert.Equal("HorizontalResizeGrip", resizeGrip.Name.LocalName);
         Assert.Equal("DetailsResizeGrip_PointerPressed", resizeGrip.Attribute("PointerPressed")?.Value);
@@ -383,8 +397,9 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("DetailsResizeGrip_KeyDown", resizeGrip.Attribute("KeyDown")?.Value);
         Assert.Equal("Screenshots.Details.Resize", resizeGrip.Attribute("Tag")?.Value);
         Assert.Equal("12", resizeGrip.Attribute("Width")?.Value);
-        Assert.Contains("public event Action<bool>? DetailsVisibilityRequested;", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotViewer.DetailsVisibilityRequested += ScreenshotViewer_DetailsVisibilityRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("public event Action<bool>? DetailsVisibilityRequested;", headerSource, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.DetailsVisibilityRequested += HeaderSection_DetailsVisibilityRequested;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("DetailsVisibilityRequested", viewerSource, StringComparison.Ordinal);
         Assert.Contains("private const double MaximumDetailsPaneWidthRatio = 0.5d;", source, StringComparison.Ordinal);
         Assert.Contains("_detailsResizeStartWidth + (_detailsResizeStartPointerX - currentPointerX)", source, StringComparison.Ordinal);
         Assert.Contains("grip.CapturePointer(e.Pointer)", source, StringComparison.Ordinal);
@@ -400,22 +415,44 @@ public sealed class WinUiSurfaceContractTests
             HasName(element, "ExtendedDateText")
             && element.Attribute("FontSize")?.Value == "34"
             && element.Attribute("FontWeight")?.Value == "SemiLight");
-        Assert.Contains(header.Descendants(), element =>
-            element.Name.LocalName == "TextBlock"
-            && element.Attribute("Tag")?.Value == "Screenshots.Date.Select");
-        Assert.Contains(header.Descendants(), element =>
+        Assert.Equal("CommandBar", toolbar.Name.LocalName);
+        Assert.Equal("1", toolbar.Attribute("Grid.Column")?.Value);
+        Assert.Equal("Transparent", toolbar.Attribute("Background")?.Value);
+        Assert.Equal("0", toolbar.Attribute("BorderThickness")?.Value);
+        var datePicker = header.Descendants().Single(element => HasName(element, "SelectedDatePicker"));
+        Assert.Equal("CalendarDatePicker", datePicker.Name.LocalName);
+        Assert.Equal("200", datePicker.Attribute("Width")?.Value);
+        Assert.Equal("40", datePicker.Attribute("Height")?.Value);
+        Assert.NotEqual("0", datePicker.Attribute("Opacity")?.Value);
+        Assert.NotEqual("False", datePicker.Attribute("IsTabStop")?.Value);
+        Assert.DoesNotContain(header.Descendants(), element =>
             element.Name.LocalName == "Button"
-            && element.Attribute("Click")?.Value == "OpenDatePickerButton_Click"
-            && element.Attribute("Width")?.Value == "104"
-            && element.Attribute("Height")?.Value == "52");
+            && element.Attribute("Click")?.Value == "OpenDatePickerButton_Click");
+        Assert.Contains("SelectedDatePicker.DateChanged += SelectedDatePicker_DateChanged;", source, StringComparison.Ordinal);
+        Assert.Contains("await LoadGalleryAsync(_selectedDate);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsCalendarOpen = true", File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml.cs")), StringComparison.Ordinal);
+        var privacyStatus = header.Descendants().Single(element => HasName(element, "PrivacyStatusBadge"));
+        Assert.Equal("StackPanel", privacyStatus.Name.LocalName);
+        Assert.Null(privacyStatus.Attribute("Background"));
+        Assert.Null(privacyStatus.Attribute("BorderBrush"));
+        Assert.Null(privacyStatus.Attribute("BorderThickness"));
+        Assert.Contains(dayOverview.Descendants(), element => HasName(element, "MarkerCanvas"));
+        Assert.Contains(dayOverview.Descendants(), element => HasName(element, "SelectionRangeIndicator"));
         Assert.Contains(gallery.Descendants(), element => element.Name.LocalName == "ScreenshotImageViewerControl");
-        Assert.Equal(3, gallery.Descendants().Count(element =>
-            element.Attribute("Style")?.Value.Contains("ScreenshotMetadataChipStyle", StringComparison.Ordinal) == true));
-        Assert.Contains(gallery.Descendants(), element => HasName(element, "MetadataDateValueText"));
-        Assert.Contains(gallery.Descendants(), element => HasName(element, "MetadataTimeValueText"));
-        Assert.Contains(gallery.Descendants(), element => HasName(element, "MetadataAppValueText"));
-        Assert.DoesNotContain(gallery.Descendants(), element => HasName(element, "MetadataActivityIndexValueText"));
+        Assert.DoesNotContain(gallery.Descendants(), element => HasName(element, "MetadataPanel"));
+        Assert.DoesNotContain(viewer.Descendants(), element =>
+            element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton" or "CommandBar");
+        Assert.DoesNotContain(header.Descendants(), element => HasKey(element, "ScreenshotMetadataChipStyle"));
+        Assert.DoesNotContain(toolbar.Descendants(), element => element.Name.LocalName is "Border" or "ThemeShadow");
+        Assert.Contains(header.Descendants(), element => HasName(element, "MetadataDateValueText"));
+        Assert.Contains(header.Descendants(), element => HasName(element, "MetadataTimeValueText"));
+        Assert.Contains(header.Descendants(), element => HasName(element, "MetadataAppValueText"));
+        Assert.DoesNotContain(header.Descendants(), element => HasName(element, "MetadataActivityIndexValueText"));
+        Assert.Contains("HeaderSection.SetMetadata(", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.ClearMetadata();", source, StringComparison.Ordinal);
         Assert.Contains(details.Descendants(), element => HasName(element, "AiMarkdownHost"));
+        Assert.Contains(details.Descendants(), element => HasName(element, "PrivacyStatusValueText"));
+        Assert.Contains(details.Descendants(), element => HasName(element, "WindowTitleValueText"));
         Assert.Contains(details.Descendants(), element => element.Attribute("Style")?.Value.Contains("ScreenshotDetailRowStyle", StringComparison.Ordinal) == true);
         Assert.DoesNotContain(details.Descendants(), element => element.Name.LocalName is "WebView2" or "Hyperlink" or "HyperlinkButton");
     }
@@ -559,6 +596,79 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("_application.StartTrackingAsync", startupSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ToggleTrackingAsync", startupSource, StringComparison.Ordinal);
         Assert.Contains("TrackingStartupPolicy.ShouldStart(options, settings.Value)", appSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StartupActivationPolicy_PromotesStartupTaskToUiLaunchWithWindowsFlag()
+    {
+        var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var policyStart = appSource.IndexOf("internal static class StartupActivationPolicy", StringComparison.Ordinal);
+
+        Assert.True(policyStart >= 0, "StartupActivationPolicy source contract was not found.");
+        var policySource = appSource[policyStart..];
+        Assert.Contains("activationKind == ExtendedActivationKind.StartupTask", policySource, StringComparison.Ordinal);
+        Assert.Contains("options with { Mode = LaunchMode.Ui, StartWithWindows = true }", policySource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PackagedManifest_DeclaresStableStartupTaskAndAppReadsRichActivation()
+    {
+        const string Uap5Namespace = "http://schemas.microsoft.com/appx/manifest/uap/windows10/5";
+        var manifest = XDocument.Load(RepositoryFile("TrackMeUp", "Package.appxmanifest"));
+        var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var extension = manifest
+            .Descendants()
+            .Single(element =>
+                element.Name == XName.Get("Extension", Uap5Namespace)
+                && element.Attribute("Category")?.Value == "windows.startupTask");
+        var startupTask = extension.Elements().Single(element => element.Name == XName.Get("StartupTask", Uap5Namespace));
+
+        Assert.Equal("TrackMeUp.exe", extension.Attribute("Executable")?.Value);
+        Assert.Equal("Windows.FullTrustApplication", extension.Attribute("EntryPoint")?.Value);
+        Assert.Equal("TrackMeUpStartup", startupTask.Attribute("TaskId")?.Value);
+        Assert.Equal("false", startupTask.Attribute("Enabled")?.Value);
+        Assert.Contains("StartupActivationPolicy.Apply(", appSource, StringComparison.Ordinal);
+        Assert.Contains("AppInstance.GetCurrent().GetActivatedEventArgs()?.Kind", appSource, StringComparison.Ordinal);
+        Assert.Contains("ExtendedActivationKind.StartupTask", appSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScreenshotStorageMigration_BlocksTrackingAndUsesANonDismissibleProgressWindow()
+    {
+        var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var dialog = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotStorageMigrationDialogWindow.xaml"));
+        var dialogSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotStorageMigrationDialogWindow.xaml.cs"));
+        var initializationStart = mainSource.IndexOf("private async Task InitializeAsync(LaunchOptions options)", StringComparison.Ordinal);
+        var initializationEnd = mainSource.IndexOf("private async Task<string?> ReconcileWindowsStartupAsync", initializationStart, StringComparison.Ordinal);
+        Assert.True(initializationStart >= 0 && initializationEnd > initializationStart, "MainWindow initialization source contract was not found.");
+        var initialization = mainSource[initializationStart..initializationEnd];
+
+        Assert.True(
+            initialization.IndexOf("await _rootLoaded.Task;", StringComparison.Ordinal)
+            < initialization.IndexOf("EnsureScreenshotStorageMigratedAsync", StringComparison.Ordinal));
+        Assert.True(
+            initialization.IndexOf("EnsureScreenshotStorageMigratedAsync", StringComparison.Ordinal)
+            < initialization.IndexOf("_viewModel.InitializeAsync", StringComparison.Ordinal));
+        Assert.True(
+            initialization.IndexOf("_viewModel.InitializeAsync", StringComparison.Ordinal)
+            < initialization.IndexOf("_refreshTimer.Start();", StringComparison.Ordinal));
+        Assert.Contains("SetScreenshotStorageReady(false);", mainSource, StringComparison.Ordinal);
+        Assert.Contains("SetScreenshotStorageReady(true);", initialization, StringComparison.Ordinal);
+        Assert.Contains("if (!_screenshotStorageReady)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TrackingButton.IsEnabled = isReady;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TitleBarMoreButton.IsEnabled = isReady;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("CaptureMenu.IsEnabled = isReady;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("SetStartupEnabledAsync", mainSource, StringComparison.Ordinal);
+        Assert.Contains("MigrateScreenshotStorageAsync", appSource, StringComparison.Ordinal);
+        Assert.Contains("GetScreenshotStorageMigrationStatusAsync", appSource, StringComparison.Ordinal);
+        Assert.Contains("ShowStandaloneScreenshotStorageMigrationAsync", appSource, StringComparison.Ordinal);
+        Assert.Contains("StartBackgroundRuntimeAsync", appSource, StringComparison.Ordinal);
+        Assert.Contains("StartReportsAsync", appSource, StringComparison.Ordinal);
+        Assert.Contains(dialog.Descendants(), element => HasName(element, "MigrationProgressRing") && element.Name.LocalName == "ProgressRing");
+        Assert.DoesNotContain(dialog.Descendants(), element => element.Name.LocalName is "Button" or "HyperlinkButton");
+        Assert.Contains("args.Cancel = !_allowClose;", dialogSource, StringComparison.Ordinal);
+        Assert.Contains("_application.MigrateScreenshotStorageAsync", dialogSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -803,15 +913,18 @@ public sealed class WinUiSurfaceContractTests
     [Fact]
     public void ScreenshotIconOnlyControls_UseLocalizedTooltipsAndAutomationNames()
     {
+        var viewer = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml"));
+        var header = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml"));
         var documents = new[]
         {
-            XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml")),
+            viewer,
             XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml")),
-            XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml"))
+            header
         };
         var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
         var localizationCatalogs = CanonicalUiLocales.Select(LoadLocalizationKeys).ToArray();
         var uiLocalization = File.ReadAllText(RepositoryFile("TrackMeUp", "UiLocalization.cs"));
+        var headerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotHeaderControl.xaml.cs"));
 
         Assert.All(
             localizationCatalogs.Skip(1),
@@ -819,18 +932,25 @@ public sealed class WinUiSurfaceContractTests
                 localizationCatalogs[0].OrderBy(static key => key, StringComparer.Ordinal),
                 catalog.OrderBy(static key => key, StringComparer.Ordinal)));
 
-        foreach (var document in documents)
-        {
-            var iconOnlyButtons = document
-                .Descendants()
-                .Where(element => element.Name.LocalName is "Button" or "ToggleButton")
-                .Where(element => element.Attribute("Content") is null)
-                .Where(element => element.Descendants().Any(child => child.Name.LocalName == "FontIcon"))
-                .ToArray();
+        var iconOnlyButtons = documents
+            .SelectMany(document => document.Descendants())
+            .Where(element => element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton")
+            .Where(element => element.Attribute("Content") is null)
+            .Where(element => element.Descendants().Any(child => child.Name.LocalName == "FontIcon"))
+            .ToArray();
 
-            Assert.NotEmpty(iconOnlyButtons);
-            Assert.All(iconOnlyButtons, button => AssertLocalizedScreenshotCommand(button, localizationCatalogs));
-        }
+        Assert.NotEmpty(iconOnlyButtons);
+        Assert.All(iconOnlyButtons, button => AssertLocalizedScreenshotCommand(button, localizationCatalogs));
+        Assert.DoesNotContain(viewer.Descendants(), element =>
+            element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton");
+        Assert.All(
+            header.Descendants().Where(element => element.Name.LocalName == "FontIcon"),
+            icon => Assert.Equal("Raw", icon.Attribute("AutomationProperties.AccessibilityView")?.Value));
+        Assert.Contains("SetCommandLabel(ZoomOutButton, \"Screenshots.Toolbar.ZoomOut\");", headerSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(MetadataDateItem", headerSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(MetadataTimeItem", headerSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(MetadataApplicationItem", headerSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(PrivacyStatusBadge, statusText);", headerSource, StringComparison.Ordinal);
 
         var resizeGrip = screenshotWindow.Descendants().Single(element => HasName(element, "DetailsResizeGrip"));
         AssertLocalizedScreenshotCommand(resizeGrip, localizationCatalogs);

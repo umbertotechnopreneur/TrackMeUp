@@ -35,7 +35,6 @@ public static class SettingsCatalog
     [
         Boolean("screenshots.enabled", "Allow application-initiated screenshot capture."),
         Boolean("screenshots.keep", "Keep screenshots after analysis."),
-        Boolean("screenshots.watermark", "Add the local audit watermark to retained screenshots."),
         Choice("screenshots.mode", "Select all displays or only the active window.", ScreenshotModes),
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
         Integer("screenshots.interval_minutes", "Minutes between scheduled eligible screenshots."),
@@ -104,7 +103,6 @@ public static class SettingsCatalog
         {
             "screenshots.enabled" => settings.ScreenshotsEnabled,
             "screenshots.keep" => settings.KeepScreenshots,
-            "screenshots.watermark" => settings.WatermarkScreenshots,
             "screenshots.mode" => settings.ScreenshotCaptureMode,
             "screenshots.directory" => settings.ScreenshotDirectory,
             "screenshots.interval_minutes" => settings.ScreenshotIntervalMinutes,
@@ -217,7 +215,6 @@ public static class SettingsCatalog
             {
                 case "screenshots.enabled" when TryBoolean(value, out var screenshots): current = current with { ScreenshotsEnabled = screenshots }; break;
                 case "screenshots.keep" when TryBoolean(value, out var keep): current = current with { KeepScreenshots = keep }; break;
-                case "screenshots.watermark" when TryBoolean(value, out var watermark): current = current with { WatermarkScreenshots = watermark }; break;
                 case "screenshots.mode" when Canonical(ScreenshotModes, value) is { } screenshotMode: current = current with { ScreenshotCaptureMode = screenshotMode }; break;
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
                 case "screenshots.interval_minutes" when TryInteger(value, 1, 1440, out var screenshotIntervalMinutes): current = current with { ScreenshotIntervalMinutes = screenshotIntervalMinutes }; break;

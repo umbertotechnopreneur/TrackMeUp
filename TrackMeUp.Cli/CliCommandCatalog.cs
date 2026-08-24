@@ -21,7 +21,7 @@ internal static class CliCommandCatalog
         new("tracking", "command.tracking", ["/tracking start [--safe-mode]", "/tracking pause", "/tracking toggle"], ["detail.sharedRuntime"], []),
         new("session", "command.session", ["/session last", "/session today"], [], []),
         new("system", "command.system", ["/system snapshot [--watch] [--interval <1-60>]"], ["detail.jsonSnapshot"], []),
-        new("screenshot", "command.screenshot", ["/screenshot capture [--mode <all-screens|active-window>] [--keep] [--watermark]", "/screenshot latest", "/screenshot open-folder"], ["detail.screenshot"], []),
+        new("screenshot", "command.screenshot", ["/screenshot capture [--mode <all-screens|active-window>] [--keep]", "/screenshot latest", "/screenshot open-folder"], ["detail.screenshot"], []),
         new("ai", "command.ai", ["/ai status", "/ai enable", "/ai disable", "/ai configure [--provider <name>] [--model <name>] [--endpoint <uri>] [--output-detail <compact|balanced|detailed>] [--reasoning-effort <auto|none|low|medium|high|xhigh|max>]", "/ai analyze [--no-capture]", "/ai key set [--variable <allowed-name>]"], ["detail.aiKey"], []),
         new("report", "command.report", ["/report today [--output <directory>] [--open]", "/report digest [--date <yyyy-MM-dd>] [--open]"], [], []),
         new("privacy", "command.privacy", ["/privacy list", "/privacy add --type <process|title|hint> --value <text>", "/privacy remove --id <id>", "/privacy test-current"], [], []),

@@ -1295,6 +1295,115 @@ internal sealed class SqliteActivityStore
         return analyses;
     }
 
+    /// <summary>Remaps screenshot paths in every durable record that stores an absolute artifact location.</summary>
+    internal void RemapScreenshotPaths(IReadOnlyDictionary<string, string> pathMappings)
+    {
+        ArgumentNullException.ThrowIfNull(pathMappings);
+        var normalizedMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (sourcePath, destinationPath) in pathMappings)
+        {
+            var source = Path.GetFullPath(sourcePath);
+            var destination = Path.GetFullPath(destinationPath);
+            if (!string.Equals(source, destination, StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedMappings[source] = destination;
+            }
+        }
+
+        if (normalizedMappings.Count == 0)
+        {
+            return;
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var analysisUpdates = new List<(string CorrelationId, string ScreenshotPaths)>();
+        using (var selectAnalyses = connection.CreateCommand())
+        {
+            selectAnalyses.Transaction = transaction;
+            selectAnalyses.CommandText = "SELECT correlation_id, screenshot_paths FROM ai_analysis_results WHERE screenshot_paths IS NOT NULL;";
+            using var reader = selectAnalyses.ExecuteReader();
+            while (reader.Read())
+            {
+                var persisted = reader.GetString(1);
+                var remapped = EnumerateScreenshotPaths(persisted)
+                    .Select(path => RemapPath(path, normalizedMappings))
+                    .ToArray();
+                var serialized = string.Join(';', remapped);
+                if (!string.Equals(persisted, serialized, StringComparison.Ordinal))
+                {
+                    analysisUpdates.Add((reader.GetString(0), serialized));
+                }
+            }
+        }
+
+        foreach (var update in analysisUpdates)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "UPDATE ai_analysis_results SET screenshot_paths = $paths WHERE correlation_id = $correlationId;";
+            command.Parameters.AddWithValue("$paths", update.ScreenshotPaths);
+            command.Parameters.AddWithValue("$correlationId", update.CorrelationId);
+            command.ExecuteNonQuery();
+        }
+
+        var snapshotUpdates = new List<(string ArtifactIdentity, string SourcePath, string SnapshotJson)>();
+        using (var selectSnapshots = connection.CreateCommand())
+        {
+            selectSnapshots.Transaction = transaction;
+            selectSnapshots.CommandText = "SELECT artifact_identity, source_path, snapshot_json FROM screenshot_text_snapshots;";
+            using var reader = selectSnapshots.ExecuteReader();
+            while (reader.Read())
+            {
+                var artifactIdentity = reader.GetString(0);
+                var sourcePath = Path.GetFullPath(reader.GetString(1));
+                var snapshot = JsonSerializer.Deserialize<ScreenshotTextSnapshot>(reader.GetString(2), _json)
+                    ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
+                var snapshotSourcePath = Path.GetFullPath(snapshot.SourceScreenshotPath);
+                if (!string.Equals(sourcePath, snapshotSourcePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("Persisted screenshot text snapshot paths do not match.");
+                }
+
+                var remappedSourcePath = RemapPath(sourcePath, normalizedMappings);
+                if (!string.Equals(sourcePath, remappedSourcePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    snapshotUpdates.Add((
+                        artifactIdentity,
+                        remappedSourcePath,
+                        JsonSerializer.Serialize(snapshot with { SourceScreenshotPath = remappedSourcePath }, _json)));
+                }
+            }
+        }
+
+        foreach (var update in snapshotUpdates)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                UPDATE screenshot_text_snapshots
+                SET source_path = $sourcePath,
+                    snapshot_json = $snapshot
+                WHERE artifact_identity = $identity;
+                """;
+            command.Parameters.AddWithValue("$sourcePath", update.SourcePath);
+            command.Parameters.AddWithValue("$snapshot", update.SnapshotJson);
+            command.Parameters.AddWithValue("$identity", update.ArtifactIdentity);
+            command.ExecuteNonQuery();
+        }
+
+        // SQLite changes commit only after every duplicated path representation has been rewritten consistently.
+        transaction.Commit();
+    }
+
+    private static string RemapPath(string path, IReadOnlyDictionary<string, string> normalizedMappings)
+    {
+        var normalizedPath = Path.GetFullPath(path);
+        return normalizedMappings.TryGetValue(normalizedPath, out var destinationPath)
+            ? destinationPath
+            : path;
+    }
+
     /// <summary>Deletes snapshot-analysis records that reference one retained screenshot capture.</summary>
     internal int DeleteAiAnalysesReferencingScreenshot(string screenshotPath)
     {

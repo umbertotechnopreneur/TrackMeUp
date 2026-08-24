@@ -134,9 +134,18 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
     {
         if (arguments.ElementAtOrDefault(1)?.Equals("capture", StringComparison.OrdinalIgnoreCase) == true)
         {
-            var modeIndex = arguments.ToList().FindIndex(argument => argument.Equals("--mode", StringComparison.OrdinalIgnoreCase));
-            if (modeIndex >= 0 && modeIndex + 1 >= arguments.Count)
+            for (var index = 2; index < arguments.Count; index++)
             {
+                if (arguments[index].Equals("--keep", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (arguments[index].Equals("--mode", StringComparison.OrdinalIgnoreCase) && ++index < arguments.Count)
+                {
+                    continue;
+                }
+
                 return InvalidCommand();
             }
 
@@ -144,7 +153,6 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
                 new CaptureScreenshotRequest(
                     ReadOption(arguments, "--mode"),
                     arguments.Contains("--keep", StringComparer.OrdinalIgnoreCase),
-                    arguments.Contains("--watermark", StringComparer.OrdinalIgnoreCase),
                     ScreenshotCaptureOrigins.Manual),
                 cancellationToken));
         }

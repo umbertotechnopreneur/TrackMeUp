@@ -2,7 +2,6 @@ using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
 using SkiaSharp;
 using TrackMeUp.Services;
 using Xunit;
@@ -27,12 +26,11 @@ public sealed class ScreenCaptureServiceTests
     }
 
     [Fact]
-    public void WriteWebpArtifacts_UsesOneBitmapAndCreatesNoTemporaryPng()
+    public void EncodeBitmapAsWebp_WritesOneCleanArtifactAndCreatesNoTemporaryPng()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"trackmeup-capture-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
-        var rawPath = Path.Combine(directory, "capture-raw.webp");
-        var storedPath = Path.Combine(directory, "capture.webp");
+        var screenshotPath = Path.Combine(directory, "capture.webp");
 
         try
         {
@@ -42,30 +40,20 @@ public sealed class ScreenCaptureServiceTests
                 graphics.Clear(Color.FromArgb(24, 80, 160));
             }
 
-            ScreenCaptureService.WriteWebpArtifacts(
-                bitmap,
-                rawPath,
-                storedPath,
-                includeWatermark: true,
-                watermarkText: "TEST MACHINE  ·  2026-08-15 16:30:00  ·  capture  ·  Monitor 1");
+            ScreenCaptureService.EncodeBitmapAsWebp(bitmap, screenshotPath);
 
-            Assert.True(File.Exists(rawPath));
-            Assert.True(File.Exists(storedPath));
+            Assert.True(File.Exists(screenshotPath));
+            Assert.Single(Directory.GetFiles(directory, "*.webp"));
             Assert.Empty(Directory.GetFiles(directory, "*.png"));
-            Assert.False(File.ReadAllBytes(rawPath).SequenceEqual(File.ReadAllBytes(storedPath)));
 
-            using var raw = SKBitmap.Decode(rawPath);
-            using var stored = SKBitmap.Decode(storedPath);
-            Assert.NotNull(raw);
-            Assert.NotNull(stored);
-            Assert.Equal(640, raw.Width);
-            Assert.Equal(180, raw.Height);
-            Assert.Equal(raw.Width, stored.Width);
-            Assert.Equal(raw.Height, stored.Height);
-            var rawPixel = raw.GetPixel(32, 32);
-            Assert.InRange(rawPixel.Red, (byte)16, (byte)32);
-            Assert.InRange(rawPixel.Green, (byte)72, (byte)88);
-            Assert.InRange(rawPixel.Blue, (byte)152, (byte)168);
+            using var decoded = SKBitmap.Decode(screenshotPath);
+            Assert.NotNull(decoded);
+            Assert.Equal(640, decoded.Width);
+            Assert.Equal(180, decoded.Height);
+            var pixel = decoded.GetPixel(32, 32);
+            Assert.InRange(pixel.Red, (byte)16, (byte)32);
+            Assert.InRange(pixel.Green, (byte)72, (byte)88);
+            Assert.InRange(pixel.Blue, (byte)152, (byte)168);
         }
         finally
         {
@@ -74,12 +62,11 @@ public sealed class ScreenCaptureServiceTests
     }
 
     [Fact]
-    public void WriteWebpArtifacts_WithoutWatermark_WritesOnlyRawArtifact()
+    public void EncodeBitmapAsWebp_DoesNotMutateTheCapturedPixels()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"trackmeup-capture-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
-        var rawPath = Path.Combine(directory, "capture-raw.webp");
-        var storedPath = Path.Combine(directory, "capture.webp");
+        var screenshotPath = Path.Combine(directory, "capture.webp");
 
         try
         {
@@ -89,16 +76,11 @@ public sealed class ScreenCaptureServiceTests
                 graphics.Clear(Color.CornflowerBlue);
             }
 
-            ScreenCaptureService.WriteWebpArtifacts(
-                bitmap,
-                rawPath,
-                storedPath,
-                includeWatermark: false,
-                watermarkText: string.Empty);
+            var sourcePixel = bitmap.GetPixel(8, 8);
+            ScreenCaptureService.EncodeBitmapAsWebp(bitmap, screenshotPath);
 
-            Assert.True(File.Exists(rawPath));
-            Assert.False(File.Exists(storedPath));
-            using var decoded = SKBitmap.Decode(rawPath);
+            Assert.Equal(sourcePixel, bitmap.GetPixel(8, 8));
+            using var decoded = SKBitmap.Decode(screenshotPath);
             Assert.NotNull(decoded);
             Assert.Equal(64, decoded.Width);
             Assert.Equal(32, decoded.Height);

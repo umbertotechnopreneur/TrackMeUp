@@ -608,7 +608,7 @@ public sealed class AiScreenshotReprocessingWorkerTests
 
     private sealed class UnexpectedCaptureService : IScreenCaptureService
     {
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin) =>
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin) =>
             throw new InvalidOperationException("Historical processing must not capture a new screenshot.");
     }
 

@@ -193,9 +193,12 @@ public sealed class ScheduledSnapshotStateTests
     {
         public ScheduledCaptureService(string directory)
         {
+            var capturedAt = DateTimeOffset.Now;
+            var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
+            Directory.CreateDirectory(dayDirectory);
             var captureId = Guid.NewGuid().ToString("N");
-            var rawPath = Path.Combine(directory, $"{captureId}_1.0.0_scheduled_monitor-1-raw.webp");
-            var storedPath = Path.Combine(directory, $"{captureId}_1.0.0_scheduled_monitor-1.webp");
+            var rawPath = Path.Combine(dayDirectory, $"{captureId}_1.0.0_scheduled_monitor-1-raw.webp");
+            var storedPath = Path.Combine(dayDirectory, $"{captureId}_1.0.0_scheduled_monitor-1.webp");
             File.WriteAllBytes(rawPath, [1, 2, 3]);
             File.WriteAllBytes(storedPath, [4, 5, 6]);
             Result = new ScreenshotCaptureResult(
@@ -211,7 +214,7 @@ public sealed class ScheduledSnapshotStateTests
 
         public ScreenshotCaptureResult Result { get; }
 
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, bool includeWatermark, string captureOrigin)
+        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin)
         {
             CallCount++;
             LastOrigin = captureOrigin;

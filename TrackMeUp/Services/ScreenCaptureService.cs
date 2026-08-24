@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Drawing.Text;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,15 +16,13 @@ namespace TrackMeUp.Services;
 public interface IScreenCaptureService
 {
     /// <summary>Captures the configured screen scope and returns AI and retained artifacts.</summary>
-    /// <param name="directory">Directory where files are written.</param>
+    /// <param name="directory">Root directory below which calendar-based capture folders are created.</param>
     /// <param name="captureMode">Capture mode: all-screens or active-window.</param>
-    /// <param name="includeWatermark">Whether retained artifacts include the configured watermark.</param>
     /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
     /// <returns>The captured analysis and retained artifact paths.</returns>
     ScreenshotCaptureResult CaptureByMode(
         string directory,
         string captureMode,
-        bool includeWatermark,
         string captureOrigin);
 }
 
@@ -52,24 +47,23 @@ public sealed class ScreenCaptureService : IScreenCaptureService
     }
 
     /// <summary>
-    /// Captures screenshots and returns both AI-ready and storage-visible artifacts.
+    /// Captures clean screenshots and returns the shared AI/storage artifacts.
     /// </summary>
     /// <param name="directory">Directory where files are written.</param>
     /// <param name="captureMode">Capture mode: all-screens or active-window.</param>
-    /// <param name="includeWatermark">If true, stores watermarked files to disk.</param>
     /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
     public ScreenshotCaptureResult CaptureByMode(
         string directory,
         string captureMode,
-        bool includeWatermark,
         string captureOrigin)
     {
         var captureId = Guid.NewGuid().ToString("N");
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
+        var capturedAt = DateTimeOffset.Now;
         return captureMode switch
         {
-            "active-window" => CaptureActiveWindow(directory, captureId, includeWatermark, validatedOrigin),
-            "all-screens" => CaptureAllScreens(directory, captureId, includeWatermark, validatedOrigin),
+            "active-window" => CaptureActiveWindow(directory, captureId, validatedOrigin, capturedAt),
+            "all-screens" => CaptureAllScreens(directory, captureId, validatedOrigin, capturedAt),
             _ => throw new ArgumentException("Screenshot capture mode must be 'all-screens' or 'active-window'.", nameof(captureMode))
         };
     }
@@ -92,17 +86,24 @@ public sealed class ScreenCaptureService : IScreenCaptureService
     /// </summary>
     /// <param name="directory">Directory where files are written.</param>
     /// <param name="captureId">Unique identifier shared by artifacts from this capture pass.</param>
-    /// <param name="includeWatermark">Whether retained artifacts include the configured watermark.</param>
     /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
     /// <returns>The captured analysis and retained artifact paths.</returns>
     public ScreenshotCaptureResult CaptureAllScreens(
         string directory,
         string captureId,
-        bool includeWatermark,
-        string captureOrigin)
+        string captureOrigin) =>
+        CaptureAllScreens(directory, captureId, captureOrigin, DateTimeOffset.Now);
+
+    private ScreenshotCaptureResult CaptureAllScreens(
+        string directory,
+        string captureId,
+        string captureOrigin,
+        DateTimeOffset capturedAt)
     {
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
-        Directory.CreateDirectory(directory);
+        var captureDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
+        // All artifacts from this capture pass share one resolved day directory; directory creation failures abort capture.
+        Directory.CreateDirectory(captureDirectory);
         var displays = EnumerateDisplays();
         var foreground = CaptureForegroundTarget();
         var focusedDisplay = ResolveFocusedDisplay(displays, foreground.WindowBounds);
@@ -118,13 +119,12 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             foreach (var display in captureOrder)
             {
                 var paths = CaptureRect(
-                    directory,
+                    captureDirectory,
                     display.Bounds,
                     display.Stem,
                     captureId,
-                    includeWatermark,
-                    display.Name,
-                    validatedOrigin);
+                    validatedOrigin,
+                    capturedAt);
 
                 if (display.Index == focusedDisplay.Index)
                 {
@@ -156,28 +156,34 @@ public sealed class ScreenCaptureService : IScreenCaptureService
     /// </summary>
     /// <param name="directory">Directory where files are written.</param>
     /// <param name="captureId">Unique identifier shared by artifacts from this capture pass.</param>
-    /// <param name="includeWatermark">Whether retained artifacts include the configured watermark.</param>
     /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
     /// <returns>The captured analysis and retained artifact paths.</returns>
     public ScreenshotCaptureResult CaptureActiveWindow(
         string directory,
         string captureId,
-        bool includeWatermark,
-        string captureOrigin)
+        string captureOrigin) =>
+        CaptureActiveWindow(directory, captureId, captureOrigin, DateTimeOffset.Now);
+
+    private ScreenshotCaptureResult CaptureActiveWindow(
+        string directory,
+        string captureId,
+        string captureOrigin,
+        DateTimeOffset capturedAt)
     {
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
-        Directory.CreateDirectory(directory);
+        var captureDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
+        // The foreground capture uses the same durable calendar layout as multi-monitor capture.
+        Directory.CreateDirectory(captureDirectory);
         var foreground = CaptureForegroundTarget();
         var focusedDisplay = ResolveFocusedDisplay(EnumerateDisplays(), foreground.WindowBounds);
         var focusMetadata = CreateFocusMetadata(focusedDisplay, foreground, "active-window");
         var paths = CaptureRect(
-            directory,
+            captureDirectory,
             foreground.WindowBounds,
             "active-window",
             captureId,
-            includeWatermark,
-            "Active window",
-            validatedOrigin);
+            validatedOrigin,
+            capturedAt);
         return new ScreenshotCaptureResult(
             captureId,
             paths.Analysis,
@@ -327,20 +333,14 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         NativeMethods.Rect rect,
         string stem,
         string captureId,
-        bool includeWatermark,
-        string watermarkSuffix,
-        string captureOrigin)
+        string captureOrigin,
+        DateTimeOffset capturedAt)
     {
         var width = rect.Right - rect.Left;
         var height = rect.Bottom - rect.Top;
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         var versionedStem = $"{captureId}_{_appVersion}_{validatedOrigin}_{stem}";
-        var rawWebpPath = Path.Combine(directory, $"{versionedStem}-raw.webp");
-        var storedWebpPath = Path.Combine(directory, $"{versionedStem}.webp");
-
-        var machine = Environment.MachineName;
-        var createdAt = DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        var watermarkText = $"{machine}  ·  {createdAt}  ·  {captureId}  ·  {watermarkSuffix}";
+        var screenshotPath = Path.Combine(directory, $"{versionedStem}.webp");
 
         try
         {
@@ -351,25 +351,16 @@ public sealed class ScreenCaptureService : IScreenCaptureService
                 graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, new Size(width, height));
             }
 
-            WriteWebpArtifacts(
-                bitmap,
-                rawWebpPath,
-                storedWebpPath,
-                includeWatermark,
-                watermarkText);
+            EncodeBitmapAsWebp(bitmap, screenshotPath);
+            File.SetLastWriteTimeUtc(screenshotPath, capturedAt.UtcDateTime);
         }
         catch
         {
-            DeletePartialArtifacts([rawWebpPath, storedWebpPath]);
+            DeletePartialArtifacts([screenshotPath]);
             throw;
         }
 
-        if (includeWatermark)
-        {
-            return (new[] { rawWebpPath }, new[] { storedWebpPath });
-        }
-
-        return (new[] { rawWebpPath }, new[] { rawWebpPath });
+        return (new[] { screenshotPath }, new[] { screenshotPath });
     }
 
     private static void DeletePartialArtifacts(IEnumerable<string> paths)
@@ -385,32 +376,6 @@ public sealed class ScreenCaptureService : IScreenCaptureService
                 // Preserve the original capture failure while cleanup remains best effort.
             }
         }
-    }
-
-    /// <summary>Writes raw and optional watermarked WEBP artifacts from one captured bitmap.</summary>
-    /// <param name="bitmap">Captured screen pixels that may be watermarked after the raw artifact is written.</param>
-    /// <param name="rawWebpPath">AI-ready raw WEBP destination.</param>
-    /// <param name="storedWebpPath">Watermarked storage WEBP destination.</param>
-    /// <param name="includeWatermark">Whether the distinct storage artifact is required.</param>
-    /// <param name="watermarkText">Text rendered into the storage artifact.</param>
-    internal static void WriteWebpArtifacts(
-        Bitmap bitmap,
-        string rawWebpPath,
-        string storedWebpPath,
-        bool includeWatermark,
-        string watermarkText)
-    {
-        ArgumentNullException.ThrowIfNull(bitmap);
-
-        if (!includeWatermark)
-        {
-            EncodeBitmapAsWebp(bitmap, rawWebpPath);
-            return;
-        }
-
-        EncodeBitmapAsWebp(bitmap, rawWebpPath);
-        DrawWatermark(bitmap, watermarkText);
-        EncodeBitmapAsWebp(bitmap, storedWebpPath);
     }
 
     /// <summary>Encodes a GDI bitmap directly as WEBP without an intermediate image file or decode.</summary>
@@ -448,58 +413,6 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         }
     }
 
-    /// <summary>Draws the storage watermark directly into an already captured bitmap.</summary>
-    /// <param name="bitmap">Captured bitmap to mutate after its raw artifact has been written.</param>
-    /// <param name="watermarkText">Watermark text.</param>
-    internal static void DrawWatermark(Bitmap bitmap, string watermarkText)
-    {
-        ArgumentNullException.ThrowIfNull(bitmap);
-
-        using var graphics = Graphics.FromImage(bitmap);
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-
-        using var font = new Font("Segoe UI", 18f, FontStyle.Bold, GraphicsUnit.Pixel);
-        using var textBrush = new SolidBrush(Color.FromArgb(225, 240, 240, 255));
-        using var shadowBrush = new SolidBrush(Color.FromArgb(170, 5, 5, 5));
-        var shadowOffset = new PointF(1f, 1f);
-        var margin = 12;
-        var textSize = graphics.MeasureString(watermarkText, font);
-        var textWidth = textSize.Width;
-        var textHeight = textSize.Height;
-        var x = Math.Max(margin, bitmap.Width - textWidth - margin);
-        var y = Math.Max(margin, bitmap.Height - textHeight - margin);
-
-        using var format = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Far };
-        var backgroundRect = new RectangleF(
-            x - 9,
-            y - 5,
-            Math.Min(textWidth + 12, bitmap.Width - 10),
-            textHeight + 8);
-        using var backBrush = new SolidBrush(Color.FromArgb(130, 0, 0, 0));
-        graphics.FillRoundedRectangle(backBrush, backgroundRect, 6f);
-
-        graphics.DrawString(watermarkText, font, shadowBrush, x + shadowOffset.X, y + shadowOffset.Y, format);
-        graphics.DrawString(watermarkText, font, textBrush, x, y, format);
-    }
-}
-
-internal static class GraphicsExtensions
-{
-    /// <summary>
-    /// Draws rounded filled rectangle for watermark background.
-    /// </summary>
-    public static void FillRoundedRectangle(this Graphics graphics, Brush brush, RectangleF bounds, float radius)
-    {
-        using var path = new GraphicsPath();
-        path.AddArc(bounds.X, bounds.Y, radius, radius, 180, 90);
-        path.AddArc(bounds.Right - radius, bounds.Y, radius, radius, 270, 90);
-        path.AddArc(bounds.Right - radius, bounds.Bottom - radius, radius, radius, 0, 90);
-        path.AddArc(bounds.X, bounds.Bottom - radius, radius, radius, 90, 90);
-        path.CloseFigure();
-
-        graphics.FillPath(brush, path);
-    }
 }
 
 /// <summary>

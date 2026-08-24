@@ -23,7 +23,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         try
         {
             var service = new ThreadRecordingSearchService();
-            await using var coordinator = new LocalSearchCoordinator(new LocalStore(dataDirectory), service);
+            await using var coordinator = new LocalSearchCoordinator(CreateStore(dataDirectory), service);
 
             var searchCallerThread = RunOnDedicatedThread(() => coordinator.SearchAsync(
                 new SearchRequest { Text = "snapshot" },
@@ -47,7 +47,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var dataDirectory = CreateDataDirectory();
         try
         {
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             var service = new ThreadRecordingSearchService
             {
                 RebuildAction = () => store.AppendSample(new ActivitySample(
@@ -92,7 +92,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var dataDirectory = CreateDataDirectory();
         try
         {
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
             Directory.CreateDirectory(screenshotDirectory);
             store.SaveSettings(store.LoadSettings() with { ScreenshotDirectory = screenshotDirectory });
@@ -102,7 +102,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             var storedPath = CreateOwnedScreenshot(screenshotDirectory, 'e', todayCapture);
             var firstArtifactIdentity = Path.GetFileNameWithoutExtension(storedPath);
             var rawPath = Path.Combine(
-                screenshotDirectory,
+                Path.GetDirectoryName(storedPath)!,
                 $"{firstCaptureId}_1.0.0_manual_monitor-1-raw.webp");
             File.WriteAllBytes(rawPath, [4, 5, 6]);
             File.SetLastWriteTimeUtc(rawPath, todayCapture.AddDays(-1).UtcDateTime);
@@ -149,7 +149,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var dataDirectory = CreateDataDirectory();
         try
         {
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
             Directory.CreateDirectory(screenshotDirectory);
             store.SaveSettings(store.LoadSettings() with { ScreenshotDirectory = screenshotDirectory });
@@ -225,7 +225,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var dataDirectory = CreateDataDirectory();
         try
         {
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
             Directory.CreateDirectory(screenshotDirectory);
             store.SaveSettings(store.LoadSettings() with
@@ -312,7 +312,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var dataDirectory = CreateDataDirectory();
         try
         {
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
             Directory.CreateDirectory(screenshotDirectory);
             store.SaveSettings(store.LoadSettings() with
@@ -355,7 +355,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         var dataDirectory = CreateDataDirectory();
         try
         {
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             store.SaveSettings(store.LoadSettings() with
             {
                 SearchLanguage = "it-IT",
@@ -436,7 +436,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
         try
         {
             Environment.SetEnvironmentVariable(apiKeyVariable, "test-ocr-refinement-key", EnvironmentVariableTarget.Process);
-            var store = new LocalStore(dataDirectory);
+            var store = CreateStore(dataDirectory);
             var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
             Directory.CreateDirectory(screenshotDirectory);
             var screenshotPath = CreateOwnedScreenshot(screenshotDirectory, 'c', DateTimeOffset.Now);
@@ -534,12 +534,24 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
     private static string CreateOwnedScreenshot(string directory, char captureCharacter, DateTimeOffset capturedAt)
     {
+        var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
+        Directory.CreateDirectory(dayDirectory);
         var path = Path.Combine(
-            directory,
+            dayDirectory,
             $"{new string(captureCharacter, 32)}_1.0.0_manual_monitor-1.webp");
         File.WriteAllBytes(path, [1, 2, 3]);
         File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
         return path;
+    }
+
+    private static LocalStore CreateStore(string dataDirectory)
+    {
+        var store = new LocalStore(dataDirectory);
+        store.SaveSettings(store.LoadSettings() with
+        {
+            ScreenshotDirectory = Path.Combine(dataDirectory, "screenshots")
+        });
+        return store;
     }
 
     private static string CreateDataDirectory()

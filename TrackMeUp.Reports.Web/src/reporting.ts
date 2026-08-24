@@ -85,6 +85,7 @@ export const aiUsageOrigins = [
   'snapshot.scheduled',
   'snapshot.reprocess',
   'runtime.ai',
+  'ocr.refinement',
   'manual',
   'unknown',
 ] as const

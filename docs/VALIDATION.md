@@ -22,7 +22,7 @@ Use these checks for behavior and visual acceptance after changing the correspon
 ## Screen captures and AI
 
 - Confirm that the page exposes only Latest screen capture and Open folder for retained captures.
-- Confirm that it does not expose a manual Capture screen now action, capture-mode selector, retention controls, or watermark controls.
+- Confirm that it does not expose a manual Capture screen now action, capture-mode selector, retention controls, or embedded-image label controls.
 - Confirm that describing the current context can request a fresh capture only through its explicit consent checkbox.
 
 ## Central banners

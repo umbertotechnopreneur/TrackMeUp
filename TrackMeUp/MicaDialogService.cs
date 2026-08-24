@@ -235,6 +235,72 @@ internal sealed class MicaDialogService
         });
     }
 
+    /// <summary>Shows the non-dismissible screenshot-storage migration progress surface.</summary>
+    internal async Task<OperationResult<ScreenshotStorageMigrationResult>> ShowScreenshotStorageMigrationAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(strings);
+        return await RunModalSessionAsync(
+            owner,
+            OperationResult<ScreenshotStorageMigrationResult>.Failure(
+                "operation.cancelled",
+                "ScreenshotStorageMigrationFailed"),
+            async (ownerAppWindow, ownerHandle) =>
+            {
+                var dialog = new ScreenshotStorageMigrationDialogWindow(
+                    application,
+                    theme,
+                    strings,
+                    ownerAppWindow,
+                    ownerHandle);
+                return await ShowDialogWindowAsync(
+                    dialog,
+                    dialog.WindowHandle,
+                    dialog.ShowAsync,
+                    dialog.DisposePlacement);
+            });
+    }
+
+    /// <summary>Shows screenshot-storage migration when a launch mode has no owner window yet.</summary>
+    internal async Task<OperationResult<ScreenshotStorageMigrationResult>> ShowStandaloneScreenshotStorageMigrationAsync(
+        ITrackMeUpApplication application,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(strings);
+        await _queue.WaitAsync();
+        try
+        {
+            if (_isShuttingDown)
+            {
+                return OperationResult<ScreenshotStorageMigrationResult>.Failure(
+                    "operation.cancelled",
+                    "ScreenshotStorageMigrationFailed");
+            }
+
+            var dialog = new ScreenshotStorageMigrationDialogWindow(
+                application,
+                theme,
+                strings,
+                ownerAppWindow: null,
+                ownerHandle: IntPtr.Zero);
+            return await ShowDialogWindowAsync(
+                dialog,
+                dialog.WindowHandle,
+                dialog.ShowAsync,
+                dialog.DisposePlacement);
+        }
+        finally
+        {
+            _queue.Release();
+        }
+    }
+
     /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
     internal async Task ShowAiConnectionTestAsync(ITrackMeUpApplication application, Window owner, ElementTheme theme)
     {
@@ -254,6 +320,12 @@ internal sealed class MicaDialogService
     internal void CloseActive()
     {
         _isShuttingDown = true;
+        if (_activeWindow is ScreenshotStorageMigrationDialogWindow migrationWindow)
+        {
+            migrationWindow.CloseForShutdown();
+            return;
+        }
+
         _activeWindow?.Close();
     }
 

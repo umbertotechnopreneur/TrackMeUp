@@ -66,13 +66,44 @@ public sealed class ScreenshotDetailsProjectionTests
             "--");
 
         Assert.Equal("ChatGPT", state.Application);
+        Assert.Equal("--", state.WindowTitle);
+        Assert.Equal("Schermo", state.Screen);
         Assert.Equal("Schermo", state.CaptureKind);
         Assert.Equal("Pianificata", state.Origin);
         Assert.Equal("72", state.ActivityIndex);
         Assert.Equal("Review", state.ActivityLabels);
+        Assert.Equal("--", state.MouseClicks);
+        Assert.Equal("--", state.CpuUsage);
+        Assert.Equal("--", state.GpuUsage);
         Assert.Empty(state.AiDescription);
         Assert.Null(state.AnalysisTime);
         Assert.Null(state.OcrText);
+    }
+
+    [Fact]
+    public void Create_ProjectsVerifiableWindowScreenAndIntervalTelemetry()
+    {
+        var capturedAt = new DateTimeOffset(2026, 8, 9, 2, 21, 0, TimeSpan.Zero);
+        var item = new ScreenshotGalleryItem(
+            capturedAt,
+            "C:\\captures\\frame.webp",
+            "Visual Studio Code",
+            "monitor",
+            "scheduled",
+            ForegroundWindowTitle: "TrackMeUp — ScreenshotWindow.xaml",
+            ScreenIndex: 2,
+            ScreenName: "Monitor 2",
+            MouseClicks: 18,
+            CpuUsagePercent: 42,
+            GpuUsagePercent: 7);
+
+        var state = CreateState(item);
+
+        Assert.Equal("TrackMeUp — ScreenshotWindow.xaml", state.WindowTitle);
+        Assert.Equal("Monitor 2", state.Screen);
+        Assert.Equal("18", state.MouseClicks);
+        Assert.Equal("42%", state.CpuUsage);
+        Assert.Equal("7%", state.GpuUsage);
     }
 
     [Fact]

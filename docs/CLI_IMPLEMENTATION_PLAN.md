@@ -45,7 +45,7 @@ The domain and persistence types are already mostly UI-independent. Existing reu
 - Input and foreground-application sampling.
 - Rich context providers for Office, Adobe, IDEs, browsers, compilers, and generic applications.
 - System snapshots for CPU, GPU, memory, network, and disks.
-- Per-monitor or active-window screenshots, WebP encoding through SkiaSharp, optional local retention, and local watermarking.
+- Per-monitor or active-window clean screenshots, WebP encoding through SkiaSharp, and optional local retention.
 - AI analysis through OpenAI, OpenRouter, and Anthropic decoders.
 - HTML report generation.
 - Settings, environment-variable API-key lookup, local JSONL history, startup registration, localization, and installation identity.
@@ -289,7 +289,7 @@ trackmeup -cli tracking toggle
 trackmeup -cli session last
 trackmeup -cli session today
 trackmeup -cli system snapshot [--watch]
-trackmeup -cli screenshot capture [--mode <all-screens|active-window>] [--keep] [--watermark]
+trackmeup -cli screenshot capture [--mode <all-screens|active-window>] [--keep]
 trackmeup -cli screenshot latest
 trackmeup -cli screenshot open-folder
 trackmeup -cli ai status
@@ -429,7 +429,7 @@ The startup animation lasts at most 700 ms and is skipped for redirected output,
 
 1. Apply privacy rules before screenshot capture and before AI analysis, not only before rendering output.
 2. Never send a screenshot when screenshots or AI analysis are disabled.
-3. Preserve the current separation: transient raw captures may be provided to the configured AI provider only after authorization; retained local copies are watermarked when enabled.
+3. Preserve the current separation: captured images may be provided to the configured AI provider only after authorization; retained local copies remain visually unmodified.
 4. Delete transient captures after analysis when retention is disabled, including failure and cancellation paths.
 5. Never log screenshot bytes, API keys, full AI request bodies, or unredacted IPC payloads.
 6. Redact window titles and document names in diagnostics unless `--verbose` is explicitly selected and privacy rules allow them.
@@ -560,7 +560,7 @@ Acceptance: invalid settings are rejected consistently by UI and CLI; no secret 
 
 Implement screenshot capture/latest/folder and AI status/configure/analyze/key commands. Apply privacy, cost, retention, and cancellation policies in the application layer.
 
-Acceptance: disabled screenshots create no file; transient AI screenshots are cleaned; retained copies follow watermark policy; API keys never appear in output or logs.
+Acceptance: disabled screenshots create no file; transient AI screenshots are cleaned; retained copies remain visually unmodified; API keys never appear in output or logs.
 
 ### Phase 9: Reports, retention, digest, and calendar
 

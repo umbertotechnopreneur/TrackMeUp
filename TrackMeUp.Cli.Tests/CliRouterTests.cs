@@ -187,6 +187,19 @@ public sealed class CliRouterTests
     }
 
     [Fact]
+    public async Task ScreenshotCaptureWithRemovedWatermarkOption_FailsBeforeCallingApplication()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/screenshot", "capture", "--watermark"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Null(application.LastCaptureRequest);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
     public async Task SlashCommandHelp_DoesNotCallApplicationFacade()
     {
         var application = new RecordingApplication();
@@ -298,6 +311,8 @@ public sealed class CliRouterTests
         public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => Unsupported<string?>();
         public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
         public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
+        public Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotStorageMigrationStatus>();
+        public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotStorageMigrationResult>();
         public Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(AiScreenshotReprocessRequest request, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessPlan>();
         public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> StartAiScreenshotReprocessingAsync(Guid planId, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessJobSnapshot>();
         public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> GetAiScreenshotReprocessingJobAsync(Guid jobId, CancellationToken cancellationToken) => Unsupported<AiScreenshotReprocessJobSnapshot>();

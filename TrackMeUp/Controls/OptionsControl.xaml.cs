@@ -78,7 +78,6 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
         AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
         AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
-        AutomationProperties.SetName(WatermarkSwitch, T("Options.Watermark.Header"));
         AutomationProperties.SetName(SearchSettingsButton, T("Options.SearchConfiguration.Title"));
         AutomationProperties.SetName(SearchSynonymsSwitch, T("Options.Search.Synonyms"));
         AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
@@ -401,7 +400,6 @@ public sealed partial class OptionsControl : UserControl
             ["ocr.language"] = SelectedTag(OcrLanguageBox, "system"),
             ["startup.enabled"] = StartWithWindowsSwitch.IsOn ? "true" : "false",
             ["tracking.start_on_launch"] = StartTrackingOnLaunchSwitch.IsOn ? "true" : "false",
-            ["screenshots.watermark"] = WatermarkSwitch.IsOn ? "true" : "false",
             ["ai.provider"] = SelectedTag(AiProviderBox, "openai"),
             ["ai.endpoint"] = string.IsNullOrWhiteSpace(AiEndpointBox.Text) ? DefaultEndpoint(SelectedTag(AiProviderBox, "openai")) : AiEndpointBox.Text.Trim(),
             ["ai.key_variable"] = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(SelectedTag(AiProviderBox, "openai")) : AiApiKeyNameBox.Text.Trim(),
@@ -466,7 +464,6 @@ public sealed partial class OptionsControl : UserControl
         OcrLanguageBox.IsEnabled = settings.OcrEnabled;
         StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
         StartTrackingOnLaunchSwitch.IsOn = settings.StartTrackingOnLaunch;
-        WatermarkSwitch.IsOn = settings.WatermarkScreenshots;
         SelectTag(AiProviderBox, settings.AiProvider, "openai");
         AiEndpointBox.Text = string.IsNullOrWhiteSpace(settings.AiEndpoint) ? DefaultEndpoint(settings.AiProvider) : settings.AiEndpoint;
         AiApiKeyNameBox.Text = string.IsNullOrWhiteSpace(settings.AiApiKeyName) ? DefaultApiKeyName(settings.AiProvider) : settings.AiApiKeyName;

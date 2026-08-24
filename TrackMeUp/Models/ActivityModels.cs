@@ -78,7 +78,6 @@ public sealed record AppSettings(
     string ScreenshotDirectory = "",
     string ScreenshotCaptureMode = "all-screens",
     int ScreenshotIntervalMinutes = 15,
-    bool WatermarkScreenshots = true,
     string AiProvider = "openai",
     string AiEndpoint = "https://api.openai.com/v1/responses",
     string AiApiKeyName = "OPENAI_API_KEY",
