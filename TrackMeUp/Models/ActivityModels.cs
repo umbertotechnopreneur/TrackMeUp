@@ -160,7 +160,7 @@ public sealed record ActivityScoreMinute(
     long KeyPresses,
     long MouseClicks,
     int ActiveSeconds,
-    int CpuUsagePercent,
+    int? CpuUsagePercent,
     int? GpuUsagePercent);
 
 /// <summary>Summarizes input captured between one pair of scheduled screenshot boundaries.</summary>

@@ -36,6 +36,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private RuntimeHost? _runtimeHost;
     private ITrackMeUpApplication? _runtimeApplication;
     private ITrackMeUpApplication? _applicationFacade;
+    private DashboardRefreshCoordinator? _dashboardRefreshCoordinator;
     private bool _reportsOnly;
     private bool _searchWindowOpening;
     private bool _quickSetupOwnerWasInteractive;
@@ -115,8 +116,9 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _reportsOnly = false;
         var application = StartOrConnectRuntime();
+        _dashboardRefreshCoordinator = new DashboardRefreshCoordinator(application);
         var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
-        _window = new MainWindow(application, options, _dialogs, trayIcon, _windowsNotifications);
+        _window = new MainWindow(application, options, _dialogs, trayIcon, _windowsNotifications, _dashboardRefreshCoordinator);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
         _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
         _window.ReportsRequested += MainWindow_ReportsRequested;
@@ -580,7 +582,9 @@ public partial class App : Microsoft.UI.Xaml.Application
         try
         {
             var application = _applicationFacade ?? throw new InvalidOperationException("The taskbar widget requires an initialized application facade.");
-            var taskbarWidgetSurface = new TaskbarWidgetSurface(application, new TaskbarWidgetHost(_services.GetRequiredService<ILogger<TaskbarWidgetHost>>()), _services.GetRequiredService<ILogger<TaskbarWidgetSurface>>());
+            var dashboardRefreshCoordinator = _dashboardRefreshCoordinator
+                ?? throw new InvalidOperationException("The taskbar widget requires an initialized dashboard coordinator.");
+            var taskbarWidgetSurface = new TaskbarWidgetSurface(application, dashboardRefreshCoordinator, new TaskbarWidgetHost(_services.GetRequiredService<ILogger<TaskbarWidgetHost>>()), _services.GetRequiredService<ILogger<TaskbarWidgetSurface>>());
             _taskbarWidgetSurface = taskbarWidgetSurface;
             taskbarWidgetSurface.FlyoutRequested += (_, _) => _window?.DispatcherQueue.TryEnqueue(() => _window?.ShowFlyout());
             taskbarWidgetSurface.ApplySettings(settings);
@@ -698,6 +702,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
 
         // Stop accepting IPC before disposing the one facade that owns tracking and persistence.
+        _dashboardRefreshCoordinator?.Dispose();
+        _dashboardRefreshCoordinator = null;
         if (_runtimeHost is not null)
         {
             _runtimeHost.AtomicResetPrepared -= RuntimeHost_AtomicResetPrepared;

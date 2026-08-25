@@ -19,14 +19,17 @@ public sealed class TrackingDomainService : IDisposable
     private ActivitySample? _latestSample;
     private DateTimeOffset? _trackingStartedAt;
     private DashboardActivityCache? _dashboardActivityCache;
+    private readonly SettingsSnapshot _settingsSnapshot;
 
     /// <summary>
     /// Initializes a new tracking domain service.
     /// </summary>
     /// <param name="store">Persistent store used for summaries and settings.</param>
-    public TrackingDomainService(LocalStore store)
+    /// <param name="settingsSnapshot">Runtime-owned settings snapshot shared with the application facade.</param>
+    public TrackingDomainService(LocalStore store, SettingsSnapshot? settingsSnapshot = null)
     {
         _store = store;
+        _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
         _monitor = new ActivityMonitorService(_store, _inputHooks);
         _monitor.SampleRecorded += HandleSampleRecorded;
     }
@@ -97,7 +100,7 @@ public sealed class TrackingDomainService : IDisposable
     /// </summary>
     public DashboardState LoadCurrentDashboardState()
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var sample = _latestSample;
         var status = IsTracking && sample?.State == "active" ? "RUNNING" : "PAUSED";
         var context = sample is null ? "STATE_READY" : sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
@@ -149,19 +152,31 @@ public sealed class TrackingDomainService : IDisposable
     /// <summary>
     /// Loads application settings from local storage.
     /// </summary>
-    public AppSettings LoadSettings() => _store.LoadSettings();
+    public AppSettings LoadSettings() => _settingsSnapshot.Value;
 
     /// <summary>
     /// Persists provided application settings to local storage.
     /// </summary>
     /// <param name="settings">Settings instance to persist.</param>
-    public void SaveSettings(AppSettings settings) => _store.SaveSettings(settings);
+    public void SaveSettings(AppSettings settings)
+    {
+        _store.SaveSettings(settings);
+        _settingsSnapshot.Replace(settings);
+    }
 
     /// <summary>Records application-owned telemetry for the live score without exposing OS access to the UI.</summary>
     public void RecordSystemSnapshot(SystemSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         _activityScore.RecordSystemSnapshot(snapshot);
+        DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
+    }
+
+    /// <summary>Records the narrow CPU/GPU usage sample used by the live activity score.</summary>
+    public void RecordSystemUsage(SystemUsageSample sample)
+    {
+        ArgumentNullException.ThrowIfNull(sample);
+        _activityScore.RecordSystemUsage(sample);
         DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
     }
 
@@ -190,7 +205,7 @@ public sealed class TrackingDomainService : IDisposable
     /// <returns>Computed dashboard representation.</returns>
     private DashboardState BuildDashboardState(ActivitySample sample)
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var status = sample.State == "active" ? "RUNNING" : "PAUSED";
         var context = sample.State == "idle" ? "STATE_IDLE" : $"{sample.Application} · {sample.Context}";
         var intensity = sample.State == "active" ? Math.Min(100, 30 + sample.KeyPresses + sample.MouseClicks * 2) : 5;

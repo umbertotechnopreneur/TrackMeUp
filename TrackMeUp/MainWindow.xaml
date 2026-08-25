@@ -1044,7 +1044,7 @@
             Padding="16"
             Background="Transparent"
             Visibility="Collapsed">
-            <controls:OptionsControl x:Name="OptionsControl" BackRequested="OptionsControl_BackRequested" />
+            <ContentPresenter x:Name="OptionsHost" />
         </Border>
 
         <Border
@@ -1054,10 +1054,7 @@
             Padding="16"
             Background="Transparent"
             Visibility="Collapsed">
-            <controls:OperationsControl
-                x:Name="OperationsControl"
-                BackRequested="OperationsControl_BackRequested"
-                LayoutChanged="OperationsControl_LayoutChanged" />
+            <ContentPresenter x:Name="OperationsHost" />
         </Border>
 
         <controls:TimedInfoBar

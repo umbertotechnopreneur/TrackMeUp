@@ -35,12 +35,14 @@ public sealed partial class MainWindow : Window
     private const int LogicalWindowHeightPadding = 20;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
+    private const int ScreenshotPreviewDecodePixelWidth = 384;
     private static readonly TimeSpan LastSessionRefreshInterval = TimeSpan.FromSeconds(5);
     private const int DwmWindowAttributeBorderColor = 34;
     private const uint DwmColorNone = 0xFFFFFFFE;
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
-    private readonly DispatcherQueueTimer _refreshTimer;
+    private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
+    private readonly CancellationTokenSource _surfaceLifetime = new();
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly AppWindow _appWindow;
     private readonly MainWindowLayoutState _layoutState = new();
@@ -75,6 +77,18 @@ public sealed partial class MainWindow : Window
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
     private int _aiSpendRefreshInProgress;
+    private IDisposable? _dashboardSubscription;
+    private bool _dashboardSurfaceClosed;
+    private OptionsControl? _optionsControl;
+    private OperationsControl? _operationsControl;
+    private Task? _optionsInitializationTask;
+    private Task? _operationsInitializationTask;
+
+    private OptionsControl OptionsControl => _optionsControl
+        ?? throw new InvalidOperationException("OptionsControl has not been initialized.");
+
+    private OperationsControl OperationsControl => _operationsControl
+        ?? throw new InvalidOperationException("OperationsControl has not been initialized.");
     private MainWindowSurface _operationsReturnSurface = MainWindowSurface.Player;
     #endregion
 
@@ -120,9 +134,11 @@ public sealed partial class MainWindow : Window
         LaunchOptions options,
         MicaDialogService dialogs,
         TrayIconService trayIcon,
-        IWindowsToastNotificationService windowsNotifications)
+        IWindowsToastNotificationService windowsNotifications,
+        DashboardRefreshCoordinator dashboardRefreshCoordinator)
     {
         _application = application;
+        _dashboardRefreshCoordinator = dashboardRefreshCoordinator ?? throw new ArgumentNullException(nameof(dashboardRefreshCoordinator));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _trayIcon = trayIcon ?? throw new ArgumentNullException(nameof(trayIcon));
         _windowsNotifications = windowsNotifications ?? throw new ArgumentNullException(nameof(windowsNotifications));
@@ -155,18 +171,6 @@ public sealed partial class MainWindow : Window
         }
         ApplyBorderlessPlayerWindow();
         ResizeForLogicalContent(_layoutState.LogicalHeight);
-
-        OptionsControl.Initialize(application, AiState);
-        OptionsControl.SettingsSaved += ApplySettings;
-        OptionsControl.LayoutChanged += OptionsControl_LayoutChanged;
-        OptionsControl.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
-        OptionsControl.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
-        OptionsControl.SearchIndexingRequested += OptionsControl_SearchIndexingRequested;
-        OperationsControl.Initialize(application, _dialogs, this);
-        OperationsControl.AtomicResetPrepared += OperationsControl_AtomicResetPrepared;
-        _refreshTimer = DispatcherQueue.CreateTimer();
-        _refreshTimer.Interval = TimeSpan.FromSeconds(1);
-        _refreshTimer.Tick += async (_, _) => await RefreshDashboardAsync();
 
         _windowResizeAnimationTimer = DispatcherQueue.CreateTimer();
         _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
@@ -210,7 +214,7 @@ public sealed partial class MainWindow : Window
         }
 
         SetScreenshotStorageReady(true);
-        _refreshTimer.Start();
+        _dashboardSubscription = _dashboardRefreshCoordinator.Subscribe(OnDashboardStateChanged);
         if (startupRegistrationFailureCode is not null)
         {
             await _dialogs.ShowInformativeAsync(
@@ -325,6 +329,12 @@ public sealed partial class MainWindow : Window
 
     private async Task RefreshDashboardAsync()
     {
+        if (_dashboardSubscription is not null)
+        {
+            _dashboardRefreshCoordinator.RequestRefresh();
+            return;
+        }
+
         var state = await _viewModel.RefreshAsync(CancellationToken.None);
         if (state.Succeeded && state.Value is not null)
         {
@@ -335,6 +345,27 @@ public sealed partial class MainWindow : Window
 
         await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync();
+    }
+
+    private void OnDashboardStateChanged(DashboardState state)
+    {
+        if (_dashboardSurfaceClosed)
+        {
+            return;
+        }
+
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_dashboardSurfaceClosed)
+            {
+                return;
+            }
+
+            UpdatePlayer(state);
+            _ = RefreshLastSessionIfDueAsync();
+            _ = RefreshAiMonthlySpendAsync();
+            _ = DrainApplicationNotificationsAsync();
+        });
     }
 
     /// <summary>Refreshes the month-to-date AI spend at a bounded cadence while the integration is active.</summary>
@@ -714,13 +745,116 @@ public sealed partial class MainWindow : Window
     private void OptionsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        ShowOptionsPanel();
+        _ = ShowOptionsPanelAsync();
     }
 
     private void ShowOptionsPanel()
     {
+        _ = ShowOptionsPanelAsync();
+    }
+
+    private async Task ShowOptionsPanelAsync()
+    {
+        if (!await TryEnsureOptionsAsync())
+        {
+            return;
+        }
+
         ShowPanel(OptionsPanel, MainWindowSurface.Options);
     }
+
+    private async Task<bool> TryEnsureOptionsAsync()
+    {
+        try
+        {
+            await EnsureOptionsAsync();
+            return true;
+        }
+        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch
+        {
+            await ShowLazySurfaceFailureAsync();
+            return false;
+        }
+    }
+
+    private Task EnsureOptionsAsync()
+    {
+        if (_optionsInitializationTask is { } existing)
+        {
+            return existing;
+        }
+
+        var options = new OptionsControl();
+        _optionsControl = options;
+        OptionsHost.Content = options;
+        options.BackRequested += OptionsControl_BackRequested;
+        options.SettingsSaved += ApplySettings;
+        options.LayoutChanged += OptionsControl_LayoutChanged;
+        options.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
+        options.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
+        options.SearchIndexingRequested += OptionsControl_SearchIndexingRequested;
+        var initialization = options.InitializeAsync(_application, AiState, _surfaceLifetime.Token);
+        _optionsInitializationTask = CompleteOptionsInitializationAsync(options, initialization);
+        return _optionsInitializationTask;
+    }
+
+    private async Task CompleteOptionsInitializationAsync(OptionsControl options, Task initialization)
+    {
+        try
+        {
+            await initialization;
+        }
+        catch
+        {
+            if (ReferenceEquals(_optionsControl, options))
+            {
+                options.BackRequested -= OptionsControl_BackRequested;
+                options.SettingsSaved -= ApplySettings;
+                options.LayoutChanged -= OptionsControl_LayoutChanged;
+                options.AiConnectionTestRequested -= OptionsControl_AiConnectionTestRequested;
+                options.OperationsSectionRequested -= OptionsControl_OperationsSectionRequested;
+                options.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
+                OptionsHost.Content = null;
+                _optionsControl = null;
+                _optionsInitializationTask = null;
+            }
+
+            throw;
+        }
+    }
+
+    private Task EnsureOperationsAsync()
+    {
+        if (_operationsInitializationTask is { } existing)
+        {
+            return existing;
+        }
+
+        var operations = new OperationsControl();
+        _operationsControl = operations;
+        OperationsHost.Content = operations;
+        operations.BackRequested += OperationsControl_BackRequested;
+        operations.LayoutChanged += OperationsControl_LayoutChanged;
+        operations.AtomicResetPrepared += OperationsControl_AtomicResetPrepared;
+        operations.Initialize(_application, _dialogs, this);
+        operations.ApplyLanguage(_strings.Language);
+        _operationsInitializationTask = Task.CompletedTask;
+        return _operationsInitializationTask;
+    }
+
+    private Task ShowLazySurfaceFailureAsync() => _dialogs.ShowInformativeAsync(
+        _application,
+        this,
+        MicaDialogRequest.Informative(
+            T("Operations.Status.RuntimeUnavailable.Title"),
+            T("Operations.Status.RuntimeUnavailable.Message"),
+            MicaDialogSeverity.Error,
+            T("Dialog.Ok")),
+        RootGrid.RequestedTheme);
 
     /// <summary>Forwards Quick Setup activation to the application composition root.</summary>
     private void QuickSetupMenuItem_Click(object sender, RoutedEventArgs e)
@@ -801,12 +935,35 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Shows the operational and diagnostic facade surface.</summary>
-    private void OperationsMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void OperationsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
         _operationsReturnSurface = MainWindowSurface.Player;
+        if (!await TryEnsureOperationsAsync())
+        {
+            return;
+        }
+
         OperationsControl.ShowOverview();
         ShowPanel(OperationsPanel, MainWindowSurface.Operations);
+    }
+
+    private async Task<bool> TryEnsureOperationsAsync()
+    {
+        try
+        {
+            await EnsureOperationsAsync();
+            return true;
+        }
+        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch
+        {
+            await ShowLazySurfaceFailureAsync();
+            return false;
+        }
     }
 
     /// <summary>Hides the player from the taskbar while retaining its notification-area activation icon.</summary>
@@ -1033,8 +1190,15 @@ public sealed partial class MainWindow : Window
     private void OptionsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
 
     /// <summary>Opens one operational detail requested from the settings overview.</summary>
-    private void OptionsControl_OperationsSectionRequested(OperationsSection section)
+    private void OptionsControl_OperationsSectionRequested(OperationsSection section) => _ = ShowOperationsSectionAsync(section);
+
+    private async Task ShowOperationsSectionAsync(OperationsSection section)
     {
+        if (!await TryEnsureOperationsAsync())
+        {
+            return;
+        }
+
         _operationsReturnSurface = MainWindowSurface.Options;
         OperationsControl.NavigateTo(section, returnToOverview: false);
         ShowPanel(OperationsPanel, MainWindowSurface.Operations);
@@ -1257,10 +1421,13 @@ public sealed partial class MainWindow : Window
 
         var latestMinute = state.Minutes[^1];
         ActivityScoreValueText.Text = state.CurrentScore.ToString(_strings.Culture);
+        var cpuUsage = latestMinute.CpuUsagePercent is { } cpu
+            ? _strings.Format("Activity.Percent", cpu)
+            : "--";
         var gpuUsage = latestMinute.GpuUsagePercent is { } gpu
             ? _strings.Format("Activity.Percent", gpu)
             : "--";
-        ActivityScoreTelemetryText.Text = _strings.Format("Activity.Telemetry", latestMinute.CpuUsagePercent, gpuUsage);
+        ActivityScoreTelemetryText.Text = _strings.Format("Activity.Telemetry", cpuUsage, gpuUsage);
         ActivityScorePreviousIntervalText.Text = FormatInterval(T("Activity.Previous"), state.PreviousSnapshotInterval);
         ActivityScoreLatestIntervalText.Text = FormatInterval(T("Activity.Latest"), state.LatestSnapshotInterval);
 
@@ -1389,7 +1556,12 @@ public sealed partial class MainWindow : Window
 
             _latestScreenshotPath = session.ScreenshotPath;
             _latestScreenshotCapturedAt = capturedAt;
-            LastScreenshotImage.Source = new BitmapImage(screenshotUri);
+            var preview = new BitmapImage
+            {
+                DecodePixelWidth = ScreenshotPreviewDecodePixelWidth,
+                UriSource = screenshotUri
+            };
+            LastScreenshotImage.Source = preview;
             LastScreenshotImage.Visibility = Visibility.Visible;
             ScreenshotPlaceholderImage.Visibility = Visibility.Collapsed;
             ScreenshotPreviewButton.IsHitTestVisible = true;
@@ -1471,8 +1643,8 @@ public sealed partial class MainWindow : Window
         UpdateDetailsAccessibility();
         UpdateOpenAiMenuAccessibility();
         UpdateScreenshotCaptureStatus();
-        OptionsControl.ApplyLanguage(settings.UiLanguage);
-        OperationsControl.ApplyLanguage(settings.UiLanguage);
+        _optionsControl?.ApplyLanguage(settings.UiLanguage);
+        _operationsControl?.ApplyLanguage(settings.UiLanguage);
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
 
@@ -1517,7 +1689,7 @@ public sealed partial class MainWindow : Window
         _updatingMenuState = true;
         ScreenshotsMenuToggle.IsChecked = settings.ScreenshotsEnabled;
         _updatingMenuState = false;
-        OptionsControl.ApplyExternalSettings(settings);
+        _optionsControl?.ApplyExternalSettings(settings);
         await AiState.LoadAsync(CancellationToken.None);
         ApplySettings(settings);
     }
@@ -1822,14 +1994,31 @@ public sealed partial class MainWindow : Window
             _xamlRoot.Changed -= XamlRoot_Changed;
         }
 
-        _refreshTimer.Stop();
+        _dashboardSurfaceClosed = true;
+        _surfaceLifetime.Cancel();
+        _dashboardSubscription?.Dispose();
+        _dashboardSubscription = null;
         _windowResizeAnimationTimer.Stop();
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
-        OptionsControl.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
-        OperationsControl.AtomicResetPrepared -= OperationsControl_AtomicResetPrepared;
+        if (_optionsControl is not null)
+        {
+            _optionsControl.BackRequested -= OptionsControl_BackRequested;
+            _optionsControl.SettingsSaved -= ApplySettings;
+            _optionsControl.LayoutChanged -= OptionsControl_LayoutChanged;
+            _optionsControl.AiConnectionTestRequested -= OptionsControl_AiConnectionTestRequested;
+            _optionsControl.OperationsSectionRequested -= OptionsControl_OperationsSectionRequested;
+            _optionsControl.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
+        }
+
+        if (_operationsControl is not null)
+        {
+            _operationsControl.BackRequested -= OperationsControl_BackRequested;
+            _operationsControl.LayoutChanged -= OperationsControl_LayoutChanged;
+            _operationsControl.AtomicResetPrepared -= OperationsControl_AtomicResetPrepared;
+        }
 
         if (_scheduleWindow is not null)
         {

@@ -16,29 +16,31 @@ namespace TrackMeUp.Taskbar;
 public sealed partial class TaskbarWidgetWindow : Window
 {
     private readonly ITrackMeUpApplication _application;
-    private readonly DispatcherTimer _refreshTimer;
+    private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
     private readonly DispatcherTimer _spanLabelSaveTimer;
-    private bool _refreshInProgress;
+    private IDisposable? _dashboardSubscription;
+    private bool _closed;
     private bool _updatingSpanLabel;
     private bool _spanLabelSaveInProgress;
     private bool _isTracking;
     private LocalizationService _strings = new("system");
 
     /// <summary>Initializes the transparent taskbar control.</summary>
-    public TaskbarWidgetWindow(ITrackMeUpApplication application)
+    public TaskbarWidgetWindow(ITrackMeUpApplication application, DashboardRefreshCoordinator dashboardRefreshCoordinator)
     {
         _application = application;
+        _dashboardRefreshCoordinator = dashboardRefreshCoordinator ?? throw new ArgumentNullException(nameof(dashboardRefreshCoordinator));
         InitializeComponent();
         ApplyLocalization();
 
-        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _refreshTimer.Tick += RefreshTimer_Tick;
         _spanLabelSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         _spanLabelSaveTimer.Tick += SpanLabelSaveTimer_Tick;
         Loaded += TaskbarWidgetWindow_Loaded;
         Closed += (_, _) =>
         {
-            _refreshTimer.Stop();
+            _closed = true;
+            _dashboardSubscription?.Dispose();
+            _dashboardSubscription = null;
             _spanLabelSaveTimer.Stop();
             RecordingGlow.BeginAnimation(OpacityProperty, null);
         };
@@ -78,13 +80,8 @@ public sealed partial class TaskbarWidgetWindow : Window
         }
     }
 
-    private async void TaskbarWidgetWindow_Loaded(object sender, RoutedEventArgs e)
-    {
-        await RefreshDashboardAsync();
-        _refreshTimer.Start();
-    }
-
-    private async void RefreshTimer_Tick(object? sender, EventArgs e) => await RefreshDashboardAsync();
+    private void TaskbarWidgetWindow_Loaded(object sender, RoutedEventArgs e) =>
+        _dashboardSubscription = _dashboardRefreshCoordinator.Subscribe(OnDashboardStateChanged);
 
     private void OpenFlyoutButton_Click(object sender, RoutedEventArgs e) => FlyoutRequested?.Invoke(this, EventArgs.Empty);
 
@@ -97,26 +94,20 @@ public sealed partial class TaskbarWidgetWindow : Window
         }
     }
 
-    private async Task RefreshDashboardAsync()
+    private void OnDashboardStateChanged(DashboardState state)
     {
-        if (_refreshInProgress)
+        if (_closed)
         {
             return;
         }
 
-        _refreshInProgress = true;
-        try
+        _ = Dispatcher.BeginInvoke(() =>
         {
-            var result = await _application.GetDashboardAsync(CancellationToken.None);
-            if (result.Succeeded && result.Value is not null)
+            if (!_closed)
             {
-                UpdateWidget(result.Value);
+                UpdateWidget(state);
             }
-        }
-        finally
-        {
-            _refreshInProgress = false;
-        }
+        });
     }
 
     private void UpdateWidget(DashboardState state)

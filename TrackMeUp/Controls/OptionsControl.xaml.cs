@@ -109,7 +109,7 @@ public sealed partial class OptionsControl : UserControl
     }
 
     /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
-    public async void Initialize(ITrackMeUpApplication application, AiApplicationState aiState)
+    public async Task InitializeAsync(ITrackMeUpApplication application, AiApplicationState aiState, CancellationToken cancellationToken)
     {
         _application = application;
         if (_aiState is not null)
@@ -120,9 +120,9 @@ public sealed partial class OptionsControl : UserControl
         _aiState.PropertyChanged += AiState_PropertyChanged;
         DataContext = aiState;
         UpdateApiKeyPresentation();
-        var settingsTask = application.GetSettingsAsync(CancellationToken.None);
-        var catalogTask = application.GetAiModelCatalogAsync(CancellationToken.None);
-        var aiStateTask = aiState.LoadAsync(CancellationToken.None);
+        var settingsTask = application.GetSettingsAsync(cancellationToken);
+        var catalogTask = application.GetAiModelCatalogAsync(cancellationToken);
+        var aiStateTask = aiState.LoadAsync(cancellationToken);
         await Task.WhenAll(settingsTask, catalogTask, aiStateTask);
 
         var settingsResult = await settingsTask;

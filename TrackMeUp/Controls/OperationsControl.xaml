@@ -244,12 +244,12 @@
 
         <ScrollViewer x:Name="DetailScroll" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto" Visibility="Collapsed">
             <Grid Padding="0,0,18,12">
-                <controls:SnapshotAiOperationsControl x:Name="SnapshotAiSection" Visibility="Collapsed" />
-                <controls:ReportsOperationsControl x:Name="ReportsSection" Visibility="Collapsed" />
-                <controls:PrivacyOperationsControl x:Name="PrivacySection" Visibility="Collapsed" />
-                <controls:RetentionOperationsControl x:Name="RetentionSection" Visibility="Collapsed" />
-                <controls:PluginOperationsControl x:Name="PluginsSection" Visibility="Collapsed" />
-                <controls:InstallationTransferOperationsControl x:Name="InstallationTransferSection" Visibility="Collapsed" />
+                <ContentPresenter x:Name="SnapshotAiHost" Visibility="Collapsed" />
+                <ContentPresenter x:Name="ReportsHost" Visibility="Collapsed" />
+                <ContentPresenter x:Name="PrivacyHost" Visibility="Collapsed" />
+                <ContentPresenter x:Name="RetentionHost" Visibility="Collapsed" />
+                <ContentPresenter x:Name="PluginsHost" Visibility="Collapsed" />
+                <ContentPresenter x:Name="InstallationTransferHost" Visibility="Collapsed" />
             </Grid>
         </ScrollViewer>
 

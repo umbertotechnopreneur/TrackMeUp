@@ -11,6 +11,7 @@ namespace TrackMeUp.Taskbar;
 public sealed class TaskbarWidgetSurface : IDisposable
 {
     private readonly ITrackMeUpApplication _application;
+    private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
     private readonly TaskbarWidgetHost _host;
     private readonly ILogger<TaskbarWidgetSurface> _logger;
     private readonly ManualResetEventSlim _ready = new(false);
@@ -25,9 +26,10 @@ public sealed class TaskbarWidgetSurface : IDisposable
     private int _disposed;
 
     /// <summary>Starts the dedicated WPF dispatcher and creates the alpha-capable taskbar surface.</summary>
-    public TaskbarWidgetSurface(ITrackMeUpApplication application, TaskbarWidgetHost host, ILogger<TaskbarWidgetSurface>? logger = null)
+    public TaskbarWidgetSurface(ITrackMeUpApplication application, DashboardRefreshCoordinator dashboardRefreshCoordinator, TaskbarWidgetHost host, ILogger<TaskbarWidgetSurface>? logger = null)
     {
         _application = application;
+        _dashboardRefreshCoordinator = dashboardRefreshCoordinator ?? throw new ArgumentNullException(nameof(dashboardRefreshCoordinator));
         _host = host;
         _logger = logger ?? NullLogger<TaskbarWidgetSurface>.Instance;
         _thread = new Thread(DispatcherThreadMain)
@@ -198,7 +200,7 @@ public sealed class TaskbarWidgetSurface : IDisposable
 
         // Position the hidden surface on the taskbar monitor before realizing its HWND so WPF adopts the correct DPI.
         var bounds = TaskbarWidgetHost.GetDesiredBounds(_position);
-        var replacement = new TaskbarWidgetWindow(_application);
+        var replacement = new TaskbarWidgetWindow(_application, _dashboardRefreshCoordinator);
         replacement.FlyoutRequested += Window_FlyoutRequested;
         if (_settings is not null)
         {

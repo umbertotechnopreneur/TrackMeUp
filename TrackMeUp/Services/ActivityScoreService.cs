@@ -43,17 +43,30 @@ public sealed class ActivityScoreService
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
+        RecordSystemUsage(new SystemUsageSample(snapshot.Timestamp, snapshot.CpuUsagePercent, snapshot.GpuUsagePercent));
+    }
+
+    /// <summary>Records the narrow CPU/GPU telemetry used by the live score.</summary>
+    public void RecordSystemUsage(SystemUsageSample sample)
+    {
+        ArgumentNullException.ThrowIfNull(sample);
+
         lock (_gate)
         {
-            var aggregate = GetOrCreate(TruncateToMinute(snapshot.Timestamp));
-            aggregate.CpuUsagePercent = Math.Clamp(snapshot.CpuUsagePercent, 0, 100);
-            aggregate.GpuUsagePercent = snapshot.GpuUsagePercent is { } gpuUsage
+            var aggregate = GetOrCreate(TruncateToMinute(sample.Timestamp));
+            aggregate.CpuUsagePercent = sample.CpuUsagePercent is { } cpuUsage
+                ? Math.Clamp(cpuUsage, 0, 100)
+                : null;
+            aggregate.GpuUsagePercent = sample.GpuUsagePercent is { } gpuUsage
                 ? Math.Clamp(gpuUsage, 0, 100)
                 : null;
-            _telemetryPoints.Add(new SystemTelemetryPoint(
-                snapshot.Timestamp.ToUniversalTime(),
-                Math.Clamp(snapshot.CpuUsagePercent, 0, 100),
-                snapshot.GpuUsagePercent is { } pointGpu ? Math.Clamp(pointGpu, 0, 100) : null));
+            if (sample.CpuUsagePercent is not null || sample.GpuUsagePercent is not null)
+            {
+                _telemetryPoints.Add(new SystemTelemetryPoint(
+                    sample.Timestamp.ToUniversalTime(),
+                    aggregate.CpuUsagePercent,
+                    aggregate.GpuUsagePercent));
+            }
         }
     }
 
@@ -75,11 +88,12 @@ public sealed class ActivityScoreService
             var points = _telemetryPoints
                 .Where(point => point.TimestampUtc > fromUtc && point.TimestampUtc <= toUtc)
                 .ToArray();
+            var cpuPoints = points.Where(point => point.CpuUsagePercent is not null).ToArray();
             var gpuPoints = points.Where(point => point.GpuUsagePercent is not null).ToArray();
             return new ScreenshotIntervalTelemetry(
                 fromUtc,
                 toUtc,
-                points.Length == 0 ? null : (int)Math.Round(points.Average(point => point.CpuUsagePercent)),
+                cpuPoints.Length == 0 ? null : (int)Math.Round(cpuPoints.Average(point => point.CpuUsagePercent!.Value)),
                 gpuPoints.Length == 0 ? null : (int)Math.Round(gpuPoints.Average(point => point.GpuUsagePercent!.Value)));
         }
     }
@@ -275,9 +289,9 @@ public sealed class ActivityScoreService
         public long KeyPresses { get; set; }
         public long MouseClicks { get; set; }
         public int ActiveSeconds { get; set; }
-        public int CpuUsagePercent { get; set; }
+        public int? CpuUsagePercent { get; set; }
         public int? GpuUsagePercent { get; set; }
     }
 
-    private sealed record SystemTelemetryPoint(DateTimeOffset TimestampUtc, int CpuUsagePercent, int? GpuUsagePercent);
+    private sealed record SystemTelemetryPoint(DateTimeOffset TimestampUtc, int? CpuUsagePercent, int? GpuUsagePercent);
 }

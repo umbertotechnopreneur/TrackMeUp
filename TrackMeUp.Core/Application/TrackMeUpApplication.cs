@@ -24,14 +24,16 @@ public static class TrackMeUpApplicationFactory
         var logger = loggerFactory?.CreateLogger<TrackMeUpApplication>() ?? NullLogger<TrackMeUpApplication>.Instance;
         var utilities = new UtilityService();
         var store = new LocalStore();
-        var tracking = new TrackingDomainService(store);
+        var settings = store.LoadSettings();
+        var settingsSnapshot = new SettingsSnapshot(settings);
+        var tracking = new TrackingDomainService(store, settingsSnapshot);
         var capture = new ScreenCaptureService(utilities.GetAppVersion());
         var snapshot = new SystemSnapshotService();
+        var usageSampler = new SystemUsageSampler();
         var deviceContext = new DeviceContextService();
         var buildInformation = new BuildInformationService();
         var aiModelCatalog = AiModelCatalog.LoadDefault();
         var fileShare = new WindowsFileShareService();
-        var settings = store.LoadSettings();
         var screenshotOcr = new WindowsScreenshotOcrService(new OcrOptions
         {
             Enabled = settings.OcrEnabled,
@@ -70,7 +72,9 @@ public static class TrackMeUpApplicationFactory
             ocrRefinement,
             loggerFactory?.CreateLogger<ScreenshotTextExtractionCoordinator>(),
             localSearch,
-            pricingRefresh);
+            pricingRefresh,
+            settingsSnapshot: settingsSnapshot,
+            usageSampler: usageSampler);
     }
 
     private static ILocalSearchService CreateLocalSearchService(LocalStore store)
@@ -110,6 +114,8 @@ public static class TrackMeUpApplicationFactory
 public sealed class TrackMeUpApplication : ITrackMeUpApplication
 {
     private readonly LocalStore _store;
+    private readonly SettingsSnapshot _settingsSnapshot;
+    private readonly ISystemUsageSampler _usageSampler;
     private readonly UtilityService _utilities;
     private readonly TrackingDomainService _tracking;
     private readonly IScreenCaptureService _capture;
@@ -182,9 +188,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         ILogger<ScreenshotTextExtractionCoordinator>? screenshotTextLogger = null,
         ILocalSearchService? localSearch = null,
         OpenAiPricingRefreshService? pricingRefresh = null,
-        AtomicResetService? atomicResetService = null)
+        AtomicResetService? atomicResetService = null,
+        SettingsSnapshot? settingsSnapshot = null,
+        ISystemUsageSampler? usageSampler = null)
     {
         _store = store;
+        _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
+        _usageSampler = usageSampler ?? new SystemUsageSampler();
         _utilities = utilities;
         _tracking = tracking;
         _capture = capture;
@@ -222,7 +232,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
         _tracking.TrackingStateChanged += OnTrackingStateChanged;
-        ConfigureScheduledSnapshots(_store.LoadSettings(), restartCountdown: true);
+        ConfigureScheduledSnapshots(_settingsSnapshot.Value, restartCountdown: true);
         _scheduledSnapshotTimer = new Timer(HandleScheduledSnapshotTimerTick, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
         _logger.LogInformation("Application facade initialized.");
     }
@@ -234,7 +244,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<RuntimeHealth>> GetRuntimeHealthAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var installationFingerprint = RuntimeProtocol.CreateEndpoint(_store.LoadSettings().InstallationId)
+        var installationFingerprint = RuntimeProtocol.CreateEndpoint(_settingsSnapshot.Value.InstallationId)
             .PipeName["TrackMeUp.Runtime.".Length..];
         var health = new RuntimeHealth(
             _utilities.GetAppVersion(),
@@ -324,7 +334,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var settings = _store.LoadSettings();
+            var settings = _settingsSnapshot.Value;
             var snapshot = await CaptureAndRecordSystemSnapshotAsync(allowRecent: false, cancellationToken).ConfigureAwait(false);
             var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken).ConfigureAwait(false);
             var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, snapshot.Timestamp);
@@ -344,7 +354,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var mode = request.Mode switch
         {
             null => settings.ScreenshotCaptureMode,
@@ -618,7 +628,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
             try
             {
-                var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
                 if (!settings.OpenAiEnabled)
                 {
                     return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
@@ -1330,7 +1340,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         return await Task.Run(() =>
         {
-            var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
             if (!settings.OpenAiEnabled ||
                 !string.Equals(settings.AiProvider, AiPricingProviders.OpenAi, StringComparison.OrdinalIgnoreCase))
             {
@@ -1401,7 +1411,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public async Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         if (!TryValidateOpenAiConfiguration(settings, requireImageInput: false, out var validatedSettings, out var validationIssue))
         {
             return OperationResult<AiConnectionTestResult>.Failure("ai.connection.configuration.invalid", "AiConnectionTestConfigurationInvalid", validationIssue!);
@@ -1466,7 +1476,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
     {
-        var settings = _store.LoadSettings() with { OpenAiEnabled = enabled };
+        var settings = _settingsSnapshot.Value with { OpenAiEnabled = enabled };
         var validatedSettings = settings;
         if (enabled
             && !TryValidateOpenAiConfiguration(settings, requireImageInput: false, out validatedSettings, out var validationIssue))
@@ -1474,7 +1484,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<AiStatus>.Failure("ai.configuration.invalid", "AiConfigurationInvalid", validationIssue!);
         }
 
-        _store.SaveSettings(validatedSettings);
+        PersistSettings(validatedSettings);
         await Task.CompletedTask;
         return OperationResult<AiStatus>.Success(enabled ? "ai.enabled" : "ai.disabled", enabled ? "AiEnabled" : "AiDisabled", BuildAiStatus());
     }, cancellationToken);
@@ -1506,8 +1516,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         // The secret is immediately delegated to the user environment store and never persisted or logged.
         _utilities.SetApiKey(normalizedKeyVariable, secretValue);
         secretValue = string.Empty;
-        var settings = _store.LoadSettings();
-        _store.SaveSettings(settings with { AiApiKeyName = normalizedKeyVariable });
+        var settings = _settingsSnapshot.Value;
+        PersistSettings(settings with { AiApiKeyName = normalizedKeyVariable });
         await Task.CompletedTask;
         return OperationResult<string>.Success("ai.key.stored", "AiKeyStored", normalizedKeyVariable);
     }, cancellationToken);
@@ -1515,7 +1525,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         if (!settings.OpenAiEnabled)
         {
             return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
@@ -1677,7 +1687,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var report = new HtmlReportService(_store, _utilities).ExportDailyDigest(date);
-        var settings = _store.LoadSettings() with { LastDailyDigestDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) };
+        var settings = _settingsSnapshot.Value with { LastDailyDigestDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) };
         _store.SaveSettings(settings);
         if (open)
         {
@@ -1763,7 +1773,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<RetentionStatus>> GetRetentionStatusAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         return Task.FromResult(OperationResult<RetentionStatus>.Success("retention.status.loaded", "RetentionStatusLoaded", new RetentionStatus(settings.DataRetentionDays, settings.ScreenshotRetentionDays, settings.ScreenshotDirectory)));
     }
 
@@ -1791,7 +1801,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             _store.DeleteScreenshotIntervalTelemetry(path);
         }
 
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var now = DateTimeOffset.Now;
         _store.ApplyRetention(now.AddDays(-settings.DataRetentionDays));
         _store.PruneTerminalAiReprocessJobs(now.AddDays(-settings.ScreenshotRetentionDays));
@@ -1817,7 +1827,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         AtomicResetPlan plan;
         try
         {
-            var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
             plan = _atomicReset.CreatePlan(_store.DataDirectory, settings.ScreenshotDirectory);
         }
         catch (Exception exception) when (
@@ -1866,7 +1876,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<PluginInfo>> SetPluginEnabledAsync(string id, bool enabled, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var updated = id.ToLowerInvariant() switch
         {
             "word" => settings with { EnableWordDetailPlugin = enabled },
@@ -1880,7 +1890,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<PluginInfo>.Failure("plugins.not_found", "PluginNotFound", new ValidationIssue("id", "not_found", "PluginNotFound"));
         }
 
-        _store.SaveSettings(updated);
+        PersistSettings(updated);
         var plugin = BuildPlugins(updated).Single(x => x.Id == id.ToLowerInvariant());
         await Task.CompletedTask;
         return OperationResult<PluginInfo>.Success(enabled ? "plugins.enabled" : "plugins.disabled", enabled ? "PluginEnabled" : "PluginDisabled", plugin);
@@ -1890,7 +1900,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<AppSettings>.Success("settings.loaded", "SettingsLoaded", _store.LoadSettings()));
+        return Task.FromResult(OperationResult<AppSettings>.Success("settings.loaded", "SettingsLoaded", _settingsSnapshot.Value));
     }
 
     /// <inheritdoc />
@@ -1913,7 +1923,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var validation = SettingsCatalog.Apply(settings, patch);
         if (!validation.Succeeded || validation.Value is null)
         {
@@ -1948,7 +1958,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         try
         {
-            _store.SaveSettings(current);
+            PersistSettings(current);
         }
         catch
         {
@@ -2003,7 +2013,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var success = await _startup.SetEnabledAsync(enabled, cancellationToken).ConfigureAwait(false);
         if (!success)
         {
@@ -2012,7 +2022,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         try
         {
-            _store.SaveSettings(settings with { StartWithWindows = enabled });
+            PersistSettings(settings with { StartWithWindows = enabled });
         }
         catch
         {
@@ -2094,6 +2104,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         await _search.DisposeAsync().ConfigureAwait(false);
         _captureWorker.Dispose();
         _systemSnapshotGate.Dispose();
+        await _usageSampler.DisposeAsync().ConfigureAwait(false);
         _mutations.Dispose();
     }
 
@@ -2157,13 +2168,19 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private DashboardState EnrichDashboardState(DashboardState state)
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         return state with
         {
             ScheduledSnapshotRemaining = GetScheduledSnapshotRemaining(),
             PendingManualScreenshot = GetPendingManualScreenshotState(),
             IsWithinActiveHours = ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now)
         };
+    }
+
+    private void PersistSettings(AppSettings settings)
+    {
+        PersistSettings(settings);
+        _settingsSnapshot.Replace(settings);
     }
 
     private PendingManualScreenshotState? GetPendingManualScreenshotState() =>
@@ -2354,9 +2371,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
         try
         {
-            // Minute telemetry never needs location and can be reused by a screenshot due a few seconds later.
-            // Preserve one real telemetry point per minute; the screenshot pass immediately reuses this sample.
-            _ = await CaptureAndRecordSystemSnapshotAsync(allowRecent: false, CancellationToken.None).ConfigureAwait(false);
+            // The score path samples only CPU/GPU usage; full diagnostics remain reserved for explicit operations.
+            var usage = await _usageSampler.CaptureAsync(CancellationToken.None).ConfigureAwait(false);
+            if (usage is { } sample)
+            {
+                _tracking.RecordSystemUsage(sample);
+            }
         }
         catch (Exception exception)
         {
@@ -2451,7 +2471,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             // The historical-job fingerprint canonicalizes model aliases, so this persisted cleanup cannot
             // invalidate a job between two durable items while the visual boundary is held.
-            _store.SaveSettings(validated);
+            PersistSettings(validated);
         }
 
         return validated;
@@ -2500,7 +2520,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 return;
             }
 
-            var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
             if (!ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now))
             {
                 return;
@@ -2557,7 +2577,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private AiStatus BuildAiStatus()
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var key = _store.LoadApiKey(settings.AiApiKeyName);
         var hasKey = !string.IsNullOrWhiteSpace(key);
         var canEnable = AiApiKeyPolicy.LooksPlausible(settings.AiProvider, settings.AiApiKeyName, key);
@@ -2595,7 +2615,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return;
         }
 
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var gate = BuildCostGate(settings);
         EnqueueNotification(new ApplicationNotification(
             Guid.NewGuid(),
@@ -2772,7 +2792,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private void SavePrivacyRules(AppSettings settings, IReadOnlyCollection<PrivacyRule> rules)
     {
         static string Serialize(IEnumerable<PrivacyRule> values) => string.Join('\n', values.Select(x => $"{x.Id}|{x.Value.Replace("|", "", StringComparison.Ordinal)}"));
-        _store.SaveSettings(settings with
+        PersistSettings(settings with
         {
             PrivacyProcessNames = Serialize(rules.Where(x => x.Type == "process")),
             PrivacyWindowTitles = Serialize(rules.Where(x => x.Type == "title")),
@@ -2782,7 +2802,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private RetentionPreview BuildRetentionPreview()
     {
-        var settings = _store.LoadSettings();
+        var settings = _settingsSnapshot.Value;
         var screenshotCutoff = DateTimeOffset.Now.AddDays(-settings.ScreenshotRetentionDays);
         var dataCutoff = DateTimeOffset.Now.AddDays(-settings.DataRetentionDays);
         var screenshotPaths = Directory.Exists(settings.ScreenshotDirectory)

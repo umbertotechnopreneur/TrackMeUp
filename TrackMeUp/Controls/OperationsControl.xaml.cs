@@ -21,6 +21,12 @@ public sealed partial class OperationsControl : UserControl
     private bool _operationInProgress;
     private bool _returnToOverviewOnBack;
     private Control? _lastLandingLink;
+    private SnapshotAiOperationsControl? _snapshotAiSection;
+    private ReportsOperationsControl? _reportsSection;
+    private PrivacyOperationsControl? _privacySection;
+    private RetentionOperationsControl? _retentionSection;
+    private PluginOperationsControl? _pluginsSection;
+    private InstallationTransferOperationsControl? _installationTransferSection;
 
     /// <summary>Creates the passive operational surface.</summary>
     public OperationsControl() => InitializeComponent();
@@ -39,12 +45,12 @@ public sealed partial class OperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
-        SnapshotAiSection.ApplyLanguage(language);
-        ReportsSection.ApplyLanguage(language);
-        PrivacySection.ApplyLanguage(language);
-        RetentionSection.ApplyLanguage(language);
-        PluginsSection.ApplyLanguage(language);
-        InstallationTransferSection.ApplyLanguage(language);
+        _snapshotAiSection?.ApplyLanguage(language);
+        _reportsSection?.ApplyLanguage(language);
+        _privacySection?.ApplyLanguage(language);
+        _retentionSection?.ApplyLanguage(language);
+        _pluginsSection?.ApplyLanguage(language);
+        _installationTransferSection?.ApplyLanguage(language);
         ApplyNavigationAccessibility(OpenSnapshotAiLink, "Options.Navigation.SnapshotAi.Action", "Options.Navigation.SnapshotAi.Description");
         ApplyNavigationAccessibility(OpenReportsLink, "Options.Navigation.Reports.Action", "Options.Navigation.Reports.Description");
         ApplyNavigationAccessibility(OpenPrivacyLink, "Options.Navigation.Privacy.Action", "Options.Navigation.Privacy.Description");
@@ -67,12 +73,6 @@ public sealed partial class OperationsControl : UserControl
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _ownerWindow = ownerWindow ?? throw new ArgumentNullException(nameof(ownerWindow));
-        SnapshotAiSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
-        ReportsSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
-        PrivacySection.Initialize(application, dialogs, ownerWindow, OperationBanner);
-        RetentionSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
-        PluginsSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
-        InstallationTransferSection.Initialize(application, dialogs, ownerWindow, OperationBanner);
     }
 
     /// <summary>Returns to the landing page for local tool navigation, or to the surface that opened a direct settings link.</summary>
@@ -91,19 +91,16 @@ public sealed partial class OperationsControl : UserControl
     internal void NavigateTo(OperationsSection section, bool returnToOverview = true)
     {
         _returnToOverviewOnBack = returnToOverview;
+        var selectedSection = EnsureSection(section);
+        HideDetailSections();
         OperationsScroll.Visibility = Visibility.Collapsed;
         DetailScroll.Visibility = Visibility.Visible;
-        SnapshotAiSection.Visibility = section == OperationsSection.SnapshotAi ? Visibility.Visible : Visibility.Collapsed;
-        ReportsSection.Visibility = section == OperationsSection.Reports ? Visibility.Visible : Visibility.Collapsed;
-        PrivacySection.Visibility = section == OperationsSection.Privacy ? Visibility.Visible : Visibility.Collapsed;
-        RetentionSection.Visibility = section == OperationsSection.Retention ? Visibility.Visible : Visibility.Collapsed;
-        PluginsSection.Visibility = section == OperationsSection.Plugins ? Visibility.Visible : Visibility.Collapsed;
-        InstallationTransferSection.Visibility = Visibility.Collapsed;
+        selectedSection.Visibility = Visibility.Visible;
         DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         NotifyLayoutChanged();
         if (section == OperationsSection.Plugins)
         {
-            _ = PluginsSection.LoadAsync();
+            _ = _pluginsSection!.LoadAsync();
         }
     }
 
@@ -190,15 +187,12 @@ public sealed partial class OperationsControl : UserControl
         _returnToOverviewOnBack = true;
         OperationsScroll.Visibility = Visibility.Collapsed;
         DetailScroll.Visibility = Visibility.Visible;
-        SnapshotAiSection.Visibility = Visibility.Collapsed;
-        ReportsSection.Visibility = Visibility.Collapsed;
-        PrivacySection.Visibility = Visibility.Collapsed;
-        RetentionSection.Visibility = Visibility.Collapsed;
-        PluginsSection.Visibility = Visibility.Collapsed;
-        InstallationTransferSection.Visibility = Visibility.Visible;
+        HideDetailSections();
+        var section = EnsureInstallationTransferSection();
+        section.Visibility = Visibility.Visible;
         DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         NotifyLayoutChanged();
-        _ = InstallationTransferSection.LoadAsync();
+        _ = section.LoadAsync();
     }
 
     private async void AtomicNukeButton_Click(object sender, RoutedEventArgs e)
@@ -260,12 +254,7 @@ public sealed partial class OperationsControl : UserControl
     private void ShowOverview(bool restoreFocus)
     {
         _returnToOverviewOnBack = false;
-        SnapshotAiSection.Visibility = Visibility.Collapsed;
-        ReportsSection.Visibility = Visibility.Collapsed;
-        PrivacySection.Visibility = Visibility.Collapsed;
-        RetentionSection.Visibility = Visibility.Collapsed;
-        PluginsSection.Visibility = Visibility.Collapsed;
-        InstallationTransferSection.Visibility = Visibility.Collapsed;
+        HideDetailSections();
         DetailScroll.Visibility = Visibility.Collapsed;
         OperationsScroll.Visibility = Visibility.Visible;
         OperationsScroll.ChangeView(null, 0, null, disableAnimation: true);
@@ -274,6 +263,110 @@ public sealed partial class OperationsControl : UserControl
         {
             _lastLandingLink?.Focus(FocusState.Programmatic);
         }
+    }
+
+    private FrameworkElement EnsureSection(OperationsSection section) => section switch
+    {
+        OperationsSection.SnapshotAi => EnsureSnapshotAiSection(),
+        OperationsSection.Reports => EnsureReportsSection(),
+        OperationsSection.Privacy => EnsurePrivacySection(),
+        OperationsSection.Retention => EnsureRetentionSection(),
+        OperationsSection.Plugins => EnsurePluginsSection(),
+        _ => throw new ArgumentOutOfRangeException(nameof(section), section, "Unsupported operations section.")
+    };
+
+    private SnapshotAiOperationsControl EnsureSnapshotAiSection()
+    {
+        if (_snapshotAiSection is not null)
+        {
+            return _snapshotAiSection;
+        }
+
+        _snapshotAiSection = new SnapshotAiOperationsControl();
+        SnapshotAiHost.Content = _snapshotAiSection;
+        _snapshotAiSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
+        _snapshotAiSection.ApplyLanguage(_strings.Language);
+        return _snapshotAiSection;
+    }
+
+    private ReportsOperationsControl EnsureReportsSection()
+    {
+        if (_reportsSection is not null)
+        {
+            return _reportsSection;
+        }
+
+        _reportsSection = new ReportsOperationsControl();
+        ReportsHost.Content = _reportsSection;
+        _reportsSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
+        _reportsSection.ApplyLanguage(_strings.Language);
+        return _reportsSection;
+    }
+
+    private PrivacyOperationsControl EnsurePrivacySection()
+    {
+        if (_privacySection is not null)
+        {
+            return _privacySection;
+        }
+
+        _privacySection = new PrivacyOperationsControl();
+        PrivacyHost.Content = _privacySection;
+        _privacySection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
+        _privacySection.ApplyLanguage(_strings.Language);
+        return _privacySection;
+    }
+
+    private RetentionOperationsControl EnsureRetentionSection()
+    {
+        if (_retentionSection is not null)
+        {
+            return _retentionSection;
+        }
+
+        _retentionSection = new RetentionOperationsControl();
+        RetentionHost.Content = _retentionSection;
+        _retentionSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
+        _retentionSection.ApplyLanguage(_strings.Language);
+        return _retentionSection;
+    }
+
+    private PluginOperationsControl EnsurePluginsSection()
+    {
+        if (_pluginsSection is not null)
+        {
+            return _pluginsSection;
+        }
+
+        _pluginsSection = new PluginOperationsControl();
+        PluginsHost.Content = _pluginsSection;
+        _pluginsSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
+        _pluginsSection.ApplyLanguage(_strings.Language);
+        return _pluginsSection;
+    }
+
+    private InstallationTransferOperationsControl EnsureInstallationTransferSection()
+    {
+        if (_installationTransferSection is not null)
+        {
+            return _installationTransferSection;
+        }
+
+        _installationTransferSection = new InstallationTransferOperationsControl();
+        InstallationTransferHost.Content = _installationTransferSection;
+        _installationTransferSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
+        _installationTransferSection.ApplyLanguage(_strings.Language);
+        return _installationTransferSection;
+    }
+
+    private void HideDetailSections()
+    {
+        _snapshotAiSection?.Visibility = Visibility.Collapsed;
+        _reportsSection?.Visibility = Visibility.Collapsed;
+        _privacySection?.Visibility = Visibility.Collapsed;
+        _retentionSection?.Visibility = Visibility.Collapsed;
+        _pluginsSection?.Visibility = Visibility.Collapsed;
+        _installationTransferSection?.Visibility = Visibility.Collapsed;
     }
 
     private void ApplyNavigationAccessibility(Control link, string actionKey, string descriptionKey)
