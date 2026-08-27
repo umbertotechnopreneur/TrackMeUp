@@ -690,7 +690,7 @@
   "About.LinkFailed": "Lien indisponible",
   "About.LinkFailed.Description": "Windows n’a pas pu ouvrir ce lien TrackMeUp.",
   "About.CreatedBy": "Créé par",
-  "About.OpenSourceLicenses": "Licences tierces",
+  "About.ThirdPartyLicenses": "Licences tierces",
   "About.FavoriteMessage": "Vous aimez l’application ? Ajoutez une étoile sur GitHub,\nou laissez un avis sur le Microsoft Store !",
   "About.Licenses.Title": "Licences tierces",
   "About.Licenses.Description": "TrackMeUp utilise les composants logiciels tiers suivants, soumis aux conditions de licence indiquées :",

@@ -1,6 +1,6 @@
 # Public Release Checklist
 
-Complete this checklist before changing repository visibility or publishing a public release.
+Complete this checklist before promoting the repository or publishing a public release.
 
 ## Required Before Publication
 
@@ -9,7 +9,8 @@ Complete this checklist before changing repository visibility or publishing a pu
 - [ ] Confirm key flow uses environment variables and no command-line secret arguments.
 - [ ] Review screenshots, reports, and sample artifacts for personal or confidential data.
 - [ ] Audit dependencies and update `THIRD_PARTY_NOTICES.md`.
-- [ ] Confirm `LICENSE`, `NOTICE.md`, and provenance records reflect intended distribution.
+- [ ] Confirm every project-facing surface consistently says `source-available`, not `open source` or `MIT`.
+- [ ] Confirm `LICENSE`, `NOTICE.md`, contribution terms, Store copy, and provenance records reflect the intended distribution.
 - [ ] Review tracked files for private paths, local dumps, and generated artifacts.
 - [ ] Validate restore/build/test with PowerShell 7.
 - [ ] Verify README and governance docs links (`CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`).

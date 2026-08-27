@@ -690,7 +690,7 @@
   "About.LinkFailed": "링크를 사용할 수 없음",
   "About.LinkFailed.Description": "Windows에서 이 TrackMeUp 링크를 열 수 없습니다.",
   "About.CreatedBy": "제작자",
-  "About.OpenSourceLicenses": "타사 라이선스",
+  "About.ThirdPartyLicenses": "타사 라이선스",
   "About.FavoriteMessage": "앱이 마음에 드시나요? GitHub에서 별표를 추가하거나\nMicrosoft Store에 리뷰를 남겨 주세요!",
   "About.Licenses.Title": "타사 라이선스",
   "About.Licenses.Description": "TrackMeUp은 다음 타사 패키지 및 라이선스 조건을 사용하여 빌드되었습니다:",

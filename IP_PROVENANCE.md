@@ -1,8 +1,13 @@
 # Intellectual Property Provenance
 
-This record supports open-source publication review and is not legal advice.
+This record supports source-available publication review and is not legal advice.
 
 The project owner and contributors are responsible for selecting, reviewing, integrating, testing, and publishing repository material under `LICENSE`.
+
+Project-authored material is made available under the TrackMeUp
+Source-Available License 1.0 unless a file states otherwise. Third-party code,
+data, and assets retain their own license terms; inclusion in this repository
+does not relicense them as TrackMeUp material.
 
 ## Provenance Rules
 
@@ -21,6 +26,6 @@ Do not submit material copied from proprietary sources or material with unverifi
 Before release/publication, confirm:
 
 - no credentials, tokens, private endpoints, or personal data are committed;
-- dependency and asset licenses are compatible with repository distribution;
+- dependency and asset licenses are compatible with the intended source and binary distribution;
 - generated assets have documented provenance;
 - the final tracked file list has been reviewed.

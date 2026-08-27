@@ -39,4 +39,9 @@ Bahnschrift is used from the local Windows installation only to rasterize the wo
 
 ## Redistribution review
 
-The intended destination is the TrackMeUp MIT-licensed repository. The project owner must complete human visual review and confirm the applicable image-generation service terms and publication scope before release. This record is not legal advice.
+The intended destination is the TrackMeUp source-available repository. These
+assets are project-authored material governed by the TrackMeUp Source-Available
+License 1.0 unless an asset-specific notice states otherwise. The project owner
+must complete human visual review and confirm the applicable image-generation
+service terms and publication scope before release. This record is not legal
+advice.

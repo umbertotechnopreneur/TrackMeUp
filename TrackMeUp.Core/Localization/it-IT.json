@@ -715,7 +715,7 @@
   "About.LinkFailed": "Collegamento non disponibile",
   "About.LinkFailed.Description": "Windows non può aprire questo collegamento TrackMeUp.",
   "About.CreatedBy": "Creato da",
-  "About.OpenSourceLicenses": "Licenze di terze parti",
+  "About.ThirdPartyLicenses": "Licenze di terze parti",
   "About.FavoriteMessage": "Ti piace l'app? Metti la stella su GitHub,\no lascia una recensione sul Microsoft Store!",
   "About.Licenses.Title": "Licenze di terze parti",
   "About.Licenses.Description": "TrackMeUp è compilato con i seguenti pacchetti di terze parti e relativi termini di licenza:",

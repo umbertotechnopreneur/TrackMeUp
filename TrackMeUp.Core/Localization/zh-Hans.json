@@ -690,7 +690,7 @@
   "About.LinkFailed": "链接不可用",
   "About.LinkFailed.Description": "Windows 无法打开此 TrackMeUp 链接。",
   "About.CreatedBy": "创建者",
-  "About.OpenSourceLicenses": "第三方许可证",
+  "About.ThirdPartyLicenses": "第三方许可证",
   "About.FavoriteMessage": "喜欢这款应用？请在 GitHub 上加星，\n或在 Microsoft Store 中留下评价！",
   "About.Licenses.Title": "第三方许可证",
   "About.Licenses.Description": "TrackMeUp 使用以下第三方软件包及其许可条款构建：",

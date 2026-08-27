@@ -690,7 +690,7 @@
   "About.LinkFailed": "Liên kết không khả dụng",
   "About.LinkFailed.Description": "Windows không thể mở liên kết TrackMeUp này.",
   "About.CreatedBy": "Tạo bởi",
-  "About.OpenSourceLicenses": "Giấy phép bên thứ ba",
+  "About.ThirdPartyLicenses": "Giấy phép bên thứ ba",
   "About.FavoriteMessage": "Thích ứng dụng này? Gắn dấu sao trên GitHub,\nhoặc để lại đánh giá trên Microsoft Store!",
   "About.Licenses.Title": "Giấy phép bên thứ ba",
   "About.Licenses.Description": "TrackMeUp được xây dựng với các gói và điều khoản cấp phép của bên thứ ba sau:",

@@ -2129,7 +2129,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         var info = new ProductInformation(
             "TrackMeUp",
-            "MIT",
+            "TrackMeUp Source-Available License 1.0",
             ProductRepositoryUrl,
             ProductAuthorUrl,
             _buildInformation.Load());

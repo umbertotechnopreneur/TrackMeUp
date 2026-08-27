@@ -130,7 +130,7 @@
                             Click="LicensesButton_Click">
                             <StackPanel Orientation="Horizontal" Spacing="7">
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="15" Glyph="&#xE8A7;" />
-                                <TextBlock Tag="About.OpenSourceLicenses" Text="Open source licenses" />
+                                <TextBlock Tag="About.ThirdPartyLicenses" Text="Third-party licenses" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
