@@ -119,7 +119,8 @@ public sealed record AppSettings(
     bool IncludeDeviceLocation = false,
     bool QuickSetupCompleted = false,
     IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null,
-    bool ScreenshotDetailsPaneOpen = false);
+    bool ScreenshotDetailsPaneOpen = false,
+    IReadOnlyList<string>? WorldClockCityIds = null);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

@@ -191,6 +191,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 
 Quick Setup validation checklist:
 
+- [ ] On the player, the left world-time rail shows the current local sun or calculated lunar phase, illumination, sunrise/sunset and moonrise/moonset; expanding a city reveals its 24-hour detail, pointer hover and keyboard focus expose localized detail/remove actions, search can add a capital, removal persists, and the fifth clock is blocked with the localized four-clock limit.
 - [ ] In PowerShell 7, run `trackmeup.exe -cli` with no command, use the interactive command center to refresh the dashboard and open help, then exit without starting a second tracking runtime.
 - [ ] In PowerShell 7, confirm CLI help lists only supported global switches and that redirected and JSON output remain ANSI-free, with JSON producing exactly one valid document.
 - [ ] With a clean settings file, the acrylic four-profile chooser opens once; applying a profile persists AI, screenshot, local-retention, and Windows-startup choices together.
@@ -264,7 +265,16 @@ The About window provides quick access to the log folder, issue tracker, product
 
 ## License
 
-TrackMeUp is available under the [TrackMeUp Source-Available License 1.0](LICENSE).
-It allows local use, review, and private modification, but forbids publishing
-TrackMeUp or substantially similar derivatives, including Microsoft Store or
-other marketplace submissions, without prior written permission.
+TrackMeUp's project-authored source code is publicly inspectable under the
+[TrackMeUp Source-Available License 1.0](LICENSE). This is a source-available
+license, not an OSI-approved open-source license.
+
+The license allows personal and internal business use, evaluation, security
+review, academic study, private modification, and contributions back to the
+copyright holder. It does not allow publishing, distributing, sublicensing,
+selling, hosting, or submitting TrackMeUp or substantially similar derivatives
+to Microsoft Store or another marketplace without prior written permission.
+
+Third-party components and assets retain their own license terms. See
+[Third-Party Notices](THIRD_PARTY_NOTICES.md) before using or redistributing
+repository material.

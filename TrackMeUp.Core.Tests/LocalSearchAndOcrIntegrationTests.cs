@@ -77,8 +77,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 0,
                 0));
             _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
+            _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
 
             Assert.Equal(1, service.RebuildCount);
+            Assert.Equal(1, service.BatchCount);
+            Assert.Equal(2, service.LastBatch.Count);
+            Assert.All(service.LastBatch, mutation => Assert.StartsWith("activity:", mutation.Id, StringComparison.Ordinal));
         }
         finally
         {
@@ -211,7 +215,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             }
 
             var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
-            Assert.Contains("Unsupported activity database schema version 5; expected 8", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("Unsupported activity database schema version 5; expected 9", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -544,6 +548,62 @@ public sealed class LocalSearchAndOcrIntegrationTests
         return path;
     }
 
+    [Fact]
+    public void ActivitySchema_VersionEightMigratesOnceAndSchedulesOneSearchRebuild()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            _ = new LocalStore(dataDirectory);
+            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
+            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    DROP TRIGGER tr_search_activity_insert;
+                    DROP TRIGGER tr_search_activity_update;
+                    DROP TRIGGER tr_search_activity_delete;
+                    DROP TRIGGER tr_search_capture_insert;
+                    DROP TRIGGER tr_search_capture_update;
+                    DROP TRIGGER tr_search_capture_delete;
+                    DROP TRIGGER tr_search_text_insert;
+                    DROP TRIGGER tr_search_text_update;
+                    DROP TRIGGER tr_search_text_delete;
+                    DROP TRIGGER tr_search_telemetry_insert;
+                    DROP TRIGGER tr_search_telemetry_update;
+                    DROP TRIGGER tr_search_telemetry_delete;
+                    DROP TRIGGER tr_search_analysis_insert;
+                    DROP TRIGGER tr_search_analysis_update;
+                    DROP TRIGGER tr_search_analysis_delete;
+                    DROP TRIGGER tr_search_analysis_artifact_insert;
+                    DROP TRIGGER tr_search_analysis_artifact_update;
+                    DROP TRIGGER tr_search_analysis_artifact_delete;
+                    DROP TRIGGER tr_search_profile_insert;
+                    DROP TRIGGER tr_search_profile_update;
+                    DROP TRIGGER tr_search_profile_delete;
+                    DROP TABLE search_change_log;
+                    PRAGMA user_version = 8;
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            var migrated = new LocalStore(dataDirectory);
+            Assert.Equal(1, migrated.GetSearchSourceRevision());
+            var change = Assert.Single(migrated.LoadSearchSourceChanges(0, 10));
+            Assert.Equal("rebuild", change.Kind);
+            Assert.Equal("schema-v9", change.EntityId);
+
+            var reopened = new LocalStore(dataDirectory);
+            Assert.Equal(1, reopened.GetSearchSourceRevision());
+            Assert.Single(reopened.LoadSearchSourceChanges(0, 10));
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
     private static LocalStore CreateStore(string dataDirectory)
     {
         var store = new LocalStore(dataDirectory);
@@ -599,11 +659,17 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
     private sealed class ThreadRecordingSearchService : ILocalSearchService
     {
+        public long CommittedSourceRevision { get; private set; }
+
         internal int SearchThreadId { get; private set; }
 
         internal int SuggestionThreadId { get; private set; }
 
         internal int RebuildCount { get; private set; }
+
+        internal int BatchCount { get; private set; }
+
+        internal IReadOnlyList<SearchIndexMutation> LastBatch { get; private set; } = [];
 
         internal Action? RebuildAction { get; init; }
 
@@ -612,6 +678,17 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
         public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task ApplyBatchAsync(
+            IReadOnlyCollection<SearchIndexMutation> mutations,
+            long sourceRevision,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            BatchCount++;
+            LastBatch = mutations.ToArray();
+            return SetCommittedRevisionAsync(sourceRevision);
+        }
 
         public Task RebuildAsync(
             IEnumerable<SearchDocument> documents,
@@ -622,6 +699,15 @@ public sealed class LocalSearchAndOcrIntegrationTests
             RebuildCount++;
             RebuildAction?.Invoke();
             return Task.CompletedTask;
+        }
+
+        public Task RebuildAsync(
+            IEnumerable<SearchDocument> documents,
+            long sourceRevision,
+            CancellationToken cancellationToken = default)
+        {
+            CommittedSourceRevision = sourceRevision;
+            return RebuildAsync(documents, cancellationToken);
         }
 
         public Task<SearchResponse> SearchAsync(
@@ -645,6 +731,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        private Task SetCommittedRevisionAsync(long sourceRevision)
+        {
+            CommittedSourceRevision = sourceRevision;
+            return Task.CompletedTask;
+        }
     }
 
     private static void DeleteDataDirectory(string path)

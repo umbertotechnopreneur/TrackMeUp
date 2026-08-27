@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.CelestialPhaseControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Viewbox Stretch="Uniform">
+        <Grid Width="128" Height="128" AutomationProperties.AccessibilityView="Raw" IsHitTestVisible="False">
+            <Grid x:Name="SunVisual">
+                <Ellipse Width="126" Height="126" Opacity="0.28">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#70FF9A3E" Offset="0.30" />
+                            <GradientStop Color="#30FF7B25" Offset="0.66" />
+                            <GradientStop Color="#00FF6A1F" Offset="1" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse Width="108" Height="108" Opacity="0.42">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#90FFD068" Offset="0.38" />
+                            <GradientStop Color="#34FF7A22" Offset="0.78" />
+                            <GradientStop Color="#00FF6A1F" Offset="1" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Grid Width="92" Height="92">
+                    <Ellipse Width="90" Height="90">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="ms-appx:///Assets/Celestial/sun-premium.png" Stretch="UniformToFill" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <Ellipse Width="92" Height="92" Opacity="0.35">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush Center="0.42,0.38" GradientOrigin="0.38,0.34">
+                                <GradientStop Color="#38FFF6C2" Offset="0" />
+                                <GradientStop Color="#08FFFFFF" Offset="0.55" />
+                                <GradientStop Color="#65BD3A08" Offset="1" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                </Grid>
+                <Ellipse Width="92" Height="92" Stroke="#D8FFD477" StrokeThickness="1.2" />
+            </Grid>
+
+            <Grid x:Name="MoonVisual" Visibility="Collapsed">
+                <Ellipse Width="122" Height="122" Opacity="0.30">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#605B8FC7" Offset="0.42" />
+                            <GradientStop Color="#20285988" Offset="0.74" />
+                            <GradientStop Color="#00233D61" Offset="1" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Grid Width="102" Height="102">
+                    <Ellipse Width="100" Height="100">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="ms-appx:///Assets/Celestial/moon-premium.png" Stretch="UniformToFill" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <Ellipse Width="102" Height="102" Opacity="0.46">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush Center="0.42,0.38" GradientOrigin="0.38,0.34" RadiusX="0.7" RadiusY="0.7">
+                                <GradientStop Color="#16FFFFFF" Offset="0" />
+                                <GradientStop Color="#00FFFFFF" Offset="0.52" />
+                                <GradientStop Color="#A30A1019" Offset="1" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <Path x:Name="MoonShadow" Width="102" Height="102" Fill="#EE080D15" />
+                </Grid>
+                <Ellipse Width="102" Height="102" Stroke="#92D8E7F9" StrokeThickness="1" />
+            </Grid>
+        </Grid>
+    </Viewbox>
+</UserControl>

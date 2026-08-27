@@ -46,7 +46,7 @@ public sealed class ScreenshotStorageMigrationTests
             store.UpsertScreenshotTextSnapshot(captureId, textSnapshot);
             var updatedTicksBefore = ReadSnapshotUpdatedTicks(dataDirectory, artifactIdentity);
             AppendAnalysis(store, captureId, capturedAt, $"{storedPath};{secondStoredPath}");
-            var sourceStampBefore = store.GetSearchSourceStamp();
+            var sourceRevisionBefore = store.GetSearchSourceRevision();
 
             var status = store.GetScreenshotStorageMigrationStatus(default);
             Assert.True(status.Required);
@@ -69,7 +69,7 @@ public sealed class ScreenshotStorageMigrationTests
             Assert.Equal(updatedTicksBefore, ReadSnapshotUpdatedTicks(dataDirectory, artifactIdentity));
             Assert.Equal(migratedStoredPath, store.LoadScreenshotTextSnapshot(migratedStoredPath)?.SourceScreenshotPath);
             Assert.Equal($"{migratedStoredPath};{migratedSecondStoredPath}", store.LoadLatestAnalysis()?.ScreenshotPaths);
-            Assert.NotEqual(sourceStampBefore, store.GetSearchSourceStamp());
+            Assert.True(store.GetSearchSourceRevision() > sourceRevisionBefore);
 
             var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.Date));
             Assert.Contains(gallery.Items, item => item.Path == migratedStoredPath);

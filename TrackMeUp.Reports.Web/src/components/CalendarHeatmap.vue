@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import '../chartRuntime'
 import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import VChart from 'vue-echarts'

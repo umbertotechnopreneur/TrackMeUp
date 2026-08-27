@@ -140,10 +140,26 @@ public sealed class DashboardRefreshCoordinator : IDisposable
 
     private async Task WaitForRefreshOrDelayAsync(TimeSpan delay, CancellationToken cancellationToken)
     {
-        var delayTask = Task.Delay(delay, cancellationToken);
-        var signalTask = _refreshSignal.WaitAsync(cancellationToken);
+        using var winnerCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var delayTask = Task.Delay(delay, winnerCancellation.Token);
+        var signalTask = _refreshSignal.WaitAsync(winnerCancellation.Token);
         var completed = await Task.WhenAny(delayTask, signalTask).ConfigureAwait(false);
-        if (ReferenceEquals(completed, signalTask))
+        var signalObserved = ReferenceEquals(completed, signalTask) || signalTask.IsCompletedSuccessfully;
+
+        // Cancel and observe the losing wait so each polling iteration owns exactly one
+        // semaphore waiter; otherwise timer wins would accumulate abandoned waiters.
+        winnerCancellation.Cancel();
+        var losingTask = ReferenceEquals(completed, delayTask) ? signalTask : delayTask;
+        try
+        {
+            await losingTask.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (winnerCancellation.IsCancellationRequested)
+        {
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (signalObserved)
         {
             _refreshSignal.Wait(0);
             Interlocked.Exchange(ref _signalPending, 0);

@@ -251,7 +251,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("TitleBarBackButton.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
         Assert.Contains("OperationsControl.NavigateBack();", mainSource, StringComparison.Ordinal);
         Assert.Contains("OperationsControl_BackRequested", mainSource, StringComparison.Ordinal);
-        Assert.Contains("OptionsControl.OperationsSectionRequested", mainSource, StringComparison.Ordinal);
+        Assert.Contains("options.OperationsSectionRequested += OptionsControl_OperationsSectionRequested", mainSource, StringComparison.Ordinal);
         Assert.Contains("OperationsControl.NavigateTo(section, returnToOverview: false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("ApplyMainMenuLabels();", mainSource, StringComparison.Ordinal);
         Assert.Contains("ApplyMenuAccessibility", mainSource, StringComparison.Ordinal);
@@ -570,7 +570,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
-        Assert.Contains("RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowWidth = 470;", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeightPadding = 20;", source, StringComparison.Ordinal);
         Assert.Contains("private const int DwmWindowAttributeBorderColor = 34;", source, StringComparison.Ordinal);
@@ -652,7 +652,7 @@ public sealed class WinUiSurfaceContractTests
             < initialization.IndexOf("_viewModel.InitializeAsync", StringComparison.Ordinal));
         Assert.True(
             initialization.IndexOf("_viewModel.InitializeAsync", StringComparison.Ordinal)
-            < initialization.IndexOf("_refreshTimer.Start();", StringComparison.Ordinal));
+            < initialization.IndexOf("_dashboardRefreshReady = true;", StringComparison.Ordinal));
         Assert.Contains("SetScreenshotStorageReady(false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("SetScreenshotStorageReady(true);", initialization, StringComparison.Ordinal);
         Assert.Contains("if (!_screenshotStorageReady)", mainSource, StringComparison.Ordinal);
@@ -857,7 +857,7 @@ public sealed class WinUiSurfaceContractTests
     {
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp.Taskbar", "TaskbarWidgetWindow.xaml.cs"));
         var surfaceSource = File.ReadAllText(RepositoryFile("TrackMeUp.Taskbar", "TaskbarWidgetSurface.cs"));
-        var hostSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "TaskbarWidgetHost.cs"));
+        var hostSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "TaskbarWidgetHost.cs"));
         var prepareStart = windowSource.IndexOf("internal void PrepareForTaskbar", StringComparison.Ordinal);
         var prepareEnd = windowSource.IndexOf("internal void ApplySettings", StringComparison.Ordinal);
         var attachStart = surfaceSource.IndexOf("private bool TryAttachPreparedWindow", StringComparison.Ordinal);
@@ -1035,7 +1035,7 @@ public sealed class WinUiSurfaceContractTests
     [Fact]
     public void HtmlReport_UsesTheSelectedUiLanguageCatalogAndCulture()
     {
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "HtmlReportService.cs"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "HtmlReportService.cs"));
 
         Assert.Contains("new LocalizationService(_store.LoadSettings().UiLanguage)", source, StringComparison.Ordinal);
         Assert.Contains("var culture = strings.Culture;", source, StringComparison.Ordinal);

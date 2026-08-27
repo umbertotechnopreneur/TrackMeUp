@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.WorldClockRailControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TrackMeUp.Controls">
+    <Border
+        Margin="4,4,3,4"
+        Background="#F5121416"
+        BorderBrush="#38FFFFFF"
+        BorderThickness="1"
+        CornerRadius="18">
+        <Grid Padding="16,14,13,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="2,0,3,7">
+                <TextBlock
+                    x:Name="HeaderText"
+                    VerticalAlignment="Center"
+                    CharacterSpacing="145"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="#FFFF9B82"
+                    Text="WORLD TIME" />
+                <Button
+                    x:Name="AddClockButton"
+                    Width="36"
+                    Height="36"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Add clock"
+                    Background="#14FFFFFF"
+                    BorderBrush="#28FFFFFF"
+                    BorderThickness="1"
+                    Click="AddClockButton_Click"
+                    CornerRadius="18"
+                    FocusVisualPrimaryBrush="#A0FF9B82"
+                    FocusVisualPrimaryThickness="1"
+                    FocusVisualSecondaryBrush="Transparent"
+                    FocusVisualSecondaryThickness="0"
+                    Padding="0"
+                    ToolTipService.ToolTip="Add clock">
+                    <Grid Width="16" Height="16" AutomationProperties.AccessibilityView="Raw">
+                        <Rectangle Width="16" Height="1.8" Fill="White" RadiusX="0.9" RadiusY="0.9" />
+                        <Rectangle Width="1.8" Height="16" Fill="White" RadiusX="0.9" RadiusY="0.9" />
+                    </Grid>
+                </Button>
+            </Grid>
+
+            <ScrollViewer
+                Grid.Row="1"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                VerticalScrollMode="Enabled">
+                <ItemsControl x:Name="ClockItems">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="10" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border
+                                MinHeight="{Binding MinimumHeight}"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="19"
+                                DataContextChanged="ClockCard_DataContextChanged"
+                                GotFocus="ClockCard_GotFocus"
+                                LostFocus="ClockCard_LostFocus"
+                                PointerEntered="ClockCard_PointerEntered"
+                                PointerExited="ClockCard_PointerExited"
+                                Translation="0,0,8">
+                                <Border.Shadow>
+                                    <ThemeShadow />
+                                </Border.Shadow>
+                                <Border.Background>
+                                    <ImageBrush ImageSource="{Binding SkylineImage}" Stretch="UniformToFill" />
+                                </Border.Background>
+                                <Grid>
+                                    <Border CornerRadius="18">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#F216181B" Offset="0" />
+                                                <GradientStop Color="#D6171A1E" Offset="0.55" />
+                                                <GradientStop Color="#9A101317" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    <Ellipse
+                                        Width="150"
+                                        Height="150"
+                                        Margin="0,-64,-58,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Fill="{Binding AmbientGlowBrush}"
+                                        IsHitTestVisible="False"
+                                        Opacity="0.46" />
+
+                                    <StackPanel Padding="14,12,14,13" Spacing="8">
+                                        <Grid MinHeight="150" Visibility="{Binding HeroVisibility}">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="20" />
+                                                <RowDefinition Height="118" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid>
+                                                <TextBlock
+                                                    MaxWidth="155"
+                                                    CharacterSpacing="80"
+                                                    FontSize="13"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="#F3FFFFFF"
+                                                    HorizontalAlignment="Left"
+                                                    Text="{Binding CityName}"
+                                                    TextTrimming="CharacterEllipsis" />
+                                                <StackPanel
+                                                    HorizontalAlignment="Right"
+                                                    Opacity="{Binding ActionsOpacity}"
+                                                    Orientation="Horizontal"
+                                                    Spacing="4">
+                                                    <Button
+                                                        Width="30"
+                                                        Height="30"
+                                                        AutomationProperties.Name="{Binding DetailAccessibleName}"
+                                                        Background="#30FFFFFF"
+                                                        BorderBrush="#40FFFFFF"
+                                                        BorderThickness="1"
+                                                        Click="DetailButton_Click"
+                                                        CornerRadius="15"
+                                                        IsHitTestVisible="{Binding ActionsVisible}"
+                                                        Padding="0"
+                                                        ToolTipService.ToolTip="{Binding DetailAccessibleName}">
+                                                        <SymbolIcon Symbol="Clock" />
+                                                    </Button>
+                                                    <Button
+                                                        Width="30"
+                                                        Height="30"
+                                                        AutomationProperties.Name="{Binding RemoveAccessibleName}"
+                                                        Background="#30FFFFFF"
+                                                        BorderBrush="#44FF8B69"
+                                                        BorderThickness="1"
+                                                        Click="RemoveButton_Click"
+                                                        CornerRadius="15"
+                                                        IsHitTestVisible="{Binding ActionsVisible}"
+                                                        Padding="0"
+                                                        ToolTipService.ToolTip="{Binding RemoveAccessibleName}">
+                                                        <SymbolIcon Foreground="#FFFF9B82" Symbol="Delete" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Grid Grid.Row="1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="120" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center" Spacing="4">
+                                                    <TextBlock
+                                                        FontFamily="Segoe UI Variable Display"
+                                                        FontSize="36"
+                                                        FontWeight="Light"
+                                                        Foreground="White"
+                                                        Text="{Binding LocalTimeText}" />
+                                                    <TextBlock
+                                                        CharacterSpacing="90"
+                                                        FontSize="11"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="{Binding DayStateBrush}"
+                                                        Text="{Binding DayStateText}" />
+                                                </StackPanel>
+                                                <Grid Grid.Column="1" Width="120" Height="118">
+                                                    <Ellipse
+                                                        Width="116"
+                                                        Height="116"
+                                                        Stroke="#48FFFFFF"
+                                                        StrokeDashArray="1.2,5"
+                                                        StrokeThickness="1" />
+                                                    <Ellipse
+                                                        Width="96"
+                                                        Height="96"
+                                                        Stroke="#24FFFFFF"
+                                                        StrokeThickness="1" />
+                                                    <Ellipse
+                                                        Width="7"
+                                                        Height="7"
+                                                        Margin="0,10,2,0"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Top"
+                                                        Fill="{Binding DayStateBrush}" />
+                                                    <controls:CelestialPhaseControl
+                                                        Width="116"
+                                                        Height="116"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        IsDaylight="{Binding IsDaylight}"
+                                                        MoonPhaseAngleDegrees="{Binding MoonPhaseAngleDegrees}" />
+                                                </Grid>
+                                            </Grid>
+
+                                            <Grid Grid.Row="2" ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="10" Foreground="#C8FFFFFF" Text="{Binding SunTimesText}" />
+                                                <TextBlock Grid.Column="1" FontSize="10" Foreground="#AFCBD6E6" Text="{Binding MoonSummaryText}" />
+                                            </Grid>
+                                        </Grid>
+
+                                        <Grid MinHeight="86" Visibility="{Binding CompactVisibility}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="82" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock
+                                                    MaxWidth="150"
+                                                    CharacterSpacing="70"
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="#F2FFFFFF"
+                                                    Text="{Binding CityName}"
+                                                    TextTrimming="CharacterEllipsis" />
+                                                <TextBlock
+                                                    FontFamily="Segoe UI Variable Display"
+                                                    FontSize="31"
+                                                    FontWeight="Light"
+                                                    Foreground="White"
+                                                    Text="{Binding LocalTimeText}" />
+                                                <TextBlock
+                                                    CharacterSpacing="80"
+                                                    FontSize="10"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{Binding DayStateBrush}"
+                                                    Text="{Binding DayStateText}" />
+                                            </StackPanel>
+                                            <Grid Grid.Column="1" Width="82" Height="82">
+                                                <Ellipse
+                                                    Width="78"
+                                                    Height="78"
+                                                    Stroke="#42FFFFFF"
+                                                    StrokeDashArray="1,4"
+                                                    StrokeThickness="1" />
+                                                <Ellipse
+                                                    Width="6"
+                                                    Height="6"
+                                                    Margin="0,7,1,0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Fill="{Binding DayStateBrush}" />
+                                                <controls:CelestialPhaseControl
+                                                    Width="70"
+                                                    Height="70"
+                                                    IsDaylight="{Binding IsDaylight}"
+                                                    MoonPhaseAngleDegrees="{Binding MoonPhaseAngleDegrees}" />
+                                                <StackPanel
+                                                    Margin="0,-5,-5,0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Opacity="{Binding ActionsOpacity}"
+                                                    Orientation="Horizontal"
+                                                    Spacing="3">
+                                                    <Button
+                                                        Width="28"
+                                                        Height="28"
+                                                        AutomationProperties.Name="{Binding DetailAccessibleName}"
+                                                        Background="#B326292D"
+                                                        BorderBrush="#54FFFFFF"
+                                                        BorderThickness="1"
+                                                        Click="DetailButton_Click"
+                                                        CornerRadius="14"
+                                                        IsHitTestVisible="{Binding ActionsVisible}"
+                                                        Padding="0"
+                                                        ToolTipService.ToolTip="{Binding DetailAccessibleName}">
+                                                        <SymbolIcon Symbol="Clock" />
+                                                    </Button>
+                                                    <Button
+                                                        Width="28"
+                                                        Height="28"
+                                                        AutomationProperties.Name="{Binding RemoveAccessibleName}"
+                                                        Background="#B326292D"
+                                                        BorderBrush="#65FF8B69"
+                                                        BorderThickness="1"
+                                                        Click="RemoveButton_Click"
+                                                        CornerRadius="14"
+                                                        IsHitTestVisible="{Binding ActionsVisible}"
+                                                        Padding="0"
+                                                        ToolTipService.ToolTip="{Binding RemoveAccessibleName}">
+                                                        <SymbolIcon Foreground="#FFFF9B82" Symbol="Delete" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Grid>
+
+                                        <Border
+                                            Padding="10,9,10,8"
+                                            Background="#B20E1115"
+                                            BorderBrush="#28FFFFFF"
+                                            BorderThickness="1"
+                                            CornerRadius="13"
+                                            Visibility="{Binding DetailsVisibility}">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnSpacing="10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Spacing="2">
+                                                        <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="#FFFF9B82" Text="{Binding SunDetailTitle}" />
+                                                        <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding SunriseText}" />
+                                                        <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding SunsetText}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Spacing="2">
+                                                        <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="#FF9B94FF" Text="{Binding MoonDetailTitle}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding MoonriseText}" />
+                                                        <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding MoonsetText}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <controls:DaylightArcControl
+                                                    CurrentHour="{Binding CurrentHour}"
+                                                    IsDaylight="{Binding IsDaylight}"
+                                                    SunriseHour="{Binding SunriseHour}"
+                                                    SunsetHour="{Binding SunsetHour}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Border
+                Grid.Row="1"
+                Height="22"
+                VerticalAlignment="Bottom"
+                IsHitTestVisible="False">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#00121416" Offset="0" />
+                        <GradientStop Color="#F5121416" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

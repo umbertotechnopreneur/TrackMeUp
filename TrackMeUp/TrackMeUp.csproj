@@ -37,6 +37,14 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\TrackMeUp*.png" />
     <Content Include="Assets\TrackMeUpIcon.ico" />
+    <Content Include="Assets\Celestial\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Assets\WorldClocks\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="..\design\branding\recall-timeline\output\trackmeup-recall-timeline-banner-theme-dark-readme-2400x800.png">
       <Link>Assets\TrackMeUpAboutHero.theme-dark.png</Link>
       <TargetPath>Assets\TrackMeUpAboutHero.theme-dark.png</TargetPath>
@@ -123,7 +131,6 @@
   <ItemGroup>
     <Compile Remove="Models\**\*.cs" />
     <Compile Remove="Providers\**\*.cs" />
-    <Compile Remove="Services\**\*.cs" />
   </ItemGroup>
 
 </Project>

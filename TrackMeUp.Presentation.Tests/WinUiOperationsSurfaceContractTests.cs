@@ -15,7 +15,7 @@ public sealed class WinUiOperationsSurfaceContractTests
     {
         var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
         var runtime = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
-        var logs = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "ApplicationLogService.cs"));
+        var logs = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "ApplicationLogService.cs"));
 
         Assert.Contains("_application.OpenApplicationLogFolderAsync", about, StringComparison.Ordinal);
         Assert.Contains("_application.ShareApplicationLogAsync", about, StringComparison.Ordinal);
@@ -47,7 +47,8 @@ public sealed class WinUiOperationsSurfaceContractTests
         var plugins = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PluginOperationsControl.xaml"));
         var installationTransfer = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "InstallationTransferOperationsControl.xaml"));
 
-        Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
+        Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "ContentPresenter" && HasName(element, "OperationsHost"));
+        Assert.DoesNotContain(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar" && HasName(element, "OperationBanner"));
@@ -120,7 +121,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("ToolTipService.SetToolTip(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Operations.Snapshot.FolderOpened", snapshotSource, StringComparison.Ordinal);
-        Assert.All(new[] { "SnapshotAiSection", "ReportsSection", "PrivacySection", "RetentionSection", "PluginsSection", "InstallationTransferSection" },
+        Assert.All(new[] { "SnapshotAiHost", "ReportsHost", "PrivacyHost", "RetentionHost", "PluginsHost", "InstallationTransferHost" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
 
         var operationLinkIcons = new[]
@@ -183,7 +184,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.All(
             new[] { "desktop", "laptop", "workstation", "home", "tablet", "phone", "server", "cloud", "office", "briefcase", "terminal", "gaming", "travel", "school", "studio", "camera" },
             icon => Assert.Contains($"\"{icon}\" =>", appearance, StringComparison.Ordinal));
-        Assert.Contains("_ = InstallationTransferSection.LoadAsync();", operationsSource, StringComparison.Ordinal);
+        Assert.Contains("_ = section.LoadAsync();", operationsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
         Assert.DoesNotContain("File.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Directory.", source, StringComparison.Ordinal);
@@ -221,7 +222,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain("DisableButton_Click", pluginSource, StringComparison.Ordinal);
 
         Assert.Contains("if (section == OperationsSection.Plugins)", operationsSource, StringComparison.Ordinal);
-        Assert.Contains("_ = PluginsSection.LoadAsync();", operationsSource, StringComparison.Ordinal);
+        Assert.Contains("_ = _pluginsSection!.LoadAsync();", operationsSource, StringComparison.Ordinal);
         Assert.Contains("bool showSuccess = true", contextSource, StringComparison.Ordinal);
         Assert.Contains("if (showSuccess)", contextSource, StringComparison.Ordinal);
         Assert.Contains("ResultMessage(result.MessageKey", contextSource, StringComparison.Ordinal);
@@ -322,7 +323,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("_dialogs.ShowErrorBanner(MainNotificationBanner, title, message);", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
-        Assert.Equal(6, CountOccurrences(operationsSource, "ownerWindow, OperationBanner"));
+        Assert.Equal(6, CountOccurrences(operationsSource, "OwnerWindow, OperationBanner"));
     }
 
     /// <summary>Ensures every requested operation remains delegated through the shared facade.</summary>
@@ -515,7 +516,7 @@ public sealed class WinUiOperationsSurfaceContractTests
     public void DialogEngine_IsAcrylicQueuedAccessibleAndFacadeBacked()
     {
         var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
-        var interop = File.ReadAllText(RepositoryFile("TrackMeUp", "Services", "WindowInteropService.cs"));
+        var interop = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "WindowInteropService.cs"));
         var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
         var dialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml"));
         var connectionDialog = File.ReadAllText(RepositoryFile("TrackMeUp", "AiConnectionTestDialogWindow.xaml.cs"));

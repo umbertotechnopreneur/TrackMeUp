@@ -10,7 +10,7 @@
   <ItemGroup>
     <Compile Include="..\TrackMeUp\Models\ActivityModels.cs" Link="Domain\ActivityModels.cs" />
     <Compile Include="..\TrackMeUp\Providers\ActivityContextProviders.cs" Link="Infrastructure\ActivityContextProviders.cs" />
-    <Compile Include="..\TrackMeUp\Services\*.cs" Link="Infrastructure\Services\%(Filename)%(Extension)" />
+    <Compile Include="Infrastructure\Services\*.cs" />
     <Compile Include="Application\*.cs" />
     <Compile Include="Runtime\*.cs" />
   </ItemGroup>

@@ -313,7 +313,8 @@ public static class SettingsCatalog
             OpenAiDailyCostUsd = Math.Max(0m, settings.OpenAiDailyCostUsd),
             EstimatedCostPerAnalysisUsd = Math.Clamp(settings.EstimatedCostPerAnalysisUsd, 0m, 1_000m),
             EstimatedCostPerScreenshotUsd = Math.Clamp(settings.EstimatedCostPerScreenshotUsd, 0m, 1_000m),
-            ActiveHours = ActiveHoursSchedule.Normalize(settings.ActiveHours)
+            ActiveHours = ActiveHoursSchedule.Normalize(settings.ActiveHours),
+            WorldClockCityIds = WorldClockSelection.NormalizePersisted(settings.WorldClockCityIds)
         };
     }
 

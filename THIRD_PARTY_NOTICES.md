@@ -1,6 +1,12 @@
 # Third-Party Notices
 
-This file inventories the direct `PackageReference` dependencies declared in tracked `.csproj` files as of 2026-08-11.
+TrackMeUp itself is governed by the
+[TrackMeUp Source-Available License 1.0](LICENSE), not by the MIT or Apache-2.0
+licenses listed below. Each third-party component or asset retains its own
+license terms, and this inventory does not relicense TrackMeUp or expand the
+permissions granted by `LICENSE`.
+
+This file inventories the direct `PackageReference` dependencies declared in tracked `.csproj` files as of 2026-08-11 and separately records distributed world-clock data/media assets.
 
 - Scope: direct NuGet dependencies only. Transitive NuGet packages and npm packages are not included yet.
 - Source of truth: repository `*.csproj` files plus official NuGet package metadata.
@@ -47,6 +53,11 @@ This file inventories the direct `PackageReference` dependencies declared in tra
 | [Spectre.Console.Testing](https://www.nuget.org/packages/Spectre.Console.Testing/0.57.2) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console.Testing?label=NuGet)](https://www.nuget.org/packages/Spectre.Console.Testing/0.57.2) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli.Tests |
 | [xunit](https://www.nuget.org/packages/xunit/2.9.3) | [![NuGet](https://img.shields.io/nuget/v/xunit?label=NuGet)](https://www.nuget.org/packages/xunit/2.9.3) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
 | [xunit.runner.visualstudio](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) | [![NuGet](https://img.shields.io/nuget/v/xunit.runner.visualstudio?label=NuGet)](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
+
+## Distributed world-clock data and media
+
+- Capital-city coordinates, population, and IANA time zones are derived from [GeoNames cities15000](https://download.geonames.org/export/dump/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- The bundled seasonal skyline WebP files are resized and cropped from individually licensed Wikimedia Commons files. Author, source page, exact license, season, and SHA-256 for every image are distributed in `TrackMeUp/Assets/WorldClocks/ATTRIBUTION.md`, `ATTRIBUTION.json`, and the SQLite catalog itself.
 
 ## Notes
 

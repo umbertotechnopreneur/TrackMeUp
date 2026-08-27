@@ -549,6 +549,42 @@ public sealed record BuildInformation(
 /// <summary>Provides product metadata, build provenance and safe external links.</summary>
 public sealed record ProductInformation(string Name, string License, string RepositoryUrl, string AuthorUrl, BuildInformation Build);
 
+/// <summary>Describes one city available to the world-clock selector.</summary>
+public sealed record WorldClockCitySummary(
+    string Id,
+    string Name,
+    string CountryCode,
+    string TimeZoneId,
+    double Latitude,
+    double Longitude,
+    bool IsCapital);
+
+/// <summary>Contains the locally distributed city catalog and current selection limit.</summary>
+public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> Cities, int MaximumClocks);
+
+/// <summary>Contains one locally calculated city clock and its celestial events.</summary>
+public sealed record WorldClockItem(
+    string CityId,
+    string CityName,
+    string CountryCode,
+    string TimeZoneId,
+    DateTimeOffset LocalTime,
+    bool IsDaylight,
+    DateTimeOffset? Sunrise,
+    DateTimeOffset? Sunset,
+    DateTimeOffset? Moonrise,
+    DateTimeOffset? Moonset,
+    string MoonPhaseKey,
+    double MoonPhaseAngleDegrees,
+    double MoonIllumination,
+    double MoonAgeDays,
+    bool IsWaxing,
+    string SkylineAssetPath,
+    string SkylineSeason);
+
+/// <summary>Contains the complete world-clock rail projection for one instant.</summary>
+public sealed record WorldClockRailSnapshot(DateTimeOffset CalculatedAtUtc, IReadOnlyList<WorldClockItem> Clocks, int MaximumClocks);
+
 /// <summary>Signals a runtime state transition to all presentation clients.</summary>
 public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, string Code);
 
@@ -572,6 +608,18 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the current dashboard state.</summary>
     Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets the current world clocks with all sun and moon data calculated locally.</summary>
+    Task<OperationResult<WorldClockRailSnapshot>> GetWorldClockRailAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets the locally distributed city catalog used by the clock selector.</summary>
+    Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken);
+
+    /// <summary>Adds one city to the persisted world-clock rail.</summary>
+    Task<OperationResult<WorldClockRailSnapshot>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken);
+
+    /// <summary>Removes one city from the persisted world-clock rail.</summary>
+    Task<OperationResult<WorldClockRailSnapshot>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
 
     /// <summary>Gets the latest recorded session state.</summary>
     Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken);

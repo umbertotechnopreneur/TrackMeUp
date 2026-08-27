@@ -17,6 +17,7 @@
                 <ResourceDictionary x:Key="Light">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
                     <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
+                    <SolidColorBrush x:Key="MainWindowSurfaceBrush" Color="#DFF7F7F8" />
                     <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
                     <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
@@ -34,6 +35,7 @@
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
                     <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
+                    <SolidColorBrush x:Key="MainWindowSurfaceBrush" Color="#E6212123" />
                     <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFFF9B82" />
                     <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
@@ -50,6 +52,7 @@
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="BrandCoralBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="MainWindowSurfaceBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="PlayerAccentTextBrush" ResourceKey="SystemColorHighlightColorBrush" />
                     <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />

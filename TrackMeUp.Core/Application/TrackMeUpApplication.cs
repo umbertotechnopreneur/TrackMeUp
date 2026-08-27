@@ -136,6 +136,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly OpenAiPricingRefreshService? _pricingRefresh;
     private readonly AiScreenshotReprocessingService _screenshotReprocessing;
     private readonly DataArchiveService _archives;
+    private readonly WorldClockService _worldClocks;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -190,7 +191,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         OpenAiPricingRefreshService? pricingRefresh = null,
         AtomicResetService? atomicResetService = null,
         SettingsSnapshot? settingsSnapshot = null,
-        ISystemUsageSampler? usageSampler = null)
+        ISystemUsageSampler? usageSampler = null,
+        WorldClockService? worldClockService = null)
     {
         _store = store;
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
@@ -229,6 +231,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             model => ResolveAiModel(model)?.Key ?? model.Trim(),
             _logger);
         _archives = new DataArchiveService(store);
+        _worldClocks = worldClockService ?? new WorldClockService();
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
         _tracking.TrackingStateChanged += OnTrackingStateChanged;
@@ -1319,7 +1322,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => OpenFolderAsync(_store.LoadSettings().ScreenshotDirectory, "screenshot.folder.opened", "ScreenshotFolderOpened", cancellationToken);
+    public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => OpenFolderAsync(_settingsSnapshot.Value.ScreenshotDirectory, "screenshot.folder.opened", "ScreenshotFolderOpened", cancellationToken);
 
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken)
@@ -1688,7 +1691,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         var report = new HtmlReportService(_store, _utilities).ExportDailyDigest(date);
         var settings = _settingsSnapshot.Value with { LastDailyDigestDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) };
-        _store.SaveSettings(settings);
+        PersistSettings(settings);
         if (open)
         {
             Process.Start(new ProcessStartInfo { FileName = report, UseShellExecute = true });
@@ -1729,7 +1732,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<IReadOnlyList<PrivacyRule>>> GetPrivacyRulesAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<IReadOnlyList<PrivacyRule>>.Success("privacy.list.loaded", "PrivacyRulesLoaded", ReadPrivacyRules(_store.LoadSettings())));
+        return Task.FromResult(OperationResult<IReadOnlyList<PrivacyRule>>.Success("privacy.list.loaded", "PrivacyRulesLoaded", ReadPrivacyRules(_settingsSnapshot.Value)));
     }
 
     /// <inheritdoc />
@@ -1741,8 +1744,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         var rule = new PrivacyRule(Guid.NewGuid().ToString("N"), type, value.Trim());
-        var all = ReadPrivacyRules(_store.LoadSettings()).Append(rule).ToArray();
-        SavePrivacyRules(_store.LoadSettings(), all);
+        var settings = _settingsSnapshot.Value;
+        var all = ReadPrivacyRules(settings).Append(rule).ToArray();
+        SavePrivacyRules(settings, all);
         await Task.CompletedTask;
         return OperationResult<PrivacyRule>.Success("privacy.rule.added", "PrivacyRuleAdded", rule);
     }, cancellationToken);
@@ -1750,14 +1754,15 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<bool>> RemovePrivacyRuleAsync(string id, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
     {
-        var rules = ReadPrivacyRules(_store.LoadSettings());
+        var settings = _settingsSnapshot.Value;
+        var rules = ReadPrivacyRules(settings);
         var filtered = rules.Where(x => !string.Equals(x.Id, id, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (filtered.Length == rules.Count)
         {
             return OperationResult<bool>.Failure("privacy.rule.not_found", "PrivacyRuleNotFound", new ValidationIssue("id", "not_found", "PrivacyRuleNotFound"));
         }
 
-        SavePrivacyRules(_store.LoadSettings(), filtered);
+        SavePrivacyRules(settings, filtered);
         await Task.CompletedTask;
         return OperationResult<bool>.Success("privacy.rule.removed", "PrivacyRuleRemoved", true);
     }, cancellationToken);
@@ -1766,7 +1771,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<bool>> TestCurrentPrivacyAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<bool>.Success("privacy.test.completed", "PrivacyTestCompleted", IsCurrentContextPrivate(_store.LoadSettings())));
+        return Task.FromResult(OperationResult<bool>.Success("privacy.test.completed", "PrivacyTestCompleted", IsCurrentContextPrivate(_settingsSnapshot.Value)));
     }
 
     /// <inheritdoc />
@@ -1860,14 +1865,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<IReadOnlyList<PluginInfo>>.Success("plugins.list.loaded", "PluginsLoaded", BuildPlugins(_store.LoadSettings())));
+        return Task.FromResult(OperationResult<IReadOnlyList<PluginInfo>>.Success("plugins.list.loaded", "PluginsLoaded", BuildPlugins(_settingsSnapshot.Value)));
     }
 
     /// <inheritdoc />
     public Task<OperationResult<PluginInfo>> GetPluginAsync(string id, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var plugin = BuildPlugins(_store.LoadSettings()).SingleOrDefault(x => string.Equals(x.Id, id, StringComparison.OrdinalIgnoreCase));
+        var plugin = BuildPlugins(_settingsSnapshot.Value).SingleOrDefault(x => string.Equals(x.Id, id, StringComparison.OrdinalIgnoreCase));
         return Task.FromResult(plugin is null
             ? OperationResult<PluginInfo>.Failure("plugins.not_found", "PluginNotFound", new ValidationIssue("id", "not_found", "PluginNotFound"))
             : OperationResult<PluginInfo>.Success("plugins.loaded", "PluginLoaded", plugin));
@@ -1902,6 +1907,87 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(OperationResult<AppSettings>.Success("settings.loaded", "SettingsLoaded", _settingsSnapshot.Value));
     }
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(OperationResult<WorldClockCityCatalog>.Success(
+            "world_clocks.catalog.loaded",
+            "WorldClocksCatalogLoaded",
+            _worldClocks.GetCatalog()));
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockRailSnapshot>> GetWorldClockRailAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var snapshot = _worldClocks.BuildSnapshot(_settingsSnapshot.Value.WorldClockCityIds, DateTimeOffset.UtcNow);
+        return Task.FromResult(OperationResult<WorldClockRailSnapshot>.Success(
+            "world_clocks.loaded",
+            "WorldClocksLoaded",
+            snapshot));
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockRailSnapshot>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
+        _worldClocks.ValidateCityId(normalizedId);
+        var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
+        if (selection.Contains(normalizedId, StringComparer.Ordinal))
+        {
+            return OperationResult<WorldClockRailSnapshot>.Failure(
+                "world_clocks.duplicate",
+                "WorldClocksDuplicate",
+                new ValidationIssue("cityId", "duplicate", "WorldClocksDuplicate"));
+        }
+
+        if (selection.Count >= WorldClockSelection.MaximumClocks)
+        {
+            return OperationResult<WorldClockRailSnapshot>.Failure(
+                "world_clocks.maximum_reached",
+                "WorldClocksMaximumReached",
+                new ValidationIssue("cityId", "maximum_reached", "WorldClocksMaximumReached"));
+        }
+
+        selection.Add(normalizedId);
+        PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
+        await Task.CompletedTask;
+        return OperationResult<WorldClockRailSnapshot>.Success(
+            "world_clocks.added",
+            "WorldClocksAdded",
+            _worldClocks.BuildSnapshot(selection, DateTimeOffset.UtcNow));
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockRailSnapshot>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
+        var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
+        if (selection.Count == 1)
+        {
+            return OperationResult<WorldClockRailSnapshot>.Failure(
+                "world_clocks.minimum_reached",
+                "WorldClocksMinimumReached",
+                new ValidationIssue("cityId", "minimum_reached", "WorldClocksMinimumReached"));
+        }
+
+        if (!selection.Remove(normalizedId))
+        {
+            return OperationResult<WorldClockRailSnapshot>.Failure(
+                "world_clocks.not_found",
+                "WorldClocksNotFound",
+                new ValidationIssue("cityId", "not_found", "WorldClocksNotFound"));
+        }
+
+        PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
+        await Task.CompletedTask;
+        return OperationResult<WorldClockRailSnapshot>.Success(
+            "world_clocks.removed",
+            "WorldClocksRemoved",
+            _worldClocks.BuildSnapshot(selection, DateTimeOffset.UtcNow));
+    }, cancellationToken);
 
     /// <inheritdoc />
     public async Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(
@@ -2179,8 +2265,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private void PersistSettings(AppSettings settings)
     {
-        PersistSettings(settings);
+        var previous = _settingsSnapshot.Value;
+        _store.SaveSettings(settings);
         _settingsSnapshot.Replace(settings);
+        if (!string.Equals(previous.SearchLanguage, settings.SearchLanguage, StringComparison.OrdinalIgnoreCase)
+            || previous.SearchSynonymsEnabled != settings.SearchSynonymsEnabled
+            || previous.SearchTypoToleranceEnabled != settings.SearchTypoToleranceEnabled
+            || !string.Equals(previous.ScreenshotDirectory, settings.ScreenshotDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            _store.MarkSearchSourceRebuild("settings-search-projection");
+        }
     }
 
     private PendingManualScreenshotState? GetPendingManualScreenshotState() =>
@@ -2431,7 +2525,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
             // Refinement may itself consume a billable visual request. Recheck while the shared gate is still
             // held, immediately before the required description request. With one slot left, refinement is skipped.
-            if (!BuildCostGate(_store.LoadSettings()).Allowed)
+            if (!BuildCostGate(_settingsSnapshot.Value).Allowed)
             {
                 throw new AiDailyAnalysisQuotaReachedException();
             }
@@ -2447,7 +2541,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
     private AppSettings LoadValidatedAiSettingsAtVisualBoundary(bool requireImageInput)
     {
-        var current = _store.LoadSettings();
+        var current = _settingsSnapshot.Value;
         if (!current.OpenAiEnabled)
         {
             throw new AiLiveAnalysisPreflightException("ai.disabled", "AiDisabled");

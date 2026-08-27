@@ -315,7 +315,7 @@ public sealed class AiScreenshotReprocessingWorkerTests
     }
 
     [Fact]
-    public async Task LiveCaptureRevalidatesSettingsAfterWaitingForTheVisualGate()
+    public async Task LiveCaptureUsesRuntimeSnapshotWhenUnsupportedStoreEditBypassesFacade()
     {
         await WithApiKeyAsync(async directory =>
         {
@@ -334,11 +334,10 @@ public sealed class AiScreenshotReprocessingWorkerTests
             analysis.Release();
 
             var result = await liveAnalysis.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.False(result.Succeeded);
-            Assert.Equal("ai.disabled", result.Code);
-            Assert.False(fixture.Store.LoadSettings().OpenAiEnabled);
-            Assert.Equal(0, refinement.CallCount);
-            Assert.Equal(0, analysis.LiveCallCount);
+            Assert.True(result.Succeeded);
+            Assert.True(fixture.Store.LoadSettings().OpenAiEnabled);
+            Assert.Equal(1, refinement.CallCount);
+            Assert.Equal(1, analysis.LiveCallCount);
         });
     }
 

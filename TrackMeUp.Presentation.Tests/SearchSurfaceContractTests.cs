@@ -182,7 +182,7 @@ public sealed class SearchSurfaceContractTests
         Assert.DoesNotContain("await RunIndexingAsync();", source[source.IndexOf("private async void RootGrid_Loaded", StringComparison.Ordinal)..source.IndexOf("private async void RunIndexingFromVisibleWindow", StringComparison.Ordinal)], StringComparison.Ordinal);
         Assert.Contains("_rebuildCancellation?.Cancel()", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.SearchIndexing", source, StringComparison.Ordinal);
-        Assert.Contains("OptionsControl.SearchIndexingRequested += OptionsControl_SearchIndexingRequested", mainSource, StringComparison.Ordinal);
+        Assert.Contains("options.SearchIndexingRequested += OptionsControl_SearchIndexingRequested", mainSource, StringComparison.Ordinal);
         Assert.Contains("new SearchIndexingWindow(", mainSource, StringComparison.Ordinal);
     }
 

@@ -32,6 +32,7 @@ public sealed partial class MainWindow : Window
     #region Fields
 
     private const int LogicalWindowWidth = 470;
+    private const int LogicalWorldClockRailWidth = 278;
     private const int LogicalWindowHeightPadding = 20;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
@@ -44,6 +45,7 @@ public sealed partial class MainWindow : Window
     private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
     private readonly CancellationTokenSource _surfaceLifetime = new();
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
+    private readonly DispatcherQueueTimer _worldClockRefreshTimer;
     private readonly AppWindow _appWindow;
     private readonly MainWindowLayoutState _layoutState = new();
     private readonly MicaDialogService _dialogs;
@@ -78,11 +80,14 @@ public sealed partial class MainWindow : Window
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
     private int _aiSpendRefreshInProgress;
     private IDisposable? _dashboardSubscription;
+    private bool _dashboardRefreshReady;
     private bool _dashboardSurfaceClosed;
     private OptionsControl? _optionsControl;
     private OperationsControl? _operationsControl;
     private Task? _optionsInitializationTask;
     private Task? _operationsInitializationTask;
+    private WorldClockRailSnapshot? _worldClockSnapshot;
+    private int _worldClockRefreshInProgress;
 
     private OptionsControl OptionsControl => _optionsControl
         ?? throw new InvalidOperationException("OptionsControl has not been initialized.");
@@ -176,6 +181,12 @@ public sealed partial class MainWindow : Window
         _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
         _windowResizeAnimationTimer.Tick += WindowResizeAnimationTimer_Tick;
 
+        _worldClockRefreshTimer = DispatcherQueue.CreateTimer();
+        _worldClockRefreshTimer.Interval = TimeSpan.FromMinutes(1);
+        _worldClockRefreshTimer.Tick += WorldClockRefreshTimer_Tick;
+        WorldClockRail.AddRequested += WorldClockRail_AddRequested;
+        WorldClockRail.RemoveRequested += WorldClockRail_RemoveRequested;
+
         _ = InitializeAsync(options);
         Closed += MainWindow_Closed;
     }
@@ -214,7 +225,8 @@ public sealed partial class MainWindow : Window
         }
 
         SetScreenshotStorageReady(true);
-        _dashboardSubscription = _dashboardRefreshCoordinator.Subscribe(OnDashboardStateChanged);
+        _dashboardRefreshReady = true;
+        UpdateDashboardSubscriptionForVisibility();
         if (startupRegistrationFailureCode is not null)
         {
             await _dialogs.ShowInformativeAsync(
@@ -235,6 +247,98 @@ public sealed partial class MainWindow : Window
 
         await ShowStartupAiWarningAsync();
         await DrainApplicationNotificationsAsync();
+        await RefreshWorldClocksAsync();
+        _worldClockRefreshTimer.Start();
+    }
+
+    private async void WorldClockRefreshTimer_Tick(DispatcherQueueTimer sender, object args) =>
+        await RefreshWorldClocksAsync();
+
+    private async Task RefreshWorldClocksAsync()
+    {
+        if (WorldClockRail.Visibility != Visibility.Visible
+            || Interlocked.Exchange(ref _worldClockRefreshInProgress, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _application.GetWorldClockRailAsync(_surfaceLifetime.Token);
+            if (result.Succeeded && result.Value is not null)
+            {
+                _worldClockSnapshot = result.Value;
+                WorldClockRail.ApplySnapshot(result.Value, _strings);
+            }
+        }
+        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        {
+            // Window shutdown cancels this presentation refresh; no retry is required.
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _worldClockRefreshInProgress, 0);
+        }
+    }
+
+    private async void WorldClockRail_AddRequested(object? sender, EventArgs e)
+    {
+        var catalogResult = await _application.GetWorldClockCityCatalogAsync(_surfaceLifetime.Token);
+        if (!catalogResult.Succeeded || catalogResult.Value is null)
+        {
+            _dialogs.ShowErrorBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T("WorldClock.CatalogUnavailable"));
+            return;
+        }
+
+        var selectedIds = _worldClockSnapshot?.Clocks.Select(static clock => clock.CityId).ToHashSet(StringComparer.Ordinal)
+            ?? [];
+        var options = catalogResult.Value.Cities
+            .Where(city => !selectedIds.Contains(city.Id))
+            .ToArray();
+        if (options.Length == 0)
+        {
+            return;
+        }
+
+        var selectedCityId = await _dialogs.ShowWorldClockCityPickerAsync(
+            _application,
+            this,
+            options,
+            RootGrid.RequestedTheme,
+            _strings);
+        if (selectedCityId is null)
+        {
+            return;
+        }
+
+        var result = await _application.AddWorldClockAsync(selectedCityId, _surfaceLifetime.Token);
+        if (result.Succeeded && result.Value is not null)
+        {
+            _worldClockSnapshot = result.Value;
+            WorldClockRail.ApplySnapshot(result.Value, _strings);
+            ResizeForCurrentLayout(animate: true);
+            return;
+        }
+
+        _dialogs.ShowWarningBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T(result.MessageKey));
+    }
+
+    private async void WorldClockRail_RemoveRequested(object? sender, WorldClockCityEventArgs e)
+    {
+        var result = await _application.RemoveWorldClockAsync(e.CityId, _surfaceLifetime.Token);
+        if (result.Succeeded && result.Value is not null)
+        {
+            _worldClockSnapshot = result.Value;
+            WorldClockRail.ApplySnapshot(result.Value, _strings);
+            _dialogs.ShowInfoBanner(
+                MainNotificationBanner,
+                T("WorldClock.RemovedTitle"),
+                _strings.Format("WorldClock.RemovedMessage", e.CityName));
+            ResizeForCurrentLayout(animate: true);
+            return;
+        }
+
+        _dialogs.ShowWarningBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T(result.MessageKey));
     }
 
     private async Task<string?> ReconcileWindowsStartupAsync(LaunchOptions options)
@@ -366,6 +470,22 @@ public sealed partial class MainWindow : Window
             _ = RefreshAiMonthlySpendAsync();
             _ = DrainApplicationNotificationsAsync();
         });
+    }
+
+    private void UpdateDashboardSubscriptionForVisibility()
+    {
+        var shouldSubscribe = _dashboardRefreshReady
+            && !_dashboardSurfaceClosed
+            && _appWindow.IsVisible;
+        if (shouldSubscribe && _dashboardSubscription is null)
+        {
+            _dashboardSubscription = _dashboardRefreshCoordinator.Subscribe(OnDashboardStateChanged);
+        }
+        else if (!shouldSubscribe && _dashboardSubscription is not null)
+        {
+            _dashboardSubscription.Dispose();
+            _dashboardSubscription = null;
+        }
     }
 
     /// <summary>Refreshes the month-to-date AI spend at a bounded cadence while the integration is active.</summary>
@@ -1187,7 +1307,7 @@ public sealed partial class MainWindow : Window
         => ScreenshotOpenOverlay.Opacity = 0;
 
     /// <summary>Returns from options to the player panel.</summary>
-    private void OptionsControl_BackRequested(object sender, EventArgs e) => ShowPlayer();
+    private void OptionsControl_BackRequested(object? sender, EventArgs e) => ShowPlayer();
 
     /// <summary>Opens one operational detail requested from the settings overview.</summary>
     private void OptionsControl_OperationsSectionRequested(OperationsSection section) => _ = ShowOperationsSectionAsync(section);
@@ -1205,7 +1325,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Returns from the operations landing page to the surface that opened it.</summary>
-    private void OperationsControl_BackRequested(object sender, EventArgs e)
+    private void OperationsControl_BackRequested(object? sender, EventArgs e)
     {
         var returnSurface = _operationsReturnSurface;
         _operationsReturnSurface = MainWindowSurface.Player;
@@ -1243,6 +1363,9 @@ public sealed partial class MainWindow : Window
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
+        WorldClockRail.Visibility = Visibility.Collapsed;
+        WorldClockRailColumn.Width = new GridLength(0);
+        _worldClockRefreshTimer.Stop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
@@ -1260,6 +1383,9 @@ public sealed partial class MainWindow : Window
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
+        WorldClockRailColumn.Width = new GridLength(LogicalWorldClockRailWidth);
+        WorldClockRail.Visibility = Visibility.Visible;
+        _worldClockRefreshTimer.Start();
         _layoutState.ShowSurface(MainWindowSurface.Player);
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         ResizeForCurrentLayout(animate: false);
@@ -1291,7 +1417,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Measures the active XAML surface at the flyout width and applies the resulting window height.</summary>
     private void ResizeForCurrentLayout(bool animate)
     {
-        RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));
+        RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));
         var logicalHeight = _layoutState.RecordMeasuredHeight(RootGrid.DesiredSize.Height);
         if (animate && RootGrid.IsLoaded)
         {
@@ -1645,6 +1771,10 @@ public sealed partial class MainWindow : Window
         UpdateScreenshotCaptureStatus();
         _optionsControl?.ApplyLanguage(settings.UiLanguage);
         _operationsControl?.ApplyLanguage(settings.UiLanguage);
+        if (_worldClockSnapshot is not null)
+        {
+            WorldClockRail.ApplySnapshot(_worldClockSnapshot, _strings);
+        }
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
 
@@ -1877,6 +2007,11 @@ public sealed partial class MainWindow : Window
     /// <summary>Reapplies the smart height limit when the flyout crosses onto another display.</summary>
     private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        if (args.DidVisibilityChange)
+        {
+            UpdateDashboardSubscriptionForVisibility();
+        }
+
         if (!args.DidPositionChange)
         {
             return;
@@ -1957,10 +2092,13 @@ public sealed partial class MainWindow : Window
         var availableWidth = Math.Max(1, workArea.Width - (physicalMargin * 2));
         var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
         var boundedLogicalHeight = _layoutState.ResolveLogicalHeight(availableHeight / scale, LogicalWindowHeightPadding);
-        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
+        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(CurrentLogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(boundedLogicalHeight * scale));
         return new SizeInt32(physicalWidth, physicalHeight);
     }
+
+    private int CurrentLogicalWindowWidth => LogicalWindowWidth
+        + (WorldClockRail.Visibility == Visibility.Visible ? LogicalWorldClockRailWidth : 0);
 
     /// <summary>Places the player at the selected visual anchor.</summary>
     private void ApplyFlyoutPosition(string position)
@@ -1995,10 +2133,15 @@ public sealed partial class MainWindow : Window
         }
 
         _dashboardSurfaceClosed = true;
+        _dashboardRefreshReady = false;
         _surfaceLifetime.Cancel();
         _dashboardSubscription?.Dispose();
         _dashboardSubscription = null;
         _windowResizeAnimationTimer.Stop();
+        _worldClockRefreshTimer.Stop();
+        _worldClockRefreshTimer.Tick -= WorldClockRefreshTimer_Tick;
+        WorldClockRail.AddRequested -= WorldClockRail_AddRequested;
+        WorldClockRail.RemoveRequested -= WorldClockRail_RemoveRequested;
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;

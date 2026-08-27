@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Runtime.ExceptionServices;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
@@ -18,6 +19,7 @@ public sealed class LocalSearchService : ILocalSearchService
 {
     private const LuceneVersion Version = LuceneVersion.LUCENE_48;
     private const string SchemaCommitKey = "trackmeup.search.schema";
+    private const string SourceRevisionCommitKey = "trackmeup.search.source_revision";
     private readonly SearchOptions _options;
     private readonly LanguageAnalyzerCatalog _analyzers;
     private readonly SynonymCatalog _synonyms;
@@ -27,6 +29,7 @@ public sealed class LocalSearchService : ILocalSearchService
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private IndexWriter _writer;
     private Exception? _fault;
+    private long _committedSourceRevision;
     private int _disposeStarted;
 
     /// <summary>Gets the current on-disk index schema version.</summary>
@@ -63,13 +66,13 @@ public sealed class LocalSearchService : ILocalSearchService
             var indexExists = DirectoryReader.IndexExists(directory);
             if (indexExists)
             {
-                ValidateExistingSchema(directory);
+                _committedSourceRevision = ValidateExistingSchema(directory);
             }
 
             writer = CreateWriter(directory, analyzers);
             if (!indexExists)
             {
-                StampAndCommit(writer);
+                StampAndCommit(writer, 0);
             }
 
             _analyzers = analyzers;
@@ -103,6 +106,9 @@ public sealed class LocalSearchService : ILocalSearchService
 
     /// <summary>Gets the absolute path of the versioned Lucene index.</summary>
     public string IndexPath { get; }
+
+    /// <inheritdoc />
+    public long CommittedSourceRevision => Interlocked.Read(ref _committedSourceRevision);
 
     /// <inheritdoc />
     public async Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default)
@@ -144,11 +150,82 @@ public sealed class LocalSearchService : ILocalSearchService
     }
 
     /// <inheritdoc />
+    public async Task ApplyBatchAsync(
+        IReadOnlyCollection<SearchIndexMutation> mutations,
+        long sourceRevision,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mutations);
+        if (sourceRevision < CommittedSourceRevision)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceRevision), "A batch source revision cannot move backwards.");
+        }
+        var prepared = new List<(string Id, Lucene.Net.Documents.Document? Document)>(mutations.Count);
+        foreach (var mutation in mutations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ArgumentNullException.ThrowIfNull(mutation);
+            ArgumentException.ThrowIfNullOrWhiteSpace(mutation.Id);
+            if (mutation.Document is not { } document)
+            {
+                prepared.Add((mutation.Id, null));
+                continue;
+            }
+
+            SearchValidation.ValidateDocument(document, _options);
+            if (!string.Equals(mutation.Id, document.Id, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("An upsert mutation id must match its document id.", nameof(mutations));
+            }
+
+            prepared.Add((mutation.Id, SearchDocumentMapper.ToLucene(document)));
+        }
+
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfUnavailable();
+            cancellationToken.ThrowIfCancellationRequested();
+            CommitWrite(() =>
+            {
+                foreach (var mutation in prepared)
+                {
+                    var term = new Term(SearchFields.IdKey, mutation.Id);
+                    if (mutation.Document is null)
+                    {
+                        _writer.DeleteDocuments(term);
+                    }
+                    else
+                    {
+                        _writer.UpdateDocument(term, mutation.Document);
+                    }
+                }
+            }, sourceRevision);
+            RebuildSuggestionsFromMainIndex();
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task RebuildAsync(
         IEnumerable<SearchDocument> documents,
         CancellationToken cancellationToken = default)
+        => await RebuildAsync(documents, CommittedSourceRevision, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public async Task RebuildAsync(
+        IEnumerable<SearchDocument> documents,
+        long sourceRevision,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(documents);
+        if (sourceRevision < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceRevision));
+        }
 
         var sourceDocuments = new List<SearchDocument>();
         var prepared = new List<Lucene.Net.Documents.Document>();
@@ -180,7 +257,7 @@ public sealed class LocalSearchService : ILocalSearchService
                 {
                     _writer.AddDocument(document);
                 }
-            });
+            }, sourceRevision);
             RebuildSuggestions(sourceDocuments);
         }
         finally
@@ -322,7 +399,7 @@ public sealed class LocalSearchService : ILocalSearchService
         AiDescription = null,
     };
 
-    private static void ValidateExistingSchema(FSDirectory directory)
+    private static long ValidateExistingSchema(FSDirectory directory)
     {
         using var reader = DirectoryReader.Open(directory);
         var userData = reader.IndexCommit.UserData;
@@ -332,13 +409,20 @@ public sealed class LocalSearchService : ILocalSearchService
             throw new InvalidDataException(
                 $"The Lucene index does not declare supported schema version {IndexSchemaVersion}. Rebuild it from source data.");
         }
+
+        return userData.TryGetValue(SourceRevisionCommitKey, out var revision)
+            && long.TryParse(revision, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedRevision)
+            && parsedRevision >= 0
+                ? parsedRevision
+                : 0;
     }
 
-    private static void StampAndCommit(IndexWriter writer)
+    private static void StampAndCommit(IndexWriter writer, long sourceRevision)
     {
         writer.SetCommitData(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [SchemaCommitKey] = IndexSchemaVersion.ToString(),
+            [SourceRevisionCommitKey] = sourceRevision.ToString(CultureInfo.InvariantCulture),
         });
         writer.Commit();
     }
@@ -484,12 +568,14 @@ public sealed class LocalSearchService : ILocalSearchService
         public void Dispose() => _entries.Dispose();
     }
 
-    private void CommitWrite(Action mutation)
+    private void CommitWrite(Action mutation, long? sourceRevision = null)
     {
         try
         {
             mutation();
-            StampAndCommit(_writer);
+            var committedRevision = sourceRevision ?? CommittedSourceRevision;
+            StampAndCommit(_writer, committedRevision);
+            Interlocked.Exchange(ref _committedSourceRevision, committedRevision);
         }
         catch (Exception operationException)
         {

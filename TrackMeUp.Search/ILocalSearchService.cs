@@ -7,6 +7,9 @@ namespace TrackMeUp.Search;
 /// </summary>
 public interface ILocalSearchService : IAsyncDisposable
 {
+    /// <summary>Gets the authoritative source revision stored in the latest Lucene commit.</summary>
+    long CommittedSourceRevision { get; }
+
     /// <summary>
     /// Adds or atomically replaces a document by its stable identifier and commits the change.
     /// </summary>
@@ -22,11 +25,28 @@ public interface ILocalSearchService : IAsyncDisposable
     Task DeleteAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Applies ordered upserts and deletes with one Lucene commit and one suggestion refresh.
+    /// </summary>
+    /// <param name="mutations">The stable-document mutations to apply.</param>
+    /// <param name="sourceRevision">The durable source revision represented after the batch commits.</param>
+    /// <param name="cancellationToken">A token observed while preparing mutations and before commit.</param>
+    Task ApplyBatchAsync(
+        IReadOnlyCollection<SearchIndexMutation> mutations,
+        long sourceRevision,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Replaces the complete index contents with a validated, reconstructible document set.
     /// </summary>
     /// <param name="documents">The authoritative documents from which to rebuild the index.</param>
     /// <param name="cancellationToken">A token observed while preparing documents and before commit.</param>
     Task RebuildAsync(IEnumerable<SearchDocument> documents, CancellationToken cancellationToken = default);
+
+    /// <summary>Rebuilds the complete index and commits the exact authoritative source revision.</summary>
+    Task RebuildAsync(
+        IEnumerable<SearchDocument> documents,
+        long sourceRevision,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Executes a programmatically constructed, ranked query against the latest committed index.

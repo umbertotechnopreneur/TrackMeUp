@@ -7,6 +7,29 @@ namespace TrackMeUp.Search.Tests;
 public sealed class LocalSearchServiceTests
 {
     [Fact]
+    public async Task ApplyBatchAsync_AppliesOrderedUpsertsAndDeletes()
+    {
+        await using var harness = new SearchHarness();
+        await harness.Service.RebuildAsync(
+        [
+            CreateDocument("replace-me") with { Context = "old context" },
+            CreateDocument("delete-me") with { Context = "obsolete context" }
+        ]);
+
+        await harness.Service.ApplyBatchAsync(
+        [
+            SearchIndexMutation.Upsert(CreateDocument("replace-me") with { Context = "new context" }),
+            SearchIndexMutation.Delete("delete-me")
+        ], 7);
+
+        var replacement = await harness.Service.SearchAsync(new SearchRequest { Text = "new context", QueryLanguage = "en" });
+        var deleted = await harness.Service.SearchAsync(new SearchRequest { Text = "obsolete context", QueryLanguage = "en" });
+        Assert.Equal("replace-me", Assert.Single(replacement.Hits).Document.Id);
+        Assert.Empty(deleted.Hits);
+        Assert.Equal(7, harness.Service.CommittedSourceRevision);
+    }
+
+    [Fact]
     public void IndexSchema_IsVersionedForTheExpandedLanguageAnalyzerContract()
     {
         Assert.Equal(2, LocalSearchService.IndexSchemaVersion);

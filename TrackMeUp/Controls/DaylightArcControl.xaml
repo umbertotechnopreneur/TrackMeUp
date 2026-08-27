@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.DaylightArcControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid
+        x:Name="ArcRoot"
+        Height="92"
+        AutomationProperties.AccessibilityView="Raw"
+        IsHitTestVisible="False"
+        SizeChanged="ArcRoot_SizeChanged">
+        <Path
+            x:Name="FullArc"
+            Stroke="#443E4552"
+            StrokeDashArray="1,2.2"
+            StrokeEndLineCap="Round"
+            StrokeStartLineCap="Round"
+            StrokeThickness="6" />
+        <Path
+            x:Name="DayArc"
+            StrokeEndLineCap="Round"
+            StrokeStartLineCap="Round"
+            StrokeThickness="7">
+            <Path.Stroke>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#FF716ADF" Offset="0" />
+                    <GradientStop Color="#FFFF8B69" Offset="0.62" />
+                    <GradientStop Color="#FFFFB35A" Offset="1" />
+                </LinearGradientBrush>
+            </Path.Stroke>
+        </Path>
+        <Canvas>
+            <Ellipse
+                x:Name="CurrentMarkerGlow"
+                Width="18"
+                Height="18"
+                Fill="#35FF8C69" />
+            <Ellipse
+                x:Name="CurrentMarker"
+                Width="10"
+                Height="10"
+                Fill="#FFFF8B69"
+                Stroke="#FFFFC1AE"
+                StrokeThickness="1" />
+        </Canvas>
+        <Grid Margin="0,0,0,1" VerticalAlignment="Bottom">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock HorizontalAlignment="Left" FontSize="9" Foreground="#B8FFFFFF" Text="0" />
+            <TextBlock Grid.Column="1" HorizontalAlignment="Center" FontSize="9" Foreground="#A8FFFFFF" Text="6" />
+            <TextBlock Grid.Column="2" HorizontalAlignment="Center" FontSize="9" Foreground="#D8FFFFFF" Text="12" />
+            <TextBlock Grid.Column="3" HorizontalAlignment="Center" FontSize="9" Foreground="#A8FFFFFF" Text="18" />
+            <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="9" Foreground="#B8FFFFFF" Text="24" />
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import AccessibleDataTable from './components/AccessibleDataTable.vue'
 import AiUsageCard from './components/AiUsageCard.vue'
-import ApplicationBars from './components/ApplicationBars.vue'
-import CalendarHeatmap from './components/CalendarHeatmap.vue'
 import CoverageNotice from './components/CoverageNotice.vue'
-import HourOfWeekHeatmap from './components/HourOfWeekHeatmap.vue'
 import KpiStrip from './components/KpiStrip.vue'
-import TrendChart from './components/TrendChart.vue'
 import { reportIcons } from './icons'
 import {
   formatRange,
@@ -24,6 +20,13 @@ import {
 import { reportLanguage, reportLocale, setReportLanguage, tr } from './localization'
 
 type LoadState = 'waiting' | 'ready' | 'error'
+
+// Only one report view is visible at a time. Keep ECharts and each chart implementation out
+// of the startup chunk, while preserving deterministic relative/offline asset loading.
+const ApplicationBars = defineAsyncComponent(() => import('./components/ApplicationBars.vue'))
+const CalendarHeatmap = defineAsyncComponent(() => import('./components/CalendarHeatmap.vue'))
+const HourOfWeekHeatmap = defineAsyncComponent(() => import('./components/HourOfWeekHeatmap.vue'))
+const TrendChart = defineAsyncComponent(() => import('./components/TrendChart.vue'))
 
 const envelope = shallowRef<ReportEnvelope>()
 const loadState = shallowRef<LoadState>('waiting')

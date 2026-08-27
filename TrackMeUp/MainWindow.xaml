@@ -17,8 +17,25 @@
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="WorldClockRailColumn" Width="278" />
+            <ColumnDefinition Width="470" />
+        </Grid.ColumnDefinitions>
+        <controls:WorldClockRailControl
+            x:Name="WorldClockRail"
+            Grid.RowSpan="2"
+            Grid.Column="0" />
+        <Border
+            Grid.RowSpan="2"
+            Grid.Column="1"
+            Background="{ThemeResource MainWindowSurfaceBrush}"
+            BorderBrush="#24FFFFFF"
+            BorderThickness="1"
+            CornerRadius="14"
+            IsHitTestVisible="False" />
         <Grid
             x:Name="DragRegion"
+            Grid.Column="1"
             Height="48"
             Loaded="DragRegion_Loaded"
             SizeChanged="DragRegion_SizeChanged">
@@ -159,6 +176,7 @@
         <Border
             x:Name="PlayerPanel"
             Grid.Row="1"
+            Grid.Column="1"
             Margin="12,4,12,8"
             Padding="16,8,16,10"
             Background="Transparent">
@@ -1040,6 +1058,7 @@
         <Border
             x:Name="OptionsPanel"
             Grid.Row="1"
+            Grid.Column="1"
             Margin="12"
             Padding="16"
             Background="Transparent"
@@ -1050,6 +1069,7 @@
         <Border
             x:Name="OperationsPanel"
             Grid.Row="1"
+            Grid.Column="1"
             Margin="12"
             Padding="16"
             Background="Transparent"
@@ -1060,6 +1080,7 @@
         <controls:TimedInfoBar
             x:Name="MainNotificationBanner"
             Grid.Row="1"
+            Grid.Column="1"
             Margin="16,10,16,0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
@@ -1068,6 +1089,7 @@
         <Border
             x:Name="TrackingStatusToast"
             Grid.Row="1"
+            Grid.Column="1"
             Margin="0,18,18,0"
             Padding="10,8"
             HorizontalAlignment="Right"

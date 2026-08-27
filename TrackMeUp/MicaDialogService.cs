@@ -246,6 +246,34 @@ internal sealed class MicaDialogService
         });
     }
 
+    /// <summary>Shows the searchable world-clock catalog and returns one selected city identifier.</summary>
+    internal async Task<string?> ShowWorldClockCityPickerAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        IReadOnlyList<WorldClockCitySummary> cities,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(cities);
+        ArgumentNullException.ThrowIfNull(strings);
+        return await RunModalSessionAsync<string?>(owner, null, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new WorldClockCityPickerDialogWindow(
+                application,
+                cities,
+                theme,
+                strings,
+                ownerAppWindow,
+                ownerHandle);
+            return await ShowDialogWindowAsync(
+                dialog,
+                dialog.WindowHandle,
+                dialog.ShowAsync,
+                dialog.DisposePlacement);
+        });
+    }
+
     /// <summary>Shows the non-dismissible screenshot-storage migration progress surface.</summary>
     internal async Task<OperationResult<ScreenshotStorageMigrationResult>> ShowScreenshotStorageMigrationAsync(
         ITrackMeUpApplication application,

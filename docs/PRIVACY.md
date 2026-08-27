@@ -13,6 +13,7 @@ TrackMeUp is an internal tool that we use to make workdays easier to understand 
 - When AI analysis is enabled, scheduled snapshots are analyzed immediately after capture. A manual player snapshot waits through its 30-second deletion window; deleting it prevents the AI request, while an undeleted capture is analyzed once the window expires.
 - The OpenAI key is read from the Windows environment on this PC and is not copied into TrackMeUp storage.
 - There is no TrackMeUp cloud service or hidden analytics account.
+- World-clock time, sun, moon, and lunar-phase data are calculated locally from a bundled city catalog; the player makes no weather or astronomy request.
 - Sentry is optional. It sends diagnostics only when an operator explicitly configures a Sentry DSN.
 - The source code and the direct dependency list are public and inspectable.
 
@@ -29,6 +30,7 @@ TrackMeUp is an internal tool that we use to make workdays easier to understand 
 | AI request usage | Created for local cost and troubleshooting | Local SQLite history | Retention controls; it excludes prompts, images, headers, and keys |
 | Device measurements | Used for local reports and optional AI context | Local records and, only when AI is enabled, the selected provider request | Disable AI; location is a separate opt-in |
 | Windows location | Off | Only the selected AI request when enabled | Windows permission plus TrackMeUp setting |
+| Selected world-clock city IDs | Four initial cities | Local settings JSON only | Add or remove clocks in the player; maximum four |
 | Diagnostic logs | Local logging is enabled for troubleshooting | `%LOCALAPPDATA%\TrackMeUp\logs` | Use the local log directory setting; delete local logs normally |
 | Portable data archive | Created only on explicit export | The `.tmuarchive` path selected by the user | Preview the destination and keep or delete the file normally |
 
@@ -124,11 +126,15 @@ The default local retention period is 30 days for activity data and 30 days for 
 
 Start from these files:
 
-- `TrackMeUp/Services/OpenAiAnalysisService.cs` — AI and screenshot gates, cleanup, and local result persistence.
-- `TrackMeUp/Services/LocalStore.cs` — environment-variable key lookup and local storage access.
+- `TrackMeUp.Core/Infrastructure/Services/OpenAiAnalysisService.cs` — AI and screenshot gates, cleanup, and local result persistence.
+- `TrackMeUp.Core/Infrastructure/Services/LocalStore.cs` — environment-variable key lookup and local storage access.
 - `TrackMeUp/Runtime/LoggingBootstrapper.cs` — Serilog and optional Sentry configuration.
 - `TrackMeUp.Core/Application/ObservabilityConfiguration.cs` — optional Sentry environment configuration.
 - `TrackMeUp.Core/Application/SettingsCatalog.cs` — provider endpoints and user-facing settings.
 - `TrackMeUp/TrackMeUp.csproj`, `TrackMeUp.Core/TrackMeUp.Core.csproj`, `TrackMeUp.Cli/TrackMeUp.Cli.csproj`, and `TrackMeUp.Reports.Web/package.json` — direct dependency inventory.
 
-The repository is open under the [MIT license](../LICENSE), so these claims can be checked against the code rather than taken on trust.
+The repository source is publicly inspectable under the
+[TrackMeUp Source-Available License 1.0](../LICENSE), so these claims can be
+checked against the code rather than taken on trust. TrackMeUp itself is not
+licensed as open source; third-party components retain the separate terms
+recorded in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).

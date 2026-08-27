@@ -87,6 +87,26 @@ public sealed record SearchDocument
     public string? AiDescription { get; init; }
 }
 
+/// <summary>Describes one stable-document mutation in an atomic local index batch.</summary>
+public sealed record SearchIndexMutation
+{
+    /// <summary>Gets the stable identifier to update or delete.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>Gets the replacement document, or <see langword="null"/> to delete the identifier.</summary>
+    public SearchDocument? Document { get; init; }
+
+    /// <summary>Creates an upsert mutation for a complete validated document.</summary>
+    public static SearchIndexMutation Upsert(SearchDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return new SearchIndexMutation { Id = document.Id, Document = document };
+    }
+
+    /// <summary>Creates a delete mutation for a stable identifier.</summary>
+    public static SearchIndexMutation Delete(string id) => new() { Id = id };
+}
+
 /// <summary>
 /// Describes one configurable group of equivalent search expressions.
 /// </summary>

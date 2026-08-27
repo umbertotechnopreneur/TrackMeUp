@@ -2,18 +2,6 @@ import { createApp, watch } from 'vue'
 import { createVuetify } from 'vuetify'
 import { mdi } from 'vuetify/iconsets/mdi-svg'
 import { de, en, es, fr, it, ko, pt, vi, zhHans } from 'vuetify/locale'
-import { use } from 'echarts/core'
-import { BarChart, HeatmapChart } from 'echarts/charts'
-import {
-  AriaComponent,
-  CalendarComponent,
-  DataZoomComponent,
-  GridComponent,
-  LegendComponent,
-  TooltipComponent,
-  VisualMapComponent,
-} from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
 import 'vuetify/styles'
 import App from './App.vue'
 import './styles.css'
@@ -23,19 +11,6 @@ import {
   themePreference,
 } from './themePreference'
 import { reportLanguage } from './localization'
-
-use([
-  AriaComponent,
-  BarChart,
-  CalendarComponent,
-  CanvasRenderer,
-  DataZoomComponent,
-  GridComponent,
-  HeatmapChart,
-  LegendComponent,
-  TooltipComponent,
-  VisualMapComponent,
-])
 
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)')
 const vuetifyMessages = {
