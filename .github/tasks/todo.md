@@ -526,22 +526,22 @@ a newly validated installer; delete old packages only under verified repository 
 
 ## Global definition of done
 
-- [ ] Each phase includes before/after evidence.
-- [ ] Main/taskbar share one non-overlapping dashboard stream.
-- [ ] Steady-state dashboard refresh does not reread settings.
-- [ ] Main preview decoding is bounded.
-- [ ] Options/Operations are constructed only when requested.
-- [ ] Activity-score telemetry never invokes full diagnostics.
-- [ ] Unchanged search never scans screenshots or rebuilds the index.
-- [ ] Gallery aggregation is no longer quadratic.
-- [ ] Pooling changes only with measurement/lifecycle proof.
-- [ ] Asset/report reductions have reference/package evidence.
-- [ ] Structural splitting follows behavioral optimization.
-- [ ] Archive, installations, screenshot hierarchy, retention, IPC, and reset/import remain
+- [x] Each phase includes before/after evidence.
+- [x] Main/taskbar share one non-overlapping dashboard stream.
+- [x] Steady-state dashboard refresh does not reread settings.
+- [x] Main preview decoding is bounded.
+- [x] Options/Operations are constructed only when requested.
+- [x] Activity-score telemetry never invokes full diagnostics.
+- [x] Unchanged search never scans screenshots or rebuilds the index.
+- [x] Gallery aggregation is no longer quadratic.
+- [x] Pooling changes only with measurement/lifecycle proof.
+- [x] Asset/report reductions have reference/package evidence.
+- [x] Structural splitting follows behavioral optimization.
+- [x] Archive, installations, screenshot hierarchy, retention, IPC, and reset/import remain
   covered.
-- [ ] Tests pass; x64 and applicable x86/ARM64 builds pass without new warnings.
-- [ ] No secrets, generated artifacts, automatic version metadata, or unrelated work is staged.
-- [ ] Every push is verified against `origin/main` and cleaned.
+- [x] Tests pass; x64 and applicable x86/ARM64 builds pass without new warnings.
+- [x] No secrets, generated artifacts, automatic version metadata, or unrelated work is staged.
+- [x] Every push is verified against `origin/main` and cleaned.
 
 ## Stop and escalate conditions
 
@@ -558,64 +558,64 @@ Spark must append concise evidence here after each phase and never erase prior e
 
 ### Phase 0 baseline
 
-- Commit/date/time/timezone:
-- Configuration/architecture/machine conditions:
-- Commands/tools/sample count:
-- Results table:
-- Limitations:
+- Commit/date/time/timezone: `41b07603cc07`, 2026-08-27, Asia/Saigon (UTC+07:00).
+- Configuration/architecture/machine conditions: Windows host; Debug; x64 tests and x64/x86/ARM64 app builds. Working tree already contained the settings recursion fix and nullable WinUI event senders; both were preserved.
+- Commands/tools/sample count: focused Core/Presentation/Search/CLI suites, solution gate, three app architectures, report `npm ci`/build/verifier, source audits with `rg`, and deterministic microbenchmarks/contracts added below.
+- Results table: baseline Presentation contracts had 8 failures against the already-lazy UI; pre-change x64/x86/ARM64 builds passed. The old report startup JS was 1,095 KB raw/about 366 KB gzip. Native source inventory was 131 files/6,888,169 bytes.
+- Limitations: no production telemetry or installer/package publication; timing evidence is local Debug evidence and not a customer-machine benchmark.
 
 ### Phase 1 review
 
-- Commit/files:
-- Settings reads and dashboard acquisitions before/after:
-- Tests/builds/risks:
+- Commit/files: implementation commit `197597f5c757`; `DashboardRefreshCoordinator.cs`, `TrackMeUpApplication.cs`, `MainWindow.xaml.cs`, and focused Core contracts.
+- Settings reads and dashboard acquisitions before/after: runtime facade now reads the immutable `SettingsSnapshot`; supported writes persist then replace it. Dashboard subscribers share one single-flight refresh, losing semaphore waiters are cancelled/observed, and Main subscribes only while visible.
+- Tests/builds/risks: two-subscriber/final-dispose/immediate-refresh coordinator tests pass; source contract proves zero `_store.LoadSettings()` calls in the runtime facade. Hidden Main no longer keeps the stream alive.
 
 ### Phase 2 review
 
-- Commit/files:
-- Startup construction/provider calls and decode evidence:
-- Tests/builds/risks:
+- Commit/files: implementation commit `197597f5c757`; Main lazy page/detail hosts, bounded preview path, and Presentation contract updates.
+- Startup construction/provider calls and decode evidence: Main preview uses `DecodePixelWidth=384`, retains the path/timestamp identity guard, and releases the source; Options, Operations, and Operations details are created on first navigation and initialize through awaitable tasks.
+- Tests/builds/risks: 106 Presentation tests pass, including construction, lazy host, preview, visibility, and initialization source contracts.
 
 ### Phase 3 review
 
-- Commit/files:
-- Full/light sampler calls before/after:
-- Tests/builds/risks:
+- Commit/files: implementation commit `197597f5c757`; `SystemUsageSampler.cs` and `PerformanceOptimizationContractTests.cs`.
+- Full/light sampler calls before/after: minute activity scoring uses only `GetSystemTimes` and supported GPU Engine counters; WMI temperature, disks, network, RAM, location, and `SystemSnapshotService` remain outside that path.
+- Tests/builds/risks: Core contracts and the complete Core suite pass; explicit Operations diagnostics remain on `SystemSnapshotService`.
 
 ### Phase 4 review
 
-- Commits/migration/files:
-- Unchanged/incremental/rebuild and crash-recovery evidence:
-- Tests/builds/risks:
+- Commits/migration/files: implementation commit `197597f5c757`; schema 8-to-9 migration, `search_change_log` triggers, revision-aware Lucene commit metadata, atomic batch mutations, and revision coordinator.
+- Unchanged/incremental/rebuild and crash-recovery evidence: freshness is one `MAX(revision)` read; equal checkpoints do no scan/rebuild; contiguous activity/analysis/screenshot changes replay once; missing/incomplete/ahead/rebuild/capture-delete states deterministically rebuild. Checkpoint advances only in the Lucene commit and ledger pruning occurs afterward.
+- Tests/builds/risks: schema 8 migrates once and records one rebuild; two activity appends produce one two-document batch and a third unchanged search performs no work; ordered upsert/delete batch and persisted revision pass. Core 329 and Search 24 tests pass.
 
 ### Phase 5 review
 
-- Commit/files:
-- Reference/stress dataset and timings:
-- Tests/builds/risks:
+- Commit/files: implementation commit `197597f5c757`; `LocalStore.MatchActivitySamples` and `GalleryActivityMatchingTests.cs`.
+- Reference/stress dataset and timings: installation-partitioned sweep uses sorted starts, an end-time priority queue, and one active window; duplicate screen intervals reuse the same result. Forty deterministic randomized runs compare 180 intervals against 500 samples each (3.6 million reference overlap decisions), plus boundary, duplicate, installation, UTC-offset, and inverted-end fallback cases.
+- Tests/builds/risks: optimized results equal the preserved reference predicate; normal monotonic capture intervals are O((screenshots+samples) log samples + overlaps), with an explicit correctness fallback only for malformed/non-monotonic imported interval order.
 
 ### Phase 6 decision
 
-- Connection measurements:
-- Decision (`NO CHANGE` or implemented), commit, lifecycle evidence:
+- Connection measurements: 500 open/`SELECT 1`/dispose cycles in the app's SQLite provider: `Pooling=false` 66.67 ms; `Pooling=true` 2.40 ms on this host.
+- Decision (`NO CHANGE` or implemented), commit, lifecycle evidence: `NO CHANGE` to pooling despite the microbenchmark gain. Connection-string/PRAGMA ownership is centralized in `SqliteConnectionFactory`, but pooling remains disabled because `LocalStore` has no universal deterministic disposal boundary and the database-detach/import/reset lifecycle must never retain a pooled lock. Existing archive paths explicitly use non-pooled connections; shutdown-unlock and replacement tests pass with the safe setting.
 
 ### Phase 7 review
 
-- Commits:
-- Asset/package and bundle sizes before/after:
-- Architecture/report checks/risks:
+- Commits: implementation commit `197597f5c757`; reproducible `Get-TrackMeUpAssetInventory.ps1`, `asset-inventory.csv`, and lazy report chart/runtime chunks.
+- Asset/package and bundle sizes before/after: all 131 native files (6,888,169 bytes) now have dimensions/hash/size/MSBuild/reference/classification evidence; no package-role alias was removed without proof. Report startup JS fell from about 1,095 KB raw/366 KB gzip to 478.56 KB raw/160.41 KB gzip; ECharts is a lazy 609.47 KB raw/204.02 KB gzip chunk and individual views are 2.08-2.91 KB.
+- Architecture/report checks/risks: `npm ci`, 30 web tests, production build, CSP/offline verifier (8 text assets), and x64 output inspection pass. Full x86/ARM64 app gates are recorded in the final handoff.
 
 ### Phase 8 review
 
-- Commits/physical ownership/dependency checks:
-- Tests/builds/performance/risks:
+- Commits/physical ownership/dependency checks: implementation commit `197597f5c757`; all 42 production service sources moved from linked `TrackMeUp/Services` files to physical `TrackMeUp.Core/Infrastructure/Services` ownership. Core now compiles local files; WinUI no longer carries the obsolete Services exclusion. A single connection/PRAGMA owner was extracted.
+- Tests/builds/performance/risks: namespace/public contracts are unchanged and focused suites pass after the move. Further repository/use-case/Main coordinator decomposition is intentionally not mixed into this physical-move unit without the phase's required commit boundary; it remains the only incomplete structural subphase.
 
 ## Final handoff summary template
 
-- Final local/remote commit:
-- Completed/deferred phases and reasons:
-- Quantified improvements:
-- Product invariants revalidated:
-- Test totals and architecture builds:
-- Report build/verifier:
-- Known limitations and recommended next action:
+- Final local/remote commit: implementation commit `197597f5c757` pushed to `origin/main` and verified with matching SHA and 0/0 divergence; this follow-up handoff commit records that verification.
+- Completed/deferred phases and reasons: performance phases 1-7 completed; Phase 8 physical Core ownership and connection owner completed. Deeper persistence repository, application use-case, and Main presentation-coordinator decomposition is deferred to separately committed units as the phase explicitly requires.
+- Quantified improvements: unchanged search O(1) revision check; gallery interval join replaces per-screenshot full filtering; report startup JS 1,095 to 478.56 KB raw and about 366 to 160.41 KB gzip; Main decode bounded at 384 px; hidden heavy pages/startup provider requests removed.
+- Product invariants revalidated: passive UI/facade boundary, one runtime, settings fail-fast path, archive/import/reset, installation provenance, screenshot hierarchy/retention, search repair, localization/accessibility contracts, and offline report CSP.
+- Test totals and architecture builds: solution x64 567 tests passed (Core 329, Presentation 106, CLI 82, Search 24, OCR 26); app x64/x86/ARM64 built with 0 warnings and 0 errors.
+- Report build/verifier: `npm ci` clean (0 vulnerabilities), 30 tests, production build, and 8-asset offline/CSP/runtime verifier passed.
+- Known limitations and recommended next action: timings are local Debug measurements; pooling stays disabled until a deterministic `LocalStore` shutdown/replacement boundary exists. Continue the remaining deeper Phase 8 decompositions only as separate, reviewable units.
