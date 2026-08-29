@@ -11,9 +11,10 @@ using Xunit;
 
 namespace TrackMeUp.Core.Tests;
 
+[Collection(ProcessEnvironmentCollection.Name)]
 public sealed class ScheduledSnapshotStateTests
 {
-    private const string TestApiKeyVariable = "TRACKMEUP_SCHEDULED_OPENAI_APIKEY";
+    private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
 
     [Fact]
     public async Task EmptyActiveHours_DisableCountdownUntilAWorkingPeriodIsConfigured()

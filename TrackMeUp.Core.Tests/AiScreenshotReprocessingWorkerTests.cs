@@ -12,6 +12,7 @@ using Xunit;
 
 namespace TrackMeUp.Core.Tests;
 
+[Collection(ProcessEnvironmentCollection.Name)]
 public sealed class AiScreenshotReprocessingWorkerTests
 {
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";

@@ -9,6 +9,7 @@ using Xunit;
 
 namespace TrackMeUp.Core.Tests;
 
+[Collection(ProcessEnvironmentCollection.Name)]
 public sealed class AiEnablementGuardTests
 {
     private const string TestKeyVariable = "OPENAI_API_KEY";

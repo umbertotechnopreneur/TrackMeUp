@@ -10,6 +10,7 @@ using Xunit;
 
 namespace TrackMeUp.Core.Tests;
 
+[Collection(ProcessEnvironmentCollection.Name)]
 public sealed class ScreenshotDeletionTests
 {
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
