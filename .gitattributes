@@ -1,0 +1,2 @@
+# Keep the tracked reports source and generated distribution byte-stable across Windows runners.
+TrackMeUp.Reports.Web/** text eol=lf
