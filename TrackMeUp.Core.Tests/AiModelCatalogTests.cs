@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using TrackMeUp.Application;
 using Xunit;
 
@@ -104,12 +105,12 @@ public sealed class AiModelCatalogTests
     [Fact]
     public void Read_RejectsMissingImageInputCapability()
     {
-        var json = CatalogWithSingleModel().Replace(
-            "  \"supportsImageInput\": true,\n",
-            string.Empty,
-            StringComparison.Ordinal);
+        var catalog = Assert.IsType<JsonObject>(JsonNode.Parse(CatalogWithSingleModel()));
+        var models = Assert.IsType<JsonArray>(catalog["aiModelCatalog"]?["models"]);
+        var model = Assert.IsType<JsonObject>(Assert.Single(models));
+        Assert.True(model.Remove("supportsImageInput"));
 
-        var error = Assert.Throws<InvalidDataException>(() => Read(json));
+        var error = Assert.Throws<InvalidDataException>(() => Read(catalog.ToJsonString()));
 
         Assert.Contains("supportsImageInput", error.Message, StringComparison.Ordinal);
     }

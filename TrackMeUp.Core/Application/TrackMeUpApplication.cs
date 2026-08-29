@@ -192,7 +192,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         AtomicResetService? atomicResetService = null,
         SettingsSnapshot? settingsSnapshot = null,
         ISystemUsageSampler? usageSampler = null,
-        WorldClockService? worldClockService = null)
+        WorldClockService? worldClockService = null,
+        bool startScheduledSnapshotTimer = true)
     {
         _store = store;
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
@@ -236,7 +237,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
         _tracking.TrackingStateChanged += OnTrackingStateChanged;
         ConfigureScheduledSnapshots(_settingsSnapshot.Value, restartCountdown: true);
-        _scheduledSnapshotTimer = new Timer(HandleScheduledSnapshotTimerTick, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        var timerCadence = startScheduledSnapshotTimer
+            ? TimeSpan.FromSeconds(1)
+            : Timeout.InfiniteTimeSpan;
+        _scheduledSnapshotTimer = new Timer(
+            HandleScheduledSnapshotTimerTick,
+            state: null,
+            dueTime: timerCadence,
+            period: timerCadence);
         _logger.LogInformation("Application facade initialized.");
     }
 

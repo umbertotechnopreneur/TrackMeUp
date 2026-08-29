@@ -19,6 +19,7 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
     private readonly Func<AppSettings, AnalysisCostGate> _buildCostGate;
     private readonly Func<AppSettings, string, AnalysisContextSnapshot, bool> _isPrivate;
     private readonly Func<string, string> _canonicalizeModel;
+    private readonly Func<Task>? _beforeWorkerHandoff;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _visualAnalysisGate = new(1, 1);
     private readonly CancellationTokenSource _shutdown = new();
@@ -29,6 +30,7 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
     private readonly ConcurrentDictionary<Guid, AiScreenshotReprocessJobSnapshot> _snapshots = new();
     private readonly ConcurrentDictionary<Guid, AiScreenshotReprocessCurrentItem> _currentItems = new();
     private Task? _workerTask;
+    private Guid? _pendingWorkerJobId;
     private TaskCompletionSource<bool>? _priorityOperationsDrained;
     private int _activePriorityOperations;
     private int _priorityVisualWaiters;
@@ -41,7 +43,8 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
         Func<AppSettings, AnalysisCostGate> buildCostGate,
         Func<AppSettings, string, AnalysisContextSnapshot, bool> isPrivate,
         Func<string, string>? canonicalizeModel = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        Func<Task>? beforeWorkerHandoff = null)
     {
         _store = store;
         _analysis = analysis;
@@ -50,6 +53,7 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
         _isPrivate = isPrivate;
         _canonicalizeModel = canonicalizeModel ?? (model => model.Trim());
         _logger = logger ?? NullLogger.Instance;
+        _beforeWorkerHandoff = beforeWorkerHandoff;
 
         var active = _store.LoadActiveAiReprocessJob();
         if (active is not null)
@@ -285,90 +289,96 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
         Guid jobId,
         CancellationToken cancellationToken)
     {
-        ThrowIfDisposed();
-        cancellationToken.ThrowIfCancellationRequested();
-        AiScreenshotReprocessJobSnapshot? snapshot;
-        lock (_stateGate)
+        lock (_lifecycleGate)
         {
-            var job = _store.LoadAiReprocessJob(jobId);
-            if (job is null)
+            ThrowIfDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
+            AiScreenshotReprocessJobSnapshot? snapshot;
+            lock (_stateGate)
             {
-                return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
-                    "ai.screenshot_reprocess.job.not_found",
-                    "AiScreenshotReprocessJobNotFound"));
+                var job = _store.LoadAiReprocessJob(jobId);
+                if (job is null)
+                {
+                    return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
+                        "ai.screenshot_reprocess.job.not_found",
+                        "AiScreenshotReprocessJobNotFound"));
+                }
+
+                if (job.State == AiScreenshotReprocessJobStatuses.Running)
+                {
+                    _store.TransitionAiReprocessJob(
+                        jobId,
+                        AiScreenshotReprocessJobStatuses.PauseRequested,
+                        "user",
+                        DateTimeOffset.UtcNow);
+                }
+
+                snapshot = RefreshSnapshot(jobId);
             }
 
-            if (job.State == AiScreenshotReprocessJobStatuses.Running)
-            {
-                _store.TransitionAiReprocessJob(
-                    jobId,
-                    AiScreenshotReprocessJobStatuses.PauseRequested,
-                    "user",
-                    DateTimeOffset.UtcNow);
-            }
-
-            snapshot = RefreshSnapshot(jobId);
+            return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Success(
+                "ai.screenshot_reprocess.pause.requested",
+                "AiScreenshotReprocessPauseRequested",
+                snapshot!));
         }
-
-        return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Success(
-            "ai.screenshot_reprocess.pause.requested",
-            "AiScreenshotReprocessPauseRequested",
-            snapshot!));
     }
 
     internal Task<OperationResult<AiScreenshotReprocessJobSnapshot>> ResumeAsync(
         Guid jobId,
         CancellationToken cancellationToken)
     {
-        ThrowIfDisposed();
-        cancellationToken.ThrowIfCancellationRequested();
-        AiScreenshotReprocessJobSnapshot? snapshot;
-        lock (_stateGate)
+        lock (_lifecycleGate)
         {
-            var job = _store.LoadAiReprocessJob(jobId);
-            if (job is null)
+            ThrowIfDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
+            AiScreenshotReprocessJobSnapshot? snapshot;
+            lock (_stateGate)
             {
-                return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
-                    "ai.screenshot_reprocess.job.not_found",
-                    "AiScreenshotReprocessJobNotFound"));
+                var job = _store.LoadAiReprocessJob(jobId);
+                if (job is null)
+                {
+                    return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
+                        "ai.screenshot_reprocess.job.not_found",
+                        "AiScreenshotReprocessJobNotFound"));
+                }
+
+                if (job.State is not (AiScreenshotReprocessJobStatuses.PausedByUser or AiScreenshotReprocessJobStatuses.PausedDailyQuota))
+                {
+                    return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
+                        "ai.screenshot_reprocess.resume.invalid_state",
+                        "AiScreenshotReprocessResumeInvalidState"));
+                }
+
+                var settings = _store.LoadSettings();
+                if (!string.Equals(job.ConfigurationFingerprint, ConfigurationFingerprint(settings), StringComparison.Ordinal)
+                    || !_canAnalyzeImages(settings))
+                {
+                    return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
+                        "ai.screenshot_reprocess.configuration.changed",
+                        "AiScreenshotReprocessConfigurationChanged"));
+                }
+
+                if (!_buildCostGate(settings).Allowed)
+                {
+                    return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
+                        "ai.screenshot_reprocess.daily_quota",
+                        "AiScreenshotReprocessDailyQuota"));
+                }
+
+                _store.TransitionAiReprocessJob(
+                    jobId,
+                    AiScreenshotReprocessJobStatuses.Running,
+                    null,
+                    DateTimeOffset.UtcNow);
+                snapshot = RefreshSnapshot(jobId);
+                EnsureWorkerScheduled(jobId);
             }
 
-            if (job.State is not (AiScreenshotReprocessJobStatuses.PausedByUser or AiScreenshotReprocessJobStatuses.PausedDailyQuota))
-            {
-                return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
-                    "ai.screenshot_reprocess.resume.invalid_state",
-                    "AiScreenshotReprocessResumeInvalidState"));
-            }
-
-            var settings = _store.LoadSettings();
-            if (!string.Equals(job.ConfigurationFingerprint, ConfigurationFingerprint(settings), StringComparison.Ordinal)
-                || !_canAnalyzeImages(settings))
-            {
-                return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
-                    "ai.screenshot_reprocess.configuration.changed",
-                    "AiScreenshotReprocessConfigurationChanged"));
-            }
-
-            if (!_buildCostGate(settings).Allowed)
-            {
-                return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Failure(
-                    "ai.screenshot_reprocess.daily_quota",
-                    "AiScreenshotReprocessDailyQuota"));
-            }
-
-            _store.TransitionAiReprocessJob(
-                jobId,
-                AiScreenshotReprocessJobStatuses.Running,
-                null,
-                DateTimeOffset.UtcNow);
-            snapshot = RefreshSnapshot(jobId);
-            EnsureWorkerScheduled(jobId);
+            return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Success(
+                "ai.screenshot_reprocess.resumed",
+                "AiScreenshotReprocessResumed",
+                snapshot!));
         }
-
-        return Task.FromResult(OperationResult<AiScreenshotReprocessJobSnapshot>.Success(
-            "ai.screenshot_reprocess.resumed",
-            "AiScreenshotReprocessResumed",
-            snapshot!));
     }
 
     internal Task<T> RunLiveAnalysisAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken) =>
@@ -484,16 +494,83 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
     {
         lock (_workerGate)
         {
+            if (_shutdown.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _pendingWorkerJobId = jobId;
             if (_workerTask is { IsCompleted: false })
             {
                 return;
             }
 
-            _workerTask = Task.Run(() => RunWorkerAsync(jobId, _shutdown.Token));
+            var shutdownToken = _shutdown.Token;
+            _workerTask = Task.Run(() => RunWorkerAsync(shutdownToken));
         }
     }
 
-    private async Task RunWorkerAsync(Guid jobId, CancellationToken shutdownToken)
+    private async Task RunWorkerAsync(CancellationToken shutdownToken)
+    {
+        Guid jobId;
+        lock (_workerGate)
+        {
+            if (shutdownToken.IsCancellationRequested || _pendingWorkerJobId is not { } pendingJobId)
+            {
+                _pendingWorkerJobId = null;
+                _workerTask = null;
+                return;
+            }
+
+            jobId = pendingJobId;
+            _pendingWorkerJobId = null;
+        }
+
+        while (true)
+        {
+            await RunWorkerPassAsync(jobId, shutdownToken).ConfigureAwait(false);
+            var continueCurrentJob = false;
+            if (!shutdownToken.IsCancellationRequested)
+            {
+                // This durable check remains inside the task owned by DisposeAsync. The handoff
+                // below then atomically consumes any Start/Resume request that raced with it.
+                continueCurrentJob = _store.LoadAiReprocessJob(jobId)?.State == AiScreenshotReprocessJobStatuses.Running;
+                if (_beforeWorkerHandoff is not null)
+                {
+                    await _beforeWorkerHandoff().ConfigureAwait(false);
+                }
+            }
+
+            lock (_workerGate)
+            {
+                if (shutdownToken.IsCancellationRequested)
+                {
+                    _pendingWorkerJobId = null;
+                    _workerTask = null;
+                    return;
+                }
+
+                if (_pendingWorkerJobId is { } pendingJobId)
+                {
+                    jobId = pendingJobId;
+                    _pendingWorkerJobId = null;
+                    continue;
+                }
+
+                if (continueCurrentJob)
+                {
+                    continue;
+                }
+
+                // Publish inactivity only after the final store access, under the same lock used
+                // by EnsureWorkerScheduled, so a concurrent request either hands off or starts a task.
+                _workerTask = null;
+                return;
+            }
+        }
+    }
+
+    private async Task RunWorkerPassAsync(Guid jobId, CancellationToken shutdownToken)
     {
         try
         {
@@ -570,18 +647,6 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
                         DateTimeOffset.UtcNow);
                     RefreshSnapshot(jobId);
                 }
-            }
-        }
-        finally
-        {
-            lock (_workerGate)
-            {
-                _workerTask = null;
-            }
-
-            if (!shutdownToken.IsCancellationRequested && _store.LoadAiReprocessJob(jobId)?.State == AiScreenshotReprocessJobStatuses.Running)
-            {
-                EnsureWorkerScheduled(jobId);
             }
         }
     }

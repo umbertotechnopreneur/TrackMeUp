@@ -131,7 +131,10 @@ public sealed class ScheduledSnapshotStateTests
                 new SystemSnapshotService(),
                 analysis,
                 new StartupService(),
-                new BuildInformationService());
+                new BuildInformationService(),
+                // This test drives the due processor directly, so disarm the background callback that could
+                // otherwise claim the same deadline and still be enriching the capture when assertions run.
+                startScheduledSnapshotTimer: false);
             var started = await application.StartTrackingAsync(new StartTrackingRequest(), CancellationToken.None);
             Assert.True(started.Succeeded);
 

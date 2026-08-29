@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
@@ -112,6 +113,106 @@ public sealed class AiScreenshotReprocessingWorkerTests
                 AiScreenshotReprocessJobStatuses.Completed);
             Assert.Equal(2, completed.CompletedScreenshots);
             Assert.Equal(2, analysis.HistoricalCallCount);
+        });
+    }
+
+    [Fact]
+    public async Task ResumeDuringFinalWorkerHandoffIsNotLost()
+    {
+        await WithApiKeyAsync(async directory =>
+        {
+            var fixture = CreateStoreWithCaptures(directory, captureCount: 2, screensPerCapture: 1);
+            var analysis = new ControlledHistoricalAnalysisService(fixture.Store.LoadSettings().InstallationId, initiallyReleased: false);
+            var handoff = new ControlledWorkerHandoff();
+
+            var service = CreateService(
+                fixture.Store,
+                analysis,
+                _ => CostGate(allowed: true),
+                handoff.BeforeHandoffAsync);
+            try
+            {
+                var preview = await service.PreviewAsync(
+                    new AiScreenshotReprocessRequest(DateOnly.FromDateTime(DateTime.Today)),
+                    CancellationToken.None);
+                var start = await service.StartAsync(preview.Value!.PlanId, CancellationToken.None);
+                Assert.True(start.Succeeded);
+                await analysis.Entered.WaitAsync(TimeSpan.FromSeconds(5));
+
+                var pause = await service.PauseAsync(start.Value!.JobId, CancellationToken.None);
+                Assert.True(pause.Succeeded);
+                analysis.Release();
+                await handoff.FirstEntered.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Equal(
+                    AiScreenshotReprocessJobStatuses.PausedByUser,
+                    fixture.Store.LoadAiReprocessJob(start.Value.JobId)!.State);
+
+                var resume = await service.ResumeAsync(start.Value.JobId, CancellationToken.None);
+                Assert.True(resume.Succeeded);
+                Assert.Equal(AiScreenshotReprocessJobStatuses.Running, resume.Value!.Status);
+                handoff.ReleaseFirst();
+
+                await handoff.SecondEntered.WaitAsync(TimeSpan.FromSeconds(5));
+                var completed = await service.GetAsync(start.Value.JobId, CancellationToken.None);
+                Assert.True(completed.Succeeded);
+                Assert.Equal(AiScreenshotReprocessJobStatuses.Completed, completed.Value!.Status);
+                Assert.Equal(2, analysis.HistoricalCallCount);
+            }
+            finally
+            {
+                handoff.ReleaseFirst();
+                await service.DisposeAsync();
+            }
+        });
+    }
+
+    [Fact]
+    public async Task NewJobStartedDuringFinalWorkerHandoffIsAdoptedByTheSameSupervisor()
+    {
+        await WithApiKeyAsync(async directory =>
+        {
+            var fixture = CreateStoreWithCaptures(directory, captureCount: 1, screensPerCapture: 1);
+            var analysis = new ControlledHistoricalAnalysisService(fixture.Store.LoadSettings().InstallationId, initiallyReleased: true);
+            var handoff = new ControlledWorkerHandoff();
+            var service = CreateService(
+                fixture.Store,
+                analysis,
+                _ => CostGate(allowed: true),
+                handoff.BeforeHandoffAsync);
+            try
+            {
+                var firstPreview = await service.PreviewAsync(
+                    new AiScreenshotReprocessRequest(DateOnly.FromDateTime(DateTime.Today)),
+                    CancellationToken.None);
+                var firstStart = await service.StartAsync(firstPreview.Value!.PlanId, CancellationToken.None);
+                Assert.True(firstStart.Succeeded);
+                await handoff.FirstEntered.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Equal(
+                    AiScreenshotReprocessJobStatuses.Completed,
+                    fixture.Store.LoadAiReprocessJob(firstStart.Value!.JobId)!.State);
+
+                _ = AddCapture(fixture.Store, directory, captureIndex: 1, screensPerCapture: 1);
+                var secondPreview = await service.PreviewAsync(
+                    new AiScreenshotReprocessRequest(DateOnly.FromDateTime(DateTime.Today)),
+                    CancellationToken.None);
+                var secondStart = await service.StartAsync(secondPreview.Value!.PlanId, CancellationToken.None);
+                Assert.True(secondStart.Succeeded);
+                Assert.NotEqual(firstStart.Value.JobId, secondStart.Value!.JobId);
+                handoff.ReleaseFirst();
+
+                await handoff.SecondEntered.WaitAsync(TimeSpan.FromSeconds(5));
+                var completed = await service.GetAsync(secondStart.Value.JobId, CancellationToken.None);
+                Assert.True(completed.Succeeded);
+                Assert.Equal(AiScreenshotReprocessJobStatuses.Completed, completed.Value!.Status);
+                Assert.Equal(
+                    firstStart.Value.TotalCaptures + secondStart.Value.TotalCaptures,
+                    analysis.HistoricalCallCount);
+            }
+            finally
+            {
+                handoff.ReleaseFirst();
+                await service.DisposeAsync();
+            }
         });
     }
 
@@ -407,6 +508,75 @@ public sealed class AiScreenshotReprocessingWorkerTests
         });
     }
 
+    [Fact]
+    public async Task PauseCompletesItsLifecycleMutationBeforeConcurrentDisposeStartsShutdown()
+    {
+        await WithApiKeyAsync(async directory =>
+        {
+            var fixture = CreateStoreWithCaptures(directory, captureCount: 1, screensPerCapture: 1);
+            var analysis = new ControlledHistoricalAnalysisService(fixture.Store.LoadSettings().InstallationId, initiallyReleased: false);
+            var service = CreateService(fixture.Store, analysis, _ => CostGate(allowed: true));
+            var stateGate = GetPrivateGate(service, "_stateGate");
+            var lifecycleGate = GetPrivateGate(service, "_lifecycleGate");
+            Task<OperationResult<AiScreenshotReprocessJobSnapshot>>? pauseTask = null;
+            Task? disposeTask = null;
+            try
+            {
+                var preview = await service.PreviewAsync(
+                    new AiScreenshotReprocessRequest(DateOnly.FromDateTime(DateTime.Today)),
+                    CancellationToken.None);
+                var start = await service.StartAsync(preview.Value!.PlanId, CancellationToken.None);
+                Assert.True(start.Succeeded);
+                await analysis.Entered.WaitAsync(TimeSpan.FromSeconds(5));
+
+                Monitor.Enter(stateGate);
+                try
+                {
+                    pauseTask = Task.Run(() => service.PauseAsync(start.Value!.JobId, CancellationToken.None));
+                    Assert.True(SpinWait.SpinUntil(
+                        () => IsLockedByAnotherThread(lifecycleGate),
+                        TimeSpan.FromSeconds(5)));
+
+                    using var disposeStarted = new ManualResetEventSlim();
+                    disposeTask = Task.Run(async () =>
+                    {
+                        disposeStarted.Set();
+                        await service.DisposeAsync();
+                    });
+                    Assert.True(disposeStarted.Wait(TimeSpan.FromSeconds(5)));
+                    Assert.False(disposeTask.IsCompleted);
+                }
+                finally
+                {
+                    Monitor.Exit(stateGate);
+                }
+
+                var pause = await pauseTask.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.True(pause.Succeeded);
+                Assert.Equal(AiScreenshotReprocessJobStatuses.PauseRequested, pause.Value!.Status);
+                analysis.Release();
+                await disposeTask.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                analysis.Release();
+                if (pauseTask is not null)
+                {
+                    _ = await pauseTask.WaitAsync(TimeSpan.FromSeconds(5));
+                }
+
+                if (disposeTask is not null)
+                {
+                    await disposeTask.WaitAsync(TimeSpan.FromSeconds(5));
+                }
+                else
+                {
+                    await service.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+                }
+            }
+        });
+    }
+
     private static StoreFixture CreateStoreWithCaptures(
         string directory,
         int captureCount,
@@ -426,40 +596,49 @@ public sealed class AiScreenshotReprocessingWorkerTests
         var captures = new List<TestCapture>(captureCount);
         for (var captureIndex = 0; captureIndex < captureCount; captureIndex++)
         {
-            var captureId = Guid.NewGuid().ToString("N");
-            var paths = Enumerable.Range(1, screensPerCapture)
-                .Select(index => Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-{index}.webp"))
-                .ToArray();
-            foreach (var path in paths)
-            {
-                File.WriteAllBytes(path, [1, 2, 3]);
-            }
-
-            var localCaptureTime = DateTime.SpecifyKind(
-                DateTime.Today.AddHours(12).AddMinutes(captureIndex * 2),
-                DateTimeKind.Unspecified);
-            var capturedAt = new DateTimeOffset(
-                TimeZoneInfo.ConvertTimeToUtc(localCaptureTime, TimeZoneInfo.Local),
-                TimeSpan.Zero);
-            store.UpsertScreenshotIntervalTelemetry(
-                captureId,
-                paths,
-                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-1), capturedAt, 10, 5));
-            store.AppendSample(new ActivitySample(
-                capturedAt.AddSeconds(1),
-                60,
-                "active",
-                "devenv",
-                "Visual Studio",
-                $"Editing capture {captureIndex + 1}",
-                "TrackMeUp",
-                settings.InstallationId,
-                4,
-                2));
-            captures.Add(new TestCapture(captureId, capturedAt, paths));
+            captures.Add(AddCapture(store, directory, captureIndex, screensPerCapture));
         }
 
         return new StoreFixture(store, captures);
+    }
+
+    private static TestCapture AddCapture(
+        LocalStore store,
+        string directory,
+        int captureIndex,
+        int screensPerCapture)
+    {
+        var captureId = Guid.NewGuid().ToString("N");
+        var paths = Enumerable.Range(1, screensPerCapture)
+            .Select(index => Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-{index}.webp"))
+            .ToArray();
+        foreach (var path in paths)
+        {
+            File.WriteAllBytes(path, [1, 2, 3]);
+        }
+
+        var localCaptureTime = DateTime.SpecifyKind(
+            DateTime.Today.AddHours(12).AddMinutes(captureIndex * 2),
+            DateTimeKind.Unspecified);
+        var capturedAt = new DateTimeOffset(
+            TimeZoneInfo.ConvertTimeToUtc(localCaptureTime, TimeZoneInfo.Local),
+            TimeSpan.Zero);
+        store.UpsertScreenshotIntervalTelemetry(
+            captureId,
+            paths,
+            new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-1), capturedAt, 10, 5));
+        store.AppendSample(new ActivitySample(
+            capturedAt.AddSeconds(1),
+            60,
+            "active",
+            "devenv",
+            "Visual Studio",
+            $"Editing capture {captureIndex + 1}",
+            "TrackMeUp",
+            store.LoadSettings().InstallationId,
+            4,
+            2));
+        return new TestCapture(captureId, capturedAt, paths);
     }
 
     private static TrackMeUpApplication CreateApplication(
@@ -492,16 +671,35 @@ public sealed class AiScreenshotReprocessingWorkerTests
             ScreenshotCaptureOrigins.Manual);
     }
 
+    private static object GetPrivateGate(AiScreenshotReprocessingService service, string fieldName) =>
+        typeof(AiScreenshotReprocessingService)
+            .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)?
+            .GetValue(service)
+        ?? throw new InvalidOperationException($"Could not find synchronization gate '{fieldName}'.");
+
+    private static bool IsLockedByAnotherThread(object gate)
+    {
+        if (!Monitor.TryEnter(gate))
+        {
+            return true;
+        }
+
+        Monitor.Exit(gate);
+        return false;
+    }
+
     private static AiScreenshotReprocessingService CreateService(
         LocalStore store,
         IAiAnalysisService analysis,
-        Func<AppSettings, AnalysisCostGate> buildCostGate) =>
+        Func<AppSettings, AnalysisCostGate> buildCostGate,
+        Func<Task>? beforeWorkerHandoff = null) =>
         new(
             store,
             analysis,
             _ => true,
             buildCostGate,
-            (_, _, _) => false);
+            (_, _, _) => false,
+            beforeWorkerHandoff: beforeWorkerHandoff);
 
     private static Task<OperationResult<AiScreenshotReprocessPlan>> PreviewTodayAsync(ITrackMeUpApplication application) =>
         application.PreviewAiScreenshotReprocessingAsync(
@@ -609,6 +807,32 @@ public sealed class AiScreenshotReprocessingWorkerTests
     {
         public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin) =>
             throw new InvalidOperationException("Historical processing must not capture a new screenshot.");
+    }
+
+    private sealed class ControlledWorkerHandoff
+    {
+        private readonly TaskCompletionSource<bool> _firstEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _releaseFirst = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _secondEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _count;
+
+        internal Task FirstEntered => _firstEntered.Task;
+
+        internal Task SecondEntered => _secondEntered.Task;
+
+        internal async Task BeforeHandoffAsync()
+        {
+            if (Interlocked.Increment(ref _count) == 1)
+            {
+                _firstEntered.TrySetResult(true);
+                await _releaseFirst.Task;
+                return;
+            }
+
+            _secondEntered.TrySetResult(true);
+        }
+
+        internal void ReleaseFirst() => _releaseFirst.TrySetResult(true);
     }
 
     private sealed class ControlledHistoricalAnalysisService : IAiAnalysisService
