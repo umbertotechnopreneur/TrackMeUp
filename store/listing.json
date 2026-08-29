@@ -147,7 +147,6 @@
   },
   "publishing": {
     "partnerCenterProductId": "",
-    "partnerCenterMetadataPath": "store/partner-center/metadata.json",
-    "automaticPublishingEnabled": false
+    "partnerCenterMetadataPath": "store/partner-center/metadata.json"
   }
 }

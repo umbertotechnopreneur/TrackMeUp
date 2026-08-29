@@ -75,6 +75,14 @@ public sealed class CliCommandCatalogTests
     }
 
     [Theory]
+    [InlineData("/help", "/config", "unexpected")]
+    [InlineData("/tracking", "--help", "unexpected")]
+    public void TryGetHelpTopic_RejectsAmbiguousExtraArguments(params string[] arguments)
+    {
+        Assert.False(CliCommandCatalog.TryGetHelpTopic(arguments, out _));
+    }
+
+    [Theory]
     [InlineData("--status", "status")]
     [InlineData("--start", "tracking", "start")]
     [InlineData("--ai-on", "ai", "enable")]

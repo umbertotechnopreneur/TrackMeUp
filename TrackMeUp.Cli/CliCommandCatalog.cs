@@ -107,6 +107,11 @@ internal static class CliCommandCatalog
         var root = normalized[0];
         if (IsGeneralHelpToken(root))
         {
+            if (normalized.Count > 2)
+            {
+                return false;
+            }
+
             topic = normalized.Count > 1 ? NormalizeCommandToken(normalized[1]) : null;
             return true;
         }
@@ -117,7 +122,8 @@ internal static class CliCommandCatalog
             return true;
         }
 
-        if (normalized.Skip(1).Any(IsHelpFlag) || normalized.Count == 2 && IsGeneralHelpToken(NormalizeCommandToken(normalized[1])))
+        if (normalized.Skip(1).Count(IsHelpFlag) == 1 && IsHelpFlag(normalized[^1])
+            || normalized.Count == 2 && IsGeneralHelpToken(NormalizeCommandToken(normalized[1])))
         {
             topic = root;
             return true;

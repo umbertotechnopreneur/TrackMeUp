@@ -23,16 +23,16 @@ The screenshots are not enabled in the listing yet. This is deliberate: the app 
 
 ## Microsoft Store publishing
 
-The repository has a validation workflow in [`.github/workflows/store-listing.yml`](../.github/workflows/store-listing.yml). It validates the editorial source on pull requests and pushes to `main`.
+The repository has a validation-only workflow in [`.github/workflows/store-listing.yml`](../.github/workflows/store-listing.yml). It validates the editorial source on pull requests, pushes to `main`, and manual dispatches. It never authenticates to Partner Center and cannot publish a submission.
 
 Microsoft requires the first Store submission to be created in Partner Center. After the app has a Store product ID, retrieve the current submission metadata with the Microsoft Store Developer CLI and save the exact response as `partner-center/metadata.json`. That payload is account-specific and should not be guessed or replaced with a hand-written approximation.
 
-To enable automatic metadata publication after that bootstrap:
+Until a separately reviewed publication workflow exists, update and submit Store metadata manually in Partner Center. Before adding automation:
 
-1. Add the Partner Center credentials to GitHub Actions secrets:
-   `AZURE_AD_TENANT_ID`, `AZURE_AD_APPLICATION_CLIENT_ID`, `AZURE_AD_APPLICATION_SECRET`, and `SELLER_ID`.
-2. Add the non-secret repository variable `STORE_PRODUCT_ID`.
-3. Set the non-secret repository variable `STORE_AUTOPUBLISH` to `true`.
-4. Review and commit both `listing.json` and the Partner Center metadata payload.
+1. Put the real non-secret Store product ID in `publishing.partnerCenterProductId` in `listing.json`.
+2. Review and commit both `listing.json` and the exact Partner Center metadata payload.
+3. Confirm the chosen Microsoft Store API operation mutates only the intended draft modules and cannot publish an unrelated package or draft state.
+4. Configure a `microsoft-store` GitHub environment with required reviewers, prevent self-review, and restrict deployment to `main`; verify those rules through the GitHub API before allowing a publication job to run.
+5. Use environment-scoped credentials without placing secrets in process arguments, and require an explicit manual confirmation that names the full submission effect.
 
-The publish job remains off until `STORE_AUTOPUBLISH` is explicitly enabled. A manual `workflow_dispatch` with the `publish` option is also available for the first controlled test. Microsoft certification still happens after the submission is sent.
+Microsoft certification still happens after a submission is sent. The current repository workflow deliberately stops before that boundary.

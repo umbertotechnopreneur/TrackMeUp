@@ -540,6 +540,10 @@ public sealed class LocalStore
     internal int PruneTerminalAiReprocessJobs(DateTimeOffset screenshotCutoffUtc) =>
         _activity.DeleteTerminalAiReprocessJobsBefore(screenshotCutoffUtc);
 
+    /// <summary>Prunes expired capture provenance after all retained references have disappeared.</summary>
+    internal int PruneOrphanedScreenshotCaptures(DateTimeOffset screenshotCutoffUtc) =>
+        _activity.DeleteOrphanedScreenshotCapturesBefore(screenshotCutoffUtc);
+
     /// <summary>Deletes persisted interval telemetry for one retained screenshot.</summary>
     internal int DeleteScreenshotIntervalTelemetry(string screenshotPath) =>
         ScreenCaptureService.IsOwnedArtifact(screenshotPath)

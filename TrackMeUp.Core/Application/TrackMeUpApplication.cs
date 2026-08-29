@@ -1800,7 +1800,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         var settings = _settingsSnapshot.Value;
         var now = DateTimeOffset.Now;
         _store.ApplyRetention(now.AddDays(-settings.DataRetentionDays));
-        _store.PruneTerminalAiReprocessJobs(now.AddDays(-settings.ScreenshotRetentionDays));
+        var screenshotCutoff = now.AddDays(-settings.ScreenshotRetentionDays);
+        _store.PruneTerminalAiReprocessJobs(screenshotCutoff);
+        _store.PruneOrphanedScreenshotCaptures(screenshotCutoff);
 
         await Task.CompletedTask;
         return OperationResult<RetentionPreview>.Success("retention.completed", "RetentionCompleted", preview);

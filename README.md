@@ -197,6 +197,7 @@ Quick Setup validation checklist:
 - [ ] On the player, the left world-time rail sits directly on the visible window material without an outer card and shows the current local sun or calculated lunar phase, illumination, sunrise/sunset and moonrise/moonset; expanding a city reveals its 24-hour detail, pointer hover and keyboard focus expose localized detail/remove actions, search can add a capital, removal persists, and the add command disappears at four clocks then returns after removal.
 - [ ] In PowerShell 7, run `trackmeup.exe -cli` with no command, use the interactive command center to refresh the dashboard and open help, then exit without starting a second tracking runtime.
 - [ ] In PowerShell 7, confirm CLI help lists only supported global switches and that redirected and JSON output remain ANSI-free, with JSON producing exactly one valid document.
+- [ ] In PowerShell 7, confirm malformed CLI input such as `status --watch --interval 0`, a missing option value, an unknown switch, or an unterminated quoted value exits with code 2 without invoking the requested application operation.
 - [ ] With a clean settings file, the acrylic four-profile chooser opens once; applying a profile persists AI, screenshot, local-retention, and Windows-startup choices together.
 - [ ] The four Quick Setup profile cards are fully visible without vertical scrolling, and the main window has a 20-DIP margin below its measured content.
 - [ ] From the main-window menu, **Quick Setup** reopens with the current AI/screenshot combination selected and reapplies a different profile without restarting the app.
@@ -240,6 +241,7 @@ Quick Setup validation checklist:
 - [ ] In **Reports**, today, selected-date digest, and reports-folder actions appear as three separated sections; automatic opening is explained, the date follows the app language, and each returned path stays on one ellipsized line with its full value in the tooltip.
 - [ ] In **Keep or delete data**, load current criteria, preview eligible deletions, and permanent deletion appear in order as separate sections; preview removes nothing, deletion still requires confirmation, and folder/candidate paths remain compact with full-path tooltips.
 - [ ] In dark mode, the selected screenshot has no visible frame, border, internal padding, or overlaid controls; it keeps a clear theme-aware elevation, readable header/sidebar text, and the native calendar picker retains the localized **Select date** accessible label.
+- [ ] In the Store listing workflow, push, pull request, and manual dispatch all validate the versioned listing without authenticating to Partner Center or mutating a Store submission.
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 

@@ -1,6 +1,11 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using Lucene.Net.Analysis.Standard;
+using Lucene.Net.Index;
+using Lucene.Net.Util;
 using TrackMeUp.Search;
 using Xunit;
+using FSDirectory = Lucene.Net.Store.FSDirectory;
 
 namespace TrackMeUp.Search.Tests;
 
@@ -43,6 +48,55 @@ public sealed class LocalSearchServiceTests
         Assert.Equal(
             "current",
             Assert.Single((await harness.Service.SearchAsync(new SearchRequest { Text = "current marker" })).Hits).Document.Id);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("-1")]
+    [InlineData("not-a-revision")]
+    public async Task Constructor_RejectsMissingOrInvalidCommittedSourceRevision(string? invalidRevision)
+    {
+        var root = SearchHarness.CreateRoot();
+        var options = new SearchOptions { IndexRootPath = root };
+        try
+        {
+            await using (var service = new LocalSearchService(options))
+            {
+                Assert.Equal(0, service.CommittedSourceRevision);
+            }
+
+            using (var directory = FSDirectory.Open(new DirectoryInfo(Path.Combine(
+                root,
+                LocalSearchService.IndexDirectoryName))))
+            using (var analyzer = new StandardAnalyzer(LuceneVersion.LUCENE_48))
+            using (var writer = new IndexWriter(
+                directory,
+                new IndexWriterConfig(LuceneVersion.LUCENE_48, analyzer)
+                {
+                    OpenMode = OpenMode.APPEND,
+                }))
+            {
+                var commitData = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["trackmeup.search.schema"] = LocalSearchService.IndexSchemaVersion.ToString(
+                        CultureInfo.InvariantCulture),
+                };
+                if (invalidRevision is not null)
+                {
+                    commitData["trackmeup.search.source_revision"] = invalidRevision;
+                }
+
+                writer.SetCommitData(commitData);
+                writer.Commit();
+            }
+
+            Assert.Throws<InvalidDataException>(() => new LocalSearchService(options));
+        }
+        finally
+        {
+            SearchHarness.DeleteRoot(root);
+        }
     }
 
     [Fact]
@@ -596,6 +650,45 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
+    public async Task Operations_RejectExactTermsBeyondLuceneUtf8LimitBeforeLuceneMutation()
+    {
+        await using var harness = new SearchHarness();
+        var oversizedExactTerm = new string('界', (IndexWriter.MAX_TERM_LENGTH / 3) + 1);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Service.ApplyBatchAsync(
+            [SearchIndexMutation.Upsert(CreateDocument("oversized-field") with
+            {
+                Application = oversizedExactTerm,
+            })],
+            1));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Service.ApplyBatchAsync(
+            [SearchIndexMutation.Delete(oversizedExactTerm)],
+            1));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Service.SearchAsync(new SearchRequest
+        {
+            Kinds = ImmutableHashSet.Create(oversizedExactTerm),
+        }));
+
+        Assert.Equal(0, harness.Service.CommittedSourceRevision);
+    }
+
+    [Fact]
+    public async Task ApplyBatchAsync_RejectsAggregateStructuredTextBeyondConfiguredFieldLimit()
+    {
+        await using var harness = new SearchHarness(options => options with { MaxTextFieldLength = 10 });
+        var document = CreateDocument("aggregate") with
+        {
+            AttributesRaw = ImmutableDictionary<string, string?>.Empty.Add("alpha", "bravo"),
+        };
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Service.ApplyBatchAsync(
+            [SearchIndexMutation.Upsert(document)],
+            1));
+
+        Assert.Equal(0, harness.Service.CommittedSourceRevision);
+    }
+
+    [Fact]
     public void Constructor_RejectsInvalidOptions()
     {
         Assert.Throws<ArgumentException>(() => new LocalSearchService(new SearchOptions
@@ -615,6 +708,16 @@ public sealed class LocalSearchServiceTests
             SynonymSets =
             [
                 new SearchSynonymSet { Language = "it", Terms = ["solo"] },
+            ],
+        }));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new LocalSearchService(new SearchOptions
+        {
+            IndexRootPath = SearchHarness.CreateRoot(),
+            MaxTextFieldLength = 4,
+            SynonymSets =
+            [
+                new SearchSynonymSet { Language = "en", Terms = ["desk", "office"] },
             ],
         }));
     }

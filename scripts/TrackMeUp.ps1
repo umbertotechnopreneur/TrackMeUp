@@ -643,11 +643,23 @@ function Invoke-TrackMeUpStoreListingValidation {
         Assert-Condition -Condition (Test-Path -LiteralPath $candidate -PathType Leaf) -Message "Screenshot file not found: $candidate"
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($listing.publishing.partnerCenterMetadataPath)) {
-        $metadataPath = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $listing.publishing.partnerCenterMetadataPath.Replace('/', '\')))
-        $repositoryRootPrefix = $repositoryRoot.TrimEnd('\') + '\'
-        Assert-Condition -Condition ($metadataPath.StartsWith($repositoryRootPrefix, [StringComparison]::OrdinalIgnoreCase)) -Message 'Partner Center metadata path must stay inside the repository.'
+    $expectedPublishingProperties = @('partnerCenterProductId', 'partnerCenterMetadataPath')
+    $publishingProperties = @($listing.publishing.PSObject.Properties.Name)
+    Assert-Condition -Condition ($publishingProperties.Count -eq $expectedPublishingProperties.Count) -Message 'Store publishing configuration contains missing or unsupported properties.'
+    for ($publishingIndex = 0; $publishingIndex -lt $expectedPublishingProperties.Count; $publishingIndex++) {
+        Assert-Condition -Condition ($publishingProperties[$publishingIndex] -ceq $expectedPublishingProperties[$publishingIndex]) -Message "Unsupported Store publishing property '$($publishingProperties[$publishingIndex])'."
     }
+
+    $partnerCenterProductId = [string]$listing.publishing.partnerCenterProductId
+    if (-not [string]::IsNullOrWhiteSpace($partnerCenterProductId)) {
+        Assert-Text -Value $partnerCenterProductId -Name 'publishing.partnerCenterProductId' -MaximumLength 64
+        Assert-Condition -Condition ($partnerCenterProductId -cmatch '^[A-Z0-9]+$') -Message 'publishing.partnerCenterProductId must contain only uppercase ASCII letters and digits.'
+    }
+
+    Assert-Text -Value $listing.publishing.partnerCenterMetadataPath -Name 'publishing.partnerCenterMetadataPath' -MaximumLength 260
+    $metadataPath = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $listing.publishing.partnerCenterMetadataPath.Replace('/', '\')))
+    $repositoryRootPrefix = $repositoryRoot.TrimEnd('\') + '\'
+    Assert-Condition -Condition ($metadataPath.StartsWith($repositoryRootPrefix, [StringComparison]::OrdinalIgnoreCase)) -Message 'Partner Center metadata path must stay inside the repository.'
 
     $secretPattern = '(?i)(sk-[A-Za-z0-9]|clientSecret|accessToken|api[_-]?key\s*[:=]\s*["''][^"'']+)'
     Assert-Condition -Condition ($raw -notmatch $secretPattern) -Message 'Store listing appears to contain a credential or access token.'

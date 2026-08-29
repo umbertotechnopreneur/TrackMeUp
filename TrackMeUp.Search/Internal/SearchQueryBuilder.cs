@@ -1,4 +1,3 @@
-using System.Text;
 using Lucene.Net.Index;
 using Lucene.Net.Search;
 
@@ -102,7 +101,7 @@ internal sealed class SearchQueryBuilder
 
     private static Query? BuildExactQuery(string normalizedText)
     {
-        if (Encoding.UTF8.GetByteCount(normalizedText) > 30_000)
+        if (!SearchValidation.FitsIndexedTerm(normalizedText))
         {
             return null;
         }

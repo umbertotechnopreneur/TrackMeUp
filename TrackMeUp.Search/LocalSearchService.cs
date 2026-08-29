@@ -136,7 +136,7 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             cancellationToken.ThrowIfCancellationRequested();
             ArgumentNullException.ThrowIfNull(mutation);
-            ArgumentException.ThrowIfNullOrWhiteSpace(mutation.Id);
+            SearchValidation.ValidateMutationId(mutation.Id, _options);
             if (mutation.Document is not { } document)
             {
                 prepared.Add((mutation.Id, null));
@@ -395,11 +395,15 @@ public sealed class LocalSearchService : ILocalSearchService
                 $"The Lucene index does not declare supported schema version {IndexSchemaVersion}. Rebuild it from source data.");
         }
 
-        return userData.TryGetValue(SourceRevisionCommitKey, out var revision)
-            && long.TryParse(revision, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedRevision)
-            && parsedRevision >= 0
-                ? parsedRevision
-                : 0;
+        if (!userData.TryGetValue(SourceRevisionCommitKey, out var revision)
+            || !long.TryParse(revision, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedRevision)
+            || parsedRevision < 0)
+        {
+            throw new InvalidDataException(
+                "The Lucene index does not declare a valid non-negative source revision. Rebuild it from source data.");
+        }
+
+        return parsedRevision;
     }
 
     private static void StampAndCommit(IndexWriter writer, long sourceRevision)
@@ -615,14 +619,13 @@ public sealed class LocalSearchService : ILocalSearchService
         public void Dispose() => _entries.Dispose();
     }
 
-    private void CommitWrite(Action mutation, long? sourceRevision = null)
+    private void CommitWrite(Action mutation, long sourceRevision)
     {
         try
         {
             mutation();
-            var committedRevision = sourceRevision ?? CommittedSourceRevision;
-            StampAndCommit(_writer, committedRevision);
-            Interlocked.Exchange(ref _committedSourceRevision, committedRevision);
+            StampAndCommit(_writer, sourceRevision);
+            Interlocked.Exchange(ref _committedSourceRevision, sourceRevision);
         }
         catch (Exception operationException)
         {

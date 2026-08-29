@@ -48,6 +48,57 @@ public sealed class CliRouterTests
         Assert.Equal(1, application.RuntimeHealthReads);
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("61")]
+    [InlineData("later")]
+    public async Task StatusWatch_RejectsInvalidIntervalBeforeCallingApplication(string interval)
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/status", "--watch", "--interval", interval], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
+    public async Task StatusWatch_RejectsMissingIntervalInsteadOfUsingTheDefault()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/status", "--watch", "--interval"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
+    public async Task Status_RejectsIntervalWhenWatchIsNotEnabled()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/status", "--interval", "5"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
+    public async Task SystemSnapshot_RejectsUnknownOptionsBeforeCallingApplication()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/system", "snapshot", "--watc"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
     [Fact]
     public async Task Diagnostics_RunsReadOnlyFacadeChecks()
     {
@@ -130,6 +181,43 @@ public sealed class CliRouterTests
     }
 
     [Fact]
+    public async Task AiConfigure_RejectsAnOptionWhoseValueIsAnotherOption()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/ai", "configure", "--model", "--provider", "openai"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Null(application.LastPatch);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
+    public async Task ReportDigest_RejectsMissingDateInsteadOfSilentlyUsingToday()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/report", "digest", "--date", "--open"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
+    public async Task ExactCommand_RejectsTrailingArgumentsBeforeCallingApplication()
+    {
+        var application = new RecordingApplication();
+        var router = CreateRouter(application);
+
+        var exitCode = await router.RunAsync(["/runtime", "health", "unexpected"], CancellationToken.None);
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
     public async Task OpenUi_RoutesThroughSharedApplicationFacade()
     {
         var application = new RecordingApplication();
@@ -209,6 +297,20 @@ public sealed class CliRouterTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal(0, application.TotalCalls);
+    }
+
+    [Fact]
+    public void TryTokenize_RejectsAnUnterminatedQuotedValue()
+    {
+        Assert.False(CliRouter.TryTokenize("/report today --output \"C:\\Reports", out var tokens));
+        Assert.Empty(tokens);
+    }
+
+    [Fact]
+    public void TryTokenize_PreservesWhitespaceInsideBalancedQuotes()
+    {
+        Assert.True(CliRouter.TryTokenize("/report today --output \"C:\\My Reports\"", out var tokens));
+        Assert.Equal(["/report", "today", "--output", "C:\\My Reports"], tokens);
     }
 
     private static CliRouter CreateRouter(RecordingApplication application)

@@ -60,24 +60,26 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             "settings" => await ConfigAsync(arguments, cancellationToken),
             "startup" => await StartupAsync(arguments, cancellationToken),
             "open" => await OpenAsync(arguments, cancellationToken),
-            "about" => await WriteAsync(_application.GetProductInformationAsync(cancellationToken)),
-            "doctor" => await DoctorAsync(cancellationToken),
+            "about" => arguments.Count == 1 ? await WriteAsync(_application.GetProductInformationAsync(cancellationToken)) : InvalidArguments(),
+            "doctor" => arguments.Count == 1 ? await DoctorAsync(cancellationToken) : InvalidArguments(),
             "diagnostics" => arguments.Count == 1 ? await DoctorAsync(cancellationToken) : InvalidCommand(),
-            "version" => WriteResult(CliBootstrap.CreateVersionResult()),
+            "version" => arguments.Count == 1 ? WriteResult(CliBootstrap.CreateVersionResult()) : InvalidArguments(),
             _ => InvalidCommand()
         };
     }
 
     private async Task<int> RuntimeAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "health" => await WriteAsync(_application.GetRuntimeHealthAsync(cancellationToken)),
+        "health" when arguments.Count == 2 => await WriteAsync(_application.GetRuntimeHealthAsync(cancellationToken)),
         _ => InvalidCommand()
     };
 
     private async Task<int> StatusAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        var watch = arguments.Contains("--watch", StringComparer.OrdinalIgnoreCase);
-        var interval = ReadIntegerOption(arguments, "--interval", 2, 1, 60);
+        if (!TryParseWatchOptions(arguments, 1, out var watch, out var interval))
+        {
+            return InvalidArguments();
+        }
         if (!watch)
         {
             var result = await _application.GetDashboardAsync(cancellationToken);
@@ -92,18 +94,25 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             cancellationToken);
     }
 
-    private async Task<int> TrackingAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
+    private async Task<int> TrackingAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        "start" => await WriteAsync(_application.StartTrackingAsync(new StartTrackingRequest(arguments.Contains("--safe-mode", StringComparer.OrdinalIgnoreCase), "cli"), cancellationToken)),
-        "pause" => await WriteAsync(_application.PauseTrackingAsync(cancellationToken)),
-        "toggle" => await WriteAsync(_application.ToggleTrackingAsync(cancellationToken)),
-        _ => InvalidCommand()
-    };
+        switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
+        {
+            case "start" when TryParseOptions(arguments, 2, ["--safe-mode"], [], out var options):
+                return await WriteAsync(_application.StartTrackingAsync(new StartTrackingRequest(options.Contains("--safe-mode"), "cli"), cancellationToken));
+            case "pause" when arguments.Count == 2:
+                return await WriteAsync(_application.PauseTrackingAsync(cancellationToken));
+            case "toggle" when arguments.Count == 2:
+                return await WriteAsync(_application.ToggleTrackingAsync(cancellationToken));
+            default:
+                return InvalidCommand();
+        }
+    }
 
     private async Task<int> SessionAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "last" => await WriteAsync(_application.GetLastSessionAsync(cancellationToken)),
-        "today" => await WriteAsync(_application.GetTodaySummaryAsync(cancellationToken)),
+        "last" when arguments.Count == 2 => await WriteAsync(_application.GetLastSessionAsync(cancellationToken)),
+        "today" when arguments.Count == 2 => await WriteAsync(_application.GetTodaySummaryAsync(cancellationToken)),
         _ => InvalidCommand()
     };
 
@@ -115,13 +124,17 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             return InvalidCommand();
         }
 
-        var watch = arguments.Contains("--watch", StringComparer.OrdinalIgnoreCase);
+        if (!TryParseWatchOptions(arguments, 2, out var watch, out var interval))
+        {
+            return InvalidArguments();
+        }
+
         if (watch)
         {
             return await WatchAsync(
                 _application.CaptureSystemSnapshotAsync,
                 _output.RenderSystemSnapshot,
-                ReadIntegerOption(arguments, "--interval", 2, 1, 60),
+                interval,
                 cancellationToken);
         }
 
@@ -134,33 +147,23 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
     {
         if (arguments.ElementAtOrDefault(1)?.Equals("capture", StringComparison.OrdinalIgnoreCase) == true)
         {
-            for (var index = 2; index < arguments.Count; index++)
+            if (!TryParseOptions(arguments, 2, ["--keep"], ["--mode"], out var options))
             {
-                if (arguments[index].Equals("--keep", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (arguments[index].Equals("--mode", StringComparison.OrdinalIgnoreCase) && ++index < arguments.Count)
-                {
-                    continue;
-                }
-
-                return InvalidCommand();
+                return InvalidArguments();
             }
 
             return await WriteAsync(_application.CaptureScreenshotAsync(
                 new CaptureScreenshotRequest(
-                    ReadOption(arguments, "--mode"),
-                    arguments.Contains("--keep", StringComparer.OrdinalIgnoreCase),
+                    options.Value("--mode"),
+                    options.Contains("--keep"),
                     ScreenshotCaptureOrigins.Manual),
                 cancellationToken));
         }
 
         return arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
         {
-            "latest" => await WriteAsync(_application.GetLatestScreenshotAsync(cancellationToken)),
-            "open-folder" => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
+            "latest" when arguments.Count == 2 => await WriteAsync(_application.GetLatestScreenshotAsync(cancellationToken)),
+            "open-folder" when arguments.Count == 2 => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
             _ => InvalidCommand()
         };
     }
@@ -169,24 +172,43 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
     {
         switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
         {
-            case "status": return await WriteAsync(_application.GetAiStatusAsync(cancellationToken));
-            case "analyze": return await WriteAsync(_application.AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(!arguments.Contains("--no-capture", StringComparer.OrdinalIgnoreCase), "cli.ai"), cancellationToken));
-            case "enable": return await WriteAsync(_application.SetAiEnabledAsync(true, cancellationToken));
-            case "disable": return await WriteAsync(_application.SetAiEnabledAsync(false, cancellationToken));
+            case "status" when arguments.Count == 2:
+                return await WriteAsync(_application.GetAiStatusAsync(cancellationToken));
+            case "analyze" when TryParseOptions(arguments, 2, ["--no-capture"], [], out var analyzeOptions):
+                return await WriteAsync(_application.AnalyzeCurrentActivityAsync(new AnalyzeCurrentActivityRequest(!analyzeOptions.Contains("--no-capture"), "cli.ai"), cancellationToken));
+            case "enable" when arguments.Count == 2:
+                return await WriteAsync(_application.SetAiEnabledAsync(true, cancellationToken));
+            case "disable" when arguments.Count == 2:
+                return await WriteAsync(_application.SetAiEnabledAsync(false, cancellationToken));
             case "configure":
+                if (!TryParseOptions(
+                        arguments,
+                        2,
+                        [],
+                        ["--provider", "--model", "--endpoint", "--output-detail", "--reasoning-effort"],
+                        out var configureOptions))
+                {
+                    return InvalidArguments();
+                }
+
                 var values = new Dictionary<string, string?>();
-                AddOption(values, "ai.provider", ReadOption(arguments, "--provider"));
-                AddOption(values, "ai.model", ReadOption(arguments, "--model"));
-                AddOption(values, "ai.endpoint", ReadOption(arguments, "--endpoint"));
-                AddOption(values, "ai.output_detail", ReadOption(arguments, "--output-detail"));
-                AddOption(values, "ai.reasoning_effort", ReadOption(arguments, "--reasoning-effort"));
+                AddOption(values, "ai.provider", configureOptions.Value("--provider"));
+                AddOption(values, "ai.model", configureOptions.Value("--model"));
+                AddOption(values, "ai.endpoint", configureOptions.Value("--endpoint"));
+                AddOption(values, "ai.output_detail", configureOptions.Value("--output-detail"));
+                AddOption(values, "ai.reasoning_effort", configureOptions.Value("--reasoning-effort"));
                 return values.Count == 0 ? InvalidCommand() : await WriteAsync(_application.ConfigureAiAsync(new SettingsPatch(values), cancellationToken));
             case "key" when arguments.ElementAtOrDefault(2)?.Equals("set", StringComparison.OrdinalIgnoreCase) == true:
+                if (!TryParseOptions(arguments, 3, [], ["--variable"], out var keyOptions))
+                {
+                    return InvalidArguments();
+                }
+
                 if (Console.IsInputRedirected)
                 {
                     return InvalidCommand();
                 }
-                var variable = ReadOption(arguments, "--variable");
+                var variable = keyOptions.Value("--variable");
                 if (string.IsNullOrWhiteSpace(variable))
                 {
                     var status = await _application.GetAiStatusAsync(cancellationToken);
@@ -208,7 +230,12 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
         var action = arguments.ElementAtOrDefault(1)?.ToLowerInvariant();
         if (action == "today")
         {
-            return await WriteAsync(_application.GenerateTodayReportAsync(ReadOption(arguments, "--output"), arguments.Contains("--open", StringComparer.OrdinalIgnoreCase), cancellationToken));
+            if (!TryParseOptions(arguments, 2, ["--open"], ["--output"], out var options))
+            {
+                return InvalidArguments();
+            }
+
+            return await WriteAsync(_application.GenerateTodayReportAsync(options.Value("--output"), options.Contains("--open"), cancellationToken));
         }
 
         if (action != "digest")
@@ -216,38 +243,61 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             return InvalidCommand();
         }
 
-        var rawDate = ReadOption(arguments, "--date") ?? DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+        if (!TryParseOptions(arguments, 2, ["--open"], ["--date"], out var digestOptions))
+        {
+            return InvalidArguments();
+        }
+
+        var rawDate = digestOptions.Value("--date") ?? DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
         if (!DateOnly.TryParseExact(rawDate, "yyyy-MM-dd", out var date))
         {
             return WriteResult(OperationResult<object>.Failure("command.arguments.invalid", "InvalidDigestDate", new ValidationIssue("date", "invalid", "InvalidDigestDate")));
         }
 
-        return await WriteAsync(_application.GenerateDailyDigestAsync(date, arguments.Contains("--open", StringComparer.OrdinalIgnoreCase), cancellationToken));
+        return await WriteAsync(_application.GenerateDailyDigestAsync(date, digestOptions.Contains("--open"), cancellationToken));
     }
 
-    private async Task<int> PrivacyAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
+    private async Task<int> PrivacyAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        "list" => await WriteAsync(_application.GetPrivacyRulesAsync(cancellationToken)),
-        "add" => await WriteAsync(_application.AddPrivacyRuleAsync(ReadOption(arguments, "--type") ?? string.Empty, ReadOption(arguments, "--value") ?? string.Empty, cancellationToken)),
-        "remove" => await WriteAsync(_application.RemovePrivacyRuleAsync(ReadOption(arguments, "--id") ?? string.Empty, cancellationToken)),
-        "test-current" => await WriteAsync(_application.TestCurrentPrivacyAsync(cancellationToken)),
-        _ => InvalidCommand()
-    };
+        switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
+        {
+            case "list" when arguments.Count == 2:
+                return await WriteAsync(_application.GetPrivacyRulesAsync(cancellationToken));
+            case "add" when TryParseOptions(arguments, 2, [], ["--type", "--value"], out var addOptions)
+                && addOptions.Value("--type") is { } type
+                && addOptions.Value("--value") is { } value:
+                return await WriteAsync(_application.AddPrivacyRuleAsync(type, value, cancellationToken));
+            case "remove" when TryParseOptions(arguments, 2, [], ["--id"], out var removeOptions)
+                && removeOptions.Value("--id") is { } id:
+                return await WriteAsync(_application.RemovePrivacyRuleAsync(id, cancellationToken));
+            case "test-current" when arguments.Count == 2:
+                return await WriteAsync(_application.TestCurrentPrivacyAsync(cancellationToken));
+            default:
+                return InvalidCommand();
+        }
+    }
 
-    private async Task<int> RetentionAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
+    private async Task<int> RetentionAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        "status" => await WriteAsync(_application.GetRetentionStatusAsync(cancellationToken)),
-        "preview" => await WriteAsync(_application.PreviewRetentionAsync(cancellationToken)),
-        "run" => await WriteAsync(_application.RunRetentionAsync(new RetentionRequest(true, _options.Yes || arguments.Contains("--yes", StringComparer.OrdinalIgnoreCase)), cancellationToken)),
-        _ => InvalidCommand()
-    };
+        switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
+        {
+            case "status" when arguments.Count == 2:
+                return await WriteAsync(_application.GetRetentionStatusAsync(cancellationToken));
+            case "preview" when arguments.Count == 2:
+                return await WriteAsync(_application.PreviewRetentionAsync(cancellationToken));
+            case "run" when TryParseOptions(arguments, 2, ["--yes"], [], out var options):
+                return await WriteAsync(_application.RunRetentionAsync(new RetentionRequest(true, _options.Yes || options.Contains("--yes")), cancellationToken));
+            default:
+                return InvalidCommand();
+        }
+    }
 
     private async Task<int> PluginsAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "list" => await WriteAsync(_application.GetPluginsAsync(cancellationToken)),
-        "show" when arguments.Count >= 3 => await WriteAsync(_application.GetPluginAsync(arguments[2], cancellationToken)),
-        "enable" when arguments.Count >= 3 => await WriteAsync(_application.SetPluginEnabledAsync(arguments[2], true, cancellationToken)),
-        "disable" when arguments.Count >= 3 => await WriteAsync(_application.SetPluginEnabledAsync(arguments[2], false, cancellationToken)),
+        "list" when arguments.Count == 2 => await WriteAsync(_application.GetPluginsAsync(cancellationToken)),
+        "show" when arguments.Count == 3 => await WriteAsync(_application.GetPluginAsync(arguments[2], cancellationToken)),
+        "enable" when arguments.Count == 3 => await WriteAsync(_application.SetPluginEnabledAsync(arguments[2], true, cancellationToken)),
+        "disable" when arguments.Count == 3 => await WriteAsync(_application.SetPluginEnabledAsync(arguments[2], false, cancellationToken)),
         _ => InvalidCommand()
     };
 
@@ -261,7 +311,7 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
                 return await GetSettingAsync(arguments[2], cancellationToken);
             case "set" when arguments.Count == 4:
                 return await SetSettingAsync(arguments[2], arguments[3], cancellationToken);
-            case "wizard":
+            case "wizard" when arguments.Count == 2:
                 if (Console.IsInputRedirected) return InvalidCommand();
                 var language = AnsiConsole.Prompt(new SelectionPrompt<WizardChoice>()
                     .Title($"[cyan]{Markup.Escape(_output.Text("language"))}[/]")
@@ -329,17 +379,17 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
     private async Task<int> StartupAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "status" => await WriteAsync(_application.GetStartupStatusAsync(cancellationToken)),
-        "enable" => await WriteAsync(_application.SetStartupEnabledAsync(true, cancellationToken)),
-        "disable" => await WriteAsync(_application.SetStartupEnabledAsync(false, cancellationToken)),
+        "status" when arguments.Count == 2 => await WriteAsync(_application.GetStartupStatusAsync(cancellationToken)),
+        "enable" when arguments.Count == 2 => await WriteAsync(_application.SetStartupEnabledAsync(true, cancellationToken)),
+        "disable" when arguments.Count == 2 => await WriteAsync(_application.SetStartupEnabledAsync(false, cancellationToken)),
         _ => InvalidCommand()
     };
 
     private async Task<int> OpenAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "reports" => await WriteAsync(_application.OpenReportsFolderAsync(cancellationToken)),
-        "screenshots" => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
-        "ui" => await WriteAsync(_application.OpenUserInterfaceAsync(cancellationToken)),
+        "reports" when arguments.Count == 2 => await WriteAsync(_application.OpenReportsFolderAsync(cancellationToken)),
+        "screenshots" when arguments.Count == 2 => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
+        "ui" when arguments.Count == 2 => await WriteAsync(_application.OpenUserInterfaceAsync(cancellationToken)),
         _ => InvalidCommand()
     };
 
@@ -423,16 +473,23 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             if (action.Id == "command")
             {
                 var line = AnsiConsole.Prompt(new TextPrompt<string>("[teal]trackmeup>[/] ").AllowEmpty());
-                var tokens = CliCommandCatalog.Normalize(Tokenize(line));
-                if (tokens.Count > 0)
+                if (!TryTokenize(line, out var parsedTokens))
                 {
-                    if (CliCommandCatalog.TryExpandShortcut(tokens, out var expanded))
+                    InvalidArguments();
+                }
+                else
+                {
+                    var tokens = CliCommandCatalog.Normalize(parsedTokens);
+                    if (tokens.Count > 0)
                     {
-                        await DispatchAsync(expanded, cancellationToken);
-                    }
-                    else
-                    {
-                        InvalidCommand();
+                        if (CliCommandCatalog.TryExpandShortcut(tokens, out var expanded))
+                        {
+                            await DispatchAsync(expanded, cancellationToken);
+                        }
+                        else
+                        {
+                            InvalidCommand();
+                        }
                     }
                 }
             }
@@ -548,6 +605,11 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
         return 2;
     }
 
+    private int InvalidArguments(string field = "arguments") => WriteResult(OperationResult<object>.Failure(
+        "command.arguments.invalid",
+        "CommandArgumentsInvalid",
+        new ValidationIssue(field, "invalid", "CommandArgumentsInvalid")));
+
     private int WriteHelp(string? topic)
     {
         if (_output.WriteHelp(topic))
@@ -558,29 +620,93 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
         return InvalidCommand();
     }
 
-    private static string? ReadOption(IReadOnlyList<string> arguments, string name)
+    private static bool TryParseWatchOptions(
+        IReadOnlyList<string> arguments,
+        int startIndex,
+        out bool watch,
+        out int interval)
     {
-        var index = arguments.ToList().FindIndex(x => x.Equals(name, StringComparison.OrdinalIgnoreCase));
-        return index >= 0 && index + 1 < arguments.Count ? arguments[index + 1] : null;
+        watch = false;
+        interval = 2;
+        if (!TryParseOptions(arguments, startIndex, ["--watch"], ["--interval"], out var options))
+        {
+            return false;
+        }
+
+        watch = options.Contains("--watch");
+        var rawInterval = options.Value("--interval");
+        if (rawInterval is null)
+        {
+            return true;
+        }
+
+        return watch
+            && int.TryParse(rawInterval, out interval)
+            && interval is >= 1 and <= 60;
     }
 
-    private static int ReadIntegerOption(IReadOnlyList<string> arguments, string name, int fallback, int minimum, int maximum) => int.TryParse(ReadOption(arguments, name), out var value) && value >= minimum && value <= maximum ? value : fallback;
+    private static bool TryParseOptions(
+        IReadOnlyList<string> arguments,
+        int startIndex,
+        IReadOnlyList<string> flagNames,
+        IReadOnlyList<string> valueNames,
+        out ParsedOptions options)
+    {
+        var parsed = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        for (var index = startIndex; index < arguments.Count; index++)
+        {
+            var argument = arguments[index];
+            if (flagNames.Contains(argument, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!parsed.TryAdd(argument, null))
+                {
+                    options = ParsedOptions.Empty;
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (!valueNames.Contains(argument, StringComparer.OrdinalIgnoreCase)
+                || !parsed.TryAdd(argument, null)
+                || index + 1 >= arguments.Count
+                || string.IsNullOrWhiteSpace(arguments[index + 1])
+                || arguments[index + 1].StartsWith("--", StringComparison.Ordinal))
+            {
+                options = ParsedOptions.Empty;
+                return false;
+            }
+
+            parsed[argument] = arguments[++index];
+        }
+
+        options = new ParsedOptions(parsed);
+        return true;
+    }
 
     private static void AddOption(IDictionary<string, string?> values, string key, string? value) { if (!string.IsNullOrWhiteSpace(value)) values[key] = value; }
 
-    private static IReadOnlyList<string> Tokenize(string line)
+    internal static bool TryTokenize(string line, out IReadOnlyList<string> tokens)
     {
-        var tokens = new List<string>();
+        var parsed = new List<string>();
         var builder = new System.Text.StringBuilder();
         var quoted = false;
         foreach (var character in line.Trim())
         {
             if (character == '"') { quoted = !quoted; continue; }
-            if (char.IsWhiteSpace(character) && !quoted) { if (builder.Length > 0) { tokens.Add(builder.ToString()); builder.Clear(); } continue; }
+            if (char.IsWhiteSpace(character) && !quoted) { if (builder.Length > 0) { parsed.Add(builder.ToString()); builder.Clear(); } continue; }
             builder.Append(character);
         }
-        if (builder.Length > 0) tokens.Add(builder.ToString());
-        return tokens;
+
+        if (quoted)
+        {
+            tokens = [];
+            return false;
+        }
+
+        if (builder.Length > 0) parsed.Add(builder.ToString());
+        tokens = parsed;
+        return true;
     }
 
     internal static IReadOnlyList<WizardChoice> LanguageWizardChoices(CliOutput output) =>
@@ -600,5 +726,14 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
     ];
 
     internal sealed record WizardChoice(string Value, string Label);
+    private sealed record ParsedOptions(IReadOnlyDictionary<string, string?> Values)
+    {
+        internal static ParsedOptions Empty { get; } = new(new Dictionary<string, string?>());
+
+        internal bool Contains(string name) => Values.ContainsKey(name);
+
+        internal string? Value(string name) => Values.TryGetValue(name, out var value) ? value : null;
+    }
+
     private sealed record ShellAction(string Id, string Label, IReadOnlyList<string>? Command = null);
 }

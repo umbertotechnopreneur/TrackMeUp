@@ -1579,6 +1579,33 @@ internal sealed class SqliteActivityStore
         return command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Deletes expired capture provenance only after every persisted screenshot, OCR, AI, and
+    /// reprocessing reference has been removed.
+    /// </summary>
+    internal int DeleteOrphanedScreenshotCapturesBefore(DateTimeOffset cutoffUtc)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            DELETE FROM screenshot_captures
+            WHERE captured_utc_ticks < $cutoff
+              AND NOT EXISTS (
+                  SELECT 1 FROM screenshot_interval_telemetry AS telemetry
+                  WHERE telemetry.capture_id = screenshot_captures.capture_id)
+              AND NOT EXISTS (
+                  SELECT 1 FROM screenshot_text_snapshots AS snapshot
+                  WHERE snapshot.capture_id = screenshot_captures.capture_id)
+              AND NOT EXISTS (
+                  SELECT 1 FROM ai_analysis_artifacts AS artifact
+                  WHERE artifact.capture_id = screenshot_captures.capture_id)
+              AND capture_id NOT IN (
+                  SELECT capture_id FROM ai_reprocess_job_items);
+            """;
+        command.Parameters.AddWithValue("$cutoff", cutoffUtc.UtcDateTime.Ticks);
+        return command.ExecuteNonQuery();
+    }
+
     /// <summary>Deletes interval telemetry for one screenshot artifact identity.</summary>
     internal int DeleteScreenshotIntervalTelemetry(string artifactIdentity)
     {

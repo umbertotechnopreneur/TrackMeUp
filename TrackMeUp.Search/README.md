@@ -34,4 +34,5 @@ separate optional fields; none is required for indexing or retrieval.
 - [x] Kind and timestamp filters
 - [x] Batched upsert/delete, full rebuild, and explicit-commit persistence
 - [x] Lazy suggestion repair after a stale marker, failed marker persistence, and reopen
-- [x] Fail-fast validation for documents, requests, and options
+- [x] Fail-fast UTF-16 field budgets and Lucene UTF-8 exact-term limits
+- [x] Fail-fast validation for documents, requests, options, and committed source revisions

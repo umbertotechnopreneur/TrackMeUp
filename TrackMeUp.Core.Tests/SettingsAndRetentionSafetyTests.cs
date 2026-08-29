@@ -412,6 +412,94 @@ public sealed class SettingsAndRetentionSafetyTests
     }
 
     [Fact]
+    public void ScreenshotRetention_PrunesOnlyExpiredUnreferencedCaptureProvenance()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var installationId = store.LoadSettings().InstallationId;
+            var expiredAt = DateTimeOffset.UtcNow.AddDays(-60);
+            var retainedAt = DateTimeOffset.UtcNow;
+            var expiredOrphanId = Guid.NewGuid().ToString("N");
+            var expiredReferencedId = Guid.NewGuid().ToString("N");
+            var expiredJobReferencedId = Guid.NewGuid().ToString("N");
+            var retainedOrphanId = Guid.NewGuid().ToString("N");
+            var expiredOrphanPath = ScreenshotPath(expiredOrphanId);
+            var expiredReferencedPath = ScreenshotPath(expiredReferencedId);
+            var expiredJobReferencedPath = ScreenshotPath(expiredJobReferencedId);
+            var retainedOrphanPath = ScreenshotPath(retainedOrphanId);
+
+            store.RegisterScreenshotCapture(expiredOrphanId, installationId, expiredAt, ScreenshotCaptureOrigins.Manual);
+            store.RegisterScreenshotCapture(expiredReferencedId, installationId, expiredAt, ScreenshotCaptureOrigins.Manual);
+            store.RegisterScreenshotCapture(expiredJobReferencedId, installationId, expiredAt, ScreenshotCaptureOrigins.Manual);
+            store.RegisterScreenshotCapture(retainedOrphanId, installationId, retainedAt, ScreenshotCaptureOrigins.Manual);
+            store.UpsertScreenshotIntervalTelemetry(
+                expiredReferencedId,
+                [expiredReferencedPath],
+                new ScreenshotIntervalTelemetry(expiredAt.AddMinutes(-5), expiredAt, null, null));
+            var jobId = Guid.NewGuid();
+            store.CreateAiReprocessJob(
+                new AiReprocessJobRecord(
+                    jobId,
+                    expiredAt,
+                    expiredAt,
+                    expiredAt.AddHours(-1),
+                    expiredAt.AddHours(1),
+                    DateOnly.FromDateTime(expiredAt.Date),
+                    ScreenshotCaptureOrigins.Manual,
+                    "retention-test",
+                    "pending",
+                    1,
+                    1,
+                    null),
+                [new AiReprocessJobItemRecord(
+                    jobId,
+                    expiredJobReferencedId,
+                    0,
+                    expiredAt,
+                    ScreenshotCaptureOrigins.Manual,
+                    [Path.GetFileNameWithoutExtension(expiredJobReferencedPath)],
+                    1,
+                    "pending",
+                    0,
+                    null,
+                    expiredAt)]);
+
+            Assert.Equal(1, store.PruneOrphanedScreenshotCaptures(DateTimeOffset.UtcNow.AddDays(-30)));
+            var firstPass = store.LoadScreenshotCaptureTimes(
+                [expiredOrphanPath, expiredReferencedPath, expiredJobReferencedPath, retainedOrphanPath],
+                CancellationToken.None);
+            Assert.DoesNotContain(expiredOrphanPath, firstPass.Keys);
+            Assert.Contains(expiredReferencedPath, firstPass.Keys);
+            Assert.Contains(expiredJobReferencedPath, firstPass.Keys);
+            Assert.Contains(retainedOrphanPath, firstPass.Keys);
+
+            Assert.Equal(1, store.DeleteScreenshotIntervalTelemetry(expiredReferencedPath));
+            store.TransitionAiReprocessJob(jobId, "completed", null, expiredAt);
+            Assert.Equal(1, store.PruneTerminalAiReprocessJobs(DateTimeOffset.UtcNow.AddDays(-30)));
+            Assert.Equal(2, store.PruneOrphanedScreenshotCaptures(DateTimeOffset.UtcNow.AddDays(-30)));
+            var secondPass = store.LoadScreenshotCaptureTimes(
+                [expiredReferencedPath, expiredJobReferencedPath, retainedOrphanPath],
+                CancellationToken.None);
+            Assert.DoesNotContain(expiredReferencedPath, secondPass.Keys);
+            Assert.DoesNotContain(expiredJobReferencedPath, secondPass.Keys);
+            Assert.Contains(retainedOrphanPath, secondPass.Keys);
+
+            string ScreenshotPath(string captureId) => Path.Combine(
+                dataDirectory,
+                $"{captureId}_1.2.3_manual_monitor-1.webp");
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task ConcurrentFirstLaunch_UsesOneInstallationIdentity()
     {
         var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));

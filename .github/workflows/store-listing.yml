@@ -16,12 +16,6 @@ on:
       - 'scripts/TrackMeUp.ps1'
       - '.github/workflows/store-listing.yml'
   workflow_dispatch:
-    inputs:
-      publish:
-        description: 'Publish the Partner Center metadata payload after validation'
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -37,54 +31,3 @@ jobs:
       - name: Validate listing source
         shell: pwsh
         run: .\scripts\TrackMeUp.ps1 -Action ValidateStoreListing -ListingPath .\store\listing.json
-
-  publish:
-    name: publish Store metadata
-    needs: validate
-    if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.publish == true) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STORE_AUTOPUBLISH == 'true')
-    runs-on: windows-latest
-    environment: microsoft-store
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure Microsoft Store CLI
-        uses: microsoft/microsoft-store-apppublisher@v1.1
-
-      - name: Configure Partner Center credentials
-        shell: pwsh
-        env:
-          STORE_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
-          STORE_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
-          STORE_CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
-          STORE_SELLER_ID: ${{ secrets.SELLER_ID }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          msstore reconfigure `
-            --tenantId $env:STORE_TENANT_ID `
-            --sellerId $env:STORE_SELLER_ID `
-            --clientId $env:STORE_CLIENT_ID `
-            --clientSecret $env:STORE_CLIENT_SECRET
-
-      - name: Publish Partner Center metadata
-        shell: pwsh
-        env:
-          STORE_PRODUCT_ID: ${{ vars.STORE_PRODUCT_ID }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $metadataPath = Join-Path $env:GITHUB_WORKSPACE 'store\partner-center\metadata.json'
-
-          if ([string]::IsNullOrWhiteSpace($env:STORE_PRODUCT_ID)) {
-            throw 'STORE_PRODUCT_ID repository variable is required.'
-          }
-
-          if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
-            throw 'store/partner-center/metadata.json is required before automatic publication can be enabled.'
-          }
-
-          $metadata = Get-Content -LiteralPath $metadataPath -Raw
-          $metadata | ConvertFrom-Json | Out-Null
-          msstore submission updateMetadata $env:STORE_PRODUCT_ID $metadata
-          msstore submission publish $env:STORE_PRODUCT_ID

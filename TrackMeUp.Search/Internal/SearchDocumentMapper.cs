@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using Lucene.Net.Documents;
 
@@ -8,8 +7,6 @@ namespace TrackMeUp.Search.Internal;
 
 internal static class SearchDocumentMapper
 {
-    private const int MaxExactTermBytes = 30_000;
-
     internal static Document ToLucene(SearchDocument source)
     {
         var target = new Document
@@ -157,7 +154,7 @@ internal static class SearchDocumentMapper
         }
 
         var normalized = TextNormalization.ForAnalysis(value);
-        if (normalized.Length == 0 || Encoding.UTF8.GetByteCount(normalized) > MaxExactTermBytes)
+        if (normalized.Length == 0)
         {
             return;
         }
