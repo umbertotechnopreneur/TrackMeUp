@@ -159,6 +159,7 @@ public sealed class WinUiSurfaceContractTests
         var searchButton = player.Descendants().Single(element => HasName(element, "TitleBarSearchButton"));
         var reportButton = player.Descendants().Single(element => HasName(element, "TitleBarReportButton"));
         var minimizeToTrayButton = player.Descendants().Single(element => HasName(element, "TitleBarMinimizeToTrayButton"));
+        var minimizeToTrayMenuItem = player.Descendants().Single(element => HasName(element, "MinimizeToTrayMenuItem"));
         var moreButton = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "TitleBarMoreButton"));
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
         var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
@@ -178,12 +179,14 @@ public sealed class WinUiSurfaceContractTests
         Assert.Null(reportButton.Attribute("Margin"));
         Assert.Equal("TitleBarReportButton_Click", reportButton.Attribute("Click")?.Value);
         Assert.Contains(reportButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE9F9");
+        Assert.Equal("Collapsed", reportButton.Attribute("Visibility")?.Value);
         Assert.Equal("7", minimizeToTrayButton.Attribute("Grid.Column")?.Value);
-        Assert.Equal("0,0,8,0", minimizeToTrayButton.Attribute("Margin")?.Value);
+        Assert.Null(minimizeToTrayButton.Attribute("Margin"));
         Assert.Equal("MinimizeToTrayButton_Click", minimizeToTrayButton.Attribute("Click")?.Value);
         Assert.Equal("Main.Menu.MinimizeToTray", minimizeToTrayButton.Attribute("Tag")?.Value);
         Assert.Equal("Minimize to notification area", minimizeToTrayButton.Attribute("AutomationProperties.Name")?.Value);
         Assert.Equal("Minimize to notification area", minimizeToTrayButton.Attribute("ToolTipService.ToolTip")?.Value);
+        Assert.Equal("Collapsed", minimizeToTrayButton.Attribute("Visibility")?.Value);
         Assert.Contains(minimizeToTrayButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE921");
         Assert.Equal("4", moreButton.Attribute("Grid.Column")?.Value);
         Assert.Null(moreButton.Attribute("Margin"));
@@ -239,14 +242,20 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(MenuGlyph(player, "AiProviderMenu"), element => element.Attribute("Glyph")?.Value == "\uE99A");
         Assert.Contains(MenuGlyph(player, "OpenAiMenuToggle"), element => element.Attribute("Glyph")?.Value == "\uE9A3");
         Assert.Contains(MenuGlyph(player, "AiPricingMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8C7");
+        Assert.Contains(MenuGlyph(player, "MinimizeToTrayMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE921");
         Assert.Equal(
-            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "MenuTitleAbout"],
+            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
             menuTags);
-        Assert.DoesNotContain(menu.Descendants(), element => element.Attribute("Tag")?.Value == "Main.Menu.MinimizeToTray");
+        Assert.Equal("Main.Menu.MinimizeToTray", minimizeToTrayMenuItem.Attribute("Tag")?.Value);
+        Assert.Equal("MinimizeToTrayButton_Click", minimizeToTrayMenuItem.Attribute("Click")?.Value);
+        Assert.Equal(
+            minimizeToTrayMenuItem.Attribute("Text")?.Value,
+            minimizeToTrayMenuItem.Attribute("ToolTipService.ToolTip")?.Value);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
-        Assert.Contains("ElementRect(TitleBarReportButton, scale)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("ElementRect(TitleBarMoreButton, scale)", mainSource, StringComparison.Ordinal);
         Assert.Contains("ElementRect(TitleBarSearchButton, scale)", mainSource, StringComparison.Ordinal);
-        Assert.Contains("ElementRect(TitleBarMinimizeToTrayButton, scale)", mainSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ElementRect(TitleBarReportButton, scale)", mainSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ElementRect(TitleBarMinimizeToTrayButton, scale)", mainSource, StringComparison.Ordinal);
         Assert.Contains("ShowPanel(OperationsPanel, MainWindowSurface.Operations);", mainSource, StringComparison.Ordinal);
         Assert.Contains("TitleBarBackButton.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
         Assert.Contains("OperationsControl.NavigateBack();", mainSource, StringComparison.Ordinal);
@@ -564,6 +573,7 @@ public sealed class WinUiSurfaceContractTests
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var windowInterop = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "WindowInteropService.cs"));
         var localTime = player.Descendants().Single(element => HasName(element, "LocalTimeText"));
         var utcTime = player.Descendants().Single(element => HasName(element, "UtcTimeText"));
         var clockRow = localTime.Parent ?? throw new InvalidOperationException("Local and UTC clocks must have a layout row.");
@@ -605,9 +615,13 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowWidth = 470;", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeightPadding = 20;", source, StringComparison.Ordinal);
-        Assert.Contains("private const int DwmWindowAttributeBorderColor = 34;", source, StringComparison.Ordinal);
-        Assert.Contains("private const uint DwmColorNone = 0xFFFFFFFE;", source, StringComparison.Ordinal);
-        Assert.Contains("DwmSetWindowAttribute(", source, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.ApplyPlayerWindowChrome", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("DwmSetWindowAttribute(", source, StringComparison.Ordinal);
+        Assert.Contains("private const int DwmWindowAttributeCornerPreference = 33;", windowInterop, StringComparison.Ordinal);
+        Assert.Contains("private const int DwmWindowAttributeBorderColor = 34;", windowInterop, StringComparison.Ordinal);
+        Assert.Contains("private const uint DwmWindowCornerPreferenceRound = 2;", windowInterop, StringComparison.Ordinal);
+        Assert.Contains("private const uint DwmColorNone = 0xFFFFFFFE;", windowInterop, StringComparison.Ordinal);
+        Assert.Contains("OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)", windowInterop, StringComparison.Ordinal);
         Assert.Contains("_layoutState.ResolveLogicalHeight(availableHeight / scale, LogicalWindowHeightPadding)", source, StringComparison.Ordinal);
     }
 
@@ -728,6 +742,33 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentBrush"));
         Assert.Contains(applicationHighContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentTextBrush"));
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentGlyphBrush"));
+    }
+
+    [Fact]
+    public void Player_KeepsOnlyNativeCloseAndConfirmsTrackingSuspension()
+    {
+        var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
+        var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
+        var systemButtonGap = player.Descendants().Single(element => HasName(element, "TitleBarSystemButtonGapColumn"));
+        var dragRegion = player.Descendants().Single(element => HasName(element, "DragRegion"));
+        var reportButton = player.Descendants().Single(element => HasName(element, "TitleBarReportButton"));
+        var minimizeToTrayButton = player.Descendants().Single(element => HasName(element, "TitleBarMinimizeToTrayButton"));
+
+        Assert.Equal("12", systemButtonGap.Attribute("Width")?.Value);
+        Assert.Equal("2", dragRegion.Attribute("Grid.ColumnSpan")?.Value);
+        Assert.Null(dragRegion.Attribute("Grid.Column"));
+        Assert.Equal("Collapsed", reportButton.Attribute("Visibility")?.Value);
+        Assert.Equal("Collapsed", minimizeToTrayButton.Attribute("Visibility")?.Value);
+        Assert.Contains("presenter.IsMaximizable = false;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsMinimizable = false;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_appWindow.Closing += AppWindow_Closing;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("args.Cancel = true;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("MicaDialogRequest.Confirmation(", mainSource, StringComparison.Ordinal);
+        Assert.Contains("T(\"Dialog.CloseTracking.Message\")", mainSource, StringComparison.Ordinal);
+        Assert.Contains("T(\"Dialog.CloseTracking.Confirm\")", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_appWindow.Closing -= AppWindow_Closing;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_window?.CloseForShutdown();", appSource, StringComparison.Ordinal);
     }
 
     [Fact]

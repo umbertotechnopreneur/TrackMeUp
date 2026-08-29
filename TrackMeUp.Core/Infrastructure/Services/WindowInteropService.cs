@@ -7,6 +7,10 @@ namespace TrackMeUp.Services;
 public static class WindowInteropService
 {
     private const int GwlHwndParent = -8;
+    private const int DwmWindowAttributeCornerPreference = 33;
+    private const int DwmWindowAttributeBorderColor = 34;
+    private const uint DwmWindowCornerPreferenceRound = 2;
+    private const uint DwmColorNone = 0xFFFFFFFE;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoActivate = 0x0010;
@@ -14,6 +18,33 @@ public static class WindowInteropService
     private const uint MbIconWarning = 0x00000030;
     private const uint MbSetForeground = 0x00010000;
     private static readonly IntPtr HwndTopMost = new(-1);
+
+    /// <summary>Applies the optional native chrome used by the compact player window.</summary>
+    public static void ApplyPlayerWindowChrome(IntPtr windowHandle)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(windowHandle, IntPtr.Zero);
+
+        var borderColor = DwmColorNone;
+        _ = DwmSetWindowAttribute(
+            windowHandle,
+            DwmWindowAttributeBorderColor,
+            ref borderColor,
+            Marshal.SizeOf<uint>());
+
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            // Rounded-corner preference is a Windows 11 visual enhancement; older supported
+            // systems intentionally retain their native default window shape.
+            return;
+        }
+
+        var cornerPreference = DwmWindowCornerPreferenceRound;
+        _ = DwmSetWindowAttribute(
+            windowHandle,
+            DwmWindowAttributeCornerPreference,
+            ref cornerPreference,
+            Marshal.SizeOf<uint>());
+    }
 
     /// <summary>Assigns one native window as the owner of another window.</summary>
     public static void SetOwner(IntPtr windowHandle, IntPtr ownerHandle)
@@ -101,6 +132,13 @@ public static class WindowInteropService
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
     private static extern int SetWindowLongPtr32(IntPtr windowHandle, int index, int newValue);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(
+        IntPtr windowHandle,
+        int attribute,
+        ref uint attributeValue,
+        int attributeSize);
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
     private static extern IntPtr SetWindowLongPtr64(IntPtr windowHandle, int index, IntPtr newValue);

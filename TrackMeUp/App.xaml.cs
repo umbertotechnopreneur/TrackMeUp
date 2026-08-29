@@ -744,7 +744,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         try
         {
-            _window?.Close();
+            _window?.CloseForShutdown();
             if (ownsRuntime)
             {
                 // A remote frontend receives the response first and gets a short window to release its log sink.

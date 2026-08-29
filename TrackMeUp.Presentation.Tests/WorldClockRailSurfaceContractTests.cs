@@ -59,6 +59,9 @@ public sealed class WorldClockRailSurfaceContractTests
         var toggle = main.Descendants().Single(element => HasName(element, "WorldClockRailToggleButton"));
         var rail = main.Descendants().Single(element => HasName(element, "WorldClockRail"));
         var railColumn = main.Descendants().Single(element => HasName(element, "WorldClockRailColumn"));
+        var dragRegion = main.Descendants().Single(element => HasName(element, "DragRegion"));
+        var captionColumn = main.Descendants().Single(element => HasName(element, "TitleBarCaptionColumn"));
+        var systemButtonGap = main.Descendants().Single(element => HasName(element, "TitleBarSystemButtonGapColumn"));
         var icon = toggle.Descendants().Single(element => element.Name.LocalName == "SymbolIcon");
 
         Assert.Equal("WorldClockRailToggleButton_Click", toggle.Attribute("Click")?.Value);
@@ -69,8 +72,16 @@ public sealed class WorldClockRailSurfaceContractTests
             AttributeValue(toggle, "AutomationProperties.Name"),
             AttributeValue(toggle, "ToolTipService.ToolTip"));
         Assert.Equal("World", icon.Attribute("Symbol")?.Value);
+        Assert.True(toggle.Parent is not null && HasName(toggle.Parent, "DragRegion"));
+        Assert.Equal("*", captionColumn.Attribute("Width")?.Value);
+        Assert.Equal("64", captionColumn.Attribute("MinWidth")?.Value);
+        Assert.Equal("12", systemButtonGap.Attribute("Width")?.Value);
         Assert.Equal("0", railColumn.Attribute("Width")?.Value);
+        Assert.Equal("1", rail.Attribute("Grid.Row")?.Value);
+        Assert.Null(rail.Attribute("Grid.RowSpan"));
         Assert.Equal("Collapsed", rail.Attribute("Visibility")?.Value);
+        Assert.Equal("2", dragRegion.Attribute("Grid.ColumnSpan")?.Value);
+        Assert.Null(dragRegion.Attribute("Grid.Column"));
         Assert.Contains("private bool _isWorldClockRailVisible;", source, StringComparison.Ordinal);
         Assert.Contains("_isWorldClockRailVisible = !_isWorldClockRailVisible;", source, StringComparison.Ordinal);
         Assert.Contains("WorldClockRailColumn.Width = isVisible", source, StringComparison.Ordinal);
@@ -79,6 +90,9 @@ public sealed class WorldClockRailSurfaceContractTests
         Assert.Contains("WorldClock.HideRail", source, StringComparison.Ordinal);
         Assert.Contains("_worldClockRefreshTimer.Stop();", source, StringComparison.Ordinal);
         Assert.Contains("passthroughRects.Add(ElementRect(WorldClockRailToggleButton, scale));", source, StringComparison.Ordinal);
+        Assert.Contains("QueueTitleBarLayoutUpdate();", source, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.UpdateLayout();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetRegionRects(NonClientRegionKind.Caption", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -99,6 +113,11 @@ public sealed class WorldClockRailSurfaceContractTests
             element.Attribute("Orientation")?.Value == "Horizontal" &&
             element.Elements().Count(child => child.Name.LocalName == "Button") == 2);
         var heroFirstRow = hero.Descendants().First(element => element.Name.LocalName == "RowDefinition");
+        var cardTemplate = rail.Descendants().Single(element => element.Name.LocalName == "DataTemplate");
+        var card = cardTemplate.Elements().Single(element => element.Name.LocalName == "Border");
+        var itemsPanel = rail.Descendants().Single(element =>
+            element.Name.LocalName == "ItemsPanelTemplate").Elements().Single();
+        var railRoot = rail.Descendants().Single(element => HasName(element, "RailRoot"));
 
         Assert.Equal("116", heroCelestial.Attribute("Width")?.Value);
         Assert.Equal("116", heroCelestial.Attribute("Height")?.Value);
@@ -107,9 +126,36 @@ public sealed class WorldClockRailSurfaceContractTests
         Assert.Equal("Auto", heroFirstRow.Attribute("Height")?.Value);
         Assert.Equal("0,1,1,0", heroActions.Attribute("Margin")?.Value);
         Assert.Equal("0,1,1,0", compactActions.Attribute("Margin")?.Value);
+        Assert.Null(heroActions.Attribute("Opacity"));
+        Assert.Null(compactActions.Attribute("Opacity"));
+        Assert.All(
+            heroActions.Elements().Concat(compactActions.Elements()),
+            button =>
+            {
+                Assert.Equal("Transparent", button.Attribute("Background")?.Value);
+                Assert.Equal("0", button.Attribute("BorderThickness")?.Value);
+                Assert.Null(button.Attribute("BorderBrush"));
+                Assert.Null(button.Attribute("IsHitTestVisible"));
+            });
+        Assert.Equal("0", railRoot.Attribute("Margin")?.Value);
+        Assert.Equal("0", railRoot.Attribute("Padding")?.Value);
+        Assert.Equal("0", itemsPanel.Attribute("Spacing")?.Value);
+        Assert.Equal("0", card.Attribute("BorderThickness")?.Value);
+        Assert.Equal("0", card.Attribute("CornerRadius")?.Value);
+        Assert.Null(card.Attribute("BorderBrush"));
+        Assert.Null(card.Attribute("Translation"));
+        Assert.Null(card.Attribute("PointerEntered"));
+        Assert.Null(card.Attribute("PointerExited"));
+        Assert.Null(card.Attribute("GotFocus"));
+        Assert.Null(card.Attribute("LostFocus"));
+        Assert.DoesNotContain(card.Elements(), element => element.Name.LocalName == "Border.Shadow");
         Assert.Contains("index == 0", source, StringComparison.Ordinal);
         Assert.Contains("HeroVisibility", source, StringComparison.Ordinal);
         Assert.Contains("CompactVisibility", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ActionsVisible", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ActionsOpacity", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CardBorderBrush", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ClockCard_", source, StringComparison.Ordinal);
         Assert.DoesNotContain("TimelineMarkerMargin", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DaylightMargin", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DaylightWidth", source, StringComparison.Ordinal);
@@ -137,6 +183,13 @@ public sealed class WorldClockRailSurfaceContractTests
         Assert.Equal("{Binding SunsetHour}", usage.Attribute("SunsetHour")?.Value);
         Assert.Equal("StackPanel", details.Name.LocalName);
         Assert.Equal("{Binding DetailsVisibility}", details.Attribute("Visibility")?.Value);
+        Assert.Equal("0,9,0,8", details.Attribute("Padding")?.Value);
+        var cardContent = details.Parent
+            ?? throw new InvalidDataException("The expanded details must remain inside the clock-card content stack.");
+        Assert.Equal("0,12,0,13", cardContent.Attribute("Padding")?.Value);
+        Assert.All(
+            cardContent.Elements().Where(element => element.Name.LocalName == "Grid" && element.Attribute("MinHeight") is not null),
+            clockLayout => Assert.Equal("14,0,14,0", clockLayout.Attribute("Margin")?.Value));
         Assert.Null(details.Attribute("Background"));
         Assert.Null(details.Attribute("BorderBrush"));
         Assert.Null(details.Attribute("BorderThickness"));

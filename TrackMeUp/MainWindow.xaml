@@ -23,7 +23,7 @@
         </Grid.ColumnDefinitions>
         <controls:WorldClockRailControl
             x:Name="WorldClockRail"
-            Grid.RowSpan="2"
+            Grid.Row="1"
             Grid.Column="0"
             Visibility="Collapsed" />
         <Border
@@ -32,11 +32,11 @@
             Background="{ThemeResource MainWindowSurfaceBrush}"
             BorderBrush="#24FFFFFF"
             BorderThickness="1"
-            CornerRadius="14"
+            CornerRadius="0,14,14,0"
             IsHitTestVisible="False" />
         <Grid
             x:Name="DragRegion"
-            Grid.Column="1"
+            Grid.ColumnSpan="2"
             Height="48"
             Loaded="DragRegion_Loaded"
             SizeChanged="DragRegion_SizeChanged">
@@ -44,11 +44,12 @@
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarCaptionColumn" Width="*" MinWidth="64" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="TitleBarSystemButtonGapColumn" Width="12" />
                 <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
             </Grid.ColumnDefinitions>
             <Button
@@ -73,10 +74,31 @@
                     FontSize="17"
                     Glyph="&#xE72B;" />
             </Button>
+            <Button
+                x:Name="WorldClockRailToggleButton"
+                Grid.Column="2"
+                Width="40"
+                Height="40"
+                Margin="4,0,0,0"
+                VerticalAlignment="Center"
+                Padding="8"
+                AllowFocusOnInteraction="True"
+                AutomationProperties.Name="Show world clocks"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Click="WorldClockRailToggleButton_Click"
+                IsTabStop="True"
+                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Tag="WorldClock.ShowRail"
+                ToolTipService.ToolTip="Show world clocks">
+                <SymbolIcon
+                    AutomationProperties.AccessibilityView="Raw"
+                    Symbol="World" />
+            </Button>
             <TextBlock
                 x:Name="TitleBarTitleText"
-                Grid.Column="2"
-                Margin="52,0,12,0"
+                Grid.Column="3"
+                Margin="12,0,12,0"
                 VerticalAlignment="Center"
                 AutomationProperties.AccessibilityView="Raw"
                 CharacterSpacing="130"
@@ -144,7 +166,8 @@
                 IsTabStop="False"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
                 Tag="Reports.Title"
-                ToolTipService.ToolTip="Activity reports">
+                ToolTipService.ToolTip="Activity reports"
+                Visibility="Collapsed">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
@@ -156,7 +179,6 @@
                 Grid.Column="7"
                 Width="40"
                 Height="40"
-                Margin="0,0,8,0"
                 Padding="8"
                 AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Minimize to notification area"
@@ -166,7 +188,8 @@
                 IsTabStop="False"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
                 Tag="Main.Menu.MinimizeToTray"
-                ToolTipService.ToolTip="Minimize to notification area">
+                ToolTipService.ToolTip="Minimize to notification area"
+                Visibility="Collapsed">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"
@@ -174,30 +197,6 @@
                     Glyph="&#xE921;" />
             </Button>
         </Grid>
-
-        <Button
-            x:Name="WorldClockRailToggleButton"
-            Grid.Row="0"
-            Grid.Column="1"
-            Width="40"
-            Height="40"
-            Margin="4,4,0,0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Padding="8"
-            AllowFocusOnInteraction="True"
-            AutomationProperties.Name="Show world clocks"
-            Background="Transparent"
-            BorderBrush="Transparent"
-            Click="WorldClockRailToggleButton_Click"
-            IsTabStop="True"
-            Style="{StaticResource TitleBarOverflowButtonStyle}"
-            Tag="WorldClock.ShowRail"
-            ToolTipService.ToolTip="Show world clocks">
-            <SymbolIcon
-                AutomationProperties.AccessibilityView="Raw"
-                Symbol="World" />
-        </Button>
 
         <Border
             x:Name="PlayerPanel"
@@ -519,6 +518,16 @@
                                 </MenuFlyoutSubItem>
 
                                 <MenuFlyoutSeparator />
+                                <MenuFlyoutItem
+                                    x:Name="MinimizeToTrayMenuItem"
+                                    Tag="Main.Menu.MinimizeToTray"
+                                    Text="Minimize to notification area"
+                                    ToolTipService.ToolTip="Minimize to notification area"
+                                    Click="MinimizeToTrayButton_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Foreground="#FF85A8DB" Glyph="&#xE921;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
                                 <MenuFlyoutItem
                                     x:Name="AboutMenuItem"
                                     Tag="MenuTitleAbout"

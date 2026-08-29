@@ -6,9 +6,9 @@
     xmlns:controls="using:TrackMeUp.Controls">
     <Grid
         x:Name="RailRoot"
-        Margin="4,4,3,4"
+        Margin="0"
         AutomationProperties.LandmarkType="Custom"
-        Padding="16,14,13,16">
+        Padding="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -48,29 +48,20 @@
                 <ItemsControl x:Name="ClockItems">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Spacing="10" />
+                            <StackPanel Spacing="0" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border
                                 MinHeight="{Binding MinimumHeight}"
-                                BorderBrush="{Binding CardBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="19"
-                                GotFocus="ClockCard_GotFocus"
-                                LostFocus="ClockCard_LostFocus"
-                                PointerEntered="ClockCard_PointerEntered"
-                                PointerExited="ClockCard_PointerExited"
-                                Translation="0,0,8">
-                                <Border.Shadow>
-                                    <ThemeShadow />
-                                </Border.Shadow>
+                                BorderThickness="0"
+                                CornerRadius="0">
                                 <Border.Background>
                                     <ImageBrush ImageSource="{Binding SkylineImage}" Stretch="UniformToFill" />
                                 </Border.Background>
                                 <Grid>
-                                    <Border CornerRadius="18">
+                                    <Border CornerRadius="0">
                                         <Border.Background>
                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                                 <GradientStop Color="#F216181B" Offset="0" />
@@ -89,8 +80,8 @@
                                         IsHitTestVisible="False"
                                         Opacity="0.46" />
 
-                                    <StackPanel Padding="14,12,14,13" Spacing="8">
-                                        <Grid MinHeight="150" Visibility="{Binding HeroVisibility}">
+                                    <StackPanel Padding="0,12,0,13" Spacing="8">
+                                        <Grid Margin="14,0,14,0" MinHeight="150" Visibility="{Binding HeroVisibility}">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="118" />
@@ -110,36 +101,36 @@
                                                     Margin="0,1,1,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Top"
-                                                    Opacity="{Binding ActionsOpacity}"
                                                     Orientation="Horizontal"
                                                     Spacing="4">
                                                     <Button
                                                         Width="30"
                                                         Height="30"
                                                         AutomationProperties.Name="{Binding DetailAccessibleName}"
-                                                        Background="#30FFFFFF"
-                                                        BorderBrush="#40FFFFFF"
-                                                        BorderThickness="1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
                                                         Click="DetailButton_Click"
                                                         CornerRadius="15"
-                                                        IsHitTestVisible="{Binding ActionsVisible}"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding DetailAccessibleName}">
-                                                        <SymbolIcon Symbol="Clock" />
+                                                        <FontIcon
+                                                            AutomationProperties.AccessibilityView="Raw"
+                                                            FontFamily="Segoe Fluent Icons"
+                                                            FontSize="16"
+                                                            Foreground="#E8FFFFFF"
+                                                            Glyph="&#xE946;" />
                                                     </Button>
                                                     <Button
                                                         Width="30"
                                                         Height="30"
                                                         AutomationProperties.Name="{Binding RemoveAccessibleName}"
-                                                        Background="#30FFFFFF"
-                                                        BorderBrush="#44FF8B69"
-                                                        BorderThickness="1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
                                                         Click="RemoveButton_Click"
                                                         CornerRadius="15"
-                                                        IsHitTestVisible="{Binding ActionsVisible}"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding RemoveAccessibleName}">
-                                                        <SymbolIcon Foreground="#FFFF9B82" Symbol="Delete" />
+                                                        <SymbolIcon Foreground="#E8FFFFFF" Symbol="Delete" />
                                                     </Button>
                                                 </StackPanel>
                                             </Grid>
@@ -202,7 +193,7 @@
                                             </Grid>
                                         </Grid>
 
-                                        <Grid MinHeight="86" Visibility="{Binding CompactVisibility}">
+                                        <Grid Margin="14,0,14,0" MinHeight="86" Visibility="{Binding CompactVisibility}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="82" />
@@ -252,43 +243,43 @@
                                                     Margin="0,1,1,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Top"
-                                                    Opacity="{Binding ActionsOpacity}"
                                                     Orientation="Horizontal"
                                                     Spacing="3">
                                                     <Button
                                                         Width="28"
                                                         Height="28"
                                                         AutomationProperties.Name="{Binding DetailAccessibleName}"
-                                                        Background="#B326292D"
-                                                        BorderBrush="#54FFFFFF"
-                                                        BorderThickness="1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
                                                         Click="DetailButton_Click"
                                                         CornerRadius="14"
-                                                        IsHitTestVisible="{Binding ActionsVisible}"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding DetailAccessibleName}">
-                                                        <SymbolIcon Symbol="Clock" />
+                                                        <FontIcon
+                                                            AutomationProperties.AccessibilityView="Raw"
+                                                            FontFamily="Segoe Fluent Icons"
+                                                            FontSize="15"
+                                                            Foreground="#E8FFFFFF"
+                                                            Glyph="&#xE946;" />
                                                     </Button>
                                                     <Button
                                                         Width="28"
                                                         Height="28"
                                                         AutomationProperties.Name="{Binding RemoveAccessibleName}"
-                                                        Background="#B326292D"
-                                                        BorderBrush="#65FF8B69"
-                                                        BorderThickness="1"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
                                                         Click="RemoveButton_Click"
                                                         CornerRadius="14"
-                                                        IsHitTestVisible="{Binding ActionsVisible}"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding RemoveAccessibleName}">
-                                                        <SymbolIcon Foreground="#FFFF9B82" Symbol="Delete" />
+                                                        <SymbolIcon Foreground="#E8FFFFFF" Symbol="Delete" />
                                                     </Button>
                                                 </StackPanel>
                                             </Grid>
                                         </Grid>
 
                                         <StackPanel
-                                            Padding="10,9,10,8"
+                                            Padding="0,9,0,8"
                                             Spacing="5"
                                             Visibility="{Binding DetailsVisibility}">
                                             <Grid ColumnSpacing="10">

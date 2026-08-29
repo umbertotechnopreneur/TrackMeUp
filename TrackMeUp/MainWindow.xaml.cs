@@ -1,7 +1,6 @@
 #region Using directives
 using System.ComponentModel;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
@@ -40,8 +39,6 @@ public sealed partial class MainWindow : Window
     private static readonly TimeSpan LastSessionRefreshInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan AiSpendRefreshInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan AiSpendFailureRetryInterval = TimeSpan.FromMinutes(5);
-    private const int DwmWindowAttributeBorderColor = 34;
-    private const uint DwmColorNone = 0xFFFFFFFE;
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
@@ -85,6 +82,8 @@ public sealed partial class MainWindow : Window
     private IDisposable? _dashboardSubscription;
     private bool _dashboardRefreshReady;
     private bool _dashboardSurfaceClosed;
+    private bool _allowClose;
+    private bool _closeConfirmationInProgress;
     private OptionsControl? _optionsControl;
     private OperationsControl? _operationsControl;
     private Task? _optionsInitializationTask;
@@ -92,6 +91,7 @@ public sealed partial class MainWindow : Window
     private WorldClockRailSnapshot? _worldClockSnapshot;
     private bool _isWorldClockRailVisible;
     private int _worldClockRefreshInProgress;
+    private bool _titleBarLayoutUpdateQueued;
 
     private OptionsControl OptionsControl => _optionsControl
         ?? throw new InvalidOperationException("OptionsControl has not been initialized.");
@@ -166,10 +166,12 @@ public sealed partial class MainWindow : Window
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         _currentWorkArea = CurrentWorkArea();
         _appWindow.Changed += AppWindow_Changed;
+        _appWindow.Closing += AppWindow_Closing;
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
         }
         if (AppWindowTitleBar.IsCustomizationSupported())
         {
@@ -197,12 +199,7 @@ public sealed partial class MainWindow : Window
 
     private void ApplyBorderlessPlayerWindow()
     {
-        var color = DwmColorNone;
-        _ = DwmSetWindowAttribute(
-            WinRT.Interop.WindowNative.GetWindowHandle(this),
-            DwmWindowAttributeBorderColor,
-            ref color,
-            Marshal.SizeOf<uint>());
+        WindowInteropService.ApplyPlayerWindowChrome(WinRT.Interop.WindowNative.GetWindowHandle(this));
     }
 
     private async Task InitializeAsync(LaunchOptions options)
@@ -355,7 +352,7 @@ public sealed partial class MainWindow : Window
         _isWorldClockRailVisible = !_isWorldClockRailVisible;
         ApplyWorldClockRailVisibility();
         ResizeForCurrentLayout(animate: RootGrid.IsLoaded);
-        DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
+        QueueTitleBarLayoutUpdate();
         if (_isWorldClockRailVisible)
         {
             FadeIn(WorldClockRail);
@@ -820,6 +817,32 @@ public sealed partial class MainWindow : Window
     /// <summary>Keeps caption insets and the title-bar button passthrough region aligned after resizing.</summary>
     private void DragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarLayout();
 
+    /// <summary>Refreshes non-client rectangles after XAML changes the title-bar layout or native size.</summary>
+    private void QueueTitleBarLayoutUpdate()
+    {
+        if (_titleBarLayoutUpdateQueued)
+        {
+            return;
+        }
+
+        _titleBarLayoutUpdateQueued = true;
+        if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                _titleBarLayoutUpdateQueued = false;
+                if (!RootGrid.IsLoaded)
+                {
+                    return;
+                }
+
+                // Force pending XAML layout before recomputing window-relative passthrough rectangles.
+                RootGrid.UpdateLayout();
+                UpdateTitleBarLayout();
+            }))
+        {
+            _titleBarLayoutUpdateQueued = false;
+        }
+    }
+
     /// <summary>Reserves the native caption area and makes only title-bar commands interactive.</summary>
     private void UpdateTitleBarLayout()
     {
@@ -835,9 +858,7 @@ public sealed partial class MainWindow : Window
         var passthroughRects = new List<RectInt32>
         {
             ElementRect(TitleBarMoreButton, scale),
-            ElementRect(TitleBarSearchButton, scale),
-            ElementRect(TitleBarReportButton, scale),
-            ElementRect(TitleBarMinimizeToTrayButton, scale)
+            ElementRect(TitleBarSearchButton, scale)
         };
         if (WorldClockRailToggleButton.Visibility == Visibility.Visible)
         {
@@ -1137,6 +1158,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Hides the player from the taskbar while retaining its notification-area activation icon.</summary>
     private async void MinimizeToTrayButton_Click(object sender, RoutedEventArgs e)
     {
+        MoreButton.Flyout.Hide();
         try
         {
             HideToNotificationArea();
@@ -1270,6 +1292,7 @@ public sealed partial class MainWindow : Window
         OperationsMenuItem.Text = T("Main.Menu.Operations");
         OpenAiMenuToggle.Text = T("MenuToggleOpenAi");
         AiPricingMenuItem.Text = T("AiPricing.MenuTitle");
+        MinimizeToTrayMenuItem.Text = T("Main.Menu.MinimizeToTray");
         AboutMenuItem.Text = T("MenuTitleAbout");
 
         ApplyMenuAccessibility(ActivityMenu, "Main.Menu.Activity", "Main.Menu.Activity.Tooltip");
@@ -1287,6 +1310,7 @@ public sealed partial class MainWindow : Window
         ApplyMenuAccessibility(AiProviderMenu, "Main.Menu.AiProvider", "Main.Menu.AiProvider.Tooltip");
         ApplyMenuAccessibility(OpenAiMenuToggle, "MenuToggleOpenAi", "Main.Menu.AiToggle.Tooltip");
         ApplyMenuAccessibility(AiPricingMenuItem, "AiPricing.MenuTitle", "Main.Menu.AiPricing.Tooltip");
+        ApplyMenuAccessibility(MinimizeToTrayMenuItem, "Main.Menu.MinimizeToTray", "Main.Menu.MinimizeToTray");
         ApplyMenuAccessibility(AboutMenuItem, "MenuTitleAbout", "Main.Menu.About.Tooltip");
     }
 
@@ -1414,7 +1438,6 @@ public sealed partial class MainWindow : Window
         WorldClockRail.Visibility = Visibility.Collapsed;
         WorldClockRailColumn.Width = new GridLength(0);
         WorldClockRailToggleButton.Visibility = Visibility.Collapsed;
-        TitleBarTitleText.Margin = new Thickness(28, 0, 12, 0);
         _worldClockRefreshTimer.Stop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
@@ -1424,7 +1447,7 @@ public sealed partial class MainWindow : Window
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(panel);
-        DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
+        QueueTitleBarLayoutUpdate();
     }
 
     /// <summary>Restores the player panel.</summary>
@@ -1435,13 +1458,12 @@ public sealed partial class MainWindow : Window
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
         WorldClockRailToggleButton.Visibility = Visibility.Visible;
-        TitleBarTitleText.Margin = new Thickness(52, 0, 12, 0);
         ApplyWorldClockRailVisibility();
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
-        DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
+        QueueTitleBarLayoutUpdate();
     }
 
     /// <summary>Applies the session-local world-clock rail state and its refresh policy.</summary>
@@ -2043,6 +2065,13 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
+    /// <summary>Closes the player for an application-owned shutdown that must not prompt the user.</summary>
+    internal void CloseForShutdown()
+    {
+        _allowClose = true;
+        Close();
+    }
+
     /// <summary>Starts the Windows-sign-in instance in the notification area without first creating a taskbar button.</summary>
     internal void StartMinimizedToNotificationArea()
     {
@@ -2120,6 +2149,48 @@ public sealed partial class MainWindow : Window
         ApplyFlyoutPosition(_position);
     }
 
+    /// <summary>Confirms native close requests before the application suspends tracking and exits.</summary>
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_allowClose || _dashboardSurfaceClosed)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        if (_closeConfirmationInProgress)
+        {
+            return;
+        }
+
+        _closeConfirmationInProgress = true;
+        var confirmed = false;
+        try
+        {
+            confirmed = await _dialogs.ConfirmAsync(
+                _application,
+                this,
+                MicaDialogRequest.Confirmation(
+                    T("Dialog.CloseTracking.Title"),
+                    T("Dialog.CloseTracking.Message"),
+                    T("Dialog.CloseTracking.Confirm"),
+                    T("Dialog.Cancel")),
+                RootGrid.RequestedTheme);
+        }
+        finally
+        {
+            _closeConfirmationInProgress = false;
+        }
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _allowClose = true;
+        Close();
+    }
+
     /// <summary>Fades a view into the compact player without changing geometry on pointer interaction.</summary>
     private static void FadeIn(FrameworkElement element)
     {
@@ -2136,6 +2207,7 @@ public sealed partial class MainWindow : Window
     private void ResizeForLogicalContent(int logicalHeight)
     {
         _appWindow.Resize(GetPhysicalWindowSize(logicalHeight));
+        QueueTitleBarLayoutUpdate();
     }
 
     /// <summary>Interpolates the compact player height after a visible layout change.</summary>
@@ -2147,6 +2219,7 @@ public sealed partial class MainWindow : Window
         {
             _appWindow.Resize(_windowResizeAnimationTargetSize);
             ApplyFlyoutPosition(_position);
+            QueueTitleBarLayoutUpdate();
             return;
         }
 
@@ -2169,6 +2242,7 @@ public sealed partial class MainWindow : Window
         if (progress >= 1d)
         {
             _windowResizeAnimationTimer.Stop();
+            QueueTitleBarLayoutUpdate();
         }
     }
 
@@ -2210,13 +2284,6 @@ public sealed partial class MainWindow : Window
     private RectInt32 CurrentWorkArea() =>
         DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
 
-    [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmSetWindowAttribute(
-        IntPtr window,
-        int attribute,
-        ref uint attributeValue,
-        int attributeSize);
-
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         if (_xamlRoot is not null)
@@ -2236,6 +2303,7 @@ public sealed partial class MainWindow : Window
         WorldClockRail.RemoveRequested -= WorldClockRail_RemoveRequested;
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
+        _appWindow.Closing -= AppWindow_Closing;
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
         if (_optionsControl is not null)

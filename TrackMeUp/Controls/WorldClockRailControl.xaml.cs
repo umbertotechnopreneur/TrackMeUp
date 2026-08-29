@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
@@ -52,8 +51,8 @@ public sealed partial class WorldClockRailControl : UserControl
             }
         }
 
-        // Move existing instances into snapshot order so expansion and hover/focus state survive
-        // minute refreshes. Only genuinely new cities allocate a view model and image source.
+        // Move existing instances into snapshot order so expansion state survives minute refreshes.
+        // Only genuinely new cities allocate a view model and image source.
         for (var index = 0; index < snapshot.Clocks.Count; index++)
         {
             var item = snapshot.Clocks[index];
@@ -131,32 +130,9 @@ public sealed partial class WorldClockRailControl : UserControl
         }
     }
 
-    private void ClockCard_PointerEntered(object sender, PointerRoutedEventArgs e) => SetActions(sender, true);
-
-    private void ClockCard_PointerExited(object sender, PointerRoutedEventArgs e) => SetActions(sender, false);
-
-    private void ClockCard_GotFocus(object sender, RoutedEventArgs e) => SetActions(sender, true);
-
-    private void ClockCard_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.FocusState == FocusState.Unfocused)
-        {
-            SetActions(sender, false);
-        }
-    }
-
-    private static void SetActions(object sender, bool visible)
-    {
-        if ((sender as FrameworkElement)?.DataContext is ClockCardViewModel clock)
-        {
-            clock.ActionsVisible = visible;
-        }
-    }
-
     private sealed class ClockCardViewModel : INotifyPropertyChanged
     {
         private bool _isExpanded;
-        private bool _actionsVisible;
         private bool _isDaylight;
         private bool _isHero;
         private string _cityName = string.Empty;
@@ -165,8 +141,6 @@ public sealed partial class WorldClockRailControl : UserControl
         private string _dayStateText = string.Empty;
         private Brush _dayStateBrush = null!;
         private Brush _ambientGlowBrush = null!;
-        private Brush _restingCardBorderBrush = null!;
-        private Brush _activeCardBorderBrush = null!;
         private string _sunTimesText = string.Empty;
         private string _moonSummaryText = string.Empty;
         private string _detailAccessibleName = string.Empty;
@@ -219,16 +193,13 @@ public sealed partial class WorldClockRailControl : UserControl
             {
                 _dayStateBrush = CreateSolidBrush(item.IsDaylight ? 0xFFFF9B82u : 0xFF9B94FFu);
                 _ambientGlowBrush = CreateAmbientGlowBrush(item.IsDaylight);
-                _activeCardBorderBrush = CreateSolidBrush(item.IsDaylight ? 0xA0FF9B82u : 0x909B94FFu);
                 OnPropertyChanged(nameof(DayStateBrush));
                 OnPropertyChanged(nameof(AmbientGlowBrush));
-                OnPropertyChanged(nameof(CardBorderBrush));
             }
 
             if (heroChanged)
             {
                 _isHero = isHero;
-                _restingCardBorderBrush = CreateSolidBrush(isHero ? 0x48FFFFFFu : 0x32FFFFFFu);
                 SetProperty(
                     ref _heroVisibility,
                     isHero ? Visibility.Visible : Visibility.Collapsed,
@@ -238,7 +209,6 @@ public sealed partial class WorldClockRailControl : UserControl
                     isHero ? Visibility.Collapsed : Visibility.Visible,
                     nameof(CompactVisibility));
                 SetProperty(ref _minimumHeight, isHero ? 175d : 111d, nameof(MinimumHeight));
-                OnPropertyChanged(nameof(CardBorderBrush));
             }
 
             var sunrise = FormatTime(item.Sunrise, strings);
@@ -292,7 +262,6 @@ public sealed partial class WorldClockRailControl : UserControl
         public string DayStateText => _dayStateText;
         public Brush DayStateBrush => _dayStateBrush;
         public Brush AmbientGlowBrush => _ambientGlowBrush;
-        public Brush CardBorderBrush => _actionsVisible ? _activeCardBorderBrush : _restingCardBorderBrush;
         public string SunTimesText => _sunTimesText;
         public string MoonSummaryText => _moonSummaryText;
         public string DetailAccessibleName => _detailAccessibleName;
@@ -310,21 +279,7 @@ public sealed partial class WorldClockRailControl : UserControl
         public double SunriseHour => _sunriseHour;
         public double SunsetHour => _sunsetHour;
         public BitmapImage SkylineImage => _skylineImage;
-        public double ActionsOpacity => _actionsVisible ? 1d : 0d;
         public Visibility DetailsVisibility => _isExpanded ? Visibility.Visible : Visibility.Collapsed;
-
-        public bool ActionsVisible
-        {
-            get => _actionsVisible;
-            set
-            {
-                if (_actionsVisible == value) return;
-                _actionsVisible = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ActionsOpacity));
-                OnPropertyChanged(nameof(CardBorderBrush));
-            }
-        }
 
         public bool IsExpanded
         {
