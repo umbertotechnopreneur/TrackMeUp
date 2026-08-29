@@ -111,7 +111,9 @@ public sealed class OpenSourceLicenseContractTests
     public void PublicLicenseAndStoreLocales_DeclareTheMitContract()
     {
         var license = File.ReadAllText(RepositoryFile("LICENSE"));
-        Assert.Equal(CanonicalLicenseText, license.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd());
+        Assert.Equal(
+            CanonicalLicenseText.ReplaceLineEndings("\n").TrimEnd('\n'),
+            license.ReplaceLineEndings("\n").TrimEnd('\n'));
 
         var listingText = File.ReadAllText(RepositoryFile("store", "listing.json"));
         using var listing = JsonDocument.Parse(listingText);
