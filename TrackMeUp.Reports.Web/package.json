@@ -2,6 +2,7 @@
   "name": "trackmeup-reports-web",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
@@ -9,8 +10,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
-    "build": "npm run typecheck && npm run test && vite build && npm run verify:production",
+    "build": "npm run typecheck && npm run test && vite build && npm run notices:production && npm run verify:production",
     "test": "vitest run",
+    "notices:production": "node scripts/generate-third-party-notices.mjs",
     "verify:production": "node scripts/verify-production.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },

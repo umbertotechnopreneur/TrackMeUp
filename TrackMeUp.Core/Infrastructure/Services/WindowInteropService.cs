@@ -10,6 +10,9 @@ public static class WindowInteropService
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoActivate = 0x0010;
+    private const uint MbOk = 0x00000000;
+    private const uint MbIconWarning = 0x00000030;
+    private const uint MbSetForeground = 0x00010000;
     private static readonly IntPtr HwndTopMost = new(-1);
 
     /// <summary>Assigns one native window as the owner of another window.</summary>
@@ -82,6 +85,20 @@ public static class WindowInteropService
         }
     }
 
+    /// <summary>Shows an owned Windows warning message with the standard acknowledgement action.</summary>
+    public static void ShowWarningMessage(IntPtr ownerHandle, string title, string message)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(ownerHandle, IntPtr.Zero);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+
+        // This synchronous Win32 call owns its modal loop and returns only after the standard OK action.
+        if (MessageBoxW(ownerHandle, message, title, MbOk | MbIconWarning | MbSetForeground) == 0)
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Unable to show the Windows warning message.");
+        }
+    }
+
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
     private static extern int SetWindowLongPtr32(IntPtr windowHandle, int index, int newValue);
 
@@ -110,6 +127,9 @@ public static class WindowInteropService
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowEnabled(IntPtr windowHandle);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int MessageBoxW(IntPtr ownerHandle, string text, string caption, uint type);
 
     private delegate bool EnumThreadDelegate(IntPtr windowHandle, IntPtr parameter);
 }

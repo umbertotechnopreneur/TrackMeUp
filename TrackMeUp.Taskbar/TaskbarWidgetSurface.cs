@@ -14,7 +14,8 @@ public sealed class TaskbarWidgetSurface : IDisposable
     private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
     private readonly TaskbarWidgetHost _host;
     private readonly ILogger<TaskbarWidgetSurface> _logger;
-    private readonly ManualResetEventSlim _ready = new(false);
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private readonly TaskCompletionSource _startupCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Thread _thread;
     private System.Windows.Application? _wpfApplication;
     private Dispatcher? _dispatcher;
@@ -24,6 +25,7 @@ public sealed class TaskbarWidgetSurface : IDisposable
     private AppSettings? _settings;
     private string _position = TaskbarWidgetPositions.Left;
     private int _disposed;
+    private int _hostDisposed;
 
     /// <summary>Starts the dedicated WPF dispatcher and creates the alpha-capable taskbar surface.</summary>
     public TaskbarWidgetSurface(ITrackMeUpApplication application, DashboardRefreshCoordinator dashboardRefreshCoordinator, TaskbarWidgetHost host, ILogger<TaskbarWidgetSurface>? logger = null)
@@ -40,7 +42,7 @@ public sealed class TaskbarWidgetSurface : IDisposable
         _thread.SetApartmentState(ApartmentState.STA);
         _thread.Start();
 
-        if (!_ready.Wait(TimeSpan.FromSeconds(10)))
+        if (!_startupCompletion.Task.Wait(TimeSpan.FromSeconds(10)))
         {
             Dispose();
             throw new TimeoutException("Timed out while creating the TrackMeUp taskbar surface.");
@@ -92,24 +94,30 @@ public sealed class TaskbarWidgetSurface : IDisposable
             return;
         }
 
+        _lifetimeCancellation.Cancel();
         var dispatcher = _dispatcher;
-        if (dispatcher is not null && !dispatcher.HasShutdownStarted)
+        if (dispatcher is not null && !dispatcher.HasShutdownStarted && !dispatcher.HasShutdownFinished)
         {
-            dispatcher.Invoke(() =>
+            try
             {
-                _recoveryTimer?.Stop();
-                _host.Dispose();
-                _window?.Close();
-                _wpfApplication?.Shutdown();
-            });
-        }
-        else
-        {
-            _host.Dispose();
+                // Never synchronously invoke a dispatcher whose message loop may still be starting.
+                // The queued shutdown is also observed by the startup cancellation checks below.
+                _ = dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(ShutdownOnDispatcher));
+            }
+            catch (InvalidOperationException)
+            {
+                // Dispatcher shutdown won the race; its thread-level finally block owns cleanup.
+            }
         }
 
-        _ = _thread.Join(TimeSpan.FromSeconds(5));
-        _ready.Dispose();
+        if (!_thread.Join(TimeSpan.FromSeconds(5)))
+        {
+            // A blocked WPF startup must not retain Core taskbar interop after the public surface is disposed.
+            DisposeHost();
+            return;
+        }
+
+        _lifetimeCancellation.Dispose();
     }
 
     private void DispatcherThreadMain()
@@ -121,15 +129,85 @@ public sealed class TaskbarWidgetSurface : IDisposable
                 ShutdownMode = ShutdownMode.OnExplicitShutdown
             };
             _dispatcher = Dispatcher.CurrentDispatcher;
+            if (_lifetimeCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
             PrepareReplacementWindow();
-            _ready.Set();
+            if (_lifetimeCancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            // Completion runs inside the active message loop, so callers can never Invoke a pre-loop dispatcher.
+            _ = _dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(SignalDispatcherStarted));
             Dispatcher.Run();
         }
         catch (Exception exception)
         {
             _startupException = exception;
-            _ready.Set();
         }
+        finally
+        {
+            CleanupAfterDispatcherExit();
+            _startupCompletion.TrySetResult();
+        }
+    }
+
+    private void SignalDispatcherStarted()
+    {
+        _startupCompletion.TrySetResult();
+        if (_lifetimeCancellation.IsCancellationRequested)
+        {
+            ShutdownOnDispatcher();
+        }
+    }
+
+    private void ShutdownOnDispatcher()
+    {
+        _recoveryTimer?.Stop();
+        DisposeHost();
+        CloseCurrentWindow();
+        _wpfApplication?.Shutdown();
+    }
+
+    private void CleanupAfterDispatcherExit()
+    {
+        try
+        {
+            _recoveryTimer?.Stop();
+            CloseCurrentWindow();
+        }
+        catch (Exception exception)
+        {
+            // The dispatcher is already exiting; log the failed presentation cleanup and still release Core interop.
+            _logger.LogWarning(exception, "Taskbar widget WPF cleanup failed during dispatcher shutdown.");
+        }
+        finally
+        {
+            DisposeHost();
+        }
+    }
+
+    private void DisposeHost()
+    {
+        if (Interlocked.Exchange(ref _hostDisposed, 1) == 0)
+        {
+            _host.Dispose();
+        }
+    }
+
+    private void CloseCurrentWindow()
+    {
+        if (_window is not { } window)
+        {
+            return;
+        }
+
+        _window = null;
+        window.FlyoutRequested -= Window_FlyoutRequested;
+        window.Close();
     }
 
     private void StartRecoveryTimer()
@@ -193,10 +271,7 @@ public sealed class TaskbarWidgetSurface : IDisposable
 
     private void PrepareReplacementWindow()
     {
-        if (_window is not null)
-        {
-            _window.FlyoutRequested -= Window_FlyoutRequested;
-        }
+        CloseCurrentWindow();
 
         // Position the hidden surface on the taskbar monitor before realizing its HWND so WPF adopts the correct DPI.
         var bounds = TaskbarWidgetHost.GetDesiredBounds(_position);

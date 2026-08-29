@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
+using TrackMeUp.Application;
 using TrackMeUp.Providers;
 
 namespace TrackMeUp.Services;
@@ -16,18 +17,27 @@ public sealed class ActivityMonitorService : IDisposable
     private const int IdleThresholdSeconds = 60;
     private readonly LocalStore _store;
     private readonly InputHookService _inputHooks;
+    private readonly SettingsSnapshot _settingsSnapshot;
     private readonly ActivityContextProviderRegistry _providers = new();
-    private string _installationId = string.Empty;
+    private readonly object _lifecycleLock = new();
+    private readonly string _installationId;
     private Timer? _timer;
+    private int _sampleInProgress;
+    private int _sampleThreadId;
+    private bool _disposed;
 
     /// <summary>
     /// Creates a monitor service bound to a store and input counter source.
     /// </summary>
-    public ActivityMonitorService(LocalStore store, InputHookService inputHooks)
+    public ActivityMonitorService(
+        LocalStore store,
+        InputHookService inputHooks,
+        SettingsSnapshot? settingsSnapshot = null)
     {
         _store = store;
         _inputHooks = inputHooks;
-        _installationId = store.LoadSettings().InstallationId;
+        _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
+        _installationId = _settingsSnapshot.Value.InstallationId;
     }
 
     public event Action<ActivitySample>? SampleRecorded;
@@ -36,15 +46,47 @@ public sealed class ActivityMonitorService : IDisposable
     /// <summary>
     /// Starts periodic sampling. If already running, it keeps existing cadence.
     /// </summary>
-    public void Start() => _timer ??= new Timer(_ => Sample(), null, TimeSpan.Zero, TimeSpan.FromSeconds(SampleSeconds));
+    public void Start()
+    {
+        lock (_lifecycleLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _timer ??= new Timer(_ => SampleIfIdle(), null, TimeSpan.Zero, TimeSpan.FromSeconds(SampleSeconds));
+        }
+    }
 
     /// <summary>
     /// Stops periodic sampling and releases the timer.
     /// </summary>
     public void Stop()
     {
-        _timer?.Dispose();
-        _timer = null;
+        Timer? timer;
+        lock (_lifecycleLock)
+        {
+            timer = _timer;
+            _timer = null;
+        }
+
+        DrainTimer(timer);
+    }
+
+    private void SampleIfIdle()
+    {
+        if (Interlocked.Exchange(ref _sampleInProgress, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Write(ref _sampleThreadId, Environment.CurrentManagedThreadId);
+            Sample();
+        }
+        finally
+        {
+            Volatile.Write(ref _sampleThreadId, 0);
+            Volatile.Write(ref _sampleInProgress, 0);
+        }
     }
 
     /// <summary>
@@ -63,7 +105,7 @@ public sealed class ActivityMonitorService : IDisposable
             var attributes = context.Attributes is null
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : new Dictionary<string, string>(context.Attributes, StringComparer.Ordinal);
-            var spanLabel = _store.LoadSettings().SpanLabel;
+            var spanLabel = _settingsSnapshot.Value.SpanLabel;
             if (!string.IsNullOrWhiteSpace(spanLabel))
             {
                 attributes[ActivityAttributeKeys.SpanLabel] = spanLabel;
@@ -132,5 +174,40 @@ public sealed class ActivityMonitorService : IDisposable
         return unchecked((uint)Environment.TickCount - info.Time) / 1000;
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        Timer? timer;
+        lock (_lifecycleLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            timer = _timer;
+            _timer = null;
+        }
+
+        DrainTimer(timer);
+    }
+
+    private void DrainTimer(Timer? timer)
+    {
+        if (timer is null)
+        {
+            return;
+        }
+
+        if (Volatile.Read(ref _sampleThreadId) == Environment.CurrentManagedThreadId)
+        {
+            // A subscriber may synchronously request pause from SampleRecorded. The current sample
+            // is already durable, so prevent future callbacks without waiting on this callback itself.
+            timer.Dispose();
+            return;
+        }
+
+        // DisposeAsync completes only after callbacks that are already running have drained.
+        timer.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
 }

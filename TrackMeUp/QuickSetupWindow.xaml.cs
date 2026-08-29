@@ -98,7 +98,6 @@ internal sealed partial class QuickSetupWindow : Window
         }
 
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
-        _placement.ApplyDefaultBounds(RootGrid);
         UpdateTitleBarInsets();
         SelectedButton().Focus(FocusState.Programmatic);
     }
@@ -267,7 +266,7 @@ internal sealed partial class QuickSetupWindow : Window
         _lifetimeCancellation.Cancel();
         try
         {
-            await _placement.SaveAsync(CancellationToken.None);
+            _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         }
         finally
         {

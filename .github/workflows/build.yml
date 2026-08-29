@@ -12,6 +12,44 @@ permissions:
   contents: read
 
 jobs:
+  reports-web:
+    name: reports web
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+          cache-dependency-path: TrackMeUp.Reports.Web/package-lock.json
+
+      - name: Install and build reports web assets
+        working-directory: TrackMeUp.Reports.Web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify reports distribution is current
+        shell: pwsh
+        run: |
+          git diff --exit-code --ignore-space-at-eol -- TrackMeUp.Reports.Web/dist
+          if ($LASTEXITCODE -ne 0) {
+            throw 'TrackMeUp.Reports.Web/dist is stale. Run npm ci and npm run build, then commit the generated distribution.'
+          }
+
+          $untracked = @(git ls-files --others --exclude-standard -- TrackMeUp.Reports.Web/dist)
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          if ($untracked.Count -ne 0) {
+            $untracked | Write-Output
+            throw 'TrackMeUp.Reports.Web/dist is stale. Run npm ci and npm run build, then commit the generated distribution.'
+          }
+
   lint:
     name: lint
     runs-on: windows-latest
@@ -40,6 +78,9 @@ jobs:
           $env:Platform = 'x64'
           Get-ChildItem -Recurse -Filter *.csproj | ForEach-Object {
             dotnet format $_.FullName whitespace --verify-no-changes --no-restore
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
           }
 
       - name: Test with code analyzers
@@ -47,10 +88,14 @@ jobs:
         run: |
           Get-ChildItem -Recurse -Filter *.Tests.csproj | ForEach-Object {
             dotnet test $_.FullName -p:Platform=x64 --no-restore -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
           }
 
   build:
-    name: build (${{ matrix.platform }})
+    name: release build (${{ matrix.platform }})
+    needs: reports-web
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -65,8 +110,12 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore .\TrackMeUp\TrackMeUp.csproj
+      - name: Restore Release solution
+        run: dotnet restore .\TrackMeUp.slnx -p:Configuration=Release-Unpackaged -p:Platform=${{ matrix.platform }}
 
-      - name: Build
-        run: dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=${{ matrix.platform }} --no-restore
+      - name: Build Release solution
+        run: dotnet build .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=${{ matrix.platform }} --no-restore
+
+      - name: Test Release solution
+        if: matrix.platform == 'x64'
+        run: dotnet test .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=x64 --no-build --no-restore

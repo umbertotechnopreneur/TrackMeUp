@@ -98,37 +98,6 @@ public sealed class ScreenshotOcrLanguageUnavailableException : ScreenshotOcrExc
 }
 
 /// <summary>
-/// Indicates that an image exceeds the maximum dimensions accepted by Windows OCR.
-/// </summary>
-public sealed class ScreenshotOcrImageTooLargeException : ScreenshotOcrException
-{
-    internal ScreenshotOcrImageTooLargeException(uint pixelWidth, uint pixelHeight, uint maximumDimension)
-        : base(
-            $"Image dimensions {pixelWidth}x{pixelHeight} exceed the Windows OCR maximum " +
-            $"dimension of {maximumDimension} pixels.")
-    {
-        PixelWidth = pixelWidth;
-        PixelHeight = pixelHeight;
-        MaximumDimension = maximumDimension;
-    }
-
-    /// <summary>
-    /// Gets the decoded source-image width.
-    /// </summary>
-    public uint PixelWidth { get; }
-
-    /// <summary>
-    /// Gets the decoded source-image height.
-    /// </summary>
-    public uint PixelHeight { get; }
-
-    /// <summary>
-    /// Gets the maximum supported width or height.
-    /// </summary>
-    public uint MaximumDimension { get; }
-}
-
-/// <summary>
 /// Indicates that a Windows file, imaging, or OCR interop operation failed.
 /// </summary>
 public sealed class ScreenshotOcrInteropException : ScreenshotOcrException

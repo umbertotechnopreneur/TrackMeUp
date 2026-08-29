@@ -38,40 +38,12 @@ public sealed class StartupService
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
 
     /// <summary>Enables, repairs, or disables the startup integration used by this installation.</summary>
-    public async Task<bool> SetEnabledAsync(bool enabled, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await _backend.SetEnabledAsync(enabled, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            // Package broker, registry, and filesystem failures are surfaced as an unsuccessful update.
-            return false;
-        }
-    }
+    public Task<bool> SetEnabledAsync(bool enabled, CancellationToken cancellationToken) =>
+        _backend.SetEnabledAsync(enabled, cancellationToken);
 
     /// <summary>Checks whether Windows currently considers this installation enabled at sign-in.</summary>
-    public async Task<bool> IsEnabledAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await _backend.IsEnabledAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            // An unreadable package task or registry entry is not a valid enabled state.
-            return false;
-        }
-    }
+    public Task<bool> IsEnabledAsync(CancellationToken cancellationToken) =>
+        _backend.IsEnabledAsync(cancellationToken);
 
     private static IStartupRegistrationBackend CreateBackend()
     {

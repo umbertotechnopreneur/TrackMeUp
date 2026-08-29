@@ -6,6 +6,12 @@ const outputDirectory = new URL('../dist/', import.meta.url)
 const outputDirectoryPath = fileURLToPath(outputDirectory)
 const indexPath = new URL('index.html', outputDirectory)
 const indexHtml = await readFile(indexPath, 'utf8')
+const noticesPath = new URL('THIRD_PARTY_NOTICES.md', outputDirectory)
+const notices = await readFile(noticesPath, 'utf8')
+
+if (!notices.includes('# Web Report Production Third-Party Notices') || !notices.includes('Production packages:')) {
+  throw new Error('Production third-party notices are missing or invalid.')
+}
 
 const requiredCspDirectives = [
   "script-src 'self'",

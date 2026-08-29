@@ -2,10 +2,14 @@
 
 Copyright (c) 2026 Umberto Giacobbi.
 
-TrackMeUp's project-authored source code is made available under the
-`TrackMeUp Source-Available License 1.0` in `LICENSE`. It is not licensed under
-MIT or another OSI-approved open-source license.
+TrackMeUp's project-authored software and documentation are made available
+under the [MIT License](LICENSE), unless a file states otherwise.
 
 Third-party components and assets retain their own licenses and attribution
-requirements. See `THIRD_PARTY_NOTICES.md`. Those third-party terms do not
-expand the permissions granted for TrackMeUp itself by `LICENSE`.
+requirements. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and any
+notice stored alongside an asset.
+
+The MIT License does not grant rights to the TrackMeUp name, logos, app icons,
+or project-authored brand artwork. Those marks and assets are governed
+separately by [`TRADEMARKS.md`](TRADEMARKS.md). Nothing in that policy narrows
+the permissions granted for MIT-licensed material.

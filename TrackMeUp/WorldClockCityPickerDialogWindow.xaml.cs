@@ -152,7 +152,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
         AddButton.IsEnabled = false;
         CancelButton.IsEnabled = false;
         _result = cityId;
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         Close();
     }
 

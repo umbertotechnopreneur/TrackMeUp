@@ -456,7 +456,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         OpenGalleryButton.IsEnabled = false;
         ReprocessAiButton.IsEnabled = false;
         _lifetimeCancellation.Cancel();
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         Close();
     }
 

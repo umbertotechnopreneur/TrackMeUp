@@ -346,28 +346,28 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         ActivitySample sample,
         string defaultLanguage,
         InstallationProfile installation) => new()
-    {
-        Id = $"activity:{id}",
-        Kind = "activity",
-        Timestamp = sample.Timestamp,
-        Language = defaultLanguage,
-        Application = sample.Application,
-        ProcessName = sample.ProcessName,
-        Context = sample.Context,
-        WindowTitle = sample.WindowTitle,
-        AttributesRaw = AddInstallationAttributes(
+        {
+            Id = $"activity:{id}",
+            Kind = "activity",
+            Timestamp = sample.Timestamp,
+            Language = defaultLanguage,
+            Application = sample.Application,
+            ProcessName = sample.ProcessName,
+            Context = sample.Context,
+            WindowTitle = sample.WindowTitle,
+            AttributesRaw = AddInstallationAttributes(
             sample.Attributes?.ToImmutableDictionary(
                     pair => pair.Key,
                     pair => (string?)pair.Value,
                     StringComparer.OrdinalIgnoreCase)
                 ?? ImmutableDictionary<string, string?>.Empty,
             installation),
-        SpanLabels = sample.Attributes is not null
+            SpanLabels = sample.Attributes is not null
             && sample.Attributes.TryGetValue(ActivityAttributeKeys.SpanLabel, out var label)
             && !string.IsNullOrWhiteSpace(label)
                 ? [label.Trim()]
                 : []
-    };
+        };
 
     private static SearchDocument BuildScreenshotDocument(
         ScreenshotGalleryItem item,
@@ -409,33 +409,33 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         string? captureId,
         ScreenshotTextSnapshot text,
         string defaultLanguage) => new()
-    {
-        Id = $"screenshot-text:{artifactIdentity}",
-        Kind = "screenshot-text",
-        Timestamp = text.Ocr.ExtractedAt,
-        Language = text.AiRefinement?.LanguageTag ?? text.Ocr.LanguageTag ?? defaultLanguage,
-        AttributesRaw = BuildOcrAttributes(captureId, text, null, null, null, null, null),
-        CapturePath = text.SourceScreenshotPath,
-        OcrRawText = text.Ocr.RawText,
-        OcrCorrectedText = text.AiRefinement?.CorrectedText,
-        OcrStructuredSummary = StructuredSummary(text)
-    };
+        {
+            Id = $"screenshot-text:{artifactIdentity}",
+            Kind = "screenshot-text",
+            Timestamp = text.Ocr.ExtractedAt,
+            Language = text.AiRefinement?.LanguageTag ?? text.Ocr.LanguageTag ?? defaultLanguage,
+            AttributesRaw = BuildOcrAttributes(captureId, text, null, null, null, null, null),
+            CapturePath = text.SourceScreenshotPath,
+            OcrRawText = text.Ocr.RawText,
+            OcrCorrectedText = text.AiRefinement?.CorrectedText,
+            OcrStructuredSummary = StructuredSummary(text)
+        };
 
     private static SearchDocument BuildAnalysisDocument(
         AiAnalysis analysis,
         string defaultLanguage,
         InstallationProfile installation) => new()
-    {
-        Id = $"analysis:{analysis.CorrelationId}",
-        Kind = "analysis",
-        Timestamp = analysis.Timestamp,
-        Language = defaultLanguage,
-        Application = analysis.Application,
-        Context = analysis.Context,
-        CaptureOrigin = analysis.Origin,
-        AttributesRaw = AddInstallationAttributes(ImmutableDictionary<string, string?>.Empty, installation),
-        AiDescription = analysis.Summary
-    };
+        {
+            Id = $"analysis:{analysis.CorrelationId}",
+            Kind = "analysis",
+            Timestamp = analysis.Timestamp,
+            Language = defaultLanguage,
+            Application = analysis.Application,
+            Context = analysis.Context,
+            CaptureOrigin = analysis.Origin,
+            AttributesRaw = AddInstallationAttributes(ImmutableDictionary<string, string?>.Empty, installation),
+            AiDescription = analysis.Summary
+        };
 
     private static string ResolveDefaultLanguage(AppSettings settings) =>
         ProductLanguageCatalog.ResolveSearchLanguage(settings.SearchLanguage, CultureInfo.CurrentUICulture);

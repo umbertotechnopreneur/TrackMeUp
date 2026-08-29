@@ -176,7 +176,7 @@ internal sealed partial class MicaDialogWindow : Window
         PrimaryButton.IsEnabled = false;
         CancelButton.IsEnabled = false;
         _result = result;
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         Close();
     }
 

@@ -2,6 +2,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using TrackMeUp.Application;
@@ -190,6 +191,31 @@ internal sealed class WindowPlacementService : IDisposable
         if (!result.Succeeded)
         {
             throw new InvalidOperationException($"Window state could not be saved ({result.Code}).");
+        }
+    }
+
+    /// <summary>Saves placement during close without allowing a persistence failure to escape an event callback.</summary>
+    internal async Task<bool> TrySaveForCloseAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await SaveAsync(cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            // A window that is already closing cannot present a reliable error surface. Trace the failure and
+            // let its deterministic cleanup continue; the next open uses the last valid persisted placement.
+            Trace.TraceError(
+                "Window placement save failed during close. WindowKey={0} ExceptionType={1} Message={2}",
+                _windowKey,
+                exception.GetType().Name,
+                exception.Message);
+            return false;
         }
     }
 

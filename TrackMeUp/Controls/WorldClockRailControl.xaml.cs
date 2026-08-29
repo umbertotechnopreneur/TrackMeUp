@@ -81,14 +81,17 @@ public sealed partial class WorldClockRailControl : UserControl
             _clocks.RemoveAt(_clocks.Count - 1);
         }
 
-        HeaderText.Text = _strings.Translate("WorldClock.Header");
         _canAdd = snapshot.Clocks.Count < snapshot.MaximumClocks;
-        var addName = _strings.Translate(_canAdd ? "WorldClock.Add" : "WorldClock.MaximumReached");
-        // Keep the affordance legible and keyboard-focusable at the limit so its localized
-        // accessible name and tooltip can explain why another clock cannot be added.
-        AddClockButton.IsEnabled = true;
+        var addName = _strings.Translate("WorldClock.Add");
+        var landmarkName = _strings.Translate("WorldClock.Landmark");
+        var addVisibility = _canAdd ? Visibility.Visible : Visibility.Collapsed;
+        AddClockHost.Visibility = addVisibility;
+        AddClockButton.Visibility = addVisibility;
+        AddClockButton.IsEnabled = _canAdd;
         AutomationProperties.SetName(AddClockButton, addName);
         ToolTipService.SetToolTip(AddClockButton, addName);
+        AutomationProperties.SetName(RailRoot, landmarkName);
+        AutomationProperties.SetLocalizedLandmarkType(RailRoot, landmarkName);
     }
 
     private int FindClockIndex(string cityId)
@@ -140,12 +143,6 @@ public sealed partial class WorldClockRailControl : UserControl
         {
             SetActions(sender, false);
         }
-    }
-
-    private void ClockCard_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
-    {
-        // Interaction state belongs to the keyed view model. A collection move may rebind its
-        // container, but must not clear hover/focus state during an otherwise passive refresh.
     }
 
     private static void SetActions(object sender, bool visible)

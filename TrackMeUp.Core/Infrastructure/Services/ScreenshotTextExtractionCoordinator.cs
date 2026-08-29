@@ -56,11 +56,6 @@ public sealed class ScreenshotTextExtractionCoordinator
                 snapshot = Failed(sourcePath, "ocr.language.unavailable");
                 LogFailure(capture.CaptureId, "language_unavailable", exception);
             }
-            catch (ScreenshotOcrImageTooLargeException exception)
-            {
-                snapshot = Failed(sourcePath, "ocr.image.too_large", exception.PixelWidth, exception.PixelHeight);
-                LogFailure(capture.CaptureId, "image_too_large", exception);
-            }
             catch (ScreenshotOcrInteropException exception)
             {
                 snapshot = Failed(sourcePath, $"ocr.interop.{exception.Stage.ToString().ToLowerInvariant()}");

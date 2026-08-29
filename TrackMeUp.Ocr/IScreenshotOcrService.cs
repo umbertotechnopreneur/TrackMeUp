@@ -19,7 +19,6 @@ public interface IScreenshotOcrService
     /// <exception cref="ArgumentException">The enabled service received an invalid path or language tag.</exception>
     /// <exception cref="FileNotFoundException">The enabled service could not find the image.</exception>
     /// <exception cref="ScreenshotOcrLanguageUnavailableException">The requested or user-profile language is unavailable.</exception>
-    /// <exception cref="ScreenshotOcrImageTooLargeException">The image exceeds the Windows OCR dimension limit.</exception>
     /// <exception cref="ScreenshotOcrInteropException">Windows could not open, decode, convert, or recognize the image.</exception>
     Task<ScreenshotOcrResult> ExtractAsync(
         string imagePath,

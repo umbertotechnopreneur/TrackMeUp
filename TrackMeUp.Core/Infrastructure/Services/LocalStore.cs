@@ -462,6 +462,7 @@ public sealed class LocalStore
 
             records.Add(new AiReprocessCatalogRecord(
                 retained.Key,
+                InstallationId: null,
                 capturedAt,
                 capturedAt,
                 retained.Value.Keys.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
@@ -598,6 +599,59 @@ public sealed class LocalStore
         return GetScreenshotGallery(DateOnly.FromDateTime(capture.CapturedAt.LocalDateTime), cancellationToken).Items
             .Where(item => string.Equals(TryGetCaptureId(ScreenshotIdentity(item.Path)), captureId, StringComparison.Ordinal))
             .ToArray();
+    }
+
+    /// <summary>
+    /// Resolves persisted capture timestamps for retained screenshot paths. Missing entries identify
+    /// true orphaned artifacts whose filesystem timestamp may be used only as a fallback policy.
+    /// </summary>
+    internal IReadOnlyDictionary<string, DateTimeOffset> LoadScreenshotCaptureTimes(
+        IEnumerable<string> screenshotPaths,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(screenshotPaths);
+        var pathsByCaptureId = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var path in screenshotPaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var identity = ScreenshotIdentity(Path.GetFileName(path));
+            var captureId = TryGetCaptureId(identity);
+            if (captureId is null)
+            {
+                continue;
+            }
+
+            if (!pathsByCaptureId.TryGetValue(captureId, out var paths))
+            {
+                paths = [];
+                pathsByCaptureId.Add(captureId, paths);
+            }
+
+            paths.Add(path);
+        }
+
+        if (pathsByCaptureId.Count == 0)
+        {
+            return new Dictionary<string, DateTimeOffset>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var provenance = _activity.LoadScreenshotCaptures(pathsByCaptureId.Keys);
+        var timestamps = new Dictionary<string, DateTimeOffset>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (captureId, paths) in pathsByCaptureId)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!provenance.TryGetValue(captureId, out var capture))
+            {
+                continue;
+            }
+
+            foreach (var path in paths)
+            {
+                timestamps[path] = capture.CapturedAt;
+            }
+        }
+
+        return timestamps;
     }
 
     /// <summary>Loads one current gallery projection by stable screenshot artifact identity.</summary>
@@ -1077,15 +1131,30 @@ public sealed class LocalStore
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var textByIdentity = _activity.LoadScreenshotTextSnapshots(requestedIdentities, cancellationToken);
         var activitySamples = new List<ActivitySample>();
-        var recordsWithTelemetry = records.Where(record => record.HasTelemetry).ToArray();
-        if (recordsWithTelemetry.Length > 0)
+        var recordsWithProvenance = records
+            .Select(record => (Record: record, InstallationId: NormalizeInstallationId(record.InstallationId)))
+            .Where(entry => entry.Record.HasTelemetry && entry.InstallationId is not null)
+            .ToArray();
+        if (recordsWithProvenance.Length > 0)
         {
             _activity.VisitOverlapping(
-                recordsWithTelemetry.Min(record => record.IntervalStartedAt),
-                recordsWithTelemetry.Max(record => record.CapturedAt).AddTicks(1),
+                recordsWithProvenance.Min(entry => entry.Record.CapturedAt),
+                recordsWithProvenance.Max(entry => entry.Record.CapturedAt).AddTicks(1),
                 activitySamples.Add,
                 cancellationToken);
         }
+
+        var activityByCapture = MatchActivitySamples(
+                recordsWithProvenance
+                    .Select(entry => new ScreenshotActivityInterval(
+                        entry.InstallationId!,
+                        entry.Record.CapturedAt,
+                        entry.Record.CapturedAt.AddTicks(1)))
+                    .ToArray(),
+                activitySamples,
+                cancellationToken)
+            .Select((samples, index) => (recordsWithProvenance[index].Record.CaptureId, Samples: samples))
+            .ToDictionary(entry => entry.CaptureId, entry => entry.Samples, StringComparer.Ordinal);
 
         var candidates = new List<AiScreenshotReprocessCandidate>(records.Count);
         foreach (var record in records)
@@ -1101,12 +1170,14 @@ public sealed class LocalStore
                 .Where(text => text is not null)
                 .Cast<ScreenshotTextSnapshot>()
                 .ToArray();
-            var coveringSamples = record.HasTelemetry
-                ? activitySamples.Where(sample => SampleContainsInstant(sample, record.CapturedAt)).ToArray()
-                : [];
+            var installationId = NormalizeInstallationId(record.InstallationId);
+            var coveringSamples = installationId is not null
+                && activityByCapture.TryGetValue(record.CaptureId, out var matchedSamples)
+                    ? matchedSamples
+                    : [];
             // Overlapping samples provide conflicting foreground identities. Without a unique source,
-            // replay cannot prove that every applicable privacy rule was evaluated safely.
-            var historicalSample = coveringSamples.Length == 1 ? coveringSamples[0] : null;
+            // or without valid capture provenance, replay cannot prove privacy was evaluated safely.
+            var historicalSample = coveringSamples.Count == 1 ? coveringSamples[0] : null;
             var historicalContext = historicalSample is null || string.IsNullOrWhiteSpace(historicalSample.ProcessName)
                 ? null
                 : new AnalysisContextSnapshot(
@@ -1118,6 +1189,7 @@ public sealed class LocalStore
             var captureOrigin = GetCaptureOrigin(record.ArtifactIdentities[0] + ".webp");
             candidates.Add(new AiScreenshotReprocessCandidate(
                 record.CaptureId,
+                installationId,
                 record.CapturedAt,
                 captureOrigin,
                 paths,
@@ -1369,13 +1441,8 @@ public sealed class LocalStore
         return result;
     }
 
-    private static bool SampleContainsInstant(ActivitySample sample, DateTimeOffset instant)
-    {
-        var sampleEnd = sample.Timestamp.ToUniversalTime();
-        var sampleStart = sampleEnd.AddSeconds(-sample.DurationSeconds);
-        var utcInstant = instant.ToUniversalTime();
-        return sampleStart <= utcInstant && utcInstant < sampleEnd;
-    }
+    private static string? NormalizeInstallationId(string? installationId) =>
+        Guid.TryParseExact(installationId, "N", out var parsed) ? parsed.ToString("N") : null;
 
     private sealed record ScreenshotGallerySource(
         FileInfo File,
@@ -1708,6 +1775,14 @@ public sealed class LocalStore
         Action<AiRequestUsageRecord> aiUsageVisitor,
         CancellationToken cancellationToken) =>
         _activity.VisitReportData(fromUtc, toUtc, activityVisitor, aiUsageVisitor, cancellationToken);
+
+    /// <summary>Streams only AI usage rows for callers that do not need activity aggregation.</summary>
+    internal void VisitAiUsage(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        Action<AiRequestUsageRecord> visitor,
+        CancellationToken cancellationToken) =>
+        _activity.VisitAiUsage(fromUtc, toUtc, visitor, cancellationToken);
 
     private AppSettings EnsureInstallationId(AppSettings settings)
     {

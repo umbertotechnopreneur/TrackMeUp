@@ -199,6 +199,39 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task RuntimeHost_HoldsOwnershipUntilFactoryOwnedApplicationIsDisposed()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, BlockingDisposeRuntimeProxy>();
+        var proxy = (BlockingDisposeRuntimeProxy)(object)application;
+        var installationId = $"runtime-dispose-test-{Guid.NewGuid():N}";
+        await using var owner = new RuntimeHost(() => application, installationId);
+        Assert.True(owner.TryStart());
+
+        var disposeTask = owner.DisposeAsync().AsTask();
+        try
+        {
+            await proxy.DisposeStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await using var contender = new RuntimeHost(
+                () => throw new InvalidOperationException("A contender must not create an application."),
+                installationId);
+
+            Assert.False(contender.TryStart());
+
+            proxy.AllowDispose.TrySetResult();
+            await disposeTask.WaitAsync(TimeSpan.FromSeconds(3));
+
+            var successorApplication = DispatchProxy.Create<ITrackMeUpApplication, ConcurrentRuntimeProxy>();
+            await using var successor = new RuntimeHost(successorApplication, installationId);
+            Assert.True(successor.TryStart());
+        }
+        finally
+        {
+            proxy.AllowDispose.TrySetResult();
+            await disposeTask;
+        }
+    }
+
+    [Fact]
     public async Task RuntimeClient_DoesNotCaptureABlockedCallerSynchronizationContext()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, DelayedHealthRuntimeProxy>();
@@ -236,6 +269,23 @@ public sealed class RuntimeProtocolTests
         Assert.Null(failure);
         Assert.NotNull(result);
         Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public async Task StartupMutation_WaitsPastTheDefaultRuntimeTimeout()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, DelayedStartupRuntimeProxy>();
+        var installationId = $"startup-timeout-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(1));
+
+        var health = await client.GetRuntimeHealthAsync(CancellationToken.None);
+        var startup = await client.SetStartupEnabledAsync(true, CancellationToken.None);
+
+        Assert.True(health.Succeeded);
+        Assert.True(startup.Succeeded);
+        Assert.True(startup.Value);
     }
 
     [Fact]
@@ -555,6 +605,52 @@ public sealed class RuntimeProtocolTests
             null,
             null,
             DateTimeOffset.UtcNow);
+    }
+
+    public class DelayedStartupRuntimeProxy : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetRuntimeHealthAsync) => Task.FromResult(OperationResult<RuntimeHealth>.Success(
+                    "runtime.healthy",
+                    "RuntimeHealthy",
+                    new RuntimeHealth("test", RuntimeProtocol.ProtocolVersion, "test", true, ["startup.enable"]))),
+                nameof(ITrackMeUpApplication.SetStartupEnabledAsync) => CompleteStartupAsync((CancellationToken)args![1]!),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private static async Task<OperationResult<bool>> CompleteStartupAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(1500), cancellationToken);
+            return OperationResult<bool>.Success("startup.enabled", "StartupEnabled", true);
+        }
+    }
+
+    public class BlockingDisposeRuntimeProxy : DispatchProxy
+    {
+        public TaskCompletionSource DisposeStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource AllowDispose { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(IAsyncDisposable.DisposeAsync) => new ValueTask(DisposeCoreAsync()),
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private async Task DisposeCoreAsync()
+        {
+            DisposeStarted.TrySetResult();
+            await AllowDispose.Task;
+        }
     }
 
     public class SearchAvailabilityRuntimeProxy : DispatchProxy

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using TrackMeUp.Application;
@@ -131,6 +132,49 @@ public sealed class SettingsAndRetentionSafetyTests
             }));
         Assert.False(invalid.Succeeded);
         Assert.Contains(invalid.Issues, issue => issue.Field == "screenshots.details_pane_open");
+    }
+
+    [Fact]
+    public void AiMonthlySpendPreference_IsOptInAndRoundTripsThroughTheSettingsCatalog()
+    {
+        var defaults = Assert.IsType<AppSettings>(
+            JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var enabled = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.show_monthly_spend"] = "true"
+            }));
+
+        Assert.False(defaults.ShowAiMonthlySpend);
+        Assert.True(enabled.Succeeded);
+        var settings = Assert.IsType<AppSettings>(enabled.Value);
+        Assert.True(settings.ShowAiMonthlySpend);
+        Assert.True(SettingsCatalog.TryGetValue(settings, "ai.show_monthly_spend", out var storedPreference));
+        Assert.Equal(true, storedPreference);
+
+        var restored = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>(
+            JsonSerializer.Serialize(settings, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.True(restored.ShowAiMonthlySpend);
+
+        var disabled = SettingsCatalog.Apply(
+            restored,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.show_monthly_spend"] = "false"
+            }));
+        Assert.True(disabled.Succeeded);
+        Assert.False(disabled.Value?.ShowAiMonthlySpend);
+
+        var invalid = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["ai.show_monthly_spend"] = "yes"
+            }));
+        Assert.False(invalid.Succeeded);
+        Assert.Contains(invalid.Issues, issue => issue.Field == "ai.show_monthly_spend");
     }
 
     [Theory]
@@ -330,6 +374,41 @@ public sealed class SettingsAndRetentionSafetyTests
     public void ScreenshotOwnership_IsFailClosed(string fileName, bool expected)
     {
         Assert.Equal(expected, ScreenCaptureService.IsOwnedArtifact(fileName));
+    }
+
+    [Fact]
+    public void ScreenshotRetention_UsesPersistedCaptureTimeInsteadOfFileModificationTime()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var settings = store.LoadSettings();
+            var captureId = Guid.NewGuid().ToString("N");
+            var screenshotPath = Path.Combine(
+                dataDirectory,
+                $"{captureId}_1.2.3_manual_monitor-1.webp");
+            File.WriteAllBytes(screenshotPath, [1, 2, 3]);
+            File.SetLastWriteTimeUtc(screenshotPath, DateTime.UtcNow);
+            var capturedAt = DateTimeOffset.UtcNow.AddDays(-60);
+            store.RegisterScreenshotCapture(
+                captureId,
+                settings.InstallationId,
+                capturedAt,
+                ScreenshotCaptureOrigins.Manual);
+
+            var timestamps = store.LoadScreenshotCaptureTimes([screenshotPath], CancellationToken.None);
+
+            Assert.Equal(capturedAt.UtcDateTime.Ticks, timestamps[screenshotPath].UtcDateTime.Ticks);
+            Assert.True(File.GetLastWriteTimeUtc(screenshotPath) > capturedAt.UtcDateTime);
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
     }
 
     [Fact]

@@ -118,6 +118,40 @@ public sealed class ReportAggregationService
         return OperationResult<ReportSnapshot>.Success("report.loaded", "ReportLoaded", snapshot);
     }
 
+    /// <summary>
+    /// Aggregates only AI usage for a trusted local-date range, avoiding the activity-history scan
+    /// required by a full report.
+    /// </summary>
+    internal AiUsageSummary BuildAiUsage(
+        DateOnly from,
+        DateOnly toInclusive,
+        TimeZoneInfo timeZone,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(timeZone);
+        if (from > toInclusive)
+        {
+            throw new ArgumentException("The AI usage range end must not precede its start.", nameof(toInclusive));
+        }
+
+        if (toInclusive == DateOnly.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(toInclusive));
+        }
+
+        var dayCount = toInclusive.DayNumber - from.DayNumber + 1;
+        if (dayCount > MaximumRangeDays)
+        {
+            throw new ArgumentOutOfRangeException(nameof(toInclusive));
+        }
+
+        var fromUtc = ConvertLocalBoundaryToUtc(from, timeZone);
+        var toUtc = ConvertLocalBoundaryToUtc(toInclusive.AddDays(1), timeZone);
+        var usage = new AiUsageAccumulator(new AiTokenCostEstimator(_store.ListAiModelPricing(AiPricingProviders.OpenAi)));
+        _store.VisitAiUsage(fromUtc, toUtc, usage.Add, cancellationToken);
+        return usage.Build();
+    }
+
     private static (TimeZoneInfo? TimeZone, string? Error) ResolveTimeZone(string? timeZoneId)
     {
         if (string.IsNullOrWhiteSpace(timeZoneId))

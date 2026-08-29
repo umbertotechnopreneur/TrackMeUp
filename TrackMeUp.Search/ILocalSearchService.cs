@@ -11,21 +11,7 @@ public interface ILocalSearchService : IAsyncDisposable
     long CommittedSourceRevision { get; }
 
     /// <summary>
-    /// Adds or atomically replaces a document by its stable identifier and commits the change.
-    /// </summary>
-    /// <param name="document">The complete document to index.</param>
-    /// <param name="cancellationToken">A token observed before Lucene's synchronous commit begins.</param>
-    Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Deletes a document by its stable, case-sensitive identifier and commits the change.
-    /// </summary>
-    /// <param name="id">The document identifier.</param>
-    /// <param name="cancellationToken">A token observed before Lucene's synchronous commit begins.</param>
-    Task DeleteAsync(string id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Applies ordered upserts and deletes with one Lucene commit and one suggestion refresh.
+    /// Applies ordered upserts and deletes with one Lucene commit and invalidates suggestions for lazy repair.
     /// </summary>
     /// <param name="mutations">The stable-document mutations to apply.</param>
     /// <param name="sourceRevision">The durable source revision represented after the batch commits.</param>
@@ -35,14 +21,10 @@ public interface ILocalSearchService : IAsyncDisposable
         long sourceRevision,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Replaces the complete index contents with a validated, reconstructible document set.
-    /// </summary>
-    /// <param name="documents">The authoritative documents from which to rebuild the index.</param>
-    /// <param name="cancellationToken">A token observed while preparing documents and before commit.</param>
-    Task RebuildAsync(IEnumerable<SearchDocument> documents, CancellationToken cancellationToken = default);
-
     /// <summary>Rebuilds the complete index and commits the exact authoritative source revision.</summary>
+    /// <param name="documents">The authoritative documents from which to rebuild the index.</param>
+    /// <param name="sourceRevision">The durable source revision represented by the complete snapshot.</param>
+    /// <param name="cancellationToken">A token observed while preparing documents and before commit.</param>
     Task RebuildAsync(
         IEnumerable<SearchDocument> documents,
         long sourceRevision,

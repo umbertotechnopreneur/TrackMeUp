@@ -7,7 +7,7 @@ alwaysApply: true
 # TrackMeUp Baseline
 
 - This repository is a **Windows-first workspace** with:
-  - `TrackMeUp/`: WinUI 3 desktop app (`net8.0-windows10.0.19041.0`, x86/x64/ARM64).
+  - `TrackMeUp/`: WinUI 3 desktop app (`net10.0-windows10.0.19041.0`, x86/x64/ARM64).
   - `scripts/`: project utility scripts adapted from local `PowerShell` templates.
   - `.github/`: instruction and workflow context for AI assistants.
 
@@ -23,6 +23,8 @@ alwaysApply: true
 - Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
 - Do not preserve legacy code or superseded contracts for compatibility. Remove obsolete code paths, adapters, fallbacks, and persisted settings when a feature is replaced; unsupported legacy input must fail fast.
 - Do not commit credentials, private secrets, machine paths, or secrets.
+- Project-authored software and documentation are MIT-licensed. Keep the canonical license text in `LICENSE`; do not add distribution or commercial-use restrictions to it.
+- Treat the TrackMeUp name, logos, app icons, and project-authored brand artwork separately under `TRADEMARKS.md`, and preserve all third-party license and attribution notices.
 - Keep unrelated working-tree changes untouched.
 - Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
 - Exclude generated artifacts (`bin/`, `obj/`, `artifacts/`, `.vs/`) from commits.

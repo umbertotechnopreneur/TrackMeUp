@@ -1,48 +1,21 @@
-TrackMeUp Source-Available License 1.0
+MIT License
 
 Copyright (c) 2026 Umberto Giacobbi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software") to use,
-copy, modify, and create derivative works from the Software for personal use,
-internal business use, evaluation, security review, academic study, and
-contribution back to the copyright holder, subject to the following conditions:
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-
-2. This license does not grant any right, title, or interest in the TrackMeUp
-   name, logos, trade dress, or other branding. All trademark rights are
-   reserved.
-
-3. You may keep private forks or internal copies of the Software only for the
-   permitted uses listed above.
-
-4. Without prior written permission from the copyright holder, you may not
-   publish, distribute, sublicense, sell, lease, host, make available, or
-   submit to any application store or marketplace the Software or any
-   derivative work as:
-
-   a. the Software compiled, repackaged, or redistributed with no material
-      changes;
-   b. a product, service, or application that is substantially similar to the
-      Software in source code, functionality, user experience, branding, or
-      market purpose; or
-   c. a product, service, or application intended to replace, replicate, or
-      compete directly with TrackMeUp.
-
-5. For the avoidance of doubt, publishing the Software or any substantially
-   similar derivative work to Microsoft Store or to any other software
-   marketplace is prohibited unless the copyright holder has given prior
-   written permission.
-
-6. Except for the limited rights expressly granted above, no other rights are
-   granted, whether by implication, estoppel, or otherwise.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.

@@ -30,7 +30,7 @@ public sealed class TrackingDomainService : IDisposable
     {
         _store = store;
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
-        _monitor = new ActivityMonitorService(_store, _inputHooks);
+        _monitor = new ActivityMonitorService(_store, _inputHooks, _settingsSnapshot);
         _monitor.SampleRecorded += HandleSampleRecorded;
     }
 

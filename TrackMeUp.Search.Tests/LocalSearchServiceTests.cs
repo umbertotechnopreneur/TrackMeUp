@@ -10,7 +10,7 @@ public sealed class LocalSearchServiceTests
     public async Task ApplyBatchAsync_AppliesOrderedUpsertsAndDeletes()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.RebuildAsync(
+        await harness.RebuildAsync(
         [
             CreateDocument("replace-me") with { Context = "old context" },
             CreateDocument("delete-me") with { Context = "obsolete context" }
@@ -30,6 +30,22 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
+    public async Task RebuildAsync_RejectsABackwardSourceRevision()
+    {
+        await using var harness = new SearchHarness();
+        await harness.Service.ApplyBatchAsync(
+            [SearchIndexMutation.Upsert(CreateDocument("current") with { Context = "current marker" })],
+            5);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => harness.Service.RebuildAsync([], 4));
+
+        Assert.Equal(5, harness.Service.CommittedSourceRevision);
+        Assert.Equal(
+            "current",
+            Assert.Single((await harness.Service.SearchAsync(new SearchRequest { Text = "current marker" })).Hits).Document.Id);
+    }
+
+    [Fact]
     public void IndexSchema_IsVersionedForTheExpandedLanguageAnalyzerContract()
     {
         Assert.Equal(2, LocalSearchService.IndexSchemaVersion);
@@ -40,7 +56,7 @@ public sealed class LocalSearchServiceTests
     public async Task SuggestAsync_UsesSeparateInfixIndexForThreeCharacterQueries()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.RebuildAsync(
+        await harness.RebuildAsync(
         [
             CreateDocument("suggestion-one") with
             {
@@ -72,6 +88,89 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
+    public async Task SuggestAsync_LazilyRepairsStaleRevisionAfterReopen()
+    {
+        var root = SearchHarness.CreateRoot();
+        var options = new SearchOptions { IndexRootPath = root };
+        var revisionPath = Path.Combine(root, LocalSearchService.SuggestionRevisionFileName);
+        try
+        {
+            await using (var first = new LocalSearchService(options))
+            {
+                await first.ApplyBatchAsync(
+                    [SearchIndexMutation.Upsert(CreateDocument("legacy") with { Application = "Legacy Workspace" })],
+                    1);
+                Assert.False(File.Exists(revisionPath));
+
+                var initial = await first.SuggestAsync(new SearchSuggestionRequest { Text = "leg" });
+                Assert.Contains(initial, suggestion => suggestion.Text == "Legacy Workspace");
+                Assert.Equal("1", File.ReadAllText(revisionPath));
+
+                await first.ApplyBatchAsync(
+                [
+                    SearchIndexMutation.Delete("legacy"),
+                    SearchIndexMutation.Upsert(CreateDocument("current") with { Application = "Modern Workspace" })
+                ], 2);
+                Assert.Equal("1", File.ReadAllText(revisionPath));
+            }
+
+            await using (var second = new LocalSearchService(options))
+            {
+                Assert.Equal(2, second.CommittedSourceRevision);
+                var current = await second.SuggestAsync(new SearchSuggestionRequest { Text = "mod" });
+                var legacy = await second.SuggestAsync(new SearchSuggestionRequest { Text = "leg" });
+
+                Assert.Contains(current, suggestion => suggestion.Text == "Modern Workspace");
+                Assert.DoesNotContain(legacy, suggestion => suggestion.Text == "Legacy Workspace");
+                Assert.Equal("2", File.ReadAllText(revisionPath));
+            }
+        }
+        finally
+        {
+            SearchHarness.DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task SuggestAsync_RepairsAfterRevisionPersistenceFaultAndReopen()
+    {
+        var root = SearchHarness.CreateRoot();
+        var options = new SearchOptions { IndexRootPath = root };
+        var revisionPath = Path.Combine(root, LocalSearchService.SuggestionRevisionFileName);
+        try
+        {
+            await using (var first = new LocalSearchService(options))
+            {
+                await first.ApplyBatchAsync(
+                    [SearchIndexMutation.Upsert(CreateDocument("recover") with { Application = "Recovery Workspace" })],
+                    1);
+                Directory.CreateDirectory(revisionPath);
+
+                var failure = await Record.ExceptionAsync(() => first.SuggestAsync(
+                    new SearchSuggestionRequest { Text = "rec" }));
+                Assert.True(
+                    failure is IOException or UnauthorizedAccessException,
+                    $"Expected a revision persistence failure, received {failure?.GetType().FullName ?? "no exception"}.");
+
+                var search = await first.SearchAsync(new SearchRequest { Text = "recovery" });
+                Assert.Equal("recover", Assert.Single(search.Hits).Document.Id);
+            }
+
+            Directory.Delete(revisionPath);
+            await using (var second = new LocalSearchService(options))
+            {
+                var suggestions = await second.SuggestAsync(new SearchSuggestionRequest { Text = "rec" });
+                Assert.Contains(suggestions, suggestion => suggestion.Text == "Recovery Workspace");
+                Assert.Equal("1", File.ReadAllText(revisionPath));
+            }
+        }
+        finally
+        {
+            SearchHarness.DeleteRoot(root);
+        }
+    }
+
+    [Fact]
     public async Task SearchAsync_SearchesEveryRawFieldWithoutAiDescription()
     {
         await using var harness = new SearchHarness();
@@ -92,7 +191,7 @@ public sealed class LocalSearchServiceTests
             OcrStructuredSummary = "Categoria: ricavi",
             AiDescription = null,
         };
-        await harness.Service.UpsertAsync(document);
+        await harness.UpsertAsync(document);
 
         var queries = new[]
         {
@@ -138,7 +237,7 @@ public sealed class LocalSearchServiceTests
     public async Task SearchAsync_NormalizesCaseAndDiacritics()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("diacritics") with
+        await harness.UpsertAsync(CreateDocument("diacritics") with
         {
             Language = "it-IT",
             Context = "Riunione al Caffè già confermata",
@@ -173,7 +272,7 @@ public sealed class LocalSearchServiceTests
 
         foreach (var item in cases)
         {
-            await harness.Service.UpsertAsync(CreateDocument($"language-{item.Language}") with
+            await harness.UpsertAsync(CreateDocument($"language-{item.Language}") with
             {
                 Language = item.Language,
                 Context = item.Indexed,
@@ -195,7 +294,7 @@ public sealed class LocalSearchServiceTests
     public async Task SearchAsync_UsesUnicodeFallbackForUnknownLanguage()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("unicode-fallback") with
+        await harness.UpsertAsync(CreateDocument("unicode-fallback") with
         {
             Language = "pl",
             Context = "Zażółć gęślą jaźń",
@@ -224,7 +323,7 @@ public sealed class LocalSearchServiceTests
                 },
             ],
         });
-        await harness.Service.UpsertAsync(CreateDocument("synonym") with
+        await harness.UpsertAsync(CreateDocument("synonym") with
         {
             Language = "it",
             Context = "Configurazione del computer aziendale",
@@ -253,7 +352,7 @@ public sealed class LocalSearchServiceTests
                 },
             ],
         });
-        await harness.Service.UpsertAsync(CreateDocument("synonym-disabled") with
+        await harness.UpsertAsync(CreateDocument("synonym-disabled") with
         {
             Language = "it",
             Context = "computer aziendale",
@@ -273,7 +372,7 @@ public sealed class LocalSearchServiceTests
     public async Task SearchAsync_MatchesControlledTypo()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("typo") with
+        await harness.UpsertAsync(CreateDocument("typo") with
         {
             Language = "it",
             WindowTitle = "Fatturazione cliente",
@@ -292,7 +391,7 @@ public sealed class LocalSearchServiceTests
     public async Task SearchAsync_CanDisableTypoTolerancePerRequest()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("typo-disabled") with
+        await harness.UpsertAsync(CreateDocument("typo-disabled") with
         {
             Language = "it",
             WindowTitle = "Fatturazione cliente",
@@ -322,7 +421,7 @@ public sealed class LocalSearchServiceTests
                 },
             ],
         });
-        await harness.Service.RebuildAsync(
+        await harness.RebuildAsync(
         [
             CreateDocument("exact") with { Context = "notebook" },
             CreateDocument("synonym") with { Context = "laptop" },
@@ -347,7 +446,7 @@ public sealed class LocalSearchServiceTests
     public async Task SearchAsync_DoesNotFuzzyMatchUnsafeTerms(string indexed, string query)
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("not-fuzzy") with { Context = indexed });
+        await harness.UpsertAsync(CreateDocument("not-fuzzy") with { Context = indexed });
 
         var response = await harness.Service.SearchAsync(new SearchRequest { Text = query });
 
@@ -359,7 +458,7 @@ public sealed class LocalSearchServiceTests
     {
         await using var harness = new SearchHarness();
         var start = new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero);
-        await harness.Service.RebuildAsync(
+        await harness.RebuildAsync(
         [
             CreateDocument("before", "activity", start) with { Context = "budget" },
             CreateDocument("match", "screenshot", start.AddHours(2)) with { Context = "budget" },
@@ -382,7 +481,7 @@ public sealed class LocalSearchServiceTests
     public async Task SearchAsync_CanReturnMetadataOnlyForBoundedUiTransport()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("metadata-only", "screenshot") with
+        await harness.UpsertAsync(CreateDocument("metadata-only", "screenshot") with
         {
             Application = "Teams",
             CapturePath = @"C:\captures\meeting.png",
@@ -409,11 +508,11 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
-    public async Task UpsertAsync_ReplacesDocumentWithSameCaseSensitiveId()
+    public async Task ApplyBatchAsync_ReplacesDocumentWithSameCaseSensitiveId()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("replace") with { Context = "obsolete" });
-        await harness.Service.UpsertAsync(CreateDocument("replace") with { Context = "current" });
+        await harness.UpsertAsync(CreateDocument("replace") with { Context = "obsolete" });
+        await harness.UpsertAsync(CreateDocument("replace") with { Context = "current" });
 
         Assert.Empty((await harness.Service.SearchAsync(new SearchRequest { Text = "obsolete" })).Hits);
         Assert.Equal(
@@ -422,12 +521,12 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
-    public async Task DeleteAsync_RemovesCommittedDocument()
+    public async Task ApplyBatchAsync_RemovesCommittedDocument()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("delete") with { Context = "erasable" });
+        await harness.UpsertAsync(CreateDocument("delete") with { Context = "erasable" });
 
-        await harness.Service.DeleteAsync("delete");
+        await harness.DeleteAsync("delete");
 
         Assert.Empty((await harness.Service.SearchAsync(new SearchRequest { Text = "erasable" })).Hits);
     }
@@ -436,9 +535,9 @@ public sealed class LocalSearchServiceTests
     public async Task RebuildAsync_ReplacesCompleteIndex()
     {
         await using var harness = new SearchHarness();
-        await harness.Service.UpsertAsync(CreateDocument("stale") with { Context = "legacyterm" });
+        await harness.UpsertAsync(CreateDocument("stale") with { Context = "legacyterm" });
 
-        await harness.Service.RebuildAsync(
+        await harness.RebuildAsync(
         [
             CreateDocument("fresh-one") with { Context = "modernterm" },
             CreateDocument("fresh-two") with { Context = "modernterm" },
@@ -459,7 +558,9 @@ public sealed class LocalSearchServiceTests
         var options = new SearchOptions { IndexRootPath = root };
         await using (var first = new LocalSearchService(options))
         {
-            await first.UpsertAsync(CreateDocument("persisted") with { Context = "durableterm" });
+            await first.ApplyBatchAsync(
+                [SearchIndexMutation.Upsert(CreateDocument("persisted") with { Context = "durableterm" })],
+                1);
         }
 
         await using (var second = new LocalSearchService(options))
@@ -472,14 +573,17 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
-    public async Task ConcurrentUpserts_AreSerializedAndVisible()
+    public async Task ApplyBatchAsync_CommitsManyDocumentsTogether()
     {
         await using var harness = new SearchHarness();
-        await Task.WhenAll(Enumerable.Range(0, 20).Select(index =>
-            harness.Service.UpsertAsync(CreateDocument($"concurrent-{index}") with
-            {
-                Context = $"parallel marker {index}",
-            })));
+        await harness.Service.ApplyBatchAsync(
+            Enumerable.Range(0, 20)
+                .Select(index => SearchIndexMutation.Upsert(CreateDocument($"batch-{index}") with
+                {
+                    Context = $"batch marker {index}",
+                }))
+                .ToArray(),
+            1);
 
         var response = await harness.Service.SearchAsync(new SearchRequest
         {
@@ -521,7 +625,7 @@ public sealed class LocalSearchServiceTests
         await using var harness = new SearchHarness();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            harness.Service.UpsertAsync(CreateDocument(" ")));
+            harness.UpsertAsync(CreateDocument(" ")));
         await Assert.ThrowsAsync<ArgumentException>(() =>
             harness.Service.SearchAsync(new SearchRequest()));
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -561,6 +665,19 @@ public sealed class LocalSearchServiceTests
         internal string Root { get; }
 
         internal LocalSearchService Service { get; }
+
+        private long SourceRevision { get; set; }
+
+        internal Task UpsertAsync(SearchDocument document) => Service.ApplyBatchAsync(
+            [SearchIndexMutation.Upsert(document)],
+            ++SourceRevision);
+
+        internal Task DeleteAsync(string id) => Service.ApplyBatchAsync(
+            [SearchIndexMutation.Delete(id)],
+            ++SourceRevision);
+
+        internal Task RebuildAsync(IEnumerable<SearchDocument> documents) =>
+            Service.RebuildAsync(documents, ++SourceRevision);
 
         internal static string CreateRoot()
         {

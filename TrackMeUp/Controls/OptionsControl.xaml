@@ -1073,6 +1073,7 @@
                         </ComboBox>
                         <TextBox x:Name="AiCustomPromptBox" Tag="Options.CustomPrompt" AcceptsReturn="True" Header="Additional AI instruction (optional)" MinHeight="76" PlaceholderText="Example: Prioritize concise, factual descriptions." TextWrapping="Wrap" />
                         <ToggleSwitch x:Name="IncludeDeviceLocationSwitch" Tag="Options.DeviceLocation" Header="Include Windows location in AI requests" OffContent="Off" OnContent="Windows Location" />
+                        <ToggleSwitch x:Name="ShowAiMonthlySpendSwitch" Tag="Options.AiMonthlySpendVisibility" Header="Show monthly AI spend in the player" OffContent="Hidden" OnContent="Visible" />
                         <ComboBox x:Name="AiProviderBox" Tag="Options.AiProvider" HorizontalAlignment="Stretch" Header="AI service" SelectionChanged="AiProviderBox_SelectionChanged">
                             <ComboBoxItem Content="OpenAI" Tag="openai" />
                             <ComboBoxItem Content="OpenRouter" Tag="openrouter" />

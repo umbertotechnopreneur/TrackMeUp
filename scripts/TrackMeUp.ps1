@@ -43,7 +43,7 @@ param(
     [string]$Platform = 'x64',
 
     [ValidateSet('Debug', 'Release', 'Debug-Unpackaged', 'Release-Unpackaged')]
-    [string]$Configuration = 'Debug',
+    [string]$Configuration = 'Debug-Unpackaged',
 
     [switch]$WarnAsError,
     [switch]$AsJson,
@@ -60,7 +60,6 @@ param(
     [string]$SecretPath,
     [string]$CredentialXmlPath,
     [string]$SecretName,
-    [string]$InputValue,
     [ValidateSet('1', '2')]
     [string]$Slot = '2',
     [switch]$Force,
@@ -382,8 +381,22 @@ function Invoke-TrackMeUpRestore {
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments @('restore', (Join-Path $script:RepositoryRoot 'TrackMeUp.slnx'))
 }
 
+function Assert-TrackMeUpSolutionConfiguration {
+    if ($Configuration -notin @('Debug-Unpackaged', 'Release-Unpackaged')) {
+        throw "Build and Test require a solution configuration: Debug-Unpackaged or Release-Unpackaged. Received: $Configuration"
+    }
+}
+
 function Invoke-TrackMeUpBuild {
-    $arguments = @('build', (Join-Path $script:RepositoryRoot 'TrackMeUp.slnx'), "-p:Platform=$Platform")
+    Assert-TrackMeUpSolutionConfiguration
+
+    $arguments = @(
+        'build',
+        (Join-Path $script:RepositoryRoot 'TrackMeUp.slnx'),
+        '--configuration',
+        $Configuration,
+        "-p:Platform=$Platform"
+    )
     if ($WarnAsError) {
         $arguments += '-warnaserror'
     }
@@ -392,7 +405,15 @@ function Invoke-TrackMeUpBuild {
 }
 
 function Invoke-TrackMeUpTest {
-    $arguments = @('test', (Join-Path $script:RepositoryRoot 'TrackMeUp.slnx'), "-p:Platform=$Platform")
+    Assert-TrackMeUpSolutionConfiguration
+
+    $arguments = @(
+        'test',
+        (Join-Path $script:RepositoryRoot 'TrackMeUp.slnx'),
+        '--configuration',
+        $Configuration,
+        "-p:Platform=$Platform"
+    )
     if ($WarnAsError) {
         $arguments += '-warnaserror'
     }
@@ -1206,10 +1227,6 @@ function Resolve-DpapiSecretName {
 }
 
 function Read-SecretSecureString {
-    if (-not [string]::IsNullOrWhiteSpace($InputValue)) {
-        return (ConvertTo-SecureString -String $InputValue -AsPlainText -Force)
-    }
-
     while ($true) {
         $first = Read-Host 'Enter the secret value' -AsSecureString
         $second = Read-Host 'Confirm the secret value' -AsSecureString

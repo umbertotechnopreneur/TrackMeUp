@@ -170,6 +170,37 @@ internal sealed class MicaDialogService
         _ = await ShowAsync(application, owner, request, theme);
     }
 
+    /// <summary>Shows one queued, owner-modal Windows warning with the native standard OK action.</summary>
+    internal async Task ShowSystemWarningAsync(Window owner, string title, string message)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+
+        await _queue.WaitAsync();
+        IReadOnlyList<IntPtr>? disabledPeerWindows = null;
+        try
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+            disabledPeerWindows = WindowInteropService.DisableCurrentThreadPeerWindows(ownerHandle);
+            WindowInteropService.ShowWarningMessage(ownerHandle, title, message);
+        }
+        finally
+        {
+            if (disabledPeerWindows is not null)
+            {
+                WindowInteropService.RestoreWindows(disabledPeerWindows);
+            }
+
+            _queue.Release();
+        }
+    }
+
     /// <summary>Shows a confirmation whose close path and secondary action both return <see langword="false"/>.</summary>
     internal async Task<bool> ConfirmAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
     {

@@ -132,7 +132,7 @@ public sealed partial class ScheduleWindow : Window
 
     private async void ScheduleWindow_Closed(object sender, WindowEventArgs args)
     {
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
         _lifetimeCancellation.Cancel();
         if (_xamlRoot is not null)

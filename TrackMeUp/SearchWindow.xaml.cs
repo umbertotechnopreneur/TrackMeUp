@@ -493,7 +493,7 @@ public sealed partial class SearchWindow : Window
         _lifetimeCancellation.Cancel();
         CancelDebounce();
         _queryCancellation?.Cancel();
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
         _queryCancellation?.Dispose();
         _lifetimeCancellation.Dispose();

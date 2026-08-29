@@ -38,6 +38,8 @@ public sealed partial class MainWindow : Window
     private const int WindowResizeAnimationDurationMilliseconds = 180;
     private const int ScreenshotPreviewDecodePixelWidth = 384;
     private static readonly TimeSpan LastSessionRefreshInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan AiSpendRefreshInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan AiSpendFailureRetryInterval = TimeSpan.FromMinutes(5);
     private const int DwmWindowAttributeBorderColor = 34;
     private const uint DwmColorNone = 0xFFFFFFFE;
     private readonly ITrackMeUpApplication _application;
@@ -79,6 +81,7 @@ public sealed partial class MainWindow : Window
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
     private int _aiSpendRefreshInProgress;
+    private bool _showAiMonthlySpend;
     private IDisposable? _dashboardSubscription;
     private bool _dashboardRefreshReady;
     private bool _dashboardSurfaceClosed;
@@ -87,6 +90,7 @@ public sealed partial class MainWindow : Window
     private Task? _optionsInitializationTask;
     private Task? _operationsInitializationTask;
     private WorldClockRailSnapshot? _worldClockSnapshot;
+    private bool _isWorldClockRailVisible;
     private int _worldClockRefreshInProgress;
 
     private OptionsControl OptionsControl => _optionsControl
@@ -229,15 +233,10 @@ public sealed partial class MainWindow : Window
         UpdateDashboardSubscriptionForVisibility();
         if (startupRegistrationFailureCode is not null)
         {
-            await _dialogs.ShowInformativeAsync(
-                _application,
+            await _dialogs.ShowSystemWarningAsync(
                 this,
-                MicaDialogRequest.Informative(
-                    T("Notification.WindowsStartupFailed.Title"),
-                    $"{T("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{startupRegistrationFailureCode}",
-                    MicaDialogSeverity.Warning,
-                    T("Dialog.Ok")),
-                RootGrid.RequestedTheme);
+                T("Notification.WindowsStartupFailed.Title"),
+                $"{T("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{startupRegistrationFailureCode}");
         }
 
         if (initialization.Succeeded && initialization.Value?.StartedPaused == true)
@@ -246,9 +245,13 @@ public sealed partial class MainWindow : Window
         }
 
         await ShowStartupAiWarningAsync();
+        await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync();
         await RefreshWorldClocksAsync();
-        _worldClockRefreshTimer.Start();
+        if (_isWorldClockRailVisible)
+        {
+            _worldClockRefreshTimer.Start();
+        }
     }
 
     private async void WorldClockRefreshTimer_Tick(DispatcherQueueTimer sender, object args) =>
@@ -339,6 +342,25 @@ public sealed partial class MainWindow : Window
         }
 
         _dialogs.ShowWarningBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T(result.MessageKey));
+    }
+
+    /// <summary>Toggles the player world-clock rail without changing the persisted city selection.</summary>
+    private async void WorldClockRailToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_layoutState.Surface != MainWindowSurface.Player)
+        {
+            return;
+        }
+
+        _isWorldClockRailVisible = !_isWorldClockRailVisible;
+        ApplyWorldClockRailVisibility();
+        ResizeForCurrentLayout(animate: RootGrid.IsLoaded);
+        DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
+        if (_isWorldClockRailVisible)
+        {
+            FadeIn(WorldClockRail);
+            await RefreshWorldClocksAsync();
+        }
     }
 
     private async Task<string?> ReconcileWindowsStartupAsync(LaunchOptions options)
@@ -491,25 +513,34 @@ public sealed partial class MainWindow : Window
     /// <summary>Refreshes the month-to-date AI spend at a bounded cadence while the integration is active.</summary>
     private async Task RefreshAiMonthlySpendAsync()
     {
-        if (!AiState.Enabled)
+        if (!_showAiMonthlySpend || !AiState.Enabled)
         {
             AiMonthlySpendPanel.Visibility = Visibility.Collapsed;
             return;
         }
 
-        if (DateTimeOffset.Now < _nextAiSpendRefreshAt || Interlocked.Exchange(ref _aiSpendRefreshInProgress, 1) != 0)
+        if (_surfaceLifetime.IsCancellationRequested ||
+            DateTimeOffset.UtcNow < _nextAiSpendRefreshAt ||
+            Interlocked.Exchange(ref _aiSpendRefreshInProgress, 1) != 0)
         {
             return;
         }
 
         try
         {
-            var result = await _application.GetAiPricingOverviewAsync(CancellationToken.None);
+            // Reserve a bounded failure retry before issuing the call so provider/runtime outages do
+            // not turn the one-second dashboard cadence into a request loop.
+            _nextAiSpendRefreshAt = DateTimeOffset.UtcNow.Add(AiSpendFailureRetryInterval);
+            var result = await _application.GetAiPricingOverviewAsync(_surfaceLifetime.Token);
             if (result.Succeeded && result.Value is not null)
             {
                 UpdateAiMonthlySpend(result.Value);
-                _nextAiSpendRefreshAt = DateTimeOffset.Now.AddMinutes(1);
+                _nextAiSpendRefreshAt = DateTimeOffset.UtcNow.Add(AiSpendRefreshInterval);
             }
+        }
+        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        {
+            // The window lifetime owns this refresh; closing it cancels pending IPC/aggregation.
         }
         finally
         {
@@ -520,8 +551,20 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders the current local calendar-month AI spend using actual provider cost when available.</summary>
     private void UpdateAiMonthlySpend(AiPricingOverview overview)
     {
-        var cost = overview.ActualCostCurrentMonthUsd ?? overview.EstimatedCostCurrentMonthUsd ?? 0m;
-        AiMonthlySpendText.Text = _strings.Format("AiPricing.UsdShort", cost);
+        if (!_showAiMonthlySpend || !AiState.Enabled)
+        {
+            AiMonthlySpendPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var cost = overview.ActualCostCurrentMonthUsd ?? overview.EstimatedCostCurrentMonthUsd;
+        if (cost is null)
+        {
+            AiMonthlySpendPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        AiMonthlySpendText.Text = _strings.Format("AiPricing.UsdShort", cost.Value);
         AiMonthlySpendRangeText.Text = _strings.Format(
             "AiPricing.DateRange",
             overview.CurrentMonthStart,
@@ -796,6 +839,11 @@ public sealed partial class MainWindow : Window
             ElementRect(TitleBarReportButton, scale),
             ElementRect(TitleBarMinimizeToTrayButton, scale)
         };
+        if (WorldClockRailToggleButton.Visibility == Visibility.Visible)
+        {
+            passthroughRects.Add(ElementRect(WorldClockRailToggleButton, scale));
+        }
+
         if (TitleBarBackButton.Visibility == Visibility.Visible)
         {
             passthroughRects.Add(ElementRect(TitleBarBackButton, scale));
@@ -1365,6 +1413,8 @@ public sealed partial class MainWindow : Window
         PlayerPanel.Visibility = Visibility.Collapsed;
         WorldClockRail.Visibility = Visibility.Collapsed;
         WorldClockRailColumn.Width = new GridLength(0);
+        WorldClockRailToggleButton.Visibility = Visibility.Collapsed;
+        TitleBarTitleText.Margin = new Thickness(28, 0, 12, 0);
         _worldClockRefreshTimer.Stop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
@@ -1383,15 +1433,35 @@ public sealed partial class MainWindow : Window
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
-        WorldClockRailColumn.Width = new GridLength(LogicalWorldClockRailWidth);
-        WorldClockRail.Visibility = Visibility.Visible;
-        _worldClockRefreshTimer.Start();
         _layoutState.ShowSurface(MainWindowSurface.Player);
+        WorldClockRailToggleButton.Visibility = Visibility.Visible;
+        TitleBarTitleText.Margin = new Thickness(52, 0, 12, 0);
+        ApplyWorldClockRailVisibility();
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         ResizeForCurrentLayout(animate: false);
         ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
         DispatcherQueue.TryEnqueue(UpdateTitleBarLayout);
+    }
+
+    /// <summary>Applies the session-local world-clock rail state and its refresh policy.</summary>
+    private void ApplyWorldClockRailVisibility()
+    {
+        var isVisible = _isWorldClockRailVisible && _layoutState.Surface == MainWindowSurface.Player;
+        WorldClockRailColumn.Width = isVisible
+            ? new GridLength(LogicalWorldClockRailWidth)
+            : new GridLength(0);
+        WorldClockRail.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (isVisible)
+        {
+            _worldClockRefreshTimer.Start();
+        }
+        else
+        {
+            _worldClockRefreshTimer.Stop();
+        }
+
+        UpdateWorldClockRailToggleAccessibility();
     }
 
     /// <summary>Toggles one player section and resizes from the XAML content currently visible.</summary>
@@ -1745,10 +1815,22 @@ public sealed partial class MainWindow : Window
     /// <summary>Applies presentation settings already validated and persisted by the application layer.</summary>
     private void ApplySettings(AppSettings settings)
     {
+        var showAiMonthlySpendChanged = _showAiMonthlySpend != settings.ShowAiMonthlySpend;
         _strings = new LocalizationService(settings.UiLanguage);
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
+        _showAiMonthlySpend = settings.ShowAiMonthlySpend;
+        if (!_showAiMonthlySpend)
+        {
+            AiMonthlySpendPanel.Visibility = Visibility.Collapsed;
+        }
+        else if (showAiMonthlySpendChanged)
+        {
+            _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
+            _ = RefreshAiMonthlySpendAsync();
+        }
+
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         _scheduleWindow?.ApplyTheme(_theme);
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
@@ -1788,11 +1870,21 @@ public sealed partial class MainWindow : Window
         SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
         SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
         SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
+        UpdateWorldClockRailToggleAccessibility();
         SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
         SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
         AutomationProperties.SetName(TrackingStatusToast, T("Main.TrackingStatus"));
         AutomationProperties.SetName(ActivityScoreBarHost, T("Activity.LastThirtyMinutes"));
         UpdateScreenshotPreviewAccessibility();
+    }
+
+    private void UpdateWorldClockRailToggleAccessibility()
+    {
+        var key = _isWorldClockRailVisible ? "WorldClock.HideRail" : "WorldClock.ShowRail";
+        var label = T(key);
+        WorldClockRailToggleButton.Tag = key;
+        AutomationProperties.SetName(WorldClockRailToggleButton, label);
+        ToolTipService.SetToolTip(WorldClockRailToggleButton, label);
     }
 
     private void SetIconButtonLabel(Button button, string key)

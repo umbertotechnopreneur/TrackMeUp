@@ -181,7 +181,7 @@ internal sealed partial class OcrTextWindow : Window
             _xamlRoot.Changed -= XamlRoot_Changed;
         }
 
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
         _lifetimeCancellation.Dispose();
     }

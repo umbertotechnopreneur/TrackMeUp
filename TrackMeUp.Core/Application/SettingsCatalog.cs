@@ -53,6 +53,7 @@ public static class SettingsCatalog
         Choice("ai.reasoning_effort", "OpenAI Responses reasoning effort; auto omits the field.", ReasoningEfforts),
         Text("ai.custom_prompt", "Optional user instruction appended after the built-in screenshot prompt; empty keeps only the built-in prompt.", "multiline"),
         Boolean("ai.include_device_location", "Include Windows-provided latitude and longitude in AI snapshots only when location access is available."),
+        Boolean("ai.show_monthly_spend", "Show the current monthly AI provider spend in the player."),
         Integer("ai.daily_limit", "Maximum visual AI provider requests per local day, including failed attempts and AI OCR refinement."),
         Decimal("ai.estimated_cost_per_analysis_usd", "Estimated cost used by the local guardrail."),
         Decimal("ai.estimated_cost_per_screenshot_usd", "Estimated screenshot cost used by the local guardrail."),
@@ -121,6 +122,7 @@ public static class SettingsCatalog
             "ai.reasoning_effort" => settings.AiReasoningEffort,
             "ai.custom_prompt" => settings.AiCustomPrompt,
             "ai.include_device_location" => settings.IncludeDeviceLocation,
+            "ai.show_monthly_spend" => settings.ShowAiMonthlySpend,
             "ai.daily_limit" => settings.OpenAiDailyLimit,
             "ai.estimated_cost_per_analysis_usd" => settings.EstimatedCostPerAnalysisUsd,
             "ai.estimated_cost_per_screenshot_usd" => settings.EstimatedCostPerScreenshotUsd,
@@ -232,6 +234,7 @@ public static class SettingsCatalog
                 case "ai.reasoning_effort" when Contains(ReasoningEfforts, value): current = current with { AiReasoningEffort = value!.ToLowerInvariant() }; break;
                 case "ai.custom_prompt" when TryNormalizeCustomPrompt(rawValue, out var customPrompt): current = current with { AiCustomPrompt = customPrompt }; break;
                 case "ai.include_device_location" when TryBoolean(value, out var includeDeviceLocation): current = current with { IncludeDeviceLocation = includeDeviceLocation }; break;
+                case "ai.show_monthly_spend" when TryBoolean(value, out var showAiMonthlySpend): current = current with { ShowAiMonthlySpend = showAiMonthlySpend }; break;
                 case "ai.daily_limit" when TryInteger(value, MinimumAiDailyLimit, MaximumAiDailyLimit, out var dailyLimit): current = current with { OpenAiDailyLimit = dailyLimit }; break;
                 case "ai.estimated_cost_per_analysis_usd" when TryDecimal(value, 0m, 1_000m, out var analysisCost): current = current with { EstimatedCostPerAnalysisUsd = analysisCost }; break;
                 case "ai.estimated_cost_per_screenshot_usd" when TryDecimal(value, 0m, 1_000m, out var screenshotCost): current = current with { EstimatedCostPerScreenshotUsd = screenshotCost }; break;

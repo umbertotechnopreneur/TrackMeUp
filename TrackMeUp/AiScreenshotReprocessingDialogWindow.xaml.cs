@@ -588,7 +588,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
         PauseResumeButton.IsEnabled = false;
         CloseButton.IsEnabled = false;
         _lifetimeCancellation.Cancel();
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         Close();
     }
 

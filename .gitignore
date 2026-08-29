@@ -8,7 +8,7 @@ TrackMeUp/AppPackages/
 
 # Local activity data, screenshots, and developer configuration
 data/
-screenshots/
+/screenshots/
 .env
 .env.*
 appsettings.local.json
@@ -22,6 +22,7 @@ TrackMeUp/BuildInfo.json
 
 # OS and editor noise
 Thumbs.db
+desktop.ini
 .DS_Store
 
 # Local JavaScript dependencies

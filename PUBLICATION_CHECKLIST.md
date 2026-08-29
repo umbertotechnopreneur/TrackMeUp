@@ -8,9 +8,12 @@ Complete this checklist before promoting the repository or publishing a public r
 - [ ] Confirm no AI provider keys, tokens, private endpoints, or credentials are tracked.
 - [ ] Confirm key flow uses environment variables and no command-line secret arguments.
 - [ ] Review screenshots, reports, and sample artifacts for personal or confidential data.
-- [ ] Audit dependencies and update `THIRD_PARTY_NOTICES.md`.
-- [ ] Confirm every project-facing surface consistently says `source-available`, not `open source` or `MIT`.
-- [ ] Confirm `LICENSE`, `NOTICE.md`, contribution terms, Store copy, and provenance records reflect the intended distribution.
+- [ ] Audit direct and transitive dependencies and update `THIRD_PARTY_NOTICES.md` plus any binary notice bundle.
+- [ ] Confirm every project-facing surface consistently describes project-authored software and documentation as open source under the MIT License; remove obsolete source-available restrictions.
+- [ ] Confirm `LICENSE` contains the canonical MIT text and that `NOTICE.md`, contribution terms, Store copy, and provenance records reflect the same grant.
+- [ ] Confirm the TrackMeUp name, logos, app icons, and brand artwork are identified separately under `TRADEMARKS.md`, without adding restrictions to MIT-licensed material.
+- [ ] Confirm redistributed packages include the MIT copyright/license notice and every required third-party license or attribution notice.
+- [ ] Verify privacy copy covers explicit archive export, AI provider requests, Windows screenshot/log sharing, and optional diagnostics without claiming that data can never leave the PC.
 - [ ] Review tracked files for private paths, local dumps, and generated artifacts.
 - [ ] Validate restore/build/test with PowerShell 7.
 - [ ] Verify README and governance docs links (`CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`).
@@ -28,4 +31,5 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Preflight
 
 - [ ] Enable dependency and secret scanning in the repository host.
 - [ ] Protect the default branch and require pull-request review.
+- [ ] Confirm the repository host detects the root license as MIT.
 - [ ] Publish release notes with clear validation scope and known limitations.

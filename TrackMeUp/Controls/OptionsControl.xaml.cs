@@ -83,6 +83,7 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
         AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
         AutomationProperties.SetName(RebuildSearchIndexButton, T("Options.Search.Rebuild"));
+        AutomationProperties.SetName(ShowAiMonthlySpendSwitch, T("Options.AiMonthlySpendVisibility.Header"));
         AutomationProperties.SetName(AiDailyLimitExpander, T("Options.AiQuota.Configure"));
         AutomationProperties.SetHelpText(AiDailyLimitExpander, T("Options.AiQuota.LimitHint"));
         AiDailyLimitActionText.Text = T("Options.AiQuota.Configure");
@@ -407,6 +408,7 @@ public sealed partial class OptionsControl : UserControl
             ["ai.reasoning_effort"] = thinkingEffort,
             ["ai.custom_prompt"] = AiCustomPromptBox.Text,
             ["ai.include_device_location"] = IncludeDeviceLocationSwitch.IsOn ? "true" : "false",
+            ["ai.show_monthly_spend"] = ShowAiMonthlySpendSwitch.IsOn ? "true" : "false",
             ["screenshots.mode"] = SelectedTag(ScreenshotModeBox, "all-screens"),
             ["language"] = SelectedTag(LanguageBox, "system"),
             ["theme"] = SelectedTheme(),
@@ -478,6 +480,7 @@ public sealed partial class OptionsControl : UserControl
         SelectTheme(settings.Theme);
         AiCustomPromptBox.Text = settings.AiCustomPrompt;
         IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
+        ShowAiMonthlySpendSwitch.IsOn = settings.ShowAiMonthlySpend;
         UpdateAiQuotaPresentation();
         UpdateScreenshotModeHint();
         NotifyLayoutChanged();

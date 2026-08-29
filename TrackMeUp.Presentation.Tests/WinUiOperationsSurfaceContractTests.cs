@@ -529,9 +529,13 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("AccentColor", service, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle)", service, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.RestoreWindows(disabledPeerWindows)", service, StringComparison.Ordinal);
+        Assert.Contains("ShowSystemWarningAsync", service, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.ShowWarningMessage(ownerHandle, title, message)", service, StringComparison.Ordinal);
         Assert.Contains("EnumThreadWindows", interop, StringComparison.Ordinal);
         Assert.Contains("EnableWindow(windowHandle, false)", interop, StringComparison.Ordinal);
         Assert.Contains("EnableWindow(windowHandle, true)", interop, StringComparison.Ordinal);
+        Assert.Contains("MessageBoxW", interop, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.ShowSystemWarningAsync", main, StringComparison.Ordinal);
         Assert.Contains("return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
         Assert.DoesNotContain("SavePlacementAsync", service, StringComparison.Ordinal);
         Assert.Contains(dialogXaml.Descendants(), element =>
@@ -574,7 +578,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("LogicalMaximumHeight", dialog, StringComparison.Ordinal);
         Assert.DoesNotContain("LogicalInformationHeight", dialog, StringComparison.Ordinal);
         Assert.DoesNotContain("LogicalConfirmationHeight", dialog, StringComparison.Ordinal);
-        Assert.Contains("await _placement.SaveAsync(CancellationToken.None);", dialog, StringComparison.Ordinal);
+        Assert.Contains("await _placement.TrySaveForCloseAsync(CancellationToken.None);", dialog, StringComparison.Ordinal);
         Assert.DoesNotContain("PrimaryButton.Background", dialog, StringComparison.Ordinal);
         Assert.DoesNotContain("GetContrastingForeground", dialog, StringComparison.Ordinal);
         Assert.Contains("AccentVeil.Fill = CreateAccentVeil(accent, theme);", dialog, StringComparison.Ordinal);
@@ -591,6 +595,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains(connectionDialogXaml.Descendants(), element => HasName(element, "TerminalText") && element.Attribute("FontFamily")?.Value == "Cascadia Mono");
         Assert.Contains("AiConnectionTestProtocol.Prompt", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("AppendTerminalAsync", connectionDialog, StringComparison.Ordinal);
+        Assert.Contains("MaxTerminalOutputCharacters", connectionDialog, StringComparison.Ordinal);
+        Assert.Contains("_lifetimeCancellation.Token", connectionDialog, StringComparison.Ordinal);
+        Assert.DoesNotContain("TerminalScrollViewer.UpdateLayout()", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("RestoreAndCenterAsync", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.Apply(RootGrid, _strings);", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("AiConnectionTest.Terminal.Response", connectionDialog, StringComparison.Ordinal);

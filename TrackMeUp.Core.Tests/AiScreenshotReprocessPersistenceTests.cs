@@ -72,12 +72,14 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 capturedAt.AddSeconds(-1),
                 durationSeconds: 20,
                 processName: "nearby-public.exe",
-                application: "Nearby public app"));
+                application: "Nearby public app",
+                store.LoadSettings().InstallationId));
             store.AppendSample(ActivitySampleAt(
                 capturedAt.AddSeconds(5),
                 durationSeconds: 10,
                 processName: "secret-editor.exe",
-                application: "Friendly editor"));
+                application: "Friendly editor",
+                store.LoadSettings().InstallationId));
 
             var candidate = Assert.Single(store.ListAiReprocessCandidates(
                 capturedAt.AddMinutes(-1),
@@ -119,13 +121,136 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 capturedAt.AddSeconds(-1),
                 durationSeconds: 20,
                 processName: "nearby.exe",
-                application: "Nearby app"));
+                application: "Nearby app",
+                store.LoadSettings().InstallationId));
 
             var candidate = Assert.Single(store.ListAiReprocessCandidates(
                 capturedAt.AddMinutes(-1),
                 capturedAt.AddMinutes(1),
                 CancellationToken.None));
 
+            Assert.Null(candidate.HistoricalContext);
+            Assert.Equal(string.Empty, candidate.ProcessName);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CandidateContext_UsesOnlyActivityOwnedByTheCaptureInstallation()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(directory);
+            var captureId = Guid.NewGuid().ToString("N");
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var paths = CreateCapturePaths(directory, captureId, 1);
+            var captureInstallationId = store.LoadSettings().InstallationId;
+            store.UpsertScreenshotIntervalTelemetry(
+                captureId,
+                paths,
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, null, null));
+            store.AppendSample(ActivitySampleAt(
+                capturedAt.AddSeconds(5),
+                durationSeconds: 10,
+                processName: "owner-private.exe",
+                application: "Owner private app",
+                captureInstallationId));
+            store.AppendSample(ActivitySampleAt(
+                capturedAt.AddSeconds(5),
+                durationSeconds: 10,
+                processName: "foreign-public.exe",
+                application: "Foreign public app",
+                Guid.NewGuid().ToString("N")));
+
+            var candidate = Assert.Single(store.ListAiReprocessCandidates(
+                capturedAt.AddMinutes(-1),
+                capturedAt.AddMinutes(1),
+                CancellationToken.None));
+
+            Assert.Equal(captureInstallationId, candidate.InstallationId);
+            Assert.Equal("Owner private app", candidate.HistoricalContext!.Application);
+            Assert.Equal("owner-private.exe", candidate.ProcessName);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CandidateContext_FailsClosedWhenOnlyForeignInstallationActivityCoversCapture()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(directory);
+            var captureId = Guid.NewGuid().ToString("N");
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var paths = CreateCapturePaths(directory, captureId, 1);
+            store.UpsertScreenshotIntervalTelemetry(
+                captureId,
+                paths,
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, null, null));
+            store.AppendSample(ActivitySampleAt(
+                capturedAt.AddSeconds(5),
+                durationSeconds: 10,
+                processName: "foreign-public.exe",
+                application: "Foreign public app",
+                Guid.NewGuid().ToString("N")));
+
+            var candidate = Assert.Single(store.ListAiReprocessCandidates(
+                capturedAt.AddMinutes(-1),
+                capturedAt.AddMinutes(1),
+                CancellationToken.None));
+
+            Assert.Equal(store.LoadSettings().InstallationId, candidate.InstallationId);
+            Assert.Null(candidate.HistoricalContext);
+            Assert.Equal(string.Empty, candidate.ProcessName);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CandidateContext_FailsClosedWhenCaptureProvenanceIsMissing()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(directory);
+            var captureId = Guid.NewGuid().ToString("N");
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var paths = CreateCapturePaths(directory, captureId, 1);
+            store.UpsertScreenshotIntervalTelemetry(
+                captureId,
+                paths,
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, null, null));
+            store.AppendSample(ActivitySampleAt(
+                capturedAt.AddSeconds(5),
+                durationSeconds: 10,
+                processName: "public.exe",
+                application: "Public app",
+                store.LoadSettings().InstallationId));
+            using (var connection = OpenDatabase(directory))
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "DELETE FROM screenshot_captures WHERE capture_id = $captureId;";
+                command.Parameters.AddWithValue("$captureId", captureId);
+                Assert.Equal(1, command.ExecuteNonQuery());
+            }
+
+            var candidate = Assert.Single(store.ListAiReprocessCandidates(
+                capturedAt.AddMinutes(-1),
+                capturedAt.AddMinutes(1),
+                CancellationToken.None));
+
+            Assert.Null(candidate.InstallationId);
             Assert.Null(candidate.HistoricalContext);
             Assert.Equal(string.Empty, candidate.ProcessName);
         }
@@ -197,12 +322,14 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 capturedAt,
                 durationSeconds: 60,
                 processName: "previous.exe",
-                application: "Previous interval"));
+                application: "Previous interval",
+                store.LoadSettings().InstallationId));
             store.AppendSample(ActivitySampleAt(
                 capturedAt.AddSeconds(60),
                 durationSeconds: 60,
                 processName: "following.exe",
-                application: "Following interval"));
+                application: "Following interval",
+                store.LoadSettings().InstallationId));
 
             var candidate = Assert.Single(store.ListAiReprocessCandidates(
                 capturedAt.AddMinutes(-1),
@@ -236,12 +363,14 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 capturedAt.AddSeconds(10),
                 durationSeconds: 20,
                 processName: "public.exe",
-                application: "Public app"));
+                application: "Public app",
+                store.LoadSettings().InstallationId));
             store.AppendSample(ActivitySampleAt(
                 capturedAt.AddSeconds(5),
                 durationSeconds: 20,
                 processName: "secret.exe",
-                application: "Private app"));
+                application: "Private app",
+                store.LoadSettings().InstallationId));
 
             var candidate = Assert.Single(store.ListAiReprocessCandidates(
                 capturedAt.AddMinutes(-1),
@@ -275,7 +404,8 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 capturedAt,
                 durationSeconds: 60,
                 processName: "covered.exe",
-                application: "Covered app"));
+                application: "Covered app",
+                store.LoadSettings().InstallationId));
 
             var candidate = Assert.Single(store.ListAiReprocessCandidates(
                 capturedAt.AddMinutes(-1),
@@ -560,7 +690,8 @@ public sealed class AiScreenshotReprocessPersistenceTests
         DateTimeOffset timestamp,
         int durationSeconds,
         string processName,
-        string application) => new(
+        string application,
+        string installationId) => new(
         timestamp,
         durationSeconds,
         "active",
@@ -568,7 +699,7 @@ public sealed class AiScreenshotReprocessPersistenceTests
         application,
         "test context",
         "test window",
-        "test-installation",
+        installationId,
         0,
         0);
 

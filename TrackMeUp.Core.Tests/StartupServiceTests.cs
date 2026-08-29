@@ -147,6 +147,16 @@ public sealed class StartupServiceTests
         Assert.Equal(0, store.DisableCount);
     }
 
+    [Fact]
+    public async Task BackendReadFailure_IsNotReportedAsDisabled()
+    {
+        var command = Command(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory)!, "Apps", "TrackMeUp.exe"));
+        var service = new StartupService(new ThrowingStartupRegistrationStore(), command, _ => true);
+
+        await Assert.ThrowsAsync<IOException>(() => service.IsEnabledAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<IOException>(() => service.SetEnabledAsync(true, CancellationToken.None));
+    }
+
     private static StartupCommand Command(string executablePath) =>
         new(executablePath, $"\"{executablePath}\" --start-with-windows");
 
@@ -171,6 +181,15 @@ public sealed class StartupServiceTests
             Value = null;
             DeleteCount++;
         }
+    }
+
+    private sealed class ThrowingStartupRegistrationStore : IStartupRegistrationStore
+    {
+        public string? Read() => throw new IOException("Startup registration is unavailable.");
+
+        public void Write(string commandLine) => throw new IOException("Startup registration is unavailable.");
+
+        public void Delete() => throw new IOException("Startup registration is unavailable.");
     }
 
     private sealed class InMemoryPackagedStartupTaskStore : IPackagedStartupTaskStore

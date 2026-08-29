@@ -315,7 +315,7 @@ internal sealed partial class SearchIndexingWindow : Window
         _closing = true;
         _rebuildCancellation?.Cancel();
         _lifetimeCancellation.Cancel();
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
         if (_xamlRoot is not null)
         {

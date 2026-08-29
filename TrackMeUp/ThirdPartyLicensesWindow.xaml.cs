@@ -72,7 +72,7 @@ internal sealed partial class ThirdPartyLicensesWindow : Window
 
     private async void LicensesWindow_Closed(object sender, WindowEventArgs args)
     {
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
     }
 

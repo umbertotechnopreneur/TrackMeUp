@@ -528,6 +528,38 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
+    public void WindowClosePlacementFailures_DoNotEscapeAsyncVoidCallbacksOrSkipCleanup()
+    {
+        var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
+        var closeSources = new[]
+        {
+            "AboutWindow.xaml.cs",
+            "ReportsWindow.xaml.cs",
+            "SearchWindow.xaml.cs",
+            "ScheduleWindow.xaml.cs",
+            "SearchIndexingWindow.xaml.cs",
+            "QuickSetupWindow.xaml.cs",
+            "OcrTextWindow.xaml.cs",
+            "ThirdPartyLicensesWindow.xaml.cs",
+            "MicaDialogWindow.xaml.cs",
+            "WorldClockCityPickerDialogWindow.xaml.cs",
+            "ActivityCalendarDialogWindow.xaml.cs",
+            "AiPricingDialogWindow.xaml.cs",
+            "AiConnectionTestDialogWindow.xaml.cs",
+            "AiScreenshotReprocessingDialogWindow.xaml.cs",
+        }.Select(file => File.ReadAllText(RepositoryFile("TrackMeUp", file)));
+
+        Assert.Contains("internal async Task<bool> TrySaveForCloseAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("catch (Exception exception)", placement, StringComparison.Ordinal);
+        Assert.Contains("Trace.TraceError", placement, StringComparison.Ordinal);
+        Assert.All(closeSources, source =>
+        {
+            Assert.Contains("TrySaveForCloseAsync", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("_placement.SaveAsync(CancellationToken.None)", source, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void ExpandedPlayer_ShowsSnapshotPlaceholderAndSeparatedLocalUtcClock()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
@@ -586,7 +618,7 @@ public sealed class WinUiSurfaceContractTests
         var viewModelSource = File.ReadAllText(RepositoryFile("TrackMeUp.Presentation", "ViewModels.cs"));
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var startupStart = viewModelSource.IndexOf("public async Task<OperationResult<MainWindowStartupState>> InitializeAsync", StringComparison.Ordinal);
-        var refreshStart = viewModelSource.IndexOf("public async Task<OperationResult<DashboardState>> RefreshAsync", startupStart, StringComparison.Ordinal);
+        var refreshStart = viewModelSource.IndexOf("public Task<OperationResult<DashboardState>> RefreshAsync", startupStart, StringComparison.Ordinal);
 
         Assert.Contains("_viewModel.InitializeAsync(options, CancellationToken.None)", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("if (options.StartTracking && !options.Paused)", mainSource, StringComparison.Ordinal);
@@ -791,6 +823,32 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
+    public void AiMonthlySpend_IsAnOptInPlayerPreference()
+    {
+        var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var playerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var panel = player.Descendants().Single(element => HasName(element, "AiMonthlySpendPanel"));
+        var visibilitySwitch = options.Descendants().Single(element => HasName(element, "ShowAiMonthlySpendSwitch"));
+
+        Assert.Equal("Collapsed", panel.Attribute("Visibility")?.Value);
+        Assert.Equal("Options.AiMonthlySpendVisibility", visibilitySwitch.Attribute("Tag")?.Value);
+        Assert.Contains("[\"ai.show_monthly_spend\"] = ShowAiMonthlySpendSwitch.IsOn", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("ShowAiMonthlySpendSwitch.IsOn = settings.ShowAiMonthlySpend;", optionsSource, StringComparison.Ordinal);
+        Assert.Equal(
+            2,
+            playerSource.Split("if (!_showAiMonthlySpend || !AiState.Enabled)", StringSplitOptions.None).Length - 1);
+        Assert.Contains("_showAiMonthlySpend = settings.ShowAiMonthlySpend;", playerSource, StringComparison.Ordinal);
+        Assert.Contains("AiSpendFailureRetryInterval", playerSource, StringComparison.Ordinal);
+        Assert.Contains("GetAiPricingOverviewAsync(_surfaceLifetime.Token)", playerSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "_nextAiSpendRefreshAt = DateTimeOffset.UtcNow.Add(AiSpendFailureRetryInterval);",
+            playerSource,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LanguagePicker_OffersSystemModeAndExplicitOverrides()
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
@@ -883,6 +941,30 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("PrepareReplacementWindow();", surfaceSource, StringComparison.Ordinal);
         Assert.Contains("showWindow: false", hostSource, StringComparison.Ordinal);
         Assert.Contains("SetWindowRgn", hostSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TaskbarSurface_StartsAndStopsWithoutPreLoopDispatcherCallsOrLeakedReplacementWindows()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Taskbar", "TaskbarWidgetSurface.cs"));
+        var disposeStart = source.IndexOf("public void Dispose()", StringComparison.Ordinal);
+        var dispatcherStart = source.IndexOf("private void DispatcherThreadMain()", StringComparison.Ordinal);
+        var prepareStart = source.IndexOf("private void PrepareReplacementWindow()", StringComparison.Ordinal);
+
+        Assert.True(disposeStart >= 0 && dispatcherStart > disposeStart, "Taskbar disposal lifecycle source contract was not found.");
+        Assert.True(prepareStart > dispatcherStart, "Taskbar replacement lifecycle source contract was not found.");
+        var disposeSource = source[disposeStart..dispatcherStart];
+        var prepareSource = source[prepareStart..];
+        Assert.DoesNotContain("ManualResetEventSlim", source, StringComparison.Ordinal);
+        Assert.Contains("TaskCompletionSource", source, StringComparison.Ordinal);
+        Assert.Contains("_lifetimeCancellation.Cancel();", disposeSource, StringComparison.Ordinal);
+        Assert.Contains("BeginInvoke(DispatcherPriority.Send", disposeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("dispatcher.Invoke(", disposeSource, StringComparison.Ordinal);
+        Assert.True(
+            source.IndexOf("BeginInvoke(DispatcherPriority.Send, new Action(SignalDispatcherStarted))", StringComparison.Ordinal)
+            < source.IndexOf("Dispatcher.Run();", StringComparison.Ordinal),
+            "Startup completion must be queued before the dispatcher loop begins.");
+        Assert.Contains("CloseCurrentWindow();", prepareSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1149,6 +1231,9 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("LogicalWindowWidth = 860", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("LogicalWindowHeight = 650", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("ApplyLanguage();", quickSetupSource, StringComparison.Ordinal);
+        Assert.Equal(
+            1,
+            quickSetupSource.Split("_placement.ApplyDefaultBounds(RootGrid);", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false)", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(CompleteProfileButton", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(AssistedProfileButton", quickSetupSource, StringComparison.Ordinal);

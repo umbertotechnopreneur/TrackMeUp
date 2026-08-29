@@ -26,10 +26,12 @@ public sealed class LocalSearchService : ILocalSearchService
     private readonly FSDirectory _directory;
     private readonly StandardAnalyzer _suggestionAnalyzer;
     private readonly AnalyzingInfixSuggester _suggester;
+    private readonly string _suggestionRevisionPath;
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private IndexWriter _writer;
     private Exception? _fault;
     private long _committedSourceRevision;
+    private long _committedSuggestionRevision = -1;
     private int _disposeStarted;
 
     /// <summary>Gets the current on-disk index schema version.</summary>
@@ -41,6 +43,9 @@ public sealed class LocalSearchService : ILocalSearchService
     /// <summary>Gets the private directory name used by the infix suggestion index.</summary>
     public const string SuggestionIndexDirectoryName = "suggestions-v1";
 
+    /// <summary>Gets the sidecar file that records the source revision represented by suggestions.</summary>
+    public const string SuggestionRevisionFileName = "suggestions-v1.revision";
+
     /// <summary>
     /// Initializes a local search service and exclusively opens its Lucene writer.
     /// </summary>
@@ -50,6 +55,7 @@ public sealed class LocalSearchService : ILocalSearchService
         var rootPath = SearchValidation.ValidateOptions(options);
         _options = options;
         IndexPath = Path.Combine(rootPath, IndexDirectoryName);
+        _suggestionRevisionPath = Path.Combine(rootPath, SuggestionRevisionFileName);
 
         LanguageAnalyzerCatalog? analyzers = null;
         FSDirectory? directory = null;
@@ -83,10 +89,14 @@ public sealed class LocalSearchService : ILocalSearchService
             var suggestionPath = Path.Combine(rootPath, SuggestionIndexDirectoryName);
             System.IO.Directory.CreateDirectory(suggestionPath);
             suggestionDirectory = FSDirectory.Open(new DirectoryInfo(suggestionPath));
+            var suggestionIndexExists = DirectoryReader.IndexExists(suggestionDirectory);
             suggestionAnalyzer = new StandardAnalyzer(Version);
             suggester = new AnalyzingInfixSuggester(Version, suggestionDirectory, suggestionAnalyzer);
             _suggestionAnalyzer = suggestionAnalyzer;
             _suggester = suggester;
+            _committedSuggestionRevision = suggestionIndexExists
+                ? LoadSuggestionRevision(_suggestionRevisionPath)
+                : -1;
         }
         catch
         {
@@ -111,54 +121,15 @@ public sealed class LocalSearchService : ILocalSearchService
     public long CommittedSourceRevision => Interlocked.Read(ref _committedSourceRevision);
 
     /// <inheritdoc />
-    public async Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default)
-    {
-        SearchValidation.ValidateDocument(document, _options);
-        var luceneDocument = SearchDocumentMapper.ToLucene(document);
-
-        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            ThrowIfUnavailable();
-            cancellationToken.ThrowIfCancellationRequested();
-            CommitWrite(() => _writer.UpdateDocument(new Term(SearchFields.IdKey, document.Id), luceneDocument));
-            RebuildSuggestionsFromMainIndex();
-        }
-        finally
-        {
-            _operationGate.Release();
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
-
-        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            ThrowIfUnavailable();
-            cancellationToken.ThrowIfCancellationRequested();
-            CommitWrite(() => _writer.DeleteDocuments(new Term(SearchFields.IdKey, id)));
-            RebuildSuggestionsFromMainIndex();
-        }
-        finally
-        {
-            _operationGate.Release();
-        }
-    }
-
-    /// <inheritdoc />
     public async Task ApplyBatchAsync(
         IReadOnlyCollection<SearchIndexMutation> mutations,
         long sourceRevision,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mutations);
-        if (sourceRevision < CommittedSourceRevision)
+        if (sourceRevision < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(sourceRevision), "A batch source revision cannot move backwards.");
+            throw new ArgumentOutOfRangeException(nameof(sourceRevision));
         }
         var prepared = new List<(string Id, Lucene.Net.Documents.Document? Document)>(mutations.Count);
         foreach (var mutation in mutations)
@@ -186,6 +157,20 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
+            var committedRevision = CommittedSourceRevision;
+            if (sourceRevision < committedRevision
+                || (prepared.Count > 0 && sourceRevision == committedRevision))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(sourceRevision),
+                    "A non-empty batch must advance the source revision, and revisions cannot move backwards.");
+            }
+
+            if (prepared.Count == 0 && sourceRevision == committedRevision)
+            {
+                return;
+            }
+
             CommitWrite(() =>
             {
                 foreach (var mutation in prepared)
@@ -201,19 +186,13 @@ public sealed class LocalSearchService : ILocalSearchService
                     }
                 }
             }, sourceRevision);
-            RebuildSuggestionsFromMainIndex();
+            InvalidateSuggestions();
         }
         finally
         {
             _operationGate.Release();
         }
     }
-
-    /// <inheritdoc />
-    public async Task RebuildAsync(
-        IEnumerable<SearchDocument> documents,
-        CancellationToken cancellationToken = default)
-        => await RebuildAsync(documents, CommittedSourceRevision, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc />
     public async Task RebuildAsync(
@@ -227,7 +206,6 @@ public sealed class LocalSearchService : ILocalSearchService
             throw new ArgumentOutOfRangeException(nameof(sourceRevision));
         }
 
-        var sourceDocuments = new List<SearchDocument>();
         var prepared = new List<Lucene.Net.Documents.Document>();
         var identifiers = new HashSet<string>(StringComparer.Ordinal);
         foreach (var document in documents)
@@ -241,7 +219,6 @@ public sealed class LocalSearchService : ILocalSearchService
                     nameof(documents));
             }
 
-            sourceDocuments.Add(document);
             prepared.Add(SearchDocumentMapper.ToLucene(document));
         }
 
@@ -250,6 +227,13 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
+            if (sourceRevision < CommittedSourceRevision)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(sourceRevision),
+                    "A rebuild source revision cannot move backwards.");
+            }
+
             CommitWrite(() =>
             {
                 _writer.DeleteAll();
@@ -258,7 +242,7 @@ public sealed class LocalSearchService : ILocalSearchService
                     _writer.AddDocument(document);
                 }
             }, sourceRevision);
-            RebuildSuggestions(sourceDocuments);
+            InvalidateSuggestions();
         }
         finally
         {
@@ -321,6 +305,7 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
+            EnsureSuggestionsCurrent(cancellationToken);
             var results = _suggester.DoLookup(
                 request.Text.Trim(),
                 limit,
@@ -427,34 +412,75 @@ public sealed class LocalSearchService : ILocalSearchService
         writer.Commit();
     }
 
-    private void RebuildSuggestions(IEnumerable<SearchDocument> documents)
+    private static long LoadSuggestionRevision(string path)
     {
-        _suggester.Build(new SuggestionInputEnumerator(BuildSuggestionEntries(documents)));
-        _suggester.Refresh();
+        if (!File.Exists(path))
+        {
+            return -1;
+        }
+
+        var value = File.ReadAllText(path).Trim();
+        return long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var revision)
+            && revision >= 0
+                ? revision
+                : -1;
     }
 
-    private void RebuildSuggestionsFromMainIndex()
+    private void EnsureSuggestionsCurrent(CancellationToken cancellationToken)
+    {
+        var sourceRevision = CommittedSourceRevision;
+        if (Interlocked.Read(ref _committedSuggestionRevision) == sourceRevision)
+        {
+            return;
+        }
+
+        // Suggestions are derived data: a missing or stale revision is repaired lazily so
+        // multiple source commits coalesce into one complete rebuild before the next lookup.
+        RebuildSuggestionsFromMainIndex(sourceRevision, cancellationToken);
+    }
+
+    private void RebuildSuggestions(
+        IEnumerable<SearchDocument> documents,
+        long sourceRevision,
+        CancellationToken cancellationToken)
+    {
+        var entries = BuildSuggestionEntries(documents, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _suggester.Build(new SuggestionInputEnumerator(entries));
+        _suggester.Refresh();
+        PersistSuggestionRevision(sourceRevision);
+        Interlocked.Exchange(ref _committedSuggestionRevision, sourceRevision);
+    }
+
+    private void RebuildSuggestionsFromMainIndex(long sourceRevision, CancellationToken cancellationToken)
     {
         using var reader = DirectoryReader.Open(_directory);
         if (reader.NumDocs == 0)
         {
-            RebuildSuggestions([]);
+            RebuildSuggestions([], sourceRevision, cancellationToken);
             return;
         }
 
         var searcher = new IndexSearcher(reader);
         var topDocuments = searcher.Search(new MatchAllDocsQuery(), reader.NumDocs);
-        var documents = topDocuments.ScoreDocs
-            .Select(scoreDocument => SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc)))
-            .ToArray();
-        RebuildSuggestions(documents);
+        var documents = new List<SearchDocument>(topDocuments.ScoreDocs.Length);
+        foreach (var scoreDocument in topDocuments.ScoreDocs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            documents.Add(SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc)));
+        }
+
+        RebuildSuggestions(documents, sourceRevision, cancellationToken);
     }
 
-    private static IReadOnlyList<SuggestionEntry> BuildSuggestionEntries(IEnumerable<SearchDocument> documents)
+    private static IReadOnlyList<SuggestionEntry> BuildSuggestionEntries(
+        IEnumerable<SearchDocument> documents,
+        CancellationToken cancellationToken)
     {
         var entries = new Dictionary<string, SuggestionEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var document in documents)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var (value, weight) in EnumerateSuggestionValues(document))
             {
                 var text = value.Trim();
@@ -486,6 +512,27 @@ public sealed class LocalSearchService : ILocalSearchService
             .ThenBy(entry => entry.Text, StringComparer.OrdinalIgnoreCase)
         ];
     }
+
+    private void PersistSuggestionRevision(long sourceRevision)
+    {
+        var temporaryPath = _suggestionRevisionPath + ".tmp";
+        try
+        {
+            // The sidecar is replaced only after the suggestion index refresh succeeds. A crash
+            // therefore leaves the previous revision visible and forces a safe rebuild on reopen.
+            File.WriteAllText(temporaryPath, sourceRevision.ToString(CultureInfo.InvariantCulture));
+            File.Move(temporaryPath, _suggestionRevisionPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private void InvalidateSuggestions() => Interlocked.Exchange(ref _committedSuggestionRevision, -1);
 
     private static IEnumerable<(string Value, long Weight)> EnumerateSuggestionValues(SearchDocument document)
     {

@@ -7,6 +7,13 @@ export default defineConfig({
   plugins: [
     vue(),
     vuetify({ autoImport: true }),
+    {
+      name: 'normalize-index-newlines',
+      transformIndexHtml: {
+        order: 'post',
+        handler: (html) => html.replace(/\r\n?/g, '\n'),
+      },
+    },
   ],
   build: {
     outDir: 'dist',

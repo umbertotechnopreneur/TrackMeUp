@@ -1093,6 +1093,7 @@ internal sealed class SqliteActivityStore
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT telemetry.capture_id,
+                   capture.installation_id,
                    MIN(telemetry.interval_started_utc_ticks) AS interval_started_utc_ticks,
                    MIN(telemetry.captured_utc_ticks) AS captured_utc_ticks,
                    telemetry.artifact_identity,
@@ -1101,15 +1102,17 @@ internal sealed class SqliteActivityStore
                        FROM ai_analysis_artifacts AS artifact
                        WHERE artifact.capture_id = telemetry.capture_id) AS has_ai_description
             FROM screenshot_interval_telemetry AS telemetry
+            LEFT JOIN screenshot_captures AS capture ON capture.capture_id = telemetry.capture_id
             WHERE telemetry.captured_utc_ticks >= $from
               AND telemetry.captured_utc_ticks < $to
-            GROUP BY telemetry.capture_id, telemetry.artifact_identity
+            GROUP BY telemetry.capture_id, capture.installation_id, telemetry.artifact_identity
             ORDER BY captured_utc_ticks, telemetry.capture_id, telemetry.artifact_identity;
             """;
         command.Parameters.AddWithValue("$from", fromUtc.UtcDateTime.Ticks);
         command.Parameters.AddWithValue("$to", toUtc.UtcDateTime.Ticks);
         using var reader = command.ExecuteReader();
         string? captureId = null;
+        string? installationId = null;
         DateTimeOffset intervalStartedAt = default;
         DateTimeOffset capturedAt = default;
         var hasAiDescription = false;
@@ -1122,6 +1125,7 @@ internal sealed class SqliteActivityStore
             {
                 captures.Add(new AiReprocessCatalogRecord(
                     captureId,
+                    installationId,
                     intervalStartedAt,
                     capturedAt,
                     artifactIdentities.ToArray(),
@@ -1131,16 +1135,18 @@ internal sealed class SqliteActivityStore
             }
 
             captureId = rowCaptureId;
-            intervalStartedAt = new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero);
-            capturedAt = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-            artifactIdentities.Add(reader.GetString(3));
-            hasAiDescription = reader.GetInt32(4) == 1;
+            installationId = ReadNullableString(reader, 1);
+            intervalStartedAt = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            capturedAt = new DateTimeOffset(reader.GetInt64(3), TimeSpan.Zero);
+            artifactIdentities.Add(reader.GetString(4));
+            hasAiDescription = reader.GetInt32(5) == 1;
         }
 
         if (captureId is not null)
         {
             captures.Add(new AiReprocessCatalogRecord(
                 captureId,
+                installationId,
                 intervalStartedAt,
                 capturedAt,
                 artifactIdentities.ToArray(),
@@ -1158,34 +1164,39 @@ internal sealed class SqliteActivityStore
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT MIN(telemetry.interval_started_utc_ticks), MIN(telemetry.captured_utc_ticks),
+            SELECT capture.installation_id,
+                   MIN(telemetry.interval_started_utc_ticks), MIN(telemetry.captured_utc_ticks),
                    telemetry.artifact_identity,
                    EXISTS (
                        SELECT 1 FROM ai_analysis_artifacts AS artifact
                        WHERE artifact.capture_id = $captureId)
             FROM screenshot_interval_telemetry AS telemetry
+            LEFT JOIN screenshot_captures AS capture ON capture.capture_id = telemetry.capture_id
             WHERE telemetry.capture_id = $captureId
-            GROUP BY telemetry.artifact_identity
+            GROUP BY capture.installation_id, telemetry.artifact_identity
             ORDER BY telemetry.artifact_identity;
             """;
         command.Parameters.AddWithValue("$captureId", captureId);
         using var reader = command.ExecuteReader();
+        string? installationId = null;
         DateTimeOffset intervalStartedAt = default;
         DateTimeOffset capturedAt = default;
         var hasAiDescription = false;
         var identities = new List<string>();
         while (reader.Read())
         {
-            intervalStartedAt = new DateTimeOffset(reader.GetInt64(0), TimeSpan.Zero);
-            capturedAt = new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero);
-            identities.Add(reader.GetString(2));
-            hasAiDescription = reader.GetInt32(3) == 1;
+            installationId = ReadNullableString(reader, 0);
+            intervalStartedAt = new DateTimeOffset(reader.GetInt64(1), TimeSpan.Zero);
+            capturedAt = new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+            identities.Add(reader.GetString(3));
+            hasAiDescription = reader.GetInt32(4) == 1;
         }
 
         return identities.Count == 0
             ? null
             : new AiReprocessCatalogRecord(
                 captureId,
+                installationId,
                 intervalStartedAt,
                 capturedAt,
                 identities,
@@ -3638,6 +3649,7 @@ internal sealed record ReportSourceSample(
 /// <summary>Groups persisted screenshot artifact identities by their original capture.</summary>
 internal sealed record AiReprocessCatalogRecord(
     string CaptureId,
+    string? InstallationId,
     DateTimeOffset IntervalStartedAt,
     DateTimeOffset CapturedAt,
     IReadOnlyList<string> ArtifactIdentities,
@@ -3654,6 +3666,7 @@ internal sealed record AiReprocessCapturePersistenceState(
 /// <summary>Contains one locally materialized historical screenshot capture considered for AI reprocessing.</summary>
 internal sealed record AiScreenshotReprocessCandidate(
     string CaptureId,
+    string? InstallationId,
     DateTimeOffset CapturedAt,
     string CaptureOrigin,
     IReadOnlyList<string> ScreenshotPaths,

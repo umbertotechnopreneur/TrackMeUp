@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO.Pipes;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,6 +15,7 @@ public sealed class RuntimeHost : IAsyncDisposable
 {
     private ITrackMeUpApplication _application;
     private readonly Func<ITrackMeUpApplication>? _applicationFactory;
+    private readonly bool _ownsApplication;
     private readonly RuntimeEndpoint _endpoint;
     private readonly ILogger<RuntimeHost> _logger;
     private readonly CancellationTokenSource _shutdown = new();
@@ -41,6 +43,7 @@ public sealed class RuntimeHost : IAsyncDisposable
     {
         _application = null!;
         _applicationFactory = applicationFactory ?? throw new ArgumentNullException(nameof(applicationFactory));
+        _ownsApplication = true;
         _endpoint = RuntimeProtocol.CreateEndpoint(installationId);
         _logger = logger ?? NullLogger<RuntimeHost>.Instance;
     }
@@ -86,7 +89,10 @@ public sealed class RuntimeHost : IAsyncDisposable
         return true;
     }
 
-    /// <summary>Stops the named-pipe server and releases the runtime mutex.</summary>
+    /// <summary>
+    /// Stops the named-pipe server, drains requests and disposes a factory-owned application before
+    /// releasing the runtime mutex.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -95,29 +101,64 @@ public sealed class RuntimeHost : IAsyncDisposable
         }
 
         _disposed = true;
-        _shutdown.Cancel();
-        if (_serverTask is not null)
+        Exception? shutdownFailure = null;
+        try
         {
-            try
+            _shutdown.Cancel();
+            if (_serverTask is not null)
             {
-                await _serverTask;
+                try
+                {
+                    await _serverTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected during shutdown; no client-visible error is produced.
+                }
+                catch (Exception exception)
+                {
+                    shutdownFailure = exception;
+                }
             }
-            catch (OperationCanceledException)
+
+            var activeRequests = _activeRequests.Values.ToArray();
+            if (activeRequests.Length > 0)
             {
-                // Expected during shutdown; no client-visible error is produced.
+                try
+                {
+                    await Task.WhenAll(activeRequests);
+                }
+                catch (Exception exception)
+                {
+                    shutdownFailure ??= exception;
+                }
+            }
+
+            if (_ownsApplication && _application is not null)
+            {
+                try
+                {
+                    await _application.DisposeAsync();
+                }
+                catch (Exception exception)
+                {
+                    shutdownFailure ??= exception;
+                }
             }
         }
-
-        var activeRequests = _activeRequests.Values.ToArray();
-        if (activeRequests.Length > 0)
+        finally
         {
-            await Task.WhenAll(activeRequests);
+            // Runtime ownership is the last resource released. A successor cannot start while any
+            // factory-owned writer from this host is still shutting down.
+            _mutexLease?.Dispose();
+            _mutexLease = null;
+            _shutdown.Dispose();
         }
 
-        _mutexLease?.Dispose();
-        _mutexLease = null;
-
-        _shutdown.Dispose();
+        if (shutdownFailure is not null)
+        {
+            ExceptionDispatchInfo.Capture(shutdownFailure).Throw();
+        }
     }
 
     private async Task ServeAsync(CancellationToken cancellationToken)
@@ -533,6 +574,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan ScreenshotStorageMigrationTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RuntimeClient> _logger;
@@ -731,7 +773,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken) => SendAsync<bool>("startup.status", null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) => SendAsync<bool>(enabled ? "startup.enable" : "startup.disable", null, cancellationToken);
+    public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) =>
+        SendAsync<bool>(enabled ? "startup.enable" : "startup.disable", null, cancellationToken, StartupMutationTimeout);
     /// <inheritdoc />
     public Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken) => SendAsync<ProductInformation>("product.get", null, cancellationToken);
     /// <inheritdoc />

@@ -29,24 +29,13 @@ public abstract class ViewModelBase : INotifyPropertyChanged
 }
 
 /// <summary>Provides player state and actions to the WinUI player view.</summary>
-public sealed class MainViewModel : ViewModelBase
+public sealed class MainViewModel
 {
     private readonly ITrackMeUpApplication _application;
-    private DashboardState? _dashboard;
-    private LastSessionState? _lastSession;
 
     /// <summary>Initializes the view model with the shared application facade.</summary>
-    public MainViewModel(ITrackMeUpApplication application)
-    {
-        _application = application;
-        _application.RuntimeStateChanged += OnRuntimeStateChanged;
-    }
-
-    /// <summary>Gets the last dashboard state received from the application.</summary>
-    public DashboardState? Dashboard { get => _dashboard; private set => Set(ref _dashboard, value); }
-
-    /// <summary>Gets the latest recorded session.</summary>
-    public LastSessionState? LastSession { get => _lastSession; private set => Set(ref _lastSession, value); }
+    public MainViewModel(ITrackMeUpApplication application) =>
+        _application = application ?? throw new ArgumentNullException(nameof(application));
 
     /// <summary>Loads launch settings and applies the centralized automatic-tracking policy before the first dashboard render.</summary>
     public async Task<OperationResult<MainWindowStartupState>> InitializeAsync(
@@ -99,8 +88,6 @@ public sealed class MainViewModel : ViewModelBase
                 lastSessionResult.Issues);
         }
 
-        Dashboard = dashboardResult.Value;
-        LastSession = lastSessionResult.Value;
         return OperationResult<MainWindowStartupState>.Success(
             "main.initialized",
             "MainWindowInitialized",
@@ -112,83 +99,37 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     /// <summary>Loads player data.</summary>
-    public async Task<OperationResult<DashboardState>> RefreshAsync(CancellationToken cancellationToken)
-    {
-        var result = await _application.GetDashboardAsync(cancellationToken);
-        if (result.Succeeded) Dashboard = result.Value;
-        return result;
-    }
+    public Task<OperationResult<DashboardState>> RefreshAsync(CancellationToken cancellationToken) =>
+        _application.GetDashboardAsync(cancellationToken);
 
     /// <summary>Toggles tracking through the application facade.</summary>
-    public async Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken)
-    {
-        var result = await _application.ToggleTrackingAsync(cancellationToken);
-        if (result.Succeeded) Dashboard = result.Value;
-        return result;
-    }
+    public Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken) =>
+        _application.ToggleTrackingAsync(cancellationToken);
 
     /// <summary>Loads the latest session card.</summary>
-    public async Task<OperationResult<LastSessionState?>> RefreshLastSessionAsync(CancellationToken cancellationToken)
-    {
-        var result = await _application.GetLastSessionAsync(cancellationToken);
-        if (result.Succeeded) LastSession = result.Value;
-        return result;
-    }
-
-    private void OnRuntimeStateChanged(object? sender, RuntimeStateChangedEventArgs eventArgs) => Dashboard = eventArgs.Dashboard;
+    public Task<OperationResult<LastSessionState?>> RefreshLastSessionAsync(CancellationToken cancellationToken) =>
+        _application.GetLastSessionAsync(cancellationToken);
 }
 
-/// <summary>Provides typed report queries and progress ownership to a presentation view.</summary>
-public sealed class ReportViewModel : ViewModelBase
+/// <summary>Provides typed report queries to a presentation view.</summary>
+public sealed class ReportViewModel
 {
     private readonly ITrackMeUpApplication _application;
-    private ReportQuery? _query;
-    private ReportSnapshot? _snapshot;
-    private bool _isLoading;
-    private string? _errorCode;
 
     /// <summary>Initializes the report view model.</summary>
-    public ReportViewModel(ITrackMeUpApplication application) => _application = application;
-
-    /// <summary>Gets the most recently requested report query.</summary>
-    public ReportQuery? Query { get => _query; private set => Set(ref _query, value); }
-
-    /// <summary>Gets the most recent complete report snapshot.</summary>
-    public ReportSnapshot? Snapshot { get => _snapshot; private set => Set(ref _snapshot, value); }
-
-    /// <summary>Gets whether a report query is in progress.</summary>
-    public bool IsLoading { get => _isLoading; private set => Set(ref _isLoading, value); }
-
-    /// <summary>Gets the stable error code returned by the latest failed query.</summary>
-    public string? ErrorCode { get => _errorCode; private set => Set(ref _errorCode, value); }
+    public ReportViewModel(ITrackMeUpApplication application) =>
+        _application = application ?? throw new ArgumentNullException(nameof(application));
 
     /// <summary>Loads one aggregate report snapshot through the shared application facade.</summary>
     public async Task<OperationResult<ReportSnapshot>> LoadAsync(ReportQuery query, CancellationToken cancellationToken)
     {
-        Query = query;
-        ErrorCode = null;
-        IsLoading = true;
-        try
+        ArgumentNullException.ThrowIfNull(query);
+        var result = await _application.GetReportAsync(query, cancellationToken);
+        if (result.Succeeded && result.Value is null)
         {
-            var result = await _application.GetReportAsync(query, cancellationToken);
-            if (!result.Succeeded)
-            {
-                ErrorCode = result.Code;
-                return result;
-            }
-
-            if (result.Value is null)
-            {
-                ErrorCode = "report.snapshot.missing";
-                return OperationResult<ReportSnapshot>.Failure("report.snapshot.missing", "ReportSnapshotMissing");
-            }
-
-            Snapshot = result.Value;
-            return result;
+            return OperationResult<ReportSnapshot>.Failure("report.snapshot.missing", "ReportSnapshotMissing");
         }
-        finally
-        {
-            IsLoading = false;
-        }
+
+        return result;
     }
 }

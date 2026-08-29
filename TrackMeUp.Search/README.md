@@ -7,14 +7,16 @@ engine.
 ## Public API
 
 - `ILocalSearchService` / `LocalSearchService`
-- `UpsertAsync`, `DeleteAsync`, `RebuildAsync`, and `SearchAsync`
+- revisioned `ApplyBatchAsync` and `RebuildAsync`, plus `SearchAsync` and `SuggestAsync`
 - Immutable `SearchDocument`, `SearchRequest`, `SearchHit`, `SearchResponse`,
   `SearchOptions`, and `SearchSynonymSet` records
 
 The caller supplies an absolute `SearchOptions.IndexRootPath`. The service stores
 derived data below `lucene-v2`, validates the schema marker on reopen, serializes
-all operations, and explicitly commits every mutation. `RebuildAsync` accepts the
-authoritative source documents and replaces the full index.
+all operations, and explicitly commits every mutation. Mutations always carry the
+authoritative source revision. Suggestions keep their own revision marker and are
+rebuilt lazily before lookup when missing or stale, coalescing multiple mutations
+without serving suggestions from an older source snapshot.
 
 Synonyms are caller-provided equivalence groups and are expanded only while
 building a query. No general-purpose dictionary is embedded. OCR raw text,
@@ -30,5 +32,6 @@ separate optional fields; none is required for indexing or retrieval.
 - [x] Query-time synonyms and controlled typo matching
 - [x] Exact and phrase ranking above synonym and fuzzy matches
 - [x] Kind and timestamp filters
-- [x] Upsert, delete, full rebuild, persistence, and concurrent operations
+- [x] Batched upsert/delete, full rebuild, and explicit-commit persistence
+- [x] Lazy suggestion repair after a stale marker, failed marker persistence, and reopen
 - [x] Fail-fast validation for documents, requests, and options

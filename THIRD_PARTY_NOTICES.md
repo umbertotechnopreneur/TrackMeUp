@@ -1,22 +1,27 @@
 # Third-Party Notices
 
-TrackMeUp itself is governed by the
-[TrackMeUp Source-Available License 1.0](LICENSE), not by the MIT or Apache-2.0
-licenses listed below. Each third-party component or asset retains its own
-license terms, and this inventory does not relicense TrackMeUp or expand the
-permissions granted by `LICENSE`.
+TrackMeUp's project-authored software and documentation are governed by the
+[MIT License](LICENSE), unless a file states otherwise. The TrackMeUp name and
+brand assets are governed separately by [the trademark and brand policy](TRADEMARKS.md).
+Each third-party component, data set, or asset retains its own license terms;
+this inventory does not relicense third-party material as MIT.
 
-This file inventories the direct `PackageReference` dependencies declared in tracked `.csproj` files as of 2026-08-11 and separately records distributed world-clock data/media assets.
+This file inventories the direct `PackageReference` dependencies declared in
+tracked `.csproj` files, the production dependency closure used to build the
+tracked web report bundle, and distributed world-clock data/media assets.
 
-- Scope: direct NuGet dependencies only. Transitive NuGet packages and npm packages are not included yet.
-- Source of truth: repository `*.csproj` files plus official NuGet package metadata.
+- NuGet scope: direct dependencies declared in tracked project files as of 2026-08-29. Transitive NuGet packages are not included yet.
+- Web scope: all production packages resolved by `TrackMeUp.Reports.Web/package-lock.json`; development-only packages are excluded.
+- Source of truth: repository `*.csproj` files, official NuGet package metadata, the npm lockfile, and installed package license/notice files.
 - Special cases: packages that publish a bundled license file instead of a NuGet SPDX expression are called out explicitly below.
+- Binary-release boundary: before distributing a self-contained installer, generate and package notices for the complete published runtime closure, including transitive NuGet/runtime/native components. This source inventory alone is not a complete binary-distribution notice bundle.
 
 ## Summary
 
 - Runtime dependencies: 21 unique packages.
 - Test-only dependencies: 4 unique packages.
-- Open-source licenses observed: `MIT`, `Apache-2.0`.
+- Web report production dependencies: 29 unique packages.
+- Open-source licenses observed: `MIT`, `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `0BSD`, plus the separately recorded Creative Commons/public-domain asset terms.
 - Additional Microsoft package terms observed: `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`.
 
 ## Runtime Dependencies
@@ -54,10 +59,36 @@ This file inventories the direct `PackageReference` dependencies declared in tra
 | [xunit](https://www.nuget.org/packages/xunit/2.9.3) | [![NuGet](https://img.shields.io/nuget/v/xunit?label=NuGet)](https://www.nuget.org/packages/xunit/2.9.3) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
 | [xunit.runner.visualstudio](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) | [![NuGet](https://img.shields.io/nuget/v/xunit.runner.visualstudio?label=NuGet)](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
 
+## Embedded web report production bundle
+
+The tracked `TrackMeUp.Reports.Web/dist` output is packaged with the Windows
+application. Its complete 29-package production dependency closure contains:
+
+| Declared license | Package count |
+| --- | ---: |
+| `MIT` | 22 |
+| `Apache-2.0` | 2 |
+| `BSD-2-Clause` | 1 |
+| `BSD-3-Clause` | 2 |
+| `ISC` | 1 |
+| `0BSD` | 1 |
+
+Exact package names, versions, declared licenses, copyright/license texts, and
+the ECharts `NOTICE` are generated into
+[`TrackMeUp.Reports.Web/dist/THIRD_PARTY_NOTICES.md`](TrackMeUp.Reports.Web/dist/THIRD_PARTY_NOTICES.md).
+Regenerate that file deterministically with `npm run notices:production` from
+`TrackMeUp.Reports.Web`; the generator fails when the lockfile, installed
+package metadata, or required license/notice files are unavailable or
+inconsistent.
+
 ## Distributed world-clock data and media
 
 - Capital-city coordinates, population, and IANA time zones are derived from [GeoNames cities15000](https://download.geonames.org/export/dump/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - The bundled seasonal skyline WebP files are resized and cropped from individually licensed Wikimedia Commons files. Author, source page, exact license, season, and SHA-256 for every image are distributed in `TrackMeUp/Assets/WorldClocks/ATTRIBUTION.md`, `ATTRIBUTION.json`, and the SQLite catalog itself.
+
+Other repository artwork is mapped in [`ASSET_LICENSING.md`](ASSET_LICENSING.md).
+That record distinguishes reserved TrackMeUp Brand Assets, third-party media,
+and assets whose provenance must still be confirmed before publication.
 
 ## Notes
 

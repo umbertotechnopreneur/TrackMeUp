@@ -222,7 +222,7 @@ internal sealed partial class AiPricingDialogWindow : Window
 
         _isCompleting = true;
         CloseButton.IsEnabled = false;
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         Close();
     }
 

@@ -83,15 +83,19 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
         var missingFileCount = missingCandidates.Sum(candidate => candidate.MissingFileCount);
         var missingMetadata = missingCandidates.Count(candidate =>
             candidate.MissingFileCount == 0 &&
-            (candidate.HistoricalContext is null || HasInsufficientMultiMonitorPrivacyContext(settings, candidate.ScreenshotPaths.Count)));
+            (candidate.InstallationId is null ||
+             candidate.HistoricalContext is null ||
+             HasInsufficientMultiMonitorPrivacyContext(settings, candidate.ScreenshotPaths.Count)));
         var privacyBlocked = missingCandidates.Count(candidate =>
             candidate.MissingFileCount == 0 &&
+            candidate.InstallationId is not null &&
             candidate.HistoricalContext is { } context &&
             !HasInsufficientMultiMonitorPrivacyContext(settings, candidate.ScreenshotPaths.Count) &&
             _isPrivate(settings, candidate.ProcessName, context));
         var eligible = missingCandidates
             .Where(candidate =>
                 candidate.MissingFileCount == 0 &&
+                candidate.InstallationId is not null &&
                 candidate.HistoricalContext is { } context &&
                 !HasInsufficientMultiMonitorPrivacyContext(settings, candidate.ScreenshotPaths.Count) &&
                 !_isPrivate(settings, candidate.ProcessName, context))
@@ -610,7 +614,7 @@ internal sealed class AiScreenshotReprocessingService : IAsyncDisposable
             return;
         }
 
-        if (candidate.HistoricalContext is not { } context)
+        if (candidate.InstallationId is null || candidate.HistoricalContext is not { } context)
         {
             CheckpointItem(item, "skipped", "privacy_context_unavailable", incrementAttempt: false);
             return;

@@ -631,7 +631,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
 
             try
             {
-        var settings = _settingsSnapshot.Value;
+                var settings = _settingsSnapshot.Value;
                 if (!settings.OpenAiEnabled)
                 {
                     return OperationResult<AiAnalysis>.Failure("ai.disabled", "AiDisabled");
@@ -1343,17 +1343,21 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         return await Task.Run(() =>
         {
-        var settings = _settingsSnapshot.Value;
-            if (!settings.OpenAiEnabled ||
-                !string.Equals(settings.AiProvider, AiPricingProviders.OpenAi, StringComparison.OrdinalIgnoreCase))
+            var settings = _settingsSnapshot.Value;
+            if (!settings.OpenAiEnabled)
             {
                 return OperationResult<AiPricingOverview>.Failure(
                     "ai.pricing.disabled",
-                    "AiPricingDisabled",
-                    new ValidationIssue("ai.provider", "openai_required", "AiPricingOpenAiRequired"));
+                    "AiPricingDisabled");
             }
 
-            var prices = _store.ListAiModelPricing(AiPricingProviders.OpenAi);
+            var usesOpenAiPricing = string.Equals(
+                settings.AiProvider,
+                AiPricingProviders.OpenAi,
+                StringComparison.OrdinalIgnoreCase);
+            var prices = usesOpenAiPricing
+                ? _store.ListAiModelPricing(AiPricingProviders.OpenAi)
+                : [];
             var displayedRows = prices
                 .Where(price =>
                     string.Equals(price.ServiceTier, AiPricingServiceTiers.Standard, StringComparison.OrdinalIgnoreCase) &&
@@ -1368,30 +1372,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 .ToArray();
 
             var today = DateOnly.FromDateTime(DateTime.Now);
-            var report = _reports.Build(new ReportQuery(today, today, TimeZoneInfo.Local.Id), cancellationToken);
-            if (!report.Succeeded || report.Value is null)
-            {
-                return OperationResult<AiPricingOverview>.Failure(
-                    report.Code,
-                    report.MessageKey,
-                    report.Issues.ToArray());
-            }
-
             var monthStart = new DateOnly(today.Year, today.Month, 1);
             var monthEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
-            var monthReport = _reports.Build(new ReportQuery(monthStart, today, TimeZoneInfo.Local.Id), cancellationToken);
-            if (!monthReport.Succeeded || monthReport.Value is null)
-            {
-                return OperationResult<AiPricingOverview>.Failure(
-                    monthReport.Code,
-                    monthReport.MessageKey,
-                    monthReport.Issues.ToArray());
-            }
-
-            var usage = report.Value.AiUsage;
-            var monthUsage = monthReport.Value.AiUsage;
+            var usage = _reports.BuildAiUsage(today, today, TimeZoneInfo.Local, cancellationToken);
+            var monthUsage = _reports.BuildAiUsage(monthStart, today, TimeZoneInfo.Local, cancellationToken);
             var overview = new AiPricingOverview(
-                _store.GetLatestAiModelPricingRetrievedAt(AiPricingProviders.OpenAi),
+                usesOpenAiPricing
+                    ? _store.GetLatestAiModelPricingRetrievedAt(AiPricingProviders.OpenAi)
+                    : null,
                 prices.Count,
                 displayedRows.Length,
                 usage.EstimatedCostUsd,
@@ -1786,7 +1774,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<RetentionPreview>> PreviewRetentionAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<RetentionPreview>.Success("retention.preview.loaded", "RetentionPreviewLoaded", BuildRetentionPreview()));
+        return Task.FromResult(OperationResult<RetentionPreview>.Success(
+            "retention.preview.loaded",
+            "RetentionPreviewLoaded",
+            BuildRetentionPreview(cancellationToken)));
     }
 
     /// <inheritdoc />
@@ -1797,7 +1788,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<RetentionPreview>.Failure("retention.confirmation.required", "RetentionConfirmationRequired", new ValidationIssue("confirmation", "required", "RetentionConfirmationRequired"));
         }
 
-        var preview = BuildRetentionPreview();
+        var preview = BuildRetentionPreview(cancellationToken);
         foreach (var path in preview.Paths.Where(ScreenCaptureService.IsOwnedArtifact))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1832,7 +1823,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         AtomicResetPlan plan;
         try
         {
-        var settings = _settingsSnapshot.Value;
+            var settings = _settingsSnapshot.Value;
             plan = _atomicReset.CreatePlan(_store.DataDirectory, settings.ScreenshotDirectory);
         }
         catch (Exception exception) when (
@@ -2092,15 +2083,46 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public async Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var enabled = await _startup.IsEnabledAsync(cancellationToken).ConfigureAwait(false);
-        return OperationResult<bool>.Success("startup.status.loaded", "StartupStatusLoaded", enabled);
+        try
+        {
+            var enabled = await _startup.IsEnabledAsync(cancellationToken).ConfigureAwait(false);
+            return OperationResult<bool>.Success("startup.status.loaded", "StartupStatusLoaded", enabled);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "Windows startup status could not be read. ExceptionType={ExceptionType}",
+                exception.GetType().Name);
+            return OperationResult<bool>.Failure("startup.status.unavailable", "StartupStatusUnavailable");
+        }
     }
 
     /// <inheritdoc />
     public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _settingsSnapshot.Value;
-        var success = await _startup.SetEnabledAsync(enabled, cancellationToken).ConfigureAwait(false);
+        bool success;
+        try
+        {
+            success = await _startup.SetEnabledAsync(enabled, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "Windows startup registration could not be updated. Enabled={Enabled} ExceptionType={ExceptionType}",
+                enabled,
+                exception.GetType().Name);
+            return OperationResult<bool>.Failure("startup.unavailable", "StartupUpdateFailed");
+        }
+
         if (!success)
         {
             return OperationResult<bool>.Failure("startup.failed", "StartupUpdateFailed");
@@ -2129,7 +2151,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         cancellationToken.ThrowIfCancellationRequested();
         var info = new ProductInformation(
             "TrackMeUp",
-            "TrackMeUp Source-Available License 1.0",
+            "MIT License",
             ProductRepositoryUrl,
             ProductAuthorUrl,
             _buildInformation.Load());
@@ -2185,7 +2207,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         await _screenshotReprocessing.DisposeAsync().ConfigureAwait(false);
         _tracking.DashboardStateChanged -= OnDashboardStateChanged;
         _tracking.TrackingStateChanged -= OnTrackingStateChanged;
-        _pricingRefresh?.Dispose();
+        if (_pricingRefresh is not null)
+        {
+            await _pricingRefresh.DisposeAsync().ConfigureAwait(false);
+        }
         _tracking.Dispose();
         await _search.DisposeAsync().ConfigureAwait(false);
         _captureWorker.Dispose();
@@ -2614,7 +2639,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 return;
             }
 
-        var settings = _settingsSnapshot.Value;
+            var settings = _settingsSnapshot.Value;
             if (!ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now))
             {
                 return;
@@ -2894,16 +2919,27 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         });
     }
 
-    private RetentionPreview BuildRetentionPreview()
+    private RetentionPreview BuildRetentionPreview(CancellationToken cancellationToken)
     {
         var settings = _settingsSnapshot.Value;
         var screenshotCutoff = DateTimeOffset.Now.AddDays(-settings.ScreenshotRetentionDays);
         var dataCutoff = DateTimeOffset.Now.AddDays(-settings.DataRetentionDays);
-        var screenshotPaths = Directory.Exists(settings.ScreenshotDirectory)
-            ? ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory)
-                .Where(path => File.GetLastWriteTimeUtc(path) < screenshotCutoff.UtcDateTime)
-                .ToArray()
-            : Array.Empty<string>();
+        var retainedScreenshotPaths = Directory.Exists(settings.ScreenshotDirectory)
+            ? ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory).ToArray()
+            : [];
+        var capturedAtByPath = _store.LoadScreenshotCaptureTimes(retainedScreenshotPaths, cancellationToken);
+        var screenshotPaths = retainedScreenshotPaths
+            .Where(path =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // Persisted provenance is authoritative. Filesystem time is reserved for owned
+                // orphan artifacts that have no surviving capture row.
+                var capturedAt = capturedAtByPath.TryGetValue(path, out var persistedCapturedAt)
+                    ? persistedCapturedAt
+                    : new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero);
+                return capturedAt < screenshotCutoff;
+            })
+            .ToArray();
         var dataPreview = _store.GetRetentionPreview(dataCutoff);
         var paths = screenshotPaths.Concat(dataPreview.Paths).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var screenshotBytes = screenshotPaths.Sum(path => new FileInfo(path).Length);

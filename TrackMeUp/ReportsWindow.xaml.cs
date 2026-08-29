@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -27,6 +28,7 @@ public sealed partial class ReportsWindow : Window
     {
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
+    private static readonly ReportsWindowJsonSerializerContext SerializerContext = new(SerializerOptions);
 
     private readonly ITrackMeUpApplication _application;
     private readonly ReportViewModel _viewModel;
@@ -292,29 +294,22 @@ public sealed partial class ReportsWindow : Window
 
     private static bool IsReportTheme(string theme) => theme is "system" or "light" or "dark";
 
-    private void PostThemeState() => PostWebEnvelope(new
-    {
-        type = "report.theme.state",
-        theme = _reportTheme
-    });
+    private void PostThemeState() => PostWebEnvelope(
+        new ReportThemeStateEnvelope("report.theme.state", _reportTheme),
+        SerializerContext.ReportThemeStateEnvelope);
 
-    private void PostLanguageState() => PostWebEnvelope(new
-    {
-        type = "report.language.state",
-        language = _reportLanguage
-    });
+    private void PostLanguageState() => PostWebEnvelope(
+        new ReportLanguageStateEnvelope("report.language.state", _reportLanguage),
+        SerializerContext.ReportLanguageStateEnvelope);
 
-    private void PostThemeError(string code) => PostWebEnvelope(new
-    {
-        type = "report.theme.error",
-        theme = _reportTheme,
-        code
-    });
+    private void PostThemeError(string code) => PostWebEnvelope(
+        new ReportThemeErrorEnvelope("report.theme.error", _reportTheme, code),
+        SerializerContext.ReportThemeErrorEnvelope);
 
-    private void PostWebEnvelope(object envelope)
+    private void PostWebEnvelope<TEnvelope>(TEnvelope envelope, JsonTypeInfo<TEnvelope> typeInfo)
     {
         var core = ReportsWebView.CoreWebView2 ?? throw new InvalidOperationException("WebView2 is not ready for a host message.");
-        core.PostWebMessageAsJson(JsonSerializer.Serialize(envelope, SerializerOptions));
+        core.PostWebMessageAsJson(JsonSerializer.Serialize(envelope, typeInfo));
     }
 
     private void ApplyReportTheme(string theme)
@@ -478,13 +473,8 @@ public sealed partial class ReportsWindow : Window
 
     private void PostSnapshot(ReportView view, ReportSnapshot snapshot)
     {
-        var envelope = new
-        {
-            type = "report.snapshot",
-            view = WebViewName(view),
-            snapshot
-        };
-        PostWebEnvelope(envelope);
+        var envelope = new ReportSnapshotEnvelope("report.snapshot", WebViewName(view), snapshot);
+        PostWebEnvelope(envelope, SerializerContext.ReportSnapshotEnvelope);
     }
 
     private void InvalidateReportCache()
@@ -595,7 +585,7 @@ public sealed partial class ReportsWindow : Window
 
     private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
     {
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
 
         _lifetimeCancellation.Cancel();
@@ -629,4 +619,20 @@ public sealed partial class ReportsWindow : Window
     }
 
     private readonly record struct ReportRangeKey(DateOnly From, DateOnly ToInclusive, string TimeZoneId);
+}
+
+internal sealed record ReportThemeStateEnvelope(string Type, string Theme);
+
+internal sealed record ReportLanguageStateEnvelope(string Type, string Language);
+
+internal sealed record ReportThemeErrorEnvelope(string Type, string Theme, string Code);
+
+internal sealed record ReportSnapshotEnvelope(string Type, string View, ReportSnapshot Snapshot);
+
+[JsonSerializable(typeof(ReportThemeStateEnvelope))]
+[JsonSerializable(typeof(ReportLanguageStateEnvelope))]
+[JsonSerializable(typeof(ReportThemeErrorEnvelope))]
+[JsonSerializable(typeof(ReportSnapshotEnvelope))]
+internal partial class ReportsWindowJsonSerializerContext : JsonSerializerContext
+{
 }

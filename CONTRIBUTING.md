@@ -2,7 +2,7 @@
 
 Thank you for helping improve TrackMeUp.
 
-TrackMeUp is a source-available, local-first Windows product and still evolving. Small, focused changes with clear validation are easier to review and merge.
+TrackMeUp is an open-source, local-first Windows product and is still evolving. Small, focused changes with clear validation are easier to review and merge.
 
 ## Before Opening an Issue or Pull Request
 
@@ -61,8 +61,14 @@ For material AI-assisted contributions, disclose usage and summarize your review
 ## License and Provenance
 
 By submitting a contribution, you confirm that you have the right to provide
-the material and agree that it may be incorporated into TrackMeUp and made
-available under the [TrackMeUp Source-Available License 1.0](LICENSE). Your
-contribution must not contain confidential or license-incompatible content.
+the material and agree to license it under the [MIT License](LICENSE), without
+additional terms, unless the maintainers explicitly agree otherwise in
+writing before acceptance. Your contribution must not contain confidential or
+license-incompatible content.
 
-Record third-party code, assets, and generated material in `THIRD_PARTY_NOTICES.md` or companion provenance records.
+Record third-party code, assets, and generated material in
+`THIRD_PARTY_NOTICES.md` or companion provenance records. A proposed
+TrackMeUp mark or Brand Asset must include provenance and be explicitly
+accepted under separate written terms. Accepting an ordinary MIT-licensed
+contribution does not grant rights to the existing marks or assets described
+in [`TRADEMARKS.md`](TRADEMARKS.md).

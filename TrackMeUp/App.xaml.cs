@@ -701,7 +701,8 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        // Stop accepting IPC before disposing the one facade that owns tracking and persistence.
+        // A local RuntimeHost owns and disposes its application before releasing the runtime mutex.
+        // Remote clients do not own a runtime and are disposed directly below.
         _dashboardRefreshCoordinator?.Dispose();
         _dashboardRefreshCoordinator = null;
         if (_runtimeHost is not null)
@@ -709,9 +710,10 @@ public partial class App : Microsoft.UI.Xaml.Application
             _runtimeHost.AtomicResetPrepared -= RuntimeHost_AtomicResetPrepared;
             await _runtimeHost.DisposeAsync();
             _runtimeHost = null;
+            _applicationFacade = null;
+            _runtimeApplication = null;
         }
-
-        if (_applicationFacade is not null)
+        else if (_applicationFacade is not null)
         {
             await _applicationFacade.DisposeAsync();
             _applicationFacade = null;

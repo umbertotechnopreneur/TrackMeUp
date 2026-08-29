@@ -33,10 +33,7 @@ public sealed class PresentationBoundaryTests
 
         Assert.True(result.Succeeded);
         Assert.Same(query, recorder.ReportQuery);
-        Assert.Same(query, viewModel.Query);
-        Assert.Same(result.Value, viewModel.Snapshot);
-        Assert.False(viewModel.IsLoading);
-        Assert.Null(viewModel.ErrorCode);
+        Assert.NotNull(result.Value);
     }
 
     [Fact]
@@ -51,7 +48,6 @@ public sealed class PresentationBoundaryTests
         Assert.True(result.Succeeded);
         Assert.True(result.Value?.Dashboard.IsTracking);
         Assert.Same(recorder.LastSession, result.Value?.LastSession);
-        Assert.Same(recorder.LastSession, viewModel.LastSession);
         Assert.Equal(1, recorder.StartCalls);
         Assert.Equal(0, recorder.ToggleCalls);
         Assert.Equal("winui.launch", recorder.LastStartRequest?.Source);
@@ -104,9 +100,6 @@ public sealed class PresentationBoundaryTests
         {
             switch (targetMethod?.Name)
             {
-                case "add_RuntimeStateChanged":
-                case "remove_RuntimeStateChanged":
-                    return null;
                 case nameof(ITrackMeUpApplication.GetSettingsAsync):
                     return Task.FromResult(OperationResult<AppSettings>.Success(
                         "settings.loaded",

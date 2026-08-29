@@ -41,4 +41,6 @@ dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=x64
 
 License posture:
 
-- This repo uses a custom source-available license; default project artifacts are not approved for third-party redistribution or marketplace publication without prior written permission.
+- Project-authored software and documentation are licensed under the MIT License in `LICENSE` unless a file states otherwise.
+- The TrackMeUp name, logos, app icons, and project-authored brand artwork are separate from the MIT grant; follow `TRADEMARKS.md` and asset-specific provenance records.
+- Third-party code, data, and assets retain their own licenses and attribution requirements; preserve `THIRD_PARTY_NOTICES.md` and adjacent notices.

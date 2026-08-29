@@ -345,6 +345,38 @@ public sealed class ReportAggregationTests
     }
 
     [Fact]
+    public void BuildAiUsage_DoesNotScanTheActivityHistory()
+    {
+        WithStore((store, reports) =>
+        {
+            var occurredAt = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero);
+            store.AppendAiUsage(AiUsage(
+                occurredAt,
+                "openrouter",
+                "snapshot.scheduled",
+                success: true,
+                usage: new AiUsageMetrics(InputTokens: 10, OutputTokens: 2, TotalTokens: 12, ReportedCostUsd: 0.01m)));
+            using (var connection = new SqliteConnection($"Data Source={store.ActivityDatabasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DROP TABLE activity_samples;";
+                command.ExecuteNonQuery();
+            }
+
+            var usage = reports.BuildAiUsage(
+                new DateOnly(2026, 2, 1),
+                new DateOnly(2026, 2, 1),
+                TimeZoneInfo.Utc,
+                CancellationToken.None);
+
+            Assert.Equal(1, usage.RequestCount);
+            Assert.Equal(12, usage.TotalTokens);
+            Assert.Equal(0.01m, usage.ActualCostUsd);
+        });
+    }
+
+    [Fact]
     public void Build_EstimatesOpenAiCostsFromStoredPricing()
     {
         WithStore((store, reports) =>

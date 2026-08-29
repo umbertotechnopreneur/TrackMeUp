@@ -15,7 +15,9 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     private const int LogicalWidth = 560;
     private const int LogicalHeight = 480;
     private const int LogicalScreenMargin = 24;
-    private static readonly TimeSpan TypeDelay = TimeSpan.FromMilliseconds(14);
+    private const int TerminalChunkSize = 24;
+    private const int MaxTerminalOutputCharacters = 4096;
+    private static readonly TimeSpan TerminalUpdateDelay = TimeSpan.FromMilliseconds(14);
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
@@ -23,6 +25,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     private readonly IntPtr _windowHandle;
     private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _testCancellation = new(TimeSpan.FromSeconds(30));
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly DispatcherQueueTimer _countdownTimer;
     private readonly DateTimeOffset _deadline = DateTimeOffset.Now.AddSeconds(30);
     private readonly StringBuilder _terminalBuffer = new();
@@ -65,8 +68,10 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         {
             _isClosing = true;
             _testCancellation.Cancel();
+            _lifetimeCancellation.Cancel();
             _countdownTimer.Stop();
             _testCancellation.Dispose();
+            _lifetimeCancellation.Dispose();
             _completion.TrySetResult();
         };
     }
@@ -85,10 +90,17 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
-        _countdownTimer.Start();
-        await RunTestAsync();
+        try
+        {
+            _placement.ApplyDefaultBounds(RootGrid);
+            await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+            _countdownTimer.Start();
+            await RunTestAsync();
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Closing during initial placement cancels the remaining presentation work.
+        }
     }
 
     private async Task RunTestAsync()
@@ -115,8 +127,12 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
                     result.Value.Model,
                     result.Value.ElapsedMilliseconds);
                 TerminalStateText.Text = T("AiConnectionTest.State.Response");
-                var output = string.IsNullOrWhiteSpace(result.Value.Output) ? T("AiConnectionTest.EmptyResponse") : result.Value.Output.Trim();
-                await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}> {T("AiConnectionTest.Terminal.Response")}{Environment.NewLine}{output}", CancellationToken.None);
+                var output = string.IsNullOrWhiteSpace(result.Value.Output)
+                    ? T("AiConnectionTest.EmptyResponse")
+                    : BoundTerminalOutput(result.Value.Output.Trim());
+                await AppendTerminalAsync(
+                    $"{Environment.NewLine}{Environment.NewLine}> {T("AiConnectionTest.Terminal.Response")}{Environment.NewLine}{output}",
+                    _lifetimeCancellation.Token);
                 return;
             }
 
@@ -128,7 +144,9 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
                     ? T("AiConnectionTest.Failed.InvalidConfiguration")
                     : T("AiConnectionTest.Failed.Generic");
             TerminalStateText.Text = T("AiConnectionTest.State.Error");
-            await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}! {T("AiConnectionTest.Terminal.Error")}{Environment.NewLine}{StatusText.Text}", CancellationToken.None);
+            await AppendTerminalAsync(
+                $"{Environment.NewLine}{Environment.NewLine}! {T("AiConnectionTest.Terminal.Error")}{Environment.NewLine}{StatusText.Text}",
+                _lifetimeCancellation.Token);
         }
         catch (OperationCanceledException) when (_isClosing)
         {
@@ -140,7 +158,9 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
             TitleText.Text = T("AiConnectionTest.Timeout.Title");
             StatusText.Text = T("AiConnectionTest.Timeout.Message");
             TerminalStateText.Text = T("AiConnectionTest.State.Timeout");
-            await AppendTerminalAsync($"{Environment.NewLine}{Environment.NewLine}! {T("AiConnectionTest.Terminal.Timeout")}{Environment.NewLine}{StatusText.Text}", CancellationToken.None);
+            await AppendTerminalAsync(
+                $"{Environment.NewLine}{Environment.NewLine}! {T("AiConnectionTest.Terminal.Timeout")}{Environment.NewLine}{StatusText.Text}",
+                _lifetimeCancellation.Token);
         }
     }
 
@@ -164,16 +184,20 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
 
     private async Task AppendTerminalAsync(string text, CancellationToken cancellationToken)
     {
-        foreach (var character in text)
+        for (var offset = 0; offset < text.Length; offset += TerminalChunkSize)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            _terminalBuffer.Append(character);
-            TerminalText.Text = _terminalBuffer + "▋";
-            TerminalScrollViewer.UpdateLayout();
+            var count = Math.Min(TerminalChunkSize, text.Length - offset);
+            _terminalBuffer.Append(text, offset, count);
+            TerminalText.Text = _terminalBuffer.ToString() + "▋";
             TerminalScrollViewer.ChangeView(null, TerminalScrollViewer.ScrollableHeight, null, disableAnimation: true);
-            await Task.Delay(TypeDelay, cancellationToken);
+            await Task.Delay(TerminalUpdateDelay, cancellationToken);
         }
     }
+
+    private static string BoundTerminalOutput(string output) => output.Length <= MaxTerminalOutputCharacters
+        ? output
+        : output[..MaxTerminalOutputCharacters] + Environment.NewLine + "…";
 
     private static string ProviderDisplayName(string provider) => provider.Trim().ToLowerInvariant() switch
     {
@@ -189,8 +213,9 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     {
         _isClosing = true;
         _testCancellation.Cancel();
+        _lifetimeCancellation.Cancel();
         CloseButton.IsEnabled = false;
-        await _placement.SaveAsync(CancellationToken.None);
+        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         Close();
     }
 

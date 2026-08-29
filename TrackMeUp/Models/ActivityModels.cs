@@ -120,7 +120,8 @@ public sealed record AppSettings(
     bool QuickSetupCompleted = false,
     IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null,
     bool ScreenshotDetailsPaneOpen = false,
-    IReadOnlyList<string>? WorldClockCityIds = null);
+    IReadOnlyList<string>? WorldClockCityIds = null,
+    bool ShowAiMonthlySpend = false);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

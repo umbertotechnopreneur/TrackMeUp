@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using TrackMeUp.Services;
 using Xunit;
 
@@ -56,5 +58,27 @@ public sealed class OpenAiPricingRefreshServiceTests
             OpenAiPricingMarkdownParser.ParseStandardPricingData("# Pricing", DateTimeOffset.UtcNow));
 
         Assert.Contains("Standard pricing data", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_PreventsNewRefreshWork()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var service = new OpenAiPricingRefreshService(new LocalStore(dataDirectory));
+
+            await service.DisposeAsync();
+
+            Assert.Throws<ObjectDisposedException>(service.Start);
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => service.RefreshAsync(CancellationToken.None));
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
     }
 }
