@@ -41,7 +41,7 @@ release. Privacy questions can be sent to **hello@umbertogiacobbi.biz**.
 | Device measurements | Used for local reports and optional AI context | Local records and, only when AI is enabled, the selected provider request | Disable AI; location is a separate opt-in |
 | Windows location | Off | Only the selected AI request when enabled | Windows permission plus TrackMeUp setting |
 | Selected world-clock city IDs | Four initial cities | Local settings JSON only | Open the in-window options surface to add or remove clocks; maximum four |
-| Current world-clock weather | On; no request until `TRACKMEUP_OPENWEATHER_API_KEY` is available | The on/off preference is stored in local settings; the key remains in the fixed Windows user/process environment variable; OpenWeather observations are cached in process memory for up to 12 minutes | Turn weather off in the in-window options surface, or use a converted reference instant; remove the Windows user variable and restart to clear the current process copy |
+| Current world-clock weather | On; no request until `TRACKMEUP_OPENWEATHER_API_KEY` is available | The on/off preference is stored in local settings; the key remains in the fixed Windows user/process environment variable; valid OpenWeather observations are revalidated after 12 minutes and retained only in process memory for at most 45 minutes | Turn weather off in the in-window options surface, or use a converted reference instant; remove the Windows user variable and restart to clear the current process copy |
 | Diagnostic logs | Local logging is enabled for troubleshooting | `%LOCALAPPDATA%\TrackMeUp\logs` | Use the local log directory setting; delete local logs normally |
 | Portable data archive | Created only on explicit export | The `.tmuarchive` path selected by the user | Preview the destination and keep or delete the file normally |
 
@@ -61,7 +61,7 @@ only through an explicit user action or an enabled integration:
 2. **AI provider request.** When AI is enabled and an analysis is requested, TrackMeUp sends the selected local context, system context, and screenshots allowed by the settings directly to the selected provider. The default provider is OpenAI at `https://api.openai.com/v1/responses`. OpenRouter and Anthropic are explicit alternatives.
 3. **Screenshot sharing.** When the user chooses to share a retained screenshot, TrackMeUp opens the Windows Share UI with that file. The user chooses the receiving app or destination; TrackMeUp does not select or upload to a recipient automatically.
 4. **Redacted log sharing.** When the user chooses **Report a problem**, TrackMeUp creates a bounded copy of the current application log, removes known private paths and secrets, and opens the Windows Share UI. Redaction reduces exposure but cannot guarantee that future diagnostic text contains no sensitive context, so the user should review what they share.
-5. **Optional current weather.** The current-weather preference is on for clean settings. A missing `TRACKMEUP_OPENWEATHER_API_KEY` sends nothing and exposes a non-secret localized setup-required state. Once a key is available, only the live current world-clock projection sends the latitude and longitude of each of the one to four selected cities directly to OpenWeather's Current Weather endpoint. Responses contribute temperature, condition, and observation time only while fresh, are cached in process memory for up to 12 minutes, and are not written to settings, SQLite, reports, diagnostics, or IPC history. The window keeps linked OpenWeather attribution visible whenever provider weather is shown. A stale response or provider failure leaves every local clock working. Historical and future reference-instant conversions never issue a current-weather request.
+5. **Optional current weather.** The current-weather preference is on for clean settings. A missing `TRACKMEUP_OPENWEATHER_API_KEY` sends nothing and exposes a non-secret localized setup-required state. Once a key is available, only the live current world-clock projection sends the latitude and longitude of each of the one to four selected cities directly to OpenWeather's Current Weather endpoint. Responses contribute temperature, condition, and observation time only while valid, are revalidated after 12 minutes, expire after at most 45 minutes, remain in process memory only, and are not written to settings, SQLite, reports, diagnostics, or IPC history. The window keeps linked OpenWeather attribution visible whenever provider weather is shown. A stale response or provider failure leaves every local clock working and may continue showing the last still-valid observation during that bounded window. Historical and future reference-instant conversions never issue a current-weather request.
 6. **Optional Sentry diagnostics.** If `TRACKMEUP_SENTRY_DSN` is set, Sentry receives configured error events and breadcrumbs. It is not active by default.
 
 After data is sent to an AI provider, OpenWeather, Sentry, or an app selected through the
@@ -92,7 +92,7 @@ The following are the direct product and build packages relevant to data behavio
 | `Serilog.Extensions.Logging` | 10.0.0 | Connects Serilog to the .NET logging abstraction. |
 | `Serilog.Sinks.Console` | 6.1.1 | Writes diagnostics to the local console when available. |
 | `Serilog.Sinks.File` | 7.0.0 | Writes rolling diagnostics under the local app-data directory. |
-| `Sentry.Extensions.Logging` | 6.7.0 | Optional remote diagnostics. Active only with `TRACKMEUP_SENTRY_DSN`; default PII is disabled and identity fields are cleared before sending. |
+| `Sentry.Extensions.Logging` | 6.9.0 | Optional remote diagnostics. Active only with `TRACKMEUP_SENTRY_DSN`; default PII is disabled and identity fields are cleared before sending. |
 | `Microsoft.Data.Sqlite` | 10.0.10 | Local SQLite persistence for activity, analyses, and sanitized AI usage. |
 | `SQLitePCLRaw.lib.e_sqlite3` | 2.1.12 | SQLite native engine used by the local store. |
 | `SkiaSharp` | 4.151.0 | Local image conversion and rendering. |
@@ -129,7 +129,7 @@ Changing provider, endpoint, model, thinking effort, screenshot retention, or wh
 
 ## Sentry and Serilog, without vague wording
 
-Serilog is the local logging library. Its console and file sinks do not send anything over the network. Local logs are retained as rolling daily files, with a maximum of seven files in the current implementation.
+Serilog is the local logging library. Its console and file sinks do not send anything over the network. Local logs are retained as rolling daily files, with a maximum of 15 files and 15 days in the current implementation.
 
 Sentry is different: it is a possible remote destination, but it is not enabled by default. An operator must provide `TRACKMEUP_SENTRY_DSN`. When enabled, the application configures Sentry to:
 
@@ -138,6 +138,15 @@ Sentry is different: it is a possible remote destination, but it is not enabled 
 - clear user, request, and server identity fields before send;
 - redact paths, secrets, tokens, authorization text, DSNs, and raw installation identifiers from diagnostic text;
 - stop trying after a bounded two-second shutdown/flush window.
+
+For a local or managed Windows installation, set the DSN and environment at user scope, then restart TrackMeUp so the new process inherits them:
+
+```powershell
+[Environment]::SetEnvironmentVariable('TRACKMEUP_SENTRY_DSN', 'https://PUBLIC_KEY@HOST/PROJECT_ID', [EnvironmentVariableTarget]::User)
+[Environment]::SetEnvironmentVariable('TRACKMEUP_SENTRY_ENVIRONMENT', 'production', [EnvironmentVariableTarget]::User)
+```
+
+Use a Sentry project DSN here, never a Sentry authentication token. The DSN is a public client routing identifier rather than an account credential, so any value configured automatically for every installed client is necessarily discoverable in that installation. TrackMeUp keeps it out of source and persisted application settings; an installer or device-management policy may set the same user-scope variables when centralized deployment is required. Invalid DSN or environment values keep the remote sink disabled and surface an `invalid` observability status rather than silently relabeling events. Setting `TRACKMEUP_SENTRY_DSN` to `null` at user scope and restarting disables the remote sink again.
 
 The source is the final authority. An error message added in the future must still be reviewed for sensitive content before it is logged or sent to an optional remote destination.
 

@@ -17,6 +17,7 @@ public sealed partial class ScheduleWindow : Window
     private const int LogicalWindowHeight = 620;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly ITrackMeUpApplication _application;
@@ -43,10 +44,15 @@ public sealed partial class ScheduleWindow : Window
         _strings = new LocalizationService(uiLanguage);
         _theme = theme;
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Schedule, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ApplyTheme(theme);
         ApplyLanguage(uiLanguage);
@@ -66,7 +72,7 @@ public sealed partial class ScheduleWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
+        _titleBar.ApplyTheme(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
     }
 
     /// <summary>Applies localized labels to schedule-specific commands and confirmations.</summary>
@@ -135,44 +141,11 @@ public sealed partial class ScheduleWindow : Window
         }
     }
 
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
-    {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var dark = effectiveTheme == ElementTheme.Dark;
-        var titleBar = _appWindow.TitleBar;
-        titleBar.BackgroundColor = Colors.Transparent;
-        titleBar.InactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
-    }
-
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
-    {
-        if (_theme == "system")
-        {
-            ApplyThemeChrome(sender.ActualTheme);
-        }
-    }
-
     private async void ScheduleWindow_Closed(object sender, WindowEventArgs args)
     {
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.Dispose();
         _lifetimeCancellation.Cancel();
         if (_xamlRoot is not null)
         {

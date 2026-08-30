@@ -16,7 +16,7 @@ public sealed class WinUiOperationsSurfaceContractTests
     public void AboutDiagnostics_UseFacadeRuntimeAndRedactedShareInfrastructure()
     {
         var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
-        var runtime = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
+        var runtimeOperations = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeOperationCatalog.cs"));
         var logs = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "ApplicationLogService.cs"));
 
         Assert.Contains("_application.OpenApplicationLogFolderAsync", about, StringComparison.Ordinal);
@@ -24,10 +24,10 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("_application.OpenProductLinkAsync", about, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Process.", about, StringComparison.Ordinal);
-        Assert.Contains("\"diagnostics.log.open\"", runtime, StringComparison.Ordinal);
-        Assert.Contains("\"diagnostics.log.open_folder\"", runtime, StringComparison.Ordinal);
-        Assert.Contains("\"diagnostics.log.share\"", runtime, StringComparison.Ordinal);
-        Assert.Contains("\"product.link.open\"", runtime, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics.log.open\"", runtimeOperations, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics.log.open_folder\"", runtimeOperations, StringComparison.Ordinal);
+        Assert.Contains("\"diagnostics.log.share\"", runtimeOperations, StringComparison.Ordinal);
+        Assert.Contains("\"product.link.open\"", runtimeOperations, StringComparison.Ordinal);
         Assert.Contains("MaximumSharedSourceBytes", logs, StringComparison.Ordinal);
         Assert.Contains("CreateRedactedExport", logs, StringComparison.Ordinal);
         Assert.Contains("RedactForSharing", logs, StringComparison.Ordinal);

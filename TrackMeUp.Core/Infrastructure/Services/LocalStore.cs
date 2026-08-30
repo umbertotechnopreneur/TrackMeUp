@@ -885,6 +885,33 @@ public sealed class LocalStore
             .ToArray();
     }
 
+    /// <summary>Removes capture provenance after the last physical artifact and persisted child are gone.</summary>
+    internal int DeleteScreenshotCaptureIfOrphaned(string screenshotPath)
+    {
+        if (!ScreenCaptureService.IsOwnedArtifact(screenshotPath) || !Path.IsPathFullyQualified(screenshotPath))
+        {
+            return 0;
+        }
+
+        var artifactIdentity = ScreenshotIdentity(Path.GetFileName(screenshotPath));
+        var captureId = TryGetCaptureId(artifactIdentity);
+        if (captureId is null)
+        {
+            return 0;
+        }
+
+        var settings = LoadSettings();
+        var screenshotRoot = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
+            ? _utilities.GetDefaultScreenshotDirectory()
+            : settings.ScreenshotDirectory;
+        var hasPhysicalArtifact = ScreenshotStorageLayout.EnumerateOwnedArtifacts(screenshotRoot)
+            .Any(path => string.Equals(
+                TryGetCaptureId(ScreenshotIdentity(Path.GetFileName(path))),
+                captureId,
+                StringComparison.Ordinal));
+        return hasPhysicalArtifact ? 0 : _activity.DeleteOrphanedScreenshotCapture(captureId);
+    }
+
     /// <summary>
     /// Lists owned screenshot artifacts for one local calendar date without exposing unrelated files.
     /// </summary>
@@ -1035,7 +1062,8 @@ public sealed class LocalStore
                 activity.MouseClicks,
                 source.Telemetry?.CpuUsagePercent,
                 source.Telemetry?.GpuUsagePercent,
-                source.Provenance.Installation));
+                source.Provenance.Installation,
+                analysis is not null || textSnapshot is not null || source.Telemetry is not null));
         }
 
         return new ScreenshotGallery(date, items);

@@ -80,21 +80,19 @@
         <Grid
             x:Name="TitleBarDragRegion"
             Height="48"
-            Padding="16,0,180,0"
             Background="Transparent">
-            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal" Spacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" Margin="16,0,12,0" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal" Spacing="10">
                 <Image
-                    Width="22"
-                    Height="22"
-                    AutomationProperties.AccessibilityView="Raw"
-                    IsHitTestVisible="False"
-                    Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
+                    Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
                 <TextBlock
-                    VerticalAlignment="Center"
                     CharacterSpacing="100"
                     FontSize="12"
-                    FontWeight="SemiBold"
-                    IsHitTestVisible="False"
+                    Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                     Tag="Schedule.WindowTitleUpper"
                     Text="SNAPSHOT SCHEDULE" />
             </StackPanel>
@@ -174,7 +172,7 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Tag="Schedule.WorkingHours.Description"
-                            Text="Select the 30-minute periods when scheduled snapshots may run."
+                            Text="Select the 15-minute periods when scheduled snapshots may run."
                             TextWrapping="Wrap" />
                     </StackPanel>
                     <Button

@@ -910,6 +910,19 @@ public class TaskbarProbe {
 
 function Invoke-TrackMeUpUnpackagedPublish {
     $runtime = Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform
+    $unpackagedRoot = [System.IO.Path]::GetFullPath((Join-Path $script:RepositoryRoot 'artifacts\unpackaged'))
+    $publishDirectory = [System.IO.Path]::GetFullPath((Join-Path $unpackagedRoot $Platform))
+    $requiredPrefix = $unpackagedRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $publishDirectory.StartsWith($requiredPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unpackaged publish output escaped the repository artifacts directory: $publishDirectory"
+    }
+
+    if (Test-Path -LiteralPath $publishDirectory) {
+        # `dotnet publish` does not remove stale ReadyToRun or trimmed payload files. A clean
+        # target directory is required so the smoke-tested executable matches current settings.
+        Remove-Item -LiteralPath $publishDirectory -Recurse -Force
+    }
+
     $arguments = @(
         'publish',
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
@@ -919,7 +932,9 @@ function Invoke-TrackMeUpUnpackagedPublish {
         '-r',
         $runtime,
         '--self-contained',
-        'true'
+        'true',
+        '--output',
+        $publishDirectory
     )
 
     if ($SkipRestore) {

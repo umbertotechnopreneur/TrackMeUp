@@ -222,7 +222,12 @@ public sealed class OpenAiAnalysisCleanupTests
 
     private sealed class UnexpectedCaptureService : IScreenCaptureService
     {
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin) =>
+        /// <inheritdoc />
+        public ScreenshotCaptureResult CaptureByMode(
+            string directory,
+            string captureMode,
+            string captureOrigin,
+            Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture) =>
             throw new InvalidOperationException("The supplied capture must be reused.");
     }
 

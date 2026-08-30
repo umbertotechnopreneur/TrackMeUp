@@ -17,8 +17,14 @@ public sealed class ObservabilityConfigurationService
     {
         var logDirectory = PrepareLogDirectory();
         var sentryDsn = ResolveSentryDsn(ReadEnvironmentVariable("TRACKMEUP_SENTRY_DSN"), out var invalidDsn);
-        var sentryEnvironment = NormalizeEnvironment(ReadEnvironmentVariable("TRACKMEUP_SENTRY_ENVIRONMENT"));
-        var sentryStatus = invalidDsn ? "invalid" : sentryDsn is null ? "disabled" : "enabled";
+        var sentryEnvironment = ResolveSentryEnvironment(ReadEnvironmentVariable("TRACKMEUP_SENTRY_ENVIRONMENT"), out var invalidEnvironment);
+        var invalidConfiguration = invalidDsn || invalidEnvironment;
+        if (invalidConfiguration)
+        {
+            sentryDsn = null;
+        }
+
+        var sentryStatus = invalidConfiguration ? "invalid" : sentryDsn is null ? "disabled" : "enabled";
         return new ObservabilityConfiguration(logDirectory, sentryDsn, sentryEnvironment, sentryStatus);
     }
 
@@ -75,11 +81,17 @@ public sealed class ObservabilityConfigurationService
         return invalid ? null : value.Trim();
     }
 
-    private static string NormalizeEnvironment(string? value)
+    private static string ResolveSentryEnvironment(string? value, out bool invalid)
     {
-        var candidate = string.IsNullOrWhiteSpace(value) ? "development" : value.Trim();
-        return candidate.Length <= 64 && candidate.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.')
-            ? candidate
-            : "development";
+        invalid = false;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "development";
+        }
+
+        var candidate = value.Trim();
+        invalid = candidate.Length > 64
+            || !candidate.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.');
+        return invalid ? "development" : candidate;
     }
 }

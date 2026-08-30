@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sentry;
 using Serilog;
-using System.Text.RegularExpressions;
 using TrackMeUp.Application;
 
 namespace TrackMeUp.Runtime;
@@ -15,9 +14,6 @@ internal static class LoggingBootstrapper
     private const int RetainedFileCount = 15;
     private static readonly TimeSpan RetainedFileTime = TimeSpan.FromDays(15);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
-    private static readonly Regex WindowsPath = new(@"\b[a-z]:\\[^\r\n]*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex SecretAssignment = new(@"\b(?:api[_-]?key|token|secret|authorization|dsn)\b\s*[:=]\s*\S+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex RawIdentifier = new(@"\b[0-9a-f]{32}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private static int _shutdownStarted;
 
     /// <summary>Builds the application service provider and configures console/file sinks.</summary>
@@ -70,7 +66,7 @@ internal static class LoggingBootstrapper
         {
             serviceProvider.GetRequiredService<ILoggerFactory>()
                 .CreateLogger(nameof(LoggingBootstrapper))
-                .LogWarning("Sentry is disabled because TRACKMEUP_SENTRY_DSN is malformed.");
+                .LogWarning("Sentry is disabled because its DSN or environment configuration is malformed.");
         }
 
         AppDomain.CurrentDomain.ProcessExit += (_, _) => Shutdown(serviceProvider);
@@ -142,23 +138,8 @@ internal static class LoggingBootstrapper
                         options.MinimumEventLevel = LogLevel.Error;
                         options.FlushTimeout = ShutdownTimeout;
                         options.ShutdownTimeout = ShutdownTimeout;
-                        options.SetBeforeSend(sentryEvent =>
-                        {
-                            // Custom values are already avoided at call sites; strip SDK-provided host/request identity too.
-                            sentryEvent.User = new SentryUser();
-                            sentryEvent.Request = new SentryRequest();
-                            sentryEvent.ServerName = string.Empty;
-                            return sentryEvent;
-                        });
-                        options.SetBeforeBreadcrumb(breadcrumb =>
-                        {
-                            return new Breadcrumb(
-                                RedactTelemetryText(breadcrumb.Message) ?? string.Empty,
-                                breadcrumb.Type ?? string.Empty,
-                                new Dictionary<string, string>(),
-                                breadcrumb.Category ?? string.Empty,
-                                breadcrumb.Level);
-                        });
+                        options.SetBeforeSend(SentryEventSanitizer.Sanitize);
+                        options.SetBeforeBreadcrumb(SentryEventSanitizer.SanitizeBreadcrumb);
                     });
                 }
             })
@@ -202,18 +183,6 @@ internal static class LoggingBootstrapper
             // There is no remaining logger at this point; Debug is the last non-throwing fallback.
             System.Diagnostics.Debug.WriteLine($"TrackMeUp local logging flush unavailable: {exception.GetType().Name}");
         }
-    }
-
-    private static string? RedactTelemetryText(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return value;
-        }
-
-        var redacted = WindowsPath.Replace(value, "[path]");
-        redacted = SecretAssignment.Replace(redacted, "[secret]");
-        return RawIdentifier.Replace(redacted, "[installation]");
     }
 
 }

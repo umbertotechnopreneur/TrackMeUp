@@ -18,12 +18,6 @@
                         <SolidColorBrush x:Key="WorldClockReferenceFieldBrush" Color="#30FFFFFF" />
                         <SolidColorBrush x:Key="WorldClockOptionsOverlayBrush" Color="#F2FAFAFA" />
                         <SolidColorBrush x:Key="WorldClockColumnDividerBrush" Color="#26000000" />
-                        <SolidColorBrush x:Key="WorldClockCaptionForegroundBrush" Color="#FF000000" />
-                        <SolidColorBrush x:Key="WorldClockCaptionInactiveForegroundBrush" Color="#A0000000" />
-                        <SolidColorBrush x:Key="WorldClockCaptionHoverForegroundBrush" Color="#FF000000" />
-                        <SolidColorBrush x:Key="WorldClockCaptionPressedForegroundBrush" Color="#FF000000" />
-                        <SolidColorBrush x:Key="WorldClockCaptionHoverBackgroundBrush" Color="#18000000" />
-                        <SolidColorBrush x:Key="WorldClockCaptionPressedBackgroundBrush" Color="#28000000" />
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <SolidColorBrush x:Key="WorldClockWindowTintBrush" Color="#5A151619" />
@@ -31,12 +25,6 @@
                         <SolidColorBrush x:Key="WorldClockReferenceFieldBrush" Color="#24101114" />
                         <SolidColorBrush x:Key="WorldClockOptionsOverlayBrush" Color="#F2141518" />
                         <SolidColorBrush x:Key="WorldClockColumnDividerBrush" Color="#34FFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockCaptionForegroundBrush" Color="#FFFFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockCaptionInactiveForegroundBrush" Color="#A0FFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockCaptionHoverForegroundBrush" Color="#FFFFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockCaptionPressedForegroundBrush" Color="#FFFFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockCaptionHoverBackgroundBrush" Color="#20FFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockCaptionPressedBackgroundBrush" Color="#30FFFFFF" />
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="HighContrast">
                         <StaticResource x:Key="WorldClockWindowTintBrush" ResourceKey="SystemColorWindowColorBrush" />
@@ -44,12 +32,6 @@
                         <StaticResource x:Key="WorldClockReferenceFieldBrush" ResourceKey="SystemColorWindowColorBrush" />
                         <StaticResource x:Key="WorldClockOptionsOverlayBrush" ResourceKey="SystemColorWindowColorBrush" />
                         <StaticResource x:Key="WorldClockColumnDividerBrush" ResourceKey="SystemColorWindowTextColorBrush" />
-                        <StaticResource x:Key="WorldClockCaptionForegroundBrush" ResourceKey="SystemColorWindowTextColorBrush" />
-                        <StaticResource x:Key="WorldClockCaptionInactiveForegroundBrush" ResourceKey="SystemColorGrayTextColorBrush" />
-                        <StaticResource x:Key="WorldClockCaptionHoverForegroundBrush" ResourceKey="SystemColorHighlightTextColorBrush" />
-                        <StaticResource x:Key="WorldClockCaptionPressedForegroundBrush" ResourceKey="SystemColorHighlightTextColorBrush" />
-                        <StaticResource x:Key="WorldClockCaptionHoverBackgroundBrush" ResourceKey="SystemColorHighlightColorBrush" />
-                        <StaticResource x:Key="WorldClockCaptionPressedBackgroundBrush" ResourceKey="SystemColorHighlightColorBrush" />
                     </ResourceDictionary>
                 </ResourceDictionary.ThemeDictionaries>
             </ResourceDictionary>
@@ -67,39 +49,12 @@
             x:Name="ColumnDividerResource"
             BorderBrush="{ThemeResource WorldClockColumnDividerBrush}"
             Visibility="Collapsed" />
-        <Border
-            x:Name="TitleBarButtonForegroundResource"
-            Background="{ThemeResource WorldClockCaptionForegroundBrush}"
-            Visibility="Collapsed" />
-        <Border
-            x:Name="TitleBarButtonInactiveForegroundResource"
-            Background="{ThemeResource WorldClockCaptionInactiveForegroundBrush}"
-            Visibility="Collapsed" />
-        <Border
-            x:Name="TitleBarButtonHoverForegroundResource"
-            Background="{ThemeResource WorldClockCaptionHoverForegroundBrush}"
-            Visibility="Collapsed" />
-        <Border
-            x:Name="TitleBarButtonPressedForegroundResource"
-            Background="{ThemeResource WorldClockCaptionPressedForegroundBrush}"
-            Visibility="Collapsed" />
-        <Border
-            x:Name="TitleBarButtonHoverBackgroundResource"
-            Background="{ThemeResource WorldClockCaptionHoverBackgroundBrush}"
-            Visibility="Collapsed" />
-        <Border
-            x:Name="TitleBarButtonPressedBackgroundResource"
-            Background="{ThemeResource WorldClockCaptionPressedBackgroundBrush}"
-            Visibility="Collapsed" />
-
         <Grid
             x:Name="HeaderDragRegion"
             Grid.Row="0"
             Background="{ThemeResource WorldClockHeaderTintBrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-            BorderThickness="0,0,0,1"
-            Loaded="HeaderDragRegion_Loaded"
-            SizeChanged="HeaderDragRegion_SizeChanged">
+            BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="328" />
@@ -125,16 +80,9 @@
                     <Button
                         x:Name="HeaderBackButton"
                         Grid.Column="0"
-                        Width="40"
-                        Height="40"
-                        Margin="0"
-                        Padding="8"
-                        VerticalAlignment="Center"
                         AutomationProperties.Name="Back to world clocks"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
                         Click="HeaderBackButton_Click"
-                        Style="{StaticResource TitleBarOverflowButtonStyle}"
+                        Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                         Tag="WorldClock.Options.Back"
                         ToolTipService.ToolTip="Back to world clocks"
                         Visibility="Collapsed">
@@ -147,34 +95,23 @@
                     <Image
                         x:Name="TitleBarLogo"
                         Grid.Column="1"
-                        Width="22"
-                        Height="22"
                         Margin="8,0,10,0"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AccessibilityView="Raw"
-                        IsHitTestVisible="False"
-                        Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
+                        Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
                     <TextBlock
                         x:Name="ReferenceInstantLabel"
                         Grid.Column="2"
-                        VerticalAlignment="Center"
                         CharacterSpacing="70"
-                        FontSize="12"
-                        FontWeight="SemiBold"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                         Tag="WorldClock.ReferenceInstant"
-                        Text="REFERENCE INSTANT"
-                        TextTrimming="CharacterEllipsis" />
+                        Text="REFERENCE INSTANT" />
                     <TextBlock
                         x:Name="OptionsHeaderLabel"
                         Grid.Column="2"
-                        VerticalAlignment="Center"
                         CharacterSpacing="70"
-                        FontSize="12"
-                        FontWeight="SemiBold"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                         Text="WORLD CLOCK OPTIONS"
-                        TextTrimming="CharacterEllipsis"
                         Visibility="Collapsed" />
                 </Grid>
             </Grid>
@@ -248,17 +185,9 @@
                 <Button
                     x:Name="OptionsButton"
                     Grid.Column="1"
-                    Width="40"
-                    Height="40"
-                    Margin="0"
-                    Padding="8"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
                     AutomationProperties.Name="Open world clock options"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
                     Click="OptionsButton_Click"
-                    Style="{StaticResource TitleBarOverflowButtonStyle}"
+                    Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                     Tag="WorldClock.Options.Open"
                     ToolTipService.ToolTip="Open world clock options">
                     <SymbolIcon

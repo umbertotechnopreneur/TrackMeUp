@@ -12,6 +12,9 @@ namespace TrackMeUp.Controls;
 public sealed partial class ScreenshotHeaderControl : UserControl
 {
     private LocalizationService _strings = new("system");
+    private bool _hasImage;
+    private bool _analysisDeletionAvailable;
+    private bool _deletionActionsEnabled = true;
 
     /// <summary>Creates the header control.</summary>
     public ScreenshotHeaderControl() => InitializeComponent();
@@ -41,7 +44,7 @@ public sealed partial class ScreenshotHeaderControl : UserControl
     public event EventHandler? DeleteScreenshotRequested;
 
     /// <summary>Raised when the user asks the host window to delete the displayed screenshot metadata.</summary>
-    public event EventHandler? DeleteSnapshotRequested;
+    public event EventHandler? DeleteAnalysisRequested;
 
     /// <summary>Gets the date picker used by the host window.</summary>
     public CalendarDatePicker DatePicker => SelectedDatePicker;
@@ -64,7 +67,7 @@ public sealed partial class ScreenshotHeaderControl : UserControl
         SetCommandLabel(ShareButton, "Screenshots.Toolbar.Share");
         SetCommandLabel(OpenFolderButton, "Screenshots.Toolbar.OpenFolder");
         SetCommandLabel(DeleteScreenshotButton, "Screenshots.Toolbar.DeleteScreenshot");
-        SetCommandLabel(DeleteSnapshotButton, "Screenshots.Toolbar.DeleteSnapshot");
+        SetCommandLabel(DeleteAnalysisButton, "Screenshots.Toolbar.DeleteAnalysis");
         AutomationProperties.SetName(ScreenshotToolbar, _strings.Translate("Screenshots.Metadata"));
         UpdateMetadataAccessibility();
         UpdateInstallationAccessibility();
@@ -122,8 +125,22 @@ public sealed partial class ScreenshotHeaderControl : UserControl
         ZoomInButton.IsEnabled = canZoomIn;
         SaveButton.IsEnabled = hasImage;
         ShareButton.IsEnabled = hasImage;
-        DeleteScreenshotButton.IsEnabled = hasImage;
-        DeleteSnapshotButton.IsEnabled = hasImage;
+        _hasImage = hasImage;
+        UpdateDeletionActionState();
+    }
+
+    /// <summary>Prevents overlapping destructive commands while the host confirms and completes one deletion.</summary>
+    public void SetDeletionActionsEnabled(bool isEnabled)
+    {
+        _deletionActionsEnabled = isEnabled;
+        UpdateDeletionActionState();
+    }
+
+    /// <summary>Shows whether the selected image still owns removable OCR, AI, or interval telemetry.</summary>
+    public void SetAnalysisDeletionAvailable(bool isAvailable)
+    {
+        _analysisDeletionAvailable = isAvailable;
+        UpdateDeletionActionState();
     }
 
     /// <summary>Synchronizes the snapshot-details command without owning the preference.</summary>
@@ -182,6 +199,13 @@ public sealed partial class ScreenshotHeaderControl : UserControl
         ToolTipService.SetToolTip(InstallationProvenanceBadge, accessibleName);
     }
 
+    private void UpdateDeletionActionState()
+    {
+        var enabled = _hasImage && _deletionActionsEnabled;
+        DeleteScreenshotButton.IsEnabled = enabled;
+        DeleteAnalysisButton.IsEnabled = enabled && _analysisDeletionAvailable;
+    }
+
     private void ZoomOutButton_Click(object sender, RoutedEventArgs e) => ZoomOutRequested?.Invoke(this, EventArgs.Empty);
 
     private void ZoomResetButton_Click(object sender, RoutedEventArgs e) => ZoomResetRequested?.Invoke(this, EventArgs.Empty);
@@ -199,5 +223,5 @@ public sealed partial class ScreenshotHeaderControl : UserControl
 
     private void DeleteScreenshotButton_Click(object sender, RoutedEventArgs e) => DeleteScreenshotRequested?.Invoke(this, EventArgs.Empty);
 
-    private void DeleteSnapshotButton_Click(object sender, RoutedEventArgs e) => DeleteSnapshotRequested?.Invoke(this, EventArgs.Empty);
+    private void DeleteAnalysisButton_Click(object sender, RoutedEventArgs e) => DeleteAnalysisRequested?.Invoke(this, EventArgs.Empty);
 }

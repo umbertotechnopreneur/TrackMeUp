@@ -18,6 +18,7 @@ internal sealed partial class SearchIndexingWindow : Window
     private const int LogicalScreenMargin = 24;
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private LocalizationService _strings;
@@ -45,10 +46,16 @@ internal sealed partial class SearchIndexingWindow : Window
 
         _strings = new LocalizationService(language);
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -70,7 +77,7 @@ internal sealed partial class SearchIndexingWindow : Window
     internal void ApplyTheme(ElementTheme theme)
     {
         RootGrid.RequestedTheme = theme;
-        ApplyThemeChrome(theme == ElementTheme.Default ? RootGrid.ActualTheme : theme);
+        _titleBar.ApplyTheme(theme == ElementTheme.Default ? RootGrid.ActualTheme : theme);
     }
 
     /// <summary>Relocalizes static and current-state content without restarting indexing.</summary>
@@ -103,7 +110,6 @@ internal sealed partial class SearchIndexingWindow : Window
             return;
         }
 
-        UpdateTitleBarInsets();
         if (!_started && !_closing)
         {
             _started = true;
@@ -265,43 +271,6 @@ internal sealed partial class SearchIndexingWindow : Window
             presenter.IsAlwaysOnTop = true;
         }
 
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        }
-    }
-
-    private void ApplyThemeChrome(ElementTheme theme)
-    {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var dark = theme == ElementTheme.Dark;
-        _appWindow.TitleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        _appWindow.TitleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(150, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(150, 0, 0, 0);
-    }
-
-    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
-
-    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
-
-    private void UpdateTitleBarInsets()
-    {
-        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
     }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
@@ -318,6 +287,7 @@ internal sealed partial class SearchIndexingWindow : Window
         _rebuildCancellation?.Cancel();
         _lifetimeCancellation.Cancel();
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
+        _titleBar.Dispose();
         _placement.Dispose();
         if (_xamlRoot is not null)
         {

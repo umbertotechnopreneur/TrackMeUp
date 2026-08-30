@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
@@ -65,6 +66,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             Stretch.UniformToFill);
         CelestialPhase.IsDaylight = clock.IsDaylight;
         CelestialPhase.MoonPhaseAngleDegrees = clock.MoonPhaseAngleDegrees;
+        var moonPhaseSummary = ApplyMoonPhase(clock, strings, accent);
         SunriseIcon.Foreground = accent;
         SunsetIcon.Foreground = accent;
         SunriseHorizon.Fill = accent;
@@ -79,11 +81,48 @@ public sealed partial class WorldClockColumnControl : UserControl
         var sunsetSummary = strings.Format("WorldClock.Sunset", sunsetTime);
         var weatherSummary = ApplyWeather(clock.Weather, strings);
 
-        var accessibleSummary = string.IsNullOrEmpty(weatherSummary)
-            ? $"{clock.CityName}, {LocalTimeText.Text}, {OffsetText.Text}, {DayStateText.Text}, {sunriseSummary}, {sunsetSummary}"
-            : $"{clock.CityName}, {LocalTimeText.Text}, {OffsetText.Text}, {DayStateText.Text}, {weatherSummary}, {sunriseSummary}, {sunsetSummary}";
+        var accessibleDetails = new[]
+        {
+            clock.CityName,
+            LocalTimeText.Text,
+            OffsetText.Text,
+            DayStateText.Text,
+            moonPhaseSummary,
+            weatherSummary,
+            sunriseSummary,
+            sunsetSummary
+        }.Where(static detail => !string.IsNullOrEmpty(detail));
+        var accessibleSummary = string.Join(", ", accessibleDetails);
         AutomationProperties.SetName(ColumnRoot, accessibleSummary);
         AutomationProperties.SetLocalizedLandmarkType(ColumnRoot, clock.CityName);
+    }
+
+    private string ApplyMoonPhase(
+        WorldClockItem clock,
+        LocalizationService strings,
+        Brush accent)
+    {
+        if (clock.IsDaylight)
+        {
+            MoonPhaseSummaryText.Text = string.Empty;
+            MoonPhaseSummaryText.Visibility = Visibility.Collapsed;
+            ToolTipService.SetToolTip(MoonPhaseSummaryText, null);
+            AutomationProperties.SetName(MoonPhaseSummaryText, string.Empty);
+            return string.Empty;
+        }
+
+        var presentation = LunarPhaseProjection.Create(clock.MoonPhaseAngleDegrees);
+        var phaseName = strings.Translate(presentation.LocalizationKey);
+        var summary = strings.Format(
+            "WorldClock.MoonPhase.Summary",
+            phaseName,
+            presentation.IlluminatedPercentage);
+        MoonPhaseSummaryText.Text = summary;
+        MoonPhaseSummaryText.Foreground = accent;
+        MoonPhaseSummaryText.Visibility = Visibility.Visible;
+        ToolTipService.SetToolTip(MoonPhaseSummaryText, summary);
+        AutomationProperties.SetName(MoonPhaseSummaryText, summary);
+        return summary;
     }
 
     private string ApplyWeather(WorldClockWeather? weather, LocalizationService strings)
@@ -108,6 +147,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             "mixed-precipitation" => "WorldClock.WeatherCondition.mixed-precipitation",
             "fog" => "WorldClock.WeatherCondition.fog",
             "lightning" => "WorldClock.WeatherCondition.lightning",
+            "unknown" => "WorldClock.WeatherCondition.unknown",
             _ => throw new InvalidDataException($"Unsupported world-clock weather condition '{weather.ConditionKey}'.")
         };
         WeatherTemperatureText.Text = string.Concat(
@@ -119,7 +159,7 @@ public sealed partial class WorldClockColumnControl : UserControl
         WeatherConditionText.Text = strings.Translate(conditionKey);
         var summary = $"{accessibleTemperature}, {WeatherConditionText.Text}";
         WeatherPanel.Opacity = 1d;
-        WeatherAdornmentHost.Visibility = weather.ConditionKey == "clear"
+        WeatherAdornmentHost.Visibility = weather.ConditionKey is "clear" or "unknown"
             ? Visibility.Collapsed
             : Visibility.Visible;
         AutomationProperties.SetName(WeatherPanel, summary);

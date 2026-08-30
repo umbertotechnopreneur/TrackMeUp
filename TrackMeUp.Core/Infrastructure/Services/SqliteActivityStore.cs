@@ -1608,6 +1608,31 @@ internal sealed class SqliteActivityStore
         return command.ExecuteNonQuery();
     }
 
+    /// <summary>Deletes one capture provenance row only when no persisted child still references it.</summary>
+    internal int DeleteOrphanedScreenshotCapture(string captureId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            DELETE FROM screenshot_captures
+            WHERE capture_id = $captureId
+              AND NOT EXISTS (
+                  SELECT 1 FROM screenshot_interval_telemetry AS telemetry
+                  WHERE telemetry.capture_id = screenshot_captures.capture_id)
+              AND NOT EXISTS (
+                  SELECT 1 FROM screenshot_text_snapshots AS snapshot
+                  WHERE snapshot.capture_id = screenshot_captures.capture_id)
+              AND NOT EXISTS (
+                  SELECT 1 FROM ai_analysis_artifacts AS artifact
+                  WHERE artifact.capture_id = screenshot_captures.capture_id)
+              AND capture_id NOT IN (
+                  SELECT capture_id FROM ai_reprocess_job_items);
+            """;
+        command.Parameters.AddWithValue("$captureId", captureId);
+        return command.ExecuteNonQuery();
+    }
+
     /// <summary>Deletes interval telemetry for one screenshot artifact identity.</summary>
     internal int DeleteScreenshotIntervalTelemetry(string artifactIdentity)
     {
@@ -2118,58 +2143,134 @@ internal sealed class SqliteActivityStore
             : path;
     }
 
-    /// <summary>Deletes snapshot-analysis records that reference one retained screenshot capture.</summary>
+    /// <summary>Removes one screenshot artifact from its AI analysis, deleting the result only when no artifacts remain.</summary>
     internal int DeleteAiAnalysesReferencingScreenshot(string screenshotPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(screenshotPath);
         var normalizedPath = Path.GetFullPath(screenshotPath);
-        var correlationIds = new List<string>();
+        var deletionPlans = new List<(string CorrelationId, string ArtifactIdentity, string[] RemainingPaths)>();
 
         using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using (var select = connection.CreateCommand())
         {
+            select.Transaction = transaction;
             select.CommandText = "SELECT correlation_id, screenshot_paths FROM ai_analysis_results WHERE screenshot_paths IS NOT NULL;";
             using var reader = select.ExecuteReader();
             while (reader.Read())
             {
-                var paths = reader.IsDBNull(1) ? null : reader.GetString(1);
-                if (ContainsScreenshotPath(paths, normalizedPath))
+                var correlationId = reader.GetString(0);
+                var paths = EnumerateScreenshotPaths(reader.GetString(1));
+                var matchingPaths = paths
+                    .Where(path => string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+                if (matchingPaths.Length == 0)
                 {
-                    correlationIds.Add(reader.GetString(0));
+                    continue;
                 }
+
+                var artifactIdentities = paths.Select(ArtifactIdentityFromScreenshotPath).ToArray();
+                if (matchingPaths.Length != 1
+                    || artifactIdentities.Distinct(StringComparer.OrdinalIgnoreCase).Count() != paths.Length)
+                {
+                    throw new InvalidDataException("AI analysis screenshot paths must identify distinct retained artifacts.");
+                }
+
+                deletionPlans.Add((
+                    correlationId,
+                    ArtifactIdentityFromScreenshotPath(matchingPaths[0]),
+                    paths.Where(path => !string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase)).ToArray()));
             }
         }
 
-        if (correlationIds.Count == 0)
+        if (deletionPlans.Count == 0)
         {
+            transaction.Commit();
             return 0;
         }
 
-        using var transaction = connection.BeginTransaction();
+        // The current schema materializes one relation for every path. Validate the complete relation
+        // before changing anything so inconsistent modern records fail atomically instead of degrading silently.
+        foreach (var plan in deletionPlans)
+        {
+            using var selectArtifacts = connection.CreateCommand();
+            selectArtifacts.Transaction = transaction;
+            selectArtifacts.CommandText = "SELECT artifact_identity, capture_id FROM ai_analysis_artifacts WHERE correlation_id = $correlationId;";
+            selectArtifacts.Parameters.AddWithValue("$correlationId", plan.CorrelationId);
+            var linkedArtifactIdentities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using var reader = selectArtifacts.ExecuteReader();
+            while (reader.Read())
+            {
+                if (!string.Equals(reader.GetString(1), plan.CorrelationId, StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException("AI analysis artifact capture identity does not match its correlation identifier.");
+                }
+
+                linkedArtifactIdentities.Add(reader.GetString(0));
+            }
+
+            var expectedArtifactIdentities = plan.RemainingPaths
+                .Select(ArtifactIdentityFromScreenshotPath)
+                .Append(plan.ArtifactIdentity)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (!linkedArtifactIdentities.SetEquals(expectedArtifactIdentities))
+            {
+                throw new InvalidDataException("AI analysis screenshot paths and artifact relations do not match.");
+            }
+        }
+
+        using var deleteArtifact = connection.CreateCommand();
+        deleteArtifact.Transaction = transaction;
+        deleteArtifact.CommandText = "DELETE FROM ai_analysis_artifacts WHERE correlation_id = $correlationId AND artifact_identity = $artifactIdentity;";
         using var deleteSearch = connection.CreateCommand();
         deleteSearch.Transaction = transaction;
         deleteSearch.CommandText = "DELETE FROM ai_analysis_search WHERE correlation_id = $correlationId;";
         using var deleteResults = connection.CreateCommand();
         deleteResults.Transaction = transaction;
         deleteResults.CommandText = "DELETE FROM ai_analysis_results WHERE correlation_id = $correlationId;";
-        foreach (var correlationId in correlationIds)
+        using var updateResults = connection.CreateCommand();
+        updateResults.Transaction = transaction;
+        updateResults.CommandText = "UPDATE ai_analysis_results SET screenshot_paths = $paths WHERE correlation_id = $correlationId;";
+        foreach (var plan in deletionPlans)
         {
-            deleteSearch.Parameters.Clear();
-            deleteSearch.Parameters.AddWithValue("$correlationId", correlationId);
-            deleteSearch.ExecuteNonQuery();
-            deleteResults.Parameters.Clear();
-            deleteResults.Parameters.AddWithValue("$correlationId", correlationId);
-            deleteResults.ExecuteNonQuery();
+            deleteArtifact.Parameters.Clear();
+            deleteArtifact.Parameters.AddWithValue("$correlationId", plan.CorrelationId);
+            deleteArtifact.Parameters.AddWithValue("$artifactIdentity", plan.ArtifactIdentity);
+            if (deleteArtifact.ExecuteNonQuery() != 1)
+            {
+                throw new InvalidDataException("AI analysis artifact relation disappeared during deletion.");
+            }
+
+            if (plan.RemainingPaths.Length == 0)
+            {
+                deleteSearch.Parameters.Clear();
+                deleteSearch.Parameters.AddWithValue("$correlationId", plan.CorrelationId);
+                if (deleteSearch.ExecuteNonQuery() != 1)
+                {
+                    throw new InvalidDataException("AI analysis search document does not match its result.");
+                }
+
+                deleteResults.Parameters.Clear();
+                deleteResults.Parameters.AddWithValue("$correlationId", plan.CorrelationId);
+                if (deleteResults.ExecuteNonQuery() != 1)
+                {
+                    throw new InvalidDataException("AI analysis result disappeared during deletion.");
+                }
+            }
+            else
+            {
+                updateResults.Parameters.Clear();
+                updateResults.Parameters.AddWithValue("$paths", string.Join(';', plan.RemainingPaths));
+                updateResults.Parameters.AddWithValue("$correlationId", plan.CorrelationId);
+                if (updateResults.ExecuteNonQuery() != 1)
+                {
+                    throw new InvalidDataException("AI analysis result disappeared during artifact disassociation.");
+                }
+            }
         }
 
         transaction.Commit();
-        return correlationIds.Count;
-    }
-
-    private static bool ContainsScreenshotPath(string? screenshotPaths, string normalizedPath)
-    {
-        return EnumerateScreenshotPaths(screenshotPaths)
-            .Any(path => string.Equals(Path.GetFullPath(path), normalizedPath, StringComparison.OrdinalIgnoreCase));
+        return deletionPlans.Count;
     }
 
     private static string[] EnumerateScreenshotPaths(string? screenshotPaths) =>

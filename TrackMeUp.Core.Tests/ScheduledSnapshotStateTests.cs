@@ -18,6 +18,7 @@ public sealed class ScheduledSnapshotStateTests
 {
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
 
+    /// <summary>Verifies that an empty active-hours schedule suppresses the capture countdown.</summary>
     [Fact]
     public async Task EmptyActiveHours_DisableCountdownUntilAWorkingPeriodIsConfigured()
     {
@@ -28,6 +29,7 @@ public sealed class ScheduledSnapshotStateTests
             store.SaveSettings(store.LoadSettings() with
             {
                 ScreenshotIntervalMinutes = 1,
+                ScreenshotsEnabled = true,
                 ActiveHours = [.. ActiveHoursSchedule.Days.Select(day => new ActiveHoursDay(day))]
             });
             var utilities = new UtilityService();
@@ -62,6 +64,7 @@ public sealed class ScheduledSnapshotStateTests
         }
     }
 
+    /// <summary>Verifies that pausing tracking freezes the scheduled capture countdown.</summary>
     [Fact]
     public async Task PauseTracking_FreezesScheduledSnapshotCountdown_UntilTrackingResumes()
     {
@@ -69,7 +72,11 @@ public sealed class ScheduledSnapshotStateTests
         try
         {
             var store = new LocalStore(dataDirectory);
-            store.SaveSettings(store.LoadSettings() with { ScreenshotIntervalMinutes = 1 });
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotIntervalMinutes = 1,
+                ScreenshotsEnabled = true
+            });
             var utilities = new UtilityService();
             await using var application = new TrackMeUpApplication(
                 store,
@@ -96,6 +103,54 @@ public sealed class ScheduledSnapshotStateTests
             Assert.True(resumed.Succeeded);
             Assert.NotNull(resumed.Value?.ScheduledSnapshotRemaining);
             Assert.True(resumed.Value!.ScheduledSnapshotRemaining <= frozenCountdown);
+        }
+        finally
+        {
+            await DeleteTemporaryDirectoryAsync(dataDirectory);
+        }
+    }
+
+    /// <summary>Verifies that disabling screenshots hides the countdown until capture is reenabled.</summary>
+    [Fact]
+    public async Task DisabledScreenshots_HideCountdownUntilCaptureIsEnabled()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotIntervalMinutes = 1,
+                ScreenshotsEnabled = false
+            });
+            var utilities = new UtilityService();
+            await using var application = new TrackMeUpApplication(
+                store,
+                utilities,
+                new TrackingDomainService(store),
+                new ScreenCaptureService(utilities.GetAppVersion()),
+                new SystemSnapshotService(),
+                new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion()), new SystemSnapshotService()),
+                new StartupService(),
+                new BuildInformationService(),
+                startScheduledSnapshotTimer: false);
+
+            var started = await application.StartTrackingAsync(new StartTrackingRequest(), CancellationToken.None);
+            var enabled = await application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?> { ["screenshots.enabled"] = "true" }),
+                CancellationToken.None);
+            var enabledDashboard = await application.GetDashboardAsync(CancellationToken.None);
+            var disabled = await application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?> { ["screenshots.enabled"] = "false" }),
+                CancellationToken.None);
+            var disabledDashboard = await application.GetDashboardAsync(CancellationToken.None);
+
+            Assert.True(started.Succeeded);
+            Assert.Null(started.Value?.ScheduledSnapshotRemaining);
+            Assert.True(enabled.Succeeded);
+            Assert.NotNull(enabledDashboard.Value?.ScheduledSnapshotRemaining);
+            Assert.True(disabled.Succeeded);
+            Assert.Null(disabledDashboard.Value?.ScheduledSnapshotRemaining);
         }
         finally
         {
@@ -220,8 +275,19 @@ public sealed class ScheduledSnapshotStateTests
 
         public ScreenshotCaptureResult Result { get; }
 
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin)
+        /// <inheritdoc />
+        public ScreenshotCaptureResult CaptureByMode(
+            string directory,
+            string captureMode,
+            string captureOrigin,
+            Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
         {
+            var decision = authorizeCapture(ScreenshotCaptureContext.Unavailable);
+            if (decision != ScreenshotCaptureDecision.Allowed)
+            {
+                throw new ScreenshotCapturePreconditionException(decision);
+            }
+
             CallCount++;
             LastOrigin = captureOrigin;
             return Result;

@@ -21,6 +21,7 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private bool _started;
@@ -38,10 +39,17 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
         ArgumentNullException.ThrowIfNull(strings);
         InitializeComponent();
         RootGrid.RequestedTheme = theme;
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>(),
+            useTallTitleBar: false);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -167,13 +175,6 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
             presenter.SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false);
         }
 
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        }
     }
 
     private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -185,6 +186,7 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
     {
         _appWindow.Closing -= AppWindow_Closing;
         _lifetimeCancellation.Cancel();
+        _titleBar.Dispose();
         _completion.TrySetResult(OperationResult<ScreenshotStorageMigrationResult>.Failure(
             "operation.cancelled",
             "ScreenshotStorageMigrationFailed"));

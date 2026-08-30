@@ -34,9 +34,13 @@ public sealed class TrackingDomainService : IDisposable
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
         _monitor = new ActivityMonitorService(_store, _inputHooks, _settingsSnapshot);
         _monitor.SampleRecorded += HandleSampleRecorded;
+        _monitor.RuntimeHealthChanged += HandleRuntimeHealthChanged;
     }
 
     public event Action<DashboardState>? DashboardStateChanged;
+
+    /// <summary>Raised only when durable activity sampling enters or leaves degraded state.</summary>
+    public event Action<TrackingRuntimeHealth>? RuntimeHealthChanged;
 
     /// <summary>
     /// Raised after tracking starts or stops. The value is true when tracking is active.
@@ -44,6 +48,10 @@ public sealed class TrackingDomainService : IDisposable
     public event Action<bool>? TrackingStateChanged;
 
     public bool IsTracking => _trackingStartedAt is not null;
+
+    /// <summary>Gets the durable activity-sampling health without touching the activity database.</summary>
+    public TrackingRuntimeHealth RuntimeHealth => _monitor.RuntimeHealth;
+
     public AnalysisContextSnapshot? LatestAnalysisContext => _latestSample is null
         ? null
         : ToAnalysisContext(_latestSample);
@@ -199,6 +207,12 @@ public sealed class TrackingDomainService : IDisposable
         UpdateDashboardActivityCache(sample);
         DashboardStateChanged?.Invoke(BuildDashboardState(sample));
     }
+
+    private void HandleRuntimeHealthChanged(TrackingRuntimeHealth health) => RuntimeHealthChanged?.Invoke(health);
+
+    /// <summary>Persists one already-captured sample through the same contained timer path.</summary>
+    /// <remarks>Used by focused runtime verification without starting global input hooks.</remarks>
+    internal bool TryPersistActivitySample(ActivitySample sample) => _monitor.TryPersistSample(sample);
 
     /// <summary>
     /// Builds dashboard state from the latest sample and today's counters.
@@ -398,6 +412,42 @@ public sealed class TrackingDomainService : IDisposable
             || MatchesPersistedPrivacyRule(settings.PrivacyWindowHints, context.Context);
     }
 
+    /// <summary>Evaluates screenshot policy from the foreground metadata captured at the pixel boundary.</summary>
+    internal static ScreenshotCaptureDecision EvaluateScreenshotCapture(
+        AppSettings settings,
+        ScreenshotCaptureContext context)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(context);
+        if (!settings.ScreenshotsEnabled)
+        {
+            return ScreenshotCaptureDecision.ScreenshotsDisabled;
+        }
+
+        if (HasConfiguredPrivacyRules(settings)
+            && string.IsNullOrWhiteSpace(context.ProcessName)
+            && string.IsNullOrWhiteSpace(context.WindowTitle))
+        {
+            // Provider labels alone cannot prove a capture safe when Windows foreground metadata vanished.
+            return ScreenshotCaptureDecision.PrivacyBlocked;
+        }
+
+        var analysisContext = new AnalysisContextSnapshot(
+            context.ApplicationName,
+            context.Context,
+            context.WindowTitle,
+            "active",
+            Attributes: null);
+        return IsHistoricalContextPrivate(settings, context.ProcessName, analysisContext)
+            ? ScreenshotCaptureDecision.PrivacyBlocked
+            : ScreenshotCaptureDecision.Allowed;
+    }
+
+    internal static bool HasConfiguredPrivacyRules(AppSettings settings) =>
+        !string.IsNullOrWhiteSpace(settings.PrivacyProcessNames)
+        || !string.IsNullOrWhiteSpace(settings.PrivacyWindowTitles)
+        || !string.IsNullOrWhiteSpace(settings.PrivacyWindowHints);
+
     private static bool MatchesPersistedPrivacyRule(string serializedRules, string target)
     {
         if (string.IsNullOrWhiteSpace(serializedRules))
@@ -449,5 +499,6 @@ public sealed class TrackingDomainService : IDisposable
         _monitor.Stop();
         _inputHooks.Stop();
         _monitor.SampleRecorded -= HandleSampleRecorded;
+        _monitor.RuntimeHealthChanged -= HandleRuntimeHealthChanged;
     }
 }

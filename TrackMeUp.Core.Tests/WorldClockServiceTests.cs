@@ -284,6 +284,25 @@ public sealed class WorldClockServiceTests
         Assert.Equal(expectedCondition, OpenWeatherCurrentProvider.MapCondition([conditionId]));
     }
 
+    /// <summary>Verifies that an unknown weather condition preserves the local sky without adding an overlay.</summary>
+    [Fact]
+    public void UnknownWeatherCondition_KeepsTheLocalSkyWithoutInventingAnOverlay()
+    {
+        var localTime = new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var atmosphere = WorldClockAtmosphereResolver.Resolve(
+            localTime,
+            sunrise: null,
+            sunset: null,
+            isDaylight: true,
+            currentConditionKey: "unknown");
+
+        Assert.Equal("day", atmosphere.Phase);
+        Assert.Empty(atmosphere.BackdropAssetPaths);
+        Assert.Empty(atmosphere.ForegroundAssetPaths);
+    }
+
+    /// <summary>Verifies that unsupported OpenWeather atmosphere events map to the explicit unknown condition.</summary>
     [Theory]
     [InlineData(711)]
     [InlineData(721)]
@@ -293,11 +312,30 @@ public sealed class WorldClockServiceTests
     [InlineData(762)]
     [InlineData(771)]
     [InlineData(781)]
-    public void OpenWeatherConditionIds_DoNotMislabelUnsupportedAtmosphereEventsAsFog(
+    public void OpenWeatherConditionIds_UseExplicitUnknownFallbackForUnsupportedAtmosphereEvents(
         int conditionId)
     {
-        Assert.Throws<InvalidDataException>(() =>
-            OpenWeatherCurrentProvider.MapCondition([conditionId]));
+        Assert.Equal("unknown", OpenWeatherCurrentProvider.MapCondition([conditionId]));
+    }
+
+    /// <summary>Verifies that parsing an unknown condition retains its temperature and observation timestamp.</summary>
+    [Fact]
+    public void OpenWeatherObservation_PreservesTemperatureAndTimeForUnknownCondition()
+    {
+        using var document = JsonDocument.Parse(
+            """
+            {
+              "weather": [{ "id": 781 }],
+              "main": { "temp": 27.4 },
+              "dt": 1788060600
+            }
+            """);
+
+        var observation = OpenWeatherCurrentProvider.ParseObservation(document.RootElement);
+
+        Assert.Equal(27.4d, observation.TemperatureCelsius);
+        Assert.Equal("unknown", observation.ConditionKey);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1788060600), observation.ObservedAtUtc);
     }
 
     [Theory]
@@ -518,8 +556,9 @@ public sealed class WorldClockServiceTests
         Assert.Equal(2, provider.CallCount);
     }
 
+    /// <summary>Verifies that an unrequested cached observation remains available until its maximum age.</summary>
     [Fact]
-    public async Task CachedObservation_ExpiresAfterTwelveMinutesWithoutAnotherClockLoad()
+    public async Task CachedObservation_IsRetainedUntilItsMaximumAgeWithoutAnotherClockLoad()
     {
         var timeProvider = new ManualTimeProvider(
             new DateTimeOffset(2026, 8, 30, 3, 18, 0, TimeSpan.Zero));
@@ -534,13 +573,89 @@ public sealed class WorldClockServiceTests
             CancellationToken.None);
 
         Assert.Equal(1, weather.CachedObservationCount);
-        timeProvider.Advance(WorldClockWeatherService.CacheDuration - TimeSpan.FromSeconds(1));
+        timeProvider.Advance(WorldClockWeatherService.CacheDuration);
+        Assert.Equal(1, weather.CachedObservationCount);
+
+        timeProvider.Advance(
+            WorldClockWeatherService.MaximumObservationAge
+            - WorldClockWeatherService.CacheDuration
+            - TimeSpan.FromSeconds(1));
         Assert.Equal(1, weather.CachedObservationCount);
 
         timeProvider.Advance(TimeSpan.FromSeconds(1));
 
         Assert.Equal(0, weather.CachedObservationCount);
         Assert.Equal(1, provider.CallCount);
+    }
+
+    /// <summary>Verifies that an expired refresh window serves cached weather while successful revalidation completes.</summary>
+    [Fact]
+    public async Task ExpiredRefreshWindow_ServesCachedObservationWhileSuccessfulRevalidationRuns()
+    {
+        var timeProvider = new ManualTimeProvider(
+            new DateTimeOffset(2026, 8, 30, 3, 18, 0, TimeSpan.Zero));
+        var factoryCalls = 0;
+        var provider = new FakeWeatherProvider(_ =>
+        {
+            var call = Interlocked.Increment(ref factoryCalls);
+            return new WorldClockWeatherObservation(
+                call == 1 ? 20d : 25d,
+                call == 1 ? "rain" : "clear",
+                timeProvider.GetUtcNow());
+        });
+        using var weather = new WorldClockWeatherService(provider, timeProvider);
+        WorldClockWeatherLocation[] locations = [new("london", 51.5074, -0.1278)];
+
+        var initial = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+        timeProvider.Advance(WorldClockWeatherService.CacheDuration + TimeSpan.FromSeconds(1));
+        var whileRevalidating = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+        var refreshed = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+
+        Assert.Equal(20d, initial.Observations["london"].TemperatureCelsius);
+        Assert.Equal(20d, whileRevalidating.Observations["london"].TemperatureCelsius);
+        Assert.Equal(25d, refreshed.Observations["london"].TemperatureCelsius);
+        Assert.Equal(2, provider.CallCount);
+        Assert.Equal("available", whileRevalidating.Status.State);
+    }
+
+    /// <summary>Verifies that transient refresh failures retain the last observation only within its maximum age.</summary>
+    [Fact]
+    public async Task TransientRefreshFailure_PreservesLastObservationOnlyUntilItsMaximumAge()
+    {
+        var timeProvider = new ManualTimeProvider(
+            new DateTimeOffset(2026, 8, 30, 3, 18, 0, TimeSpan.Zero));
+        var factoryCalls = 0;
+        var provider = new FakeWeatherProvider(_ =>
+        {
+            if (Interlocked.Increment(ref factoryCalls) == 1)
+            {
+                return new WorldClockWeatherObservation(23d, "cloudy", timeProvider.GetUtcNow());
+            }
+
+            throw new HttpRequestException("Synthetic transient failure.");
+        });
+        using var weather = new WorldClockWeatherService(provider, timeProvider);
+        WorldClockWeatherLocation[] locations = [new("london", 51.5074, -0.1278)];
+
+        _ = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+        timeProvider.Advance(WorldClockWeatherService.CacheDuration + TimeSpan.FromMinutes(1));
+        var firstFallback = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+        timeProvider.Advance(
+            WorldClockWeatherService.MaximumObservationAge
+            - WorldClockWeatherService.CacheDuration
+            - TimeSpan.FromMinutes(1)
+            - TimeSpan.FromSeconds(1));
+        var lastFallback = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+        timeProvider.Advance(TimeSpan.FromSeconds(2));
+        var expired = await weather.LoadCurrentAsync(locations, CancellationToken.None);
+
+        Assert.Equal(23d, firstFallback.Observations["london"].TemperatureCelsius);
+        Assert.Equal(23d, lastFallback.Observations["london"].TemperatureCelsius);
+        Assert.Equal("available", firstFallback.Status.State);
+        Assert.Empty(expired.Observations);
+        Assert.Equal("unavailable", expired.Status.State);
+        Assert.Equal("request-failed", expired.Status.ReasonCode);
+        Assert.Equal(4, provider.CallCount);
     }
 
     [Fact]
@@ -710,8 +825,9 @@ public sealed class WorldClockServiceTests
         Assert.All(snapshot.Clocks, static clock => Assert.Null(clock.Weather));
     }
 
+    /// <summary>Verifies that an observation at the maximum age is rejected without hiding the local clock.</summary>
     [Fact]
-    public async Task StaleObservation_IsRejectedWithoutSuppressingTheLocalClock()
+    public async Task ObservationAtMaximumAge_IsRejectedWithoutSuppressingTheLocalClock()
     {
         var catalogPath = RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3");
         var timeProvider = new ManualTimeProvider(
@@ -719,7 +835,7 @@ public sealed class WorldClockServiceTests
         var provider = new FakeWeatherProvider(_ => new WorldClockWeatherObservation(
             25d,
             "rain",
-            timeProvider.GetUtcNow() - TimeSpan.FromMinutes(46)));
+            timeProvider.GetUtcNow() - WorldClockWeatherService.MaximumObservationAge));
         var service = new WorldClockService(catalogPath, provider, timeProvider);
 
         var snapshot = await service.BuildCurrentSnapshotAsync(

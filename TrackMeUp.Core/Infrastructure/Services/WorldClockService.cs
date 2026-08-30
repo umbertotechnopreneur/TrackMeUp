@@ -84,7 +84,8 @@ internal static class WorldClockAtmosphereResolver
                 "snow" or
                 "mixed-precipitation" or
                 "fog" or
-                "lightning"))
+                "lightning" or
+                "unknown"))
         {
             throw new InvalidDataException($"Unsupported current weather condition '{currentConditionKey}'.");
         }

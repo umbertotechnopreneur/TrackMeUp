@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Globalization;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -44,15 +43,15 @@ public sealed partial class MainWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly MainViewModel _viewModel;
     private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
-    private readonly CancellationTokenSource _surfaceLifetime = new();
+    private readonly WindowSurfaceLifecycle _lifecycle = new();
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly MainWindowLayoutState _layoutState = new();
     private readonly MicaDialogService _dialogs;
     private readonly TrayIconService _trayIcon;
     private readonly IWindowsToastNotificationService _windowsNotifications;
-    private readonly TaskCompletionSource _rootLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private RectInt32 _currentWorkArea;
     private LocalizationService _strings = new("system");
     private bool _updatingMenuState;
@@ -92,7 +91,6 @@ public sealed partial class MainWindow : Window
     private OperationsControl? _operationsControl;
     private Task? _optionsInitializationTask;
     private Task? _operationsInitializationTask;
-    private bool _titleBarLayoutUpdateQueued;
 
     private OptionsControl OptionsControl => _optionsControl
         ?? throw new InvalidOperationException("OptionsControl has not been initialized.");
@@ -165,10 +163,23 @@ public sealed partial class MainWindow : Window
         _trayIcon.ExitRequested += TrayIcon_ExitRequested;
         UpdateOpenAiMenuAccessibility();
         SystemBackdrop = new DesktopAcrylicBackdrop();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            DragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () =>
+            [
+                TitleBarBackButton,
+                WorldClockButton,
+                TitleBarMoreButton,
+                TitleBarSearchButton,
+                TitleBarReportButton,
+                TitleBarMinimizeToTrayButton
+            ]);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -186,7 +197,6 @@ public sealed partial class MainWindow : Window
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
         }
-        ApplyThemeChrome(RootGrid.ActualTheme);
         ApplyBorderlessPlayerWindow();
         ResizeForLogicalContent(_layoutState.LogicalHeight);
 
@@ -194,7 +204,8 @@ public sealed partial class MainWindow : Window
         _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
         _windowResizeAnimationTimer.Tick += WindowResizeAnimationTimer_Tick;
 
-        _ = InitializeAsync(options);
+        _lifecycle.InitializationFailed += Lifecycle_InitializationFailed;
+        _lifecycle.StartInitialization(cancellationToken => InitializeAsync(options, cancellationToken));
         Closed += MainWindow_Closed;
     }
 
@@ -203,17 +214,17 @@ public sealed partial class MainWindow : Window
         WindowInteropService.ApplyPlayerWindowChrome(WinRT.Interop.WindowNative.GetWindowHandle(this));
     }
 
-    private async Task InitializeAsync(LaunchOptions options)
+    private async Task InitializeAsync(LaunchOptions options, CancellationToken cancellationToken)
     {
-        await _rootLoaded.Task;
-        var startupRegistrationFailureCode = await ReconcileWindowsStartupAsync(options);
-        if (!await EnsureScreenshotStorageMigratedAsync())
+        await _lifecycle.WaitUntilLoadedAsync(cancellationToken);
+        var startupRegistrationFailureCode = await ReconcileWindowsStartupAsync(options, cancellationToken);
+        if (!await EnsureScreenshotStorageMigratedAsync(cancellationToken))
         {
             // Tracking and periodic refresh stay stopped until the explicit storage migration succeeds.
             return;
         }
 
-        var initialization = await _viewModel.InitializeAsync(options, CancellationToken.None);
+        var initialization = await _viewModel.InitializeAsync(options, cancellationToken);
         if (initialization.Succeeded && initialization.Value is not null)
         {
             ApplySettings(initialization.Value.Settings);
@@ -223,7 +234,7 @@ public sealed partial class MainWindow : Window
         else
         {
             // If launch initialization fails, keep the player usable and let the normal dashboard read expose runtime state.
-            await RefreshDashboardAsync();
+            await RefreshDashboardAsync(cancellationToken);
         }
 
         SetScreenshotStorageReady(true);
@@ -244,14 +255,31 @@ public sealed partial class MainWindow : Window
             _windowsNotifications.TryShow(T("Notification.TrackingPaused.Title"), T("Notification.TrackingPaused.Message"));
         }
 
-        await ShowStartupAiWarningAsync();
+        await ShowStartupAiWarningAsync(cancellationToken);
         await RefreshAiMonthlySpendAsync();
-        await DrainApplicationNotificationsAsync();
+        await DrainApplicationNotificationsAsync(cancellationToken);
     }
 
-    private async Task<string?> ReconcileWindowsStartupAsync(LaunchOptions options)
+    private void Lifecycle_InitializationFailed(Exception exception)
     {
-        var settingsResult = await _application.GetSettingsAsync(CancellationToken.None);
+        if (_lifecycle.IsCancellationRequested)
+        {
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"Main-window initialization failed: {exception}");
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            SetScreenshotStorageReady(false);
+            _ = ShowLazySurfaceFailureAsync();
+        });
+    }
+
+    private async Task<string?> ReconcileWindowsStartupAsync(
+        LaunchOptions options,
+        CancellationToken cancellationToken)
+    {
+        var settingsResult = await _application.GetSettingsAsync(cancellationToken);
         if (!settingsResult.Succeeded || settingsResult.Value is null)
         {
             return null;
@@ -266,18 +294,18 @@ public sealed partial class MainWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
+        _titleBar.ApplyTheme(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
 
         // Reapplying the persisted choice repairs stale paths and removes stale disabled registrations.
         var startupResult = await _application.SetStartupEnabledAsync(
             settingsResult.Value.StartWithWindows,
-            CancellationToken.None);
+            cancellationToken);
         return startupResult.Succeeded ? null : startupResult.Code;
     }
 
-    private async Task<bool> EnsureScreenshotStorageMigratedAsync()
+    private async Task<bool> EnsureScreenshotStorageMigratedAsync(CancellationToken cancellationToken)
     {
-        var status = await _application.GetScreenshotStorageMigrationStatusAsync(CancellationToken.None);
+        var status = await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken);
         if (!status.Succeeded || status.Value is null)
         {
             await ShowScreenshotStorageMigrationFailureAsync(status.Code);
@@ -292,11 +320,12 @@ public sealed partial class MainWindow : Window
                 this,
                 RootGrid.RequestedTheme,
                 _strings);
+            cancellationToken.ThrowIfCancellationRequested();
         }
         else
         {
             // An idempotent silent run repairs metadata after a process interruption even when every file was already moved.
-            migration = await _application.MigrateScreenshotStorageAsync(CancellationToken.None);
+            migration = await _application.MigrateScreenshotStorageAsync(cancellationToken);
         }
 
         if (migration.Succeeded)
@@ -337,7 +366,7 @@ public sealed partial class MainWindow : Window
 
     #endregion
 
-    private async Task RefreshDashboardAsync()
+    private async Task RefreshDashboardAsync(CancellationToken cancellationToken = default)
     {
         if (_dashboardSubscription is not null)
         {
@@ -345,7 +374,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var state = await _viewModel.RefreshAsync(CancellationToken.None);
+        var state = await _viewModel.RefreshAsync(cancellationToken);
         if (state.Succeeded && state.Value is not null)
         {
             UpdatePlayer(state.Value);
@@ -354,7 +383,7 @@ public sealed partial class MainWindow : Window
         await RefreshLastSessionIfDueAsync();
 
         await RefreshAiMonthlySpendAsync();
-        await DrainApplicationNotificationsAsync();
+        await DrainApplicationNotificationsAsync(cancellationToken);
     }
 
     private void OnDashboardStateChanged(DashboardState state)
@@ -403,7 +432,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (_surfaceLifetime.IsCancellationRequested ||
+        if (_lifecycle.IsCancellationRequested ||
             DateTimeOffset.UtcNow < _nextAiSpendRefreshAt ||
             Interlocked.Exchange(ref _aiSpendRefreshInProgress, 1) != 0)
         {
@@ -415,14 +444,14 @@ public sealed partial class MainWindow : Window
             // Reserve a bounded failure retry before issuing the call so provider/runtime outages do
             // not turn the one-second dashboard cadence into a request loop.
             _nextAiSpendRefreshAt = DateTimeOffset.UtcNow.Add(AiSpendFailureRetryInterval);
-            var result = await _application.GetAiPricingOverviewAsync(_surfaceLifetime.Token);
+            var result = await _application.GetAiPricingOverviewAsync(_lifecycle.Token);
             if (result.Succeeded && result.Value is not null)
             {
                 UpdateAiMonthlySpend(result.Value);
                 _nextAiSpendRefreshAt = DateTimeOffset.UtcNow.Add(AiSpendRefreshInterval);
             }
         }
-        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (_lifecycle.IsCancellationRequested)
         {
             // The window lifetime owns this refresh; closing it cancels pending IPC/aggregation.
         }
@@ -456,14 +485,14 @@ public sealed partial class MainWindow : Window
         AiMonthlySpendPanel.Visibility = Visibility.Visible;
     }
 
-    private async Task ShowStartupAiWarningAsync()
+    private async Task ShowStartupAiWarningAsync(CancellationToken cancellationToken)
     {
         if (_startupAiWarningShown)
         {
             return;
         }
 
-        var status = await AiState.LoadAsync(CancellationToken.None);
+        var status = await AiState.LoadAsync(cancellationToken);
         if (status is not { Succeeded: true, Value: { Enabled: true, HasKey: false } aiStatus })
         {
             return;
@@ -478,7 +507,7 @@ public sealed partial class MainWindow : Window
                 SystemMessageBoxSeverity.Warning));
     }
 
-    private async Task DrainApplicationNotificationsAsync()
+    private async Task DrainApplicationNotificationsAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _notificationDrainInProgress, 1) != 0)
         {
@@ -487,7 +516,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            var result = await _application.DrainApplicationNotificationsAsync(CancellationToken.None);
+            var result = await _application.DrainApplicationNotificationsAsync(cancellationToken);
             if (!result.Succeeded || result.Value is null)
             {
                 return;
@@ -699,82 +728,6 @@ public sealed partial class MainWindow : Window
         ShowPlayer();
     }
 
-    /// <summary>Initializes caption insets and the title-bar button passthrough region after layout.</summary>
-    private void DragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarLayout();
-
-    /// <summary>Keeps caption insets and the title-bar button passthrough region aligned after resizing.</summary>
-    private void DragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarLayout();
-
-    /// <summary>Refreshes non-client rectangles after XAML changes the title-bar layout or native size.</summary>
-    private void QueueTitleBarLayoutUpdate()
-    {
-        if (_titleBarLayoutUpdateQueued)
-        {
-            return;
-        }
-
-        _titleBarLayoutUpdateQueued = true;
-        if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
-            {
-                _titleBarLayoutUpdateQueued = false;
-                if (!RootGrid.IsLoaded)
-                {
-                    return;
-                }
-
-                // Force pending XAML layout before recomputing window-relative passthrough rectangles.
-                RootGrid.UpdateLayout();
-                UpdateTitleBarLayout();
-            }))
-        {
-            _titleBarLayoutUpdateQueued = false;
-        }
-    }
-
-    /// <summary>Reserves the native caption area and makes only title-bar commands interactive.</summary>
-    private void UpdateTitleBarLayout()
-    {
-        if (!ExtendsContentIntoTitleBar || DragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = xamlRoot.RasterizationScale;
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
-
-        var passthroughRects = new List<RectInt32>
-        {
-            ElementRect(TitleBarMoreButton, scale),
-            ElementRect(TitleBarSearchButton, scale)
-        };
-        if (WorldClockButton.Visibility == Visibility.Visible)
-        {
-            passthroughRects.Add(ElementRect(WorldClockButton, scale));
-        }
-
-        if (TitleBarBackButton.Visibility == Visibility.Visible)
-        {
-            passthroughRects.Add(ElementRect(TitleBarBackButton, scale));
-        }
-
-        // The system keeps the rest of the title bar draggable and owns the caption buttons.
-        InputNonClientPointerSource
-            .GetForWindowId(_appWindow.Id)
-            .SetRegionRects(NonClientRegionKind.Passthrough, passthroughRects.ToArray());
-    }
-
-    private static RectInt32 ElementRect(FrameworkElement element, double scale)
-    {
-        var transform = element.TransformToVisual(null);
-        var bounds = transform.TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
-        return new RectInt32(
-            (int)Math.Round(bounds.X * scale),
-            (int)Math.Round(bounds.Y * scale),
-            (int)Math.Round(bounds.Width * scale),
-            (int)Math.Round(bounds.Height * scale));
-    }
-
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
     {
@@ -847,7 +800,7 @@ public sealed partial class MainWindow : Window
             await EnsureOptionsAsync();
             return true;
         }
-        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (_lifecycle.IsCancellationRequested)
         {
             return false;
         }
@@ -874,7 +827,7 @@ public sealed partial class MainWindow : Window
         options.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
         options.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
         options.SearchIndexingRequested += OptionsControl_SearchIndexingRequested;
-        var initialization = options.InitializeAsync(_application, AiState, _surfaceLifetime.Token);
+        var initialization = options.InitializeAsync(_application, AiState, _lifecycle.Token);
         _optionsInitializationTask = CompleteOptionsInitializationAsync(options, initialization);
         return _optionsInitializationTask;
     }
@@ -1036,7 +989,7 @@ public sealed partial class MainWindow : Window
             await EnsureOperationsAsync();
             return true;
         }
-        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (_lifecycle.IsCancellationRequested)
         {
             return false;
         }
@@ -1326,7 +1279,7 @@ public sealed partial class MainWindow : Window
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         FadeIn(panel);
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
     }
 
     /// <summary>Restores the player panel.</summary>
@@ -1344,7 +1297,7 @@ public sealed partial class MainWindow : Window
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         FadeIn(PlayerPanel);
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
     }
 
     /// <summary>Toggles one player section and resizes from the XAML content currently visible.</summary>
@@ -1719,7 +1672,7 @@ public sealed partial class MainWindow : Window
         }
 
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
-        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
+        _titleBar.ApplyTheme(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
         _scheduleWindow?.ApplyTheme(_theme);
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
         var indexingTheme = RootGrid.RequestedTheme == ElementTheme.Default
@@ -1967,11 +1920,19 @@ public sealed partial class MainWindow : Window
         }
 
         ResizeForCurrentLayout(animate: false);
-        _mainPlacementRestored = await _placement.RestoreAsync(RootGrid, CancellationToken.None);
+        try
+        {
+            _mainPlacementRestored = await _placement.RestoreAsync(RootGrid, _lifecycle.Token);
+        }
+        catch (OperationCanceledException) when (_lifecycle.IsCancellationRequested)
+        {
+            return;
+        }
+
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         _currentWorkArea = CurrentWorkArea();
-        _rootLoaded.TrySetResult();
+        _lifecycle.SignalLoaded();
         FadeIn(PlayerPanel);
     }
 
@@ -2064,7 +2025,7 @@ public sealed partial class MainWindow : Window
     private void ResizeForLogicalContent(int logicalHeight)
     {
         _appWindow.Resize(GetPhysicalWindowSize(logicalHeight));
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
     }
 
     /// <summary>Interpolates the compact player height after a visible layout change.</summary>
@@ -2075,7 +2036,7 @@ public sealed partial class MainWindow : Window
         if (_windowResizeAnimationStartSize.Height == _windowResizeAnimationTargetSize.Height)
         {
             _appWindow.Resize(_windowResizeAnimationTargetSize);
-            QueueTitleBarLayoutUpdate();
+            _titleBar.QueueLayoutUpdate();
             return;
         }
 
@@ -2097,7 +2058,7 @@ public sealed partial class MainWindow : Window
         if (progress >= 1d)
         {
             _windowResizeAnimationTimer.Stop();
-            QueueTitleBarLayoutUpdate();
+            _titleBar.QueueLayoutUpdate();
         }
     }
 
@@ -2116,39 +2077,6 @@ public sealed partial class MainWindow : Window
         var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(CurrentLogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(boundedLogicalHeight * scale));
         return new SizeInt32(physicalWidth, physicalHeight);
-    }
-
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
-    {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var dark = effectiveTheme == ElementTheme.Dark;
-        var titleBar = _appWindow.TitleBar;
-        titleBar.BackgroundColor = Colors.Transparent;
-        titleBar.InactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
-    }
-
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
-    {
-        if (_theme == "system")
-        {
-            ApplyThemeChrome(sender.ActualTheme);
-        }
     }
 
     /// <summary>Keeps the live player compact while giving layered options and operations enough room to reflow.</summary>
@@ -2183,14 +2111,14 @@ public sealed partial class MainWindow : Window
 
         _dashboardSurfaceClosed = true;
         _dashboardRefreshReady = false;
-        _surfaceLifetime.Cancel();
+        _lifecycle.Cancel();
         _dashboardSubscription?.Dispose();
         _dashboardSubscription = null;
         _windowResizeAnimationTimer.Stop();
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
         _appWindow.Closing -= AppWindow_Closing;
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.Dispose();
         _placement.Dispose();
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
@@ -2222,6 +2150,9 @@ public sealed partial class MainWindow : Window
             _searchIndexingWindow.Close();
             _searchIndexingWindow = null;
         }
+
+        _lifecycle.InitializationFailed -= Lifecycle_InitializationFailed;
+        _lifecycle.Dispose();
     }
 }
 

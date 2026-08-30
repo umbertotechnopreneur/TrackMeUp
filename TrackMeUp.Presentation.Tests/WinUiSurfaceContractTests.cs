@@ -65,7 +65,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(about.Descendants(), element => element.Attribute("Text")?.Value == "•••");
         Assert.Contains("private const int LogicalWindowWidth = 940;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeight = 650;", aboutSource, StringComparison.Ordinal);
-        Assert.Contains("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("_titleBar = new CustomTitleBarController(", aboutSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("_application.OpenApplicationLogFolderAsync", aboutSource, StringComparison.Ordinal);
@@ -156,6 +157,7 @@ public sealed class WinUiSurfaceContractTests
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var titleBarSource = File.ReadAllText(RepositoryFile("TrackMeUp", "CustomTitleBarController.cs"));
         var captureActions = player.Descendants().Single(element => HasName(element, "CaptureActionsPanel"));
         var takeScreenshotButton = player.Descendants().Single(element => HasName(element, "TakeScreenshotButton"));
         var pendingSnapshotPanel = player.Descendants().Single(element => HasName(element, "PendingSnapshotPanel"));
@@ -176,7 +178,7 @@ public sealed class WinUiSurfaceContractTests
             .Select(element => element.Attribute("Tag")!.Value)
             .ToArray();
 
-        Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
+        Assert.Equal("{StaticResource TrackMeUpTitleBarCommandButtonStyle}", moreButton.Attribute("Style")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
         Assert.Equal("6", searchButton.Attribute("Grid.Column")?.Value);
         Assert.Equal("TitleBarSearchButton_Click", searchButton.Attribute("Click")?.Value);
@@ -258,10 +260,11 @@ public sealed class WinUiSurfaceContractTests
             minimizeToTrayMenuItem.Attribute("Text")?.Value,
             minimizeToTrayMenuItem.Attribute("ToolTipService.ToolTip")?.Value);
         Assert.Contains("flyout.ShowAt(TitleBarMoreButton);", mainSource, StringComparison.Ordinal);
-        Assert.Contains("ElementRect(TitleBarMoreButton, scale)", mainSource, StringComparison.Ordinal);
-        Assert.Contains("ElementRect(TitleBarSearchButton, scale)", mainSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("ElementRect(TitleBarReportButton, scale)", mainSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("ElementRect(TitleBarMinimizeToTrayButton, scale)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TitleBarMoreButton,", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TitleBarSearchButton,", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TitleBarReportButton,", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TitleBarMinimizeToTrayButton", mainSource, StringComparison.Ordinal);
+        Assert.Contains("element.Visibility == Visibility.Visible", titleBarSource, StringComparison.Ordinal);
         Assert.Contains("ShowPanel(OperationsPanel, MainWindowSurface.Operations);", mainSource, StringComparison.Ordinal);
         Assert.Contains("TitleBarBackButton.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
         Assert.Contains("OperationsControl.NavigateBack();", mainSource, StringComparison.Ordinal);
@@ -279,7 +282,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("T(_layoutState.IsLastSessionVisible ? \"LastSession.Hide\" : \"LastSession.Show\")", mainSource, StringComparison.Ordinal);
         Assert.Single(dragRegion.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
         Assert.DoesNotContain(playerPanel.Descendants(), element => element.Attribute("Text")?.Value == "TRACK ME UP");
-        Assert.Contains("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("InputNonClientPointerSource", mainSource, StringComparison.Ordinal);
+        Assert.Contains("InputNonClientPointerSource", titleBarSource, StringComparison.Ordinal);
         Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ToggleMenuFlyoutItem");
     }
 
@@ -305,7 +309,7 @@ public sealed class WinUiSurfaceContractTests
             (Name: "ShareButton", Tag: "Screenshots.Toolbar.Share", Click: "ShareButton_Click"),
             (Name: "OpenFolderButton", Tag: "Screenshots.Toolbar.OpenFolder", Click: "OpenFolderButton_Click"),
             (Name: "DeleteScreenshotButton", Tag: "Screenshots.Toolbar.DeleteScreenshot", Click: "DeleteScreenshotButton_Click"),
-            (Name: "DeleteSnapshotButton", Tag: "Screenshots.Toolbar.DeleteSnapshot", Click: "DeleteSnapshotButton_Click")
+            (Name: "DeleteAnalysisButton", Tag: "Screenshots.Toolbar.DeleteAnalysis", Click: "DeleteAnalysisButton_Click")
         };
 
         Assert.Equal("TimedInfoBar", actionBanner.Name.LocalName);
@@ -313,7 +317,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(screenshotWindow.Descendants(), element => element.Name.LocalName is "Flyout" or "MenuFlyout");
         Assert.DoesNotContain("MoreMenu_Opened", source, StringComparison.Ordinal);
         Assert.Equal(
-            ["ZoomOutButton", "ZoomResetButton", "ZoomInButton", "DetailsToggleButton", "SaveButton", "ShareButton", "OpenFolderButton", "DeleteScreenshotButton", "DeleteSnapshotButton"],
+            ["ZoomOutButton", "ZoomResetButton", "ZoomInButton", "DetailsToggleButton", "SaveButton", "ShareButton", "OpenFolderButton", "DeleteScreenshotButton", "DeleteAnalysisButton"],
             namedToolbarControls);
         Assert.Equal(
             Array.IndexOf(namedToolbarControls, "SaveButton") - 1,
@@ -337,7 +341,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("HeaderSection.ShareRequested += HeaderSection_ShareRequested;", source, StringComparison.Ordinal);
         Assert.Contains("HeaderSection.OpenFolderRequested += HeaderSection_OpenFolderRequested;", source, StringComparison.Ordinal);
         Assert.Contains("HeaderSection.DeleteScreenshotRequested += HeaderSection_DeleteScreenshotRequested;", source, StringComparison.Ordinal);
-        Assert.Contains("HeaderSection.DeleteSnapshotRequested += HeaderSection_DeleteSnapshotRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderSection.DeleteAnalysisRequested += HeaderSection_DeleteAnalysisRequested;", source, StringComparison.Ordinal);
         Assert.Contains("HeaderSection.ZoomOutRequested += HeaderSection_ZoomOutRequested;", source, StringComparison.Ordinal);
         Assert.Contains("HeaderSection.ZoomResetRequested += HeaderSection_ZoomResetRequested;", source, StringComparison.Ordinal);
         Assert.Contains("HeaderSection.ZoomInRequested += HeaderSection_ZoomInRequested;", source, StringComparison.Ordinal);
@@ -346,7 +350,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("public event EventHandler? ShareRequested;", headerSource, StringComparison.Ordinal);
         Assert.Contains("public event EventHandler? OpenFolderRequested;", headerSource, StringComparison.Ordinal);
         Assert.Contains("public event EventHandler? DeleteScreenshotRequested;", headerSource, StringComparison.Ordinal);
-        Assert.Contains("public event EventHandler? DeleteSnapshotRequested;", headerSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? DeleteAnalysisRequested;", headerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("SaveRequested", viewerSource, StringComparison.Ordinal);
         Assert.DoesNotContain(viewer.Descendants(), element =>
             element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton" or "CommandBar");
@@ -354,7 +358,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
         Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
-        Assert.Contains("DeleteSnapshotAsync", source, StringComparison.Ordinal);
+        Assert.Contains("DeleteScreenshotAnalysisAsync", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -486,7 +490,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ScheduleScreenshotDialog", mainSource, StringComparison.Ordinal);
         Assert.Contains("RootGrid.RequestedTheme = theme switch", scheduleSource, StringComparison.Ordinal);
-        Assert.Contains("SetTitleBar(TitleBarDragRegion);", scheduleSource, StringComparison.Ordinal);
+        Assert.Contains("_titleBar = new CustomTitleBarController(", scheduleSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetTitleBar(TitleBarDragRegion);", scheduleSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -501,7 +506,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("_appWindow.Changed += AppWindow_Changed;", source, StringComparison.Ordinal);
         Assert.Contains("var workArea = CurrentWorkArea();", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Main", source, StringComparison.Ordinal);
-        Assert.Contains("await _placement.RestoreAsync(RootGrid, CancellationToken.None);", source, StringComparison.Ordinal);
+        Assert.Contains("await _placement.RestoreAsync(RootGrid, _lifecycle.Token);", source, StringComparison.Ordinal);
         Assert.Contains("await _placement.TrySaveForCloseAsync(CancellationToken.None);", source, StringComparison.Ordinal);
         Assert.Contains("_placement.KeepCurrentBoundsInWorkArea(RootGrid);", source, StringComparison.Ordinal);
         Assert.Contains("positionChangedByUser", source, StringComparison.Ordinal);
@@ -647,7 +652,7 @@ public sealed class WinUiSurfaceContractTests
         var startupStart = viewModelSource.IndexOf("public async Task<OperationResult<MainWindowStartupState>> InitializeAsync", StringComparison.Ordinal);
         var refreshStart = viewModelSource.IndexOf("public Task<OperationResult<DashboardState>> RefreshAsync", startupStart, StringComparison.Ordinal);
 
-        Assert.Contains("_viewModel.InitializeAsync(options, CancellationToken.None)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_viewModel.InitializeAsync(options, cancellationToken)", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("if (options.StartTracking && !options.Paused)", mainSource, StringComparison.Ordinal);
         Assert.True(startupStart >= 0 && refreshStart > startupStart, "MainViewModel startup method was not found.");
         var startupSource = viewModelSource[startupStart..refreshStart];
@@ -698,13 +703,18 @@ public sealed class WinUiSurfaceContractTests
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var dialog = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotStorageMigrationDialogWindow.xaml"));
         var dialogSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotStorageMigrationDialogWindow.xaml.cs"));
-        var initializationStart = mainSource.IndexOf("private async Task InitializeAsync(LaunchOptions options)", StringComparison.Ordinal);
-        var initializationEnd = mainSource.IndexOf("private async Task<string?> ReconcileWindowsStartupAsync", initializationStart, StringComparison.Ordinal);
+        var initializationStart = mainSource.IndexOf(
+            "private async Task InitializeAsync(LaunchOptions options, CancellationToken cancellationToken)",
+            StringComparison.Ordinal);
+        var initializationEnd = mainSource.IndexOf(
+            "private async Task<string?> ReconcileWindowsStartupAsync(",
+            initializationStart,
+            StringComparison.Ordinal);
         Assert.True(initializationStart >= 0 && initializationEnd > initializationStart, "MainWindow initialization source contract was not found.");
         var initialization = mainSource[initializationStart..initializationEnd];
 
         Assert.True(
-            initialization.IndexOf("await _rootLoaded.Task;", StringComparison.Ordinal)
+            initialization.IndexOf("await _lifecycle.WaitUntilLoadedAsync(cancellationToken);", StringComparison.Ordinal)
             < initialization.IndexOf("EnsureScreenshotStorageMigratedAsync", StringComparison.Ordinal));
         Assert.True(
             initialization.IndexOf("EnsureScreenshotStorageMigratedAsync", StringComparison.Ordinal)
@@ -739,6 +749,7 @@ public sealed class WinUiSurfaceContractTests
         var about = XDocument.Load(RepositoryFile("TrackMeUp", "AboutWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var reportsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
+        var titleBarSource = File.ReadAllText(RepositoryFile("TrackMeUp", "CustomTitleBarController.cs"));
         var highContrastResources = player
             .Descendants()
             .Single(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "HighContrast"));
@@ -749,8 +760,10 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop", mainSource, StringComparison.Ordinal);
         Assert.Contains(reports.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(about.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
-        Assert.Contains("SetTitleBar(DragRegion)", mainSource, StringComparison.Ordinal);
-        Assert.Contains("SetTitleBar(TitleBarDragRegion)", reportsSource, StringComparison.Ordinal);
+        Assert.Contains("_titleBar = new CustomTitleBarController(", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_window.SetTitleBar(_dragRegion);", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("_titleBar = new CustomTitleBarController(", reportsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetTitleBar(TitleBarDragRegion)", reportsSource, StringComparison.Ordinal);
         Assert.DoesNotContain(player.Descendants(), element => element.Attribute("Background")?.Value.Contains("FlyoutSurfaceBrush", StringComparison.Ordinal) == true);
         Assert.Contains(highContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentBrush"));
         Assert.Contains(applicationHighContrastResources.Descendants(), element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "PlayerAccentTextBrush"));
@@ -910,7 +923,7 @@ public sealed class WinUiSurfaceContractTests
             playerSource.Split("if (!_showAiMonthlySpend || !AiState.Enabled)", StringSplitOptions.None).Length - 1);
         Assert.Contains("_showAiMonthlySpend = settings.ShowAiMonthlySpend;", playerSource, StringComparison.Ordinal);
         Assert.Contains("AiSpendFailureRetryInterval", playerSource, StringComparison.Ordinal);
-        Assert.Contains("GetAiPricingOverviewAsync(_surfaceLifetime.Token)", playerSource, StringComparison.Ordinal);
+        Assert.Contains("GetAiPricingOverviewAsync(_lifecycle.Token)", playerSource, StringComparison.Ordinal);
         Assert.Contains(
             "_nextAiSpendRefreshAt = DateTimeOffset.UtcNow.Add(AiSpendFailureRetryInterval);",
             playerSource,
@@ -1286,8 +1299,11 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Transparent", quickSetup.Descendants().Single(element => HasName(element, "RootGrid")).Attribute("Background")?.Value);
         Assert.Equal("Stretch", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("HorizontalContentAlignment")?.Value);
         Assert.Equal("Hidden", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("VerticalScrollBarVisibility")?.Value);
-        Assert.Equal(5, quickSetup.Descendants().Count(element => element.Name.LocalName == "Viewbox"));
-        Assert.Contains(quickSetup.Descendants(), element => HasName(element, "TitleBarBrandMark"));
+        Assert.Equal(4, quickSetup.Descendants().Count(element => element.Name.LocalName == "Viewbox"));
+        Assert.Contains(quickSetup.Descendants(), element =>
+            HasName(element, "TitleBarBrandMark")
+            && element.Name.LocalName == "Image"
+            && element.Attribute("Style")?.Value == "{StaticResource TrackMeUpTitleBarLogoStyle}");
         Assert.Equal(
             [QuickSetupProfileIds.Complete, QuickSetupProfileIds.Assisted, QuickSetupProfileIds.LocalRecord, QuickSetupProfileIds.EssentialOffline],
             profiles.Select(profile => profile.Attribute("Tag")!.Value).ToArray());

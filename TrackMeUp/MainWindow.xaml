@@ -27,9 +27,7 @@
             IsHitTestVisible="False" />
         <Grid
             x:Name="DragRegion"
-            Height="48"
-            Loaded="DragRegion_Loaded"
-            SizeChanged="DragRegion_SizeChanged">
+            Height="48">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="Auto" />
@@ -46,16 +44,10 @@
             <Button
                 x:Name="TitleBarBackButton"
                 Grid.Column="1"
-                Width="40"
-                Height="40"
                 Margin="8,0,0,0"
-                Padding="8"
-                AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Back"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarBackButton_Click"
-                IsTabStop="False"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="QuickSetup.Back"
                 ToolTipService.ToolTip="Back"
                 Visibility="Collapsed">
@@ -68,17 +60,11 @@
             <Button
                 x:Name="WorldClockButton"
                 Grid.Column="4"
-                Width="40"
-                Height="40"
-                VerticalAlignment="Center"
-                Padding="8"
                 AllowFocusOnInteraction="True"
                 AutomationProperties.Name="Show world clocks"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="WorldClockButton_Click"
                 IsTabStop="True"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="WorldClock.OpenWindow"
                 ToolTipService.ToolTip="Show world clocks">
                 <SymbolIcon
@@ -88,39 +74,24 @@
             <Image
                 x:Name="TitleBarLogo"
                 Grid.Column="2"
-                Width="22"
-                Height="22"
                 Margin="12,0,0,0"
-                VerticalAlignment="Center"
-                AutomationProperties.AccessibilityView="Raw"
-                IsHitTestVisible="False"
-                Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
+                Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
             <TextBlock
                 x:Name="TitleBarTitleText"
                 Grid.Column="3"
                 Margin="10,0,12,0"
-                VerticalAlignment="Center"
                 AutomationProperties.AccessibilityView="Raw"
                 CharacterSpacing="130"
-                FontSize="13"
-                FontWeight="SemiBold"
-                IsHitTestVisible="False"
+                Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                 Text="TRACK ME UP"
                 TextTrimming="CharacterEllipsis" />
             <Button
                 x:Name="TitleBarMoreButton"
                 Grid.Column="5"
-                Width="40"
-                Height="40"
-                VerticalAlignment="Center"
                 Padding="6"
-                AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Open application menu"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarMoreButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Main.Menu.Open"
                 ToolTipService.ToolTip="Open application menu">
                 <Button.KeyboardAccelerators>
@@ -135,17 +106,9 @@
             <Button
                 x:Name="TitleBarSearchButton"
                 Grid.Column="6"
-                Width="40"
-                Height="40"
-                VerticalAlignment="Center"
-                Padding="8"
-                AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Search history"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarSearchButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Search.Title"
                 ToolTipService.ToolTip="Search history">
                 <FontIcon
@@ -157,17 +120,9 @@
             <Button
                 x:Name="TitleBarReportButton"
                 Grid.Column="7"
-                Width="40"
-                Height="40"
-                VerticalAlignment="Center"
-                Padding="8"
-                AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Activity reports"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarReportButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Reports.Title"
                 ToolTipService.ToolTip="Activity reports"
                 Visibility="Collapsed">
@@ -180,17 +135,9 @@
             <Button
                 x:Name="TitleBarMinimizeToTrayButton"
                 Grid.Column="8"
-                Width="40"
-                Height="40"
-                VerticalAlignment="Center"
-                Padding="8"
-                AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Minimize to notification area"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="MinimizeToTrayButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Main.Menu.MinimizeToTray"
                 ToolTipService.ToolTip="Minimize to notification area"
                 Visibility="Collapsed">

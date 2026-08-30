@@ -7,6 +7,9 @@ namespace TrackMeUp.Services;
 /// <summary>Normalizes the optional, informational weekly schedule shared by settings, UI, and AI prompts.</summary>
 public static class ActiveHoursSchedule
 {
+    /// <summary>Gets the required granularity for every active-hours boundary.</summary>
+    public const int BoundaryMinutes = 15;
+
     /// <summary>Gets the canonical lowercase English weekday identifiers in display order.</summary>
     public static IReadOnlyList<string> Days { get; } = Array.AsReadOnly(
         new[] { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" });
@@ -21,16 +24,17 @@ public static class ActiveHoursSchedule
         {
             var configured = source.LastOrDefault(candidate =>
                 string.Equals(candidate.Day, day, StringComparison.OrdinalIgnoreCase));
-            var active = TryNormalizeActivePeriod(configured?.ActivePeriod, out var normalizedActive)
-                ? normalizedActive
-                : string.Empty;
-            var breaks = TryNormalizeBreakPeriods(configured?.BreakPeriods, out var normalizedBreaks)
-                ? normalizedBreaks
-                : string.Empty;
-
-            if (string.IsNullOrEmpty(active) || !BreaksFitActivePeriod(active, breaks))
+            if (!TryNormalizeActivePeriod(configured?.ActivePeriod, out var active)
+                || !TryNormalizeBreakPeriods(configured?.BreakPeriods, out var breaks))
             {
-                breaks = string.Empty;
+                throw new InvalidDataException(
+                    $"Active-hours boundaries for '{day}' must be valid {BoundaryMinutes}-minute increments.");
+            }
+
+            if (!string.IsNullOrEmpty(breaks)
+                && (string.IsNullOrEmpty(active) || !BreaksFitActivePeriod(active, breaks)))
+            {
+                throw new InvalidDataException($"Active-hours breaks for '{day}' must fit its active period.");
             }
 
             return new ActiveHoursDay(day, active, breaks);
@@ -140,7 +144,10 @@ public static class ActiveHoursSchedule
         var normalizedRanges = new List<string>(ranges.Length);
         foreach (var range in ranges)
         {
-            if (!TryParseRange(range, out var start, out var end) || end <= start)
+            if (!TryParseRange(range, out var start, out var end)
+                || end <= start
+                || start % BoundaryMinutes != 0
+                || end % BoundaryMinutes != 0)
             {
                 return false;
             }

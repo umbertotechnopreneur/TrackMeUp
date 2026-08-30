@@ -2,7 +2,6 @@
 
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -15,7 +14,6 @@ using TrackMeUp.Application;
 using TrackMeUp.Controls;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
-using Windows.Foundation;
 using Windows.Graphics;
 
 namespace TrackMeUp;
@@ -29,6 +27,7 @@ public sealed partial class WorldClockWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly MicaDialogService _dialogs;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly WorldClockWindowLayoutState _layoutState = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -53,7 +52,6 @@ public sealed partial class WorldClockWindow : Window
     private bool _closed;
     private bool _weatherProviderLinkOpening;
     private bool _wasMinimized;
-    private bool _titleBarLayoutUpdateQueued;
     private int _requestVersion;
 
     private bool IsClosing => _closed || _lifetimeCancellation.IsCancellationRequested;
@@ -71,14 +69,16 @@ public sealed partial class WorldClockWindow : Window
         InitializeComponent();
 
         SystemBackdrop = new DesktopAcrylicBackdrop();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(HeaderDragRegion);
-
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
-        }
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            HeaderDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => [HeaderBackButton, ReferenceInstantButton, OptionsButton]);
+        _titleBar.ThemeChanged += TitleBar_ThemeChanged;
 
         _placement = new WindowPlacementService(
             _application,
@@ -101,7 +101,6 @@ public sealed partial class WorldClockWindow : Window
         _refreshTimer.Tick += RefreshTimer_Tick;
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += WorldClockWindow_Closing;
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         ApplySettings(settings);
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += WorldClockWindow_Closed;
@@ -145,13 +144,13 @@ public sealed partial class WorldClockWindow : Window
         ToolTipService.SetToolTip(WeatherAttributionButton, weatherAttribution);
         _optionsControl?.ApplyLanguage(_strings);
         _optionsControl?.ApplyState(settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
-        ApplyThemeChrome();
+        _titleBar.ApplyTheme(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
         if (_snapshot is not null)
         {
             ApplySnapshot(_snapshot);
         }
 
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
     }
 
     private void OptionsButton_Click(object sender, RoutedEventArgs e) => ShowOptionsSurface();
@@ -170,7 +169,7 @@ public sealed partial class WorldClockWindow : Window
         WorldClockNotificationBanner.Dismiss();
         FadeIn(OptionsPanel);
         _ = HeaderBackButton.Focus(FocusState.Programmatic);
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
     }
 
     private async Task ShowClocksSurfaceAsync()
@@ -182,7 +181,7 @@ public sealed partial class WorldClockWindow : Window
         UpdateHeaderForSurface();
         FadeIn(ClocksSurface);
         _ = OptionsButton.Focus(FocusState.Programmatic);
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
         if (_isLive)
         {
             await RefreshCurrentAsync();
@@ -269,6 +268,7 @@ public sealed partial class WorldClockWindow : Window
         ReferenceInstantLabel.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         OptionsHeaderLabel.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
         HeaderBackButton.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         ReferenceInstantButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         OptionsButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -278,76 +278,6 @@ public sealed partial class WorldClockWindow : Window
         var label = T(key);
         AutomationProperties.SetName(button, label);
         ToolTipService.SetToolTip(button, label);
-    }
-
-    private void HeaderDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarLayout();
-
-    private void HeaderDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarLayout();
-
-    private void QueueTitleBarLayoutUpdate()
-    {
-        if (_titleBarLayoutUpdateQueued)
-        {
-            return;
-        }
-
-        _titleBarLayoutUpdateQueued = true;
-        if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
-            {
-                _titleBarLayoutUpdateQueued = false;
-                if (!RootGrid.IsLoaded)
-                {
-                    return;
-                }
-
-                RootGrid.UpdateLayout();
-                UpdateTitleBarLayout();
-            }))
-        {
-            _titleBarLayoutUpdateQueued = false;
-        }
-    }
-
-    private void UpdateTitleBarLayout()
-    {
-        if (!ExtendsContentIntoTitleBar || HeaderDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = xamlRoot.RasterizationScale;
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
-        var passthroughRects = new List<RectInt32>();
-        if (HeaderBackButton.Visibility == Visibility.Visible)
-        {
-            passthroughRects.Add(ElementRect(HeaderBackButton, scale));
-        }
-
-        if (ReferenceInstantButton.Visibility == Visibility.Visible)
-        {
-            passthroughRects.Add(ElementRect(ReferenceInstantButton, scale));
-        }
-
-        if (OptionsButton.Visibility == Visibility.Visible)
-        {
-            passthroughRects.Add(ElementRect(OptionsButton, scale));
-        }
-
-        InputNonClientPointerSource
-            .GetForWindowId(_appWindow.Id)
-            .SetRegionRects(NonClientRegionKind.Passthrough, passthroughRects.ToArray());
-    }
-
-    private static RectInt32 ElementRect(FrameworkElement element, double scale)
-    {
-        var transform = element.TransformToVisual(null);
-        var bounds = transform.TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
-        return new RectInt32(
-            (int)Math.Round(bounds.X * scale),
-            (int)Math.Round(bounds.Y * scale),
-            (int)Math.Round(bounds.Width * scale),
-            (int)Math.Round(bounds.Height * scale));
     }
 
     private static void FadeIn(FrameworkElement element)
@@ -1069,35 +999,8 @@ public sealed partial class WorldClockWindow : Window
         }
     }
 
-    private void ApplyThemeChrome()
+    private void TitleBar_ThemeChanged(ElementTheme effectiveTheme)
     {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var titleBar = _appWindow.TitleBar;
-        titleBar.BackgroundColor = Colors.Transparent;
-        titleBar.InactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = ResourceColor(TitleBarButtonForegroundResource);
-        titleBar.ButtonInactiveForegroundColor = ResourceColor(TitleBarButtonInactiveForegroundResource);
-        titleBar.ButtonHoverForegroundColor = ResourceColor(TitleBarButtonHoverForegroundResource);
-        titleBar.ButtonPressedForegroundColor = ResourceColor(TitleBarButtonPressedForegroundResource);
-        titleBar.ButtonHoverBackgroundColor = ResourceColor(TitleBarButtonHoverBackgroundResource);
-        titleBar.ButtonPressedBackgroundColor = ResourceColor(TitleBarButtonPressedBackgroundResource);
-    }
-
-    private static Windows.UI.Color ResourceColor(Border resource) =>
-        resource.Background is SolidColorBrush brush
-            ? brush.Color
-            : throw new InvalidOperationException("A world-clock title-bar color resource is not a solid brush.");
-
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
-    {
-        ApplyThemeChrome();
-
         if (_snapshot is not null)
         {
             DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, ReapplyThemeAwareClockPresentation);
@@ -1128,7 +1031,7 @@ public sealed partial class WorldClockWindow : Window
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
 
-        QueueTitleBarLayoutUpdate();
+        _titleBar.QueueLayoutUpdate();
     }
 
     private async void WorldClockWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -1206,7 +1109,8 @@ public sealed partial class WorldClockWindow : Window
             _xamlRoot.Changed -= XamlRoot_Changed;
         }
 
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.ThemeChanged -= TitleBar_ThemeChanged;
+        _titleBar.Dispose();
         _lifetimeCancellation.Cancel();
         _placement.Dispose();
         _lifetimeCancellation.Dispose();

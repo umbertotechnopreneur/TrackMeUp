@@ -18,24 +18,23 @@
         <Grid
             x:Name="TitleBarDragRegion"
             Height="48"
-            Padding="16,0,180,0"
             Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
             <StackPanel
+                Grid.Column="1"
+                Margin="16,0,12,0"
                 Orientation="Horizontal"
                 VerticalAlignment="Center"
                 Spacing="10">
                 <Image
-                    Width="22"
-                    Height="22"
-                    AutomationProperties.AccessibilityView="Raw"
-                    IsHitTestVisible="False"
-                    Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
+                    Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
                 <TextBlock
                     x:Name="TitleBarCaptionText"
-                    VerticalAlignment="Center"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    IsHitTestVisible="False"
+                    Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                     Text="TrackMeUp Reports" />
             </StackPanel>
         </Grid>

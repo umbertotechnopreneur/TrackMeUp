@@ -132,6 +132,7 @@ public sealed record ScreenshotTextSnapshot(
 /// <param name="MouseClicks">The number of durable mouse clicks observed during the capture interval, or <see langword="null"/> when no activity samples overlap it.</param>
 /// <param name="CpuUsagePercent">The average CPU usage persisted for the capture interval, or <see langword="null"/> when telemetry was unavailable.</param>
 /// <param name="GpuUsagePercent">The average GPU usage persisted for the capture interval, or <see langword="null"/> when telemetry was unavailable.</param>
+/// <param name="HasRemovableAnalysisData">Whether OCR, AI-provider analysis, or interval telemetry is currently persisted for this artifact.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
@@ -149,7 +150,8 @@ public sealed record ScreenshotGalleryItem(
     long? MouseClicks = null,
     int? CpuUsagePercent = null,
     int? GpuUsagePercent = null,
-    InstallationProfile? Installation = null);
+    InstallationProfile? Installation = null,
+    bool HasRemovableAnalysisData = false);
 
 /// <summary>Contains telemetry averaged between the previous retained screenshot and the current capture.</summary>
 public sealed record ScreenshotIntervalTelemetry(
@@ -443,7 +445,15 @@ public sealed record RuntimeHealth(
     string InstallationFingerprint,
     bool IsRuntimeOwner,
     IReadOnlyList<string> Capabilities,
+    TrackingRuntimeHealth Tracking,
     ObservabilityHealth? Observability = null);
+
+/// <summary>Describes whether periodic activity samples are reaching durable storage.</summary>
+public sealed record TrackingRuntimeHealth(
+    bool IsDegraded,
+    DateTimeOffset? LastPersistedSampleAt,
+    DateTimeOffset? LastPersistenceFailureAt,
+    string StatusCode);
 
 /// <summary>Describes non-secret logging and remote-error-reporting diagnostics for the active host.</summary>
 public sealed record ObservabilityHealth(
@@ -695,8 +705,8 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Deletes all local image artifacts belonging to one retained screenshot capture.</summary>
     Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken);
 
-    /// <summary>Deletes local snapshot-analysis records associated with one retained screenshot capture.</summary>
-    Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken);
+    /// <summary>Deletes local OCR, AI-provider analysis, and interval telemetry associated with one retained screenshot.</summary>
+    Task<OperationResult<string>> DeleteScreenshotAnalysisAsync(string screenshotPath, CancellationToken cancellationToken);
 
     /// <summary>Gets the most recent retained screenshot.</summary>
     Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken);

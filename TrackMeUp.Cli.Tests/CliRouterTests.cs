@@ -389,7 +389,15 @@ public sealed class CliRouterTests
         {
             TotalCalls++;
             RuntimeHealthReads++;
-            return Success(new RuntimeHealth("1.0.0", 1, "test-installation", true, ["settings.get"]), "runtime.healthy");
+            return Success(
+                new RuntimeHealth(
+                    "1.0.0",
+                    1,
+                    "test-installation",
+                    true,
+                    ["settings.get"],
+                    new TrackingRuntimeHealth(false, null, null, "tracking.persistence.healthy")),
+                "runtime.healthy");
         }
         public Task<OperationResult<DashboardState>> StartTrackingAsync(StartTrackingRequest request, CancellationToken cancellationToken) => Unsupported<DashboardState>();
         public Task<OperationResult<DashboardState>> PauseTrackingAsync(CancellationToken cancellationToken) => Unsupported<DashboardState>();
@@ -417,7 +425,8 @@ public sealed class CliRouterTests
         public Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => Unsupported<AiAnalysis>();
         public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => Unsupported<string>();
-        public Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken) => Unsupported<string>();
+        /// <inheritdoc />
+        public Task<OperationResult<string>> DeleteScreenshotAnalysisAsync(string screenshotPath, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => Unsupported<string?>();
         public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
         public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();

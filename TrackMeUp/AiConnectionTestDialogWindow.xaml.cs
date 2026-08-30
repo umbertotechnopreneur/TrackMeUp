@@ -23,6 +23,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -48,10 +49,16 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         RootGrid.RequestedTheme = theme;
         UiLocalization.Apply(RootGrid, _strings);
         Title = T("AiConnectionTest.WindowTitle");
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>());
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.AiConnectionTest, LogicalWidth, LogicalHeight, LogicalScreenMargin, ownerAppWindow.Id);
         WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
@@ -72,6 +79,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
             _testCancellation.Cancel();
             _lifetimeCancellation.Cancel();
             _countdownTimer.Stop();
+            _titleBar.Dispose();
             _testCancellation.Dispose();
             _lifetimeCancellation.Dispose();
             _completion.TrySetResult();

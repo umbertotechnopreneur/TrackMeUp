@@ -103,7 +103,10 @@
             HorizontalScrollMode="Disabled"
             VerticalScrollBarVisibility="Auto"
             VerticalScrollMode="Enabled">
-            <Grid Width="736" Height="312" HorizontalAlignment="Left">
+            <Grid
+                x:Name="TimeGridHost"
+                Width="736"
+                HorizontalAlignment="Left">
                 <Grid IsHitTestVisible="False">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="64" />
@@ -126,7 +129,6 @@
                 <Grid
                     x:Name="DaysHost"
                     Width="736"
-                    Height="312"
                     Background="Transparent">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="64" />
@@ -147,7 +149,7 @@
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             Style="{StaticResource CaptionTextBlockStyle}"
             Tag="Schedule.Week.Instructions"
-            Text="Click or drag across 30-minute blocks. Selected blocks are active hours; gaps inside an active period are breaks."
+            Text="Click or drag across 15-minute blocks. Selected blocks are active hours; gaps inside an active period are breaks."
             TextWrapping="Wrap" />
     </StackPanel>
 </UserControl>

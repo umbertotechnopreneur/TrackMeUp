@@ -36,10 +36,8 @@ public sealed class ObservabilitySurfaceContractTests
         Assert.Contains("new ObservabilityHealth(", source, StringComparison.Ordinal);
         Assert.Contains("SentrySdk.FlushAsync(ShutdownTimeout)", source, StringComparison.Ordinal);
         Assert.Contains("options.ShutdownTimeout = ShutdownTimeout", source, StringComparison.Ordinal);
-        Assert.Contains("options.SetBeforeSend", source, StringComparison.Ordinal);
-        Assert.Contains("options.SetBeforeBreadcrumb", source, StringComparison.Ordinal);
-        Assert.Contains("new Breadcrumb(", source, StringComparison.Ordinal);
-        Assert.Contains("new Dictionary<string, string>()", source, StringComparison.Ordinal);
+        Assert.Contains("options.SetBeforeSend(SentryEventSanitizer.Sanitize)", source, StringComparison.Ordinal);
+        Assert.Contains("options.SetBeforeBreadcrumb(SentryEventSanitizer.SanitizeBreadcrumb)", source, StringComparison.Ordinal);
         Assert.Contains("private const int RetainedFileCount = 15;", source, StringComparison.Ordinal);
         Assert.Contains("TimeSpan.FromDays(15)", source, StringComparison.Ordinal);
         Assert.Contains("rollingInterval: RollingInterval.Day", source, StringComparison.Ordinal);

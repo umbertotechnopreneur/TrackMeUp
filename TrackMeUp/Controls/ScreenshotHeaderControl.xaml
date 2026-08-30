@@ -289,14 +289,14 @@
                 </AppBarButton.Icon>
             </AppBarButton>
             <AppBarButton
-                x:Name="DeleteSnapshotButton"
-                AutomationProperties.Name="Delete snapshot"
-                Click="DeleteSnapshotButton_Click"
+                x:Name="DeleteAnalysisButton"
+                AutomationProperties.Name="Delete analysis data"
+                Click="DeleteAnalysisButton_Click"
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                 IsEnabled="False"
-                Label="Delete snapshot"
-                Tag="Screenshots.Toolbar.DeleteSnapshot"
-                ToolTipService.ToolTip="Delete snapshot">
+                Label="Delete analysis data"
+                Tag="Screenshots.Toolbar.DeleteAnalysis"
+                ToolTipService.ToolTip="Delete analysis data">
                 <AppBarButton.Icon>
                     <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" Glyph="&#xE823;" />
                 </AppBarButton.Icon>

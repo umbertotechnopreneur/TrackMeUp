@@ -35,6 +35,7 @@ public sealed partial class ReportsWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly ReportViewModel _viewModel;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly string? _launchTheme;
@@ -58,10 +59,16 @@ public sealed partial class ReportsWindow : Window
         _launchTheme = launchTheme;
         InitializeComponent();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
+        _titleBar.ThemeChanged += TitleBar_ThemeChanged;
         _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Reports, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         ApplyReportTheme(_reportTheme);
         ApplyLocalization();
 
@@ -327,41 +334,24 @@ public sealed partial class ReportsWindow : Window
         var effectiveTheme = RootGrid.RequestedTheme == ElementTheme.Default
             ? RootGrid.ActualTheme
             : RootGrid.RequestedTheme;
-        ApplyThemeChrome(effectiveTheme);
+        ApplyReportSurfaceTheme(effectiveTheme);
     }
 
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
+    private void ApplyReportSurfaceTheme(ElementTheme effectiveTheme)
     {
         ReportsWebView.DefaultBackgroundColor = effectiveTheme == ElementTheme.Dark
             ? Windows.UI.Color.FromArgb(255, 20, 24, 29)
             : Windows.UI.Color.FromArgb(255, 245, 247, 250);
-
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var dark = effectiveTheme == ElementTheme.Dark;
-        var titleBar = _appWindow.TitleBar;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
+        _titleBar.ApplyTheme(effectiveTheme);
     }
 
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
+    private void TitleBar_ThemeChanged(ElementTheme effectiveTheme)
     {
         if (_reportTheme == "system")
         {
-            ApplyThemeChrome(sender.ActualTheme);
+            ReportsWebView.DefaultBackgroundColor = effectiveTheme == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 20, 24, 29)
+                : Windows.UI.Color.FromArgb(255, 245, 247, 250);
         }
     }
 
@@ -598,7 +588,8 @@ public sealed partial class ReportsWindow : Window
             _xamlRoot.Changed -= XamlRoot_Changed;
         }
 
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.ThemeChanged -= TitleBar_ThemeChanged;
+        _titleBar.Dispose();
         ReportsWebView.NavigationCompleted -= ReportsWebView_NavigationCompleted;
 
         if (ReportsWebView.CoreWebView2 is { } core)

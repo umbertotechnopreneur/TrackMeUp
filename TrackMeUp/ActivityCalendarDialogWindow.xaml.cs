@@ -47,6 +47,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private readonly LocalizationService _strings;
     private readonly CultureInfo _culture;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private IReadOnlyDictionary<DateOnly, ReportCalendarCell> _recordedDays = new Dictionary<DateOnly, ReportCalendarCell>();
@@ -71,10 +72,17 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         Title = T("ActivityCalendar.Title");
         RootGrid.RequestedTheme = theme;
         RootGrid.Language = _strings.Language;
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>(),
+            useTallTitleBar: false);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -465,6 +473,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private void ActivityCalendarDialogWindow_Closed(object sender, WindowEventArgs args)
     {
         _lifetimeCancellation.Cancel();
+        _titleBar.Dispose();
         _completion.TrySetResult(_result);
     }
 

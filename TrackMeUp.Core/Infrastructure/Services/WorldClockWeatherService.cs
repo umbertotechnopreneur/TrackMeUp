@@ -91,8 +91,15 @@ internal sealed class WorldClockWeatherCache : IDisposable
         string cityId,
         WorldClockWeatherObservation observation,
         DateTimeOffset cachedAtUtc,
-        long configurationGeneration = 0)
+        long configurationGeneration = 0,
+        TimeSpan? retention = null)
     {
+        var entryRetention = retention ?? _retention;
+        if (entryRetention <= TimeSpan.Zero || entryRetention == Timeout.InfiniteTimeSpan)
+        {
+            throw new ArgumentOutOfRangeException(nameof(retention));
+        }
+
         lock (_lifecycleGate)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
@@ -104,7 +111,7 @@ internal sealed class WorldClockWeatherCache : IDisposable
                     expiration.Owner.Remove(expiration.CityId, expiration.Generation);
                 },
                 new ExpirationState(this, cityId, generation),
-                _retention,
+                entryRetention,
                 Timeout.InfiniteTimeSpan);
             var replacement = new Entry(observation, cachedAtUtc, generation, configurationGeneration, timer);
             Entry? previous = null;
@@ -190,8 +197,13 @@ internal sealed class WorldClockWeatherCache : IDisposable
 /// <summary>Loads bounded, source-backed current weather without making clocks depend on network availability.</summary>
 internal sealed class WorldClockWeatherService : IDisposable
 {
+    /// <summary>Elapsed cache time after which the last valid observation is revalidated.</summary>
     internal static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(12);
+
+    /// <summary>Maximum accepted age of a provider observation.</summary>
     internal static readonly TimeSpan MaximumObservationAge = TimeSpan.FromMinutes(45);
+
+    /// <summary>Maximum accepted provider clock lead relative to this device.</summary>
     internal static readonly TimeSpan MaximumFutureSkew = TimeSpan.FromMinutes(5);
 
     private readonly IWorldClockWeatherProvider _provider;
@@ -212,7 +224,9 @@ internal sealed class WorldClockWeatherService : IDisposable
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger.Instance;
-        _cache = new WorldClockWeatherCache(_timeProvider, CacheDuration);
+        _cache = new WorldClockWeatherCache(
+            _timeProvider,
+            MaximumObservationAge + MaximumFutureSkew);
         _serviceToken = _serviceCancellation.Token;
     }
 
@@ -349,11 +363,31 @@ internal sealed class WorldClockWeatherService : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         var configurationGeneration = Volatile.Read(ref _configurationGeneration);
         var now = _timeProvider.GetUtcNow();
-        if (TryGetCached(location.CityId, now, configurationGeneration, out var cached))
+        if (TryGetCached(
+                location.CityId,
+                now,
+                configurationGeneration,
+                out var cached,
+                out var requiresRevalidation))
         {
+            if (requiresRevalidation)
+            {
+                // Stale-while-revalidate keeps a still-valid observation visible while optional I/O runs.
+                _ = GetOrStartFetch(location, configurationGeneration);
+            }
+
             return new WeatherFetchOutcome(location.CityId, ToContract(cached), null);
         }
 
+        return await GetOrStartFetch(location, configurationGeneration)
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private Task<WeatherFetchOutcome> GetOrStartFetch(
+        WorldClockWeatherLocation location,
+        long configurationGeneration)
+    {
         var candidate = new Lazy<Task<WeatherFetchOutcome>>(
             () => FetchLocationAsync(location, configurationGeneration, _serviceToken),
             LazyThreadSafetyMode.ExecutionAndPublication);
@@ -361,11 +395,16 @@ internal sealed class WorldClockWeatherService : IDisposable
         var active = _inFlight.GetOrAdd(key, candidate);
         var sharedTask = active.Value;
         _ = sharedTask.ContinueWith(
-            _ => RemoveInFlight(key, active),
+            completed =>
+            {
+                // Observe a disposal cancellation/fault even when refresh runs entirely in the background.
+                _ = completed.Exception;
+                RemoveInFlight(key, active);
+            },
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
-        return await sharedTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return sharedTask;
     }
 
     private async Task<WeatherFetchOutcome> FetchLocationAsync(
@@ -374,7 +413,13 @@ internal sealed class WorldClockWeatherService : IDisposable
         CancellationToken cancellationToken)
     {
         var now = _timeProvider.GetUtcNow();
-        if (TryGetCached(location.CityId, now, configurationGeneration, out var cached))
+        if (TryGetCached(
+                location.CityId,
+                now,
+                configurationGeneration,
+                out var cached,
+                out var requiresRevalidation)
+            && !requiresRevalidation)
         {
             return new WeatherFetchOutcome(location.CityId, ToContract(cached), null);
         }
@@ -386,12 +431,18 @@ internal sealed class WorldClockWeatherService : IDisposable
             now = _timeProvider.GetUtcNow();
             if (!IsFreshAt(observation.ObservedAtUtc, now))
             {
-                return new WeatherFetchOutcome(location.CityId, null, "stale-observation");
+                // A stale provider response must not evict a previously valid observation.
+                return CurrentFallback(location.CityId, now, configurationGeneration, "stale-observation");
             }
 
             if (configurationGeneration == Volatile.Read(ref _configurationGeneration))
             {
-                _cache.Set(location.CityId, observation, now, configurationGeneration);
+                _cache.Set(
+                    location.CityId,
+                    observation,
+                    now,
+                    configurationGeneration,
+                    RetentionFromObservation(observation.ObservedAtUtc, now));
             }
 
             return new WeatherFetchOutcome(location.CityId, ToContract(observation), null);
@@ -407,9 +458,28 @@ internal sealed class WorldClockWeatherService : IDisposable
                 "Current weather request failed. CityId={CityId} ExceptionType={ExceptionType}",
                 location.CityId,
                 exception.GetType().Name);
-            return new WeatherFetchOutcome(location.CityId, null, "request-failed");
+            // Transient provider failures preserve the last observation only while it is still valid.
+            return CurrentFallback(
+                location.CityId,
+                _timeProvider.GetUtcNow(),
+                configurationGeneration,
+                "request-failed");
         }
     }
+
+    private WeatherFetchOutcome CurrentFallback(
+        string cityId,
+        DateTimeOffset now,
+        long configurationGeneration,
+        string reasonCode) =>
+        TryGetCached(
+            cityId,
+            now,
+            configurationGeneration,
+            out var observation,
+            out _)
+            ? new WeatherFetchOutcome(cityId, ToContract(observation), reasonCode)
+            : new WeatherFetchOutcome(cityId, null, reasonCode);
 
     private void RemoveInFlight(
         WeatherFetchKey key,
@@ -421,22 +491,23 @@ internal sealed class WorldClockWeatherService : IDisposable
         string cityId,
         DateTimeOffset now,
         long configurationGeneration,
-        out WorldClockWeatherObservation observation)
+        out WorldClockWeatherObservation observation,
+        out bool requiresRevalidation)
     {
         if (_cache.TryGet(cityId, out var entry))
         {
             if (entry.ConfigurationGeneration != configurationGeneration)
             {
                 observation = null!;
+                requiresRevalidation = false;
                 return false;
             }
 
             var cacheAge = now - entry.CachedAtUtc;
-            if (cacheAge >= TimeSpan.Zero
-                && cacheAge <= CacheDuration
-                && IsFreshAt(entry.Observation.ObservedAtUtc, now))
+            if (IsFreshAt(entry.Observation.ObservedAtUtc, now))
             {
                 observation = entry.Observation;
+                requiresRevalidation = cacheAge < TimeSpan.Zero || cacheAge > CacheDuration;
                 return true;
             }
 
@@ -444,13 +515,29 @@ internal sealed class WorldClockWeatherService : IDisposable
         }
 
         observation = null!;
+        requiresRevalidation = false;
         return false;
+    }
+
+    private static TimeSpan RetentionFromObservation(
+        DateTimeOffset observedAtUtc,
+        DateTimeOffset cachedAtUtc)
+    {
+        var retention = observedAtUtc.ToUniversalTime()
+            + MaximumObservationAge
+            - cachedAtUtc.ToUniversalTime();
+        if (retention <= TimeSpan.Zero)
+        {
+            throw new InvalidDataException("A stale weather observation cannot be cached.");
+        }
+
+        return retention;
     }
 
     private static bool IsFreshAt(DateTimeOffset observedAtUtc, DateTimeOffset nowUtc)
     {
         var age = nowUtc.ToUniversalTime() - observedAtUtc.ToUniversalTime();
-        return age >= -MaximumFutureSkew && age <= MaximumObservationAge;
+        return age >= -MaximumFutureSkew && age < MaximumObservationAge;
     }
 
     private static WorldClockWeather ToContract(WorldClockWeatherObservation observation) =>
@@ -721,7 +808,8 @@ internal sealed class OpenWeatherCurrentProvider : IWorldClockWeatherProvider
 
         if (conditionIds.Any(static id => !IsSupportedCondition(id)))
         {
-            throw new InvalidDataException("Current weather response contains an unsupported condition identifier.");
+            // Keep valid temperature/time data when the provider adds a condition we do not yet decorate.
+            return "unknown";
         }
 
         if (conditionIds.Any(static id => IsLightning(id)))
@@ -762,7 +850,7 @@ internal sealed class OpenWeatherCurrentProvider : IWorldClockWeatherProvider
             return "clear";
         }
 
-        throw new InvalidDataException("Current weather response contains an unsupported condition combination.");
+        return "unknown";
     }
 
     private static bool IsSupportedCondition(int id) =>

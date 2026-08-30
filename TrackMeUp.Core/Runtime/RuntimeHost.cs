@@ -226,7 +226,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 }
 
                 await RuntimeProtocol.WriteAsync(pipe, response, shutdownToken);
-                if (request.Operation == "app.atomic_reset.v1"
+                if (request.Operation == RuntimeOperationCatalog.GetWireName(RuntimeOperation.AppAtomicResetV1)
                     && response.Succeeded
                     && response.Payload is AtomicResetPlan resetPlan)
                 {
@@ -275,112 +275,117 @@ public sealed class RuntimeHost : IAsyncDisposable
             return Failure(request, "ipc.protocol.unsupported", "IpcProtocolUnsupported");
         }
 
+        if (!RuntimeOperationCatalog.TryResolve(request.Operation, out var operation))
+        {
+            return Failure(request, "command.invalid", "CommandInvalid");
+        }
+
         try
         {
-            return request.Operation switch
+            return operation switch
             {
-                "runtime.health" => ToResponse(request, await _application.GetRuntimeHealthAsync(cancellationToken)),
-                "tracking.start" => ToResponse(request, await _application.StartTrackingAsync(Read<StartTrackingRequest>(request.Payload) ?? new StartTrackingRequest(), cancellationToken)),
-                "tracking.pause" => ToResponse(request, await _application.PauseTrackingAsync(cancellationToken)),
-                "tracking.toggle" => ToResponse(request, await _application.ToggleTrackingAsync(cancellationToken)),
-                "dashboard.get" => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
-                "world_clocks.get.v2" => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
-                "world_clocks.convert.v1" => ToResponse(request, await _application.ConvertWorldClocksAsync(
+                RuntimeOperation.RuntimeHealth => ToResponse(request, await _application.GetRuntimeHealthAsync(cancellationToken)),
+                RuntimeOperation.TrackingStart => ToResponse(request, await _application.StartTrackingAsync(Read<StartTrackingRequest>(request.Payload) ?? new StartTrackingRequest(), cancellationToken)),
+                RuntimeOperation.TrackingPause => ToResponse(request, await _application.PauseTrackingAsync(cancellationToken)),
+                RuntimeOperation.TrackingToggle => ToResponse(request, await _application.ToggleTrackingAsync(cancellationToken)),
+                RuntimeOperation.DashboardGet => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
+                RuntimeOperation.WorldClocksGetV2 => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
+                RuntimeOperation.WorldClocksConvertV1 => ToResponse(request, await _application.ConvertWorldClocksAsync(
                     Read<WorldClockConversionRequest>(request.Payload)
                         ?? throw new InvalidDataException("A world-clock conversion request is required."),
                     cancellationToken)),
-                "world_clocks.catalog.v1" => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
-                "world_clocks.add.v3" => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
-                "world_clocks.remove.v3" => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
-                "world_clocks.weather.key.set.v1" => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
-                "session.last" => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
-                "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
-                "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
-                "search.suggest.v2" => await DispatchSearchSuggestionsAsync(request, cancellationToken),
-                "search.availability.v1" => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
-                "search.rebuild.v1" => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
-                "system.snapshot" => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
-                "screenshot.capture" => await DispatchScreenshotCaptureAsync(request, cancellationToken),
-                "screenshot.manual.capture" => ToResponse(request, await _application.CaptureManualScreenshotAsync(cancellationToken)),
-                "screenshot.manual.delete" => ToResponse(request, await _application.DeletePendingManualScreenshotAsync(cancellationToken)),
-                "screenshot.analyze" => await DispatchScreenshotAnalysisAsync(request, cancellationToken),
-                "screenshot.latest" => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
-                "screenshot.gallery" => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
-                "screenshot.gallery.latest" => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
-                "screenshot.storage_migration.status.v1" => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
-                "screenshot.storage_migration.run.v1" => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
-                "installations.list.v1" => ToResponse(request, await _application.GetInstallationProfilesAsync(cancellationToken)),
-                "installations.update.v1" => ToResponse(request, await _application.UpdateInstallationProfileAsync(
+                RuntimeOperation.WorldClocksCatalogV1 => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
+                RuntimeOperation.WorldClocksAddV3 => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
+                RuntimeOperation.WorldClocksRemoveV3 => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
+                RuntimeOperation.WorldClocksWeatherKeySetV1 => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
+                RuntimeOperation.SessionLast => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
+                RuntimeOperation.SessionToday => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
+                RuntimeOperation.SearchQueryV1 => await DispatchSearchAsync(request, cancellationToken),
+                RuntimeOperation.SearchSuggestV2 => await DispatchSearchSuggestionsAsync(request, cancellationToken),
+                RuntimeOperation.SearchAvailabilityV1 => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
+                RuntimeOperation.SearchRebuildV1 => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
+                RuntimeOperation.SystemSnapshot => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotCapture => await DispatchScreenshotCaptureAsync(request, cancellationToken),
+                RuntimeOperation.ScreenshotManualCapture => ToResponse(request, await _application.CaptureManualScreenshotAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotManualDelete => ToResponse(request, await _application.DeletePendingManualScreenshotAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotAnalyze => await DispatchScreenshotAnalysisAsync(request, cancellationToken),
+                RuntimeOperation.ScreenshotLatest => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotGallery => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
+                RuntimeOperation.ScreenshotGalleryLatest => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotStorageMigrationStatusV1 => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotStorageMigrationRunV1 => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
+                RuntimeOperation.InstallationsListV1 => ToResponse(request, await _application.GetInstallationProfilesAsync(cancellationToken)),
+                RuntimeOperation.InstallationsUpdateV1 => ToResponse(request, await _application.UpdateInstallationProfileAsync(
                     Read<UpdateInstallationProfileRequest>(request.Payload)
                         ?? throw new InvalidDataException("An installation profile update payload is required."),
                     cancellationToken)),
-                "archive.export.v1" => ToResponse(request, await _application.ExportDataArchiveAsync(
+                RuntimeOperation.ArchiveExportV1 => ToResponse(request, await _application.ExportDataArchiveAsync(
                     Read<DataArchiveExportRequest>(request.Payload)
                         ?? throw new InvalidDataException("An archive export payload is required."),
                     cancellationToken)),
-                "archive.import.preview.v1" => ToResponse(request, await _application.PreviewDataArchiveImportAsync(
+                RuntimeOperation.ArchiveImportPreviewV1 => ToResponse(request, await _application.PreviewDataArchiveImportAsync(
                     Read<DataArchiveImportPreviewRequest>(request.Payload)
                         ?? throw new InvalidDataException("An archive import preview payload is required."),
                     cancellationToken)),
-                "archive.import.merge.v1" => ToResponse(request, await _application.ImportDataArchiveAsync(
+                RuntimeOperation.ArchiveImportMergeV1 => ToResponse(request, await _application.ImportDataArchiveAsync(
                     Read<DataArchiveImportRequest>(request.Payload)
                         ?? throw new InvalidDataException("An archive import payload is required."),
                     cancellationToken)),
-                "screenshot.delete" => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
-                "snapshot.delete" => ToResponse(request, await _application.DeleteSnapshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
-                "screenshot.save" => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
-                "screenshot.share" => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                "diagnostics.log.open" => ToResponse(request, await _application.OpenApplicationLogAsync(cancellationToken)),
-                "diagnostics.log.open_folder" => ToResponse(request, await _application.OpenApplicationLogFolderAsync(cancellationToken)),
-                "diagnostics.log.share" => ToResponse(request, await _application.ShareApplicationLogAsync(ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                "screenshot.open_folder" => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
-                "notifications.drain" => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
-                "ai.status" => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
-                "ai.pricing.overview" => ToResponse(request, await _application.GetAiPricingOverviewAsync(cancellationToken)),
-                "ai.connection.test" => ToResponse(request, await _application.TestAiConnectionAsync(cancellationToken)),
-                "ai.screenshot_reprocess.preview.v1" => await DispatchAiScreenshotReprocessPreviewAsync(request, cancellationToken),
-                "ai.screenshot_reprocess.start.v1" => ToResponse(request, await _application.StartAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "planId"), cancellationToken)),
-                "ai.screenshot_reprocess.status.v1" => ToResponse(request, await _application.GetAiScreenshotReprocessingJobAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
-                "ai.screenshot_reprocess.pause.v1" => ToResponse(request, await _application.PauseAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
-                "ai.screenshot_reprocess.resume.v1" => ToResponse(request, await _application.ResumeAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
-                "ai.models" => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
-                "ai.enable" => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
-                "ai.disable" => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
-                "ai.configure" => ToResponse(request, await _application.ConfigureAiAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
-                "ai.key.set" => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
-                "ai.analyze" => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
-                "report.query.v1" => await DispatchReportQueryAsync(request, cancellationToken),
-                "report.today" => ToResponse(request, await _application.GenerateTodayReportAsync(ReadStringOrNull(request.Payload, "outputDirectory"), ReadBool(request.Payload, "open"), cancellationToken)),
-                "report.digest" => await DispatchDailyDigestAsync(request, cancellationToken),
-                "report.open_folder" => ToResponse(request, await _application.OpenReportsFolderAsync(cancellationToken)),
-                "ui.open" => ToResponse(request, await _application.OpenUserInterfaceAsync(cancellationToken)),
-                "privacy.list" => ToResponse(request, await _application.GetPrivacyRulesAsync(cancellationToken)),
-                "privacy.add" => ToResponse(request, await _application.AddPrivacyRuleAsync(ReadString(request.Payload, "type"), ReadString(request.Payload, "value"), cancellationToken)),
-                "privacy.remove" => ToResponse(request, await _application.RemovePrivacyRuleAsync(ReadString(request.Payload, "id"), cancellationToken)),
-                "privacy.test_current" => ToResponse(request, await _application.TestCurrentPrivacyAsync(cancellationToken)),
-                "retention.status" => ToResponse(request, await _application.GetRetentionStatusAsync(cancellationToken)),
-                "retention.preview" => ToResponse(request, await _application.PreviewRetentionAsync(cancellationToken)),
-                "retention.run" => ToResponse(request, await _application.RunRetentionAsync(Read<RetentionRequest>(request.Payload) ?? new RetentionRequest(false, false), cancellationToken)),
-                "app.atomic_reset.v1" => ToResponse(request, await _application.PrepareAtomicResetAsync(
+                RuntimeOperation.ScreenshotDelete => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
+                RuntimeOperation.ScreenshotAnalysisDeleteV1 => ToResponse(request, await _application.DeleteScreenshotAnalysisAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
+                RuntimeOperation.ScreenshotSave => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
+                RuntimeOperation.ScreenshotShare => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                RuntimeOperation.DiagnosticsLogOpen => ToResponse(request, await _application.OpenApplicationLogAsync(cancellationToken)),
+                RuntimeOperation.DiagnosticsLogOpenFolder => ToResponse(request, await _application.OpenApplicationLogFolderAsync(cancellationToken)),
+                RuntimeOperation.DiagnosticsLogShare => ToResponse(request, await _application.ShareApplicationLogAsync(ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                RuntimeOperation.ScreenshotOpenFolder => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
+                RuntimeOperation.NotificationsDrain => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
+                RuntimeOperation.AiStatus => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
+                RuntimeOperation.AiPricingOverview => ToResponse(request, await _application.GetAiPricingOverviewAsync(cancellationToken)),
+                RuntimeOperation.AiConnectionTest => ToResponse(request, await _application.TestAiConnectionAsync(cancellationToken)),
+                RuntimeOperation.AiScreenshotReprocessPreviewV1 => await DispatchAiScreenshotReprocessPreviewAsync(request, cancellationToken),
+                RuntimeOperation.AiScreenshotReprocessStartV1 => ToResponse(request, await _application.StartAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "planId"), cancellationToken)),
+                RuntimeOperation.AiScreenshotReprocessStatusV1 => ToResponse(request, await _application.GetAiScreenshotReprocessingJobAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
+                RuntimeOperation.AiScreenshotReprocessPauseV1 => ToResponse(request, await _application.PauseAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
+                RuntimeOperation.AiScreenshotReprocessResumeV1 => ToResponse(request, await _application.ResumeAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
+                RuntimeOperation.AiModels => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
+                RuntimeOperation.AiEnable => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
+                RuntimeOperation.AiDisable => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
+                RuntimeOperation.AiConfigure => ToResponse(request, await _application.ConfigureAiAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
+                RuntimeOperation.AiKeySet => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
+                RuntimeOperation.AiAnalyze => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
+                RuntimeOperation.ReportQueryV1 => await DispatchReportQueryAsync(request, cancellationToken),
+                RuntimeOperation.ReportToday => ToResponse(request, await _application.GenerateTodayReportAsync(ReadStringOrNull(request.Payload, "outputDirectory"), ReadBool(request.Payload, "open"), cancellationToken)),
+                RuntimeOperation.ReportDigest => await DispatchDailyDigestAsync(request, cancellationToken),
+                RuntimeOperation.ReportOpenFolder => ToResponse(request, await _application.OpenReportsFolderAsync(cancellationToken)),
+                RuntimeOperation.UiOpen => ToResponse(request, await _application.OpenUserInterfaceAsync(cancellationToken)),
+                RuntimeOperation.PrivacyList => ToResponse(request, await _application.GetPrivacyRulesAsync(cancellationToken)),
+                RuntimeOperation.PrivacyAdd => ToResponse(request, await _application.AddPrivacyRuleAsync(ReadString(request.Payload, "type"), ReadString(request.Payload, "value"), cancellationToken)),
+                RuntimeOperation.PrivacyRemove => ToResponse(request, await _application.RemovePrivacyRuleAsync(ReadString(request.Payload, "id"), cancellationToken)),
+                RuntimeOperation.PrivacyTestCurrent => ToResponse(request, await _application.TestCurrentPrivacyAsync(cancellationToken)),
+                RuntimeOperation.RetentionStatus => ToResponse(request, await _application.GetRetentionStatusAsync(cancellationToken)),
+                RuntimeOperation.RetentionPreview => ToResponse(request, await _application.PreviewRetentionAsync(cancellationToken)),
+                RuntimeOperation.RetentionRun => ToResponse(request, await _application.RunRetentionAsync(Read<RetentionRequest>(request.Payload) ?? new RetentionRequest(false, false), cancellationToken)),
+                RuntimeOperation.AppAtomicResetV1 => ToResponse(request, await _application.PrepareAtomicResetAsync(
                     Read<AtomicResetRequest>(request.Payload) ?? new AtomicResetRequest(false, false),
                     cancellationToken)),
-                "plugins.list" => ToResponse(request, await _application.GetPluginsAsync(cancellationToken)),
-                "plugins.show" => ToResponse(request, await _application.GetPluginAsync(ReadString(request.Payload, "id"), cancellationToken)),
-                "plugins.enable" => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
-                "plugins.disable" => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
-                "settings.get" => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
-                "quick_setup.apply.v1" => ToResponse(request, await _application.ApplyQuickSetupProfileAsync(
+                RuntimeOperation.PluginsList => ToResponse(request, await _application.GetPluginsAsync(cancellationToken)),
+                RuntimeOperation.PluginsShow => ToResponse(request, await _application.GetPluginAsync(ReadString(request.Payload, "id"), cancellationToken)),
+                RuntimeOperation.PluginsEnable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
+                RuntimeOperation.PluginsDisable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
+                RuntimeOperation.SettingsGet => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
+                RuntimeOperation.QuickSetupApplyV1 => ToResponse(request, await _application.ApplyQuickSetupProfileAsync(
                     Read<QuickSetupProfileRequest>(request.Payload) ?? new QuickSetupProfileRequest(string.Empty, false),
                     cancellationToken)),
-                "settings.patch" => ToResponse(request, await _application.PatchSettingsAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
-                "window.state.restore" => ToResponse(request, await _application.RestoreWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                "window.state.save" => ToResponse(request, await _application.SaveWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                "startup.status" => ToResponse(request, await _application.GetStartupStatusAsync(cancellationToken)),
-                "startup.enable" => ToResponse(request, await _application.SetStartupEnabledAsync(true, cancellationToken)),
-                "startup.disable" => ToResponse(request, await _application.SetStartupEnabledAsync(false, cancellationToken)),
-                "product.get" => ToResponse(request, await _application.GetProductInformationAsync(cancellationToken)),
-                "product.link.open" => ToResponse(request, await _application.OpenProductLinkAsync(ReadString(request.Payload, "linkKey"), cancellationToken)),
-                _ => Failure(request, "command.invalid", "CommandInvalid")
+                RuntimeOperation.SettingsPatch => ToResponse(request, await _application.PatchSettingsAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
+                RuntimeOperation.WindowStateRestore => ToResponse(request, await _application.RestoreWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                RuntimeOperation.WindowStateSave => ToResponse(request, await _application.SaveWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                RuntimeOperation.StartupStatus => ToResponse(request, await _application.GetStartupStatusAsync(cancellationToken)),
+                RuntimeOperation.StartupEnable => ToResponse(request, await _application.SetStartupEnabledAsync(true, cancellationToken)),
+                RuntimeOperation.StartupDisable => ToResponse(request, await _application.SetStartupEnabledAsync(false, cancellationToken)),
+                RuntimeOperation.ProductGet => ToResponse(request, await _application.GetProductInformationAsync(cancellationToken)),
+                RuntimeOperation.ProductLinkOpen => ToResponse(request, await _application.OpenProductLinkAsync(ReadString(request.Payload, "linkKey"), cancellationToken)),
+                _ => throw new InvalidOperationException($"Runtime operation '{operation}' has no host dispatch handler.")
             };
         }
         catch (OperationCanceledException)
@@ -603,204 +608,204 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<RuntimeHealth>> GetRuntimeHealthAsync(CancellationToken cancellationToken) => SendAsync<RuntimeHealth>("runtime.health", null, cancellationToken);
+    public Task<OperationResult<RuntimeHealth>> GetRuntimeHealthAsync(CancellationToken cancellationToken) => SendAsync<RuntimeHealth>(RuntimeOperation.RuntimeHealth, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<DashboardState>> StartTrackingAsync(StartTrackingRequest request, CancellationToken cancellationToken) => SendAsync<DashboardState>("tracking.start", request, cancellationToken);
+    public Task<OperationResult<DashboardState>> StartTrackingAsync(StartTrackingRequest request, CancellationToken cancellationToken) => SendAsync<DashboardState>(RuntimeOperation.TrackingStart, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<DashboardState>> PauseTrackingAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>("tracking.pause", null, cancellationToken);
+    public Task<OperationResult<DashboardState>> PauseTrackingAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>(RuntimeOperation.TrackingPause, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>("tracking.toggle", null, cancellationToken);
+    public Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>(RuntimeOperation.TrackingToggle, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>("dashboard.get", null, cancellationToken);
+    public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>(RuntimeOperation.DashboardGet, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken) =>
-        SendAsync<WorldClockSnapshot>("world_clocks.get.v2", null, cancellationToken, WorldClockQueryTimeout);
+        SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksGetV2, null, cancellationToken, WorldClockQueryTimeout);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken) =>
-        SendAsync<WorldClockSnapshot>("world_clocks.convert.v1", request, cancellationToken);
+        SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksConvertV1, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => SendAsync<WorldClockCityCatalog>("world_clocks.catalog.v1", null, cancellationToken);
+    public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => SendAsync<WorldClockCityCatalog>(RuntimeOperation.WorldClocksCatalogV1, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) =>
-        SendAsync<WorldClockSelectionState>("world_clocks.add.v3", new { cityId }, cancellationToken);
+        SendAsync<WorldClockSelectionState>(RuntimeOperation.WorldClocksAddV3, new { cityId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) =>
-        SendAsync<WorldClockSelectionState>("world_clocks.remove.v3", new { cityId }, cancellationToken);
+        SendAsync<WorldClockSelectionState>(RuntimeOperation.WorldClocksRemoveV3, new { cityId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken) =>
-        SendAsync<string>("world_clocks.weather.key.set.v1", new { secret }, cancellationToken);
+        SendAsync<string>(RuntimeOperation.WorldClocksWeatherKeySetV1, new { secret }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>("session.last", null, cancellationToken);
+    public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>(RuntimeOperation.SessionLast, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => SendAsync<DailySummary>("session.today", null, cancellationToken);
+    public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => SendAsync<DailySummary>(RuntimeOperation.SessionToday, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
-        SendAsync<SearchResponse>("search.query.v1", request, cancellationToken, SearchTimeout);
+        SendAsync<SearchResponse>(RuntimeOperation.SearchQueryV1, request, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) =>
-        SendAsync<IReadOnlyList<SearchSuggestion>>("search.suggest.v2", request, cancellationToken, SearchTimeout);
+        SendAsync<IReadOnlyList<SearchSuggestion>>(RuntimeOperation.SearchSuggestV2, request, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) =>
-        SendAsync<SearchAvailability>("search.availability.v1", null, cancellationToken, SearchTimeout);
+        SendAsync<SearchAvailability>(RuntimeOperation.SearchAvailabilityV1, null, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) =>
-        SendAsync<int>("search.rebuild.v1", null, cancellationToken, SearchTimeout);
+        SendAsync<int>(RuntimeOperation.SearchRebuildV1, null, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
-        SendAsync<ReportSnapshot>("report.query.v1", query, cancellationToken, ReportQueryTimeout);
+        SendAsync<ReportSnapshot>(RuntimeOperation.ReportQueryV1, query, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => SendAsync<SystemSnapshot>("system.snapshot", null, cancellationToken);
+    public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => SendAsync<SystemSnapshot>(RuntimeOperation.SystemSnapshot, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<ScreenshotCaptureResult>("screenshot.capture", request, cancellationToken);
+    public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<ScreenshotCaptureResult>(RuntimeOperation.ScreenshotCapture, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<PendingManualScreenshotState>("screenshot.manual.capture", null, cancellationToken);
+    public Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<PendingManualScreenshotState>(RuntimeOperation.ScreenshotManualCapture, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<bool>("screenshot.manual.delete", null, cancellationToken);
+    public Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.ScreenshotManualDelete, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>("screenshot.analyze", request, cancellationToken, ScreenshotAnalysisTimeout);
+    public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>(RuntimeOperation.ScreenshotAnalyze, request, cancellationToken, ScreenshotAnalysisTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => SendAsync<string?>("screenshot.latest", null, cancellationToken);
+    public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => SendAsync<string?>(RuntimeOperation.ScreenshotLatest, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery", new ScreenshotGalleryRequest(date), cancellationToken);
+    public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>(RuntimeOperation.ScreenshotGallery, new ScreenshotGalleryRequest(date), cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>("screenshot.gallery.latest", null, cancellationToken);
+    public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>(RuntimeOperation.ScreenshotGalleryLatest, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken) =>
-        SendAsync<ScreenshotStorageMigrationStatus>("screenshot.storage_migration.status.v1", null, cancellationToken, ScreenshotStorageMigrationTimeout);
+        SendAsync<ScreenshotStorageMigrationStatus>(RuntimeOperation.ScreenshotStorageMigrationStatusV1, null, cancellationToken, ScreenshotStorageMigrationTimeout);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) =>
-        SendAsync<ScreenshotStorageMigrationResult>("screenshot.storage_migration.run.v1", null, cancellationToken, ScreenshotStorageMigrationTimeout);
+        SendAsync<ScreenshotStorageMigrationResult>(RuntimeOperation.ScreenshotStorageMigrationRunV1, null, cancellationToken, ScreenshotStorageMigrationTimeout);
     /// <inheritdoc />
     public Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(CancellationToken cancellationToken) =>
-        SendAsync<IReadOnlyList<InstallationProfile>>("installations.list.v1", null, cancellationToken);
+        SendAsync<IReadOnlyList<InstallationProfile>>(RuntimeOperation.InstallationsListV1, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<InstallationProfile>> UpdateInstallationProfileAsync(
         UpdateInstallationProfileRequest request,
         CancellationToken cancellationToken) =>
-        SendAsync<InstallationProfile>("installations.update.v1", request, cancellationToken);
+        SendAsync<InstallationProfile>(RuntimeOperation.InstallationsUpdateV1, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<DataArchiveExportResult>> ExportDataArchiveAsync(
         DataArchiveExportRequest request,
         CancellationToken cancellationToken) =>
-        SendAsync<DataArchiveExportResult>("archive.export.v1", request, cancellationToken, DataArchiveTimeout);
+        SendAsync<DataArchiveExportResult>(RuntimeOperation.ArchiveExportV1, request, cancellationToken, DataArchiveTimeout);
     /// <inheritdoc />
     public Task<OperationResult<DataArchiveImportPlan>> PreviewDataArchiveImportAsync(
         DataArchiveImportPreviewRequest request,
         CancellationToken cancellationToken) =>
-        SendAsync<DataArchiveImportPlan>("archive.import.preview.v1", request, cancellationToken, DataArchiveTimeout);
+        SendAsync<DataArchiveImportPlan>(RuntimeOperation.ArchiveImportPreviewV1, request, cancellationToken, DataArchiveTimeout);
     /// <inheritdoc />
     public Task<OperationResult<DataArchiveImportResult>> ImportDataArchiveAsync(
         DataArchiveImportRequest request,
         CancellationToken cancellationToken) =>
-        SendAsync<DataArchiveImportResult>("archive.import.merge.v1", request, cancellationToken, DataArchiveTimeout);
+        SendAsync<DataArchiveImportResult>(RuntimeOperation.ArchiveImportMergeV1, request, cancellationToken, DataArchiveTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.delete", new { screenshotPath }, cancellationToken);
+    public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ScreenshotDelete, new { screenshotPath }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>("snapshot.delete", new { screenshotPath }, cancellationToken);
+    public Task<OperationResult<string>> DeleteScreenshotAnalysisAsync(string screenshotPath, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ScreenshotAnalysisDeleteV1, new { screenshotPath }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => SendAsync<string>("screenshot.save", new { screenshotPath, destinationPath }, cancellationToken);
+    public Task<OperationResult<string>> SaveScreenshotAsync(string screenshotPath, string destinationPath, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ScreenshotSave, new { screenshotPath, destinationPath }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => SendAsync<string>("screenshot.share", new { screenshotPath, windowHandle }, cancellationToken);
+    public Task<OperationResult<string>> ShareScreenshotAsync(string screenshotPath, long windowHandle, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ScreenshotShare, new { screenshotPath, windowHandle }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.open", null, cancellationToken);
+    public Task<OperationResult<bool>> OpenApplicationLogAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.DiagnosticsLogOpen, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> OpenApplicationLogFolderAsync(CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.open_folder", null, cancellationToken);
+    public Task<OperationResult<bool>> OpenApplicationLogFolderAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.DiagnosticsLogOpenFolder, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken) => SendAsync<bool>("diagnostics.log.share", new { windowHandle }, cancellationToken);
+    public Task<OperationResult<bool>> ShareApplicationLogAsync(long windowHandle, CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.DiagnosticsLogShare, new { windowHandle }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", null, cancellationToken);
+    public Task<OperationResult<string>> OpenScreenshotFolderAsync(CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ScreenshotOpenFolder, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => SendAsync<string>("screenshot.open_folder", new { directory }, cancellationToken);
+    public Task<OperationResult<string>> OpenScreenshotFolderAsync(string directory, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ScreenshotOpenFolder, new { directory }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<ApplicationNotification>>("notifications.drain", null, cancellationToken);
+    public Task<OperationResult<IReadOnlyList<ApplicationNotification>>> DrainApplicationNotificationsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<ApplicationNotification>>(RuntimeOperation.NotificationsDrain, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken) => SendAsync<AiStatus>("ai.status", null, cancellationToken);
+    public Task<OperationResult<AiStatus>> GetAiStatusAsync(CancellationToken cancellationToken) => SendAsync<AiStatus>(RuntimeOperation.AiStatus, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => SendAsync<AiPricingOverview>("ai.pricing.overview", null, cancellationToken, ReportQueryTimeout);
+    public Task<OperationResult<AiPricingOverview>> GetAiPricingOverviewAsync(CancellationToken cancellationToken) => SendAsync<AiPricingOverview>(RuntimeOperation.AiPricingOverview, null, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken) => SendAsync<AiConnectionTestResult>("ai.connection.test", null, cancellationToken, TimeSpan.FromSeconds(35));
+    public Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken) => SendAsync<AiConnectionTestResult>(RuntimeOperation.AiConnectionTest, null, cancellationToken, TimeSpan.FromSeconds(35));
     /// <inheritdoc />
     public Task<OperationResult<AiScreenshotReprocessPlan>> PreviewAiScreenshotReprocessingAsync(
         AiScreenshotReprocessRequest request,
         CancellationToken cancellationToken) =>
-        SendAsync<AiScreenshotReprocessPlan>("ai.screenshot_reprocess.preview.v1", request, cancellationToken, ScreenshotReprocessPreviewTimeout);
+        SendAsync<AiScreenshotReprocessPlan>(RuntimeOperation.AiScreenshotReprocessPreviewV1, request, cancellationToken, ScreenshotReprocessPreviewTimeout);
     /// <inheritdoc />
     public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> StartAiScreenshotReprocessingAsync(Guid planId, CancellationToken cancellationToken) =>
-        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.start.v1", new { planId }, cancellationToken);
+        SendAsync<AiScreenshotReprocessJobSnapshot>(RuntimeOperation.AiScreenshotReprocessStartV1, new { planId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> GetAiScreenshotReprocessingJobAsync(Guid jobId, CancellationToken cancellationToken) =>
-        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.status.v1", new { jobId }, cancellationToken);
+        SendAsync<AiScreenshotReprocessJobSnapshot>(RuntimeOperation.AiScreenshotReprocessStatusV1, new { jobId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> PauseAiScreenshotReprocessingAsync(Guid jobId, CancellationToken cancellationToken) =>
-        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.pause.v1", new { jobId }, cancellationToken);
+        SendAsync<AiScreenshotReprocessJobSnapshot>(RuntimeOperation.AiScreenshotReprocessPauseV1, new { jobId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiScreenshotReprocessJobSnapshot>> ResumeAiScreenshotReprocessingAsync(Guid jobId, CancellationToken cancellationToken) =>
-        SendAsync<AiScreenshotReprocessJobSnapshot>("ai.screenshot_reprocess.resume.v1", new { jobId }, cancellationToken);
+        SendAsync<AiScreenshotReprocessJobSnapshot>(RuntimeOperation.AiScreenshotReprocessResumeV1, new { jobId }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => SendAsync<AiModelCatalogSnapshot>("ai.models", null, cancellationToken);
+    public Task<OperationResult<AiModelCatalogSnapshot>> GetAiModelCatalogAsync(CancellationToken cancellationToken) => SendAsync<AiModelCatalogSnapshot>(RuntimeOperation.AiModels, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => SendAsync<AiStatus>(enabled ? "ai.enable" : "ai.disable", null, cancellationToken);
+    public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => SendAsync<AiStatus>(enabled ? RuntimeOperation.AiEnable : RuntimeOperation.AiDisable, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AppSettings>> ConfigureAiAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>("ai.configure", patch, cancellationToken);
+    public Task<OperationResult<AppSettings>> ConfigureAiAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.AiConfigure, patch, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> SetAiKeyAsync(string keyVariable, string secret, CancellationToken cancellationToken) => SendAsync<string>("ai.key.set", new { keyVariable, secret }, cancellationToken);
+    public Task<OperationResult<string>> SetAiKeyAsync(string keyVariable, string secret, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.AiKeySet, new { keyVariable, secret }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>("ai.analyze", request, cancellationToken);
+    public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>(RuntimeOperation.AiAnalyze, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> GenerateTodayReportAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => SendAsync<string>("report.today", new { outputDirectory, open }, cancellationToken);
+    public Task<OperationResult<string>> GenerateTodayReportAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ReportToday, new { outputDirectory, open }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken) => SendAsync<string>("report.digest", new GenerateDailyDigestRequest(date, open), cancellationToken);
+    public Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ReportDigest, new GenerateDailyDigestRequest(date, open), cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> OpenReportsFolderAsync(CancellationToken cancellationToken) => SendAsync<string>("report.open_folder", null, cancellationToken);
+    public Task<OperationResult<string>> OpenReportsFolderAsync(CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ReportOpenFolder, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<string>> OpenUserInterfaceAsync(CancellationToken cancellationToken) => SendAsync<string>("ui.open", null, cancellationToken);
+    public Task<OperationResult<string>> OpenUserInterfaceAsync(CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.UiOpen, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<IReadOnlyList<PrivacyRule>>> GetPrivacyRulesAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<PrivacyRule>>("privacy.list", null, cancellationToken);
+    public Task<OperationResult<IReadOnlyList<PrivacyRule>>> GetPrivacyRulesAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<PrivacyRule>>(RuntimeOperation.PrivacyList, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<PrivacyRule>> AddPrivacyRuleAsync(string type, string value, CancellationToken cancellationToken) => SendAsync<PrivacyRule>("privacy.add", new { type, value }, cancellationToken);
+    public Task<OperationResult<PrivacyRule>> AddPrivacyRuleAsync(string type, string value, CancellationToken cancellationToken) => SendAsync<PrivacyRule>(RuntimeOperation.PrivacyAdd, new { type, value }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> RemovePrivacyRuleAsync(string id, CancellationToken cancellationToken) => SendAsync<bool>("privacy.remove", new { id }, cancellationToken);
+    public Task<OperationResult<bool>> RemovePrivacyRuleAsync(string id, CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.PrivacyRemove, new { id }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> TestCurrentPrivacyAsync(CancellationToken cancellationToken) => SendAsync<bool>("privacy.test_current", null, cancellationToken);
+    public Task<OperationResult<bool>> TestCurrentPrivacyAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.PrivacyTestCurrent, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<RetentionStatus>> GetRetentionStatusAsync(CancellationToken cancellationToken) => SendAsync<RetentionStatus>("retention.status", null, cancellationToken);
+    public Task<OperationResult<RetentionStatus>> GetRetentionStatusAsync(CancellationToken cancellationToken) => SendAsync<RetentionStatus>(RuntimeOperation.RetentionStatus, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<RetentionPreview>> PreviewRetentionAsync(CancellationToken cancellationToken) => SendAsync<RetentionPreview>("retention.preview", null, cancellationToken);
+    public Task<OperationResult<RetentionPreview>> PreviewRetentionAsync(CancellationToken cancellationToken) => SendAsync<RetentionPreview>(RuntimeOperation.RetentionPreview, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<RetentionPreview>> RunRetentionAsync(RetentionRequest request, CancellationToken cancellationToken) => SendAsync<RetentionPreview>("retention.run", request, cancellationToken);
+    public Task<OperationResult<RetentionPreview>> RunRetentionAsync(RetentionRequest request, CancellationToken cancellationToken) => SendAsync<RetentionPreview>(RuntimeOperation.RetentionRun, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AtomicResetPlan>> PrepareAtomicResetAsync(AtomicResetRequest request, CancellationToken cancellationToken) =>
-        SendAsync<AtomicResetPlan>("app.atomic_reset.v1", request, cancellationToken);
+        SendAsync<AtomicResetPlan>(RuntimeOperation.AppAtomicResetV1, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<PluginInfo>>("plugins.list", null, cancellationToken);
+    public Task<OperationResult<IReadOnlyList<PluginInfo>>> GetPluginsAsync(CancellationToken cancellationToken) => SendAsync<IReadOnlyList<PluginInfo>>(RuntimeOperation.PluginsList, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<PluginInfo>> GetPluginAsync(string id, CancellationToken cancellationToken) => SendAsync<PluginInfo>("plugins.show", new { id }, cancellationToken);
+    public Task<OperationResult<PluginInfo>> GetPluginAsync(string id, CancellationToken cancellationToken) => SendAsync<PluginInfo>(RuntimeOperation.PluginsShow, new { id }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<PluginInfo>> SetPluginEnabledAsync(string id, bool enabled, CancellationToken cancellationToken) => SendAsync<PluginInfo>(enabled ? "plugins.enable" : "plugins.disable", new { id }, cancellationToken);
+    public Task<OperationResult<PluginInfo>> SetPluginEnabledAsync(string id, bool enabled, CancellationToken cancellationToken) => SendAsync<PluginInfo>(enabled ? RuntimeOperation.PluginsEnable : RuntimeOperation.PluginsDisable, new { id }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken) => SendAsync<AppSettings>("settings.get", null, cancellationToken);
+    public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.SettingsGet, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken) => SendAsync<AppSettings>("quick_setup.apply.v1", request, cancellationToken);
+    public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.QuickSetupApplyV1, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>("settings.patch", patch, cancellationToken);
+    public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.SettingsPatch, patch, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState?>("window.state.restore", new { windowKey, windowHandle }, cancellationToken);
+    public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState?>(RuntimeOperation.WindowStateRestore, new { windowKey, windowHandle }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState>("window.state.save", new { windowKey, windowHandle }, cancellationToken);
+    public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState>(RuntimeOperation.WindowStateSave, new { windowKey, windowHandle }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken) => SendAsync<bool>("startup.status", null, cancellationToken);
+    public Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.StartupStatus, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) =>
-        SendAsync<bool>(enabled ? "startup.enable" : "startup.disable", null, cancellationToken, StartupMutationTimeout);
+        SendAsync<bool>(enabled ? RuntimeOperation.StartupEnable : RuntimeOperation.StartupDisable, null, cancellationToken, StartupMutationTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken) => SendAsync<ProductInformation>("product.get", null, cancellationToken);
+    public Task<OperationResult<ProductInformation>> GetProductInformationAsync(CancellationToken cancellationToken) => SendAsync<ProductInformation>(RuntimeOperation.ProductGet, null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<bool>> OpenProductLinkAsync(string linkKey, CancellationToken cancellationToken) => SendAsync<bool>("product.link.open", new { linkKey }, cancellationToken);
+    public Task<OperationResult<bool>> OpenProductLinkAsync(string linkKey, CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.ProductLinkOpen, new { linkKey }, cancellationToken);
     /// <inheritdoc />
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private async Task<OperationResult<T>> SendAsync<T>(
-        string operation,
+        RuntimeOperation operation,
         object? payload,
         CancellationToken cancellationToken,
         TimeSpan? requestTimeout = null)
@@ -811,7 +816,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
         {
             await using var pipe = new NamedPipeClientStream(".", _endpoint.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
             await pipe.ConnectAsync(timeout.Token).ConfigureAwait(false);
-            var request = new RuntimeRequestEnvelope(RuntimeProtocol.ProtocolVersion, Guid.NewGuid(), operation, JsonSerializer.SerializeToElement(payload, RuntimeProtocol.SerializerOptions), null, null);
+            var wireName = RuntimeOperationCatalog.GetWireName(operation);
+            var request = new RuntimeRequestEnvelope(RuntimeProtocol.ProtocolVersion, Guid.NewGuid(), wireName, JsonSerializer.SerializeToElement(payload, RuntimeProtocol.SerializerOptions), null, null);
             await RuntimeProtocol.WriteAsync(pipe, request, timeout.Token).ConfigureAwait(false);
             var response = await RuntimeProtocol.ReadAsync<RuntimeResponseEnvelope>(pipe, timeout.Token).ConfigureAwait(false);
             if (response.ProtocolVersion != RuntimeProtocol.ProtocolVersion)
@@ -828,7 +834,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
         }
         catch (Exception exception)
         {
-            _logger.LogDebug(exception, "Runtime pipe request was unavailable. Operation={Operation}", operation);
+            _logger.LogDebug(
+                exception,
+                "Runtime pipe request was unavailable. Operation={Operation}",
+                RuntimeOperationCatalog.GetWireName(operation));
             return OperationResult<T>.Failure("runtime.unavailable", "RuntimeUnavailable");
         }
     }

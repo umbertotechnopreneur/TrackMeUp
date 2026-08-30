@@ -431,11 +431,33 @@ public sealed class RuntimeProtocolTests
         Assert.Equal("Notification.AiAnalysisFailed.Message", notification.MessageKey);
     }
 
+    /// <summary>Verifies that screenshot-analysis deletion round-trips through protocol version 3.</summary>
+    [Fact]
+    public async Task ScreenshotAnalysisDeletionV1_RoundTripsThroughProtocolVersion3RuntimeFacade()
+    {
+        Assert.Equal(3, RuntimeProtocol.ProtocolVersion);
+        var application = DispatchProxy.Create<ITrackMeUpApplication, ScreenshotAnalysisDeletionRuntimeProxy>();
+        var proxy = (ScreenshotAnalysisDeletionRuntimeProxy)(object)application;
+        var installationId = $"screenshot-analysis-deletion-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+        const string screenshotPath = @"C:\captures\capture.webp";
+
+        var result = await client.DeleteScreenshotAnalysisAsync(screenshotPath, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("screenshot.analysis.deleted", result.Code);
+        Assert.Equal(screenshotPath, result.Value);
+        Assert.Equal(screenshotPath, proxy.ScreenshotPath);
+    }
+
     public class ConcurrentRuntimeProxy : DispatchProxy
     {
         public TaskCompletionSource<bool> ReportStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<bool> ReportCancelled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        /// <inheritdoc />
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             return targetMethod?.Name switch
@@ -444,7 +466,13 @@ public sealed class RuntimeProtocolTests
                 nameof(ITrackMeUpApplication.GetRuntimeHealthAsync) => Task.FromResult(OperationResult<RuntimeHealth>.Success(
                     "runtime.healthy",
                     "RuntimeHealthy",
-                    new RuntimeHealth("test", RuntimeProtocol.ProtocolVersion, "test", true, ["report.query.v1"]))),
+                    new RuntimeHealth(
+                        "test",
+                        RuntimeProtocol.ProtocolVersion,
+                        "test",
+                        true,
+                        ["report.query.v1"],
+                        new TrackingRuntimeHealth(false, null, null, "tracking.persistence.healthy")))),
                 nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
                 "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
                 _ => throw new NotSupportedException(targetMethod?.Name)
@@ -487,7 +515,13 @@ public sealed class RuntimeProtocolTests
             return OperationResult<RuntimeHealth>.Success(
                 "runtime.healthy",
                 "RuntimeHealthy",
-                new RuntimeHealth("test", RuntimeProtocol.ProtocolVersion, "test", true, ["runtime.health"]));
+                new RuntimeHealth(
+                    "test",
+                    RuntimeProtocol.ProtocolVersion,
+                    "test",
+                    true,
+                    ["runtime.health"],
+                    new TrackingRuntimeHealth(false, null, null, "tracking.persistence.healthy")));
         }
     }
 
@@ -651,6 +685,7 @@ public sealed class RuntimeProtocolTests
 
     public class DelayedStartupRuntimeProxy : DispatchProxy
     {
+        /// <inheritdoc />
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             return targetMethod?.Name switch
@@ -658,7 +693,13 @@ public sealed class RuntimeProtocolTests
                 nameof(ITrackMeUpApplication.GetRuntimeHealthAsync) => Task.FromResult(OperationResult<RuntimeHealth>.Success(
                     "runtime.healthy",
                     "RuntimeHealthy",
-                    new RuntimeHealth("test", RuntimeProtocol.ProtocolVersion, "test", true, ["startup.enable"]))),
+                    new RuntimeHealth(
+                        "test",
+                        RuntimeProtocol.ProtocolVersion,
+                        "test",
+                        true,
+                        ["startup.enable"],
+                        new TrackingRuntimeHealth(false, null, null, "tracking.persistence.healthy")))),
                 nameof(ITrackMeUpApplication.SetStartupEnabledAsync) => CompleteStartupAsync((CancellationToken)args![1]!),
                 nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
                 "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
@@ -670,6 +711,32 @@ public sealed class RuntimeProtocolTests
         {
             await Task.Delay(TimeSpan.FromMilliseconds(1500), cancellationToken);
             return OperationResult<bool>.Success("startup.enabled", "StartupEnabled", true);
+        }
+    }
+
+    public class ScreenshotAnalysisDeletionRuntimeProxy : DispatchProxy
+    {
+        public string? ScreenshotPath { get; private set; }
+
+        /// <inheritdoc />
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.DeleteScreenshotAnalysisAsync) => DeleteAnalysis((string)args![0]!),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private Task<OperationResult<string>> DeleteAnalysis(string screenshotPath)
+        {
+            ScreenshotPath = screenshotPath;
+            return Task.FromResult(OperationResult<string>.Success(
+                "screenshot.analysis.deleted",
+                "ScreenshotAnalysisDeleted",
+                screenshotPath));
         }
     }
 

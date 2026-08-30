@@ -89,7 +89,7 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="Sentry.Extensions.Logging" Version="6.7.0" />
+    <PackageReference Include="Sentry.Extensions.Logging" Version="6.9.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
   </ItemGroup>
@@ -105,11 +105,14 @@
 
   <!-- Publish Properties -->
   <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Debug-Unpackaged'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Debug-Unpackaged'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Debug-Unpackaged'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug' and '$(Configuration)' != 'Debug-Unpackaged'">True</PublishTrimmed>
-    <PublishTrimmed Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">False</PublishTrimmed>
+    <!-- ReadyToRun currently produces an unpackaged .NET 10 client whose Windows App SDK
+         auto-initializer cannot resolve System.Environment. Keep it disabled until that
+         toolchain combination is validated on every supported architecture. -->
+    <PublishReadyToRun>False</PublishReadyToRun>
+    <!-- WinUI, the runtime IPC catalog, and persisted settings use runtime JSON type discovery.
+         Keep trimming disabled until those contracts are fully source-generated; a trimmed
+         Release-Unpackaged client otherwise terminates before the main window is created. -->
+    <PublishTrimmed>False</PublishTrimmed>
     <DebugSymbols Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">False</DebugSymbols>
     <DebugType Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">none</DebugType>
     <AppxSymbolPackageEnabled Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">False</AppxSymbolPackageEnabled>
