@@ -195,6 +195,11 @@ public sealed class WorldClockRailSurfaceContractTests
         var usage = rail.Descendants().Single(element => element.Name.LocalName == "DaylightArcControl");
         var details = usage.Parent
             ?? throw new InvalidDataException("The daylight arc must remain inside the expanded details surface.");
+        var eventGrid = details.Elements().Single(element => HasName(element, "CelestialEventGrid"));
+        var eventColumns = eventGrid.Elements().Single(element => element.Name.LocalName == "Grid.ColumnDefinitions").Elements().ToArray();
+        var eventRows = eventGrid.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().ToArray();
+        var eventDivider = eventGrid.Elements().Single(element =>
+            element.Name.LocalName == "Rectangle" && element.Attribute("Grid.RowSpan")?.Value == "3");
         var arcRoot = arc.Descendants().Single(element => HasName(element, "ArcRoot"));
         string[] expectedHourLabels = ["0", "6", "12", "18", "24"];
         var actualHourLabels = arc.Descendants()
@@ -207,8 +212,24 @@ public sealed class WorldClockRailSurfaceContractTests
         Assert.Equal("{Binding SunriseHour}", usage.Attribute("SunriseHour")?.Value);
         Assert.Equal("{Binding SunsetHour}", usage.Attribute("SunsetHour")?.Value);
         Assert.Equal("StackPanel", details.Name.LocalName);
+        Assert.True(HasName(details, "ClockDetails"));
         Assert.Equal("{Binding DetailsVisibility}", details.Attribute("Visibility")?.Value);
-        Assert.Equal("0,9,0,8", details.Attribute("Padding")?.Value);
+        Assert.Equal("0,10,0,10", details.Attribute("Padding")?.Value);
+        Assert.Equal("14,0,14,0", eventGrid.Attribute("Margin")?.Value);
+        Assert.Equal(new[] { "*", "1", "*" }, eventColumns.Select(column => column.Attribute("Width")?.Value));
+        Assert.Equal(3, eventRows.Length);
+        Assert.All(eventRows, row => Assert.Equal("Auto", row.Attribute("Height")?.Value));
+        Assert.Equal("1", eventDivider.Attribute("Grid.Column")?.Value);
+        Assert.Contains(eventGrid.Descendants(), element =>
+            element.Name.LocalName == "TextBlock"
+            && element.Attribute("Grid.Row")?.Value == "1"
+            && element.Attribute("Grid.Column")?.Value == "2"
+            && element.Attribute("Text")?.Value == "{Binding MoonriseText}");
+        Assert.Contains(eventGrid.Descendants(), element =>
+            element.Name.LocalName == "TextBlock"
+            && element.Attribute("Grid.Row")?.Value == "2"
+            && element.Attribute("Grid.Column")?.Value == "2"
+            && element.Attribute("Text")?.Value == "{Binding MoonsetText}");
         var cardContent = details.Parent
             ?? throw new InvalidDataException("The expanded details must remain inside the clock-card content stack.");
         Assert.Equal("0,12,0,13", cardContent.Attribute("Padding")?.Value);

@@ -296,25 +296,91 @@
                                         </Grid>
 
                                         <StackPanel
-                                            Padding="0,9,0,8"
-                                            Spacing="5"
+                                            x:Name="ClockDetails"
+                                            Padding="0,10,0,10"
+                                            Spacing="0"
                                             Visibility="{Binding DetailsVisibility}">
-                                            <Grid ColumnSpacing="10">
+                                            <Grid
+                                                x:Name="CelestialEventGrid"
+                                                Margin="14,0,14,0"
+                                                ColumnSpacing="10"
+                                                RowSpacing="3">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="1" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <StackPanel Spacing="2">
-                                                    <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="#FFFF9B82" Text="{Binding SunDetailTitle}" />
-                                                    <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding SunriseText}" />
-                                                    <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding SunsetText}" />
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Ellipse
+                                                        Width="6"
+                                                        Height="6"
+                                                        VerticalAlignment="Center"
+                                                        AutomationProperties.AccessibilityView="Raw"
+                                                        Fill="#FFFF9B82" />
+                                                    <TextBlock
+                                                        CharacterSpacing="35"
+                                                        FontSize="10"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="#FFFF9B82"
+                                                        MaxLines="2"
+                                                        Text="{Binding SunDetailTitle}"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        TextWrapping="Wrap" />
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="1" Spacing="2">
-                                                    <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="#FF9B94FF" Text="{Binding MoonDetailTitle}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding MoonriseText}" />
-                                                    <TextBlock FontSize="9" Foreground="#D8FFFFFF" Text="{Binding MoonsetText}" />
+                                                <Rectangle
+                                                    Grid.RowSpan="3"
+                                                    Grid.Column="1"
+                                                    Margin="0,1"
+                                                    Fill="#32FFFFFF" />
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                                    <Ellipse
+                                                        Width="6"
+                                                        Height="6"
+                                                        VerticalAlignment="Center"
+                                                        AutomationProperties.AccessibilityView="Raw"
+                                                        Fill="#FF9B94FF" />
+                                                    <TextBlock
+                                                        CharacterSpacing="35"
+                                                        FontSize="10"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="#FF9B94FF"
+                                                        MaxLines="2"
+                                                        Text="{Binding MoonDetailTitle}"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        TextWrapping="Wrap" />
                                                 </StackPanel>
+                                                <TextBlock
+                                                    Grid.Row="1"
+                                                    FontSize="10"
+                                                    Foreground="#E6FFFFFF"
+                                                    Text="{Binding SunriseText}" />
+                                                <TextBlock
+                                                    Grid.Row="2"
+                                                    FontSize="10"
+                                                    Foreground="#CFFFFFFF"
+                                                    Text="{Binding SunsetText}" />
+                                                <TextBlock
+                                                    Grid.Row="1"
+                                                    Grid.Column="2"
+                                                    FontSize="10"
+                                                    Foreground="#E6FFFFFF"
+                                                    Text="{Binding MoonriseText}" />
+                                                <TextBlock
+                                                    Grid.Row="2"
+                                                    Grid.Column="2"
+                                                    FontSize="10"
+                                                    Foreground="#CFFFFFFF"
+                                                    Text="{Binding MoonsetText}" />
                                             </Grid>
+                                            <Rectangle
+                                                Height="1"
+                                                Margin="14,9,14,7"
+                                                Fill="#26FFFFFF" />
                                             <controls:DaylightArcControl
                                                 CurrentHour="{Binding CurrentHour}"
                                                 IsDaylight="{Binding IsDaylight}"
