@@ -85,10 +85,10 @@
 
         <Grid Grid.Row="1" Padding="24,6,24,16">
             <Grid.RowDefinitions>
-                <RowDefinition Height="16" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="18" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -127,7 +127,7 @@
             <TextBlock
                 x:Name="DateRelationText"
                 Grid.Row="3"
-                Margin="0,2,0,0"
+                Margin="0"
                 HorizontalAlignment="Center"
                 FontSize="11"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -137,7 +137,7 @@
             <TextBlock
                 x:Name="DayStateText"
                 Grid.Row="4"
-                Margin="0,12,0,0"
+                Margin="0"
                 HorizontalAlignment="Center"
                 CharacterSpacing="60"
                 FontSize="13"
@@ -210,9 +210,9 @@
                 <StackPanel
                     x:Name="WeatherPanel"
                     MinHeight="62"
-                    Margin="0"
+                    Margin="0,156,0,0"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
+                    VerticalAlignment="Top"
                     Spacing="0">
                     <TextBlock
                         x:Name="WeatherTemperatureText"

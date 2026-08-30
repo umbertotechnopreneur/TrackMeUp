@@ -75,6 +75,11 @@ public sealed partial class WorldClockWindow : Window
         SetTitleBar(HeaderDragRegion);
 
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        if (AppWindowTitleBar.IsCustomizationSupported())
+        {
+            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        }
+
         _placement = new WindowPlacementService(
             _application,
             this,
@@ -140,7 +145,7 @@ public sealed partial class WorldClockWindow : Window
         ToolTipService.SetToolTip(WeatherAttributionButton, weatherAttribution);
         _optionsControl?.ApplyLanguage(_strings);
         _optionsControl?.ApplyState(settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
-        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
+        ApplyThemeChrome();
         if (_snapshot is not null)
         {
             ApplySnapshot(_snapshot);
@@ -1064,37 +1069,34 @@ public sealed partial class WorldClockWindow : Window
         }
     }
 
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
+    private void ApplyThemeChrome()
     {
         if (!AppWindowTitleBar.IsCustomizationSupported())
         {
             return;
         }
 
-        var dark = effectiveTheme == ElementTheme.Dark;
         var titleBar = _appWindow.TitleBar;
         titleBar.BackgroundColor = Colors.Transparent;
         titleBar.InactiveBackgroundColor = Colors.Transparent;
         titleBar.ButtonBackgroundColor = Colors.Transparent;
         titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
+        titleBar.ButtonForegroundColor = ResourceColor(TitleBarButtonForegroundResource);
+        titleBar.ButtonInactiveForegroundColor = ResourceColor(TitleBarButtonInactiveForegroundResource);
+        titleBar.ButtonHoverForegroundColor = ResourceColor(TitleBarButtonHoverForegroundResource);
+        titleBar.ButtonPressedForegroundColor = ResourceColor(TitleBarButtonPressedForegroundResource);
+        titleBar.ButtonHoverBackgroundColor = ResourceColor(TitleBarButtonHoverBackgroundResource);
+        titleBar.ButtonPressedBackgroundColor = ResourceColor(TitleBarButtonPressedBackgroundResource);
     }
+
+    private static Windows.UI.Color ResourceColor(Border resource) =>
+        resource.Background is SolidColorBrush brush
+            ? brush.Color
+            : throw new InvalidOperationException("A world-clock title-bar color resource is not a solid brush.");
 
     private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
     {
-        if (RootGrid.RequestedTheme == ElementTheme.Default)
-        {
-            ApplyThemeChrome(sender.ActualTheme);
-        }
+        ApplyThemeChrome();
 
         if (_snapshot is not null)
         {
