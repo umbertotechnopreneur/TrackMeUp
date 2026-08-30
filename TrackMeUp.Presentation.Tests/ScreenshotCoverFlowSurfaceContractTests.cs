@@ -138,7 +138,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var timelineCardRoot = timeline.Descendants().Single(element => HasName(element, "TimelineCardRoot"));
         var timelineThumbnailVisual = timeline.Descendants().Single(element => HasName(element, "TimelineThumbnailVisual"));
         var timelineThumbnailSlot = timelineCardRoot.Descendants().First(element =>
-            element.Name.LocalName == "RowDefinition" && element.Attribute("Height")?.Value == "114");
+            element.Name.LocalName == "RowDefinition" && element.Attribute("Height")?.Value == "69");
         var timelineImage = timeline.Descendants().Single(element => HasName(element, "TimelineImage"));
         var timelineImageFrame = timelineImage.Ancestors().First(element => element.Name.LocalName == "Border");
         var timelineSelectionGlow = timeline.Descendants().Single(element => HasName(element, "TimelineSelectionGlow"));
@@ -151,7 +151,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             element.Name.LocalName == "TextBlock" && element.Attribute("Text")?.Value == "{Binding TimeText}");
         var filmstripSurface = timeline.Descendants().Single(element =>
             element.Name.LocalName == "Border"
-            && element.Attribute("Background")?.Value == "{ThemeResource AcrylicInAppFillColorBaseBrush}");
+            && element.Attribute("Background")?.Value == "{ThemeResource ScreenshotFilmstripBackdropBrush}");
         var gallerySection = window.Descendants().Single(element => HasName(element, "GallerySection"));
         var detailsPane = window.Descendants().Single(element => HasName(element, "DetailsPane"));
         var markerCanvas = dayOverview.Descendants().Single(element => HasName(element, "MarkerCanvas"));
@@ -199,7 +199,10 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("0", toolbar.Attribute("BorderThickness")?.Value);
         Assert.Equal("1", toolbar.Attribute("Grid.Column")?.Value);
         Assert.Equal("Collapsed", metadataPanel.Attribute("Visibility")?.Value);
-        Assert.DoesNotContain(metadataPanel.Descendants(), element => element.Name.LocalName is "Border" or "ThemeShadow");
+        Assert.Equal(3, metadataPanel.Descendants().Count(element =>
+            element.Name.LocalName == "Border"
+            && element.Attribute("Style")?.Value == "{StaticResource ScreenshotMetadataPillBorderStyle}"));
+        Assert.DoesNotContain(metadataPanel.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Contains(header.Descendants(), element => HasName(element, "MetadataDateValueText"));
         Assert.Contains(header.Descendants(), element => HasName(element, "MetadataTimeValueText"));
         Assert.Contains(header.Descendants(), element => HasName(element, "MetadataAppValueText"));
@@ -216,13 +219,13 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains(timeline.Descendants(), element => HasName(element, "NextTimelineButton"));
         Assert.Contains(timeline.Descendants(), element =>
             element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
-        Assert.Equal("136", timelineCardRoot.Attribute("MinHeight")?.Value);
-        Assert.Equal("176", timelineCardRoot.Attribute("Width")?.Value);
-        Assert.Equal("142", timelineThumbnailVisual.Attribute("Width")?.Value);
-        Assert.Equal("90", timelineThumbnailVisual.Attribute("Height")?.Value);
-        Assert.Equal("71,45,0", timelineThumbnailVisual.Attribute("CenterPoint")?.Value);
-        Assert.Equal("132", timelineImageFrame.Attribute("Width")?.Value);
-        Assert.Equal("80", timelineImageFrame.Attribute("Height")?.Value);
+        Assert.Equal("87", timelineCardRoot.Attribute("MinHeight")?.Value);
+        Assert.Equal("110", timelineCardRoot.Attribute("Width")?.Value);
+        Assert.Equal("88", timelineThumbnailVisual.Attribute("Width")?.Value);
+        Assert.Equal("54", timelineThumbnailVisual.Attribute("Height")?.Value);
+        Assert.Equal("44,27,0", timelineThumbnailVisual.Attribute("CenterPoint")?.Value);
+        Assert.Equal("80", timelineImageFrame.Attribute("Width")?.Value);
+        Assert.Equal("46", timelineImageFrame.Attribute("Height")?.Value);
         Assert.True(
             double.Parse(timelineCardRoot.Attribute("Width")!.Value, CultureInfo.InvariantCulture)
             - (double.Parse(timelineThumbnailVisual.Attribute("Width")!.Value, CultureInfo.InvariantCulture) * 1.2d)
@@ -241,7 +244,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             Assert.Contains(element.Descendants(), child =>
                 child.Name.LocalName == "ScalarTransition"
                 && child.Attribute("Duration")?.Value == "0:0:0.16"));
-        Assert.Equal("11", timelineClockIcon.Attribute("FontSize")?.Value);
+        Assert.Equal("10", timelineClockIcon.Attribute("FontSize")?.Value);
         Assert.Equal("{Binding InstallationBrush}", timelineInstallationBadge.Attribute("Background")?.Value);
         Assert.Equal("{Binding InstallationGlyph}", timelineInstallationIcon.Attribute("Glyph")?.Value);
         Assert.Equal("Raw", timelineInstallationIcon.Attribute("AutomationProperties.AccessibilityView")?.Value);
@@ -249,13 +252,13 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("InstallationAppearance.GetIconGlyph(installation.Icon)", timelineSource, StringComparison.Ordinal);
         Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", timelineClockIcon.Attribute("Foreground")?.Value);
         Assert.Equal("Raw", timelineClockIcon.Attribute("AutomationProperties.AccessibilityView")?.Value);
-        Assert.Equal("12", timelineTimeText.Attribute("FontSize")?.Value);
+        Assert.Equal("11", timelineTimeText.Attribute("FontSize")?.Value);
         Assert.Equal("Normal", timelineTimeText.Attribute("FontWeight")?.Value);
         Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", timelineTimeText.Attribute("Foreground")?.Value);
         Assert.DoesNotContain(timeline.Descendants(), element => element.Attribute("Text")?.Value == "{Binding DateText}");
         Assert.Contains(timeline.Descendants(), element => HasName(element, "TimelineContainerRoot"));
         Assert.DoesNotContain(timeline.Descendants(), element => HasName(element, "FilmstripPanel"));
-        Assert.Equal("168", filmstripStrip.Attribute("Height")?.Value);
+        Assert.Equal("112", filmstripStrip.Attribute("Height")?.Value);
         Assert.Equal("1", filmstripStrip.Attribute("Opacity")?.Value);
         Assert.NotNull(filmstripSurface);
         Assert.Null(gallerySection.Attribute("Grid.RowSpan"));

@@ -19,8 +19,9 @@
 
             <Style x:Key="ScreenshotDetailSectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="45" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
@@ -34,14 +35,14 @@
             <Style x:Key="ScreenshotDetailValueStyle" TargetType="TextBlock">
                 <Setter Property="Margin" Value="0,2,0,0" />
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Setter Property="IsTextSelectionEnabled" Value="True" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
             <Style x:Key="ScreenshotDetailRowStyle" TargetType="Border">
-                <Setter Property="MinHeight" Value="58" />
-                <Setter Property="Padding" Value="0,11" />
+                <Setter Property="MinHeight" Value="52" />
+                <Setter Property="Padding" Value="0,9" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="0,0,0,1" />
@@ -55,24 +56,32 @@
         HorizontalScrollMode="Disabled"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
-        <StackPanel Padding="24,22,24,28" Spacing="18">
-            <Grid ColumnSpacing="15">
+        <StackPanel Padding="22,18,22,24" Spacing="14">
+            <TextBlock
+                FontSize="12"
+                FontWeight="SemiBold"
+                CharacterSpacing="90"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Tag="Screenshots.Details.Title"
+                Text="Snapshot details" />
+
+            <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="72" />
+                    <ColumnDefinition Width="54" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Border
-                    Width="68"
-                    Height="68"
+                    Width="50"
+                    Height="50"
                     VerticalAlignment="Center"
                     BorderBrush="{ThemeResource ScreenshotDetailAccentBrush}"
-                    BorderThickness="4"
-                    CornerRadius="34">
+                    BorderThickness="3"
+                    CornerRadius="25">
                     <TextBlock
                         x:Name="ActivityIndexValueText"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        FontSize="28"
+                        FontSize="20"
                         FontWeight="SemiBold"
                         Foreground="{ThemeResource ScreenshotDetailAccentBrush}"
                         Text="--" />
@@ -83,14 +92,14 @@
                         Tag="Screenshots.Details.Summary"
                         Text="Activity summary" />
                     <TextBlock
-                        FontSize="13"
+                        FontSize="12"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Tag="Screenshots.ActivityIndex.Description"
                         Text="Input activity near this capture"
                         TextWrapping="Wrap" />
                     <TextBlock
                         x:Name="CapturedAtSummaryText"
-                        FontSize="13"
+                        FontSize="12"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Text="--"
                         TextTrimming="CharacterEllipsis" />

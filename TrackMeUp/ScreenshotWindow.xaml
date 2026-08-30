@@ -20,10 +20,10 @@
                     <ResourceDictionary x:Key="Light">
                         <AcrylicBrush
                             x:Key="ScreenshotSidebarBackdropBrush"
-                            FallbackColor="#EEF5F7F8"
-                            TintColor="#FFF8FBFD"
-                            TintLuminosityOpacity="0.20"
-                            TintOpacity="0.07" />
+                            FallbackColor="#EAF4F7FA"
+                            TintColor="#FFF7FAFC"
+                            TintLuminosityOpacity="0.16"
+                            TintOpacity="0.05" />
                         <LinearGradientBrush x:Key="ScreenshotSidebarBorderBrush" StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#9AFFFFFF" Offset="0" />
                             <GradientStop Color="#28717A84" Offset="1" />
@@ -33,10 +33,10 @@
                     <ResourceDictionary x:Key="Dark">
                         <AcrylicBrush
                             x:Key="ScreenshotSidebarBackdropBrush"
-                            FallbackColor="#F0181D24"
-                            TintColor="#FF10151B"
-                            TintLuminosityOpacity="0.26"
-                            TintOpacity="0.15" />
+                            FallbackColor="#E8141920"
+                            TintColor="#FF0E1319"
+                            TintLuminosityOpacity="0.22"
+                            TintOpacity="0.12" />
                         <LinearGradientBrush x:Key="ScreenshotSidebarBorderBrush" StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#58FFFFFF" Offset="0" />
                             <GradientStop Color="#16FFFFFF" Offset="1" />
@@ -52,9 +52,10 @@
 
                 <Style x:Key="ScreenshotTitleTextStyle" TargetType="TextBlock">
                     <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
-                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="FontSize" Value="13" />
                     <Setter Property="FontWeight" Value="SemiBold" />
-                    <Setter Property="LineHeight" Value="22" />
+                    <Setter Property="CharacterSpacing" Value="70" />
+                    <Setter Property="LineHeight" Value="18" />
                     <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
                 </Style>
             </ResourceDictionary>
@@ -65,7 +66,7 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="52" />
+            <RowDefinition Height="48" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -76,16 +77,28 @@
         <Border
             x:Name="TitleBarDragRegion"
             Grid.ColumnSpan="2"
-            Height="52"
-            Padding="32,0,180,0"
+            Height="48"
+            Padding="16,0,180,0"
             Background="Transparent"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
-            <TextBlock
+            <StackPanel
                 VerticalAlignment="Center"
-                Style="{StaticResource ScreenshotTitleTextStyle}"
-                Tag="Screenshots.Caption"
-                Text="Captured moments" />
+                Orientation="Horizontal"
+                Spacing="10">
+                <Image
+                    Width="22"
+                    Height="22"
+                    AutomationProperties.AccessibilityView="Raw"
+                    IsHitTestVisible="False"
+                    Source="ms-appx:///Assets/TrackMeUpSquare44Logo.png" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False"
+                    Style="{StaticResource ScreenshotTitleTextStyle}"
+                    Tag="Screenshots.Caption"
+                    Text="Captured moments" />
+            </StackPanel>
         </Border>
 
         <controls:TimedInfoBar
@@ -98,32 +111,34 @@
             x:Name="GallerySection"
             Grid.Row="4"
             Grid.Column="0"
-            Margin="40,12,40,14" />
+            Margin="32,0,32,14" />
 
         <controls:ScreenshotHeaderControl
             x:Name="HeaderSection"
             Grid.Row="2"
             Grid.Column="0"
-            Margin="48,16,48,0" />
+            Margin="36,16,36,10" />
 
         <controls:ScreenshotDayOverviewControl
             x:Name="DayOverviewSection"
             Grid.Row="3"
             Grid.Column="0"
-            Margin="48,8,48,0" />
+            Margin="0"
+            Visibility="Collapsed" />
 
         <controls:ScreenshotTimelineControl
             x:Name="TimelineSection"
             Grid.Row="5"
             Grid.ColumnSpan="2"
+            Canvas.ZIndex="2"
             Margin="0" />
 
         <Border
             x:Name="DetailsPane"
-            Grid.Row="0"
-            Grid.RowSpan="6"
+            Grid.Row="2"
+            Grid.RowSpan="3"
             Grid.Column="1"
-            Width="380"
+            Width="340"
             Margin="0"
             Background="{ThemeResource ScreenshotSidebarBackdropBrush}"
             BorderBrush="{ThemeResource ScreenshotSidebarBorderBrush}"
@@ -137,7 +152,9 @@
                 </TransitionCollection>
             </Border.Transitions>
             <Grid>
-                <controls:ScreenshotDetailsControl x:Name="DetailsSection" />
+                <controls:ScreenshotDetailsControl
+                    x:Name="DetailsSection"
+                    Margin="0,12,0,12" />
                 <controls:HorizontalResizeGrip
                     x:Name="DetailsResizeGrip"
                     Width="12"

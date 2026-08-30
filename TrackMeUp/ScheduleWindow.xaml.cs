@@ -13,8 +13,8 @@ namespace TrackMeUp;
 /// <summary>Collects screenshot scheduling input in a detached themed window.</summary>
 public sealed partial class ScheduleWindow : Window
 {
-    private const int LogicalWindowWidth = 860;
-    private const int LogicalWindowHeight = 700;
+    private const int LogicalWindowWidth = 900;
+    private const int LogicalWindowHeight = 620;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
     private readonly WindowPlacementService _placement;
@@ -22,6 +22,7 @@ public sealed partial class ScheduleWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly MicaDialogService _dialogs;
     private LocalizationService _strings;
+    private string _theme;
     private XamlRoot? _xamlRoot;
 
     /// <summary>Occurs after the user confirms a valid screenshot schedule.</summary>
@@ -40,10 +41,12 @@ public sealed partial class ScheduleWindow : Window
         _application = application;
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _strings = new LocalizationService(uiLanguage);
+        _theme = theme;
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Schedule, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ApplyTheme(theme);
         ApplyLanguage(uiLanguage);
@@ -56,12 +59,14 @@ public sealed partial class ScheduleWindow : Window
     /// <summary>Applies the active application theme to the detached schedule editor.</summary>
     public void ApplyTheme(string theme)
     {
+        _theme = theme;
         RootGrid.RequestedTheme = theme switch
         {
             "light" => ElementTheme.Light,
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
+        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
     }
 
     /// <summary>Applies localized labels to schedule-specific commands and confirmations.</summary>
@@ -70,6 +75,8 @@ public sealed partial class ScheduleWindow : Window
         _strings = new LocalizationService(uiLanguage);
         Title = _strings.Translate("Schedule.WindowTitle");
         UiLocalization.Apply(RootGrid, _strings);
+        IntervalNumberBox.Header = null;
+        AutomationProperties.SetName(IntervalNumberBox, _strings.Translate("Schedule.Interval.Value.Header"));
         WorkingHoursEditor.ApplyLanguage(uiLanguage);
         AutomationProperties.SetName(StandardWorkWeekButton, _strings.Translate("Schedule.Preset.WorkWeek.Accessible"));
         AutomationProperties.SetName(ClearAllHoursButton, _strings.Translate("Schedule.ClearAll.Accessible"));
@@ -128,10 +135,44 @@ public sealed partial class ScheduleWindow : Window
         }
     }
 
+    private void ApplyThemeChrome(ElementTheme effectiveTheme)
+    {
+        if (!AppWindowTitleBar.IsCustomizationSupported())
+        {
+            return;
+        }
+
+        var dark = effectiveTheme == ElementTheme.Dark;
+        var titleBar = _appWindow.TitleBar;
+        titleBar.BackgroundColor = Colors.Transparent;
+        titleBar.InactiveBackgroundColor = Colors.Transparent;
+        titleBar.ButtonBackgroundColor = Colors.Transparent;
+        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
+        titleBar.ButtonInactiveForegroundColor = dark
+            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
+        titleBar.ButtonHoverBackgroundColor = dark
+            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
+        titleBar.ButtonPressedBackgroundColor = dark
+            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
+    }
+
+    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
+    {
+        if (_theme == "system")
+        {
+            ApplyThemeChrome(sender.ActualTheme);
+        }
+    }
+
     private async void ScheduleWindow_Closed(object sender, WindowEventArgs args)
     {
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
+        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
         _lifetimeCancellation.Cancel();
         if (_xamlRoot is not null)
         {

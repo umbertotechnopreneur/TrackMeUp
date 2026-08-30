@@ -99,7 +99,11 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("active_hours.", optionsSource, StringComparison.Ordinal);
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelInfoCard") && element.Attribute("CornerRadius")?.Value == "6");
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelAccentBar") && element.Attribute("CornerRadius")?.Value == "2");
-        Assert.Equal(3, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
+        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
+        Assert.Contains(options.Descendants(), element => HasName(element, "OptionsColumnsGrid"));
+        Assert.Contains(options.Descendants(), element => HasName(element, "OptionsSecondaryColumn") && element.Attribute("Width")?.Value == "0");
+        Assert.Contains(options.Descendants(), element =>
+            element.Name.LocalName == "AdaptiveTrigger" && element.Attribute("MinWindowWidth")?.Value == "560");
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "Border" && element.Attribute("Padding")?.Value == "0,10,18,0");
         var openFolderButton = options.Descendants().Single(element => HasName(element, "OpenScreenshotFolderButton"));
         Assert.Null(openFolderButton.Attribute("Content"));
@@ -174,15 +178,15 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Equal("Transparent", moreButton.Attribute("Background")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
-        Assert.Equal("5", searchButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("6", searchButton.Attribute("Grid.Column")?.Value);
         Assert.Equal("TitleBarSearchButton_Click", searchButton.Attribute("Click")?.Value);
         Assert.Contains(searchButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE721");
-        Assert.Equal("6", reportButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("7", reportButton.Attribute("Grid.Column")?.Value);
         Assert.Null(reportButton.Attribute("Margin"));
         Assert.Equal("TitleBarReportButton_Click", reportButton.Attribute("Click")?.Value);
         Assert.Contains(reportButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE9F9");
         Assert.Equal("Collapsed", reportButton.Attribute("Visibility")?.Value);
-        Assert.Equal("7", minimizeToTrayButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("8", minimizeToTrayButton.Attribute("Grid.Column")?.Value);
         Assert.Null(minimizeToTrayButton.Attribute("Margin"));
         Assert.Equal("MinimizeToTrayButton_Click", minimizeToTrayButton.Attribute("Click")?.Value);
         Assert.Equal("Main.Menu.MinimizeToTray", minimizeToTrayButton.Attribute("Tag")?.Value);
@@ -190,7 +194,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Minimize to notification area", minimizeToTrayButton.Attribute("ToolTipService.ToolTip")?.Value);
         Assert.Equal("Collapsed", minimizeToTrayButton.Attribute("Visibility")?.Value);
         Assert.Contains(minimizeToTrayButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE921");
-        Assert.Equal("4", moreButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("5", moreButton.Attribute("Grid.Column")?.Value);
         Assert.Null(moreButton.Attribute("Margin"));
         Assert.Contains(
             moreButton.Descendants(),
@@ -380,8 +384,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("AppBarToggleButton", detailsToggle.Name.LocalName);
         Assert.Equal("DetailsToggleButton_Click", detailsToggle.Attribute("Click")?.Value);
         Assert.Equal("Collapsed", detailsPane.Attribute("Visibility")?.Value);
-        Assert.Equal("0", detailsPane.Attribute("Grid.Row")?.Value);
-        Assert.Equal("6", detailsPane.Attribute("Grid.RowSpan")?.Value);
+        Assert.Equal("2", detailsPane.Attribute("Grid.Row")?.Value);
+        Assert.Equal("3", detailsPane.Attribute("Grid.RowSpan")?.Value);
         Assert.Equal("{ThemeResource ScreenshotSidebarBackdropBrush}", detailsPane.Attribute("Background")?.Value);
         Assert.Equal("{ThemeResource ScreenshotSidebarBorderBrush}", detailsPane.Attribute("BorderBrush")?.Value);
         Assert.Equal("1,0,0,0", detailsPane.Attribute("BorderThickness")?.Value);
@@ -424,7 +428,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("[\"screenshots.details_pane_open\"] = isVisible ? \"true\" : \"false\"", source, StringComparison.Ordinal);
         Assert.Contains(header.Descendants(), element =>
             HasName(element, "ExtendedDateText")
-            && element.Attribute("FontSize")?.Value == "34"
+            && element.Attribute("FontSize")?.Value == "24"
             && element.Attribute("FontWeight")?.Value == "SemiLight");
         Assert.Equal("CommandBar", toolbar.Name.LocalName);
         Assert.Equal("1", toolbar.Attribute("Grid.Column")?.Value);
@@ -619,8 +623,10 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
-        Assert.Contains("RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowWidth = 470;", source, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowWidth = 600;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalExpandedWindowWidth = 760;", source, StringComparison.Ordinal);
+        Assert.Contains("_layoutState.Surface == MainWindowSurface.Player", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeightPadding = 20;", source, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.ApplyPlayerWindowChrome", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DwmSetWindowAttribute(", source, StringComparison.Ordinal);

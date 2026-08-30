@@ -32,7 +32,8 @@ public sealed partial class MainWindow : Window
 {
     #region Fields
 
-    private const int LogicalWindowWidth = 470;
+    private const int LogicalWindowWidth = 600;
+    private const int LogicalExpandedWindowWidth = 760;
     private const int LogicalWindowHeightPadding = 20;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
@@ -167,6 +168,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         _placement = new WindowPlacementService(
             application,
             this,
@@ -184,13 +186,7 @@ public sealed partial class MainWindow : Window
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
         }
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        }
+        ApplyThemeChrome(RootGrid.ActualTheme);
         ApplyBorderlessPlayerWindow();
         ResizeForLogicalContent(_layoutState.LogicalHeight);
 
@@ -270,6 +266,7 @@ public sealed partial class MainWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
+        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
 
         // Reapplying the persisted choice repairs stale paths and removes stale disabled registrations.
         var startupResult = await _application.SetStartupEnabledAsync(
@@ -1000,6 +997,9 @@ public sealed partial class MainWindow : Window
             case Windows.System.VirtualKey.G:
                 RequestScreenshotGallery();
                 break;
+            case Windows.System.VirtualKey.S:
+                _ = OpenScheduleWindowAsync();
+                break;
             case Windows.System.VirtualKey.O:
                 ShowOptionsPanel();
                 break;
@@ -1318,7 +1318,13 @@ public sealed partial class MainWindow : Window
         panel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(surface);
         TitleBarBackButton.Visibility = Visibility.Visible;
+        TitleBarLogo.Visibility = Visibility.Collapsed;
+        TitleBarTitleText.Text = T(surface == MainWindowSurface.Options
+            ? "Options.Title"
+            : "Main.Menu.Operations").ToUpper(_strings.Culture);
+        TitleBarSearchButton.Visibility = Visibility.Collapsed;
         ResizeForCurrentLayout(animate: false);
+        _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         FadeIn(panel);
         QueueTitleBarLayoutUpdate();
     }
@@ -1332,7 +1338,11 @@ public sealed partial class MainWindow : Window
         _layoutState.ShowSurface(MainWindowSurface.Player);
         WorldClockButton.Visibility = Visibility.Visible;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
+        TitleBarLogo.Visibility = Visibility.Visible;
+        TitleBarTitleText.Text = "TRACK ME UP";
+        TitleBarSearchButton.Visibility = Visibility.Visible;
         ResizeForCurrentLayout(animate: false);
+        _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         FadeIn(PlayerPanel);
         QueueTitleBarLayoutUpdate();
     }
@@ -1357,10 +1367,10 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Measures the active XAML surface at the flyout width and applies the resulting window height.</summary>
+    /// <summary>Measures the active XAML surface at its presentation width and applies the resulting window height.</summary>
     private void ResizeForCurrentLayout(bool animate)
     {
-        RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));
+        RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));
         var logicalHeight = _layoutState.RecordMeasuredHeight(RootGrid.DesiredSize.Height);
         if (animate && RootGrid.IsLoaded)
         {
@@ -1709,6 +1719,7 @@ public sealed partial class MainWindow : Window
         }
 
         RootGrid.RequestedTheme = _theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
         _scheduleWindow?.ApplyTheme(_theme);
         _scheduleWindow?.ApplyLanguage(settings.UiLanguage);
         var indexingTheme = RootGrid.RequestedTheme == ElementTheme.Default
@@ -1957,6 +1968,8 @@ public sealed partial class MainWindow : Window
 
         ResizeForCurrentLayout(animate: false);
         _mainPlacementRestored = await _placement.RestoreAsync(RootGrid, CancellationToken.None);
+        ResizeForCurrentLayout(animate: false);
+        _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         _currentWorkArea = CurrentWorkArea();
         _rootLoaded.TrySetResult();
         FadeIn(PlayerPanel);
@@ -2100,10 +2113,48 @@ public sealed partial class MainWindow : Window
         var availableWidth = Math.Max(1, workArea.Width - (physicalMargin * 2));
         var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
         var boundedLogicalHeight = _layoutState.ResolveLogicalHeight(availableHeight / scale, LogicalWindowHeightPadding);
-        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
+        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(CurrentLogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(boundedLogicalHeight * scale));
         return new SizeInt32(physicalWidth, physicalHeight);
     }
+
+    private void ApplyThemeChrome(ElementTheme effectiveTheme)
+    {
+        if (!AppWindowTitleBar.IsCustomizationSupported())
+        {
+            return;
+        }
+
+        var dark = effectiveTheme == ElementTheme.Dark;
+        var titleBar = _appWindow.TitleBar;
+        titleBar.BackgroundColor = Colors.Transparent;
+        titleBar.InactiveBackgroundColor = Colors.Transparent;
+        titleBar.ButtonBackgroundColor = Colors.Transparent;
+        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
+        titleBar.ButtonInactiveForegroundColor = dark
+            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
+        titleBar.ButtonHoverBackgroundColor = dark
+            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
+        titleBar.ButtonPressedBackgroundColor = dark
+            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
+            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
+    }
+
+    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
+    {
+        if (_theme == "system")
+        {
+            ApplyThemeChrome(sender.ActualTheme);
+        }
+    }
+
+    /// <summary>Keeps the live player compact while giving layered options and operations enough room to reflow.</summary>
+    private int CurrentLogicalWindowWidth => _layoutState.Surface == MainWindowSurface.Player
+        ? LogicalWindowWidth
+        : LogicalExpandedWindowWidth;
 
     /// <summary>Places the player at the selected visual anchor.</summary>
     private void ApplyFlyoutPosition(string position)
@@ -2139,6 +2190,7 @@ public sealed partial class MainWindow : Window
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
         _appWindow.Closing -= AppWindow_Closing;
+        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
         _placement.Dispose();
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();

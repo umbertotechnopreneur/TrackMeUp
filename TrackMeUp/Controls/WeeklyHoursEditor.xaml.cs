@@ -13,8 +13,9 @@ namespace TrackMeUp.Controls;
 public sealed partial class WeeklyHoursEditor : UserControl
 {
     private const int SlotsPerDay = 48;
-    private const double SlotWidth = 14d;
-    private const double SlotHeight = 28d;
+    private const double TimeLabelWidth = 64d;
+    private const double DayColumnWidth = 96d;
+    private const double SlotHeight = 6.5d;
     private static IReadOnlyList<string> Days => ActiveHoursSchedule.Days;
     private readonly Dictionary<string, ToggleButton[]> _daySlots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TextBlock> _dayLabels = new(StringComparer.Ordinal);
@@ -93,42 +94,53 @@ public sealed partial class WeeklyHoursEditor : UserControl
         var slotStyle = Resources["ScheduleSlotStyle"] as Style
             ?? throw new InvalidOperationException("The schedule slot style is required.");
 
-        foreach (var day in Days)
+        for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
         {
-            var row = new Grid { ColumnSpacing = 0, Height = SlotHeight };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SlotsPerDay * SlotWidth) });
-
+            var day = Days[dayIndex];
             var label = new TextBlock
             {
-                Margin = new Thickness(0, 0, 8, 0),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                TextAlignment = TextAlignment.Right,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Text = _strings.Culture.DateTimeFormat.GetDayName(
-                    Enum.Parse<DayOfWeek>(day, ignoreCase: true))
+                CharacterSpacing = 80,
+                FontSize = 11,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Text = _strings.Culture.DateTimeFormat.GetAbbreviatedDayName(
+                        Enum.Parse<DayOfWeek>(day, ignoreCase: true))
+                    .TrimEnd('.')
+                    .ToUpper(_strings.Culture)
             };
             _dayLabels.Add(day, label);
-            row.Children.Add(label);
+            Grid.SetColumn(label, dayIndex + 1);
+            DaysHeaderHost.Children.Add(label);
+            _daySlots.Add(day, new ToggleButton[SlotsPerDay]);
+        }
 
-            var slotsGrid = new Grid
+        for (var slot = 0; slot < SlotsPerDay; slot++)
+        {
+            DaysHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(SlotHeight) });
+            if (slot % 4 == 0)
             {
-                Width = SlotsPerDay * SlotWidth,
-                Height = SlotHeight,
-                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent)
-            };
-            for (var column = 0; column < SlotsPerDay; column++)
-            {
-                slotsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SlotWidth) });
+                var timeLabel = new TextBlock
+                {
+                    Margin = new Thickness(0, 0, 10, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    TextAlignment = TextAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    FontSize = 9,
+                    Opacity = 0.7,
+                    Text = CreateSlotLabel(slot)
+                };
+                Grid.SetRow(timeLabel, slot);
+                DaysHost.Children.Add(timeLabel);
             }
 
-            Grid.SetColumn(slotsGrid, 1);
-            var slots = new ToggleButton[SlotsPerDay];
-            for (var slot = 0; slot < SlotsPerDay; slot++)
+            for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
             {
+                var day = Days[dayIndex];
                 var button = new ToggleButton
                 {
-                    Width = SlotWidth,
+                    Width = DayColumnWidth,
                     Height = SlotHeight,
                     Padding = new Thickness(0),
                     Margin = new Thickness(0),
@@ -137,14 +149,11 @@ public sealed partial class WeeklyHoursEditor : UserControl
                     Style = slotStyle,
                     Tag = slot
                 };
-                slots[slot] = button;
-                Grid.SetColumn(button, slot);
-                slotsGrid.Children.Add(button);
+                _daySlots[day][slot] = button;
+                Grid.SetColumn(button, dayIndex + 1);
+                Grid.SetRow(button, slot);
+                DaysHost.Children.Add(button);
             }
-
-            _daySlots.Add(day, slots);
-            row.Children.Add(slotsGrid);
-            DaysHost.Children.Add(row);
         }
     }
 
@@ -184,8 +193,8 @@ public sealed partial class WeeklyHoursEditor : UserControl
     private bool TryGetSlot(PointerRoutedEventArgs e, out ToggleButton slot)
     {
         var position = e.GetCurrentPoint(DaysHost).Position;
-        var dayIndex = (int)Math.Floor(position.Y / SlotHeight);
-        var slotIndex = (int)Math.Floor((position.X - 64d) / SlotWidth);
+        var dayIndex = (int)Math.Floor((position.X - TimeLabelWidth) / DayColumnWidth);
+        var slotIndex = (int)Math.Floor(position.Y / SlotHeight);
         if (dayIndex < 0 || dayIndex >= Days.Count || slotIndex < 0 || slotIndex >= SlotsPerDay)
         {
             slot = null!;
@@ -265,8 +274,11 @@ public sealed partial class WeeklyHoursEditor : UserControl
     {
         foreach (var day in Days)
         {
-            var dayName = _strings.Culture.DateTimeFormat.GetDayName(Enum.Parse<DayOfWeek>(day, ignoreCase: true));
-            _dayLabels[day].Text = dayName;
+            var dayOfWeek = Enum.Parse<DayOfWeek>(day, ignoreCase: true);
+            var dayName = _strings.Culture.DateTimeFormat.GetDayName(dayOfWeek);
+            _dayLabels[day].Text = _strings.Culture.DateTimeFormat.GetAbbreviatedDayName(dayOfWeek)
+                .TrimEnd('.')
+                .ToUpper(_strings.Culture);
             for (var slot = 0; slot < SlotsPerDay; slot++)
             {
                 AutomationProperties.SetName(

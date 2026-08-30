@@ -4,53 +4,146 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
-        <Style x:Key="ScheduleSlotStyle" TargetType="ToggleButton">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="MinWidth" Value="0" />
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ScheduleSlotInactiveBrush" Color="#52726C91" />
+                    <SolidColorBrush x:Key="ScheduleTimeAxisBrush" Color="#1C000000" />
+                    <SolidColorBrush x:Key="ScheduleWeekendColumnBrush" Color="#0EDB4B32" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="ScheduleSlotInactiveBrush" Color="#789E97C9" />
+                    <SolidColorBrush x:Key="ScheduleTimeAxisBrush" Color="#2AFFFFFF" />
+                    <SolidColorBrush x:Key="ScheduleWeekendColumnBrush" Color="#16FF6B4F" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="ScheduleSlotInactiveBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ScheduleTimeAxisBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <SolidColorBrush x:Key="ScheduleWeekendColumnBrush" Color="Transparent" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <Style x:Key="ScheduleSlotStyle" TargetType="ToggleButton">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Grid Background="Transparent">
+                                <Ellipse
+                                    x:Name="SlotDot"
+                                    Width="4.5"
+                                    Height="4.5"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Fill="{ThemeResource ScheduleSlotInactiveBrush}" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CheckStates">
+                                        <VisualState x:Name="Unchecked" />
+                                        <VisualState x:Name="Checked">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="SlotDot" Storyboard.TargetProperty="Fill">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                                <DoubleAnimation Storyboard.TargetName="SlotDot" Storyboard.TargetProperty="Width" Duration="0" To="6" />
+                                                <DoubleAnimation Storyboard.TargetName="SlotDot" Storyboard.TargetProperty="Height" Duration="0" To="6" />
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Indeterminate">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="SlotDot" Storyboard.TargetProperty="Fill">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource AccentFillColorSecondaryBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
-    <StackPanel Spacing="10">
-        <Grid ColumnSpacing="0">
+
+    <StackPanel Spacing="7">
+        <Grid
+            x:Name="DaysHeaderHost"
+            Width="736"
+            Height="28"
+            HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="64" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="96" />
             </Grid.ColumnDefinitions>
             <TextBlock
-                Margin="0,0,8,0"
+                Margin="0,0,10,0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
-                FontSize="12"
+                FontSize="10"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Tag="Schedule.Week.Day"
-                Text="Day" />
-            <Grid Grid.Column="1" Width="672" ColumnSpacing="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="00" />
-                <TextBlock Grid.Column="1" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="06" />
-                <TextBlock Grid.Column="2" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="12" />
-                <TextBlock Grid.Column="3" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="18" />
-                <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="24" />
-            </Grid>
+                Text="00–24" />
         </Grid>
+
+        <Border Width="736" Height="1" HorizontalAlignment="Left" Background="{ThemeResource ScheduleTimeAxisBrush}" />
+
         <ScrollViewer
-            HorizontalScrollBarVisibility="Auto"
-            HorizontalScrollMode="Enabled"
-            VerticalScrollBarVisibility="Disabled"
-            VerticalScrollMode="Disabled">
-            <StackPanel x:Name="DaysHost" Spacing="0" />
+            MaxHeight="312"
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Enabled">
+            <Grid Width="736" Height="312" HorizontalAlignment="Left">
+                <Grid IsHitTestVisible="False">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="1" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
+                    <Border Grid.Column="2" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
+                    <Border Grid.Column="3" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
+                    <Border Grid.Column="4" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
+                    <Border Grid.Column="5" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
+                    <Border Grid.Column="6" Background="{ThemeResource ScheduleWeekendColumnBrush}" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
+                    <Border Grid.Column="7" Background="{ThemeResource ScheduleWeekendColumnBrush}" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,1,0" />
+                </Grid>
+                <Grid
+                    x:Name="DaysHost"
+                    Width="736"
+                    Height="312"
+                    Background="Transparent">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="64" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
+                    </Grid.ColumnDefinitions>
+                </Grid>
+            </Grid>
         </ScrollViewer>
+
         <TextBlock
+            Margin="64,0,0,0"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             Style="{StaticResource CaptionTextBlockStyle}"
             Tag="Schedule.Week.Instructions"

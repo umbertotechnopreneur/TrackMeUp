@@ -4,10 +4,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:TrackMeUp.Controls">
-    <Grid x:Name="GallerySurface" MinHeight="320" Background="Transparent">
+    <Grid x:Name="GallerySurface" MinHeight="360" Background="Transparent">
         <controls:ScreenshotImageViewerControl
             x:Name="ImageViewer"
-            MinHeight="300" />
+            MinHeight="340" />
 
         <Grid x:Name="EmptyGalleryPanel" Background="Transparent" Visibility="Collapsed">
             <StackPanel
