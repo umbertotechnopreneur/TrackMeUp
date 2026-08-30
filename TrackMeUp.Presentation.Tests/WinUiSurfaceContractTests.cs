@@ -505,7 +505,7 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void DetachedWindowsAndDialogs_UseSharedWindowPlacementService()
+    public void DetachedWindows_UseSharedWindowPlacementService()
     {
         var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
         var reports = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
@@ -515,7 +515,6 @@ public sealed class WinUiSurfaceContractTests
         var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
         var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
         var searchIndexing = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchIndexingWindow.xaml.cs"));
-        var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
         var core = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "WindowStateService.cs"));
 
         Assert.Contains("RestoreWindowStateAsync", placement, StringComparison.Ordinal);
@@ -536,7 +535,6 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("WindowStateKeys.About", about, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Schedule", schedule, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.SearchIndexing", searchIndexing, StringComparison.Ordinal);
-        Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Screenshots => new(760, 540)", core, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", reports, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", worldClocks, StringComparison.Ordinal);
@@ -560,7 +558,6 @@ public sealed class WinUiSurfaceContractTests
             "QuickSetupWindow.xaml.cs",
             "OcrTextWindow.xaml.cs",
             "ThirdPartyLicensesWindow.xaml.cs",
-            "MicaDialogWindow.xaml.cs",
             "WorldClockCityPickerDialogWindow.xaml.cs",
             "ActivityCalendarDialogWindow.xaml.cs",
             "AiPricingDialogWindow.xaml.cs",
@@ -764,6 +761,10 @@ public sealed class WinUiSurfaceContractTests
         var dragRegion = player.Descendants().Single(element => HasName(element, "DragRegion"));
         var reportButton = player.Descendants().Single(element => HasName(element, "TitleBarReportButton"));
         var minimizeToTrayButton = player.Descendants().Single(element => HasName(element, "TitleBarMinimizeToTrayButton"));
+        var closeStart = mainSource.IndexOf("private async void AppWindow_Closing", StringComparison.Ordinal);
+        var closeEnd = mainSource.IndexOf("private static void FadeIn", closeStart, StringComparison.Ordinal);
+        Assert.True(closeStart >= 0 && closeEnd > closeStart, "Main-window close lifecycle source contract was not found.");
+        var closeSource = mainSource[closeStart..closeEnd];
 
         Assert.Equal("12", systemButtonGap.Attribute("Width")?.Value);
         Assert.Null(dragRegion.Attribute("Grid.ColumnSpan"));
@@ -773,10 +774,21 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("presenter.IsMaximizable = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("_appWindow.Closing += AppWindow_Closing;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("args.Cancel = true;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("MicaDialogRequest.Confirmation(", mainSource, StringComparison.Ordinal);
-        Assert.Contains("T(\"Dialog.CloseTracking.Message\")", mainSource, StringComparison.Ordinal);
-        Assert.Contains("T(\"Dialog.CloseTracking.Confirm\")", mainSource, StringComparison.Ordinal);
+        Assert.Contains("args.Cancel = true;", closeSource, StringComparison.Ordinal);
+        Assert.Contains("_closeConfirmationInProgress", closeSource, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxRequest.Confirmation(", closeSource, StringComparison.Ordinal);
+        Assert.Contains("T(\"Dialog.CloseTracking.Message\")", closeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dialog.CloseTracking.Confirm", closeSource, StringComparison.Ordinal);
+        Assert.True(
+            closeSource.IndexOf("await _placement.TrySaveForCloseAsync", StringComparison.Ordinal)
+            < closeSource.IndexOf("_allowClose = true;", StringComparison.Ordinal));
+        Assert.True(
+            closeSource.IndexOf("_allowClose = true;", StringComparison.Ordinal)
+            < closeSource.IndexOf("Close();", StringComparison.Ordinal));
+        Assert.True(
+            closeSource.IndexOf("Close();", StringComparison.Ordinal)
+            < closeSource.LastIndexOf("_closeConfirmationInProgress = false;", StringComparison.Ordinal),
+            "The reentrancy guard must remain set through placement persistence and the final close request.");
         Assert.Contains("_appWindow.Closing -= AppWindow_Closing;", mainSource, StringComparison.Ordinal);
         Assert.Contains("_window?.CloseForShutdown();", appSource, StringComparison.Ordinal);
     }

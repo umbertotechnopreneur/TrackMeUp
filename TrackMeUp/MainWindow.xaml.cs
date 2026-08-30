@@ -235,10 +235,12 @@ public sealed partial class MainWindow : Window
         UpdateDashboardSubscriptionForVisibility();
         if (startupRegistrationFailureCode is not null)
         {
-            await _dialogs.ShowSystemWarningAsync(
+            await _dialogs.ShowInformativeAsync(
                 this,
-                T("Notification.WindowsStartupFailed.Title"),
-                $"{T("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{startupRegistrationFailureCode}");
+                SystemMessageBoxRequest.Informative(
+                    T("Notification.WindowsStartupFailed.Title"),
+                    $"{T("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{startupRegistrationFailureCode}",
+                    SystemMessageBoxSeverity.Warning));
         }
 
         if (initialization.Succeeded && initialization.Value?.StartedPaused == true)
@@ -312,14 +314,11 @@ public sealed partial class MainWindow : Window
     private async Task ShowScreenshotStorageMigrationFailureAsync(string code)
     {
         await _dialogs.ShowInformativeAsync(
-            _application,
             this,
-            MicaDialogRequest.Informative(
+            SystemMessageBoxRequest.Informative(
                 T("Dialog.DataMigration.Failed.Title"),
                 _strings.Format("Dialog.DataMigration.Failed.Message", code),
-                MicaDialogSeverity.Error,
-                T("Dialog.Ok")),
-            RootGrid.RequestedTheme);
+                SystemMessageBoxSeverity.Error));
     }
 
     private void SetScreenshotStorageReady(bool isReady)
@@ -475,14 +474,11 @@ public sealed partial class MainWindow : Window
 
         _startupAiWarningShown = true;
         await _dialogs.ShowInformativeAsync(
-            _application,
             this,
-            MicaDialogRequest.Informative(
+            SystemMessageBoxRequest.Informative(
                 T("Dialog.AiKeyMissing.Title"),
                 _strings.Format("Dialog.AiKeyMissing.Message", aiStatus.KeyVariable),
-                MicaDialogSeverity.Warning,
-                T("Dialog.Ok")),
-            RootGrid.RequestedTheme);
+                SystemMessageBoxSeverity.Warning));
     }
 
     private async Task DrainApplicationNotificationsAsync()
@@ -518,19 +514,16 @@ public sealed partial class MainWindow : Window
 
                 var severity = notification.Severity switch
                 {
-                    ApplicationNotificationSeverity.Error => MicaDialogSeverity.Error,
-                    ApplicationNotificationSeverity.Warning => MicaDialogSeverity.Warning,
-                    _ => MicaDialogSeverity.Information
+                    ApplicationNotificationSeverity.Error => SystemMessageBoxSeverity.Error,
+                    ApplicationNotificationSeverity.Warning => SystemMessageBoxSeverity.Warning,
+                    _ => SystemMessageBoxSeverity.Information
                 };
                 await _dialogs.ShowInformativeAsync(
-                    _application,
                     this,
-                    MicaDialogRequest.Informative(
+                    SystemMessageBoxRequest.Informative(
                         T(notification.TitleKey),
                         FormatNotificationMessage(notification),
-                        severity,
-                        T("Dialog.Ok")),
-                    RootGrid.RequestedTheme);
+                        severity));
             }
         }
         finally
@@ -934,14 +927,11 @@ public sealed partial class MainWindow : Window
     }
 
     private Task ShowLazySurfaceFailureAsync() => _dialogs.ShowInformativeAsync(
-        _application,
         this,
-        MicaDialogRequest.Informative(
+        SystemMessageBoxRequest.Informative(
             T("Operations.Status.RuntimeUnavailable.Title"),
             T("Operations.Status.RuntimeUnavailable.Message"),
-            MicaDialogSeverity.Error,
-            T("Dialog.Ok")),
-        RootGrid.RequestedTheme);
+            SystemMessageBoxSeverity.Error));
 
     /// <summary>Forwards Quick Setup activation to the application composition root.</summary>
     private void QuickSetupMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1068,14 +1058,11 @@ public sealed partial class MainWindow : Window
         catch (Exception)
         {
             await _dialogs.ShowInformativeAsync(
-                _application,
                 this,
-                MicaDialogRequest.Informative(
+                SystemMessageBoxRequest.Informative(
                     T("Tray.UnavailableTitle"),
                     T("Tray.UnavailableMessage"),
-                    MicaDialogSeverity.Error,
-                    T("Dialog.Ok")),
-                RootGrid.RequestedTheme);
+                    SystemMessageBoxSeverity.Error));
         }
     }
 
@@ -1094,14 +1081,11 @@ public sealed partial class MainWindow : Window
             }
 
             await _dialogs.ShowInformativeAsync(
-                _application,
                 this,
-                MicaDialogRequest.Informative(
+                SystemMessageBoxRequest.Informative(
                     T("AiPricing.UnavailableTitle"),
                     T("AiPricing.UnavailableMessage"),
-                    MicaDialogSeverity.Warning,
-                    T("Dialog.Ok")),
-                RootGrid.RequestedTheme);
+                    SystemMessageBoxSeverity.Warning));
         }
         finally
         {
@@ -2029,32 +2013,26 @@ public sealed partial class MainWindow : Window
         }
 
         _closeConfirmationInProgress = true;
-        var confirmed = false;
         try
         {
-            confirmed = await _dialogs.ConfirmAsync(
-                _application,
+            var confirmed = await _dialogs.ConfirmAsync(
                 this,
-                MicaDialogRequest.Confirmation(
+                SystemMessageBoxRequest.Confirmation(
                     T("Dialog.CloseTracking.Title"),
-                    T("Dialog.CloseTracking.Message"),
-                    T("Dialog.CloseTracking.Confirm"),
-                    T("Dialog.Cancel")),
-                RootGrid.RequestedTheme);
+                    T("Dialog.CloseTracking.Message")));
+            if (!confirmed)
+            {
+                return;
+            }
+
+            await _placement.TrySaveForCloseAsync(CancellationToken.None);
+            _allowClose = true;
+            Close();
         }
         finally
         {
             _closeConfirmationInProgress = false;
         }
-
-        if (!confirmed)
-        {
-            return;
-        }
-
-        await _placement.TrySaveForCloseAsync(CancellationToken.None);
-        _allowClose = true;
-        Close();
     }
 
     /// <summary>Fades a view into the compact player without changing geometry on pointer interaction.</summary>

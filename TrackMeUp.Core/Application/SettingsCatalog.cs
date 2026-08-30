@@ -63,6 +63,7 @@ public static class SettingsCatalog
         Choice("language", "Application language.", ProductLanguageCatalog.UiChoices, requiresRestart: true),
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
+        Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
         Boolean("taskbar.widget.visible", "Show the compact control in the Windows taskbar."),
         Choice("taskbar.widget.position", "Taskbar control anchor.", TaskbarAnchors),
         Text("activity.span_label", "Short local activity label, limited to 20 characters."),
@@ -132,6 +133,7 @@ public static class SettingsCatalog
             "language" => settings.UiLanguage,
             "theme" => settings.Theme,
             "position" => settings.FlyoutPosition,
+            "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
             "taskbar.widget.visible" => settings.TaskbarWidgetVisible,
             "taskbar.widget.position" => settings.TaskbarWidgetPosition,
             "activity.span_label" => settings.SpanLabel,
@@ -244,6 +246,7 @@ public static class SettingsCatalog
                 case "language" when Canonical(ProductLanguageCatalog.UiChoices, value) is { } language: current = current with { UiLanguage = language }; break;
                 case "theme" when Canonical(Themes, value) is { } theme: current = current with { Theme = theme }; break;
                 case "position" when Canonical(FlyoutAnchors, value) is { } position: current = current with { FlyoutPosition = position }; break;
+                case "world_clocks.weather.enabled" when TryBoolean(value, out var worldClockWeatherEnabled): current = current with { WorldClockWeatherEnabled = worldClockWeatherEnabled }; break;
                 case "taskbar.widget.visible" when TryBoolean(value, out var taskbarVisible): current = current with { TaskbarWidgetVisible = taskbarVisible }; break;
                 case "taskbar.widget.position" when Canonical(TaskbarAnchors, value) is { } taskbarPosition: current = current with { TaskbarWidgetPosition = taskbarPosition }; break;
                 case "activity.span_label" when value is not null && value.Length <= 20: current = current with { SpanLabel = value }; break;

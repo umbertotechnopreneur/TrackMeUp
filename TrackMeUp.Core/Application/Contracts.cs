@@ -653,6 +653,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Removes one city from the persisted world-clock selection.</summary>
     Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
 
+    /// <summary>Stores the current-weather API key only in its fixed Windows environment variable.</summary>
+    Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken);
+
     /// <summary>Gets the latest recorded session state.</summary>
     Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken);
 

@@ -1928,8 +1928,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public async Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var settings = _settingsSnapshot.Value;
         var snapshot = await _worldClocks.BuildCurrentSnapshotAsync(
-            _settingsSnapshot.Value.WorldClockCityIds,
+            settings.WorldClockCityIds,
+            settings.WorldClockWeatherEnabled,
             cancellationToken).ConfigureAwait(false);
         return OperationResult<WorldClockSnapshot>.Success(
             "world_clocks.loaded",
@@ -2029,6 +2031,39 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             "world_clocks.removed",
             "WorldClocksRemoved",
             new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks)));
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(
+        string secret,
+        CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
+    {
+        var secretValue = secret ?? string.Empty;
+        if (!OpenWeatherCurrentProvider.IsPlausibleApiKey(secretValue))
+        {
+            secretValue = string.Empty;
+            return OperationResult<string>.Failure(
+                "world_clocks.weather.key.invalid",
+                "WorldClockWeatherKeyInvalid",
+                new ValidationIssue("secret", "invalid", "WorldClockWeatherKeyInvalid"));
+        }
+
+        try
+        {
+            // The secret is delegated directly to the environment store and never persisted or logged.
+            _utilities.SetApiKey(OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable, secretValue);
+            _worldClocks.InvalidateCurrentWeatherConfiguration();
+        }
+        finally
+        {
+            secretValue = string.Empty;
+        }
+
+        await Task.CompletedTask;
+        return OperationResult<string>.Success(
+            "world_clocks.weather.key.stored",
+            "WorldClockWeatherKeyStored",
+            OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable);
     }, cancellationToken);
 
     /// <inheritdoc />

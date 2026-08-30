@@ -9,118 +9,135 @@
         MinWidth="0"
         Background="Transparent"
         AutomationProperties.LandmarkType="Custom">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <SolidColorBrush x:Key="WorldClockDayAccentBrush" Color="#FFE34A2C" />
+                        <SolidColorBrush x:Key="WorldClockNightAccentBrush" Color="#FF6C63B7" />
+                        <SolidColorBrush x:Key="WorldClockMarkerBrush" Color="#FFE34A2C" />
+                        <SolidColorBrush x:Key="WorldClockCloudBrush" Color="#E8F7F8FA" />
+                        <x:Double x:Key="WorldClockBackdropOpacity">0.12</x:Double>
+                        <x:Double x:Key="WorldClockSkylineOpacity">0.20</x:Double>
+                        <x:Double x:Key="WorldClockForegroundOpacity">0.16</x:Double>
+                        <LinearGradientBrush x:Key="WorldClockSceneFadeBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00FFFFFF" Offset="0" />
+                            <GradientStop Color="#18FFFFFF" Offset="0.58" />
+                            <GradientStop Color="#A8FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <SolidColorBrush x:Key="WorldClockDayAccentBrush" Color="#FFFF7357" />
+                        <SolidColorBrush x:Key="WorldClockNightAccentBrush" Color="#FF958BEE" />
+                        <SolidColorBrush x:Key="WorldClockMarkerBrush" Color="#FFFF7357" />
+                        <SolidColorBrush x:Key="WorldClockCloudBrush" Color="#E6F0F3F8" />
+                        <x:Double x:Key="WorldClockBackdropOpacity">0.20</x:Double>
+                        <x:Double x:Key="WorldClockSkylineOpacity">0.30</x:Double>
+                        <x:Double x:Key="WorldClockForegroundOpacity">0.24</x:Double>
+                        <LinearGradientBrush x:Key="WorldClockSceneFadeBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00151619" Offset="0" />
+                            <GradientStop Color="#18151619" Offset="0.58" />
+                            <GradientStop Color="#A0151619" Offset="1" />
+                        </LinearGradientBrush>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <StaticResource x:Key="WorldClockDayAccentBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                        <StaticResource x:Key="WorldClockNightAccentBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                        <StaticResource x:Key="WorldClockMarkerBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                        <StaticResource x:Key="WorldClockCloudBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                        <x:Double x:Key="WorldClockBackdropOpacity">0</x:Double>
+                        <x:Double x:Key="WorldClockSkylineOpacity">0</x:Double>
+                        <x:Double x:Key="WorldClockForegroundOpacity">0</x:Double>
+                        <SolidColorBrush x:Key="WorldClockSceneFadeBrush" Color="Transparent" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+            </ResourceDictionary>
+        </Grid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="3" />
+            <RowDefinition Height="38" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Rectangle
-            x:Name="ReferenceMarker"
-            Width="28"
-            Height="3"
-            HorizontalAlignment="Center"
-            AutomationProperties.AccessibilityView="Raw"
-            Fill="#FFE85B42"
-            RadiusX="1.5"
-            RadiusY="1.5" />
+        <Border
+            x:Name="DayAccentResource"
+            Background="{ThemeResource WorldClockDayAccentBrush}"
+            Visibility="Collapsed" />
+        <Border
+            x:Name="NightAccentResource"
+            Background="{ThemeResource WorldClockNightAccentBrush}"
+            Visibility="Collapsed" />
 
-        <Grid Grid.Row="1" Padding="24,24,24,22">
+        <Grid AutomationProperties.AccessibilityView="Raw">
+            <Rectangle
+                Width="1"
+                Height="34"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Fill="{ThemeResource WorldClockMarkerBrush}" />
+            <Ellipse
+                Width="8"
+                Height="8"
+                Margin="0,-4,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Fill="{ThemeResource WorldClockMarkerBrush}" />
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="24,6,24,16">
             <Grid.RowDefinitions>
+                <RowDefinition Height="16" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    x:Name="CityNameText"
-                    Grid.ColumnSpan="3"
-                    Margin="0,0,68,0"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
-                    AutomationProperties.HeadingLevel="Level2"
-                    CharacterSpacing="80"
-                    FontSize="18"
-                    FontWeight="SemiBold"
-                    TextAlignment="Center"
-                    TextTrimming="CharacterEllipsis" />
-                <Button
-                    x:Name="ReferenceButton"
-                    Grid.Column="1"
-                    Width="34"
-                    Height="34"
-                    Padding="0"
-                    AutomationProperties.Name="Set as reference city"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="ReferenceButton_Click"
-                    CornerRadius="17"
-                    ToolTipService.ToolTip="Set as reference city">
-                    <FontIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="15"
-                        Glyph="&#xE718;" />
-                </Button>
-                <Button
-                    x:Name="RemoveButton"
-                    Grid.Column="2"
-                    Width="34"
-                    Height="34"
-                    Padding="0"
-                    AutomationProperties.Name="Remove city"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="RemoveButton_Click"
-                    CornerRadius="17"
-                    ToolTipService.ToolTip="Remove city">
-                    <SymbolIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        Symbol="Delete" />
-                </Button>
-            </Grid>
+            <TextBlock
+                x:Name="CityNameText"
+                HorizontalAlignment="Center"
+                AutomationProperties.HeadingLevel="Level2"
+                CharacterSpacing="80"
+                FontSize="20"
+                FontWeight="SemiBold"
+                TextAlignment="Center"
+                TextTrimming="CharacterEllipsis" />
 
             <TextBlock
                 x:Name="LocalTimeText"
                 Grid.Row="1"
-                Margin="0,16,0,0"
+                Margin="0,10,0,0"
                 HorizontalAlignment="Center"
                 FontFamily="Segoe UI Variable Display"
                 FontSize="58"
                 FontWeight="Light"
-                TextAlignment="Center"
-                Text="00:00" />
-            <StackPanel
+                Text="00:00"
+                TextAlignment="Center" />
+
+            <TextBlock
+                x:Name="OffsetText"
                 Grid.Row="2"
-                Margin="0,0,0,0"
                 HorizontalAlignment="Center"
-                Spacing="6">
-                <TextBlock
-                    x:Name="OffsetText"
-                    CharacterSpacing="70"
-                    FontSize="12"
-                    FontWeight="SemiBold"
-                    TextAlignment="Center" />
-                <TextBlock
-                    x:Name="DateRelationText"
-                    FontSize="11"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextAlignment="Center"
-                    Visibility="Collapsed" />
-            </StackPanel>
+                CharacterSpacing="70"
+                FontSize="12"
+                FontWeight="SemiBold"
+                TextAlignment="Center" />
+
+            <TextBlock
+                x:Name="DateRelationText"
+                Grid.Row="3"
+                Margin="0,2,0,0"
+                HorizontalAlignment="Center"
+                FontSize="11"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                TextAlignment="Center"
+                Visibility="Collapsed" />
+
             <TextBlock
                 x:Name="DayStateText"
-                Grid.Row="3"
-                Margin="0,18,0,0"
+                Grid.Row="4"
+                Margin="0,12,0,0"
                 HorizontalAlignment="Center"
                 CharacterSpacing="60"
                 FontSize="13"
@@ -128,93 +145,184 @@
                 TextAlignment="Center" />
 
             <Grid
-                Grid.Row="4"
-                MinHeight="230"
+                x:Name="SceneGrid"
+                Grid.Row="5"
+                MinHeight="220"
                 Margin="-24,8,-24,0"
-                Background="#04FFFFFF">
+                Background="Transparent">
                 <Grid
                     x:Name="BackdropLayerHost"
-                    IsHitTestVisible="False"
                     AutomationProperties.AccessibilityView="Raw"
-                    Opacity="0.11" />
+                    IsHitTestVisible="False"
+                    Opacity="{ThemeResource WorldClockBackdropOpacity}" />
                 <Image
                     x:Name="SkylineImage"
-                    Height="210"
                     VerticalAlignment="Bottom"
                     AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False"
-                    Opacity="0.19"
+                    Opacity="{ThemeResource WorldClockSkylineOpacity}"
                     Stretch="Uniform" />
-                <Grid
-                    x:Name="ForegroundLayerHost"
-                    IsHitTestVisible="False"
-                    AutomationProperties.AccessibilityView="Raw"
-                    Opacity="0.22" />
+                <Border
+                    Background="{ThemeResource WorldClockSceneFadeBrush}"
+                    IsHitTestVisible="False" />
                 <controls:CelestialPhaseControl
                     x:Name="CelestialPhase"
-                    Width="122"
-                    Height="122"
-                    Margin="0,8,0,42"
+                    Width="138"
+                    Height="138"
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    AutomationProperties.AccessibilityView="Raw" />
+                <Grid
+                    x:Name="WeatherAdornmentHost"
+                    Width="58"
+                    Height="32"
+                    Margin="74,84,0,0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    AutomationProperties.AccessibilityView="Raw"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
+                    <Ellipse
+                        Width="28"
+                        Height="24"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom"
+                        Fill="{ThemeResource WorldClockCloudBrush}" />
+                    <Ellipse
+                        Width="34"
+                        Height="30"
+                        Margin="12,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Fill="{ThemeResource WorldClockCloudBrush}" />
+                    <Border
+                        Height="18"
+                        Margin="5,14,0,0"
+                        Background="{ThemeResource WorldClockCloudBrush}"
+                        CornerRadius="9" />
+                </Grid>
+                <Grid
+                    x:Name="ForegroundLayerHost"
+                    AutomationProperties.AccessibilityView="Raw"
+                    IsHitTestVisible="False"
+                    Opacity="{ThemeResource WorldClockForegroundOpacity}" />
+                <StackPanel
+                    x:Name="WeatherPanel"
+                    MinHeight="62"
+                    Margin="0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    AutomationProperties.AccessibilityView="Raw" />
+                    Spacing="0">
+                    <TextBlock
+                        x:Name="WeatherTemperatureText"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI Variable Display"
+                        FontSize="38"
+                        FontWeight="Light"
+                        TextAlignment="Center" />
+                    <TextBlock
+                        x:Name="WeatherConditionText"
+                        HorizontalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextAlignment="Center" />
+                </StackPanel>
             </Grid>
 
-            <StackPanel
-                x:Name="WeatherPanel"
-                Grid.Row="5"
-                Margin="0,8,0,0"
-                HorizontalAlignment="Center"
-                Spacing="0"
-                Visibility="Collapsed">
-                <TextBlock
-                    x:Name="WeatherTemperatureText"
-                    HorizontalAlignment="Center"
-                    FontFamily="Segoe UI Variable Display"
-                    FontSize="34"
-                    FontWeight="Light"
-                    TextAlignment="Center" />
-                <TextBlock
-                    x:Name="WeatherConditionText"
-                    HorizontalAlignment="Center"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextAlignment="Center" />
-            </StackPanel>
-
-            <Grid Grid.Row="6" Margin="0,8,0,0" ColumnSpacing="20">
+            <Grid
+                Grid.Row="6"
+                Height="68"
+                Margin="0,6,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <StackPanel HorizontalAlignment="Center" Spacing="3">
-                    <FontIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="18"
-                        Foreground="#FFE85B42"
-                        Glyph="&#xE706;" />
-                    <TextBlock
-                        x:Name="SunriseText"
-                        FontSize="11"
-                        TextAlignment="Center" />
-                </StackPanel>
+                <Grid HorizontalAlignment="Center" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid
+                        Width="28"
+                        Height="24"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AccessibilityView="Raw">
+                        <FontIcon
+                            x:Name="SunriseIcon"
+                            Margin="0,-3,0,0"
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="18"
+                            Glyph="&#xE706;" />
+                        <Rectangle
+                            x:Name="SunriseHorizon"
+                            Width="28"
+                            Height="1"
+                            VerticalAlignment="Bottom" />
+                    </Grid>
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="1">
+                        <TextBlock
+                            x:Name="SunriseLabelText"
+                            FontSize="10"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextAlignment="Left" />
+                        <TextBlock
+                            x:Name="SunriseTimeText"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            TextAlignment="Left" />
+                    </StackPanel>
+                </Grid>
                 <Rectangle
                     Grid.Column="1"
+                    Width="1"
+                    Height="40"
+                    VerticalAlignment="Center"
                     Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <StackPanel Grid.Column="2" HorizontalAlignment="Center" Spacing="3">
-                    <FontIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="18"
-                        Foreground="#FF746ECF"
-                        Glyph="&#xE708;" />
-                    <TextBlock
-                        x:Name="SunsetText"
-                        FontSize="11"
-                        TextAlignment="Center" />
-                </StackPanel>
+                <Grid Grid.Column="2" HorizontalAlignment="Center" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid
+                        Width="28"
+                        Height="24"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AccessibilityView="Raw">
+                        <FontIcon
+                            x:Name="SunsetIcon"
+                            Margin="0,-3,0,0"
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="18"
+                            Glyph="&#xE706;" />
+                        <Rectangle
+                            x:Name="SunsetHorizon"
+                            Width="28"
+                            Height="1"
+                            VerticalAlignment="Bottom" />
+                    </Grid>
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="1">
+                        <TextBlock
+                            x:Name="SunsetLabelText"
+                            FontSize="10"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextAlignment="Left" />
+                        <TextBlock
+                            x:Name="SunsetTimeText"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            TextAlignment="Left" />
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

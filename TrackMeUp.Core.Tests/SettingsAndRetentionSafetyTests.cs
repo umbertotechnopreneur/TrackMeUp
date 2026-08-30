@@ -179,6 +179,52 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Contains(invalid.Issues, issue => issue.Field == "ai.show_monthly_spend");
     }
 
+    [Fact]
+    public void WorldClockWeather_IsEnabledByDefaultAndRoundTripsThroughTheSettingsCatalog()
+    {
+        var defaults = Assert.IsType<AppSettings>(
+            JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var disabled = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.weather.enabled"] = "false"
+            }));
+
+        Assert.True(defaults.WorldClockWeatherEnabled);
+        Assert.True(disabled.Succeeded);
+        var disabledSettings = Assert.IsType<AppSettings>(disabled.Value);
+        Assert.False(disabledSettings.WorldClockWeatherEnabled);
+        Assert.True(SettingsCatalog.TryGetValue(
+            disabledSettings,
+            "world_clocks.weather.enabled",
+            out var storedPreference));
+        Assert.Equal(false, storedPreference);
+
+        var restored = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>(
+            JsonSerializer.Serialize(disabledSettings, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.False(restored.WorldClockWeatherEnabled);
+
+        var enabled = SettingsCatalog.Apply(
+            restored,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.weather.enabled"] = "true"
+            }));
+        Assert.True(enabled.Succeeded);
+        Assert.True(enabled.Value?.WorldClockWeatherEnabled);
+
+        var invalid = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.weather.enabled"] = "yes"
+            }));
+        Assert.False(invalid.Succeeded);
+        Assert.Contains(invalid.Issues, issue => issue.Field == "world_clocks.weather.enabled");
+    }
+
     [Theory]
     [InlineData("1")]
     [InlineData("0")]

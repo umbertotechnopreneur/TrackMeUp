@@ -114,14 +114,10 @@ public sealed partial class ScheduleWindow : Window
     private async Task<bool> ConfirmReplacementAsync(string titleKey, string messageKey)
     {
         return await _dialogs.ConfirmAsync(
-            _application,
             this,
-            MicaDialogRequest.Confirmation(
+            SystemMessageBoxRequest.Confirmation(
                 _strings.Translate(titleKey),
-                _strings.Translate(messageKey),
-                _strings.Translate("Schedule.Apply"),
-                _strings.Translate("Schedule.Cancel")),
-            RootGrid.RequestedTheme);
+                _strings.Translate(messageKey)));
     }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)

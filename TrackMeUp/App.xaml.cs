@@ -270,14 +270,11 @@ public partial class App : Microsoft.UI.Xaml.Application
             {
                 var strings = new LocalizationService("system");
                 await _dialogs.ShowInformativeAsync(
-                    application,
                     _window,
-                    MicaDialogRequest.Informative(
+                    SystemMessageBoxRequest.Informative(
                         strings.Translate("QuickSetup.Unavailable.Title"),
                         strings.Translate("QuickSetup.Unavailable.Message"),
-                        MicaDialogSeverity.Error,
-                        strings.Translate("Dialog.Ok")),
-                    ElementTheme.Default);
+                        SystemMessageBoxSeverity.Error));
             }
 
             return;
@@ -455,14 +452,11 @@ public partial class App : Microsoft.UI.Xaml.Application
             {
                 var strings = new LocalizationService(settings.Value.UiLanguage);
                 await _dialogs.ShowInformativeAsync(
-                    application,
                     _window,
-                    MicaDialogRequest.Informative(
+                    SystemMessageBoxRequest.Informative(
                         strings.Translate("Search.Empty.Title"),
                         strings.Translate("Search.Empty.Message"),
-                        MicaDialogSeverity.Information,
-                        strings.Translate("Dialog.Ok")),
-                    ElementTheme.Default);
+                        SystemMessageBoxSeverity.Information));
                 return;
             }
 

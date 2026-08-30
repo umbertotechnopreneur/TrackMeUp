@@ -9,47 +9,10 @@ using System.Diagnostics;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
 using TrackMeUp.Services;
-using Windows.UI;
 
 namespace TrackMeUp;
 
-/// <summary>Defines the visual meaning of a reusable TrackMeUp dialog.</summary>
-internal enum MicaDialogSeverity
-{
-    Information,
-    Warning,
-    Error
-}
-
-/// <summary>Describes localized text, buttons and optional accent for one reusable dialog.</summary>
-internal sealed record MicaDialogRequest(
-    string Title,
-    string Message,
-    MicaDialogSeverity Severity,
-    string PrimaryButtonText,
-    string? CancelButtonText = null,
-    Color? AccentColor = null)
-{
-    /// <summary>Creates an informative dialog with one acknowledgement button.</summary>
-    internal static MicaDialogRequest Informative(
-        string title,
-        string message,
-        MicaDialogSeverity severity,
-        string okText,
-        Color? accentColor = null) =>
-        new(title, message, severity, okText, AccentColor: accentColor);
-
-    /// <summary>Creates a safe-default confirmation with explicit primary and cancel actions.</summary>
-    internal static MicaDialogRequest Confirmation(
-        string title,
-        string message,
-        string primaryText,
-        string cancelText,
-        Color? accentColor = null) =>
-        new(title, message, MicaDialogSeverity.Warning, primaryText, cancelText, accentColor);
-}
-
-/// <summary>Serializes custom Mica dialogs and keeps window views free of ad-hoc dialog construction.</summary>
+/// <summary>Serializes native system messages and dedicated rich windows while keeping views passive.</summary>
 internal sealed class MicaDialogService
 {
     private static readonly TimeSpan BannerProgressInterval = TimeSpan.FromMilliseconds(50);
@@ -159,61 +122,26 @@ internal sealed class MicaDialogService
         TimeSpan Duration,
         long Generation);
 
-    /// <summary>Shows a one-button informative dialog and waits for acknowledgement or dismissal.</summary>
-    internal async Task ShowInformativeAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
+    /// <summary>Shows one queued owner-modal Windows message with the native localized OK action.</summary>
+    internal async Task ShowInformativeAsync(Window owner, SystemMessageBoxRequest request)
     {
-        ArgumentNullException.ThrowIfNull(application);
-        ArgumentNullException.ThrowIfNull(request);
-        if (request.CancelButtonText is not null)
+        ValidateSystemMessageRequest(request);
+        _ = await RunSystemMessageSessionAsync(owner, false, ownerHandle =>
         {
-            throw new ArgumentException("An informative dialog cannot define a cancel button.", nameof(request));
-        }
-
-        _ = await ShowAsync(application, owner, request, theme);
+            WindowInteropService.ShowInformativeMessage(ownerHandle, request);
+            return true;
+        });
     }
 
-    /// <summary>Shows one queued, owner-modal Windows warning with the native standard OK action.</summary>
-    internal async Task ShowSystemWarningAsync(Window owner, string title, string message)
+    /// <summary>Shows one queued owner-modal Windows confirmation with native localized actions.</summary>
+    /// <returns><see langword="true"/> only when the user explicitly chooses OK; dismissal safely cancels.</returns>
+    internal async Task<bool> ConfirmAsync(Window owner, SystemMessageBoxRequest request)
     {
-        ArgumentNullException.ThrowIfNull(owner);
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message);
-
-        await _queue.WaitAsync();
-        IReadOnlyList<IntPtr>? disabledPeerWindows = null;
-        try
-        {
-            if (_isShuttingDown)
-            {
-                return;
-            }
-
-            var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-            disabledPeerWindows = WindowInteropService.DisableCurrentThreadPeerWindows(ownerHandle);
-            WindowInteropService.ShowWarningMessage(ownerHandle, title, message);
-        }
-        finally
-        {
-            if (disabledPeerWindows is not null)
-            {
-                WindowInteropService.RestoreWindows(disabledPeerWindows);
-            }
-
-            _queue.Release();
-        }
-    }
-
-    /// <summary>Shows a confirmation whose close path and secondary action both return <see langword="false"/>.</summary>
-    internal async Task<bool> ConfirmAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
-    {
-        ArgumentNullException.ThrowIfNull(application);
-        ArgumentNullException.ThrowIfNull(request);
-        if (string.IsNullOrWhiteSpace(request.CancelButtonText))
-        {
-            throw new ArgumentException("A confirmation dialog requires cancel text.", nameof(request));
-        }
-
-        return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;
+        ValidateSystemMessageRequest(request);
+        return await RunSystemMessageSessionAsync(
+            owner,
+            false,
+            ownerHandle => WindowInteropService.ShowConfirmationMessage(ownerHandle, request));
     }
 
     /// <summary>Shows provider-specific pricing and locally estimated costs in the shared acrylic dialog queue.</summary>
@@ -388,7 +316,7 @@ internal sealed class MicaDialogService
         });
     }
 
-    /// <summary>Closes the current dialog during application shutdown.</summary>
+    /// <summary>Stops new modal work and closes the current dedicated rich window during shutdown.</summary>
     internal void CloseActive()
     {
         _isShuttingDown = true;
@@ -401,14 +329,45 @@ internal sealed class MicaDialogService
         _activeWindow?.Close();
     }
 
-    private async Task<MicaDialogResult> ShowAsync(ITrackMeUpApplication application, Window owner, MicaDialogRequest request, ElementTheme theme)
+    private async Task<TResult> RunSystemMessageSessionAsync<TResult>(
+        Window owner,
+        TResult shutdownResult,
+        Func<IntPtr, TResult> show)
     {
-        Validate(request);
-        return await RunModalSessionAsync(owner, MicaDialogResult.Cancel, async (ownerAppWindow, ownerHandle) =>
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(show);
+        if (!owner.DispatcherQueue.HasThreadAccess)
         {
-            var dialog = new MicaDialogWindow(application, request, theme, ownerAppWindow, ownerHandle);
-            return await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
-        });
+            throw new InvalidOperationException("Windows system messages must be shown from their owner UI thread.");
+        }
+
+        await _queue.WaitAsync();
+        IReadOnlyList<IntPtr>? disabledPeerWindows = null;
+        try
+        {
+            if (_isShuttingDown)
+            {
+                return shutdownResult;
+            }
+
+            if (!owner.DispatcherQueue.HasThreadAccess)
+            {
+                throw new InvalidOperationException("Windows system messages must be shown from their owner UI thread.");
+            }
+
+            var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+            disabledPeerWindows = WindowInteropService.DisableCurrentThreadPeerWindows(ownerHandle);
+            return show(ownerHandle);
+        }
+        finally
+        {
+            if (disabledPeerWindows is not null)
+            {
+                WindowInteropService.RestoreWindows(disabledPeerWindows);
+            }
+
+            _queue.Release();
+        }
     }
 
     private async Task RunModalSessionAsync(
@@ -507,21 +466,14 @@ internal sealed class MicaDialogService
         }
     }
 
-    private static void Validate(MicaDialogRequest request)
+    private static void ValidateSystemMessageRequest(SystemMessageBoxRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Title) ||
-            string.IsNullOrWhiteSpace(request.Message) ||
-            string.IsNullOrWhiteSpace(request.PrimaryButtonText))
+            string.IsNullOrWhiteSpace(request.Message))
         {
-            throw new ArgumentException("Dialog title, message and primary button text are required.", nameof(request));
+            throw new ArgumentException("System message title and message are required.", nameof(request));
         }
     }
 
-}
-
-internal enum MicaDialogResult
-{
-    Cancel,
-    Primary
 }

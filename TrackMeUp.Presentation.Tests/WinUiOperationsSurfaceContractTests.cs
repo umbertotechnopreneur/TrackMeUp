@@ -473,7 +473,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml.cs"));
 
         Assert.Contains("Dialogs.ConfirmAsync(", source, StringComparison.Ordinal);
-        Assert.Contains("MicaDialogRequest.Confirmation(", source, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxRequest.Confirmation(", source, StringComparison.Ordinal);
         Assert.Contains("if (!confirmed)", source, StringComparison.Ordinal);
         Assert.Contains("new RetentionRequest(Execute: true, Confirmed: true)", source, StringComparison.Ordinal);
     }
@@ -489,6 +489,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Equal("AtomicNukeButton_Click", button.Attribute("Click")?.Value);
         Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.AtomicNuke.Description");
         Assert.Equal(2, CountOccurrences(source, "Dialogs.ConfirmAsync("));
+        Assert.Equal(2, CountOccurrences(source, "SystemMessageBoxRequest.Confirmation("));
         Assert.Contains("new AtomicResetRequest(firstConfirmation, finalConfirmation)", source, StringComparison.Ordinal);
         Assert.Contains("PrepareAtomicResetAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Directory.Delete", source, StringComparison.Ordinal);
@@ -510,88 +511,66 @@ public sealed class WinUiOperationsSurfaceContractTests
             Assert.DoesNotContain("new ContentDialog", source, StringComparison.Ordinal);
             Assert.DoesNotContain("MessageBox.Show", source, StringComparison.Ordinal);
             Assert.DoesNotContain("new MessageDialog", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("MessageBoxW", source, StringComparison.Ordinal);
         }
     }
 
-    /// <summary>Guards the Acrylic, safe-cancel and cross-process notification contracts.</summary>
+    /// <summary>Guards the queued native-message contract while retaining dedicated rich windows.</summary>
     [Fact]
-    public void DialogEngine_IsAcrylicQueuedAccessibleAndFacadeBacked()
+    public void DialogEngine_QueuesNativeMessagesAndKeepsRichWindowsDedicated()
     {
         var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
         var interop = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "WindowInteropService.cs"));
-        var dialog = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml.cs"));
-        var dialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "MicaDialogWindow.xaml"));
         var connectionDialog = File.ReadAllText(RepositoryFile("TrackMeUp", "AiConnectionTestDialogWindow.xaml.cs"));
         var connectionDialogXaml = XDocument.Load(RepositoryFile("TrackMeUp", "AiConnectionTestDialogWindow.xaml"));
         var main = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var app = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
+        var projectDirectory = Path.GetDirectoryName(RepositoryFile("TrackMeUp", "MicaDialogService.cs"))!;
 
         Assert.Contains("SemaphoreSlim", service, StringComparison.Ordinal);
-        Assert.Contains("AccentColor", service, StringComparison.Ordinal);
+        Assert.Contains("RunSystemMessageSessionAsync", service, StringComparison.Ordinal);
+        Assert.Contains("owner.DispatcherQueue.HasThreadAccess", service, StringComparison.Ordinal);
+        Assert.Contains("WinRT.Interop.WindowNative.GetWindowHandle(owner)", service, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(ownerHandle)", service, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle)", service, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.RestoreWindows(disabledPeerWindows)", service, StringComparison.Ordinal);
-        Assert.Contains("ShowSystemWarningAsync", service, StringComparison.Ordinal);
-        Assert.Contains("WindowInteropService.ShowWarningMessage(ownerHandle, title, message)", service, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.ShowInformativeMessage(ownerHandle, request)", service, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.ShowConfirmationMessage(ownerHandle, request)", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("ShowSystemWarningAsync", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("MicaDialogRequest", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("MicaDialogWindow", service, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(projectDirectory, "MicaDialogWindow.xaml")));
+        Assert.False(File.Exists(Path.Combine(projectDirectory, "MicaDialogWindow.xaml.cs")));
+        Assert.Contains("public enum SystemMessageBoxSeverity", interop, StringComparison.Ordinal);
+        Assert.Contains("public sealed record SystemMessageBoxRequest", interop, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxSeverity.Information", interop, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxSeverity.Warning", interop, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxSeverity.Error", interop, StringComparison.Ordinal);
         Assert.Contains("EnumThreadWindows", interop, StringComparison.Ordinal);
         Assert.Contains("EnableWindow(windowHandle, false)", interop, StringComparison.Ordinal);
         Assert.Contains("EnableWindow(windowHandle, true)", interop, StringComparison.Ordinal);
         Assert.Contains("MessageBoxW", interop, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowSystemWarningAsync", main, StringComparison.Ordinal);
-        Assert.Contains("return await ShowAsync(application, owner, request, theme) == MicaDialogResult.Primary;", service, StringComparison.Ordinal);
+        Assert.Contains("MbOk | SeverityFlag(request.Severity) | MbSetForeground | MbTopMost", interop, StringComparison.Ordinal);
+        Assert.Contains("MbOkCancel | MbDefaultButton2 | SeverityFlag(request.Severity) | MbSetForeground | MbTopMost", interop, StringComparison.Ordinal);
+        Assert.Contains("IdOk => true", interop, StringComparison.Ordinal);
+        Assert.Contains("IdCancel => false", interop, StringComparison.Ordinal);
+        Assert.Contains("_ => false", interop, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxRequest.Informative(", main, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxRequest.Informative(", app, StringComparison.Ordinal);
+        Assert.Contains("SystemMessageBoxRequest.Confirmation(", schedule, StringComparison.Ordinal);
+        Assert.DoesNotContain("MicaDialogRequest", main, StringComparison.Ordinal);
+        Assert.DoesNotContain("MicaDialogRequest", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("MicaDialogRequest", schedule, StringComparison.Ordinal);
         Assert.DoesNotContain("SavePlacementAsync", service, StringComparison.Ordinal);
-        Assert.Contains(dialogXaml.Descendants(), element =>
-            element.Name.LocalName == "DesktopAcrylicBackdrop");
-        Assert.Contains(dialogXaml.Descendants(), element =>
-            HasName(element, "RootGrid") && element.Attribute("Background")?.Value == "Transparent");
-        Assert.DoesNotContain(dialogXaml.Descendants(), element =>
-            element.Name.LocalName == "Border"
-            && element.Attribute("Background")?.Value?.Contains("LayerFillColorDefaultBrush", StringComparison.Ordinal) == true);
-        Assert.Contains(dialogXaml.Descendants(), element =>
-            element.Name.LocalName == "Rectangle"
-            && HasName(element, "AccentVeil")
-            && element.Attribute("IsHitTestVisible")?.Value == "False");
-        Assert.DoesNotContain(dialogXaml.Descendants(), element => HasName(element, "AccentIconSurface"));
-        Assert.Contains(dialogXaml.Descendants(), element =>
-            element.Name.LocalName == "FontIcon"
-            && HasName(element, "SeverityIcon")
-            && element.Attribute("FontSize")?.Value == "30");
-        Assert.DoesNotContain(dialogXaml.Descendants(), element => element.Attribute("Style")?.Value == "{StaticResource DialogActionButtonStyle}");
-        Assert.Contains(dialogXaml.Descendants(), element => HasName(element, "PrimaryButton") && element.Attribute("Style")?.Value == "{StaticResource AccentButtonStyle}");
-        Assert.Contains("ExtendsContentIntoTitleBar = true;", dialog, StringComparison.Ordinal);
-        Assert.Contains("WindowInteropService.SetOwner(_windowHandle, ownerHandle)", dialog, StringComparison.Ordinal);
-        Assert.Contains("WindowInteropService.MakeTopmostWithoutActivation(_windowHandle)", dialog, StringComparison.Ordinal);
         Assert.Contains("SetWindowLongPtr64", interop, StringComparison.Ordinal);
         Assert.Contains("SetWindowPos(windowHandle, HwndTopMost", interop, StringComparison.Ordinal);
-        Assert.DoesNotContain("DllImport", dialog, StringComparison.Ordinal);
-        Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
-        Assert.Contains("await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);", dialog, StringComparison.Ordinal);
-        Assert.Contains("Closed += (_, _) => _completion.TrySetResult(_result);", dialog, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetName", dialog, StringComparison.Ordinal);
-        Assert.Contains(dialogXaml.Descendants(), element =>
-            element.Name.LocalName == "ScrollViewer"
-            && HasName(element, "MessageScrollViewer")
-            && element.Attribute("VerticalScrollBarVisibility")?.Value == "Hidden"
-            && element.Attribute("VerticalScrollMode")?.Value == "Disabled");
-        Assert.Contains(dialogXaml.Descendants(), element =>
-            HasName(element, "DialogMessageText") && element.Attribute("IsTextSelectionEnabled")?.Value == "True");
-        Assert.Contains("MessageScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;", dialog, StringComparison.Ordinal);
-        Assert.Contains("DialogBody.Measure", dialog, StringComparison.Ordinal);
-        Assert.Contains("LogicalMaximumHeight", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("LogicalInformationHeight", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("LogicalConfirmationHeight", dialog, StringComparison.Ordinal);
-        Assert.Contains("await _placement.TrySaveForCloseAsync(CancellationToken.None);", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("PrimaryButton.Background", dialog, StringComparison.Ordinal);
-        Assert.DoesNotContain("GetContrastingForeground", dialog, StringComparison.Ordinal);
-        Assert.Contains("AccentVeil.Fill = CreateAccentVeil(accent, theme);", dialog, StringComparison.Ordinal);
-        Assert.Contains("new RadialGradientBrush", dialog, StringComparison.Ordinal);
-        Assert.Contains("ElementTheme.Dark => (byte)30", dialog, StringComparison.Ordinal);
-        Assert.Contains("VirtualKey.Escape", dialog, StringComparison.Ordinal);
-        Assert.Contains(dialogXaml.Descendants(), element => element.Attribute("AutomationProperties.LiveSetting")?.Value == "Assertive");
         Assert.Contains("DrainApplicationNotificationsAsync", main, StringComparison.Ordinal);
         Assert.Contains("Enabled: true, HasKey: false", main, StringComparison.Ordinal);
         Assert.Contains("private readonly MicaDialogService _dialogs = new();", app, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ConfirmAsync(", schedule, StringComparison.Ordinal);
+        Assert.Contains("ShowAiConnectionTestAsync", service, StringComparison.Ordinal);
+        Assert.Contains("new AiConnectionTestDialogWindow", service, StringComparison.Ordinal);
         Assert.Contains(connectionDialogXaml.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(connectionDialogXaml.Descendants(), element => HasName(element, "TerminalScrollViewer"));
         Assert.Contains(connectionDialogXaml.Descendants(), element => HasName(element, "TerminalText") && element.Attribute("FontFamily")?.Value == "Cascadia Mono");

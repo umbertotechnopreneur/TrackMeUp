@@ -312,6 +312,25 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
+    public async Task WorldClockWeatherKey_RoundTripsThroughDedicatedRuntimeEndpointWithoutEchoingTheSecret()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, WeatherKeyRuntimeProxy>();
+        var proxy = Assert.IsAssignableFrom<WeatherKeyRuntimeProxy>(application);
+        var installationId = $"world-clock-weather-key-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+        const string secret = "0123456789abcdef0123456789abcdef";
+
+        var result = await client.SetWorldClockWeatherKeyAsync(secret, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("TRACKMEUP_OPENWEATHER_API_KEY", result.Value);
+        Assert.Equal(secret, proxy.Secret);
+        Assert.DoesNotContain(secret, JsonSerializer.Serialize(result), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AiModelCatalog_RoundTripsThroughTheRuntimeFacade()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, CatalogRuntimeProxy>();
@@ -699,6 +718,31 @@ public sealed class RuntimeProtocolTests
                     "request-failed",
                     1,
                     0));
+        }
+    }
+
+    public class WeatherKeyRuntimeProxy : DispatchProxy
+    {
+        public string? Secret { get; private set; }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.SetWorldClockWeatherKeyAsync) => StoreSecret((string)args![0]!),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private Task<OperationResult<string>> StoreSecret(string secret)
+        {
+            Secret = secret;
+            return Task.FromResult(OperationResult<string>.Success(
+                "world_clocks.weather.key.stored",
+                "WorldClockWeatherKeyStored",
+                "TRACKMEUP_OPENWEATHER_API_KEY"));
         }
     }
 

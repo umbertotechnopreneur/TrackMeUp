@@ -292,6 +292,7 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "world_clocks.catalog.v1" => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
                 "world_clocks.add.v3" => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
                 "world_clocks.remove.v3" => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
+                "world_clocks.weather.key.set.v1" => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
                 "session.last" => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
@@ -625,6 +626,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) =>
         SendAsync<WorldClockSelectionState>("world_clocks.remove.v3", new { cityId }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken) =>
+        SendAsync<string>("world_clocks.weather.key.set.v1", new { secret }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>("session.last", null, cancellationToken);
     /// <inheritdoc />

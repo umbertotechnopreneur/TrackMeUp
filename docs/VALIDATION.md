@@ -19,6 +19,23 @@ Use these checks for behavior and visual acceptance after changing the correspon
 - Open Tools and diagnostics from the main menu, enter one focused page, and confirm that Back first returns to the tools overview and then to the player.
 - Open the AI provider connection test and confirm that the taller dialog shows the complete fake terminal without clipping.
 
+## World clocks
+
+- With clean settings, open the detached **World clocks** window and confirm that current weather is on by default. Without `TRACKMEUP_OPENWEATHER_API_KEY`, the clocks and astronomy must remain visible while the weather state says setup is required; it must not claim that the user disabled weather and it must not send a provider request.
+- Reach the icon-only three-dot options action by keyboard. Its localized tooltip and accessible name must be identical. Activating it must show one full options layer over the clock canvas in the same window; the localized icon-only Back action must return to the clocks and restore focus to the opener.
+- In options, turn weather off and on, change always-on-top, add or remove a city, and change the reference city. Each mutation must use the shared application facade, survive a refresh where applicable, preserve the one-to-four-clock bounds, and keep every icon-only action's localized tooltip equal to its accessible name.
+- Enter an invalid weather key and confirm that it is rejected without being retained. Enter a plausible key and confirm that it is written only to the fixed Windows user/process environment variable, the password field is cleared, the success state is localized, and the live projection refreshes without restarting TrackMeUp. The key must not appear in settings, logs, history, exception text, command lines, or IPC diagnostics.
+- Repeat clocks and options in light, dark, High Contrast, and with Windows transparency effects disabled. Desktop Acrylic must remain visible through transparent theme-aware content or yield to the readable Windows fallback; no opaque full-window veil may hide it.
+- Inspect the city image stack through dawn, day, sunset, and night plus clear, cloud, rain, fog, snow, mixed-precipitation, and lightning states. Astronomical, cloud, and lightning backdrops must remain behind the skyline; the scene fade and celestial body must remain above it; rain, fog, snow, and mixed-precipitation foreground layers must remain in front without flattening the compositing order.
+- Change to a historical or future reference instant and confirm that current weather is not requested, weather layers disappear, and the linked OpenWeather attribution appears only when provider observations are actually shown.
+
+## Native system messages
+
+- Trigger informational, warning, and error notifications that require acknowledgement. Each must be one owned native Windows message box opened on its owner UI thread, with the standard Windows-localized **OK** action and the appropriate system icon.
+- Trigger schedule replacement, retention deletion, installation merge, both atomic-reset gates, and application close. Each must use the native **OK/Cancel** layout with **Cancel** selected by default; pressing Escape, closing the message, or choosing Cancel must leave state unchanged.
+- While one message is open, trigger another eligible prompt and confirm that the shared dialog coordinator serializes them. The owner HWND must remain modal and peer windows must regain interaction after every completion or interop failure.
+- Confirm that rich surfaces—city picker, pricing, activity calendar, AI connection test, screenshot reprocessing, and storage migration—remain dedicated accessible windows rather than being reduced to a system message.
+
 ## Screen captures and AI
 
 - Confirm that the page exposes only Latest screen capture and Open folder for retained captures.
