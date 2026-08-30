@@ -1,6 +1,8 @@
 root = true
 
 [*.cs]
+file_header_template = SPDX-License-Identifier: MIT
+dotnet_diagnostic.IDE0073.severity = warning
 dotnet_diagnostic.CA1068.severity = warning
 dotnet_diagnostic.CA1859.severity = none
 dotnet_diagnostic.IDE0019.severity = none

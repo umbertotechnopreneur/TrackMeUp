@@ -37,13 +37,17 @@ The light source was produced by adapting only the theme and contrast while pres
 
 Bahnschrift is used from the local Windows installation only to rasterize the wordmark. No font file is redistributed by this directory.
 
-## Redistribution review
+## Publication approval
 
 The intended destination is the public TrackMeUp repository. These images are
 TrackMeUp Brand Assets governed by the repository's
 [Trademark and Brand Policy](../../../TRADEMARKS.md), not by the MIT License.
-That classification does not establish ownership or complete provenance. The
-project owner must complete human visual review and confirm the applicable
-image-generation service terms and publication scope before release. See the
-repository-wide [asset licensing record](../../../ASSET_LICENSING.md) for the
-remaining publication boundary. This record is not legal advice.
+
+On 2026-08-30, project owner Umberto Giacobbi confirmed that the assets were
+generated with AI-assisted workflows run on systems under his control,
+completed human visual review, and authorized the selected assets for
+publication in the public source repository and official TrackMeUp binaries.
+See the repository-wide
+[`AI_ASSET_PROVENANCE.md`](../AI_ASSET_PROVENANCE.md) declaration and
+[asset licensing record](../../../ASSET_LICENSING.md). This record is not legal
+advice.

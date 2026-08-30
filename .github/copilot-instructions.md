@@ -23,6 +23,7 @@ alwaysApply: true
 - Fail fast on invalid input, unsupported state, missing required configuration, and persistence or interop failures; do not silently normalize, ignore, or fall back unless the fallback is part of the documented product behavior.
 - Do not preserve legacy code or superseded contracts for compatibility. Remove obsolete code paths, adapters, fallbacks, and persisted settings when a feature is replaced; unsupported legacy input must fail fast.
 - Do not commit credentials, private secrets, machine paths, or secrets.
+- Start every first-party C# source file with `// SPDX-License-Identifier: MIT`; preserve original notices in generated or third-party files.
 - Project-authored software and documentation are MIT-licensed. Keep the canonical license text in `LICENSE`; do not add distribution or commercial-use restrictions to it.
 - Treat the TrackMeUp name, logos, app icons, and project-authored brand artwork separately under `TRADEMARKS.md`, and preserve all third-party license and attribution notices.
 - Keep unrelated working-tree changes untouched.

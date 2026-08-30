@@ -1,6 +1,6 @@
 # TrackMeUp Privacy Policy
 
-**Last updated: August 29, 2026**
+**Last updated: August 30, 2026**
 
 This policy describes the data behavior of the current TrackMeUp application
 and source repository. TrackMeUp is a local-first Windows app designed to make
@@ -22,7 +22,7 @@ release. Privacy questions can be sent to **hello@umbertogiacobbi.biz**.
 - When AI analysis is enabled, scheduled snapshots are analyzed immediately after capture. A manual player snapshot waits through its 30-second deletion window; deleting it prevents the AI request, while an undeleted capture is analyzed once the window expires.
 - The selected AI provider credential is read from the Windows environment on this PC and is not copied into TrackMeUp settings or history.
 - TrackMeUp does not require a cloud account, and the current implementation does not send data to a TrackMeUp-operated cloud service. Its direct network and sharing flows are listed below.
-- World-clock time, sun, moon, and lunar-phase data are calculated locally from a bundled city catalog; the player makes no weather or astronomy request.
+- World-clock time, sun, moon, and lunar-phase data are calculated locally from a bundled city catalog. Optional current weather is off without the environment-only `TRACKMEUP_OPENWEATHER_API_KEY`; when configured, only the selected cities' coordinates are sent for the live current projection, never for a converted reference instant.
 - Sentry is optional. It sends diagnostics only when an operator explicitly configures a Sentry DSN.
 - The project-authored source code is open source under the MIT License, and the direct dependency list is public and inspectable.
 
@@ -39,7 +39,8 @@ release. Privacy questions can be sent to **hello@umbertogiacobbi.biz**.
 | AI request usage | Created for local cost and troubleshooting | Local SQLite history | Retention controls; it excludes prompts, images, headers, and keys |
 | Device measurements | Used for local reports and optional AI context | Local records and, only when AI is enabled, the selected provider request | Disable AI; location is a separate opt-in |
 | Windows location | Off | Only the selected AI request when enabled | Windows permission plus TrackMeUp setting |
-| Selected world-clock city IDs | Four initial cities | Local settings JSON only | Add or remove clocks in the player; maximum four |
+| Selected world-clock city IDs | Four initial cities | Local settings JSON only | Add or remove clocks in the independent **World clocks** window; maximum four |
+| Current world-clock weather | Off without `TRACKMEUP_OPENWEATHER_API_KEY` | OpenWeather observations cached in process memory for up to 12 minutes; not persisted | Remove the environment key and restart, or use a converted reference instant |
 | Diagnostic logs | Local logging is enabled for troubleshooting | `%LOCALAPPDATA%\TrackMeUp\logs` | Use the local log directory setting; delete local logs normally |
 | Portable data archive | Created only on explicit export | The `.tmuarchive` path selected by the user | Preview the destination and keep or delete the file normally |
 
@@ -57,9 +58,10 @@ only through an explicit user action or an enabled integration:
 2. **AI provider request.** When AI is enabled and an analysis is requested, TrackMeUp sends the selected local context, system context, and screenshots allowed by the settings directly to the selected provider. The default provider is OpenAI at `https://api.openai.com/v1/responses`. OpenRouter and Anthropic are explicit alternatives.
 3. **Screenshot sharing.** When the user chooses to share a retained screenshot, TrackMeUp opens the Windows Share UI with that file. The user chooses the receiving app or destination; TrackMeUp does not select or upload to a recipient automatically.
 4. **Redacted log sharing.** When the user chooses **Report a problem**, TrackMeUp creates a bounded copy of the current application log, removes known private paths and secrets, and opens the Windows Share UI. Redaction reduces exposure but cannot guarantee that future diagnostic text contains no sensitive context, so the user should review what they share.
-5. **Optional Sentry diagnostics.** If `TRACKMEUP_SENTRY_DSN` is set, Sentry receives configured error events and breadcrumbs. It is not active by default.
+5. **Optional current weather.** If `TRACKMEUP_OPENWEATHER_API_KEY` is set, only the live current world-clock projection sends the latitude and longitude of each of the one to four selected cities directly to OpenWeather's Current Weather endpoint. Responses contribute temperature, condition, and observation time only while fresh, are cached in process memory for up to 12 minutes, and are not written to settings, SQLite, reports, diagnostics, or IPC history. The window keeps linked OpenWeather attribution visible whenever provider weather is shown. A missing key, stale response, or provider failure leaves every local clock working and exposes only a non-secret localized availability state. Historical and future reference-instant conversions never issue a current-weather request.
+6. **Optional Sentry diagnostics.** If `TRACKMEUP_SENTRY_DSN` is set, Sentry receives configured error events and breadcrumbs. It is not active by default.
 
-After data is sent to an AI provider, Sentry, or an app selected through the
+After data is sent to an AI provider, OpenWeather, Sentry, or an app selected through the
 Windows Share UI, that recipient's privacy and retention terms apply.
 TrackMeUp cannot remove copies held by those recipients.
 
@@ -72,6 +74,8 @@ For OpenAI, TrackMeUp reads `OPENAI_API_KEY` from the Windows process, user, or 
 TrackMeUp does not write the key to settings, SQLite, reports, logs, command-line arguments, command history, IPC diagnostics, or tests. It is used in the HTTPS authorization header for the direct provider request. The key is not routed through a TrackMeUp server; the selected provider receives it as authentication for the requested analysis.
 
 The same rule applies to `OPENROUTER_API_KEY` and `ANTHROPIC_API_KEY` when those providers are selected.
+
+Optional current weather uses `TRACKMEUP_OPENWEATHER_API_KEY`, read only from the Windows process, user, or machine environment; TrackMeUp has no weather-key setting and does not accept the key as a command-line argument. The request goes directly to `https://api.openweathermap.org/data/2.5/weather`. OpenWeather requires the key in the HTTPS query, so TrackMeUp constructs that URI only for the direct request and never logs, persists, returns through IPC diagnostics, or places the URI or key in an exception message. Removing the variable disables new weather requests after the application restarts; all local clock and astronomy behavior remains available. The person supplying the key remains responsible for the data, attribution, redistribution, and usage terms of their selected OpenWeather plan.
 
 ## Dependency census
 
@@ -153,6 +157,7 @@ Start from these files:
 
 - `TrackMeUp.Core/Infrastructure/Services/OpenAiAnalysisService.cs` — AI and screenshot gates, cleanup, and local result persistence.
 - `TrackMeUp.Core/Infrastructure/Services/LocalStore.cs` — environment-variable key lookup and local storage access.
+- `TrackMeUp.Core/Infrastructure/Services/WorldClockWeatherService.cs` — optional coordinate-only Current Weather requests, freshness checks, cache, and non-secret diagnostics.
 - `TrackMeUp/Runtime/LoggingBootstrapper.cs` — Serilog and optional Sentry configuration.
 - `TrackMeUp.Core/Application/ObservabilityConfiguration.cs` — optional Sentry environment configuration.
 - `TrackMeUp.Core/Application/SettingsCatalog.cs` — provider endpoints and user-facing settings.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Services;
 
 /// <summary>Validates TrackMeUp screenshot ownership before invoking the shared Windows file-share service.</summary>

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Runtime;
 
 /// <summary>Resolves whether the shared tracking runtime should start for one application launch.</summary>

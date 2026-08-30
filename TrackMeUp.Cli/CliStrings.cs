@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Cli;
 
 using System.Collections.ObjectModel;

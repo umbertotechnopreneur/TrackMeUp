@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System.Globalization;
 using System.Text.RegularExpressions;
 using TrackMeUp.Application;

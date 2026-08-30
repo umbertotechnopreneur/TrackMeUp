@@ -72,18 +72,20 @@ Display, search, and OCR languages are configured independently. Search supports
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v2-dark-erasure-wave-2400x800.png" />
     <source media="(prefers-color-scheme: light)" srcset="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v3-light-radial-reset-2400x800.png" />
-    <img src="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v3-light-radial-reset-2400x800.png" alt="Privacy has a nuclear option: permanently erase TrackMeUp-owned local data from this installation" width="100%" />
+    <img src="design/branding/atomic-nuke/output/trackmeup-atomic-privacy-banner-v3-light-radial-reset-2400x800.png" alt="Privacy has a nuclear option: saved moments disappear into a glowing reset point" width="100%" />
   </picture>
 </p>
 
-Local-first is the default, not a premium setting:
+Privacy should feel like control, not a policy page. TrackMeUp keeps your workday memory on your PC and lets you decide what is remembered, for how long, and when it is time to start over.
 
-- No TrackMeUp cloud account is required.
-- No hidden synchronization pipeline uploads your activity.
-- Screenshots, AI analysis, and location sharing are off by default.
-- Privacy rules can exclude selected applications, window titles, and context details.
-- Retention policies control how long activity, analysis records, and screenshots remain.
-- **Atomic nuke** permanently removes TrackMeUp-owned local data, screenshots, settings, reports, logs, search indexes, and metadata from the current installation, then restarts the app clean. It cannot retract exported data or copies already sent through integrations you enabled.
+- **No account required.** Open TrackMeUp and your workday memory is yours.
+- **Nothing is quietly synced.** There is no hidden TrackMeUp cloud collecting your activity.
+- **More context is always your choice.** Screenshots, AI assistance, and location sharing wait for you to turn them on.
+- **Some moments can stay private.** Leave selected apps, windows, and details out of the story.
+- **Old memories fade on your schedule.** You choose how long TrackMeUp keeps them.
+- **A clean slate is built in.** The **Nuclearize everything** button permanently erases everything TrackMeUp has kept on this PC and restarts the app as new. Two deliberate confirmations protect against an accidental click.
+
+Files you already exported or shared remain outside TrackMeUp's reach.
 
 For the complete data-flow and dependency inventory, see [Privacy and Data Flow](docs/PRIVACY.md).
 
@@ -193,8 +195,6 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 ~~~
 
 Quick Setup validation checklist:
-
-- [ ] On the player, the left world-time rail sits directly on the visible window material without an outer card and shows the current local sun or calculated lunar phase, illumination, sunrise/sunset and moonrise/moonset; every borderless clock keeps its localized detail/remove actions visible, expanding a city reveals its full-width 24-hour detail, search can add a capital, removal persists, and the add command disappears at four clocks then returns after removal.
 - [ ] In PowerShell 7, run `trackmeup.exe -cli` with no command, use the interactive command center to refresh the dashboard and open help, then exit without starting a second tracking runtime.
 - [ ] In PowerShell 7, confirm CLI help lists only supported global switches and that redirected and JSON output remain ANSI-free, with JSON producing exactly one valid document.
 - [ ] In PowerShell 7, confirm malformed CLI input such as `status --watch --interval 0`, a missing option value, an unknown switch, or an unterminated quoted value exits with code 2 without invoking the requested application operation.
@@ -218,10 +218,11 @@ Quick Setup validation checklist:
 - [ ] Start with owned screenshot files in the legacy flat directory: before tracking begins, the non-dismissible **Data migration** progress window appears, every raw/stored monitor artifact moves to `yyyy-MM/week-YYYY-WW/yyyy-MM-dd`, OCR and AI references still open the new paths, and a migration failure leaves tracking and the refresh timer stopped.
 - [ ] Enable **Start with Windows** and restart both package types: the MSIX must expose and enable its `TrackMeUpStartup` Windows startup task, recognize rich startup activation, and open in the notification area; the unpackaged build must keep an exact HKCU Run command for its current executable with `--start-with-windows` and repair stale paths without toggling the setting off and on.
 - [ ] While the shared runtime is completing a scheduled OCR/AI capture, launch a second desktop UI: Windows-startup reconciliation waits for the serialized mutation instead of reporting `runtime.unavailable`; a genuine startup-registration failure uses one owned standard Windows warning with its native **OK** action.
-- [ ] In the player title bar, reach the localized clock icon by keyboard and open its flyout: the icon and **TRACK ME UP** title stay fixed, player bounds do not change, screen readers announce the localized world-clock landmark without a duplicate visual title, and the one-minute refresh runs only while the flyout is open.
-- [ ] Move and close the player, reopen it, and verify its last valid position is restored without recentering; open the title-bar clock flyout without changing player bounds, then open **Add clock** and verify the single ComboBox exposes every packaged city and enables confirmation only after a catalog item is selected.
-- [ ] Inspect both hero and compact world clocks: each skyline surface meets the next without a card outline, rounded card edge, gap, or shadow; detail/delete actions fade in on pointer hover or keyboard focus without moving content; expand the detail and verify the sun/moon headings and both event rows align across equal columns while the 24-hour daylight arc keeps the full flyout width.
-- [ ] With the world-clock flyout both closed and open, drag the player from the title text/blank caption area and verify every custom title command still clicks at 100%, 125%, 150%, and 200% DPI; on Windows 11 the outer window corners are rounded, the native title bar shows only Close with a 12-DIP gap after TrackMeUp commands, Cancel keeps tracking active, and confirming Close states that tracking will be suspended before shutdown.
+- [ ] In the player title bar, reach the localized clock icon by keyboard and open **World clocks**: one independent resizable window appears, repeated activation focuses the same instance, hiding the player leaves it open, and closing the application closes it before the shared runtime shuts down; if the window cannot open, the player shows a localized warning.
+- [ ] Move and resize **World clocks**, close and reopen it, and verify its last valid placement is restored; choose **Add clock** and confirm the existing searchable city picker exposes every packaged city while preserving the four-clock maximum.
+- [ ] Inspect one through four world clocks: every city uses an equal open column separated by a 1-DIP divider, the Mica backdrop remains visible, the local astronomical phase composes golden-hour or star backdrops behind the faint skyline, fresh cloud conditions add the matching dawn/day/sunset/night cloud backdrop, and rain, fog, or snow renders independently in front; mixed precipitation combines rain and snow, while lightning adds its storm accent. Every reference/delete icon exposes the same localized tooltip and accessible name, and narrowing the window reveals horizontal scrolling before a column becomes unreadable.
+- [ ] Without `TRACKMEUP_OPENWEATHER_API_KEY`, open **World clocks** and confirm all local clocks remain available with a localized weather-disabled status. With a valid key, confirm only the live current projection shows fresh temperature and condition plus visible linked OpenWeather attribution using the official provider mark; partial or unavailable weather stays explicit without hiding clocks. Editing a historical or future reference instant shows that current weather was not requested, removes its layers, and never contacts the provider.
+- [ ] Select another reference city without changing the shared instant, then edit its date and time: every column updates across date boundaries and fractional offsets, **Now** resumes a minute-aligned live refresh, and invalid or ambiguous daylight-saving times produce an explicit localized warning instead of choosing silently.
 - [ ] With the taskbar widget enabled, restart Explorer and verify the old transparent widget window closes before its replacement attaches; immediately exit during widget startup and confirm shutdown completes without a dispatcher timeout or a lingering widget process.
 - [ ] With the shared runtime already owned by a tray or startup process, launch a second desktop UI and verify that it paints completely and remains interactive; open and close **Captured moments** and confirm that window placement is saved before native teardown without terminating either process.
 - [ ] Open **Activity report** with OCR refinement usage in the selected range and verify that the report renders instead of rejecting the valid `ocr.refinement` usage origin.
@@ -251,7 +252,10 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation g
 ## Project documentation
 
 - [Privacy and data flow](docs/PRIVACY.md)
+- [Architecture](docs/ARCHITECTURE.md)
 - [Manual validation guide](docs/VALIDATION.md)
+- [Public roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
 - [CLI implementation plan](docs/CLI_IMPLEMENTATION_PLAN.md)
 - [Security policy](SECURITY.md)
 - [Support](SUPPORT.md)
@@ -283,6 +287,9 @@ Unless a file says otherwise, TrackMeUp's project-authored source code and
 documentation are open source under the [MIT License](LICENSE). The license
 permits use, modification, distribution, sublicensing, and commercial use,
 provided its copyright and permission notice are retained.
+
+First-party C# files carry the concise `SPDX-License-Identifier: MIT` header;
+the complete license text remains authoritative here at the repository root.
 
 The MIT License does not grant rights to the TrackMeUp name, logos, wordmarks,
 app icons, or other official brand artwork. Forks and redistributions must

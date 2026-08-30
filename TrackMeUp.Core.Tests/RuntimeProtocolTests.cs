@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TrackMeUp.Application;
 using TrackMeUp.Runtime;
+using TrackMeUp.Services;
 using Xunit;
 
 namespace TrackMeUp.Core.Tests;
@@ -286,6 +289,26 @@ public sealed class RuntimeProtocolTests
         Assert.True(health.Succeeded);
         Assert.True(startup.Succeeded);
         Assert.True(startup.Value);
+    }
+
+    [Fact]
+    public async Task WorldClockQuery_UsesItsWeatherAwareTimeoutAndKeepsLocalClocksOnWeatherFailure()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, WeatherUnavailableWorldClockRuntimeProxy>();
+        var installationId = $"world-clock-timeout-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.Zero);
+
+        var result = await client.GetWorldClocksAsync(CancellationToken.None);
+
+        Assert.Equal(TimeSpan.FromSeconds(15), RuntimeClient.WorldClockQueryTimeout);
+        Assert.True(result.Succeeded);
+        var clock = Assert.Single(result.Value!.Clocks);
+        Assert.Equal("london", clock.CityId);
+        Assert.Null(clock.Weather);
+        Assert.Equal("unavailable", result.Value.WeatherStatus.State);
+        Assert.Equal("request-failed", result.Value.WeatherStatus.ReasonCode);
     }
 
     [Fact]
@@ -628,6 +651,54 @@ public sealed class RuntimeProtocolTests
         {
             await Task.Delay(TimeSpan.FromMilliseconds(1500), cancellationToken);
             return OperationResult<bool>.Success("startup.enabled", "StartupEnabled", true);
+        }
+    }
+
+    public class WeatherUnavailableWorldClockRuntimeProxy : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetWorldClocksAsync) => Task.FromResult(
+                    OperationResult<WorldClockSnapshot>.Success(
+                        "world_clocks.loaded",
+                        "WorldClocksLoaded",
+                        CreateSnapshot())),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private static WorldClockSnapshot CreateSnapshot()
+        {
+            var instant = new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero);
+            return new WorldClockSnapshot(
+                instant,
+                [
+                    new WorldClockItem(
+                        "london",
+                        "London",
+                        "GB",
+                        "GMT Standard Time",
+                        instant,
+                        true,
+                        instant.AddHours(-6),
+                        instant.AddHours(6),
+                        180d,
+                        "Assets/WorldClocks/Skylines/london-summer.png",
+                        "summer",
+                        new WorldClockAtmosphere("day", [], []),
+                        Weather: null)
+                ],
+                WorldClockSelection.MaximumClocks,
+                new WorldClockWeatherStatus(
+                    "openweather",
+                    "unavailable",
+                    "request-failed",
+                    1,
+                    0));
         }
     }
 

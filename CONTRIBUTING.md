@@ -38,6 +38,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAs
 - Do not add backward-compatibility layers for superseded contracts unless explicitly requested.
 - Do not create a second tracking runtime; use the existing mutex and named-pipe ownership flow.
 - Never pass secrets by command arguments or persist them in settings/history/logs/diagnostics.
+- Start every first-party C# source file with `// SPDX-License-Identifier: MIT`; preserve original notices in generated or third-party files.
 - Keep changes scoped and avoid unrelated formatting churn.
 
 ## Pull Request Expectations

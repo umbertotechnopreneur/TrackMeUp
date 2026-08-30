@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Cli;
 
 /// <summary>Describes presentation-only help for one CLI command family.</summary>

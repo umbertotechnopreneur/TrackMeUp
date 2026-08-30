@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Presentation;
 
 /// <summary>Identifies the single top-level surface currently rendered by the compact main window.</summary>

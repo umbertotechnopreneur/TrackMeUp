@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 #region Using directives
 using System.ComponentModel;
 using System.Globalization;
@@ -43,7 +45,6 @@ public sealed partial class MainWindow : Window
     private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
     private readonly CancellationTokenSource _surfaceLifetime = new();
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
-    private readonly DispatcherQueueTimer _worldClockRefreshTimer;
     private readonly AppWindow _appWindow;
     private readonly WindowPlacementService _placement;
     private readonly MainWindowLayoutState _layoutState = new();
@@ -90,9 +91,6 @@ public sealed partial class MainWindow : Window
     private OperationsControl? _operationsControl;
     private Task? _optionsInitializationTask;
     private Task? _operationsInitializationTask;
-    private WorldClockRailSnapshot? _worldClockSnapshot;
-    private bool _isWorldClockFlyoutOpen;
-    private int _worldClockRefreshInProgress;
     private bool _titleBarLayoutUpdateQueued;
 
     private OptionsControl OptionsControl => _optionsControl
@@ -113,6 +111,9 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Occurs when the user requests the dedicated reports surface.</summary>
     public event EventHandler? ReportsRequested;
+
+    /// <summary>Occurs when the user requests the independent world-clock window.</summary>
+    public event EventHandler? WorldClocksRequested;
 
     /// <summary>Occurs when the user requests the floating local-search surface.</summary>
     public event EventHandler? SearchRequested;
@@ -197,12 +198,6 @@ public sealed partial class MainWindow : Window
         _windowResizeAnimationTimer.Interval = TimeSpan.FromMilliseconds(16);
         _windowResizeAnimationTimer.Tick += WindowResizeAnimationTimer_Tick;
 
-        _worldClockRefreshTimer = DispatcherQueue.CreateTimer();
-        _worldClockRefreshTimer.Interval = TimeSpan.FromMinutes(1);
-        _worldClockRefreshTimer.Tick += WorldClockRefreshTimer_Tick;
-        WorldClockRail.AddRequested += WorldClockRail_AddRequested;
-        WorldClockRail.RemoveRequested += WorldClockRail_RemoveRequested;
-
         _ = InitializeAsync(options);
         Closed += MainWindow_Closed;
     }
@@ -254,115 +249,6 @@ public sealed partial class MainWindow : Window
         await ShowStartupAiWarningAsync();
         await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync();
-    }
-
-    private async void WorldClockRefreshTimer_Tick(DispatcherQueueTimer sender, object args) =>
-        await RefreshWorldClocksAsync();
-
-    private async Task RefreshWorldClocksAsync()
-    {
-        if (!_isWorldClockFlyoutOpen
-            || Interlocked.Exchange(ref _worldClockRefreshInProgress, 1) != 0)
-        {
-            return;
-        }
-
-        try
-        {
-            var result = await _application.GetWorldClockRailAsync(_surfaceLifetime.Token);
-            if (result.Succeeded && result.Value is not null)
-            {
-                _worldClockSnapshot = result.Value;
-                WorldClockRail.ApplySnapshot(result.Value, _strings);
-            }
-        }
-        catch (OperationCanceledException) when (_surfaceLifetime.IsCancellationRequested)
-        {
-            // Window shutdown cancels this presentation refresh; no retry is required.
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _worldClockRefreshInProgress, 0);
-        }
-    }
-
-    private async void WorldClockRail_AddRequested(object? sender, EventArgs e)
-    {
-        var catalogResult = await _application.GetWorldClockCityCatalogAsync(_surfaceLifetime.Token);
-        if (!catalogResult.Succeeded || catalogResult.Value is null)
-        {
-            _dialogs.ShowErrorBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T("WorldClock.CatalogUnavailable"));
-            return;
-        }
-
-        var selectedIds = _worldClockSnapshot?.Clocks.Select(static clock => clock.CityId).ToHashSet(StringComparer.Ordinal)
-            ?? [];
-        var options = catalogResult.Value.Cities
-            .Where(city => !selectedIds.Contains(city.Id))
-            .ToArray();
-        if (options.Length == 0)
-        {
-            return;
-        }
-
-        var selectedCityId = await _dialogs.ShowWorldClockCityPickerAsync(
-            _application,
-            this,
-            options,
-            RootGrid.RequestedTheme,
-            _strings);
-        if (selectedCityId is null)
-        {
-            return;
-        }
-
-        var result = await _application.AddWorldClockAsync(selectedCityId, _surfaceLifetime.Token);
-        if (result.Succeeded && result.Value is not null)
-        {
-            _worldClockSnapshot = result.Value;
-            WorldClockRail.ApplySnapshot(result.Value, _strings);
-            return;
-        }
-
-        _dialogs.ShowWarningBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T(result.MessageKey));
-    }
-
-    private async void WorldClockRail_RemoveRequested(object? sender, WorldClockCityEventArgs e)
-    {
-        var result = await _application.RemoveWorldClockAsync(e.CityId, _surfaceLifetime.Token);
-        if (result.Succeeded && result.Value is not null)
-        {
-            _worldClockSnapshot = result.Value;
-            WorldClockRail.ApplySnapshot(result.Value, _strings);
-            _dialogs.ShowInfoBanner(
-                MainNotificationBanner,
-                T("WorldClock.RemovedTitle"),
-                _strings.Format("WorldClock.RemovedMessage", e.CityName));
-            return;
-        }
-
-        _dialogs.ShowWarningBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T(result.MessageKey));
-    }
-
-    /// <summary>Starts local clock refresh only while the title-bar flyout is open.</summary>
-    private async void WorldClockFlyout_Opened(object sender, object e)
-    {
-        if (_layoutState.Surface != MainWindowSurface.Player)
-        {
-            WorldClockFlyout.Hide();
-            return;
-        }
-
-        _isWorldClockFlyoutOpen = true;
-        _worldClockRefreshTimer.Start();
-        await RefreshWorldClocksAsync();
-    }
-
-    /// <summary>Stops the minute timer as soon as the world-clock flyout is dismissed.</summary>
-    private void WorldClockFlyout_Closed(object sender, object e)
-    {
-        _isWorldClockFlyoutOpen = false;
-        _worldClockRefreshTimer.Stop();
     }
 
     private async Task<string?> ReconcileWindowsStartupAsync(LaunchOptions options)
@@ -681,6 +567,13 @@ public sealed partial class MainWindow : Window
                 break;
         }
     }
+
+    /// <summary>Shows a localized warning when the independent world-clock surface cannot open.</summary>
+    internal void ShowWorldClockOpenFailure() =>
+        _dialogs.ShowWarningBanner(
+            MainNotificationBanner,
+            T("WorldClock.ErrorTitle"),
+            T("WorldClock.OpenFailed"));
 
     /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
     private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
@@ -1069,6 +962,10 @@ public sealed partial class MainWindow : Window
 
     private void RequestReports() => ReportsRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Forwards world-clock activation to the application composition root.</summary>
+    private void WorldClockButton_Click(object sender, RoutedEventArgs e) =>
+        WorldClocksRequested?.Invoke(this, EventArgs.Empty);
+
     /// <summary>Shows the native aggregate activity calendar through the shared dialog coordinator.</summary>
     private async void ActivityCalendarMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -1431,9 +1328,7 @@ public sealed partial class MainWindow : Window
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
-        WorldClockFlyout.Hide();
         WorldClockButton.Visibility = Visibility.Collapsed;
-        _worldClockRefreshTimer.Stop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
@@ -1851,10 +1746,6 @@ public sealed partial class MainWindow : Window
         UpdateScreenshotCaptureStatus();
         _optionsControl?.ApplyLanguage(settings.UiLanguage);
         _operationsControl?.ApplyLanguage(settings.UiLanguage);
-        if (_worldClockSnapshot is not null)
-        {
-            WorldClockRail.ApplySnapshot(_worldClockSnapshot, _strings);
-        }
         if (!isInitialSettings || !_mainPlacementRestored)
         {
             ResizeForCurrentLayout(animate: false);
@@ -1875,7 +1766,7 @@ public sealed partial class MainWindow : Window
         SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
         SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
         SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
-        SetIconButtonLabel(WorldClockButton, "WorldClock.ShowRail");
+        SetIconButtonLabel(WorldClockButton, "WorldClock.OpenWindow");
         SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
         SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
         AutomationProperties.SetName(TrackingStatusToast, T("Main.TrackingStatus"));
@@ -2267,10 +2158,6 @@ public sealed partial class MainWindow : Window
         _dashboardSubscription?.Dispose();
         _dashboardSubscription = null;
         _windowResizeAnimationTimer.Stop();
-        _worldClockRefreshTimer.Stop();
-        _worldClockRefreshTimer.Tick -= WorldClockRefreshTimer_Tick;
-        WorldClockRail.AddRequested -= WorldClockRail_AddRequested;
-        WorldClockRail.RemoveRequested -= WorldClockRail_RemoveRequested;
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
         _appWindow.Closing -= AppWindow_Closing;

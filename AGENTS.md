@@ -19,6 +19,7 @@ These instructions apply to all changes in this repository.
 - Support PowerShell 7 only: invoke every PowerShell command through `pwsh -NoProfile` (the supported equivalent of `--noprofile`); do not use Windows PowerShell 5.1 or bare `powershell`/`pwsh`.
 - Avoid PowerShell quoting errors: prefer `pwsh -NoProfile -File <script.ps1>` for scripts and `pwsh -NoProfile -Command '<single-quoted command>'` for short commands; pass arguments as arrays or explicit parameters, do not build nested shell strings, and escape embedded quotes for the receiving command instead of relying on PowerShell interpolation.
 - Do not commit credentials, secrets, `.env`, API keys, tokens, or private absolute paths.
+- Start every first-party C# source file with `// SPDX-License-Identifier: MIT`; preserve original notices in generated or third-party files.
 - Exclude generated artifacts in commits (`bin/`, `obj/`, `artifacts/`, `.vs/`).
 - Ignore automatic version metadata changes in `TrackMeUp/build-version.json` and version-only updates in `TrackMeUp/Package.appxmanifest`: do not inspect, restore, report, stage, or commit them unless the user explicitly asks to manage the application version.
 - Run build on Windows SDK targets only: x64, x86, ARM64.

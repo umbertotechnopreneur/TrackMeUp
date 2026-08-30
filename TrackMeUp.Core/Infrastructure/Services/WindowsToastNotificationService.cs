@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Microsoft.Extensions.Logging;
 using Windows.UI.Notifications;
 

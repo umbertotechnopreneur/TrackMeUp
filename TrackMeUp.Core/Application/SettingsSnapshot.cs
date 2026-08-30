@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Holds the immutable settings value currently owned by the runtime.</summary>

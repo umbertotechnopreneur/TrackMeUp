@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Microsoft.Data.Sqlite;
 
 namespace TrackMeUp.Services;

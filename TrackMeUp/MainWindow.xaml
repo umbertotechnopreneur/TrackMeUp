@@ -75,28 +75,11 @@
                 AutomationProperties.Name="Show world clocks"
                 Background="Transparent"
                 BorderBrush="Transparent"
+                Click="WorldClockButton_Click"
                 IsTabStop="True"
                 Style="{StaticResource TitleBarOverflowButtonStyle}"
-                Tag="WorldClock.ShowRail"
+                Tag="WorldClock.OpenWindow"
                 ToolTipService.ToolTip="Show world clocks">
-                <Button.Flyout>
-                    <Flyout
-                        x:Name="WorldClockFlyout"
-                        Closed="WorldClockFlyout_Closed"
-                        Opened="WorldClockFlyout_Opened"
-                        Placement="BottomEdgeAlignedLeft"
-                        ShouldConstrainToRootBounds="False">
-                        <Flyout.FlyoutPresenterStyle>
-                            <Style TargetType="FlyoutPresenter">
-                                <Setter Property="Padding" Value="0" />
-                            </Style>
-                        </Flyout.FlyoutPresenterStyle>
-                        <controls:WorldClockRailControl
-                            x:Name="WorldClockRail"
-                            Width="278"
-                            Height="560" />
-                    </Flyout>
-                </Button.Flyout>
                 <SymbolIcon
                     AutomationProperties.AccessibilityView="Raw"
                     Symbol="Clock" />

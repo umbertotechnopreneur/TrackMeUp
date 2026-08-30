@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -376,10 +378,11 @@ public sealed class CliRouterTests
 
         public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => Unsupported<WindowState?>();
         public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => Unsupported<WindowState>();
-        public Task<OperationResult<WorldClockRailSnapshot>> GetWorldClockRailAsync(CancellationToken cancellationToken) => Unsupported<WorldClockRailSnapshot>();
+        public Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken) => Unsupported<WorldClockSnapshot>();
+        public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken) => Unsupported<WorldClockSnapshot>();
         public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => Unsupported<WorldClockCityCatalog>();
-        public Task<OperationResult<WorldClockRailSnapshot>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockRailSnapshot>();
-        public Task<OperationResult<WorldClockRailSnapshot>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockRailSnapshot>();
+        public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
+        public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
 
         public Task<OperationResult<RuntimeHealth>> GetRuntimeHealthAsync(CancellationToken cancellationToken)
         {

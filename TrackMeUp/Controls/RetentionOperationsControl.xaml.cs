@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System;
 using System.Linq;
 using Microsoft.UI.Xaml;

@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: MIT
+
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
@@ -6,7 +9,7 @@ namespace TrackMeUp.Services;
 /// <summary>Defines the stable world-clock selection contract.</summary>
 public static class WorldClockSelection
 {
-    /// <summary>Maximum number of clocks visible in the rail.</summary>
+    /// <summary>Maximum number of clocks visible in the comparison window.</summary>
     public const int MaximumClocks = 4;
 
     /// <summary>Initial selection matching the approved local-plus-capitals composition.</summary>
@@ -40,16 +43,150 @@ public static class WorldClockSelection
     }
 }
 
-/// <summary>Reads the bundled capital catalog and calculates celestial projections without network access.</summary>
-public sealed class WorldClockService
+/// <summary>Maps locally calculated daylight events to decorative packaged atmosphere layers.</summary>
+internal static class WorldClockAtmosphereResolver
+{
+    private const string BackdropRoot = "Assets/WorldClocks/Overlays/Backdrops";
+    private const string ForegroundRoot = "Assets/WorldClocks/Overlays/Foregrounds";
+
+    internal static WorldClockAtmosphere Resolve(
+        DateTimeOffset localTime,
+        DateTimeOffset? sunrise,
+        DateTimeOffset? sunset,
+        bool isDaylight,
+        string? currentConditionKey = null)
+    {
+        var dawnDistance = EventDistance(localTime, sunrise, -60, 45);
+        var sunsetDistance = EventDistance(localTime, sunset, -45, 60);
+        string phase;
+        bool useGoldenHour;
+        if (dawnDistance is not null && (sunsetDistance is null || dawnDistance <= sunsetDistance))
+        {
+            phase = "dawn";
+            useGoldenHour = dawnDistance.Value <= 45;
+        }
+        else if (sunsetDistance is not null)
+        {
+            phase = "sunset";
+            useGoldenHour = sunsetDistance.Value <= 45;
+        }
+        else
+        {
+            phase = isDaylight ? "day" : "night";
+            useGoldenHour = false;
+        }
+
+        if (currentConditionKey is not null
+            && currentConditionKey is not (
+                "clear" or
+                "cloudy" or
+                "rain" or
+                "snow" or
+                "mixed-precipitation" or
+                "fog" or
+                "lightning"))
+        {
+            throw new InvalidDataException($"Unsupported current weather condition '{currentConditionKey}'.");
+        }
+
+        var backdrops = new List<string>();
+        var foregrounds = new List<string>();
+        if (phase == "night")
+        {
+            backdrops.Add($"{BackdropRoot}/stars.png");
+        }
+        else if (useGoldenHour)
+        {
+            backdrops.Add($"{BackdropRoot}/golden-hour.png");
+        }
+
+        var requiresClouds = currentConditionKey is
+            "cloudy" or
+            "rain" or
+            "snow" or
+            "mixed-precipitation" or
+            "lightning";
+        if (requiresClouds)
+        {
+            var cloudFileName = phase switch
+            {
+                "dawn" => "clouds-dawn.png",
+                "sunset" => "clouds-sunset.png",
+                "day" => "clouds-day.png",
+                "night" => "clouds-night.png",
+                _ => throw new InvalidDataException($"Unsupported local-time phase '{phase}'.")
+            };
+            backdrops.Add($"{BackdropRoot}/{cloudFileName}");
+        }
+
+        switch (currentConditionKey)
+        {
+            case "rain":
+                foregrounds.Add($"{ForegroundRoot}/rain.png");
+                break;
+            case "snow":
+                foregrounds.Add($"{ForegroundRoot}/snow.png");
+                break;
+            case "mixed-precipitation":
+                foregrounds.Add($"{ForegroundRoot}/rain.png");
+                foregrounds.Add($"{ForegroundRoot}/snow.png");
+                break;
+            case "fog":
+                foregrounds.Add($"{ForegroundRoot}/fog.png");
+                break;
+            case "lightning":
+                backdrops.Add($"{BackdropRoot}/lightning.png");
+                break;
+        }
+
+        return new WorldClockAtmosphere(phase, backdrops, foregrounds);
+    }
+
+    private static double? EventDistance(
+        DateTimeOffset localTime,
+        DateTimeOffset? localEvent,
+        double startMinutes,
+        double endMinutes)
+    {
+        if (localEvent is null)
+        {
+            return null;
+        }
+
+        var delta = (localTime - localEvent.Value).TotalMinutes;
+        return delta >= startMinutes && delta < endMinutes ? Math.Abs(delta) : null;
+    }
+}
+
+/// <summary>Calculates clocks locally and optionally attaches fresh current weather through a bounded Core service.</summary>
+public sealed class WorldClockService : IDisposable
 {
     private readonly string _catalogPath;
+    private readonly WorldClockWeatherService _currentWeather;
+    private readonly TimeProvider _timeProvider;
     private IReadOnlyDictionary<string, CityRecord>? _cities;
 
-    /// <summary>Creates a service over the packaged catalog, or an explicit catalog path for tests.</summary>
-    public WorldClockService(string? catalogPath = null)
+    /// <summary>Creates a service over the packaged catalog and the optional environment-configured weather provider.</summary>
+    public WorldClockService(
+        string? catalogPath = null,
+        ILogger<WorldClockService>? logger = null)
+        : this(
+            catalogPath,
+            OpenWeatherCurrentProvider.CreateFromEnvironment(),
+            TimeProvider.System,
+            logger)
+    {
+    }
+
+    internal WorldClockService(
+        string? catalogPath,
+        IWorldClockWeatherProvider weatherProvider,
+        TimeProvider timeProvider,
+        ILogger<WorldClockService>? logger = null)
     {
         _catalogPath = Path.GetFullPath(catalogPath ?? Path.Combine(AppContext.BaseDirectory, "Assets", "WorldClocks", "world-clocks.sqlite3"));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _currentWeather = new WorldClockWeatherService(weatherProvider, _timeProvider, logger);
     }
 
     /// <summary>Gets the distributed 100-capital catalog plus the approved local city.</summary>
@@ -70,11 +207,59 @@ public sealed class WorldClockService
         return new WorldClockCityCatalog(cities, WorldClockSelection.MaximumClocks);
     }
 
-    /// <summary>Builds a deterministic rail snapshot for the supplied UTC instant.</summary>
-    public WorldClockRailSnapshot BuildSnapshot(IReadOnlyList<string>? cityIds, DateTimeOffset utcNow)
+    /// <summary>Builds a deterministic world-clock snapshot for the supplied UTC instant.</summary>
+    public WorldClockSnapshot BuildSnapshot(IReadOnlyList<string>? cityIds, DateTimeOffset utcInstant)
     {
         var selection = WorldClockSelection.NormalizePersisted(cityIds);
         var cities = LoadCities();
+        return BuildSnapshotCore(
+            selection,
+            cities,
+            utcInstant,
+            new Dictionary<string, WorldClockWeather>(StringComparer.Ordinal),
+            new WorldClockWeatherStatus(
+                "openweather",
+                "not-requested",
+                "explicit-instant",
+                selection.Count,
+                0));
+    }
+
+    /// <summary>Builds the current snapshot and optionally enriches it with fresh cached weather.</summary>
+    public async Task<WorldClockSnapshot> BuildCurrentSnapshotAsync(
+        IReadOnlyList<string>? cityIds,
+        CancellationToken cancellationToken)
+    {
+        var selection = WorldClockSelection.NormalizePersisted(cityIds);
+        var cities = LoadCities();
+        var locations = selection.Select(cityId =>
+        {
+            if (!cities.TryGetValue(cityId, out var city))
+            {
+                throw new InvalidDataException($"World-clock city '{cityId}' is not present in the distributed catalog.");
+            }
+
+            return new WorldClockWeatherLocation(city.Id, city.Latitude, city.Longitude);
+        }).ToArray();
+        var weather = await _currentWeather.LoadCurrentAsync(locations, cancellationToken).ConfigureAwait(false);
+        // Project clocks after optional network work so the returned local times are current at completion.
+        var instantUtc = _timeProvider.GetUtcNow();
+        var snapshotWeather = _currentWeather.RevalidateForSnapshot(weather, instantUtc);
+        return BuildSnapshotCore(
+            selection,
+            cities,
+            instantUtc,
+            snapshotWeather.Observations,
+            snapshotWeather.Status);
+    }
+
+    private static WorldClockSnapshot BuildSnapshotCore(
+        IReadOnlyList<string> selection,
+        IReadOnlyDictionary<string, CityRecord> cities,
+        DateTimeOffset utcInstant,
+        IReadOnlyDictionary<string, WorldClockWeather> weatherByCity,
+        WorldClockWeatherStatus weatherStatus)
+    {
         var items = new List<WorldClockItem>(selection.Count);
         foreach (var cityId in selection)
         {
@@ -84,32 +269,86 @@ public sealed class WorldClockService
             }
 
             var timeZone = TimeZoneInfo.FindSystemTimeZoneById(city.TimeZoneId);
-            var localTime = TimeZoneInfo.ConvertTime(utcNow, timeZone);
-            var events = LocalAstronomy.Calculate(city.Latitude, city.Longitude, timeZone, utcNow);
+            var localTime = TimeZoneInfo.ConvertTime(utcInstant, timeZone);
+            var events = LocalAstronomy.Calculate(city.Latitude, city.Longitude, timeZone, utcInstant);
             var season = ResolveSeason(city.Hemisphere, localTime.Month);
             var skylineRelativePath = season == "summer" ? city.SummerAssetPath : city.WinterAssetPath;
             var skylineAssetPath = $"Assets/WorldClocks/{skylineRelativePath}";
+            var isDaylight = events.SunAltitudeDegrees >= -0.833;
+            weatherByCity.TryGetValue(city.Id, out var weather);
             items.Add(new WorldClockItem(
                 city.Id,
                 city.Name,
                 city.CountryCode,
                 city.TimeZoneId,
                 localTime,
-                events.SunAltitudeDegrees >= -0.833,
+                isDaylight,
                 events.Sunrise,
                 events.Sunset,
-                events.Moonrise,
-                events.Moonset,
-                events.MoonPhaseKey,
                 events.MoonPhaseAngleDegrees,
-                events.MoonIllumination,
-                events.MoonAgeDays,
-                events.IsWaxing,
                 skylineAssetPath,
-                season));
+                season,
+                WorldClockAtmosphereResolver.Resolve(
+                    localTime,
+                    events.Sunrise,
+                    events.Sunset,
+                    isDaylight,
+                    weather?.ConditionKey),
+                weather));
         }
 
-        return new WorldClockRailSnapshot(utcNow.ToUniversalTime(), items, WorldClockSelection.MaximumClocks);
+        return new WorldClockSnapshot(
+            utcInstant.ToUniversalTime(),
+            items,
+            WorldClockSelection.MaximumClocks,
+            weatherStatus);
+    }
+
+    /// <summary>Resolves a selected city's local civil time and projects every selected clock at that instant.</summary>
+    internal WorldClockSnapshot BuildSnapshotForLocalTime(
+        IReadOnlyList<string>? cityIds,
+        WorldClockConversionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var selection = WorldClockSelection.NormalizePersisted(cityIds);
+        var referenceCityId = request.ReferenceCityId?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (!selection.Contains(referenceCityId, StringComparer.Ordinal))
+        {
+            throw new WorldClockConversionException(
+                "world_clocks.reference_not_selected",
+                "WorldClocksReferenceNotSelected",
+                "reference_not_selected");
+        }
+
+        var cities = LoadCities();
+        if (!cities.TryGetValue(referenceCityId, out var referenceCity))
+        {
+            throw new WorldClockConversionException(
+                "world_clocks.reference_not_found",
+                "WorldClocksNotFound",
+                "not_found");
+        }
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(referenceCity.TimeZoneId);
+        var localTime = DateTime.SpecifyKind(request.ReferenceLocalTime, DateTimeKind.Unspecified);
+        if (timeZone.IsInvalidTime(localTime))
+        {
+            throw new WorldClockConversionException(
+                "world_clocks.local_time.invalid",
+                "WorldClocksLocalTimeInvalid",
+                "invalid");
+        }
+
+        if (timeZone.IsAmbiguousTime(localTime))
+        {
+            throw new WorldClockConversionException(
+                "world_clocks.local_time.ambiguous",
+                "WorldClocksLocalTimeAmbiguous",
+                "ambiguous");
+        }
+
+        var utcInstant = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localTime, timeZone), TimeSpan.Zero);
+        return BuildSnapshot(selection, utcInstant);
     }
 
     /// <summary>Throws when a city identifier is absent from the immutable packaged catalog.</summary>
@@ -202,54 +441,110 @@ public sealed class WorldClockService
         string Hemisphere,
         string SummerAssetPath,
         string WinterAssetPath);
+
+    /// <summary>Releases optional current-weather cache timers.</summary>
+    public void Dispose() => _currentWeather.Dispose();
+}
+
+internal sealed class WorldClockConversionException(
+    string code,
+    string messageKey,
+    string validationCode) : Exception(messageKey)
+{
+    internal string Code { get; } = code;
+
+    internal string MessageKey { get; } = messageKey;
+
+    internal string ValidationCode { get; } = validationCode;
 }
 
 internal static class LocalAstronomy
 {
-    private const double SynodicMonthDays = 29.530588853;
     private const double DegreesToRadians = Math.PI / 180d;
     private const double RadiansToDegrees = 180d / Math.PI;
 
     internal sealed record Result(
         DateTimeOffset? Sunrise,
         DateTimeOffset? Sunset,
-        DateTimeOffset? Moonrise,
-        DateTimeOffset? Moonset,
         double SunAltitudeDegrees,
-        string MoonPhaseKey,
-        double MoonPhaseAngleDegrees,
-        double MoonIllumination,
-        double MoonAgeDays,
-        bool IsWaxing);
+        double MoonPhaseAngleDegrees);
 
     /// <summary>Calculates apparent rise/set crossings and the lunar phase for one local civil day.</summary>
     public static Result Calculate(double latitude, double longitude, TimeZoneInfo timeZone, DateTimeOffset utcNow)
     {
         var localNow = TimeZoneInfo.ConvertTime(utcNow, timeZone);
         var localDate = DateOnly.FromDateTime(localNow.DateTime);
-        var localStart = DateTime.SpecifyKind(localDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
-        var localEnd = DateTime.SpecifyKind(localDate.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
-        var startUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone), TimeSpan.Zero);
-        var endUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localEnd, timeZone), TimeSpan.Zero);
+        var (startUtc, endUtc) = GetUtcDayBounds(localDate, timeZone);
 
         var sunCrossings = FindCrossings(startUtc, endUtc, instant => Altitude(SunPosition(JulianDay(instant)), latitude, longitude, instant) + 0.833);
-        var moonCrossings = FindCrossings(startUtc, endUtc, instant => Altitude(MoonPosition(JulianDay(instant)), latitude, longitude, instant) - 0.125);
         var julianNow = JulianDay(utcNow);
         var sun = SunPosition(julianNow);
         var moon = MoonPosition(julianNow);
         var phaseAngle = NormalizeDegrees(moon.EclipticLongitudeDegrees - sun.EclipticLongitudeDegrees);
-        var illumination = (1d - Math.Cos(phaseAngle * DegreesToRadians)) / 2d;
         return new Result(
             ToLocal(sunCrossings.Rise, timeZone),
             ToLocal(sunCrossings.Set, timeZone),
-            ToLocal(moonCrossings.Rise, timeZone),
-            ToLocal(moonCrossings.Set, timeZone),
             Altitude(sun, latitude, longitude, utcNow),
-            PhaseKey(phaseAngle),
-            phaseAngle,
-            illumination,
-            phaseAngle / 360d * SynodicMonthDays,
-            phaseAngle < 180d);
+            phaseAngle);
+    }
+
+    /// <summary>Resolves the first UTC instant of one local date and the following local date.</summary>
+    internal static (DateTimeOffset StartUtc, DateTimeOffset EndUtc) GetUtcDayBounds(
+        DateOnly localDate,
+        TimeZoneInfo timeZone)
+    {
+        ArgumentNullException.ThrowIfNull(timeZone);
+        var startUtc = ResolveLocalDateStart(localDate, timeZone);
+        var endUtc = ResolveLocalDateStart(localDate.AddDays(1), timeZone);
+        if (endUtc <= startUtc)
+        {
+            throw new InvalidDataException("The resolved local-day bounds are not chronological.");
+        }
+
+        return (startUtc, endUtc);
+    }
+
+    private static DateTimeOffset ResolveLocalDateStart(DateOnly localDate, TimeZoneInfo timeZone)
+    {
+        var localTime = DateTime.SpecifyKind(localDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+        if (timeZone.IsInvalidTime(localTime))
+        {
+            var firstInvalidTick = localTime.Ticks;
+            var firstValid = localTime;
+            var searchLimit = localTime.AddDays(2);
+            do
+            {
+                firstValid = firstValid.AddHours(1);
+                if (firstValid > searchLimit)
+                {
+                    throw new InvalidDataException($"Local date '{localDate:yyyy-MM-dd}' has no valid boundary in time zone '{timeZone.Id}'.");
+                }
+            }
+            while (timeZone.IsInvalidTime(firstValid));
+
+            var lastInvalidTick = firstInvalidTick;
+            var firstValidTick = firstValid.Ticks;
+            while (firstValidTick - lastInvalidTick > 1)
+            {
+                var candidateTick = lastInvalidTick + ((firstValidTick - lastInvalidTick) / 2);
+                var candidate = new DateTime(candidateTick, DateTimeKind.Unspecified);
+                if (timeZone.IsInvalidTime(candidate))
+                {
+                    lastInvalidTick = candidateTick;
+                }
+                else
+                {
+                    firstValidTick = candidateTick;
+                }
+            }
+
+            localTime = new DateTime(firstValidTick, DateTimeKind.Unspecified);
+        }
+
+        var offset = timeZone.IsAmbiguousTime(localTime)
+            ? timeZone.GetAmbiguousTimeOffsets(localTime).Max()
+            : timeZone.GetUtcOffset(localTime);
+        return new DateTimeOffset(localTime, offset).ToUniversalTime();
     }
 
     private static (DateTimeOffset? Rise, DateTimeOffset? Set) FindCrossings(
@@ -392,18 +687,6 @@ internal static class LocalAstronomy
         var normalized = NormalizeDegrees(value);
         return normalized > 180d ? normalized - 360d : normalized;
     }
-
-    private static string PhaseKey(double angle) => ((int)Math.Floor((angle + 22.5d) / 45d) % 8) switch
-    {
-        0 => "new-moon",
-        1 => "waxing-crescent",
-        2 => "first-quarter",
-        3 => "waxing-gibbous",
-        4 => "full-moon",
-        5 => "waning-gibbous",
-        6 => "last-quarter",
-        _ => "waning-crescent"
-    };
 
     private readonly record struct EquatorialPosition(
         double RightAscensionDegrees,

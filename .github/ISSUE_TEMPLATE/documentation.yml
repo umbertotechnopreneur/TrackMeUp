@@ -1,0 +1,38 @@
+name: Documentation improvement
+description: Report missing, inaccurate, or confusing documentation.
+title: "[Docs]: "
+labels:
+  - documentation
+  - triage
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Document or section
+      placeholder: README.md — Get TrackMeUp
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is unclear or incorrect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Suggested improvement
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I checked that this is not already tracked.
+          required: true
+        - label: I removed private data and machine-specific paths.
+          required: true
+        - label: I agree to follow the Code of Conduct.
+          required: true

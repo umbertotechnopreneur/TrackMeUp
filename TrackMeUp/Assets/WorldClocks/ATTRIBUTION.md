@@ -3,211 +3,222 @@
 City coordinates, population, and IANA time zones are derived from GeoNames `cities15000`,
 licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-Skyline images are resized/cropped copies from Wikimedia Commons. The exact author, source,
-license, and checksum for every distributed file are recorded below and in `ATTRIBUTION.json`.
-Each distributed WebP is a center-cropped 640×360 derivative and remains under its source license.
+The seasonal skyline images are TrackMeUp-directed Urban Wash watercolor artwork.
+Their exact generation, intermediate WebP, and packaged PNG manifests are stored in
+[`SOURCE-MANIFEST.json`](SOURCE-MANIFEST.json),
+[`RUNTIME-ASSET-MANIFEST.json`](RUNTIME-ASSET-MANIFEST.json),
+[`PACKAGED-ASSET-MANIFEST.json`](PACKAGED-ASSET-MANIFEST.json), and
+[`PROVENANCE.md`](PROVENANCE.md).
+The repository and packaged asset locations are summarized in [`ASSET-MAP.md`](ASSET-MAP.md).
+They are not included in the repository's MIT grant; see the repository's
+[`ASSET_LICENSING.md`](../../../ASSET_LICENSING.md).
 
-| City | Season | Image | Author | License |
-|---|---|---|---|---|
-| Abu Dhabi | summer | [Abu Dhabi - Panorama - Corniche – Skyline - بانوراما - الكورنيش - الأفق - panoramio.jpg](https://commons.wikimedia.org/wiki/File:Abu_Dhabi_-_Panorama_-_Corniche_%E2%80%93_Skyline_-_%D8%A8%D8%A7%D9%86%D9%88%D8%B1%D8%A7%D9%85%D8%A7_-_%D8%A7%D9%84%D9%83%D9%88%D8%B1%D9%86%D9%8A%D8%B4_-_%D8%A7%D9%84%D8%A3%D9%81%D9%82_-_panoramio.jpg) | Edgar El | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Abu Dhabi | winter | [Qasr Al Watan, Abu Dhabi (P1100960).jpg](https://commons.wikimedia.org/wiki/File:Qasr_Al_Watan,_Abu_Dhabi_(P1100960).jpg) | Matti Blume | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.en) |
-| Abuja | summer | [Abuja rocks.jpg](https://commons.wikimedia.org/wiki/File:Abuja_rocks.jpg) | Ojlajyz | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Abuja | winter | [National Council for Arts, Abuja Nigeria.jpg](https://commons.wikimedia.org/wiki/File:National_Council_for_Arts,_Abuja_Nigeria.jpg) | Philips Evarist | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Accra | summer | [Vue aérienne d'Accra (Ghana) (7).jpg](https://commons.wikimedia.org/wiki/File:Vue_a%C3%A9rienne_d'Accra_(Ghana)_(7).jpg) | Ji-Elle | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Accra | winter | [Vue aérienne d'Accra (Ghana) (5).jpg](https://commons.wikimedia.org/wiki/File:Vue_a%C3%A9rienne_d'Accra_(Ghana)_(5).jpg) | Ji-Elle | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Addis Ababa | summer | [Aerials Ethiopia 2009-08-27 15-24-40.JPG](https://commons.wikimedia.org/wiki/File:Aerials_Ethiopia_2009-08-27_15-24-40.JPG) | Hansueli Krapf | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Addis Ababa | winter | [Addis Ababa aerial approach 2009-08-27 15-26-13.jpg](https://commons.wikimedia.org/wiki/File:Addis_Ababa_aerial_approach_2009-08-27_15-26-13.jpg) | Hansueli Krapf | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Algiers | summer | [Argel 3.jpg](https://commons.wikimedia.org/wiki/File:Argel_3.jpg) | LBM1948 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Algiers | winter | [Argel 2.jpg](https://commons.wikimedia.org/wiki/File:Argel_2.jpg) | LBM1948 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Amman | summer | [Amman Skyline In Day.jpg](https://commons.wikimedia.org/wiki/File:Amman_Skyline_In_Day.jpg) | Jmossjm | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Amman | winter | [Amman Night Down Town.JPG](https://commons.wikimedia.org/wiki/File:Amman_Night_Down_Town.JPG) | Freedom's Falcon | [Public domain](https://commons.wikimedia.org/wiki/File:Amman_Night_Down_Town.JPG) |
-| Ankara | summer | [Ankara Skyline.jpg](https://commons.wikimedia.org/wiki/File:Ankara_Skyline.jpg) | Murray Foubister | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Ankara | winter | [View of Ankara city from the castle.jpg](https://commons.wikimedia.org/wiki/File:View_of_Ankara_city_from_the_castle.jpg) | Tsdlnsaıd | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Antananarivo | summer | [Vue aérienne de Antananarivo.JPG](https://commons.wikimedia.org/wiki/File:Vue_a%C3%A9rienne_de_Antananarivo.JPG) | Pat05 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Antananarivo | winter | [Le ciel est parsemé de nuages blancs de type cumulus (71776).jpg](https://commons.wikimedia.org/wiki/File:Le_ciel_est_parsem%C3%A9_de_nuages_blancs_de_type_cumulus_(71776).jpg) | IrmaA2 | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Ashgabat | summer | [Panorama of Ashgabat.jpg](https://commons.wikimedia.org/wiki/File:Panorama_of_Ashgabat.jpg) | Thepulin | [Public domain](https://commons.wikimedia.org/wiki/File:Panorama_of_Ashgabat.jpg) |
-| Ashgabat | winter | [Panorama From Ashgabat TV Tower.JPG](https://commons.wikimedia.org/wiki/File:Panorama_From_Ashgabat_TV_Tower.JPG) | ILMur | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Astana | summer | [Астана, Малый Талдыколь, сферопанорама.jpg](https://commons.wikimedia.org/wiki/File:%D0%90%D1%81%D1%82%D0%B0%D0%BD%D0%B0,_%D0%9C%D0%B0%D0%BB%D1%8B%D0%B9_%D0%A2%D0%B0%D0%BB%D0%B4%D1%8B%D0%BA%D0%BE%D0%BB%D1%8C,_%D1%81%D1%84%D0%B5%D1%80%D0%BE%D0%BF%D0%B0%D0%BD%D0%BE%D1%80%D0%B0%D0%BC%D0%B0.jpg) | Nikolai Bulykin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Astana | winter | [Астана, Большой Талдыколь, сферопанорама.jpg](https://commons.wikimedia.org/wiki/File:%D0%90%D1%81%D1%82%D0%B0%D0%BD%D0%B0,_%D0%91%D0%BE%D0%BB%D1%8C%D1%88%D0%BE%D0%B9_%D0%A2%D0%B0%D0%BB%D0%B4%D1%8B%D0%BA%D0%BE%D0%BB%D1%8C,_%D1%81%D1%84%D0%B5%D1%80%D0%BE%D0%BF%D0%B0%D0%BD%D0%BE%D1%80%D0%B0%D0%BC%D0%B0.jpg) | Nikolai Bulykin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Asunción | summer | [Downtown Asuncion 091118.jpg](https://commons.wikimedia.org/wiki/File:Downtown_Asuncion_091118.jpg) | Cmasi | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Asunción | winter | [Panorama nuevo centro de Asunción.png](https://commons.wikimedia.org/wiki/File:Panorama_nuevo_centro_de_Asunci%C3%B3n.png) | Overkill53 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Baghdad | summer | [Sunset in Baghdad, Iraq.jpg](https://commons.wikimedia.org/wiki/File:Sunset_in_Baghdad,_Iraq.jpg) | Synaps commons | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Baghdad | winter | [Amwaj Towers Baghdad-2025.png](https://commons.wikimedia.org/wiki/File:Amwaj_Towers_Baghdad-2025.png) | AMWAJ | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Baku | summer | [Baku recent panorama.jpg](https://commons.wikimedia.org/wiki/File:Baku_recent_panorama.jpg) | Diego Delso | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Baku | winter | [Baku boulevard 0264 Panorama2.jpg](https://commons.wikimedia.org/wiki/File:Baku_boulevard_0264_Panorama2.jpg) | TUTMOS | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Bamako | summer | [Bamako ACI 2000 Aeriel.jpg](https://commons.wikimedia.org/wiki/File:Bamako_ACI_2000_Aeriel.jpg) | Mark Fischer | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Bamako | winter | [Bamako la nuit.jpg](https://commons.wikimedia.org/wiki/File:Bamako_la_nuit.jpg) | Mansahamda | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Bangkok | summer | [Bangkok Panorama (211522205).jpeg](https://commons.wikimedia.org/wiki/File:Bangkok_Panorama_(211522205).jpeg) | Wolfgang Weber | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Bangkok | winter | [Twilight over the modern city skyline in Ratchadamri district, Bangkok, Thailand, July 2019 - Flickr - sergei.gussev.jpg](https://commons.wikimedia.org/wiki/File:Twilight_over_the_modern_city_skyline_in_Ratchadamri_district,_Bangkok,_Thailand,_July_2019_-_Flickr_-_sergei.gussev.jpg) | Sergei Gussev | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Beijing | summer | [Skyline of Beijing CBD with B-5906 approaching (20211016171955).jpg](https://commons.wikimedia.org/wiki/File:Skyline_of_Beijing_CBD_with_B-5906_approaching_(20211016171955).jpg) | N509FZ | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Beijing | winter | [Southeast corner tower of Forbidden City and Beijing eastern skyline (20241127133425).jpg](https://commons.wikimedia.org/wiki/File:Southeast_corner_tower_of_Forbidden_City_and_Beijing_eastern_skyline_(20241127133425).jpg) | N509FZ | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Beirut | summer | [Beirut skyline.jpg](https://commons.wikimedia.org/wiki/File:Beirut_skyline.jpg) | Laura C Ellis | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Beirut | winter | [Beirut Zaituna Bay.jpg](https://commons.wikimedia.org/wiki/File:Beirut_Zaituna_Bay.jpg) | Choinowski | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Belgrade | summer | [Rakovica, Belgrade - aerial view, 2021 (1).jpg](https://commons.wikimedia.org/wiki/File:Rakovica,_Belgrade_-_aerial_view,_2021_(1).jpg) | Sebleouf | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Belgrade | winter | [Danube in Ritopek, Serbia.jpg](https://commons.wikimedia.org/wiki/File:Danube_in_Ritopek,_Serbia.jpg) | Lošmi | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Berlin | summer | [Berlin Panorama von der Siegessäule 2021.jpg](https://commons.wikimedia.org/wiki/File:Berlin_Panorama_von_der_Siegess%C3%A4ule_2021.jpg) | Lear 21 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Berlin | winter | [East Berlin (59469748).jpeg](https://commons.wikimedia.org/wiki/File:East_Berlin_(59469748).jpeg) | Sascha Kohlmann | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Bogotá | summer | [Bogota Oily (96870555).jpeg](https://commons.wikimedia.org/wiki/File:Bogota_Oily_(96870555).jpeg) | David Carlson | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Bogotá | winter | [La Pajarera Centro Comercial, San Victorino, Bogotá.jpg](https://commons.wikimedia.org/wiki/File:La_Pajarera_Centro_Comercial,_San_Victorino,_Bogot%C3%A1.jpg) | Julian E. Domínguez Espitia | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Brasília | summer | [Ponte JK Panorama 03 2015 BSB 1668.JPG](https://commons.wikimedia.org/wiki/File:Ponte_JK_Panorama_03_2015_BSB_1668.JPG) | Mariordo (Mario Roberto Durán Ortiz) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Brasília | winter | [Praça 3 Poderes Brasília panorama (more size).jpg](https://commons.wikimedia.org/wiki/File:Pra%C3%A7a_3_Poderes_Bras%C3%ADlia_panorama_(more_size).jpg) | Eric Gaba ( Sting - fr:Sting ) | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Brazzaville | summer | [Congo River with upstream half of Pool Malebo and Mbamu.jpg](https://commons.wikimedia.org/wiki/File:Congo_River_with_upstream_half_of_Pool_Malebo_and_Mbamu.jpg) | Dicklyon | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Brazzaville | winter | [2010-03-07-Kinshasa depuis Brazzaville.jpg](https://commons.wikimedia.org/wiki/File:2010-03-07-Kinshasa_depuis_Brazzaville.jpg) | Karin Lakeman | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Brussels | summer | [Brussele oraye ki toûne tourisses.jpg](https://commons.wikimedia.org/wiki/File:Brussele_oraye_ki_to%C3%BBne_tourisses.jpg) | Lucyin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Brussels | winter | [Brussels from Atomium.jpg](https://commons.wikimedia.org/wiki/File:Brussels_from_Atomium.jpg) | MrBenjo | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Bucharest | summer | [Bucuresti Bucharest city center Romania.jpg](https://commons.wikimedia.org/wiki/File:Bucuresti_Bucharest_city_center_Romania.jpg) | Crislia | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Bucharest | winter | [Bucharest city center.jpg](https://commons.wikimedia.org/wiki/File:Bucharest_city_center.jpg) | VictorCozmei | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Budapest | summer | [View from Gellért Hill, 2019-07-10 Budapest-Panorama.jpg](https://commons.wikimedia.org/wiki/File:View_from_Gell%C3%A9rt_Hill,_2019-07-10_Budapest-Panorama.jpg) | Jean Eti | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Budapest | winter | [2018-07-05-budapest-buda-hill.jpg](https://commons.wikimedia.org/wiki/File:2018-07-05-budapest-buda-hill.jpg) | Mmullie (WMF) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Buenos Aires | summer | [BA Skyline.jpg](https://commons.wikimedia.org/wiki/File:BA_Skyline.jpg) | Luis Argerich from Buenos Aires, Argentina | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Buenos Aires | winter | [Buenos Aires skyline day.jpg](https://commons.wikimedia.org/wiki/File:Buenos_Aires_skyline_day.jpg) | Luis Argerich from Buenos Aires, Argentina | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Cairo | summer | [Cairo skyline, Panoramic view, Egypt.jpg](https://commons.wikimedia.org/wiki/File:Cairo_skyline,_Panoramic_view,_Egypt.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Cairo | winter | [View over Cairo from Citadel.jpg](https://commons.wikimedia.org/wiki/File:View_over_Cairo_from_Citadel.jpg) | kallerna | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Caracas | summer | [Aerial view of Venezuela.JPG](https://commons.wikimedia.org/wiki/File:Aerial_view_of_Venezuela.JPG) | Wilfredor | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Caracas | winter | [Digitally altered image of Torre Lincoln.jpg](https://commons.wikimedia.org/wiki/File:Digitally_altered_image_of_Torre_Lincoln.jpg) | Wilfredor | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Conakry | summer | [2013 Conakry Guinea 14418728438.jpg](https://commons.wikimedia.org/wiki/File:2013_Conakry_Guinea_14418728438.jpg) | Maarten van der Bent | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Conakry | winter | [Un aperçu de la ville de conakry.jpg](https://commons.wikimedia.org/wiki/File:Un_aper%C3%A7u_de_la_ville_de_conakry.jpg) | Alpha hmd | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Copenhagen | summer | [Copenhagen - view from Christiansborg castle.jpg](https://commons.wikimedia.org/wiki/File:Copenhagen_-_view_from_Christiansborg_castle.jpg) | Pudelek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Copenhagen | winter | [Caritas well Copenhagen Denmark.jpg](https://commons.wikimedia.org/wiki/File:Caritas_well_Copenhagen_Denmark.jpg) | Jebulon | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Dakar | summer | [DakarHarbourAerial.JPG](https://commons.wikimedia.org/wiki/File:DakarHarbourAerial.JPG) | KaBa ( KaaBaa ) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Dakar | winter | [DakarAerial.JPG](https://commons.wikimedia.org/wiki/File:DakarAerial.JPG) | KaBa ( KaaBaa ) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Damascus | summer | [Damascus, Syria, Panoramic view of Damascus.jpg](https://commons.wikimedia.org/wiki/File:Damascus,_Syria,_Panoramic_view_of_Damascus.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Damascus | winter | [Damascus, Syria, Panorama at sunset.jpg](https://commons.wikimedia.org/wiki/File:Damascus,_Syria,_Panorama_at_sunset.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Dhaka | summer | [Panorama of Skyline from Roof of Fars Hotel - Dhaka - Bangladesh (12850542815).jpg](https://commons.wikimedia.org/wiki/File:Panorama_of_Skyline_from_Roof_of_Fars_Hotel_-_Dhaka_-_Bangladesh_(12850542815).jpg) | Adam Jones from Kelowna, BC, Canada | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Dhaka | winter | [Cityscape of Dhaka.PANO.jpg](https://commons.wikimedia.org/wiki/File:Cityscape_of_Dhaka.PANO.jpg) | ComradePS2 | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Dublin | summer | [Dublin City Council - geograph.org.uk - 6422609.jpg](https://commons.wikimedia.org/wiki/File:Dublin_City_Council_-_geograph.org.uk_-_6422609.jpg) | N Chadwick | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Dublin | winter | [St Patrick's Cathedral Choir 360x180, Dublin, Ireland.jpg](https://commons.wikimedia.org/wiki/File:St_Patrick's_Cathedral_Choir_360x180,_Dublin,_Ireland.jpg) | Diliff | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Guatemala City | summer | [Guatemala City - Guatemala - High-Rises (2).jpg](https://commons.wikimedia.org/wiki/File:Guatemala_City_-_Guatemala_-_High-Rises_(2).jpg) | Rene Hernandez | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Guatemala City | winter | [Guatemala City - Guatemala - Zona 14 - Skyline.jpg](https://commons.wikimedia.org/wiki/File:Guatemala_City_-_Guatemala_-_Zona_14_-_Skyline.jpg) | Rene Hernandez | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Hanoi | summer | [Vietnam, Hanoi, Streets of central Hanoi 2.jpg](https://commons.wikimedia.org/wiki/File:Vietnam,_Hanoi,_Streets_of_central_Hanoi_2.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Hanoi | winter | [Vietnam, Hanoi, Life on the streets of central Hanoi 2.jpg](https://commons.wikimedia.org/wiki/File:Vietnam,_Hanoi,_Life_on_the_streets_of_central_Hanoi_2.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Harare | summer | [Harare, Zimbabwe. 02.JPG](https://commons.wikimedia.org/wiki/File:Harare,_Zimbabwe._02.JPG) | Suesen | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Harare | winter | [Harare - Harare3492.jpg](https://commons.wikimedia.org/wiki/File:Harare_-_Harare3492.jpg) | lumoplank | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Havana | summer | [Cuba LaHavana Skyline (www.pixinn.net).jpg](https://commons.wikimedia.org/wiki/File:Cuba_LaHavana_Skyline_(www.pixinn.net).jpg) | Christophe Meneboeuf | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Havana | winter | [Skyline of Vedado Neighborhood in Havana, Cuba.jpg](https://commons.wikimedia.org/wiki/File:Skyline_of_Vedado_Neighborhood_in_Havana,_Cuba.jpg) | Flickr User: Kuhnmi | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Ho Chi Minh City | summer | [Ho Chi Minh City Skyline.jpg](https://commons.wikimedia.org/wiki/File:Ho_Chi_Minh_City_Skyline.jpg) | Pimnl | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Ho Chi Minh City | winter | [Ho Chi Minh City Skyline at Night.jpg](https://commons.wikimedia.org/wiki/File:Ho_Chi_Minh_City_Skyline_at_Night.jpg) | Tran Van Ngoc | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Hong Kong | summer | [Hong Kong Harbour Night 2019-06-11.jpg](https://commons.wikimedia.org/wiki/File:Hong_Kong_Harbour_Night_2019-06-11.jpg) | Benh LIEU SONG ( Flickr ) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Hong Kong | winter | [Hong Kong Skyline Panorama - Dec 2008.jpg](https://commons.wikimedia.org/wiki/File:Hong_Kong_Skyline_Panorama_-_Dec_2008.jpg) | Diliff | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Jakarta | summer | [Jakarta skyline at dusk from Central Jakarta, Indonesia.jpg](https://commons.wikimedia.org/wiki/File:Jakarta_skyline_at_dusk_from_Central_Jakarta,_Indonesia.jpg) | Secretdriver | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Jakarta | winter | [Jakarta Panorama.jpg](https://commons.wikimedia.org/wiki/File:Jakarta_Panorama.jpg) | Gunawan Kartapranata | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Kabul | summer | [Kabul banner.jpg](https://commons.wikimedia.org/wiki/File:Kabul_banner.jpg) | Panoramic_View_of_East_Kabul_City.jpg : Siar Fisher derivative work: Jjtkk | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Kabul | winter | [Panoramic View of East Kabul City.jpg](https://commons.wikimedia.org/wiki/File:Panoramic_View_of_East_Kabul_City.jpg) | Siar Fisher | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Kampala | summer | [Apartments in the City Center of Kampala, human habitat.jpg](https://commons.wikimedia.org/wiki/File:Apartments_in_the_City_Center_of_Kampala,_human_habitat.jpg) | Chapelle musa | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Kampala | winter | [Overcast weather on an afternoon in Kampala Uganda 01.jpg](https://commons.wikimedia.org/wiki/File:Overcast_weather_on_an_afternoon_in_Kampala_Uganda_01.jpg) | Alvinategyeka | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Kathmandu | summer | [Kathmandu Valley panoramic view from Shivapuri hills under haze.jpg](https://commons.wikimedia.org/wiki/File:Kathmandu_Valley_panoramic_view_from_Shivapuri_hills_under_haze.jpg) | Krishna k. sahh | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Kathmandu | winter | [Kathmandu Avion 01.JPG](https://commons.wikimedia.org/wiki/File:Kathmandu_Avion_01.JPG) | Royonx | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Khartoum | summer | [Khartoum banner.jpg](https://commons.wikimedia.org/wiki/File:Khartoum_banner.jpg) | Khartoum panorama-1 - by ScubaBeer.jpg : Chris derivative work: ויקיג'אנקי | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Khartoum | winter | [Khartoum panorama-2 - by ScubaBeer.jpg](https://commons.wikimedia.org/wiki/File:Khartoum_panorama-2_-_by_ScubaBeer.jpg) | Chris from Falmouth, UK | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Kigali | summer | [Buildings in Kigali CBD, Rwanda 1.jpg](https://commons.wikimedia.org/wiki/File:Buildings_in_Kigali_CBD,_Rwanda_1.jpg) | Schlawgclart | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Kigali | winter | [Panoramic view of Kigali (Rwanda) at night 01.jpg](https://commons.wikimedia.org/wiki/File:Panoramic_view_of_Kigali_(Rwanda)_at_night_01.jpg) | Adoscam | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Kingston | summer | [Kingston street, Jamaica.jpg](https://commons.wikimedia.org/wiki/File:Kingston_street,_Jamaica.jpg) | yonolatengo | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Kingston | winter | [Kingston, Jamaica.JPG](https://commons.wikimedia.org/wiki/File:Kingston,_Jamaica.JPG) | NASA Astronauts | [Public domain](https://commons.wikimedia.org/wiki/File:Kingston,_Jamaica.JPG) |
-| Kinshasa | summer | [Kinshasa city from above, 2020 leveled.jpg](https://commons.wikimedia.org/wiki/File:Kinshasa_city_from_above,_2020_leveled.jpg) | EdwinAlden.1995 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Kinshasa | winter | [Une vue aérienne partielle du territoire de Boende dans la province de l’Equateur, en RD Congo (15311732917).jpg](https://commons.wikimedia.org/wiki/File:Une_vue_a%C3%A9rienne_partielle_du_territoire_de_Boende_dans_la_province_de_l%E2%80%99Equateur,_en_RD_Congo_(15311732917).jpg) | MONUSCO Photos | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Kuala Lumpur | summer | [Kuala Lumpur Malaysia Skyline-of-Kuala-Lumpur-Sentral-01.jpg](https://commons.wikimedia.org/wiki/File:Kuala_Lumpur_Malaysia_Skyline-of-Kuala-Lumpur-Sentral-01.jpg) | CEphoto, Uwe Aranas | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Kuala Lumpur | winter | [Kuala Lumpur Malaysia Skyline-of-Kuala-Lumpur-Sentral-02.jpg](https://commons.wikimedia.org/wiki/File:Kuala_Lumpur_Malaysia_Skyline-of-Kuala-Lumpur-Sentral-02.jpg) | CEphoto, Uwe Aranas | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Kyiv | summer | [2019-07-23 Panorama of Rusanivka, Kyiv 2.jpg](https://commons.wikimedia.org/wiki/File:2019-07-23_Panorama_of_Rusanivka,_Kyiv_2.jpg) | Maksym Kozlenko | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Kyiv | winter | [Kyiv - Podil Panorama - April 2018.jpg](https://commons.wikimedia.org/wiki/File:Kyiv_-_Podil_Panorama_-_April_2018.jpg) | Lystopad | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Lilongwe | summer | [Lilongwe, Nyasaland..jpg](https://commons.wikimedia.org/wiki/File:Lilongwe,_Nyasaland..jpg) | Society of Malawi, Historical and Scientific | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Lilongwe | winter | [Bwaila South, Lilongwe, Malawi - panoramio.jpg](https://commons.wikimedia.org/wiki/File:Bwaila_South,_Lilongwe,_Malawi_-_panoramio.jpg) | Timon Zingg | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Lima | summer | [Lima, Peru Sunset Skyline & Cityscape.png](https://commons.wikimedia.org/wiki/File:Lima,_Peru_Sunset_Skyline_%26_Cityscape.png) | Quado678 | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Lima | winter | [Lima, Urban Skyline--Ciudad de Lima, Skyline urbano.jpg](https://commons.wikimedia.org/wiki/File:Lima,_Urban_Skyline--Ciudad_de_Lima,_Skyline_urbano.jpg) | Joshua87 | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Lomé | summer | [Photos de Lomé 2.jpg](https://commons.wikimedia.org/wiki/File:Photos_de_Lom%C3%A9_2.jpg) | Hermannkass | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Lomé | winter | [2008-Lomé-Togo-IBIS-Hotel-Panorama.jpg](https://commons.wikimedia.org/wiki/File:2008-Lom%C3%A9-Togo-IBIS-Hotel-Panorama.jpg) | Sharkie | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| London | summer | [London from the air - geograph.org.uk - 4351627.jpg](https://commons.wikimedia.org/wiki/File:London_from_the_air_-_geograph.org.uk_-_4351627.jpg) | Thomas Nugent | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| London | winter | [City of London from the air - geograph.org.uk - 4418452.jpg](https://commons.wikimedia.org/wiki/File:City_of_London_from_the_air_-_geograph.org.uk_-_4418452.jpg) | Thomas Nugent | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Luanda | summer | [Luanda Skyline - Angola 2015.jpg](https://commons.wikimedia.org/wiki/File:Luanda_Skyline_-_Angola_2015.jpg) | David Stanley from Nanaimo, Canada | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Luanda | winter | [Rangel Skyline.jpg](https://commons.wikimedia.org/wiki/File:Rangel_Skyline.jpg) | Johnstanbul | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Lusaka | summer | [Downtown Lusaka.JPG](https://commons.wikimedia.org/wiki/File:Downtown_Lusaka.JPG) | Matthew Grollnek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Lusaka | winter | [Lusaka, Zambia CBD Kafue Roundabout.jpg](https://commons.wikimedia.org/wiki/File:Lusaka,_Zambia_CBD_Kafue_Roundabout.jpg) | Lupali | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Madrid | summer | [Vista de Madrid desde Callao 01.jpg](https://commons.wikimedia.org/wiki/File:Vista_de_Madrid_desde_Callao_01.jpg) | Tomás Fano | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Madrid | winter | [Skyline-town-palace-city-cityscape-panorama-798119.jpg](https://commons.wikimedia.org/wiki/File:Skyline-town-palace-city-cityscape-panorama-798119.jpg) | Unknown author Unknown author | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Managua | summer | [Managua skyline.jpg](https://commons.wikimedia.org/wiki/File:Managua_skyline.jpg) | Renamed_user_6e0b88a454af314221db5ecfd50beda0 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Managua | winter | [Managua, Nicaragua (cropped).JPG](https://commons.wikimedia.org/wiki/File:Managua,_Nicaragua_(cropped).JPG) | NASA Astronauts | [Public domain](https://commons.wikimedia.org/wiki/File:Managua,_Nicaragua_(cropped).JPG) |
-| Manila | summer | [Manila Bay, Sunset, Philippines.jpg](https://commons.wikimedia.org/wiki/File:Manila_Bay,_Sunset,_Philippines.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Manila | winter | [Tropical sunset in Manila 3, Philippines.jpg](https://commons.wikimedia.org/wiki/File:Tropical_sunset_in_Manila_3,_Philippines.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Maputo | summer | [Maputo skyline from cruiseship East Africa - Flickr - moron noodle.jpg](https://commons.wikimedia.org/wiki/File:Maputo_skyline_from_cruiseship_East_Africa_-_Flickr_-_moron_noodle.jpg) | Andrew Moir from Cape Town, South Africa | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Maputo | winter | [View of Maputo City, from Alto Mae.jpg](https://commons.wikimedia.org/wiki/File:View_of_Maputo_City,_from_Alto_Mae.jpg) | Wisneyykarin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Mexico City | summer | [Panorama esférico de la Alameda Central.jpg](https://commons.wikimedia.org/wiki/File:Panorama_esf%C3%A9rico_de_la_Alameda_Central.jpg) | ProtoplasmaKid | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Mexico City | winter | [Panorama esférico de Eje Central y Avenida Madero.jpg](https://commons.wikimedia.org/wiki/File:Panorama_esf%C3%A9rico_de_Eje_Central_y_Avenida_Madero.jpg) | ProtoplasmaKid | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Minsk | summer | [Afternoon in Minsk, July 2021 (1).jpg](https://commons.wikimedia.org/wiki/File:Afternoon_in_Minsk,_July_2021_(1).jpg) | Homoatrox | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Minsk | winter | [MinskCityPanorama.jpg](https://commons.wikimedia.org/wiki/File:MinskCityPanorama.jpg) | Rutskou | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Mogadishu | summer | [2013 08 05 Mogadishu Life Economy 030 (9454716451).jpg](https://commons.wikimedia.org/wiki/File:2013_08_05_Mogadishu_Life_Economy_030_(9454716451).jpg) | AMISOM Public Information | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Mogadishu | winter | [2013 08 05 Mogadishu Life Economy 027 (9454718263).jpg](https://commons.wikimedia.org/wiki/File:2013_08_05_Mogadishu_Life_Economy_027_(9454718263).jpg) | AMISOM Public Information | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Monrovia | summer | [Monrovia - Panorama 2.jpg](https://commons.wikimedia.org/wiki/File:Monrovia_-_Panorama_2.jpg) | Ilan Yosifon | [CC BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/) |
-| Monrovia | winter | [Downtown Monrovia 3348917715 67a2002529.jpg](https://commons.wikimedia.org/wiki/File:Downtown_Monrovia_3348917715_67a2002529.jpg) | Erik (HASH) Hershman | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Montevideo | summer | [Montevideo skyline (418129660).jpg](https://commons.wikimedia.org/wiki/File:Montevideo_skyline_(418129660).jpg) | Vince Alongi from Delta, B.C., Canada | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Montevideo | winter | [Montevideo walking MRD 01.jpg](https://commons.wikimedia.org/wiki/File:Montevideo_walking_MRD_01.jpg) | Mike Dickison | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Moscow | summer | [Domodedovo city aerial view (18347077140).jpg](https://commons.wikimedia.org/wiki/File:Domodedovo_city_aerial_view_(18347077140).jpg) | Artem Svetlov from Moscow, Russia | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Moscow | winter | [Aerial view of a forest 1 (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Aerial_view_of_a_forest_1_(Unsplash).jpg) | Maria Mekht maria_mekht | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| N'Djamena | summer | [Avenue Maldom bada (El nimery).jpg](https://commons.wikimedia.org/wiki/File:Avenue_Maldom_bada_(El_nimery).jpg) | Korom10 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| N'Djamena | winter | [Vue aérienne d'une ciel grise à N'djamena.jpg](https://commons.wikimedia.org/wiki/File:Vue_a%C3%A9rienne_d'une_ciel_grise_%C3%A0_N'djamena.jpg) | Korom10 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Nairobi | summer | [Nairobi banner.jpg](https://commons.wikimedia.org/wiki/File:Nairobi_banner.jpg) | Nairobi_Skyline2.jpg : Nite Owl derivative work: Jjtkk | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Nairobi | winter | [Aerial view of the Nairobi skyline from the KICC rooftop at golden hour.jpg](https://commons.wikimedia.org/wiki/File:Aerial_view_of_the_Nairobi_skyline_from_the_KICC_rooftop_at_golden_hour.jpg) | Lebu Ayiga | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Nay Pyi Taw | summer | [Office No (9) Naypyidaw, Myanmar.jpg](https://commons.wikimedia.org/wiki/File:Office_No_(9)_Naypyidaw,_Myanmar.jpg) | Kantabon | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Nay Pyi Taw | winter | [NPDAerial22.jpg](https://commons.wikimedia.org/wiki/File:NPDAerial22.jpg) | AthosworldLi | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Niamey | summer | [Pont Kennedy de Niamey 02.jpg](https://commons.wikimedia.org/wiki/File:Pont_Kennedy_de_Niamey_02.jpg) | Barke11 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Niamey | winter | [Pont Kennedy de Niamey 01.jpg](https://commons.wikimedia.org/wiki/File:Pont_Kennedy_de_Niamey_01.jpg) | Barke11 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Nouakchott | summer | [Nouakchott-Maison d'inspiration traditionnelle.jpg](https://commons.wikimedia.org/wiki/File:Nouakchott-Maison_d'inspiration_traditionnelle.jpg) | Evan M. Wheeler | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Nouakchott | winter | [Nouakchott-Khaïma.jpg](https://commons.wikimedia.org/wiki/File:Nouakchott-Kha%C3%AFma.jpg) | Evan M. Wheeler | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Oslo | summer | [Gressholmen - Oslo, Norway 2021-03-25 (11).jpg](https://commons.wikimedia.org/wiki/File:Gressholmen_-_Oslo,_Norway_2021-03-25_(11).jpg) | Ryan Hodnett | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Oslo | winter | [Pipervika Aker brygge Tjuvholmen Oslo Oslofjorden Norway (2023.02.12).jpg](https://commons.wikimedia.org/wiki/File:Pipervika_Aker_brygge_Tjuvholmen_Oslo_Oslofjorden_Norway_(2023.02.12).jpg) | Geir Hval (www.MacWhale.eu) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Ottawa | summer | [Ottawa skyline panorama1.jpg](https://commons.wikimedia.org/wiki/File:Ottawa_skyline_panorama1.jpg) | Óðinn | [CC BY-SA 2.5 ca](https://creativecommons.org/licenses/by-sa/2.5/ca/deed.en) |
-| Ottawa | winter | [Canada Ottawa Panorama.jpg](https://commons.wikimedia.org/wiki/File:Canada_Ottawa_Panorama.jpg) | G. Baranski - http://photomulti.com | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Ouagadougou | summer | [Ouagadougou-Vue aérienne nocturne (2).jpg](https://commons.wikimedia.org/wiki/File:Ouagadougou-Vue_a%C3%A9rienne_nocturne_(2).jpg) | Ji-Elle | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Ouagadougou | winter | [Ouagadougou-Vue aérienne nocturne (1).jpg](https://commons.wikimedia.org/wiki/File:Ouagadougou-Vue_a%C3%A9rienne_nocturne_(1).jpg) | Ji-Elle | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Paris | summer | [Panorama of the Paris Skyline.jpg](https://commons.wikimedia.org/wiki/File:Panorama_of_the_Paris_Skyline.jpg) | DiscoA340 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Paris | winter | [Panorama of the Paris Skyline 2.jpg](https://commons.wikimedia.org/wiki/File:Panorama_of_the_Paris_Skyline_2.jpg) | DiscoA340 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Phnom Penh | summer | [2016 Phnom Penh, Plac w centrum miasta pomiędzy Muzeum Narodowym a Pałacem Królewskim.jpg](https://commons.wikimedia.org/wiki/File:2016_Phnom_Penh,_Plac_w_centrum_miasta_pomi%C4%99dzy_Muzeum_Narodowym_a_Pa%C5%82acem_Kr%C3%B3lewskim.jpg) | Marcin Konsek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Phnom Penh | winter | [2016 Phnom Penh, Rzeka w centrum miasta.jpg](https://commons.wikimedia.org/wiki/File:2016_Phnom_Penh,_Rzeka_w_centrum_miasta.jpg) | Marcin Konsek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Port-au-Prince | summer | [NASA View over the city of Port-au-Prince.jpg](https://commons.wikimedia.org/wiki/File:NASA_View_over_the_city_of_Port-au-Prince.jpg) | NASA Astronauts | [Public domain](https://commons.wikimedia.org/wiki/File:NASA_View_over_the_city_of_Port-au-Prince.jpg) |
-| Port-au-Prince | winter | [Port au prince-haiti.JPG](https://commons.wikimedia.org/wiki/File:Port_au_prince-haiti.JPG) | Ketounette | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Prague | summer | [Prague-Drone-014 (32945284472).jpg](https://commons.wikimedia.org/wiki/File:Prague-Drone-014_(32945284472).jpg) | CucombreLibre from New York, NY, USA | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Prague | winter | [Prague skyline view.jpg](https://commons.wikimedia.org/wiki/File:Prague_skyline_view.jpg) | MurderousPass | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Pretoria | summer | [SAChurchSquare-1.jpg](https://commons.wikimedia.org/wiki/File:SAChurchSquare-1.jpg) | Oguillaume at English Wikipedia | [Public domain](https://commons.wikimedia.org/wiki/File:SAChurchSquare-1.jpg) |
-| Pretoria | winter | [Netball court - Panorama (Dimitrios Savva and Jarod Guest via Poly Haven).jpg](https://commons.wikimedia.org/wiki/File:Netball_court_-_Panorama_(Dimitrios_Savva_and_Jarod_Guest_via_Poly_Haven).jpg) | Dimitrios Savva (Photography), https://polyhaven.com/all?a=Dimitrios%20Savva , https://web.archive.org/web/20230623201912/https://polyhaven.com/all?a=Dimitrios%20Savva Jarod Guest (Processing), https://polyhaven.com/all?a=Jarod%20Guest , https://web.archive.org/web/20230623201919/https://polyhaven.com/all?a=Jarod%20Guest | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Pyongyang | summer | [Pyongyang Grand Theatre - 01 - Panorama.jpg](https://commons.wikimedia.org/wiki/File:Pyongyang_Grand_Theatre_-_01_-_Panorama.jpg) | Jan Engelhardt | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Pyongyang | winter | [Skyline Pyongyang.jpg](https://commons.wikimedia.org/wiki/File:Skyline_Pyongyang.jpg) | Nicor | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Quito | summer | [Quito Panorama of El Panecillo from Calle Cuenca.jpg](https://commons.wikimedia.org/wiki/File:Quito_Panorama_of_El_Panecillo_from_Calle_Cuenca.jpg) | Ymblanter | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Quito | winter | [Quito, Ecuador, Panorama urbano.jpg](https://commons.wikimedia.org/wiki/File:Quito,_Ecuador,_Panorama_urbano.jpg) | Chimpanz APe | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Rabat | summer | [View of Bou Regreg river and Rabat city from Salé city.jpg](https://commons.wikimedia.org/wiki/File:View_of_Bou_Regreg_river_and_Rabat_city_from_Sal%C3%A9_city.jpg) | Oumaima Loudini | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Rabat | winter | [Panoramic view of Rabat from Kasbah of the Udayas.jpg](https://commons.wikimedia.org/wiki/File:Panoramic_view_of_Rabat_from_Kasbah_of_the_Udayas.jpg) | Mounir Neddi | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Riyadh | summer | [Riyadh aerial helicam 2013.jpg](https://commons.wikimedia.org/wiki/File:Riyadh_aerial_helicam_2013.jpg) | Ville Hyvönen | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Riyadh | winter | [Riyadh Skyline.jpg](https://commons.wikimedia.org/wiki/File:Riyadh_Skyline.jpg) | B.alotaby | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Rome | summer | [Rome skyline panorama.jpg](https://commons.wikimedia.org/wiki/File:Rome_skyline_panorama.jpg) | Nicholas Hartmann | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Rome | winter | [Nemi Rome Italy Cityscape Photography (170864613).jpeg](https://commons.wikimedia.org/wiki/File:Nemi_Rome_Italy_Cityscape_Photography_(170864613).jpeg) | Giuseppe Milo | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Sanaa | summer | [Sana'aPanorama.jpg](https://commons.wikimedia.org/wiki/File:Sana'aPanorama.jpg) | BluesyPete | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Sanaa | winter | [Old City Of Sanaa (95129511).jpeg](https://commons.wikimedia.org/wiki/File:Old_City_Of_Sanaa_(95129511).jpeg) | Hamza Shiban | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Santiago | summer | [Skyline of Santiago with San Cristóbal hill at the back (Northeast view Panorama 01 - Flat projection).jpg](https://commons.wikimedia.org/wiki/File:Skyline_of_Santiago_with_San_Crist%C3%B3bal_hill_at_the_back_(Northeast_view_Panorama_01_-_Flat_projection).jpg) | 3BRBS | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Santiago | winter | [Skyline of Santiago with San Cristóbal hill at the back (Northeast view Panorama 03 - Flat projection).jpg](https://commons.wikimedia.org/wiki/File:Skyline_of_Santiago_with_San_Crist%C3%B3bal_hill_at_the_back_(Northeast_view_Panorama_03_-_Flat_projection).jpg) | 3BRBS | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| Santo Domingo | summer | [View of Santo Domingo Skyline.jpg](https://commons.wikimedia.org/wiki/File:View_of_Santo_Domingo_Skyline.jpg) | BigFalo at English Wikipedia | [CC BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/) |
-| Santo Domingo | winter | [Skyscrapers in Santo Domingo.jpg](https://commons.wikimedia.org/wiki/File:Skyscrapers_in_Santo_Domingo.jpg) | Desox7x | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Seoul | summer | [N Seoul Tower Panorama Night (cropped).jpg](https://commons.wikimedia.org/wiki/File:N_Seoul_Tower_Panorama_Night_(cropped).jpg) | Johnx85dt | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Seoul | winter | [Skyline view from Seoul City (South Korea).jpg](https://commons.wikimedia.org/wiki/File:Skyline_view_from_Seoul_City_(South_Korea).jpg) | Flickr - Laurie Nevay https://www.flickr.com/photos/laurienevay/ | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Singapore | summer | [Panorama of Marina Bay, Singapore (215599633).jpg](https://commons.wikimedia.org/wiki/File:Panorama_of_Marina_Bay,_Singapore_(215599633).jpg) | Pierrick Lemaret | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Singapore | winter | [Aerial view of Esplanade – Theatres on the Bay, Singapore. Dji (215599583).jpg](https://commons.wikimedia.org/wiki/File:Aerial_view_of_Esplanade_%E2%80%93_Theatres_on_the_Bay,_Singapore._Dji_(215599583).jpg) | Pierrick Lemaret | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Sofia | summer | [Panorama of Sofia 1.jpg](https://commons.wikimedia.org/wiki/File:Panorama_of_Sofia_1.jpg) | Ivano Giambattista | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Sofia | winter | [Panoramic view over central Sofia and the Vitosha Mountain 2017-10-08.jpg](https://commons.wikimedia.org/wiki/File:Panoramic_view_over_central_Sofia_and_the_Vitosha_Mountain_2017-10-08.jpg) | Deensel | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| Stockholm | summer | [Stockholm panorama 20140911 IE 1.jpg](https://commons.wikimedia.org/wiki/File:Stockholm_panorama_20140911_IE_1.jpg) | Ingimar Erli | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Stockholm | winter | [Strandvaegen, Stockholm ( 1090738).jpg](https://commons.wikimedia.org/wiki/File:Strandvaegen,_Stockholm_(_1090738).jpg) | Matti Blume | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Taipei | summer | [Taipei sunset skyline 2015.jpg](https://commons.wikimedia.org/wiki/File:Taipei_sunset_skyline_2015.jpg) | ynes95 | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Taipei | winter | [Taipei Skyline Panorama 2020.jpg](https://commons.wikimedia.org/wiki/File:Taipei_Skyline_Panorama_2020.jpg) | 毛貓大少爺 | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Tashkent | summer | [Tashkent, Tashkent City from Hotel Shodlik Palace.jpg](https://commons.wikimedia.org/wiki/File:Tashkent,_Tashkent_City_from_Hotel_Shodlik_Palace.jpg) | Carl Ha | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Tashkent | winter | [Toshkent Panoramasi.jpg](https://commons.wikimedia.org/wiki/File:Toshkent_Panoramasi.jpg) | GaLiaF | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Tbilisi | summer | [2014 Tbilisi, Górna stacja kolejki linowej i twierdza Narikala.jpg](https://commons.wikimedia.org/wiki/File:2014_Tbilisi,_G%C3%B3rna_stacja_kolejki_linowej_i_twierdza_Narikala.jpg) | Marcin Konsek | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Tbilisi | winter | [Tbilisi, Old Tbilisi 2, Georgia.jpg](https://commons.wikimedia.org/wiki/File:Tbilisi,_Old_Tbilisi_2,_Georgia.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Tehran | summer | [Skyline of Tehran on a hot summer day in 2015 - 04.jpg](https://commons.wikimedia.org/wiki/File:Skyline_of_Tehran_on_a_hot_summer_day_in_2015_-_04.jpg) | GolhaMedia | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Tehran | winter | [Tehran panorama in winter.JPG](https://commons.wikimedia.org/wiki/File:Tehran_panorama_in_winter.JPG) | Sasan Geranmehr | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) |
-| Tokyo | summer | [Marunouchi Central Plaza with blue sky, Tokyo station and Shin-Marunouchi Building, panoramic view from JP Tower, Tokyo, Japan.jpg](https://commons.wikimedia.org/wiki/File:Marunouchi_Central_Plaza_with_blue_sky,_Tokyo_station_and_Shin-Marunouchi_Building,_panoramic_view_from_JP_Tower,_Tokyo,_Japan.jpg) | Basile Morin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Tokyo | winter | [Tokyo Tower, Minato City.jpg](https://commons.wikimedia.org/wiki/File:Tokyo_Tower,_Minato_City.jpg) | David Kernan | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Tripoli | summer | [Tripoli aerial view.jpg](https://commons.wikimedia.org/wiki/File:Tripoli_aerial_view.jpg) | Moomkenb3 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Tripoli | winter | [Tripoli by night (12599404353).jpg](https://commons.wikimedia.org/wiki/File:Tripoli_by_night_(12599404353).jpg) | Rob Schleiffert | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| Vienna | summer | [2014-09-29 - Reichsbrücke-Donau City-Sunken City.jpg](https://commons.wikimedia.org/wiki/File:2014-09-29_-_Reichsbr%C3%BCcke-Donau_City-Sunken_City.jpg) | Hubertl | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Vienna | winter | [Vienna Austria Skyline Aerial, October 2024.jpg](https://commons.wikimedia.org/wiki/File:Vienna_Austria_Skyline_Aerial,_October_2024.jpg) | Spicypepper999 | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| Warsaw | summer | [Warsaw City Centre.jpg](https://commons.wikimedia.org/wiki/File:Warsaw_City_Centre.jpg) | Steven1991 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Warsaw | winter | [Warsaw at dusk July 2024.jpg](https://commons.wikimedia.org/wiki/File:Warsaw_at_dusk_July_2024.jpg) | Oleslawlama | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Yaoundé | summer | [Yaounde-BEAC.jpg](https://commons.wikimedia.org/wiki/File:Yaounde-BEAC.jpg) | Albert Bergonzo | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Yaoundé | winter | [The Star Building, Yaoundé, Cameroon.jpg](https://commons.wikimedia.org/wiki/File:The_Star_Building,_Yaound%C3%A9,_Cameroon.jpg) | Ryanvanhuyssteen | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
-| Yerevan | summer | [Yerevan, View of Tamanyan Street and Yerevan city at night, Armenia.jpg](https://commons.wikimedia.org/wiki/File:Yerevan,_View_of_Tamanyan_Street_and_Yerevan_city_at_night,_Armenia.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| Yerevan | winter | [Yerevan, Art, Yerevan Cascade, Armenia.jpg](https://commons.wikimedia.org/wiki/File:Yerevan,_Art,_Yerevan_Cascade,_Armenia.jpg) | Vyacheslav Argenberg | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
+Release status: Owner-authorized for public publication on 2026-08-30; applicable ImageGen service terms accepted.
+
+Intermediate runtime transformation: Scaled and center-cropped to 1280x720 alpha WebP with FFmpeg/libwebp quality 82, compression level 4.
+Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime derivative and encoded a lossless 1280x720 RGBA PNG with FFmpeg/png, compression level 9, mixed prediction.
+
+| City | Season | Asset | SHA-256 |
+|---|---|---|---|
+| Abu Dhabi | summer | `Skylines/abu-dhabi-summer.png` | `9f6549fb6a1e861ea721c82eeb24738baa9c1f6f1973276c9a4db0852ce92641` |
+| Abu Dhabi | winter | `Skylines/abu-dhabi-winter.png` | `3d4aba08b45e4db6603e747632f08f43dc329d5b6f5a463820e7e9f6e7e490ea` |
+| Abuja | summer | `Skylines/abuja-summer.png` | `2b83c1b0e43d450b194151785f59a3dc6c0f70766fca30b739811fcb7b47e06c` |
+| Abuja | winter | `Skylines/abuja-winter.png` | `fa2bfb3da02652d02da297e5f81d63fb709d52e6425369416fc58ecb7c43b39a` |
+| Accra | summer | `Skylines/accra-summer.png` | `50f4f2fa9baf7c9f198e01142e1b180ab0fe88db0b5abb9d7352de74ca5bc876` |
+| Accra | winter | `Skylines/accra-winter.png` | `bbb85d3541215e576ee3acad8cd89ff65beec20775ee2d1f62b61c4773d4be1c` |
+| Addis Ababa | summer | `Skylines/addis-ababa-summer.png` | `85804bd981d23ee322a2dd37edc38731f92985f456cfe0fcfff154a1b7714a26` |
+| Addis Ababa | winter | `Skylines/addis-ababa-winter.png` | `fc6833883976a50c4349a74f4b61882f4fc722e1f3368a7d038b443051c7db11` |
+| Algiers | summer | `Skylines/algiers-summer.png` | `292dd63ddca39fdcb9a1004f63f7a56fe1385aa9dbd0d5c221c85b2a9553ab3c` |
+| Algiers | winter | `Skylines/algiers-winter.png` | `394c7e37b8cb9d359f35831ecdfb67baa2dfd8762a0bf68923d19a7a9d62172c` |
+| Amman | summer | `Skylines/amman-summer.png` | `e7cdf93377eba59c576975f4f1868cd8a8efe6eb52bd417b90cf402f6dd718d2` |
+| Amman | winter | `Skylines/amman-winter.png` | `e4ca3ec087e61ff0d4af197177feeb9019d7ecd4230ead6945f15fc1a66b9f5e` |
+| Ankara | summer | `Skylines/ankara-summer.png` | `e343d10e5b34f93f2e6111ec09b797d965caef90a4ddd08468b46d24a411c1e0` |
+| Ankara | winter | `Skylines/ankara-winter.png` | `edfb7e643b7a76521c8fabb0a8823606af24eed9837bb6aa709a6ff813e0afce` |
+| Antananarivo | summer | `Skylines/antananarivo-summer.png` | `85eb64ccbb027deca7f543f8f969e65d4796adedb856c52d6e3cc797916ad764` |
+| Antananarivo | winter | `Skylines/antananarivo-winter.png` | `ff832e823756e8cde9763edae37f914ebf2a54f9862ddbad0d77f9ee1d7dd15d` |
+| Ashgabat | summer | `Skylines/ashgabat-summer.png` | `e149d28446cc516b781b1f9050cab41b3c8d85b4b80d7f5fdf3be07102e40707` |
+| Ashgabat | winter | `Skylines/ashgabat-winter.png` | `3d63e07c5b698ff7304d8912fb442a994ad0e8abdc680fe2d40f8b8f70bf4c6e` |
+| Astana | summer | `Skylines/astana-summer.png` | `eb03ec940f1fac0f8d39bc9411e65a00bfbe4af13c0e27a51887d0c66822dbe9` |
+| Astana | winter | `Skylines/astana-winter.png` | `7fe606ec2c45bd82aba26c4aede390082c8326b245fd9a22804cb0244e8ca2a4` |
+| Asunción | summer | `Skylines/asuncion-summer.png` | `d22eff363f56506b60d9517e06b9415a519e9b0803daf8568f005004cd9243df` |
+| Asunción | winter | `Skylines/asuncion-winter.png` | `dc8a13e937edb5c4cc20fc27933d370a5f5fa2f318a7d0e3934621fb4095cf11` |
+| Baghdad | summer | `Skylines/baghdad-summer.png` | `22da48877adb4816507bf08d87bfde748a8c67d2d488d71191beafb22a1800c4` |
+| Baghdad | winter | `Skylines/baghdad-winter.png` | `076133521980f7c34c045dda3413349a9d746723f2451fb064c7073ffd070e69` |
+| Baku | summer | `Skylines/baku-summer.png` | `784f02f7239ebf9800879a0a36ec7990af0c39ed3f6936ce3b1f1472bfc569ef` |
+| Baku | winter | `Skylines/baku-winter.png` | `ce437f4665a87e6678183d0c70d26526ee06259a3ec8beccd66ee9c3ad96a412` |
+| Bamako | summer | `Skylines/bamako-summer.png` | `7e437a9c46b90e59d4fa411a2799014ad4528594e2a4866034702debccb4e3d3` |
+| Bamako | winter | `Skylines/bamako-winter.png` | `1221c59c3632484154b83351227bdbc23aa34762b37a976952c202bb55cc645a` |
+| Bangkok | summer | `Skylines/bangkok-summer.png` | `a14487398a8309065a0d843259be87fbbcf441404f9b8d46123ec5d7eac356cf` |
+| Bangkok | winter | `Skylines/bangkok-winter.png` | `116352cb20039835fff99d2d9a4c9a6b19e4cec32db8b7b1a0cb18d004cd7c78` |
+| Beijing | summer | `Skylines/beijing-summer.png` | `9bd9736c5a76c69eae78634702e10b3328468f4fb4ccc03b7dde0e6d3ecba2e2` |
+| Beijing | winter | `Skylines/beijing-winter.png` | `3d36f2ecbe1ed7cdd7f27c89d8a9a6addf99a4bc8bc2246abd68184148ae854d` |
+| Beirut | summer | `Skylines/beirut-summer.png` | `9b9358e8ded19c9a4d36c9dc5e6e206842122614184dac608d14c82eff553eef` |
+| Beirut | winter | `Skylines/beirut-winter.png` | `8f44ee7e0f9b9d01c8d8b77e534ebcd886090d40214f998630ea0b21239e1919` |
+| Belgrade | summer | `Skylines/belgrade-summer.png` | `6e349f1c30b5f8517c6b2d978b53f33e2d73e3e2febae939032a7897b3d78f1c` |
+| Belgrade | winter | `Skylines/belgrade-winter.png` | `e5cf89bef5734d7dd41ecde360731ab78a8c69c582a580d4711d7947c26e522c` |
+| Berlin | summer | `Skylines/berlin-summer.png` | `441fea9347e40fd9740c3a355531197623ef09c871674531d33c058dd8d45e35` |
+| Berlin | winter | `Skylines/berlin-winter.png` | `688cbbfee0ba47103b836cdbab4d2572d99bccea635cccc25fe605858b11c071` |
+| Bogotá | summer | `Skylines/bogota-summer.png` | `3f42432f65e5822e90cf04c05a82e410764eb22436559d2096db3650e8900b30` |
+| Bogotá | winter | `Skylines/bogota-winter.png` | `1c344282a7aab1b1fa7acf486e7b0692cc5c296b205edb31375a1791566b7c41` |
+| Brasília | summer | `Skylines/brasilia-summer.png` | `65c282471316c3b72e2148eba962f4fbf6d1fbc2378d38665ab00eea2efcc155` |
+| Brasília | winter | `Skylines/brasilia-winter.png` | `3f160ff9a99875314af7e6c9a7cbe21a6442544c3bd7481b48b0ed9dd3d96776` |
+| Brazzaville | summer | `Skylines/brazzaville-summer.png` | `71219682186ffbe0377a961151c3d64d5106725b9f2f53893b4f802410eed8dc` |
+| Brazzaville | winter | `Skylines/brazzaville-winter.png` | `1c4b3b3cec16cbed0f3447045afa816dcc89a16f03bd40e4264d14c5aa863149` |
+| Brussels | summer | `Skylines/brussels-summer.png` | `893acc8d055c15fa7ddd8eb63c1713ab4c5920b7e59efdcffb651a66a4bbb137` |
+| Brussels | winter | `Skylines/brussels-winter.png` | `74b5d56ffd4f4debc08dd508c2f25c420382ff29a612164c808b4f4c42fe7bee` |
+| Bucharest | summer | `Skylines/bucharest-summer.png` | `1a57f923a4c2133b2aeb2d251c32ac47a5d9503c604e128399ca2a9a437822e9` |
+| Bucharest | winter | `Skylines/bucharest-winter.png` | `72d4eeec1bf3a6e34c41c1190896ca848a879070efe8ccbc99b6fbc247398e7b` |
+| Budapest | summer | `Skylines/budapest-summer.png` | `aaa97089564a057842a17ec97162baa098cc012d930bfa7a2b75b52f7a0ec59f` |
+| Budapest | winter | `Skylines/budapest-winter.png` | `416b0593970ba68399e56cb0630d225b5e2aa9a71ad1c55eeaa408f99ed7920b` |
+| Buenos Aires | summer | `Skylines/buenos-aires-summer.png` | `63bcd043708dfbc026071bff3990744f8c6b52c8ddef3f5082984b976d2a93c8` |
+| Buenos Aires | winter | `Skylines/buenos-aires-winter.png` | `534099711493c8a9639b7c2de59a14d64e4f351039d8f770d377b5d5aec82325` |
+| Cairo | summer | `Skylines/cairo-summer.png` | `3637bfafc84df48c28781d90becfefd22a1efbb0c009de63e6bb75de8f76b32d` |
+| Cairo | winter | `Skylines/cairo-winter.png` | `e888f431ad0071e0e82723da7dcde7e925a0e6ed5d374735391b43ceb96835b3` |
+| Caracas | summer | `Skylines/caracas-summer.png` | `f760e4ce4045f560ed926269e4c05289c6911a30907d2beadb102e3958414052` |
+| Caracas | winter | `Skylines/caracas-winter.png` | `a200536b43eeb65aecb146dd3f17dbe565a6387882e02a2366de5d287bf96b12` |
+| Conakry | summer | `Skylines/conakry-summer.png` | `f34e1eda48af6c5028d5f5d617d501f779ace8dc87dee00b5640018d1926d96d` |
+| Conakry | winter | `Skylines/conakry-winter.png` | `0b5cc2e2c054a138f92e7df8ab4fc7a30b72ba0fca094f98d986dc57c8a66cd5` |
+| Copenhagen | summer | `Skylines/copenhagen-summer.png` | `9aa3826ee195e580cab739ca35c3beb60395d1fb1c4a7e2a71828fec3c665f68` |
+| Copenhagen | winter | `Skylines/copenhagen-winter.png` | `0493507e438af4e18cf7ff542b375538fe35af2a663e4ce611c82828e25d38b9` |
+| Dakar | summer | `Skylines/dakar-summer.png` | `fdc2a8ea5d45c5588643909fa6258198925b415824d7ddc4998cad83c56eee4c` |
+| Dakar | winter | `Skylines/dakar-winter.png` | `959d16c1877c26a413d52483be8aa40c81d4ed87d610de9b39b3c85518c829e2` |
+| Damascus | summer | `Skylines/damascus-summer.png` | `50fed70962fd3c0043f7feb305f23ce241f5fff3112b657651077c4a865bd33a` |
+| Damascus | winter | `Skylines/damascus-winter.png` | `e730f3f42774baaa81e33cadc5f7969f451b3df52e3fbedc32a34448668f16f0` |
+| Dhaka | summer | `Skylines/dhaka-summer.png` | `db3589005db3e7a275115fc5934bb840c063db1d1fb93f5294b936266c035c6b` |
+| Dhaka | winter | `Skylines/dhaka-winter.png` | `059ec0f3661d11cdc8c2ee791b69acd42132c615a98ceabce17ff6bfe68b38fd` |
+| Dublin | summer | `Skylines/dublin-summer.png` | `cb6499e0332cb4405c9eb6c2534c748e03b5d1d950fca88bb4915c7682b020a5` |
+| Dublin | winter | `Skylines/dublin-winter.png` | `6a1505415a039fab7690ceff8cd4c764025821b9de6bf4ba39ce5ba7d76bdefd` |
+| Guatemala City | summer | `Skylines/guatemala-city-summer.png` | `e1cfa1b1b91483f5ec562b7b64414aff1a7f02bc491590b438528d8d5a43ed00` |
+| Guatemala City | winter | `Skylines/guatemala-city-winter.png` | `7613c5c217a4269dab2929ad5680a7a90b305482cd6298170f47b266193f5960` |
+| Hanoi | summer | `Skylines/hanoi-summer.png` | `c6761da199bc2d0a9febd6e70eb10587448a30121e141af9f1eeee6f90eb0db4` |
+| Hanoi | winter | `Skylines/hanoi-winter.png` | `6dbe14fc61795e361ddd720fa42cc6317cb374250a7343f6b48e2ae0129c036c` |
+| Harare | summer | `Skylines/harare-summer.png` | `ee0be26bbe81bccf23284813762025f85870fa088368d77212fbe40ee59cb3c3` |
+| Harare | winter | `Skylines/harare-winter.png` | `a8cf64ad3177537f6406ea052a6ba32cf7d90932f3df538b0da8bce01ca05dd3` |
+| Havana | summer | `Skylines/havana-summer.png` | `c9ab0e9aadc4a19295fe1144f51324039cd55875fb890ca650ab9650c762c765` |
+| Havana | winter | `Skylines/havana-winter.png` | `2c226d6a6326e4c421f90b6f74340e5ef589402c34d3aebb4a1fecfe030b3dc2` |
+| Ho Chi Minh City | summer | `Skylines/ho-chi-minh-city-summer.png` | `73f70c855044af3e20049d8ce80d570f8fcb6384a528c815ec28eb5e3d347dea` |
+| Ho Chi Minh City | winter | `Skylines/ho-chi-minh-city-winter.png` | `3d03ea0d8600222c141c99d666df046832899f9d19c5fd2c98844fc5f5c893b7` |
+| Hong Kong | summer | `Skylines/hong-kong-summer.png` | `b231288b75a5410b30641d40a393df417c2a268362616edd3cfc5b7c455bdcd2` |
+| Hong Kong | winter | `Skylines/hong-kong-winter.png` | `0b687d8ade820daa1984001e3f835dcb78a17cc1597311be2b75b1a98a3b8e49` |
+| Jakarta | summer | `Skylines/jakarta-summer.png` | `a89266f0e0153f05e7358509d18360fdcabd2cf480948bdb579d06f7a471d839` |
+| Jakarta | winter | `Skylines/jakarta-winter.png` | `55f8debf70c88182be2aec4992192cbfce6bf0c0c333f06babf7e0eff6defbd2` |
+| Kabul | summer | `Skylines/kabul-summer.png` | `292da53a56044591ca148f9b629e1add92f5f40e34a2632c13cb755945519533` |
+| Kabul | winter | `Skylines/kabul-winter.png` | `bffafcf93001b8c615d8390b207ba171acb6b89b3b0636a66f7e48419b8dd70d` |
+| Kampala | summer | `Skylines/kampala-summer.png` | `aeab00fc2c980704d51ce4d8a68773f5271338d983fee5d8b6a33e6465c9cbc5` |
+| Kampala | winter | `Skylines/kampala-winter.png` | `ecb2a016f674f92bdbd7790ebbd14ec00b4c5015f9b3d44955d31ef3967a344e` |
+| Kathmandu | summer | `Skylines/kathmandu-summer.png` | `94242dfddf8130310244ce276f8f8f04779a0b4ab2479ce5b056f0a5ff72b7f9` |
+| Kathmandu | winter | `Skylines/kathmandu-winter.png` | `738565dfa887fa567a0b748f25f15526c87cdba550380b94d62cd1171fa8bc62` |
+| Khartoum | summer | `Skylines/khartoum-summer.png` | `0e7632c23d34e920f9cf5e7e20e22393b8616e140681ef62b954c126d4e1d96b` |
+| Khartoum | winter | `Skylines/khartoum-winter.png` | `97be569809e5a1f1ba3da1e92ad15cc7fe2cac2e0e5b69180132aa96a6cc709f` |
+| Kigali | summer | `Skylines/kigali-summer.png` | `25a5d8e35546f8a0e71776c7bc2edb52a82e6e221ce18aa6e9f460fc71ae64b0` |
+| Kigali | winter | `Skylines/kigali-winter.png` | `7bf2dc92d2e85ae0f7db10513d4a7ec30f767b51f531cd9366cdd87bffa7be0d` |
+| Kingston | summer | `Skylines/kingston-summer.png` | `e5cafa0d17768417530b406a237932d0f19c0607e339b91e8de5e406ce9c0549` |
+| Kingston | winter | `Skylines/kingston-winter.png` | `fbe81bbbe4f13e9a4628b11f58e3582c43e22441c5502cb2df54ee11871057a4` |
+| Kinshasa | summer | `Skylines/kinshasa-summer.png` | `15e2b61685fbda7f6c395e40198999423aef4ede60a3980b4d8b2667b63f6753` |
+| Kinshasa | winter | `Skylines/kinshasa-winter.png` | `a7312d297189274065b9a8f212bafebd7e838aaa6752522da92b2cc3b86a3bad` |
+| Kuala Lumpur | summer | `Skylines/kuala-lumpur-summer.png` | `c5ab3eb55f17322089c7c5a41134cc35be9580fe04041c7361a011de7d43497a` |
+| Kuala Lumpur | winter | `Skylines/kuala-lumpur-winter.png` | `4168bb4ec1530828f6405eff3e922aab75f82f2f94fa91bde4e88983004b6ede` |
+| Kyiv | summer | `Skylines/kyiv-summer.png` | `982b25591266b18f656da9539f308093d940ee75eb876ff43b19191fd814486a` |
+| Kyiv | winter | `Skylines/kyiv-winter.png` | `661247e68b3b1019e34b12a7188e8b0f1c30c53fc29c22d637df2abbda84f4d2` |
+| Lilongwe | summer | `Skylines/lilongwe-summer.png` | `8c753fe48e09c321b97e170caec7c30709c4ab87cb1a4854eba724b5aaec7b53` |
+| Lilongwe | winter | `Skylines/lilongwe-winter.png` | `ddc8bd99489d7ca25635ccb69873f02aa5fb396d4d4276447027240c1e76ca9b` |
+| Lima | summer | `Skylines/lima-summer.png` | `d13f4a368539c878f96dfffeb7b4ab9cd0d19407a50abf4043d67a12d02337d3` |
+| Lima | winter | `Skylines/lima-winter.png` | `3c489297405d2d3f4a32fea92e0c38f4ec9f286ad4b81d8feca08cd27db59b78` |
+| Lomé | summer | `Skylines/lome-summer.png` | `740b8d5e5756b0e42607e0db74412dc334531026b3e246bd0ec6ba896421633a` |
+| Lomé | winter | `Skylines/lome-winter.png` | `899a4c8d0cf3c732cc08f24b0726d3f748cd1624a8f839ea5a3e79d9a0c471bb` |
+| London | summer | `Skylines/london-summer.png` | `31764f4c139d3a648edacc48c2881c97d3b0594aba6f6dd31db982b62552c549` |
+| London | winter | `Skylines/london-winter.png` | `36067ab7ba244ff9285efe40fa564324acb3732753b472c1b2cf14cca34e881d` |
+| Luanda | summer | `Skylines/luanda-summer.png` | `a309c66217a3371b9307ec2e683b9f6e3f96778c0e6c33be0b82734cb1eb9387` |
+| Luanda | winter | `Skylines/luanda-winter.png` | `f41257911385ab12227893f7ad7888903d1b3054572819fd9a34268b3c71d1e6` |
+| Lusaka | summer | `Skylines/lusaka-summer.png` | `ffb24c0da72472026f30d8e13e3a59499367169b6adbcdad51af12ef91052f5c` |
+| Lusaka | winter | `Skylines/lusaka-winter.png` | `45af1251c4ef7175045538916fb2739df07bd86c13ad4f6517b912bda43c3814` |
+| Madrid | summer | `Skylines/madrid-summer.png` | `cfe9e1ae56224ebe97e6a8e9e795ae49888091693cb7c344f2c2242c3b7f5081` |
+| Madrid | winter | `Skylines/madrid-winter.png` | `6e4bd28d43af478dcc5d069ed8eb530aab9e2f804ca7bf4427af6e9d34c3e044` |
+| Managua | summer | `Skylines/managua-summer.png` | `4f769bf4194d6f0c77f31cdda5d1c7e101b16aa3f175bfa03eb35f5e0118eaa4` |
+| Managua | winter | `Skylines/managua-winter.png` | `0c94387f0534f9a1a9e4472cdea994a0b4e32f7ce1d5e38a6a30cade82be5737` |
+| Manila | summer | `Skylines/manila-summer.png` | `f6bd5b09ce12b8991bf03adf4c44d7bd1a2ab43ee104f5064af2f45e9b10bcea` |
+| Manila | winter | `Skylines/manila-winter.png` | `c79ec76fcce7fc4d659ea1d211a6154b7ee3054e719b04848808c9c05577cbe1` |
+| Maputo | summer | `Skylines/maputo-summer.png` | `4b154cff55de5f51f345ac5d1a0a3430814ee955ec75b353bdeddf2cca2a457d` |
+| Maputo | winter | `Skylines/maputo-winter.png` | `b3da76a1921a13b7ac6e720a9ac2978569888831e87baa9e6df69dc0845434d5` |
+| Mexico City | summer | `Skylines/mexico-city-summer.png` | `26ce42e6b0addd7bcc9a1f3ea66d26206170b855ff98e40fce0ed71692c401b5` |
+| Mexico City | winter | `Skylines/mexico-city-winter.png` | `f15bf6d062425c1935586fa8c42ab689eec695a4b4b9717cfdc34f7934d85792` |
+| Minsk | summer | `Skylines/minsk-summer.png` | `5fb73607f76aa8f79ffde55640e608173ca4248e826b994b28934d27e08e5383` |
+| Minsk | winter | `Skylines/minsk-winter.png` | `956d71ae37f5c2adb8aec10e3216f0501a2a7d3692e9412768f17fa5e25bfb9c` |
+| Mogadishu | summer | `Skylines/mogadishu-summer.png` | `fdeb18248f549ca1c1d7456a3c1993389720ecd8af0a9a8777556c6b4b9a3298` |
+| Mogadishu | winter | `Skylines/mogadishu-winter.png` | `8bba630f01adffd28a12cd5225a47f8a6f05b40bfc134cc0b028990bccb7743d` |
+| Monrovia | summer | `Skylines/monrovia-summer.png` | `1c592ae80e520d5dd171059f04e02d26028c8392e458c55c4f0c779c5e3049da` |
+| Monrovia | winter | `Skylines/monrovia-winter.png` | `f804f66ad779ac38ed3971e506046b599c2abd98e40328ecf708e08a4bc9a002` |
+| Montevideo | summer | `Skylines/montevideo-summer.png` | `1064718694871ac727a2b245fd160f80442b46e70918ca89f4e5932a9f48c89a` |
+| Montevideo | winter | `Skylines/montevideo-winter.png` | `ba0579568175cdacdea6966143848f884abbe718a976027834256989ad5cc0a3` |
+| Moscow | summer | `Skylines/moscow-summer.png` | `7f835bf55240d7b59c3df1e7663d7ab7e14c55b759ea355dde0535ce85c7a992` |
+| Moscow | winter | `Skylines/moscow-winter.png` | `ca29c28c5bd2dbef3304b5622c358a4b281a59ecaad937d6511dcb98af99120c` |
+| N'Djamena | summer | `Skylines/n-djamena-summer.png` | `51306ad9d3ae3b0c60f33c4b24526858f2e3238a7633554e7d040fa19154f75c` |
+| N'Djamena | winter | `Skylines/n-djamena-winter.png` | `a4dc2e6732398cb48e42e908398b6aa1162304fd620fc046ec88350e495924c7` |
+| Nairobi | summer | `Skylines/nairobi-summer.png` | `35f81b6a206a1c98052f0eb3046ef0f0c94153d67e0cabe2fdf4f7ac734f78a5` |
+| Nairobi | winter | `Skylines/nairobi-winter.png` | `5dd78fe0bc7b437e512a7ebcedf0b76abe4923d3085724594c260a6816779282` |
+| Nay Pyi Taw | summer | `Skylines/nay-pyi-taw-summer.png` | `b4c37393402a0f5c6713dfff72aa8340c094f82dd925d651641f1da81fbbe649` |
+| Nay Pyi Taw | winter | `Skylines/nay-pyi-taw-winter.png` | `8cde2337aaa97bf03353ad6c933e267fdcf4c061b52a23687a9faf10fad3675e` |
+| Niamey | summer | `Skylines/niamey-summer.png` | `e1efa4ace3f0b214521d36eb55f917f29e3b0d7290c224da56e5846deeadc3da` |
+| Niamey | winter | `Skylines/niamey-winter.png` | `76cdadb7ec138d6a3aab52277bfeae71d5e47d528b6bf573a307f6ffa6bf7a02` |
+| Nouakchott | summer | `Skylines/nouakchott-summer.png` | `c2817351fa87dc1c4e9dc16ad5cfc52b75398794d4b37f2fe390c4e355921acd` |
+| Nouakchott | winter | `Skylines/nouakchott-winter.png` | `afff806cd9edcca39865f4078e3e60655340dfe55c1ea37ec9ade08930c2b1f3` |
+| Oslo | summer | `Skylines/oslo-summer.png` | `8703b4a9253824b1a2cbe4364109d6a86756ca6d03f72819cb8e2ba0344bb1b8` |
+| Oslo | winter | `Skylines/oslo-winter.png` | `1e8eb4b893b7d323a780e4279a2e3402348da3d66e52c26c0e69f00d5c3a69c7` |
+| Ottawa | summer | `Skylines/ottawa-summer.png` | `e06bffa80743b50289c974f13175286e57eacae52a62f22808c4b0a40bb73504` |
+| Ottawa | winter | `Skylines/ottawa-winter.png` | `269ad645642c0f70df63764c1bc6e64df1e08f84a5905279034e67ad92f3ba42` |
+| Ouagadougou | summer | `Skylines/ouagadougou-summer.png` | `436171a6612531c90e8c9ddd2db58bf630eb4287e6a84af5515651b023779b88` |
+| Ouagadougou | winter | `Skylines/ouagadougou-winter.png` | `db19f3aeb9fb3865dc1a0bde5153936541149b65bab2f83cdf677cd7a2a76944` |
+| Paris | summer | `Skylines/paris-summer.png` | `333b04c5af8297cb12136b6dc59bb3a41a44213b2ff637704b4f31f16a3b5673` |
+| Paris | winter | `Skylines/paris-winter.png` | `5c66a553151cf6ca968a9b05591a05f5836026c01a7ebb602718e5b761109282` |
+| Phnom Penh | summer | `Skylines/phnom-penh-summer.png` | `54f657ab1b483001fe308f4352b34963a66bb32392826d2d08f426d093213675` |
+| Phnom Penh | winter | `Skylines/phnom-penh-winter.png` | `b51b9af3740228646724d6f556211f1a0dbf42f76d98b5de42aa3463db25f6a0` |
+| Port-au-Prince | summer | `Skylines/port-au-prince-summer.png` | `94d953d582b395ee08eeabb7760d2394f2d18084d92ed8593b06d65a218a05d5` |
+| Port-au-Prince | winter | `Skylines/port-au-prince-winter.png` | `0eeb1421a268e4e328a5cc86b2fdc7bd6165dfab71ef377bf8fa16e3d8f81afe` |
+| Prague | summer | `Skylines/prague-summer.png` | `dc8d7314289007b6085924765bd863f4213aab00188f20bba39e2bc0a31d773c` |
+| Prague | winter | `Skylines/prague-winter.png` | `78ba909127ea67157c380e284d23627208d1a82a7db9364cff58fb2ed26cdb60` |
+| Pretoria | summer | `Skylines/pretoria-summer.png` | `1f6d6b1e827b585b2f2736e43ffc515749b3f423a99277613abcb3a16d5a9241` |
+| Pretoria | winter | `Skylines/pretoria-winter.png` | `f6d6e5e58653193391b04d03015608a750fd17bf257703e2da3f9ef0fbbaa670` |
+| Pyongyang | summer | `Skylines/pyongyang-summer.png` | `87e134098992e60936adbb073c31c66bf03dcebf6a3bbb1ceb3a4dee419ef907` |
+| Pyongyang | winter | `Skylines/pyongyang-winter.png` | `f8a42fe40a97d193a510f0acce420297269e773ab2a95ece805aa6daa704fba6` |
+| Quito | summer | `Skylines/quito-summer.png` | `26c082f4e85faa6afd5d23468eb05c6a259714367561c4a97f9d80a7d4ddae15` |
+| Quito | winter | `Skylines/quito-winter.png` | `23769ce083dfdaaa56f2dfc0cb2c32de87b4cff14ecb59c96435a4427094a111` |
+| Rabat | summer | `Skylines/rabat-summer.png` | `e00cddb77d5ee9f5c53716a5ee2cbf6c0a18b431a87256a1c717dd2574645972` |
+| Rabat | winter | `Skylines/rabat-winter.png` | `7b1d01bc750a73e5962a86d86c573fe67724e2315cc07c41176dd28188285c31` |
+| Riyadh | summer | `Skylines/riyadh-summer.png` | `fe044608fa1ee1c9a35534009e3fbf4a1301f8fff62dd58bca15ddc837e1bca8` |
+| Riyadh | winter | `Skylines/riyadh-winter.png` | `f4e0e5c81e8768525814d5dffb15d417c166faaa3364c7330c5ae6f9815c48aa` |
+| Rome | summer | `Skylines/rome-summer.png` | `ec5f7d1d1a6c0cfe362635c3597dab4ae46a91eaee5159e5b3de6ae51fddab7b` |
+| Rome | winter | `Skylines/rome-winter.png` | `dd0636ab9c4d221a89e98e845bbe0792a23a02db8f141c383c10a80cd060f9b8` |
+| Sana'a | summer | `Skylines/sanaa-summer.png` | `4b424b79e3c18b0004349a8e0c0e4eb7bab7d6d91b4fcc93ea8fa2c37ea35c95` |
+| Sana'a | winter | `Skylines/sanaa-winter.png` | `cad38e6b4e5d3e83ce776e20eb455b87dd6696700203a4989d5662f38cf12ebd` |
+| Santiago | summer | `Skylines/santiago-summer.png` | `93dea510ce269dba18ee08e7ed66e8945a207cfadb7312a2fc505969f3f4c0f0` |
+| Santiago | winter | `Skylines/santiago-winter.png` | `5ba9345eae123d529556c82e58fd280451ee677b25c2484bd554fd5ae47b8e49` |
+| Santo Domingo | summer | `Skylines/santo-domingo-summer.png` | `1e40f35dd82713c8b7a36beda2bcca6b3dc1579371b86a94910a96a20eb3dcb6` |
+| Santo Domingo | winter | `Skylines/santo-domingo-winter.png` | `246129d88f6f4e9835e5d678ccaab80e538ede9dbcde7262cc1e5ce47e7ff9e1` |
+| Seoul | summer | `Skylines/seoul-summer.png` | `b299692f5cbb482f38b039fabce0a18696f3ba38283c3b4c0c579ec9405bbc63` |
+| Seoul | winter | `Skylines/seoul-winter.png` | `65da9f52fc1ec292ac96d8fe2d0af8c61359c0f4d5c7a8b07d4489410d9fed9e` |
+| Singapore | summer | `Skylines/singapore-summer.png` | `d3dfcd3eecb0a65c347e183bb31bc3cddd3799b2d6b80c027bd67ab08a05f9e1` |
+| Singapore | winter | `Skylines/singapore-winter.png` | `8eeaca00e2d140df42e8c27f74caffd32ffbca14e39445ac7b6654a203aba5d7` |
+| Sofia | summer | `Skylines/sofia-summer.png` | `3fbb0869b5fe36b0b73674ad2bc2e11caad23df6ec45fefac916b2cb00475418` |
+| Sofia | winter | `Skylines/sofia-winter.png` | `6253352e51fd9cdd377783623c9fd8c5bfabd9bc8e6f817d546cf735f21f9798` |
+| Stockholm | summer | `Skylines/stockholm-summer.png` | `8e8aad96db08e1fd2cc64e9a3327ab48cdc431f021e670831ba2538f958cb772` |
+| Stockholm | winter | `Skylines/stockholm-winter.png` | `16494739c0b327db871ec9fb1954c1d52a34e3f73d1b4bdd9593d8140bdbdb1b` |
+| Taipei | summer | `Skylines/taipei-summer.png` | `523a76779b9ad05d61aace2090bf7df2eec28e328ec55a5a0005737893f43afd` |
+| Taipei | winter | `Skylines/taipei-winter.png` | `48bb356d74a95080619733e879c195bba2598629e49da9752aa31f12a5306f57` |
+| Tashkent | summer | `Skylines/tashkent-summer.png` | `79a851b8ae1b3a2ad91189c4b139ff094e3197eb027dc322ae2af02ce13a1083` |
+| Tashkent | winter | `Skylines/tashkent-winter.png` | `d958ad2182ff4e98ef6e03683d14052c66755e4aa460d9736eaf8090e2c8684f` |
+| Tbilisi | summer | `Skylines/tbilisi-summer.png` | `8c8c764b664273e71f8af686bd747be7151536f369c8a095086e5c5b7be4d1bb` |
+| Tbilisi | winter | `Skylines/tbilisi-winter.png` | `4dcfc3af43117c255b4bde8ba4e5cf1642c2247bf2154d68e6fd92713469ff46` |
+| Tehran | summer | `Skylines/tehran-summer.png` | `7b21444bbb60d2104e338aec0cbe73463d7ee3b69a57d2376a2422573cf294c2` |
+| Tehran | winter | `Skylines/tehran-winter.png` | `38738b3da0a4a16ce0c8da7bc79b6353b603405c6a5061ac247763972d1e53ac` |
+| Tokyo | summer | `Skylines/tokyo-summer.png` | `7613651900b229ad3abf0191f3717efd3e2dba854387e04a25950fc57fc09d1c` |
+| Tokyo | winter | `Skylines/tokyo-winter.png` | `537294c6809c565325d58f99a986021606404c62b4f2c49ed3518d0855b157aa` |
+| Tripoli | summer | `Skylines/tripoli-summer.png` | `a9c34d2bbd7091a275834cbb6547bc8fce3dbcf16fd60c427f8a03245a157878` |
+| Tripoli | winter | `Skylines/tripoli-winter.png` | `411a466cb4f1f50c1a9369b4807613b789665c62b0727b2b6f84e5e675e3e482` |
+| Vienna | summer | `Skylines/vienna-summer.png` | `fcc6f00c9cccca6883031ce6914f9ff537a599f6363a6e82103847b17146aada` |
+| Vienna | winter | `Skylines/vienna-winter.png` | `410e60a35adbd1a2c65704b3a1a2e24cb1db37867446d6076ccf24abd76d4e83` |
+| Warsaw | summer | `Skylines/warsaw-summer.png` | `59293d7a77ca9e5534005a27b8f8db4c50801cfe7d757c33d5548f2e39c064fe` |
+| Warsaw | winter | `Skylines/warsaw-winter.png` | `575473d01c4d4231c7d39766074f0331c089409addd948c1ed33d35b37329b4e` |
+| Yaoundé | summer | `Skylines/yaounde-summer.png` | `74bd6eb28ca787e5b5204a48758e666258597c14d254cdd3ef0215e1202f79a5` |
+| Yaoundé | winter | `Skylines/yaounde-winter.png` | `59cc57d03af951699a5a366e866fd1cc7f5f967d09789309874c49d4540668b4` |
+| Yerevan | summer | `Skylines/yerevan-summer.png` | `becb939ca8fd1a5ad8d65589c6425660770145b48c4a10634a2c44be61ac9fca` |
+| Yerevan | winter | `Skylines/yerevan-winter.png` | `23fe77ea056bf10909066d8bc9a10cb067fde5c0d2c10b80a02bdb3b020df959` |

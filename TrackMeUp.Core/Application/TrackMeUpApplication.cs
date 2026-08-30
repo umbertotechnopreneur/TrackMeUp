@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -74,7 +76,9 @@ public static class TrackMeUpApplicationFactory
             localSearch,
             pricingRefresh,
             settingsSnapshot: settingsSnapshot,
-            usageSampler: usageSampler);
+            usageSampler: usageSampler,
+            worldClockService: new WorldClockService(
+                logger: loggerFactory?.CreateLogger<WorldClockService>()));
     }
 
     private static ILocalSearchService CreateLocalSearchService(LocalStore store)
@@ -165,6 +169,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private const string ProductRepositoryUrl = "https://github.com/umbertotechnopreneur/TrackMeUp";
     private const string ProductIssuesUrl = "https://github.com/umbertotechnopreneur/TrackMeUp/issues";
     private const string ProductAuthorUrl = "https://umbertogiacobbi.biz";
+    private const string OpenWeatherUrl = "https://openweathermap.org/";
     private bool _disposed;
 
     /// <summary>Initializes an application facade with infrastructure owned by the runtime host.</summary>
@@ -1920,74 +1925,110 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockRailSnapshot>> GetWorldClockRailAsync(CancellationToken cancellationToken)
+    public async Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var snapshot = _worldClocks.BuildSnapshot(_settingsSnapshot.Value.WorldClockCityIds, DateTimeOffset.UtcNow);
-        return Task.FromResult(OperationResult<WorldClockRailSnapshot>.Success(
+        var snapshot = await _worldClocks.BuildCurrentSnapshotAsync(
+            _settingsSnapshot.Value.WorldClockCityIds,
+            cancellationToken).ConfigureAwait(false);
+        return OperationResult<WorldClockSnapshot>.Success(
             "world_clocks.loaded",
             "WorldClocksLoaded",
-            snapshot));
+            snapshot);
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockRailSnapshot>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => MutateAsync(async () =>
+    public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(
+        WorldClockConversionRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            var snapshot = _worldClocks.BuildSnapshotForLocalTime(
+                _settingsSnapshot.Value.WorldClockCityIds,
+                request);
+            return Task.FromResult(OperationResult<WorldClockSnapshot>.Success(
+                "world_clocks.converted",
+                "WorldClocksConverted",
+                snapshot));
+        }
+        catch (WorldClockConversionException exception)
+        {
+            var field = exception.ValidationCode is "reference_not_selected" or "not_found"
+                ? "referenceCityId"
+                : "referenceLocalTime";
+            return Task.FromResult(OperationResult<WorldClockSnapshot>.Failure(
+                exception.Code,
+                exception.MessageKey,
+                new ValidationIssue(field, exception.ValidationCode, exception.MessageKey)));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(
+        string cityId,
+        CancellationToken cancellationToken)
     {
         var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
         _worldClocks.ValidateCityId(normalizedId);
-        var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
-        if (selection.Contains(normalizedId, StringComparer.Ordinal))
+        return MutateAsync(() =>
         {
-            return OperationResult<WorldClockRailSnapshot>.Failure(
-                "world_clocks.duplicate",
-                "WorldClocksDuplicate",
-                new ValidationIssue("cityId", "duplicate", "WorldClocksDuplicate"));
-        }
+            var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
+            if (selection.Contains(normalizedId, StringComparer.Ordinal))
+            {
+                return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
+                    "world_clocks.duplicate",
+                    "WorldClocksDuplicate",
+                    new ValidationIssue("cityId", "duplicate", "WorldClocksDuplicate")));
+            }
 
-        if (selection.Count >= WorldClockSelection.MaximumClocks)
-        {
-            return OperationResult<WorldClockRailSnapshot>.Failure(
-                "world_clocks.maximum_reached",
-                "WorldClocksMaximumReached",
-                new ValidationIssue("cityId", "maximum_reached", "WorldClocksMaximumReached"));
-        }
+            if (selection.Count >= WorldClockSelection.MaximumClocks)
+            {
+                return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
+                    "world_clocks.maximum_reached",
+                    "WorldClocksMaximumReached",
+                    new ValidationIssue("cityId", "maximum_reached", "WorldClocksMaximumReached")));
+            }
 
-        selection.Add(normalizedId);
-        PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
-        await Task.CompletedTask;
-        return OperationResult<WorldClockRailSnapshot>.Success(
-            "world_clocks.added",
-            "WorldClocksAdded",
-            _worldClocks.BuildSnapshot(selection, DateTimeOffset.UtcNow));
-    }, cancellationToken);
+            selection.Add(normalizedId);
+            PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
+            return Task.FromResult(OperationResult<WorldClockSelectionState>.Success(
+                "world_clocks.added",
+                "WorldClocksAdded",
+                new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks)));
+        }, cancellationToken);
+    }
 
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockRailSnapshot>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => MutateAsync(async () =>
+    public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(
+        string cityId,
+        CancellationToken cancellationToken) => MutateAsync(() =>
     {
         var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
         var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
         if (selection.Count == 1)
         {
-            return OperationResult<WorldClockRailSnapshot>.Failure(
+            return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
                 "world_clocks.minimum_reached",
                 "WorldClocksMinimumReached",
-                new ValidationIssue("cityId", "minimum_reached", "WorldClocksMinimumReached"));
+                new ValidationIssue("cityId", "minimum_reached", "WorldClocksMinimumReached")));
         }
 
         if (!selection.Remove(normalizedId))
         {
-            return OperationResult<WorldClockRailSnapshot>.Failure(
+            return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
                 "world_clocks.not_found",
                 "WorldClocksNotFound",
-                new ValidationIssue("cityId", "not_found", "WorldClocksNotFound"));
+                new ValidationIssue("cityId", "not_found", "WorldClocksNotFound")));
         }
 
         PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
-        await Task.CompletedTask;
-        return OperationResult<WorldClockRailSnapshot>.Success(
+        return Task.FromResult(OperationResult<WorldClockSelectionState>.Success(
             "world_clocks.removed",
             "WorldClocksRemoved",
-            _worldClocks.BuildSnapshot(selection, DateTimeOffset.UtcNow));
+            new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks)));
     }, cancellationToken);
 
     /// <inheritdoc />
@@ -2177,6 +2218,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             "author" => ProductAuthorUrl,
             "repository" => ProductRepositoryUrl,
             "issues" => ProductIssuesUrl,
+            "openweather" => OpenWeatherUrl,
             _ => null
         };
         if (target is null)
@@ -2226,6 +2268,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _captureWorker.Dispose();
         _systemSnapshotGate.Dispose();
         await _usageSampler.DisposeAsync().ConfigureAwait(false);
+        _worldClocks.Dispose();
         _mutations.Dispose();
     }
 

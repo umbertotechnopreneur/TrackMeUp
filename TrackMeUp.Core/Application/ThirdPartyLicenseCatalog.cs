@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Describes one runtime dependency and the license terms shown in the About window.</summary>

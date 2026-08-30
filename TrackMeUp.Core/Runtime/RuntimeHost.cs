@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System.Collections.Concurrent;
 using System.IO.Pipes;
 using System.Runtime.ExceptionServices;
@@ -282,10 +284,14 @@ public sealed class RuntimeHost : IAsyncDisposable
                 "tracking.pause" => ToResponse(request, await _application.PauseTrackingAsync(cancellationToken)),
                 "tracking.toggle" => ToResponse(request, await _application.ToggleTrackingAsync(cancellationToken)),
                 "dashboard.get" => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
-                "world_clocks.get.v1" => ToResponse(request, await _application.GetWorldClockRailAsync(cancellationToken)),
+                "world_clocks.get.v2" => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
+                "world_clocks.convert.v1" => ToResponse(request, await _application.ConvertWorldClocksAsync(
+                    Read<WorldClockConversionRequest>(request.Payload)
+                        ?? throw new InvalidDataException("A world-clock conversion request is required."),
+                    cancellationToken)),
                 "world_clocks.catalog.v1" => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
-                "world_clocks.add.v1" => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
-                "world_clocks.remove.v1" => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
+                "world_clocks.add.v3" => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
+                "world_clocks.remove.v3" => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
                 "session.last" => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 "session.today" => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 "search.query.v1" => await DispatchSearchAsync(request, cancellationToken),
@@ -575,6 +581,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
+    internal static readonly TimeSpan WorldClockQueryTimeout = TimeSpan.FromSeconds(15);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RuntimeClient> _logger;
@@ -605,13 +612,19 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>("dashboard.get", null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockRailSnapshot>> GetWorldClockRailAsync(CancellationToken cancellationToken) => SendAsync<WorldClockRailSnapshot>("world_clocks.get.v1", null, cancellationToken);
+    public Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken) =>
+        SendAsync<WorldClockSnapshot>("world_clocks.get.v2", null, cancellationToken, WorldClockQueryTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken) =>
+        SendAsync<WorldClockSnapshot>("world_clocks.convert.v1", request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => SendAsync<WorldClockCityCatalog>("world_clocks.catalog.v1", null, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockRailSnapshot>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => SendAsync<WorldClockRailSnapshot>("world_clocks.add.v1", new { cityId }, cancellationToken);
+    public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) =>
+        SendAsync<WorldClockSelectionState>("world_clocks.add.v3", new { cityId }, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<WorldClockRailSnapshot>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => SendAsync<WorldClockRailSnapshot>("world_clocks.remove.v1", new { cityId }, cancellationToken);
+    public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) =>
+        SendAsync<WorldClockSelectionState>("world_clocks.remove.v3", new { cityId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>("session.last", null, cancellationToken);
     /// <inheritdoc />

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System;
 using TrackMeUp.Cli;
 using Xunit;

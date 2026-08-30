@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a focused product improvement with its privacy and workflow impact.
+title: "[Feature]: "
+labels:
+  - enhancement
+  - triage
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the user need before proposing a solution.
+      placeholder: When I am trying to ..., I cannot ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should become easier, safer, or clearer?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested experience
+      description: Optional product or interaction proposal.
+
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and data impact
+      description: State whether this changes capture, storage, retention, export, diagnostics, network access, or AI-provider requests.
+      placeholder: No data-flow change, or explain the proposed change.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing issues and the public roadmap.
+          required: true
+        - label: I have not included credentials or private data.
+          required: true
+        - label: I agree to follow the Code of Conduct.
+          required: true

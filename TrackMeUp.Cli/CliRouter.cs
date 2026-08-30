@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Spectre.Console;
 using TrackMeUp.Application;
 

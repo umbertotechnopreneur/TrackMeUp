@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Microsoft.UI.Xaml.Controls;
 
 namespace TrackMeUp.Controls;

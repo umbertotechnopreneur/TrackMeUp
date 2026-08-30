@@ -81,14 +81,16 @@ Regenerate that file deterministically with `npm run notices:production` from
 package metadata, or required license/notice files are unavailable or
 inconsistent.
 
-## Distributed world-clock data and media
+## Distributed world-clock data, weather, and media
 
 - Capital-city coordinates, population, and IANA time zones are derived from [GeoNames cities15000](https://download.geonames.org/export/dump/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-- The bundled seasonal skyline WebP files are resized and cropped from individually licensed Wikimedia Commons files. Author, source page, exact license, season, and SHA-256 for every image are distributed in `TrackMeUp/Assets/WorldClocks/ATTRIBUTION.md`, `ATTRIBUTION.json`, and the SQLite catalog itself.
+- Optional current observations are supplied directly by OpenWeather under the API key and plan selected by the person running TrackMeUp. OpenWeather data is provider material, is not covered by the repository MIT License, and remains subject to the provider's applicable service, data, attribution, redistribution, and plan terms. The application preserves visible linked provider attribution whenever that weather is shown.
+- `TrackMeUp/Assets/WorldClocks/ThirdParty/OpenWeather/ow_logo.svg` is the official OpenWeather attribution mark downloaded from [OpenWeather's published SVG](https://openweathermap.org/payload/api/media/file/ow_logo.svg). Its SHA-256 is `fd0ad613ebcdb5f013df98bf75603c83fe1f3f0a5f677118b99557da8ac9281c`. The mark is third-party provider artwork, not TrackMeUp-authored material, TrackMeUp Brand Assets, or MIT-licensed repository artwork; preserve it unchanged with its attribution when redistributing weather-enabled binaries.
+- The bundled seasonal Urban Wash skyline files and composable atmosphere overlays are TrackMeUp-directed project artwork, not third-party Wikimedia derivatives. They are outside the repository MIT grant and were explicitly authorized by the project owner for public publication on 2026-08-30, as recorded in `TrackMeUp/Assets/WorldClocks/PROVENANCE.md`, `TrackMeUp/Assets/WorldClocks/Overlays/PROVENANCE.md`, and `ASSET_LICENSING.md`. Exact skyline SHA-256 values are distributed in `ATTRIBUTION.md`, `ATTRIBUTION.json`, and the SQLite catalog.
 
 Other repository artwork is mapped in [`ASSET_LICENSING.md`](ASSET_LICENSING.md).
-That record distinguishes reserved TrackMeUp Brand Assets, third-party media,
-and assets whose provenance must still be confirmed before publication.
+That record distinguishes owner-attested first-party assets from third-party
+media while preserving the separate license scope of each category.
 
 ## Notes
 

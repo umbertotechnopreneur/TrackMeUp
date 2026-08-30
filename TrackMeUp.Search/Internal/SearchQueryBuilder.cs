@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Lucene.Net.Index;
 using Lucene.Net.Search;
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;

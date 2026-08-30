@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Classifies API-key values without authenticating them or exposing their contents.</summary>

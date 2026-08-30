@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Xunit;
 
 namespace TrackMeUp.Core.Tests;

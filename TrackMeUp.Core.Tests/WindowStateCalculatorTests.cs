@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using TrackMeUp.Application;
 using Xunit;
 
@@ -18,6 +20,7 @@ public sealed class WindowStateCalculatorTests
         Assert.Equal(new WindowMinimumSize(560, 420), WindowStateService.GetMinimumSize(WindowStateKeys.SearchIndexing));
         Assert.Equal(new WindowMinimumSize(620, 480), WindowStateService.GetMinimumSize(WindowStateKeys.Schedule));
         Assert.Equal(new WindowMinimumSize(320, 196), WindowStateService.GetMinimumSize(WindowStateKeys.Dialog));
+        Assert.Equal(new WindowMinimumSize(840, 700), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks));
         Assert.Equal(new WindowMinimumSize(500, 560), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClockCityPicker));
         Assert.Equal(new WindowMinimumSize(480, 480), WindowStateService.GetMinimumSize(WindowStateKeys.AiConnectionTest));
     }

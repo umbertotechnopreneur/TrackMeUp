@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System.Runtime.InteropServices;
 using TrackMeUp.Services;
 
@@ -11,6 +13,9 @@ public static class WindowStateKeys
 
     /// <summary>Identifies the world-clock city picker dialog.</summary>
     public const string WorldClockCityPicker = "world-clock-city-picker";
+
+    /// <summary>Identifies the independent world-clock comparison window.</summary>
+    public const string WorldClocks = "world-clocks";
 
     /// <summary>Identifies the reports window.</summary>
     public const string Reports = "reports";
@@ -91,6 +96,7 @@ public sealed class WindowStateService
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.QuickSetup => new(760, 560),
             WindowStateKeys.Dialog => new(320, 196),
+            WindowStateKeys.WorldClocks => new(840, 700),
             WindowStateKeys.WorldClockCityPicker => new(500, 560),
             WindowStateKeys.AiPricing => new(620, 430),
             WindowStateKeys.AiConnectionTest => new(480, 480),

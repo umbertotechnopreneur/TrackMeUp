@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
@@ -29,6 +31,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly DispatcherQueue _dispatcherQueue;
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
+    private WorldClockWindow? _worldClockWindow;
     private ScreenshotWindow? _screenshotsWindow;
     private SearchWindow? _searchWindow;
     private QuickSetupWindow? _quickSetupWindow;
@@ -39,6 +42,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private DashboardRefreshCoordinator? _dashboardRefreshCoordinator;
     private bool _reportsOnly;
     private bool _searchWindowOpening;
+    private bool _worldClockWindowOpening;
     private bool _quickSetupOwnerWasInteractive;
     private int _shutdownStarted;
     private int _atomicResetStarted;
@@ -120,8 +124,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
         _window = new MainWindow(application, options, _dialogs, trayIcon, _windowsNotifications, _dashboardRefreshCoordinator);
         _window.SettingsApplied += ApplyTaskbarWidgetSettings;
+        _window.SettingsApplied += ApplyWorldClockWindowSettings;
         _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
         _window.ReportsRequested += MainWindow_ReportsRequested;
+        _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
         _window.SearchRequested += MainWindow_SearchRequested;
         _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
         _window.ScreenshotGalleryDateRequested += MainWindow_ScreenshotGalleryDateRequested;
@@ -251,6 +257,9 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
+    private async void MainWindow_WorldClocksRequested(object? sender, EventArgs eventArgs) =>
+        await ShowWorldClockWindowAsync(StartOrConnectRuntime());
+
     private async void MainWindow_QuickSetupRequested(object? sender, EventArgs eventArgs)
     {
         var application = StartOrConnectRuntime();
@@ -359,6 +368,57 @@ public partial class App : Microsoft.UI.Xaml.Application
         _reportsWindow.Closed += ReportsWindow_Closed;
         _reportsWindow.Activate();
     }
+
+    private async Task ShowWorldClockWindowAsync(ITrackMeUpApplication application)
+    {
+        if (_worldClockWindow is not null)
+        {
+            _worldClockWindow.Activate();
+            return;
+        }
+
+        if (_worldClockWindowOpening)
+        {
+            return;
+        }
+
+        _worldClockWindowOpening = true;
+        try
+        {
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (_window is null || Volatile.Read(ref _shutdownStarted) != 0)
+            {
+                return;
+            }
+
+            if (!settings.Succeeded || settings.Value is null)
+            {
+                _logger.LogWarning("World-clock window settings could not be loaded. Code={Code}", settings.Code);
+                _window.ShowWorldClockOpenFailure();
+                return;
+            }
+
+            _worldClockWindow = new WorldClockWindow(application, _dialogs, settings.Value);
+            _worldClockWindow.Closed += WorldClockWindow_Closed;
+            _worldClockWindow.Activate();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "World-clock window could not be opened.");
+            _worldClockWindow = null;
+            if (_window is not null && Volatile.Read(ref _shutdownStarted) == 0)
+            {
+                _window.ShowWorldClockOpenFailure();
+            }
+        }
+        finally
+        {
+            _worldClockWindowOpening = false;
+        }
+    }
+
+    private void ApplyWorldClockWindowSettings(AppSettings settings) =>
+        _worldClockWindow?.ApplySettings(settings);
 
     private async Task ShowSearchWindowAsync(ITrackMeUpApplication application)
     {
@@ -488,13 +548,24 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
+    private void WorldClockWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_worldClockWindow is not null)
+        {
+            _worldClockWindow.Closed -= WorldClockWindow_Closed;
+            _worldClockWindow = null;
+        }
+    }
+
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         if (_window is not null)
         {
             _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
+            _window.SettingsApplied -= ApplyWorldClockWindowSettings;
             _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
+            _window.WorldClocksRequested -= MainWindow_WorldClocksRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotGalleryDateRequested -= MainWindow_ScreenshotGalleryDateRequested;
@@ -518,6 +589,13 @@ public partial class App : Microsoft.UI.Xaml.Application
             _reportsWindow.Closed -= ReportsWindow_Closed;
             _reportsWindow.Close();
             _reportsWindow = null;
+        }
+
+        if (_worldClockWindow is not null)
+        {
+            _worldClockWindow.Closed -= WorldClockWindow_Closed;
+            _worldClockWindow.CloseForShutdown();
+            _worldClockWindow = null;
         }
 
         if (_screenshotsWindow is not null)

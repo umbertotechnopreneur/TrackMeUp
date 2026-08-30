@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -507,6 +509,7 @@ public sealed class WinUiSurfaceContractTests
     {
         var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
         var reports = File.ReadAllText(RepositoryFile("TrackMeUp", "ReportsWindow.xaml.cs"));
+        var worldClocks = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
         var screenshots = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
         var search = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
         var about = File.ReadAllText(RepositoryFile("TrackMeUp", "AboutWindow.xaml.cs"));
@@ -527,6 +530,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("SetWindowSubclass(_windowHandle, _subclassProc, _subclassId, 0)", placement, StringComparison.Ordinal);
         Assert.Contains("RemoveWindowSubclass(_windowHandle, _subclassProc, _subclassId)", placement, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Reports", reports, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.WorldClocks", worldClocks, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Screenshots", screenshots, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Search", search, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.About", about, StringComparison.Ordinal);
@@ -535,6 +539,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("WindowStateKeys.Dialog", dialog, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Screenshots => new(760, 540)", core, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", reports, StringComparison.Ordinal);
+        Assert.Contains("_placement.Dispose();", worldClocks, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", screenshots, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", searchIndexing, StringComparison.Ordinal);
         Assert.DoesNotContain("private void ResizeForLogicalContent()", screenshots, StringComparison.Ordinal);

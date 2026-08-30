@@ -1,0 +1,2348 @@
+{
+  "schemaVersion": 1,
+  "styleId": "urban-wash-v1",
+  "assetCountExpected": 202,
+  "promptBase": "Panoramic hand-painted architectural watercolor for a light WinUI world-clock column; exact 16:9 landscape; airy travel-sketch quality; restrained graphite underdrawing; broad translucent pigment masses; softly feathered edges; recognizable but not photographic. Keep the central area quiet for a large circular UI overlay, with the urban mass mostly in the lower 65% and the primary landmark on a lateral third. Real RGBA transparency outside the skyline; no sky, paper rectangle, checkerboard, border, text, people, vehicles, flags, logos, sun, moon, weather icon, signature, or watermark.",
+  "seasonalModes": {
+    "true-winter": "Distinct cold-season treatment; snow or frost only where climatologically plausible.",
+    "mild-winter": "Cooler light, bare or muted vegetation and wetter atmosphere; avoid implausible heavy snow.",
+    "wet-dry": "Express local wet and dry seasons instead of a European four-season stereotype.",
+    "palette-only": "Keep geometry and vegetation nearly constant; distinguish variants mainly through light, haze and palette."
+  },
+  "cities": [
+    {
+      "cityId": "abu-dhabi",
+      "displayName": "Abu Dhabi",
+      "landmarks": ["Sheikh Zayed Grand Mosque", "Etihad Towers and Corniche"],
+      "seasonalMode": "palette-only",
+      "summerPalette": "sun-bleached ivory, pale sand, dusty turquoise",
+      "summerCues": "strong heat haze, hard warm light, sparse date palms",
+      "winterPalette": "pearl white, cool sand, clear Gulf blue",
+      "winterCues": "crisper air, softer low sun, unchanged desert vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "abuja",
+      "displayName": "Abuja",
+      "landmarks": ["Aso Rock", "Abuja National Mosque"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush green, ochre rock, humid blue-gray",
+      "summerCues": "rain-season greenery and soft humid atmosphere",
+      "winterPalette": "straw gold, dusty umber, pale harmattan blue",
+      "winterCues": "dry grass, light dust haze, reduced foliage saturation",
+      "uncertain": false
+    },
+    {
+      "cityId": "accra",
+      "displayName": "Accra",
+      "landmarks": ["Independence Arch", "Kwame Nkrumah Mausoleum"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "tropical green, coral cream, humid aquamarine",
+      "summerCues": "lush rain-season planting and moist coastal air",
+      "winterPalette": "muted olive, warm cream, dusty cyan",
+      "winterCues": "drier harmattan light and slightly subdued vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "addis-ababa",
+      "displayName": "Addis Ababa",
+      "landmarks": ["African Union headquarters", "Holy Trinity Cathedral"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "eucalyptus green, wet ochre, clouded indigo",
+      "summerCues": "rainy-season slopes, saturated foliage, broken cloud light",
+      "winterPalette": "golden grass, terracotta, highland cobalt",
+      "winterCues": "clear dry air, crisp long shadows, muted ground cover",
+      "uncertain": false
+    },
+    {
+      "cityId": "algiers",
+      "displayName": "Algiers",
+      "landmarks": ["Martyrs' Memorial", "white Casbah terraces"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "white limestone, cobalt sea, sunlit ochre",
+      "summerCues": "bright Mediterranean light and dry hillside vegetation",
+      "winterPalette": "cool ivory, slate blue, muted sage",
+      "winterCues": "soft rain-washed atmosphere, fuller green, no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "amman",
+      "displayName": "Amman",
+      "landmarks": ["Citadel and Temple of Hercules", "Roman Theatre"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "honey limestone, dry umber, pale cerulean",
+      "summerCues": "sun-baked stepped hills and hard dry light",
+      "winterPalette": "cool limestone, lavender gray, muted olive",
+      "winterCues": "soft overcast light, sparse winter green, only a trace of frost",
+      "uncertain": false
+    },
+    {
+      "cityId": "ankara",
+      "displayName": "Ankara",
+      "landmarks": ["Anıtkabir", "Kocatepe Mosque"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "warm limestone, dusty green, clear blue",
+      "summerCues": "dry continental light and full deciduous foliage",
+      "winterPalette": "stone gray, powder blue, muted violet",
+      "winterCues": "bare trees, restrained snow patches and crisp air",
+      "uncertain": false
+    },
+    {
+      "cityId": "antananarivo",
+      "displayName": "Antananarivo",
+      "landmarks": ["Rova of Antananarivo", "stepped highland houses"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush green, red earth, rain-cloud blue",
+      "summerCues": "wet-season terraces and saturated rice-field greens",
+      "winterPalette": "straw gold, brick red, clear highland cyan",
+      "winterCues": "dry terraces, cool clear light, no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "ashgabat",
+      "displayName": "Ashgabat",
+      "landmarks": ["Neutrality Monument", "white-marble government quarter"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "marble white, desert gold, turquoise accents",
+      "summerCues": "brilliant dry heat and distant Kopet Dag haze",
+      "winterPalette": "cool pearl, steel blue, pale mauve",
+      "winterCues": "crisp mountain air and a very light plausible snow dusting",
+      "uncertain": false
+    },
+    {
+      "cityId": "astana",
+      "displayName": "Astana",
+      "landmarks": ["Bayterek Tower", "Khan Shatyr"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "fresh green, gold glass, wide sky blue",
+      "summerCues": "green steppe edges and bright continental light",
+      "winterPalette": "snow white, ice blue, silver gray",
+      "winterCues": "deep snow, bare trees and clear severe-cold atmosphere",
+      "uncertain": false
+    },
+    {
+      "cityId": "asuncion",
+      "displayName": "Asunción",
+      "landmarks": ["Palacio de los López", "Costanera waterfront"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "lush emerald, warm cream, river blue",
+      "summerCues": "dense subtropical foliage and humid light",
+      "winterPalette": "sage green, pale ochre, cool silver blue",
+      "winterCues": "drier air, softer greenery and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "baghdad",
+      "displayName": "Baghdad",
+      "landmarks": ["Martyr's Monument", "Tigris riverfront"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "sun-baked ochre, turquoise, dusty amber",
+      "summerCues": "strong heat shimmer and bleached riverbank vegetation",
+      "winterPalette": "cool sand, blue-gray, muted date-palm green",
+      "winterCues": "clearer low light and slightly greener river edges",
+      "uncertain": false
+    },
+    {
+      "cityId": "baku",
+      "displayName": "Baku",
+      "landmarks": ["Flame Towers", "Maiden Tower and Old City walls"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, Caspian teal, dry gold",
+      "summerCues": "bright windy coast and sun-dried slopes",
+      "winterPalette": "cool limestone, steel Caspian blue, smoky violet",
+      "winterCues": "crisp wind, sparse bare planting and no heavy snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "bamako",
+      "displayName": "Bamako",
+      "landmarks": ["BCEAO Tower", "Niger River and King Fahd Bridge"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "river green, wet red earth, storm blue",
+      "summerCues": "lush rainy-season banks and humid cloud light",
+      "winterPalette": "Sahel gold, dusty rose, pale harmattan blue",
+      "winterCues": "dry grasses, dust haze and reduced riverbank green",
+      "uncertain": false
+    },
+    {
+      "cityId": "bangkok",
+      "displayName": "Bangkok",
+      "landmarks": ["Wat Arun", "King Power Mahanakhon skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "jade green, monsoon blue-gray, temple gold",
+      "summerCues": "humid rain-season atmosphere and wet river reflections",
+      "winterPalette": "clear turquoise, warm cream, muted tropical green",
+      "winterCues": "drier air, cleaner outlines and unchanged tropical foliage",
+      "uncertain": false
+    },
+    {
+      "cityId": "beijing",
+      "displayName": "Beijing",
+      "landmarks": ["Forbidden City corner tower", "CCTV Headquarters skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "imperial red, leafy green, hazy cyan",
+      "summerCues": "full foliage and warm humid city haze",
+      "winterPalette": "vermillion, snow white, cold cobalt",
+      "winterCues": "bare trees, restrained snow and crisp dry air",
+      "uncertain": false
+    },
+    {
+      "cityId": "beirut",
+      "displayName": "Beirut",
+      "landmarks": ["Pigeon Rocks", "Mohammad Al-Amin Mosque and waterfront"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "Mediterranean blue, warm limestone, bougainvillea rose",
+      "summerCues": "bright dry coast and sunlit evergreen planting",
+      "winterPalette": "slate sea, cool limestone, rain-washed sage",
+      "winterCues": "soft wet atmosphere and fuller green, no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "belgrade",
+      "displayName": "Belgrade",
+      "landmarks": ["Belgrade Fortress", "Church of Saint Sava"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, Danube blue, warm stone",
+      "summerCues": "full riverbank foliage and bright continental light",
+      "winterPalette": "fog gray, icy blue, muted limestone",
+      "winterCues": "bare trees, river mist and light snow patches",
+      "uncertain": false
+    },
+    {
+      "cityId": "berlin",
+      "displayName": "Berlin",
+      "landmarks": ["Brandenburg Gate", "Berlin TV Tower"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "linden green, sandstone, clear cyan",
+      "summerCues": "leafy avenues and warm clear daylight",
+      "winterPalette": "slate gray, pale blue, cool sandstone",
+      "winterCues": "bare branches, restrained frost or snow and soft overcast light",
+      "uncertain": false
+    },
+    {
+      "cityId": "bogota",
+      "displayName": "Bogotá",
+      "landmarks": ["Monserrate sanctuary", "Torre Colpatria skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Andean green, brick red, cloud blue-gray",
+      "summerCues": "lush slopes and broken rain-cloud atmosphere",
+      "winterPalette": "muted olive, terracotta, crisp pale blue",
+      "winterCues": "slightly drier light; preserve evergreen highland vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "brasilia",
+      "displayName": "Brasília",
+      "landmarks": ["National Congress", "Cathedral of Brasília"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush cerrado green, white concrete, storm blue",
+      "summerCues": "rain-season lawns and soft dramatic cloud light",
+      "winterPalette": "straw gold, bright white, deep dry-season blue",
+      "winterCues": "dry lawns, crisp air and warm low sunlight",
+      "uncertain": false
+    },
+    {
+      "cityId": "brazzaville",
+      "displayName": "Brazzaville",
+      "landmarks": ["Nabemba Tower", "Basilique Sainte-Anne and Congo River"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "equatorial green, river teal, wet terracotta",
+      "summerCues": "lush banks and humid rain-season softness",
+      "winterPalette": "muted olive, sandy ochre, clear river blue",
+      "winterCues": "drier atmosphere and slightly subdued foliage",
+      "uncertain": false
+    },
+    {
+      "cityId": "brussels",
+      "displayName": "Brussels",
+      "landmarks": ["Atomium", "Brussels Town Hall spire"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "leaf green, warm gray stone, soft blue",
+      "summerCues": "full foliage and diffuse summer daylight",
+      "winterPalette": "pewter, cool beige, mist blue",
+      "winterCues": "bare trees, damp atmosphere and only rare light snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "bucharest",
+      "displayName": "Bucharest",
+      "landmarks": ["Palace of Parliament", "Romanian Athenaeum"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "lime green, cream stone, clear blue",
+      "summerCues": "leafy boulevards and warm continental sun",
+      "winterPalette": "snow white, blue-gray, muted cream",
+      "winterCues": "bare avenues, plausible snow cover and pale cold light",
+      "uncertain": false
+    },
+    {
+      "cityId": "budapest",
+      "displayName": "Budapest",
+      "landmarks": ["Hungarian Parliament", "Chain Bridge and Buda Castle"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "Danube blue, copper green, warm limestone",
+      "summerCues": "leafy embankments and golden clear light",
+      "winterPalette": "icy blue, gray-violet, pale stone",
+      "winterCues": "bare trees, river mist and restrained snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "buenos-aires",
+      "displayName": "Buenos Aires",
+      "landmarks": ["Obelisk", "Palacio Barolo skyline"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "jacaranda green, warm cream, Río de la Plata blue",
+      "summerCues": "dense foliage and humid southern-summer light",
+      "winterPalette": "cool beige, silver blue, muted mauve",
+      "winterCues": "leafless plane trees, low clear sun and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "cairo",
+      "displayName": "Cairo",
+      "landmarks": ["Pyramids of Giza", "Cairo Tower and mosque skyline"],
+      "seasonalMode": "palette-only",
+      "summerPalette": "desert ochre, dusty rose, bleached cyan",
+      "summerCues": "strong heat haze and hard sun-baked contrast",
+      "winterPalette": "cool sand, lavender gray, clear Nile blue",
+      "winterCues": "crisper visibility and softer low-angle light",
+      "uncertain": false
+    },
+    {
+      "cityId": "caracas",
+      "displayName": "Caracas",
+      "landmarks": ["Ávila mountain", "Parque Central towers"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "mountain emerald, humid blue, warm concrete",
+      "summerCues": "lush rain-season slopes and soft cloud breaks",
+      "winterPalette": "clear jade, pale cyan, sunlit beige",
+      "winterCues": "drier air, sharper mountain silhouette, evergreen foliage",
+      "uncertain": false
+    },
+    {
+      "cityId": "conakry",
+      "displayName": "Conakry",
+      "landmarks": ["Conakry Grand Mosque", "Kaloum peninsula waterfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "deep tropical green, wet rust, monsoon gray-blue",
+      "summerCues": "heavy rainy-season softness and saturated coastal foliage",
+      "winterPalette": "muted olive, dusty coral, pale Atlantic blue",
+      "winterCues": "dry-season haze and reduced saturation",
+      "uncertain": true,
+      "uncertaintyNote": "The waterfront is more visually characteristic than any universally recognized secondary monument."
+    },
+    {
+      "cityId": "copenhagen",
+      "displayName": "Copenhagen",
+      "landmarks": ["Nyhavn waterfront", "Church of Our Saviour spire"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "harbor blue, brick red, leafy green",
+      "summerCues": "long bright daylight and full waterfront foliage",
+      "winterPalette": "pearl gray, icy blue, muted brick",
+      "winterCues": "bare trees, light snow or frost and low Nordic sun",
+      "uncertain": false
+    },
+    {
+      "cityId": "dakar",
+      "displayName": "Dakar",
+      "landmarks": ["African Renaissance Monument", "Dakar coastal skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "humid green, Atlantic teal, warm ochre",
+      "summerCues": "rain-season vegetation and moisture-softened horizon",
+      "winterPalette": "sand gold, dusty sage, clear ocean blue",
+      "winterCues": "dry trade-wind clarity and sparse vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "damascus",
+      "displayName": "Damascus",
+      "landmarks": ["Umayyad Mosque", "Old City beneath Mount Qasioun"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, dry olive, pale turquoise",
+      "summerCues": "sun-baked roofs and dusty dry-season light",
+      "winterPalette": "cool stone, rain blue-gray, muted green",
+      "winterCues": "soft rainy atmosphere and only rare trace snow on distant heights",
+      "uncertain": false
+    },
+    {
+      "cityId": "dhaka",
+      "displayName": "Dhaka",
+      "landmarks": ["National Parliament House", "Ahsan Manzil"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "monsoon green, wet brick, clouded teal",
+      "summerCues": "lush rain-season foliage and softened humid edges",
+      "winterPalette": "dusty olive, warm brick, pale hazy blue",
+      "winterCues": "drier air, subdued foliage and gentle winter haze",
+      "uncertain": false
+    },
+    {
+      "cityId": "dublin",
+      "displayName": "Dublin",
+      "landmarks": ["Samuel Beckett Bridge", "Custom House dome"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "river blue, Georgian brick, fresh green",
+      "summerCues": "leafy quays and soft maritime daylight",
+      "winterPalette": "mist gray, cool brick, muted teal",
+      "winterCues": "bare branches, damp atmosphere and no persistent snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "guatemala-city",
+      "displayName": "Guatemala City",
+      "landmarks": ["Torre del Reformador", "volcanic highland skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "volcanic green, wet terracotta, cloud blue",
+      "summerCues": "rain-season slopes and dramatic soft cloud masses",
+      "winterPalette": "clear jade, pale ochre, crisp cobalt",
+      "winterCues": "dry-season visibility and sharper distant volcano silhouette",
+      "uncertain": false
+    },
+    {
+      "cityId": "hanoi",
+      "displayName": "Hanoi",
+      "landmarks": ["Turtle Tower on Hoàn Kiếm Lake", "Long Biên Bridge"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lotus green, wet ochre, monsoon blue-gray",
+      "summerCues": "lush humid foliage and rain-softened lake edges",
+      "winterPalette": "sage, cool gray, faded ochre",
+      "winterCues": "cool dry haze, subdued foliage and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "harare",
+      "displayName": "Harare",
+      "landmarks": ["Reserve Bank tower", "Eastgate Centre and jacaranda avenues"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush green, jacaranda violet, wet red earth",
+      "summerCues": "rain-season canopy and humid highland light",
+      "winterPalette": "straw gold, dusty mauve, clear pale blue",
+      "winterCues": "dry grass, crisp air and thinner foliage",
+      "uncertain": false
+    },
+    {
+      "cityId": "havana",
+      "displayName": "Havana",
+      "landmarks": ["El Capitolio", "Malecón and El Morro lighthouse"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Caribbean turquoise, coral stucco, tropical green",
+      "summerCues": "humid rain-season softness and lush palms",
+      "winterPalette": "clear aqua, faded pastel, muted palm green",
+      "winterCues": "drier trade-wind clarity with unchanged tropical vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "ho-chi-minh-city",
+      "displayName": "Ho Chi Minh City",
+      "landmarks": ["Landmark 81", "Bitexco Financial Tower and Saigon River"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "tropical green, river teal, humid silver",
+      "summerCues": "rain-season haze, saturated planting and wet river atmosphere",
+      "winterPalette": "clear cyan, warm concrete, muted emerald",
+      "winterCues": "dry-season clarity and clean sharp skyline edges",
+      "uncertain": false
+    },
+    {
+      "cityId": "hong-kong",
+      "displayName": "Hong Kong",
+      "landmarks": ["Victoria Harbour skyline", "Bank of China Tower and ICC"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "humid jade, harbor teal, misty silver",
+      "summerCues": "lush hills and moisture-softened high-rise silhouettes",
+      "winterPalette": "clear cobalt, cool gray, muted evergreen",
+      "winterCues": "dry crisp visibility and cooler restrained vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "jakarta",
+      "displayName": "Jakarta",
+      "landmarks": ["National Monument Monas", "Istiqlal Mosque and modern skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rain green, wet concrete, monsoon blue-gray",
+      "summerCues": "lush wet-season planting and humid softened distance",
+      "winterPalette": "warm cream, muted olive, clearer turquoise",
+      "winterCues": "drier-season light with tropical foliage retained",
+      "uncertain": false
+    },
+    {
+      "cityId": "kabul",
+      "displayName": "Kabul",
+      "landmarks": ["Darul Aman Palace", "mountain-ringed city skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "sun-baked ochre, dusty green, highland blue",
+      "summerCues": "dry slopes and hard clear mountain light",
+      "winterPalette": "snow white, cold umber, pale cobalt",
+      "winterCues": "snow-covered mountains, bare trees and plausible city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "kampala",
+      "displayName": "Kampala",
+      "landmarks": ["Uganda National Mosque", "Kampala hill skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "equatorial green, red earth, humid blue",
+      "summerCues": "lush rain-fed hills and soft cloud-filtered light",
+      "winterPalette": "muted olive, warm terracotta, clearer cyan",
+      "winterCues": "slightly drier grass and sharper distant contours",
+      "uncertain": false
+    },
+    {
+      "cityId": "kathmandu",
+      "displayName": "Kathmandu",
+      "landmarks": ["Swayambhunath stupa", "Boudhanath and Himalayan horizon"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "monsoon green, brick red, clouded indigo",
+      "summerCues": "lush valley and rain-softened Himalayan distance",
+      "winterPalette": "cool brick, pale gold, crystalline blue",
+      "winterCues": "dry clear air, bare deciduous trees and snowy distant peaks only",
+      "uncertain": false
+    },
+    {
+      "cityId": "khartoum",
+      "displayName": "Khartoum",
+      "landmarks": ["Nile confluence", "Corinthia Hotel and riverfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Nile green, wet ochre, stormy blue-gray",
+      "summerCues": "brief rain-season riverbank green and humid dust-softened light",
+      "winterPalette": "desert gold, muted palm green, clear pale blue",
+      "winterCues": "dry cool clarity and sparse vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "kigali",
+      "displayName": "Kigali",
+      "landmarks": ["Kigali Convention Centre", "CBD hill skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush hill green, wet terracotta, mist blue",
+      "summerCues": "rain-season vegetation and soft layered hills",
+      "winterPalette": "muted olive, warm ochre, clearer cyan",
+      "winterCues": "drier slopes and crisper skyline separation",
+      "uncertain": false
+    },
+    {
+      "cityId": "kingston",
+      "displayName": "Kingston",
+      "landmarks": ["Kingston waterfront", "Blue Mountains backdrop"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Caribbean teal, mountain emerald, humid violet",
+      "summerCues": "lush rain-season mountains and softened waterfront haze",
+      "winterPalette": "clear aqua, muted jade, warm cream",
+      "winterCues": "dry-season visibility and unchanged tropical structure",
+      "uncertain": true,
+      "uncertaintyNote": "Kingston has no single universally dominant architectural silhouette; use waterfront and mountains as the identity anchor."
+    },
+    {
+      "cityId": "kinshasa",
+      "displayName": "Kinshasa",
+      "landmarks": ["Tour de l'Échangeur", "Congo River skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "equatorial green, river blue, wet terracotta",
+      "summerCues": "lush rain-season banks and humid softened skyline",
+      "winterPalette": "muted olive, sandy ochre, clear river cyan",
+      "winterCues": "drier air and slightly reduced foliage saturation",
+      "uncertain": false
+    },
+    {
+      "cityId": "kuala-lumpur",
+      "displayName": "Kuala Lumpur",
+      "landmarks": ["Petronas Twin Towers", "KL Tower"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rainforest green, humid silver, turquoise glass",
+      "summerCues": "monsoon softness, saturated foliage and wet atmospheric depth",
+      "winterPalette": "clear teal, warm concrete, muted emerald",
+      "winterCues": "slightly drier light while retaining dense tropical greenery",
+      "uncertain": false
+    },
+    {
+      "cityId": "kyiv",
+      "displayName": "Kyiv",
+      "landmarks": ["Saint Sophia's Cathedral", "Mother Ukraine monument and Dnipro"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "chestnut green, gold domes, Dnipro blue",
+      "summerCues": "full leafy hills and warm clear daylight",
+      "winterPalette": "snow white, icy blue, muted gold",
+      "winterCues": "bare trees, plausible snow cover and pale cold sky-light",
+      "uncertain": false
+    },
+    {
+      "cityId": "lilongwe",
+      "displayName": "Lilongwe",
+      "landmarks": ["Malawi Parliament building", "Bingu International Convention Centre"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush green, wet red earth, cloud blue",
+      "summerCues": "rain-season lawns and soft humid atmosphere",
+      "winterPalette": "straw gold, dusty olive, clear cyan",
+      "winterCues": "dry grass and crisp cool-season light",
+      "uncertain": true,
+      "uncertaintyNote": "These are recognizable civic anchors, but Lilongwe lacks a globally standardized skyline icon."
+    },
+    {
+      "cityId": "lima",
+      "displayName": "Lima",
+      "landmarks": ["Miraflores cliffs", "Cathedral and Plaza Mayor skyline"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm ochre, Pacific blue, bougainvillea rose",
+      "summerCues": "brighter southern-summer coast and clearer urban edges",
+      "winterPalette": "garúa gray, cool sand, muted sea green",
+      "winterCues": "soft coastal fog, damp low contrast and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "lome",
+      "displayName": "Lomé",
+      "landmarks": ["Independence Monument", "Sacred Heart Cathedral and coast"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "tropical green, wet coral, Gulf teal",
+      "summerCues": "rain-season vegetation and humid coastal softness",
+      "winterPalette": "muted palm green, sand beige, clear aqua",
+      "winterCues": "drier air and warmer dust-filtered light",
+      "uncertain": false
+    },
+    {
+      "cityId": "london",
+      "displayName": "London",
+      "landmarks": ["Elizabeth Tower and Palace of Westminster", "Tower Bridge"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "Thames blue, leafy green, warm Portland stone",
+      "summerCues": "full embankment foliage and bright diffuse daylight",
+      "winterPalette": "mist gray, muted brick, cool river blue",
+      "winterCues": "bare trees, damp haze and only rare light snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "luanda",
+      "displayName": "Luanda",
+      "landmarks": ["Fortress of São Miguel", "Marginal waterfront skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "humid turquoise, warm coral, tropical green",
+      "summerCues": "rain-season softness and richer coastal planting",
+      "winterPalette": "pale aqua, dusty ochre, muted olive",
+      "winterCues": "dry-season haze, lower foliage saturation and cool Benguela light",
+      "uncertain": false
+    },
+    {
+      "cityId": "lusaka",
+      "displayName": "Lusaka",
+      "landmarks": ["FINDECO House", "Cathedral of the Holy Cross"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush green, wet rust, cloud blue",
+      "summerCues": "rain-season canopy and humid softened skyline",
+      "winterPalette": "straw gold, dusty olive, crisp cyan",
+      "winterCues": "dry grass, clear air and cool long shadows",
+      "uncertain": true,
+      "uncertaintyNote": "FINDECO House is the clearest skyline anchor; the secondary civic silhouette is less universally iconic."
+    },
+    {
+      "cityId": "madrid",
+      "displayName": "Madrid",
+      "landmarks": ["Royal Palace", "Gran Vía and Metropolis dome"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "sunlit ochre, terracotta, dry cobalt",
+      "summerCues": "hard Castilian light and sun-dried plane trees",
+      "winterPalette": "cool stone, gray-violet, muted evergreen",
+      "winterCues": "bare deciduous trees, crisp low sun and no persistent snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "managua",
+      "displayName": "Managua",
+      "landmarks": ["Old Cathedral of Managua", "Loma de Tiscapa and Sandino silhouette"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "volcanic green, wet ochre, humid blue",
+      "summerCues": "rain-season slopes and soft tropical atmosphere",
+      "winterPalette": "muted olive, straw gold, clear cyan",
+      "winterCues": "dry-season grass and sharper volcanic horizon",
+      "uncertain": false
+    },
+    {
+      "cityId": "manila",
+      "displayName": "Manila",
+      "landmarks": ["Manila Cathedral and Intramuros", "Manila Bay skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "monsoon teal, wet coral, tropical green",
+      "summerCues": "humid rain-season atmosphere and softened bay horizon",
+      "winterPalette": "clear aqua, warm cream, muted palm green",
+      "winterCues": "dry-season clarity and cleaner sunset-toned masonry",
+      "uncertain": false
+    },
+    {
+      "cityId": "maputo",
+      "displayName": "Maputo",
+      "landmarks": ["Maputo Central Railway Station", "Cathedral and Indian Ocean waterfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "tropical green, wet coral, ocean turquoise",
+      "summerCues": "lush rainy-season avenues and humid coastal light",
+      "winterPalette": "muted olive, pale ochre, clear blue",
+      "winterCues": "dry cool air and reduced foliage saturation",
+      "uncertain": false
+    },
+    {
+      "cityId": "mexico-city",
+      "displayName": "Mexico City",
+      "landmarks": ["Palacio de Bellas Artes", "Ángel de la Independencia and Torre Latinoamericana"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rain green, warm stone, clouded ultramarine",
+      "summerCues": "rain-season trees and moisture-softened mountain basin",
+      "winterPalette": "muted olive, golden stone, crisp pale blue",
+      "winterCues": "dry high-altitude clarity and gentle haze",
+      "uncertain": false
+    },
+    {
+      "cityId": "minsk",
+      "displayName": "Minsk",
+      "landmarks": ["National Library of Belarus", "Gate of Minsk"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, pale stone, clear cyan",
+      "summerCues": "full avenues and bright long daylight",
+      "winterPalette": "snow white, steel blue, cool gray",
+      "winterCues": "deep snow, bare trees and low cold light",
+      "uncertain": false
+    },
+    {
+      "cityId": "mogadishu",
+      "displayName": "Mogadishu",
+      "landmarks": ["Mogadishu Lighthouse", "Arba'a Rukun Mosque and beachfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Indian Ocean teal, wet sand, muted tropical green",
+      "summerCues": "humid monsoon edge and slightly fuller coastal vegetation",
+      "winterPalette": "pale aqua, sun-bleached limestone, dusty olive",
+      "winterCues": "dry clear coast and sparse vegetation",
+      "uncertain": true,
+      "uncertaintyNote": "Verify the current physical condition and preferred depiction of the lighthouse before final production."
+    },
+    {
+      "cityId": "monrovia",
+      "displayName": "Monrovia",
+      "landmarks": ["Ducor Hotel hill silhouette", "Mesurado waterfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rainforest green, wet rust, stormy Atlantic blue",
+      "summerCues": "heavy rainy-season softness and saturated foliage",
+      "winterPalette": "muted olive, warm sand, clearer ocean blue",
+      "winterCues": "dry-season haze and reduced greenery",
+      "uncertain": true,
+      "uncertaintyNote": "Ducor Hotel is visually recognizable but its derelict state should be rendered accurately and respectfully."
+    },
+    {
+      "cityId": "montevideo",
+      "displayName": "Montevideo",
+      "landmarks": ["Palacio Salvo", "Rambla waterfront skyline"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "Río de la Plata blue, leafy green, warm cream",
+      "summerCues": "full foliage and bright southern-summer waterfront light",
+      "winterPalette": "silver blue, cool beige, muted olive",
+      "winterCues": "bare deciduous trees, wind-softened atmosphere and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "moscow",
+      "displayName": "Moscow",
+      "landmarks": ["Saint Basil's Cathedral", "Kremlin towers"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, warm red, gold accents",
+      "summerCues": "full foliage and luminous continental daylight",
+      "winterPalette": "snow white, cold blue, muted vermillion",
+      "winterCues": "deep snow, bare trees and pale winter atmosphere",
+      "uncertain": false
+    },
+    {
+      "cityId": "n-djamena",
+      "displayName": "N'Djamena",
+      "landmarks": ["N'Djamena Grand Mosque", "Place de la Nation skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Sahel green, wet ochre, storm blue-gray",
+      "summerCues": "brief rainy-season greenery and humid dust-softened light",
+      "winterPalette": "sand gold, dusty rose, pale harmattan blue",
+      "winterCues": "dry grass, strong dust haze and sparse vegetation",
+      "uncertain": true,
+      "uncertaintyNote": "Confirm the preferred secondary civic landmark; the Grand Mosque is the reliable anchor."
+    },
+    {
+      "cityId": "nairobi",
+      "displayName": "Nairobi",
+      "landmarks": ["Kenyatta International Convention Centre", "CBD skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "highland green, warm concrete, rain blue",
+      "summerCues": "lush wet-season planting and soft golden cloud light",
+      "winterPalette": "muted olive, straw gold, clear cyan",
+      "winterCues": "drier grass, crisper air and restrained foliage",
+      "uncertain": false
+    },
+    {
+      "cityId": "nay-pyi-taw",
+      "displayName": "Nay Pyi Taw",
+      "landmarks": ["Uppatasanti Pagoda", "Parliament complex"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "monsoon green, temple gold, clouded teal",
+      "summerCues": "lush rain-season grounds and humid atmosphere",
+      "winterPalette": "warm gold, muted olive, clear pale blue",
+      "winterCues": "dry-season lawns and clean architectural edges",
+      "uncertain": false
+    },
+    {
+      "cityId": "niamey",
+      "displayName": "Niamey",
+      "landmarks": ["Grand Mosque of Niamey", "Kennedy Bridge and Niger River"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "river green, wet ochre, storm blue",
+      "summerCues": "brief rainy-season banks and softened humid light",
+      "winterPalette": "Sahel gold, dusty olive, pale cyan",
+      "winterCues": "dry banks, harmattan haze and sparse vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "nouakchott",
+      "displayName": "Nouakchott",
+      "landmarks": ["Saudi Mosque", "Nouakchott low-rise desert skyline"],
+      "seasonalMode": "palette-only",
+      "summerPalette": "bleached sand, dusty rose, hot pale cyan",
+      "summerCues": "strong heat haze and wind-shaped sparse vegetation",
+      "winterPalette": "cool sand, muted sage, clear Atlantic blue",
+      "winterCues": "crisper dry light with geometry and vegetation unchanged",
+      "uncertain": true,
+      "uncertaintyNote": "The city is predominantly low-rise; avoid inventing a dense or monumental skyline."
+    },
+    {
+      "cityId": "oslo",
+      "displayName": "Oslo",
+      "landmarks": ["Oslo Opera House", "City Hall and Barcode skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "fjord blue, fresh green, warm white",
+      "summerCues": "long Nordic daylight and full waterfront foliage",
+      "winterPalette": "snow white, ice blue, slate gray",
+      "winterCues": "snowy quays, bare trees and low cool light",
+      "uncertain": false
+    },
+    {
+      "cityId": "ottawa",
+      "displayName": "Ottawa",
+      "landmarks": ["Parliament Hill", "Château Laurier and Rideau Canal"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, river blue, warm Gothic stone",
+      "summerCues": "lush riverbanks and bright clear daylight",
+      "winterPalette": "snow white, frozen blue, cool brown stone",
+      "winterCues": "deep snow, frozen canal and bare trees",
+      "uncertain": false
+    },
+    {
+      "cityId": "ouagadougou",
+      "displayName": "Ouagadougou",
+      "landmarks": ["Monument des Héros Nationaux", "Ouagadougou Cathedral"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Sahel green, wet red earth, storm blue",
+      "summerCues": "rain-season vegetation and soft humid light",
+      "winterPalette": "straw gold, dusty terracotta, pale harmattan blue",
+      "winterCues": "dry grass, dust haze and sparse tree canopies",
+      "uncertain": false
+    },
+    {
+      "cityId": "paris",
+      "displayName": "Paris",
+      "landmarks": ["Eiffel Tower", "Haussmann rooftops and Seine"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, muted cerulean, sage, dusty roof red",
+      "summerCues": "full foliage and clear airy summer atmosphere",
+      "winterPalette": "cool limestone, slate blue, gray-violet",
+      "winterCues": "bare branches and restrained snow on roof edges; no active snowfall",
+      "uncertain": false
+    },
+    {
+      "cityId": "phnom-penh",
+      "displayName": "Phnom Penh",
+      "landmarks": ["Royal Palace", "Independence Monument and Mekong riverfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "monsoon green, Khmer gold, river teal",
+      "summerCues": "lush rain-season planting and humid river atmosphere",
+      "winterPalette": "warm gold, muted olive, clear aqua",
+      "winterCues": "dry-season clarity with tropical vegetation retained",
+      "uncertain": false
+    },
+    {
+      "cityId": "port-au-prince",
+      "displayName": "Port-au-Prince",
+      "landmarks": ["Iron Market", "mountain amphitheater and waterfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "tropical green, wet coral, humid Caribbean blue",
+      "summerCues": "rain-season slopes and soft moisture haze",
+      "winterPalette": "muted jade, warm ochre, clear aqua",
+      "winterCues": "dry-season clarity and restrained hillside foliage",
+      "uncertain": true,
+      "uncertaintyNote": "Avoid obsolete pre-earthquake civic silhouettes; verify current built condition before finalizing secondary architecture."
+    },
+    {
+      "cityId": "prague",
+      "displayName": "Prague",
+      "landmarks": ["Charles Bridge", "Prague Castle and St Vitus Cathedral"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "Vltava blue, copper green, warm ochre roofs",
+      "summerCues": "leafy riverbanks and golden clear light",
+      "winterPalette": "snow white, slate blue, muted terracotta",
+      "winterCues": "bare trees, light snow and soft river mist",
+      "uncertain": false
+    },
+    {
+      "cityId": "pretoria",
+      "displayName": "Pretoria",
+      "landmarks": ["Union Buildings", "Voortrekker Monument and jacaranda avenues"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush green, jacaranda violet, wet ochre",
+      "summerCues": "rain-season lawns and flowering subtropical canopy",
+      "winterPalette": "straw gold, muted mauve, clear highveld blue",
+      "winterCues": "dry grass, thinner deciduous foliage and crisp light",
+      "uncertain": false
+    },
+    {
+      "cityId": "pyongyang",
+      "displayName": "Pyongyang",
+      "landmarks": ["Juche Tower", "Ryugyong Hotel and Taedong River"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "river blue, leafy green, warm concrete",
+      "summerCues": "full foliage and humid continental light",
+      "winterPalette": "snow white, icy cyan, cool gray",
+      "winterCues": "bare trees, snow-covered riverbanks and sharp cold air",
+      "uncertain": false
+    },
+    {
+      "cityId": "quito",
+      "displayName": "Quito",
+      "landmarks": ["Basilica del Voto Nacional", "El Panecillo and Andean ridge"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "Andean green, volcanic gray, clouded blue",
+      "summerCues": "lush slopes and broken rain-cloud atmosphere",
+      "winterPalette": "muted olive, warm stone, clear high-altitude cyan",
+      "winterCues": "drier visibility while preserving equatorial highland foliage",
+      "uncertain": false
+    },
+    {
+      "cityId": "rabat",
+      "displayName": "Rabat",
+      "landmarks": ["Hassan Tower", "Kasbah of the Udayas and Bou Regreg"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm sandstone, Atlantic blue, dry sage",
+      "summerCues": "bright dry coast and hard clear shadows",
+      "winterPalette": "cool ochre, slate blue, fresh green",
+      "winterCues": "rain-washed atmosphere and greener riverbanks, no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "riyadh",
+      "displayName": "Riyadh",
+      "landmarks": ["Kingdom Centre", "Al Faisaliah Tower"],
+      "seasonalMode": "palette-only",
+      "summerPalette": "hot sand, bleached ivory, dusty cyan",
+      "summerCues": "intense heat shimmer and hard high sun",
+      "winterPalette": "cool sand, pearl gray, clear cobalt",
+      "winterCues": "crisper dry atmosphere and longer softer shadows",
+      "uncertain": false
+    },
+    {
+      "cityId": "rome",
+      "displayName": "Rome",
+      "landmarks": ["Colosseum", "layered domes, ruins and umbrella pines"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "travertine, terracotta, olive, cypress green",
+      "summerCues": "warm Mediterranean light and full dry-season evergreens",
+      "winterPalette": "cool travertine, muted umber, powder blue",
+      "winterCues": "leafless deciduous trees, evergreens retained, at most rare roof-edge frost",
+      "uncertain": false
+    },
+    {
+      "cityId": "sanaa",
+      "displayName": "Sana'a",
+      "landmarks": ["Bab al-Yemen", "Old City tower houses and mosque minarets"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm ochre, white gypsum, dusty turquoise",
+      "summerCues": "sunlit highland masonry and soft summer haze",
+      "winterPalette": "cool umber, pearl white, pale cobalt",
+      "winterCues": "crisper high-altitude light and sparse muted vegetation; no heavy snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "santiago",
+      "displayName": "Santiago",
+      "landmarks": ["Gran Torre Santiago", "Andes mountain wall"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "dry ochre, muted green, high-altitude blue",
+      "summerCues": "clear hot southern-summer city with dry foothills",
+      "winterPalette": "cool gray, rain blue, snow-white Andes",
+      "winterCues": "bare deciduous trees, wetter city atmosphere and snowy mountains, not city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "santo-domingo",
+      "displayName": "Santo Domingo",
+      "landmarks": ["Catedral Primada de América", "Alcázar de Colón and Caribbean waterfront"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "tropical green, coral stone, humid turquoise",
+      "summerCues": "rain-season foliage and moisture-softened coast",
+      "winterPalette": "clear aqua, warm limestone, muted palm green",
+      "winterCues": "dry-season clarity with evergreen tropical structure",
+      "uncertain": false
+    },
+    {
+      "cityId": "seoul",
+      "displayName": "Seoul",
+      "landmarks": ["N Seoul Tower", "Gyeongbokgung roofs and modern skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "mountain green, warm roof red, humid blue",
+      "summerCues": "lush hills and soft monsoon-season distance",
+      "winterPalette": "snow white, cold cobalt, muted charcoal",
+      "winterCues": "bare trees, plausible snow and crisp dry air",
+      "uncertain": false
+    },
+    {
+      "cityId": "singapore",
+      "displayName": "Singapore",
+      "landmarks": ["Marina Bay Sands", "Supertree Grove and bay skyline"],
+      "seasonalMode": "palette-only",
+      "summerPalette": "humid emerald, turquoise glass, silver mist",
+      "summerCues": "lush equatorial planting and soft humid depth",
+      "winterPalette": "deeper jade, rain blue-gray, warm architectural gold",
+      "winterCues": "monsoon-moist atmosphere; preserve identical tropical vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "sofia",
+      "displayName": "Sofia",
+      "landmarks": ["Alexander Nevsky Cathedral", "Vitosha mountain"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, warm stone, mountain blue",
+      "summerCues": "full boulevards and clear mountain daylight",
+      "winterPalette": "snow white, blue-gray, muted gold",
+      "winterCues": "snowy Vitosha, bare trees and plausible city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "stockholm",
+      "displayName": "Stockholm",
+      "landmarks": ["Stockholm City Hall", "Gamla Stan spires"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "Baltic blue, leafy green, warm ochre",
+      "summerCues": "long Nordic daylight and full island foliage",
+      "winterPalette": "snow white, ice blue, muted brick",
+      "winterCues": "snowy quays, bare trees and low pale light",
+      "uncertain": false
+    },
+    {
+      "cityId": "taipei",
+      "displayName": "Taipei",
+      "landmarks": ["Taipei 101", "mountain-ringed city skyline"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "humid jade, turquoise glass, monsoon gray-blue",
+      "summerCues": "lush hills and softened rainy-season skyline",
+      "winterPalette": "cool teal, mist gray, muted evergreen",
+      "winterCues": "cooler damp light and crisper building silhouettes; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "tashkent",
+      "displayName": "Tashkent",
+      "landmarks": ["Tashkent TV Tower", "Hazrati Imam complex"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, warm cream, dry cobalt",
+      "summerCues": "shaded avenues and bright continental heat",
+      "winterPalette": "snow white, cool beige, pale blue",
+      "winterCues": "bare trees, plausible light snow and crisp air",
+      "uncertain": false
+    },
+    {
+      "cityId": "tbilisi",
+      "displayName": "Tbilisi",
+      "landmarks": ["Narikala Fortress", "Bridge of Peace and Sameba Cathedral"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "warm stone, dry green, river blue",
+      "summerCues": "sunlit hills and full riverside foliage",
+      "winterPalette": "cool ochre, slate blue, gray-violet",
+      "winterCues": "bare hillsides, restrained snow or frost and crisp valley air",
+      "uncertain": false
+    },
+    {
+      "cityId": "tehran",
+      "displayName": "Tehran",
+      "landmarks": ["Azadi Tower", "Milad Tower and Alborz mountains"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "warm stone, dusty green, hazy cyan",
+      "summerCues": "dry heat haze and sun-baked foothills",
+      "winterPalette": "cool ivory, steel blue, snow-white Alborz",
+      "winterCues": "bare trees, snowy mountains and plausible light city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "tokyo",
+      "displayName": "Tokyo",
+      "landmarks": ["Tokyo Tower", "Tokyo Station and Marunouchi skyline"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "leaf green, brick red, humid cyan",
+      "summerCues": "dense foliage and soft warm-season atmospheric depth",
+      "winterPalette": "cool brick, clear blue, gray-violet",
+      "winterCues": "bare deciduous trees, crisp dry light and only rare trace snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "tripoli",
+      "displayName": "Tripoli",
+      "landmarks": ["Arch of Marcus Aurelius", "Ottoman Clock Tower and medina"],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, Mediterranean turquoise, dry ochre",
+      "summerCues": "bright arid coast and hard sunlit shadows",
+      "winterPalette": "cool stone, slate sea, muted sage",
+      "winterCues": "soft rainy atmosphere and slightly greener edges, no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "vienna",
+      "displayName": "Vienna",
+      "landmarks": ["St Stephen's Cathedral", "Vienna Rathaus skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, warm cream, Danube blue",
+      "summerCues": "full boulevards and luminous continental daylight",
+      "winterPalette": "snow white, slate blue, cool beige",
+      "winterCues": "bare trees, restrained snow and pale low-angle light",
+      "uncertain": false
+    },
+    {
+      "cityId": "warsaw",
+      "displayName": "Warsaw",
+      "landmarks": ["Palace of Culture and Science", "Royal Castle and Old Town skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "leaf green, warm brick, river blue",
+      "summerCues": "full foliage and bright continental daylight",
+      "winterPalette": "snow white, steel blue, muted brick",
+      "winterCues": "bare trees, plausible snow and cool overcast light",
+      "uncertain": false
+    },
+    {
+      "cityId": "yaounde",
+      "displayName": "Yaoundé",
+      "landmarks": ["Reunification Monument", "Notre-Dame des Victoires and hill skyline"],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "equatorial green, wet red earth, mist blue",
+      "summerCues": "lush rainy-season hills and humid layered atmosphere",
+      "winterPalette": "muted olive, warm terracotta, clearer cyan",
+      "winterCues": "drier air and slightly subdued vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "yerevan",
+      "displayName": "Yerevan",
+      "landmarks": ["Yerevan Cascade", "Mount Ararat and pink-tuff skyline"],
+      "seasonalMode": "true-winter",
+      "summerPalette": "pink tuff, dry green, highland blue",
+      "summerCues": "warm clear light and sun-dried foothills",
+      "winterPalette": "snow white, rose gray, cold cobalt",
+      "winterCues": "snowy Ararat, bare trees and plausible city snow",
+      "uncertain": false
+    }
+  ],
+  "reviewedMasters": [
+    {
+      "cityId": "abu-dhabi",
+      "season": "summer",
+      "fileName": "abu-dhabi-summer.png",
+      "sha256": "88b47be07e3ef27fa4c4bcf6dd603863f0f71ca3e72f8db9adda27bd5cc375f8"
+    },
+    {
+      "cityId": "abu-dhabi",
+      "season": "winter",
+      "fileName": "abu-dhabi-winter.png",
+      "sha256": "23b7616f0c661b8539a051fabdd63e71c09cb5d39c0e7b0bb900ec19e9f3dab6"
+    },
+    {
+      "cityId": "abuja",
+      "season": "summer",
+      "fileName": "abuja-summer.png",
+      "sha256": "a461f2e071da82e9fe0ef19af41ad683baa7239806515c48d4fa9b602d44af41"
+    },
+    {
+      "cityId": "abuja",
+      "season": "winter",
+      "fileName": "abuja-winter.png",
+      "sha256": "8d8bd2e1975371e46b12bc37b3481c6253c5db07f090191b5d1543db7bf8eae3"
+    },
+    {
+      "cityId": "accra",
+      "season": "summer",
+      "fileName": "accra-summer.png",
+      "sha256": "faabebe6300de7c59f6007be78fecb5703fe8ca52d8d972e6e9fdff33e203af5"
+    },
+    {
+      "cityId": "accra",
+      "season": "winter",
+      "fileName": "accra-winter.png",
+      "sha256": "d87c744e1bdd6af5540da9f06d04c1d1d09d7a6bb07d2dfa0d7fa2081479ddde"
+    },
+    {
+      "cityId": "addis-ababa",
+      "season": "summer",
+      "fileName": "addis-ababa-summer.png",
+      "sha256": "dae718aaea6de63424d8e73c170f66a14e5a12ce514f4490cca9a814ae99e82f"
+    },
+    {
+      "cityId": "addis-ababa",
+      "season": "winter",
+      "fileName": "addis-ababa-winter.png",
+      "sha256": "d8324c2a25fd24e5844d510353fa7dd401d27959f0bf11e273423129270522db"
+    },
+    {
+      "cityId": "algiers",
+      "season": "summer",
+      "fileName": "algiers-summer.png",
+      "sha256": "504943b9f8ff226d92f0c3650cc8d68857810046b8b00de7839a266ef993f2c8"
+    },
+    {
+      "cityId": "algiers",
+      "season": "winter",
+      "fileName": "algiers-winter.png",
+      "sha256": "7d850819eb2fcd44cd69f0f8c662e980dafb9f3461bb83639633c724fd40b5e8"
+    },
+    {
+      "cityId": "amman",
+      "season": "summer",
+      "fileName": "amman-summer.png",
+      "sha256": "335c168667267ec6029ec19bc2cb715cdfc2bcc2b10aba7e97db531be60e4259"
+    },
+    {
+      "cityId": "amman",
+      "season": "winter",
+      "fileName": "amman-winter.png",
+      "sha256": "8193c6c660a4a3bbf50601de50c13ada6e75f419993d1c7cf0dcf55da238f9f7"
+    },
+    {
+      "cityId": "ankara",
+      "season": "summer",
+      "fileName": "ankara-summer.png",
+      "sha256": "f5f1b6a7d54f92e4cc1e48adfa7c84be13c8b9db663e7ed73c2d71d1a7e063be"
+    },
+    {
+      "cityId": "ankara",
+      "season": "winter",
+      "fileName": "ankara-winter.png",
+      "sha256": "5b1c87cd4dfc7cd29a86304fc31052d7d8b416724b8f3587f22b510a3d29aaa2"
+    },
+    {
+      "cityId": "antananarivo",
+      "season": "summer",
+      "fileName": "antananarivo-summer.png",
+      "sha256": "59aff8e229067e8431e4b348d100dfab6b410104bb4596a1380f310aed3c1ec2"
+    },
+    {
+      "cityId": "antananarivo",
+      "season": "winter",
+      "fileName": "antananarivo-winter.png",
+      "sha256": "0c96a2bc5571bfd1ce1334ec901695544181cec6c88d210e9f5257bfbc2294a6"
+    },
+    {
+      "cityId": "ashgabat",
+      "season": "summer",
+      "fileName": "ashgabat-summer.png",
+      "sha256": "1a0a0459fa7721609e45ed62ea49f9498d4848026f954e7eff912cd5ef446105"
+    },
+    {
+      "cityId": "ashgabat",
+      "season": "winter",
+      "fileName": "ashgabat-winter.png",
+      "sha256": "f3cb32d0f799e1de5b6e686ff35ce31a1556de49c11a000acc84d7b95a8f3751"
+    },
+    {
+      "cityId": "astana",
+      "season": "summer",
+      "fileName": "astana-summer.png",
+      "sha256": "9d3c0e8fd3053587f84190871dbf0ab710497ff9a7888370d3a818c4ee617945"
+    },
+    {
+      "cityId": "astana",
+      "season": "winter",
+      "fileName": "astana-winter.png",
+      "sha256": "690f24c2126c28ce53c883566971c96deae06a9bddcd3a7f43a04f0b408b4bd6"
+    },
+    {
+      "cityId": "asuncion",
+      "season": "summer",
+      "fileName": "asuncion-summer.png",
+      "sha256": "c83a6530b5fb8ae766a3f832be56879d5ade00666244c85dddd29835fb7b3278"
+    },
+    {
+      "cityId": "asuncion",
+      "season": "winter",
+      "fileName": "asuncion-winter.png",
+      "sha256": "22d0cf0ce87627a5495d59fec261dc92cee96961e18a0f7831e69a0322eb31a6"
+    },
+    {
+      "cityId": "baghdad",
+      "season": "summer",
+      "fileName": "baghdad-summer.png",
+      "sha256": "090df59ca10e4e94d5b8808bac0aa1135b953624b0e769876838189aa0bef011"
+    },
+    {
+      "cityId": "baghdad",
+      "season": "winter",
+      "fileName": "baghdad-winter.png",
+      "sha256": "6e9218126effae2e8481f382270beea861a4eeaa8c56a97591a670cf12697d43"
+    },
+    {
+      "cityId": "baku",
+      "season": "summer",
+      "fileName": "baku-summer.png",
+      "sha256": "34dc262a3b57473e18b0f8b3f0f432574acd5f7f54d3fd9911759a1b648a3099"
+    },
+    {
+      "cityId": "baku",
+      "season": "winter",
+      "fileName": "baku-winter.png",
+      "sha256": "2e4f2d2a41301f86434f5b94fabce2fb0610a6f944bd7b22c1ddfcc483828097"
+    },
+    {
+      "cityId": "bamako",
+      "season": "summer",
+      "fileName": "bamako-summer.png",
+      "sha256": "acf328f95a41c7239dc8c80cb44ad41e4b9a1035c78818b66b4997513378d479"
+    },
+    {
+      "cityId": "bamako",
+      "season": "winter",
+      "fileName": "bamako-winter.png",
+      "sha256": "bfdb023afa487d5849e55d01b90567160cac30944c1f1956e329aa8edea16035"
+    },
+    {
+      "cityId": "bangkok",
+      "season": "summer",
+      "fileName": "bangkok-summer.png",
+      "sha256": "3dc4b08771e0733f6d7c63ba7076fb7cbc009376af3becfdbd91691753beb784"
+    },
+    {
+      "cityId": "bangkok",
+      "season": "winter",
+      "fileName": "bangkok-winter.png",
+      "sha256": "2f859a135ff1d60b025c84e51299db902b7168e3aa1ce626470eab88bbc4e5df"
+    },
+    {
+      "cityId": "beijing",
+      "season": "summer",
+      "fileName": "beijing-summer.png",
+      "sha256": "b25a844ccdc01577600a4b4695ac33dce55e9783d3febdb247c2d0e270688c1e"
+    },
+    {
+      "cityId": "beijing",
+      "season": "winter",
+      "fileName": "beijing-winter.png",
+      "sha256": "b22730607d96f61ab3a030e01848da85c6838d50296749b097f11921427f14f4"
+    },
+    {
+      "cityId": "beirut",
+      "season": "summer",
+      "fileName": "beirut-summer.png",
+      "sha256": "0b1e873c5fa2a0f76383c8efe6b853298b1cead17c1d28dd6445471785fd96c1"
+    },
+    {
+      "cityId": "beirut",
+      "season": "winter",
+      "fileName": "beirut-winter.png",
+      "sha256": "b5967f60361faeacd06a869c3029a9d28a2302d46ed64837c2a49f183929c9b1"
+    },
+    {
+      "cityId": "belgrade",
+      "season": "summer",
+      "fileName": "belgrade-summer.png",
+      "sha256": "be01db980e9ea5fbca671548b80cbfb90de57af7c547accbc52feba17f5f3685"
+    },
+    {
+      "cityId": "belgrade",
+      "season": "winter",
+      "fileName": "belgrade-winter.png",
+      "sha256": "70054bf387a17c975436e83c92c01d1d33232d213a4a0dd35e6e020c5c701c43"
+    },
+    {
+      "cityId": "berlin",
+      "season": "summer",
+      "fileName": "berlin-summer.png",
+      "sha256": "267c3f659cd26f339a5a7d6ec2f2826d2c6fbca1e149b3a78cc0742fc373db92"
+    },
+    {
+      "cityId": "berlin",
+      "season": "winter",
+      "fileName": "berlin-winter.png",
+      "sha256": "df4934a55b82b3fdfa0de022dd86156b68de98bd36588221044d0ec13fb827e9"
+    },
+    {
+      "cityId": "bogota",
+      "season": "summer",
+      "fileName": "bogota-summer.png",
+      "sha256": "8631ecbeb25a58343447e91ffb33c41f6cd8b419bcb53c11aef03d0d39287e81"
+    },
+    {
+      "cityId": "bogota",
+      "season": "winter",
+      "fileName": "bogota-winter.png",
+      "sha256": "06de6c6b0ba09d40f60913027cc7594087f4a6270c9f57f5cc7b505d7d3953c7"
+    },
+    {
+      "cityId": "brasilia",
+      "season": "summer",
+      "fileName": "brasilia-summer.png",
+      "sha256": "695af88edeede98f8fc357c1d9eff6c1fbe9532ea7e8b9e245071e9772b91e41"
+    },
+    {
+      "cityId": "brasilia",
+      "season": "winter",
+      "fileName": "brasilia-winter.png",
+      "sha256": "7c6493305310124547ae76ee1327374c72ed55e9b4be0ee101e571fd551c7763"
+    },
+    {
+      "cityId": "brazzaville",
+      "season": "summer",
+      "fileName": "brazzaville-summer.png",
+      "sha256": "e004053567906279d1684c1a534fa4a2fe99ae42ab89f0aa089820516bae540a"
+    },
+    {
+      "cityId": "brazzaville",
+      "season": "winter",
+      "fileName": "brazzaville-winter.png",
+      "sha256": "98142fb7aa0c9017d93cefdd89632a26bf7d682b4dbb49270e4d47846b43682f"
+    },
+    {
+      "cityId": "brussels",
+      "season": "summer",
+      "fileName": "brussels-summer.png",
+      "sha256": "bfa2d8986a7369c846785fc40438f0075222cde03c51e2dfea3bfd0135cb3daf"
+    },
+    {
+      "cityId": "brussels",
+      "season": "winter",
+      "fileName": "brussels-winter.png",
+      "sha256": "cc13310c5b40215b740f5277faacece5707d8b4343d7d20c0ce9b91024ae7327"
+    },
+    {
+      "cityId": "bucharest",
+      "season": "summer",
+      "fileName": "bucharest-summer.png",
+      "sha256": "dd016635b83d69d8da06a9719013f5b8ccf252abcc494391ddac4859fd6cbaf9"
+    },
+    {
+      "cityId": "bucharest",
+      "season": "winter",
+      "fileName": "bucharest-winter.png",
+      "sha256": "eafa55bae4ce9250e11edf40592fb585d1b98cbee4ff1c8bfc41499d9cd9c50c"
+    },
+    {
+      "cityId": "budapest",
+      "season": "summer",
+      "fileName": "budapest-summer.png",
+      "sha256": "247f1e2370c963570d3a26e01a7d660fa4c314cc3637902387ce13e71c8e7cc2"
+    },
+    {
+      "cityId": "budapest",
+      "season": "winter",
+      "fileName": "budapest-winter.png",
+      "sha256": "a5824fdeaa121a9d6a238206c4772a486c57b48ca98821b5313685f829c1999c"
+    },
+    {
+      "cityId": "buenos-aires",
+      "season": "summer",
+      "fileName": "buenos-aires-summer.png",
+      "sha256": "2194ab584535f03e192d472a719c5cb3669967006daa1bc4746bfedc6c6d0ff7"
+    },
+    {
+      "cityId": "buenos-aires",
+      "season": "winter",
+      "fileName": "buenos-aires-winter.png",
+      "sha256": "8e2a1cb6f93e273308344c0398a5aac9f79a3ba451ea5ebb4837a216d1e06b8b"
+    },
+    {
+      "cityId": "cairo",
+      "season": "summer",
+      "fileName": "cairo-summer.png",
+      "sha256": "9431de46672402c63c4ea6e434702b79bbed0511327a99dd9462056f928abd68"
+    },
+    {
+      "cityId": "cairo",
+      "season": "winter",
+      "fileName": "cairo-winter.png",
+      "sha256": "6b5f5383822198050cf97d8e51a58acf9a72fa3c41eebce430ee4b77969e550d"
+    },
+    {
+      "cityId": "caracas",
+      "season": "summer",
+      "fileName": "caracas-summer.png",
+      "sha256": "e45f7a4bdccdc55817590f1839f398fe9ad18d4b31ae6d5f103f9ff1373adde8"
+    },
+    {
+      "cityId": "caracas",
+      "season": "winter",
+      "fileName": "caracas-winter.png",
+      "sha256": "d3a70c2f6eec06cc83e6de0512a8789f3260d96846eb7f507e937d371bafc27c"
+    },
+    {
+      "cityId": "conakry",
+      "season": "summer",
+      "fileName": "conakry-summer.png",
+      "sha256": "31f6721d0c009c0ae8644c528376016d83462948bd2ec3f79a2eebb031104cc6"
+    },
+    {
+      "cityId": "conakry",
+      "season": "winter",
+      "fileName": "conakry-winter.png",
+      "sha256": "a9fe75fd2390e22f8c0986a571893fdce75480d5482aa237d8b1521f34e8eac4"
+    },
+    {
+      "cityId": "copenhagen",
+      "season": "summer",
+      "fileName": "copenhagen-summer.png",
+      "sha256": "3d8d6fba170ce2e2d1e01c56bca5a8139721c8930bd9e7bd3a0d248a0dcec258"
+    },
+    {
+      "cityId": "copenhagen",
+      "season": "winter",
+      "fileName": "copenhagen-winter.png",
+      "sha256": "a368c8e69ac34cb712b30d065847f8ab4c0deeaf69ac54630dadceb154a61be6"
+    },
+    {
+      "cityId": "dakar",
+      "season": "summer",
+      "fileName": "dakar-summer.png",
+      "sha256": "7600a9226b533ef06ca488dc5cd19a220e6c412e1a1afb35b5af4ab4c9c0ac93"
+    },
+    {
+      "cityId": "dakar",
+      "season": "winter",
+      "fileName": "dakar-winter.png",
+      "sha256": "10eacb300a35b4526eecd7abd008158aa6a425d5d24cc6b8d73c415fcc60821d"
+    },
+    {
+      "cityId": "damascus",
+      "season": "summer",
+      "fileName": "damascus-summer.png",
+      "sha256": "93b9cd17715a04ededcba86b42a9158c1858c3ce99657e5a9e46ed71eb7d427b"
+    },
+    {
+      "cityId": "damascus",
+      "season": "winter",
+      "fileName": "damascus-winter.png",
+      "sha256": "c0ea08f1fc9183dd0cc9dffc25d60036583a09429dc7f59952d79be8d3ac0c06"
+    },
+    {
+      "cityId": "dhaka",
+      "season": "summer",
+      "fileName": "dhaka-summer.png",
+      "sha256": "0cfcfbd1c167c3310eb92bee0714694e6b8fb3e772e71ba4288295c29b103d1e"
+    },
+    {
+      "cityId": "dhaka",
+      "season": "winter",
+      "fileName": "dhaka-winter.png",
+      "sha256": "39df43d932a727a20de8e6340e37cc0aa5ac9eb45d7196e5c5882e9235c0cf1e"
+    },
+    {
+      "cityId": "dublin",
+      "season": "summer",
+      "fileName": "dublin-summer.png",
+      "sha256": "0e410de2fb21af722fbed5df4ec417966a058b98f31bdef5900173455543f5b3"
+    },
+    {
+      "cityId": "dublin",
+      "season": "winter",
+      "fileName": "dublin-winter.png",
+      "sha256": "a5a1858eccc6600b86557966ecaaad7e08d9917508f362763f4f16c347be8349"
+    },
+    {
+      "cityId": "guatemala-city",
+      "season": "summer",
+      "fileName": "guatemala-city-summer.png",
+      "sha256": "34432eca26c03007473bbb7e80429ada83e7670f7cfeda39ad91976b4d8519cf"
+    },
+    {
+      "cityId": "guatemala-city",
+      "season": "winter",
+      "fileName": "guatemala-city-winter.png",
+      "sha256": "47c3ea943a2ef0536dd6d2088387bae5a6e1eb29e472a4980fb15ffb9c761474"
+    },
+    {
+      "cityId": "hanoi",
+      "season": "summer",
+      "fileName": "hanoi-summer.png",
+      "sha256": "80cf62ef8d5be09abb1ceed6b6de54213ca2840cc8a65fecfdfc467098948de3"
+    },
+    {
+      "cityId": "hanoi",
+      "season": "winter",
+      "fileName": "hanoi-winter.png",
+      "sha256": "68ec5f9a2c4e8d80943f33f493b6b2e1dfe03b8c62d85be053b863d300a37f0f"
+    },
+    {
+      "cityId": "harare",
+      "season": "summer",
+      "fileName": "harare-summer.png",
+      "sha256": "0278696537cc1d10bb321a50624bffaa23c165a2a3f6d164ea4c64b714923594"
+    },
+    {
+      "cityId": "harare",
+      "season": "winter",
+      "fileName": "harare-winter.png",
+      "sha256": "c8e2db4bc0eef2af2d1e46be22e851518a13fa08d04651739cdec15080187b71"
+    },
+    {
+      "cityId": "havana",
+      "season": "summer",
+      "fileName": "havana-summer.png",
+      "sha256": "16677c69b368ab1d9a8ada3c41b93de4a2848b020a4f5058c294d54c14cd9499"
+    },
+    {
+      "cityId": "havana",
+      "season": "winter",
+      "fileName": "havana-winter.png",
+      "sha256": "2df8abe2d949344957085f2ffdf3a33268f0ccbdf4de19ac3712279c11958e35"
+    },
+    {
+      "cityId": "ho-chi-minh-city",
+      "season": "summer",
+      "fileName": "ho-chi-minh-city-summer.png",
+      "sha256": "973c16e8da57e14bfe684f09a709c34b81edd45f8ce2e5a2d203a58863690419"
+    },
+    {
+      "cityId": "ho-chi-minh-city",
+      "season": "winter",
+      "fileName": "ho-chi-minh-city-winter.png",
+      "sha256": "81c20e59fa9b6462023544ab72759e0f505e64d2fcd3d541029e0ad68e928bbf"
+    },
+    {
+      "cityId": "hong-kong",
+      "season": "summer",
+      "fileName": "hong-kong-summer.png",
+      "sha256": "166464412e4727e6755ff36cec4b4bb12f704140cc996dceb61bdf9f41b0bba2"
+    },
+    {
+      "cityId": "hong-kong",
+      "season": "winter",
+      "fileName": "hong-kong-winter.png",
+      "sha256": "071f0acfa43f42432c453ffc9fa69c9d9bbe8a0f500ba9ba13a212881d6e7f69"
+    },
+    {
+      "cityId": "jakarta",
+      "season": "summer",
+      "fileName": "jakarta-summer.png",
+      "sha256": "170803a4e9420f86a457e56274c6c2f3a8ab53098119cfe420525d451acc42cb"
+    },
+    {
+      "cityId": "jakarta",
+      "season": "winter",
+      "fileName": "jakarta-winter.png",
+      "sha256": "9481464148648227bd7a2692f77b52879aae7e4bb2f3369c292ff8f6bc7d1022"
+    },
+    {
+      "cityId": "kabul",
+      "season": "summer",
+      "fileName": "kabul-summer.png",
+      "sha256": "af1ae5a5bd5215b9e694388d3a97aa7d4d4dd2835e3ca0424b0b551e7cdf6f26"
+    },
+    {
+      "cityId": "kabul",
+      "season": "winter",
+      "fileName": "kabul-winter.png",
+      "sha256": "b3f1dcc9c509959f77facfa898ae75bf7208b24d67d1e6fb25c2bb30941deee0"
+    },
+    {
+      "cityId": "kampala",
+      "season": "summer",
+      "fileName": "kampala-summer.png",
+      "sha256": "9bb759506bc8e0b6c49a94af15b3a8704b94327ee886281602f45386298890d4"
+    },
+    {
+      "cityId": "kampala",
+      "season": "winter",
+      "fileName": "kampala-winter.png",
+      "sha256": "0046f4efd39a4958e3244e240ed48bf756d1d0839a4db2472c48130f64d49904"
+    },
+    {
+      "cityId": "kathmandu",
+      "season": "summer",
+      "fileName": "kathmandu-summer.png",
+      "sha256": "30ff41f8a50e3742e0b7745a2b6e6db228847e9d35c534a99f35571be06330da"
+    },
+    {
+      "cityId": "kathmandu",
+      "season": "winter",
+      "fileName": "kathmandu-winter.png",
+      "sha256": "6f95012008574ba5dc3dd09932a517b03180973774d99097a34c055ca80685fb"
+    },
+    {
+      "cityId": "khartoum",
+      "season": "summer",
+      "fileName": "khartoum-summer.png",
+      "sha256": "b13b27a96b97701a9c67c3c6435588e6575e4a645bd6a98c18aa0e5f361e5911"
+    },
+    {
+      "cityId": "khartoum",
+      "season": "winter",
+      "fileName": "khartoum-winter.png",
+      "sha256": "4d5718aa753b99a779d4f0858c0e40507292a0bb2cf30340a6a57d40cb161700"
+    },
+    {
+      "cityId": "kigali",
+      "season": "summer",
+      "fileName": "kigali-summer.png",
+      "sha256": "eae4ddc7618f8333e0c277534a86c7a3216b6092c984269223d6c3e29740bae9"
+    },
+    {
+      "cityId": "kigali",
+      "season": "winter",
+      "fileName": "kigali-winter.png",
+      "sha256": "91b66e7a5dd8224c930a4e7269d0ef5a97deed4bfb8d99f2048b7d41735dfcd0"
+    },
+    {
+      "cityId": "kingston",
+      "season": "summer",
+      "fileName": "kingston-summer.png",
+      "sha256": "14f8406ea0a9300284fe29e950eaf4e2545bdcb9c3f8a11ce4541eeda7299151"
+    },
+    {
+      "cityId": "kingston",
+      "season": "winter",
+      "fileName": "kingston-winter.png",
+      "sha256": "3733addfc5a0cdb4e59971a861fdaef44f2dda944a058cf14785b4d107c0caea"
+    },
+    {
+      "cityId": "kinshasa",
+      "season": "summer",
+      "fileName": "kinshasa-summer.png",
+      "sha256": "426df521d34aa407c2f3ff72f40c31c36da7b041a3c4a77b01af5152a82da749"
+    },
+    {
+      "cityId": "kinshasa",
+      "season": "winter",
+      "fileName": "kinshasa-winter.png",
+      "sha256": "2e3a08cae0550a7558de977413da2bb2944f55fc6a2ffece87bd98dee2c969fc"
+    },
+    {
+      "cityId": "kuala-lumpur",
+      "season": "summer",
+      "fileName": "kuala-lumpur-summer.png",
+      "sha256": "a07e66048597cf8436d0dd7fcaa90806a382842fe4c1e31da21318473db911c6"
+    },
+    {
+      "cityId": "kuala-lumpur",
+      "season": "winter",
+      "fileName": "kuala-lumpur-winter.png",
+      "sha256": "2722bd085575c4ee0f086914c1fd7c3c9f6a0e6ccec8bcf2b679c67ce9772d80"
+    },
+    {
+      "cityId": "kyiv",
+      "season": "summer",
+      "fileName": "kyiv-summer.png",
+      "sha256": "72653b8a8579399737ef24020f4773d571d3db02ad43b1b5021ac6fb38442c23"
+    },
+    {
+      "cityId": "kyiv",
+      "season": "winter",
+      "fileName": "kyiv-winter.png",
+      "sha256": "fc744c8169e664cbd63ed997ac59122a9998b1544e3efd1188487be067366239"
+    },
+    {
+      "cityId": "lilongwe",
+      "season": "summer",
+      "fileName": "lilongwe-summer.png",
+      "sha256": "eeca514b5529c5bf507b0c1ac876ccac3e5619d1090288813177087356f16d1e"
+    },
+    {
+      "cityId": "lilongwe",
+      "season": "winter",
+      "fileName": "lilongwe-winter.png",
+      "sha256": "339964ce07713281d9740e500a4a50519959b4d04519a7fd7ee4e9949099861b"
+    },
+    {
+      "cityId": "lima",
+      "season": "summer",
+      "fileName": "lima-summer.png",
+      "sha256": "dbee6658f7f32191080935935a92a6c65b78a501caf345999901d40bcdb8925c"
+    },
+    {
+      "cityId": "lima",
+      "season": "winter",
+      "fileName": "lima-winter.png",
+      "sha256": "51571c2c3cf80a3d105e151c69b30459c8f69b362bb4f72f4c3ce0a8bd0fd840"
+    },
+    {
+      "cityId": "lome",
+      "season": "summer",
+      "fileName": "lome-summer.png",
+      "sha256": "fc9715678940af384e4700e040db8f3551b95ba65cc9dca1864ea700cd3d0680"
+    },
+    {
+      "cityId": "lome",
+      "season": "winter",
+      "fileName": "lome-winter.png",
+      "sha256": "d8150140cd4c94ca273f1c2ed0c9c1e0c86bec5d3a059185169dec30d67fe2bc"
+    },
+    {
+      "cityId": "london",
+      "season": "summer",
+      "fileName": "london-summer.png",
+      "sha256": "09b218ab8591cca1c0d28c6e7505c79f4ef5337954b445cd1bef2fbe8b2611e7"
+    },
+    {
+      "cityId": "london",
+      "season": "winter",
+      "fileName": "london-winter.png",
+      "sha256": "7a996a5bde5c54c3f8ad53005d440183da9f645e467277321692e775ab57f4c5"
+    },
+    {
+      "cityId": "luanda",
+      "season": "summer",
+      "fileName": "luanda-summer.png",
+      "sha256": "774ac31d1320e8352eb56b15b9b46865d6f146b17add61cb842926c91acf0108"
+    },
+    {
+      "cityId": "luanda",
+      "season": "winter",
+      "fileName": "luanda-winter.png",
+      "sha256": "e52ef76133c5293e1935924bc7f1f0adf0d77688088c34f946c1267625b7e045"
+    },
+    {
+      "cityId": "lusaka",
+      "season": "summer",
+      "fileName": "lusaka-summer.png",
+      "sha256": "a0b61f2e7e8f480ebfae79d801555648b84b45e5d324a3c4c0a07d84e179a517"
+    },
+    {
+      "cityId": "lusaka",
+      "season": "winter",
+      "fileName": "lusaka-winter.png",
+      "sha256": "a5efbfa829cf83765e182e25bbf5f981dad8d43c6ddcbcfd0c28bc8daced36d6"
+    },
+    {
+      "cityId": "madrid",
+      "season": "summer",
+      "fileName": "madrid-summer.png",
+      "sha256": "4f5b70fc7a6f25a811e4f31b4ecb07d6c686c0516886db157761163e02aec7e5"
+    },
+    {
+      "cityId": "madrid",
+      "season": "winter",
+      "fileName": "madrid-winter.png",
+      "sha256": "36acb419c8b7b5207d171363e8326a8afca5fd9eb82bf935494cffb5cd6f6837"
+    },
+    {
+      "cityId": "managua",
+      "season": "summer",
+      "fileName": "managua-summer.png",
+      "sha256": "e751f2cbd808f50ae01a294e16eb78bff62db759c253017439ad325bfb1ffd97"
+    },
+    {
+      "cityId": "managua",
+      "season": "winter",
+      "fileName": "managua-winter.png",
+      "sha256": "333a51eece310d930225c64fa5dd9abf6859391536eb6eaced1df0f9cfe8e163"
+    },
+    {
+      "cityId": "manila",
+      "season": "summer",
+      "fileName": "manila-summer.png",
+      "sha256": "8609e4cf3ed815cf1b068f41f55a093118f4416e25b594e62bf332ecda84ccbc"
+    },
+    {
+      "cityId": "manila",
+      "season": "winter",
+      "fileName": "manila-winter.png",
+      "sha256": "a3da5ce5e72305fe51e90d61b31ca434de80665267ad8004b54d95d23ec2521a"
+    },
+    {
+      "cityId": "maputo",
+      "season": "summer",
+      "fileName": "maputo-summer.png",
+      "sha256": "9465507a6f492e674eddff995c8d6fae441d0cef658eb2f4dee318db6ea23988"
+    },
+    {
+      "cityId": "maputo",
+      "season": "winter",
+      "fileName": "maputo-winter.png",
+      "sha256": "d2b55c6d27f83c65ff250f50b3819fce42dc54bf58377b315fefc3711b8cfa2a"
+    },
+    {
+      "cityId": "mexico-city",
+      "season": "summer",
+      "fileName": "mexico-city-summer.png",
+      "sha256": "bde377185da4c23a08daeba4d27499d421c6e659551483138d67a28299fd28dc"
+    },
+    {
+      "cityId": "mexico-city",
+      "season": "winter",
+      "fileName": "mexico-city-winter.png",
+      "sha256": "f18fdd5f6b734a32d52eaa94b6d17ed0a8896cf08985f493c707fd38638fb9ae"
+    },
+    {
+      "cityId": "minsk",
+      "season": "summer",
+      "fileName": "minsk-summer.png",
+      "sha256": "1ee57e378eea1f3d920a04a52988c966616debad838dc577e2cde5f32cb018a4"
+    },
+    {
+      "cityId": "minsk",
+      "season": "winter",
+      "fileName": "minsk-winter.png",
+      "sha256": "56ea70ab12d0a2042ec52f6cab666f05f821627fe88bd2d1df8bec7336dcc546"
+    },
+    {
+      "cityId": "mogadishu",
+      "season": "summer",
+      "fileName": "mogadishu-summer.png",
+      "sha256": "6d82908b72bb0feab0bffd82059824b5c266235d9a83c6de016077e5718c7699"
+    },
+    {
+      "cityId": "mogadishu",
+      "season": "winter",
+      "fileName": "mogadishu-winter.png",
+      "sha256": "56e1a27f748a3801f84ec7e96f5eae474e7a4c74b9ded689a0ca6ed69fc5a392"
+    },
+    {
+      "cityId": "monrovia",
+      "season": "summer",
+      "fileName": "monrovia-summer.png",
+      "sha256": "9ba2af6adf9aff54edb07fca8b083986ca05e71644f7ca4709d5a1606203b647"
+    },
+    {
+      "cityId": "monrovia",
+      "season": "winter",
+      "fileName": "monrovia-winter.png",
+      "sha256": "77554c5da89a2d20b867ad048f1f2a4e632ef383c5e7d7f327910502e48e0857"
+    },
+    {
+      "cityId": "montevideo",
+      "season": "summer",
+      "fileName": "montevideo-summer.png",
+      "sha256": "691f0a8a66a59d07403eeb41088af1639fd09635765f57884f9680867685d81d"
+    },
+    {
+      "cityId": "montevideo",
+      "season": "winter",
+      "fileName": "montevideo-winter.png",
+      "sha256": "a27f9110ab361f25646da638aa8f6c07e8a0a3cc50d762c36d61dac7c9bbc5bf"
+    },
+    {
+      "cityId": "moscow",
+      "season": "summer",
+      "fileName": "moscow-summer.png",
+      "sha256": "d273c392595715ec169ec0ef755e73b892bf4adbc3e9d1a3b88fd0a295f78540"
+    },
+    {
+      "cityId": "moscow",
+      "season": "winter",
+      "fileName": "moscow-winter.png",
+      "sha256": "2bf205fad8f67a67ee3a46016dcd62f9a282770d1e3127ae9a9e0d8b73bffe64"
+    },
+    {
+      "cityId": "n-djamena",
+      "season": "summer",
+      "fileName": "n-djamena-summer.png",
+      "sha256": "69f8c4bd15f39ffc85c23067a6bcc80e463c2804cd8c0337b9069a0d2186f151"
+    },
+    {
+      "cityId": "n-djamena",
+      "season": "winter",
+      "fileName": "n-djamena-winter.png",
+      "sha256": "706aaa7814dd79b17a5ba2c47886996c80a0ce9e20278969af6323dc2dba2e2c"
+    },
+    {
+      "cityId": "nairobi",
+      "season": "summer",
+      "fileName": "nairobi-summer.png",
+      "sha256": "41bd4e53a5b8d8f917353b48cd6fd44deb4686882a9a6b08002d56f9d3b8eccf"
+    },
+    {
+      "cityId": "nairobi",
+      "season": "winter",
+      "fileName": "nairobi-winter.png",
+      "sha256": "782ab315227c2eec7e0bae1f78a58478476fd7aed5d8ec7e5e231a94f3de808b"
+    },
+    {
+      "cityId": "nay-pyi-taw",
+      "season": "summer",
+      "fileName": "nay-pyi-taw-summer.png",
+      "sha256": "3c98430cd4d0d325568824c360df3a8b6f6b3931f23f1f673e2a5d67d276ab52"
+    },
+    {
+      "cityId": "nay-pyi-taw",
+      "season": "winter",
+      "fileName": "nay-pyi-taw-winter.png",
+      "sha256": "b9e9008b4d0f7ad0edd1562983c61fd33ef379591760886d62fe9b4ce7dbf799"
+    },
+    {
+      "cityId": "niamey",
+      "season": "summer",
+      "fileName": "niamey-summer.png",
+      "sha256": "9cb4b7e2b92b997569cfb066c72f94e9856aacd1bb232798815a6d2361fe69d3"
+    },
+    {
+      "cityId": "niamey",
+      "season": "winter",
+      "fileName": "niamey-winter.png",
+      "sha256": "54ffa955bf97a2b6c529f26431edd6a3e1c5bd01421fff535b12e7ba11510532"
+    },
+    {
+      "cityId": "nouakchott",
+      "season": "summer",
+      "fileName": "nouakchott-summer.png",
+      "sha256": "57029909609b98b346c78939dfae314d3125d5ebe2ea1a7f5cece13c116ab023"
+    },
+    {
+      "cityId": "nouakchott",
+      "season": "winter",
+      "fileName": "nouakchott-winter.png",
+      "sha256": "b9a64079951b7bd66214a9fd351f773a159170e0818f54c4211806883a7ebf70"
+    },
+    {
+      "cityId": "oslo",
+      "season": "summer",
+      "fileName": "oslo-summer.png",
+      "sha256": "38b62a7122b66525339c9309aadc3df55a07871e6f7ddd571054dc366332c1ce"
+    },
+    {
+      "cityId": "oslo",
+      "season": "winter",
+      "fileName": "oslo-winter.png",
+      "sha256": "aca77a17e8ceb2f60f5cfda611e5dc71c29e8cd5e81b4927b4a27d7b027755b4"
+    },
+    {
+      "cityId": "ottawa",
+      "season": "summer",
+      "fileName": "ottawa-summer.png",
+      "sha256": "d0a9302b75e726d47e8ed7040fbc48d6d3c00499b0bdbee11ac4b654ae4c410b"
+    },
+    {
+      "cityId": "ottawa",
+      "season": "winter",
+      "fileName": "ottawa-winter.png",
+      "sha256": "a15f8b33a994df8a26a3bf7c6e247cfe9a9d2083e6089a1901b774776c6c01b9"
+    },
+    {
+      "cityId": "ouagadougou",
+      "season": "summer",
+      "fileName": "ouagadougou-summer.png",
+      "sha256": "c41136649b4b7831aefb131ce4f82b7876787035832005601a9f3d41a8ca1185"
+    },
+    {
+      "cityId": "ouagadougou",
+      "season": "winter",
+      "fileName": "ouagadougou-winter.png",
+      "sha256": "2679df6bf576da0e6883e04cc1606996f8f282ad05f566d134f319e0f0bdad33"
+    },
+    {
+      "cityId": "paris",
+      "season": "summer",
+      "fileName": "paris-summer.png",
+      "sha256": "7f854ff2dec9238d9e70963ca8fa92c4778b2d7002d7aacd2238074998eb8a13"
+    },
+    {
+      "cityId": "paris",
+      "season": "winter",
+      "fileName": "paris-winter.png",
+      "sha256": "9c79722b09a7c417c0421eb7ab1cfaa6a5ae23eb0d5038cf112f70a694e5e873"
+    },
+    {
+      "cityId": "phnom-penh",
+      "season": "summer",
+      "fileName": "phnom-penh-summer.png",
+      "sha256": "7dd587afd6df13a3edfeb1d2198ba26a58663a6cdcdc1d1c275f670e45f0bee2"
+    },
+    {
+      "cityId": "phnom-penh",
+      "season": "winter",
+      "fileName": "phnom-penh-winter.png",
+      "sha256": "f3f22e389e53a3c8a440945cf189052e9e8a39a05b628f7b35839ad934e47e16"
+    },
+    {
+      "cityId": "port-au-prince",
+      "season": "summer",
+      "fileName": "port-au-prince-summer.png",
+      "sha256": "3696566a96a67028f0af13e54224ffaeaf1e832d8473ed25d2607a69c0fbdb14"
+    },
+    {
+      "cityId": "port-au-prince",
+      "season": "winter",
+      "fileName": "port-au-prince-winter.png",
+      "sha256": "b015be483dc2e6faedd84f5bf4926da9a9cd9a89d3b02d3e6c619469ffa4f947"
+    },
+    {
+      "cityId": "prague",
+      "season": "summer",
+      "fileName": "prague-summer.png",
+      "sha256": "161129bfa190b935ede9a21fdeb9aed6346589d6a66d3a32626a6088a2c234fb"
+    },
+    {
+      "cityId": "prague",
+      "season": "winter",
+      "fileName": "prague-winter.png",
+      "sha256": "dd9b529a514403a68aa8578d78b8d545274ce418cba0c23791a35af32dc3892d"
+    },
+    {
+      "cityId": "pretoria",
+      "season": "summer",
+      "fileName": "pretoria-summer.png",
+      "sha256": "fadd20891b16c36c649ac93aae10c74b5dcabdaee421f0161e9ed4139e670935"
+    },
+    {
+      "cityId": "pretoria",
+      "season": "winter",
+      "fileName": "pretoria-winter.png",
+      "sha256": "330c34467a061cc2c0c34bc7ad9757883c1168029b2f09fd320ab725299fe78a"
+    },
+    {
+      "cityId": "pyongyang",
+      "season": "summer",
+      "fileName": "pyongyang-summer.png",
+      "sha256": "eb2f1c9d14afdc2fe12f066e5ec8601ce17a086cfe59b004cb24b55b369aa5ab"
+    },
+    {
+      "cityId": "pyongyang",
+      "season": "winter",
+      "fileName": "pyongyang-winter.png",
+      "sha256": "4d449fb689c764fbb54067ba5acc59a77800fb4290594391a3caa4d86aa9bb02"
+    },
+    {
+      "cityId": "quito",
+      "season": "summer",
+      "fileName": "quito-summer.png",
+      "sha256": "23f703c84af29ddab57aa8f3443ecf7a8f04c5f863cd471f752bbc8c52cdb18f"
+    },
+    {
+      "cityId": "quito",
+      "season": "winter",
+      "fileName": "quito-winter.png",
+      "sha256": "6e4d1577134c7571e1fd0bb548cb9a542e84cef344bb0d9e5246f389482e92e7"
+    },
+    {
+      "cityId": "rabat",
+      "season": "summer",
+      "fileName": "rabat-summer.png",
+      "sha256": "1e72af5b1602d14192a01dcf0ac6c86527757ce331c82c150081f4e413ce2d25"
+    },
+    {
+      "cityId": "rabat",
+      "season": "winter",
+      "fileName": "rabat-winter.png",
+      "sha256": "348a8e9c2b609ce77151a627cde209361dab8e512698cbbe6706b40f115d4d93"
+    },
+    {
+      "cityId": "riyadh",
+      "season": "summer",
+      "fileName": "riyadh-summer.png",
+      "sha256": "a3b932ecef9f661e305b427ced152b74d3877789ae6ce957a15dd069f81f1667"
+    },
+    {
+      "cityId": "riyadh",
+      "season": "winter",
+      "fileName": "riyadh-winter.png",
+      "sha256": "15553e13d01d2150025ec7426c1a2a199ea0d728b9851ed39936ecad952827bc"
+    },
+    {
+      "cityId": "rome",
+      "season": "summer",
+      "fileName": "rome-summer.png",
+      "sha256": "794c973ceccfb99d770aff2fac93f92252bad07f5ddff4b148f24ba17860dad1"
+    },
+    {
+      "cityId": "rome",
+      "season": "winter",
+      "fileName": "rome-winter.png",
+      "sha256": "3c53d84c62744b51a863b9d223c62006d1fcc1f86108648ab8edbd1c3d191c36"
+    },
+    {
+      "cityId": "sanaa",
+      "season": "summer",
+      "fileName": "sanaa-summer.png",
+      "sha256": "cf0c52add03f4d33a9b72468cca452ecefc0310c103f2f4ba7089f5105b4fab1"
+    },
+    {
+      "cityId": "sanaa",
+      "season": "winter",
+      "fileName": "sanaa-winter.png",
+      "sha256": "507a741e3fb0e83e991bd06fd186b4819206d7210f016d71269616e43589fb21"
+    },
+    {
+      "cityId": "santiago",
+      "season": "summer",
+      "fileName": "santiago-summer.png",
+      "sha256": "e0356a91254d568134f2f62f9501392e29e8356ed01ca1fa442f27547d189dfc"
+    },
+    {
+      "cityId": "santiago",
+      "season": "winter",
+      "fileName": "santiago-winter.png",
+      "sha256": "e6c19ab3149274fdd055be45362d91a63ed5497f1b6b14458d3a3c5c6de5a977"
+    },
+    {
+      "cityId": "santo-domingo",
+      "season": "summer",
+      "fileName": "santo-domingo-summer.png",
+      "sha256": "9abe75bbef0d9a6f321454fa5d3f6494c296af99a44d38c74cd3f8483c12eb7c"
+    },
+    {
+      "cityId": "santo-domingo",
+      "season": "winter",
+      "fileName": "santo-domingo-winter.png",
+      "sha256": "ee2237aca9984c1fd127e4d0afc2d71243d04969eafb8711ed3855ed88e1f2a9"
+    },
+    {
+      "cityId": "seoul",
+      "season": "summer",
+      "fileName": "seoul-summer.png",
+      "sha256": "705c13a2cbd5b8d1ba21384cc9e7a34b990274b3f60b1289cf3baccba81b7e94"
+    },
+    {
+      "cityId": "seoul",
+      "season": "winter",
+      "fileName": "seoul-winter.png",
+      "sha256": "c95752297d844b7b1441609cfd729bf875928b46c09d8b6afaa1a975ee6562e3"
+    },
+    {
+      "cityId": "singapore",
+      "season": "summer",
+      "fileName": "singapore-summer.png",
+      "sha256": "7d888d709cca768339abb0acec88b208cad23b4fc814d8d9a6813b8d54ecafc8"
+    },
+    {
+      "cityId": "singapore",
+      "season": "winter",
+      "fileName": "singapore-winter.png",
+      "sha256": "bebd3261532a9d751ce87234443a9518f3231e3650d05eb3fae3e316f2442816"
+    },
+    {
+      "cityId": "sofia",
+      "season": "summer",
+      "fileName": "sofia-summer.png",
+      "sha256": "66c962761fddfdd02eb8ed9de5b1a841e047a91f686fd99f0ac50c52323b740d"
+    },
+    {
+      "cityId": "sofia",
+      "season": "winter",
+      "fileName": "sofia-winter.png",
+      "sha256": "57741381e3083db8b505ecc04dce7de9a609af1115fc70d287ca51bba85b9470"
+    },
+    {
+      "cityId": "stockholm",
+      "season": "summer",
+      "fileName": "stockholm-summer.png",
+      "sha256": "491bd6a2e2098fb2eb03871b7357564db385aa0d557e5b0a349ae0416b91b81d"
+    },
+    {
+      "cityId": "stockholm",
+      "season": "winter",
+      "fileName": "stockholm-winter.png",
+      "sha256": "a86bac00731dcd2474a81b554e10417740dde517ff5a238bec3e586bb3f6434a"
+    },
+    {
+      "cityId": "taipei",
+      "season": "summer",
+      "fileName": "taipei-summer.png",
+      "sha256": "4287322edd9f41f9a6ed6128877ad407cdec992d9f814a20e56d32b0a2105f90"
+    },
+    {
+      "cityId": "taipei",
+      "season": "winter",
+      "fileName": "taipei-winter.png",
+      "sha256": "d5cbfef182f647796077c88fe07addd5be69c95c0562e2cc382526256946707a"
+    },
+    {
+      "cityId": "tashkent",
+      "season": "summer",
+      "fileName": "tashkent-summer.png",
+      "sha256": "4761fbc954110dfdc7849d5d494c36fe09d366aa42b7e6b8c4bcbf8fc6cb2549"
+    },
+    {
+      "cityId": "tashkent",
+      "season": "winter",
+      "fileName": "tashkent-winter.png",
+      "sha256": "ad9eb2224d1d0dd595980a33033c6cd1e54e44ffd108db9df3dadaa56a79e219"
+    },
+    {
+      "cityId": "tbilisi",
+      "season": "summer",
+      "fileName": "tbilisi-summer.png",
+      "sha256": "7d74d93342f0bde98a7e5d31660e80b733c18db5458480408166912803dcdaa5"
+    },
+    {
+      "cityId": "tbilisi",
+      "season": "winter",
+      "fileName": "tbilisi-winter.png",
+      "sha256": "21f2e5e73b7ec39a02a4fa4316a48402ce4548db7fd944b11d804da8ba65cf26"
+    },
+    {
+      "cityId": "tehran",
+      "season": "summer",
+      "fileName": "tehran-summer.png",
+      "sha256": "d40615ccb1542754b87aa25ad5ebeb3e1f9dda20dbe7453c7237b859448c2893"
+    },
+    {
+      "cityId": "tehran",
+      "season": "winter",
+      "fileName": "tehran-winter.png",
+      "sha256": "b02944d7bee3894bb8cd448555a3bf056930dbe1efc3c766885096ff66f08b44"
+    },
+    {
+      "cityId": "tokyo",
+      "season": "summer",
+      "fileName": "tokyo-summer.png",
+      "sha256": "4356d2de99f93cae290e83b915064a2d923a2085769dc0c93d791aff9f7e9c8c"
+    },
+    {
+      "cityId": "tokyo",
+      "season": "winter",
+      "fileName": "tokyo-winter.png",
+      "sha256": "6cf99fa8e0a65dc67d0eb78ed91a1fff873d830913a71da1c806eb4ea0babb0b"
+    },
+    {
+      "cityId": "tripoli",
+      "season": "summer",
+      "fileName": "tripoli-summer.png",
+      "sha256": "27a17f8146797f942aacfeb80798635a4c77d5f78fc4ecb7c12fee9fb8ff31ba"
+    },
+    {
+      "cityId": "tripoli",
+      "season": "winter",
+      "fileName": "tripoli-winter.png",
+      "sha256": "1313b3ee91d386240b4db7fcfde02f08688a3f9ee76ee6a19d4ef5fecf52bc0c"
+    },
+    {
+      "cityId": "vienna",
+      "season": "summer",
+      "fileName": "vienna-summer.png",
+      "sha256": "54620b856dd153a898b4bc7ca2db51173301aa3c6f19877251b4a7bed7826fe1"
+    },
+    {
+      "cityId": "vienna",
+      "season": "winter",
+      "fileName": "vienna-winter.png",
+      "sha256": "894002d05c61ae2333ff5d5495935c61b1749a526feecc97a4230ded65f000ac"
+    },
+    {
+      "cityId": "warsaw",
+      "season": "summer",
+      "fileName": "warsaw-summer.png",
+      "sha256": "eb96f10ebddd83c4576b93600db4fa52c0a6cf73eba053407a342f714ebc29f7"
+    },
+    {
+      "cityId": "warsaw",
+      "season": "winter",
+      "fileName": "warsaw-winter.png",
+      "sha256": "3a30c7a007731db47b655dcf73c477604cceece4f988e51d97d46a141092b928"
+    },
+    {
+      "cityId": "yaounde",
+      "season": "summer",
+      "fileName": "yaounde-summer.png",
+      "sha256": "090a5aeebeae07722ab312264882bc8f1bbdcce1fea26e11d6d81cef76a5c169"
+    },
+    {
+      "cityId": "yaounde",
+      "season": "winter",
+      "fileName": "yaounde-winter.png",
+      "sha256": "606e5ffa55a62d6e1a1d5d6b02674b6e709938a0ebd87d71769dc1698ee3e014"
+    },
+    {
+      "cityId": "yerevan",
+      "season": "summer",
+      "fileName": "yerevan-summer.png",
+      "sha256": "0fa2856da291758c49548b6f1d824b336dd289c6b88db506284dc4032b08572f"
+    },
+    {
+      "cityId": "yerevan",
+      "season": "winter",
+      "fileName": "yerevan-winter.png",
+      "sha256": "5e0c9c5e652ab2b5a757f37d0e8aeb64bd6aa5c4707af542c0614847218792df"
+    }
+  ]
+}

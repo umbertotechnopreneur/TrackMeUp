@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Identifies the report visualization selected by a presentation client.</summary>

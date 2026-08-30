@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Coordinates one shared dashboard acquisition stream for all subscribed presentation surfaces.</summary>

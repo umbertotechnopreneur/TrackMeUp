@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;

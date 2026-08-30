@@ -21,11 +21,36 @@ material.
 - Distinguish MIT-licensed project material, reserved TrackMeUp Brand Assets, and third-party material in provenance records.
 - Keep provenance notes updated when dependencies or assets change.
 
+## Third-Party Service Data and Marks
+
+Optional current world-clock observations are returned directly by OpenWeather
+under the API key and plan selected by the person running TrackMeUp. Those
+observations are provider material, not project-authored content, and are not
+covered by the repository MIT License. The person supplying the key remains
+responsible for the applicable service, data, attribution, redistribution, and
+plan terms.
+
+The bundled attribution mark at
+`TrackMeUp/Assets/WorldClocks/ThirdParty/OpenWeather/ow_logo.svg` is the official
+OpenWeather SVG from
+<https://openweathermap.org/payload/api/media/file/ow_logo.svg>, with SHA-256
+`fd0ad613ebcdb5f013df98bf75603c83fe1f3f0a5f677118b99557da8ac9281c`.
+It remains third-party provider artwork and is included solely for visible
+linked attribution; inclusion does not transfer ownership or place the mark
+under the MIT License. Preserve this provenance and the required attribution
+when redistributing weather-enabled binaries.
+
 ## AI-Assisted Material
 
 AI tools can assist drafts and implementation, but a human contributor must review and understand the final result before submission.
 
 Do not submit material copied from proprietary sources or material with unverifiable rights.
+
+The current first-party TrackMeUp visual assets have a dated project-owner
+generation, review, and publication declaration in
+[`design/branding/AI_ASSET_PROVENANCE.md`](design/branding/AI_ASSET_PROVENANCE.md).
+That declaration does not cover or relicense separately attributed third-party
+data, software, fonts, or media.
 
 ## Pre-Publication Check
 

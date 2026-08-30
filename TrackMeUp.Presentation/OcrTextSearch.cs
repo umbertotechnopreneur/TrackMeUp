@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Presentation;
 
 /// <summary>Identifies one case-insensitive match inside OCR text.</summary>

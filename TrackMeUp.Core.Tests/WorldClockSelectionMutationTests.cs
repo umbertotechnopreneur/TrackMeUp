@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: MIT
+
+using System;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using TrackMeUp.Application;
+using TrackMeUp.Services;
+using Xunit;
+
+namespace TrackMeUp.Core.Tests;
+
+public sealed class WorldClockSelectionMutationTests
+{
+    [Fact]
+    public async Task AddAndRemove_PersistWithoutRequestingWeather_AndProjectionChoosesTheMode()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                WorldClockCityIds = ["ho-chi-minh-city"]
+            });
+            var provider = new FailingWeatherProvider();
+            var worldClocks = new WorldClockService(
+                RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"),
+                provider,
+                TimeProvider.System);
+            var utilities = new UtilityService();
+            var capture = new ScreenCaptureService(utilities.GetAppVersion());
+            await using var application = new TrackMeUpApplication(
+                store,
+                utilities,
+                new TrackingDomainService(store),
+                capture,
+                new SystemSnapshotService(),
+                new OpenAiAnalysisService(store, capture, new SystemSnapshotService()),
+                new StartupService(),
+                new BuildInformationService(),
+                worldClockService: worldClocks,
+                startScheduledSnapshotTimer: false);
+
+            var added = await application.AddWorldClockAsync("tokyo", CancellationToken.None);
+
+            Assert.True(added.Succeeded);
+            Assert.Equal(["ho-chi-minh-city", "tokyo"], added.Value?.CityIds);
+            Assert.Equal(0, provider.CallCount);
+            Assert.Equal(
+                ["ho-chi-minh-city", "tokyo"],
+                store.LoadSettings().WorldClockCityIds);
+
+            var converted = await application.ConvertWorldClocksAsync(
+                new WorldClockConversionRequest(
+                    "ho-chi-minh-city",
+                    new DateTime(2026, 8, 30, 10, 18, 0, DateTimeKind.Unspecified)),
+                CancellationToken.None);
+
+            Assert.True(converted.Succeeded);
+            Assert.Equal("not-requested", converted.Value?.WeatherStatus.State);
+            Assert.All(converted.Value!.Clocks, static clock => Assert.Null(clock.Weather));
+            Assert.Equal(0, provider.CallCount);
+
+            var current = await application.GetWorldClocksAsync(CancellationToken.None);
+
+            Assert.True(current.Succeeded);
+            Assert.Equal("unavailable", current.Value?.WeatherStatus.State);
+            Assert.Equal(2, provider.CallCount);
+
+            var removed = await application.RemoveWorldClockAsync("tokyo", CancellationToken.None);
+
+            Assert.True(removed.Succeeded);
+            Assert.Equal(["ho-chi-minh-city"], removed.Value?.CityIds);
+            Assert.Equal(2, provider.CallCount);
+            Assert.Equal(["ho-chi-minh-city"], store.LoadSettings().WorldClockCityIds);
+        }
+        finally
+        {
+            await DeleteTemporaryDirectoryAsync(dataDirectory);
+        }
+    }
+
+    private sealed class FailingWeatherProvider : IWorldClockWeatherProvider
+    {
+        private int _callCount;
+
+        public string Name => "failing-test-provider";
+
+        public string ConfigurationState => "configured";
+
+        public bool IsConfigured => true;
+
+        public int CallCount => Volatile.Read(ref _callCount);
+
+        public Task<WorldClockWeatherObservation> GetCurrentAsync(
+            WorldClockWeatherLocation location,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Interlocked.Increment(ref _callCount);
+            throw new HttpRequestException("Synthetic optional-weather failure.");
+        }
+    }
+
+    private static string RepositoryFile(params string[] pathSegments)
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "TrackMeUp.slnx")))
+            {
+                return Path.Combine(new[] { directory.FullName }.Concat(pathSegments).ToArray());
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the TrackMeUp repository root.");
+    }
+
+    private static string CreateTemporaryDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    private static async Task DeleteTemporaryDirectoryAsync(string path)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 4)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(50));
+            }
+        }
+    }
+}

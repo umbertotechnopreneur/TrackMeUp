@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Contains process-local observability configuration; it is never persisted or exposed over IPC.</summary>

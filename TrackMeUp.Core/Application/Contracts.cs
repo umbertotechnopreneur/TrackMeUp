@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 using System.Text.Json.Serialization;
 using TrackMeUp.Search;
 using TrackMeUp.Services;
@@ -562,6 +564,30 @@ public sealed record WorldClockCitySummary(
 /// <summary>Contains the locally distributed city catalog and current selection limit.</summary>
 public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> Cities, int MaximumClocks);
 
+/// <summary>Contains the persisted world-clock identifiers after a successful selection mutation.</summary>
+public sealed record WorldClockSelectionState(IReadOnlyList<string> CityIds, int MaximumClocks);
+
+/// <summary>Describes decorative local-time layers and any source-backed weather layers for one clock.</summary>
+public sealed record WorldClockAtmosphere(
+    string Phase,
+    IReadOnlyList<string> BackdropAssetPaths,
+    IReadOnlyList<string> ForegroundAssetPaths);
+
+/// <summary>Contains one fresh source-backed current-weather observation.</summary>
+public sealed record WorldClockWeather(
+    double TemperatureCelsius,
+    string ConditionKey,
+    DateTimeOffset ObservedAtUtc,
+    bool IsFresh);
+
+/// <summary>Explains whether optional current weather was applied to a world-clock snapshot.</summary>
+public sealed record WorldClockWeatherStatus(
+    string Provider,
+    string State,
+    string? ReasonCode,
+    int RequestedCities,
+    int AvailableObservations);
+
 /// <summary>Contains one locally calculated city clock and its celestial events.</summary>
 public sealed record WorldClockItem(
     string CityId,
@@ -572,18 +598,21 @@ public sealed record WorldClockItem(
     bool IsDaylight,
     DateTimeOffset? Sunrise,
     DateTimeOffset? Sunset,
-    DateTimeOffset? Moonrise,
-    DateTimeOffset? Moonset,
-    string MoonPhaseKey,
     double MoonPhaseAngleDegrees,
-    double MoonIllumination,
-    double MoonAgeDays,
-    bool IsWaxing,
     string SkylineAssetPath,
-    string SkylineSeason);
+    string SkylineSeason,
+    WorldClockAtmosphere Atmosphere,
+    WorldClockWeather? Weather);
 
-/// <summary>Contains the complete world-clock rail projection for one instant.</summary>
-public sealed record WorldClockRailSnapshot(DateTimeOffset CalculatedAtUtc, IReadOnlyList<WorldClockItem> Clocks, int MaximumClocks);
+/// <summary>Requests a conversion from one city's local civil time to a shared UTC instant.</summary>
+public sealed record WorldClockConversionRequest(string ReferenceCityId, DateTime ReferenceLocalTime);
+
+/// <summary>Contains the complete world-clock projection for one shared instant.</summary>
+public sealed record WorldClockSnapshot(
+    DateTimeOffset InstantUtc,
+    IReadOnlyList<WorldClockItem> Clocks,
+    int MaximumClocks,
+    WorldClockWeatherStatus WeatherStatus);
 
 /// <summary>Signals a runtime state transition to all presentation clients.</summary>
 public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, string Code);
@@ -610,16 +639,19 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken);
 
     /// <summary>Gets the current world clocks with all sun and moon data calculated locally.</summary>
-    Task<OperationResult<WorldClockRailSnapshot>> GetWorldClockRailAsync(CancellationToken cancellationToken);
+    Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken);
+
+    /// <summary>Converts one selected city's local civil time into the shared world-clock projection.</summary>
+    Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken);
 
     /// <summary>Gets the locally distributed city catalog used by the clock selector.</summary>
     Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken);
 
-    /// <summary>Adds one city to the persisted world-clock rail.</summary>
-    Task<OperationResult<WorldClockRailSnapshot>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken);
+    /// <summary>Adds one city to the persisted world-clock selection.</summary>
+    Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken);
 
-    /// <summary>Removes one city from the persisted world-clock rail.</summary>
-    Task<OperationResult<WorldClockRailSnapshot>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
+    /// <summary>Removes one city from the persisted world-clock selection.</summary>
+    Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
 
     /// <summary>Gets the latest recorded session state.</summary>
     Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken);

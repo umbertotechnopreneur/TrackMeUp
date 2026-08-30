@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 namespace TrackMeUp.Application;
 
 /// <summary>Maps the supported Quick Setup profiles to deterministic, whitelist-bound settings patches.</summary>
