@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-using System.Collections.Concurrent;
 using System.IO.Pipes;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
@@ -21,11 +20,10 @@ public sealed class RuntimeHost : IAsyncDisposable
     private readonly RuntimeEndpoint _endpoint;
     private readonly ILogger<RuntimeHost> _logger;
     private readonly CancellationTokenSource _shutdown = new();
-    private readonly ConcurrentDictionary<int, Task> _activeRequests = new();
     private RuntimeMutexLease? _mutexLease;
+    private RuntimePipeServer? _server;
     private Task? _serverTask;
     private bool _disposed;
-    private int _requestSequence;
 
     /// <summary>Initializes a runtime host for a single application installation.</summary>
     public RuntimeHost(ITrackMeUpApplication application, string installationId, ILogger<RuntimeHost>? logger = null)
@@ -85,8 +83,16 @@ public sealed class RuntimeHost : IAsyncDisposable
             throw;
         }
 
+        var dispatcher = new RuntimeRequestDispatcher(_application, _logger);
+        var server = new RuntimePipeServer(
+            _endpoint,
+            dispatcher,
+            _logger,
+            resetPlan => AtomicResetPrepared?.Invoke(resetPlan));
+        _server = server;
+
         // One background loop owns pipe acceptance; mutations themselves remain serialized in the facade.
-        _serverTask = Task.Run(() => ServeAsync(_shutdown.Token));
+        _serverTask = Task.Run(() => server.ServeAsync(_shutdown.Token));
         _logger.LogInformation("Runtime host started. Pipe={PipeName}", _endpoint.PipeName);
         return true;
     }
@@ -123,12 +129,11 @@ public sealed class RuntimeHost : IAsyncDisposable
                 }
             }
 
-            var activeRequests = _activeRequests.Values.ToArray();
-            if (activeRequests.Length > 0)
+            if (_server is not null)
             {
                 try
                 {
-                    await Task.WhenAll(activeRequests);
+                    await _server.DrainRequestsAsync();
                 }
                 catch (Exception exception)
                 {
@@ -163,337 +168,6 @@ public sealed class RuntimeHost : IAsyncDisposable
         }
     }
 
-    private async Task ServeAsync(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var pipe = new NamedPipeServerStream(
-                _endpoint.PipeName,
-                PipeDirection.InOut,
-                NamedPipeServerStream.MaxAllowedServerInstances,
-                PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            try
-            {
-                await pipe.WaitForConnectionAsync(cancellationToken);
-                TrackRequest(HandleConnectionAsync(pipe, cancellationToken));
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                await pipe.DisposeAsync();
-                throw;
-            }
-            catch (Exception exception)
-            {
-                await pipe.DisposeAsync();
-                _logger.LogWarning("Runtime pipe acceptance failed; continuing to serve requests. ExceptionType={ExceptionType}", exception.GetType().Name);
-            }
-        }
-    }
-
-    private void TrackRequest(Task requestTask)
-    {
-        var requestId = Interlocked.Increment(ref _requestSequence);
-        _activeRequests[requestId] = requestTask;
-        _ = requestTask.ContinueWith(
-            completedTask =>
-            {
-                _activeRequests.TryRemove(requestId, out _);
-            },
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
-    }
-
-    private async Task HandleConnectionAsync(NamedPipeServerStream pipe, CancellationToken shutdownToken)
-    {
-        await using (pipe)
-        {
-            try
-            {
-                var request = await RuntimeProtocol.ReadAsync<RuntimeRequestEnvelope>(pipe, shutdownToken);
-                using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
-                var disconnectMonitor = MonitorDisconnectAsync(pipe, requestCancellation);
-                RuntimeResponseEnvelope response;
-                try
-                {
-                    response = await DispatchAsync(request, requestCancellation.Token);
-                }
-                finally
-                {
-                    requestCancellation.Cancel();
-                    await disconnectMonitor;
-                }
-
-                await RuntimeProtocol.WriteAsync(pipe, response, shutdownToken);
-                if (request.Operation == RuntimeOperationCatalog.GetWireName(RuntimeOperation.AppAtomicResetV1)
-                    && response.Succeeded
-                    && response.Payload is AtomicResetPlan resetPlan)
-                {
-                    // The runtime owner begins shutdown only after the frontend has received the destructive-operation result.
-                    AtomicResetPrepared?.Invoke(resetPlan);
-                }
-            }
-            catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
-            {
-                // Host shutdown cancels every active request before releasing runtime ownership.
-            }
-            catch (OperationCanceledException)
-            {
-                // Client disconnect/timeout cancellation stops long-running reads without affecting the host.
-            }
-            catch (Exception exception)
-            {
-                // Invalid/disconnected clients are isolated so the long-lived local runtime remains available.
-                _logger.LogWarning("Runtime pipe request failed; continuing to serve requests. ExceptionType={ExceptionType}", exception.GetType().Name);
-            }
-        }
-    }
-
-    private static async Task MonitorDisconnectAsync(NamedPipeServerStream pipe, CancellationTokenSource requestCancellation)
-    {
-        var probe = new byte[1];
-        try
-        {
-            _ = await pipe.ReadAsync(probe, requestCancellation.Token);
-            requestCancellation.Cancel();
-        }
-        catch (OperationCanceledException) when (requestCancellation.IsCancellationRequested)
-        {
-            // Normal completion cancels the pending disconnect read before the response is written.
-        }
-        catch (IOException)
-        {
-            requestCancellation.Cancel();
-        }
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        if (request.ProtocolVersion != RuntimeProtocol.ProtocolVersion)
-        {
-            return Failure(request, "ipc.protocol.unsupported", "IpcProtocolUnsupported");
-        }
-
-        if (!RuntimeOperationCatalog.TryResolve(request.Operation, out var operation))
-        {
-            return Failure(request, "command.invalid", "CommandInvalid");
-        }
-
-        try
-        {
-            return operation switch
-            {
-                RuntimeOperation.RuntimeHealth => ToResponse(request, await _application.GetRuntimeHealthAsync(cancellationToken)),
-                RuntimeOperation.TrackingStart => ToResponse(request, await _application.StartTrackingAsync(Read<StartTrackingRequest>(request.Payload) ?? new StartTrackingRequest(), cancellationToken)),
-                RuntimeOperation.TrackingPause => ToResponse(request, await _application.PauseTrackingAsync(cancellationToken)),
-                RuntimeOperation.TrackingToggle => ToResponse(request, await _application.ToggleTrackingAsync(cancellationToken)),
-                RuntimeOperation.DashboardGet => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
-                RuntimeOperation.WorldClocksGetV2 => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
-                RuntimeOperation.WorldClocksConvertV1 => ToResponse(request, await _application.ConvertWorldClocksAsync(
-                    Read<WorldClockConversionRequest>(request.Payload)
-                        ?? throw new InvalidDataException("A world-clock conversion request is required."),
-                    cancellationToken)),
-                RuntimeOperation.WorldClocksCatalogV1 => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
-                RuntimeOperation.WorldClocksAddV3 => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
-                RuntimeOperation.WorldClocksRemoveV3 => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
-                RuntimeOperation.WorldClocksWeatherKeySetV1 => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
-                RuntimeOperation.SessionLast => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
-                RuntimeOperation.SessionToday => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
-                RuntimeOperation.SearchQueryV1 => await DispatchSearchAsync(request, cancellationToken),
-                RuntimeOperation.SearchSuggestV2 => await DispatchSearchSuggestionsAsync(request, cancellationToken),
-                RuntimeOperation.SearchAvailabilityV1 => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
-                RuntimeOperation.SearchRebuildV1 => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
-                RuntimeOperation.SystemSnapshot => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotCapture => await DispatchScreenshotCaptureAsync(request, cancellationToken),
-                RuntimeOperation.ScreenshotManualCapture => ToResponse(request, await _application.CaptureManualScreenshotAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotManualDelete => ToResponse(request, await _application.DeletePendingManualScreenshotAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotAnalyze => await DispatchScreenshotAnalysisAsync(request, cancellationToken),
-                RuntimeOperation.ScreenshotLatest => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotGallery => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
-                RuntimeOperation.ScreenshotGalleryLatest => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotStorageMigrationStatusV1 => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotStorageMigrationRunV1 => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
-                RuntimeOperation.InstallationsListV1 => ToResponse(request, await _application.GetInstallationProfilesAsync(cancellationToken)),
-                RuntimeOperation.InstallationsUpdateV1 => ToResponse(request, await _application.UpdateInstallationProfileAsync(
-                    Read<UpdateInstallationProfileRequest>(request.Payload)
-                        ?? throw new InvalidDataException("An installation profile update payload is required."),
-                    cancellationToken)),
-                RuntimeOperation.ArchiveExportV1 => ToResponse(request, await _application.ExportDataArchiveAsync(
-                    Read<DataArchiveExportRequest>(request.Payload)
-                        ?? throw new InvalidDataException("An archive export payload is required."),
-                    cancellationToken)),
-                RuntimeOperation.ArchiveImportPreviewV1 => ToResponse(request, await _application.PreviewDataArchiveImportAsync(
-                    Read<DataArchiveImportPreviewRequest>(request.Payload)
-                        ?? throw new InvalidDataException("An archive import preview payload is required."),
-                    cancellationToken)),
-                RuntimeOperation.ArchiveImportMergeV1 => ToResponse(request, await _application.ImportDataArchiveAsync(
-                    Read<DataArchiveImportRequest>(request.Payload)
-                        ?? throw new InvalidDataException("An archive import payload is required."),
-                    cancellationToken)),
-                RuntimeOperation.ScreenshotDelete => ToResponse(request, await _application.DeleteScreenshotAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
-                RuntimeOperation.ScreenshotAnalysisDeleteV1 => ToResponse(request, await _application.DeleteScreenshotAnalysisAsync(ReadString(request.Payload, "screenshotPath"), cancellationToken)),
-                RuntimeOperation.ScreenshotSave => ToResponse(request, await _application.SaveScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadString(request.Payload, "destinationPath"), cancellationToken)),
-                RuntimeOperation.ScreenshotShare => ToResponse(request, await _application.ShareScreenshotAsync(ReadString(request.Payload, "screenshotPath"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                RuntimeOperation.DiagnosticsLogOpen => ToResponse(request, await _application.OpenApplicationLogAsync(cancellationToken)),
-                RuntimeOperation.DiagnosticsLogOpenFolder => ToResponse(request, await _application.OpenApplicationLogFolderAsync(cancellationToken)),
-                RuntimeOperation.DiagnosticsLogShare => ToResponse(request, await _application.ShareApplicationLogAsync(ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                RuntimeOperation.ScreenshotOpenFolder => ToResponse(request, await DispatchOpenScreenshotFolderAsync(request, cancellationToken)),
-                RuntimeOperation.NotificationsDrain => ToResponse(request, await _application.DrainApplicationNotificationsAsync(cancellationToken)),
-                RuntimeOperation.AiStatus => ToResponse(request, await _application.GetAiStatusAsync(cancellationToken)),
-                RuntimeOperation.AiPricingOverview => ToResponse(request, await _application.GetAiPricingOverviewAsync(cancellationToken)),
-                RuntimeOperation.AiConnectionTest => ToResponse(request, await _application.TestAiConnectionAsync(cancellationToken)),
-                RuntimeOperation.AiScreenshotReprocessPreviewV1 => await DispatchAiScreenshotReprocessPreviewAsync(request, cancellationToken),
-                RuntimeOperation.AiScreenshotReprocessStartV1 => ToResponse(request, await _application.StartAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "planId"), cancellationToken)),
-                RuntimeOperation.AiScreenshotReprocessStatusV1 => ToResponse(request, await _application.GetAiScreenshotReprocessingJobAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
-                RuntimeOperation.AiScreenshotReprocessPauseV1 => ToResponse(request, await _application.PauseAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
-                RuntimeOperation.AiScreenshotReprocessResumeV1 => ToResponse(request, await _application.ResumeAiScreenshotReprocessingAsync(ReadGuid(request.Payload, "jobId"), cancellationToken)),
-                RuntimeOperation.AiModels => ToResponse(request, await _application.GetAiModelCatalogAsync(cancellationToken)),
-                RuntimeOperation.AiEnable => ToResponse(request, await _application.SetAiEnabledAsync(true, cancellationToken)),
-                RuntimeOperation.AiDisable => ToResponse(request, await _application.SetAiEnabledAsync(false, cancellationToken)),
-                RuntimeOperation.AiConfigure => ToResponse(request, await _application.ConfigureAiAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
-                RuntimeOperation.AiKeySet => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
-                RuntimeOperation.AiAnalyze => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
-                RuntimeOperation.ReportQueryV1 => await DispatchReportQueryAsync(request, cancellationToken),
-                RuntimeOperation.ReportToday => ToResponse(request, await _application.GenerateTodayReportAsync(ReadStringOrNull(request.Payload, "outputDirectory"), ReadBool(request.Payload, "open"), cancellationToken)),
-                RuntimeOperation.ReportDigest => await DispatchDailyDigestAsync(request, cancellationToken),
-                RuntimeOperation.ReportOpenFolder => ToResponse(request, await _application.OpenReportsFolderAsync(cancellationToken)),
-                RuntimeOperation.UiOpen => ToResponse(request, await _application.OpenUserInterfaceAsync(cancellationToken)),
-                RuntimeOperation.PrivacyList => ToResponse(request, await _application.GetPrivacyRulesAsync(cancellationToken)),
-                RuntimeOperation.PrivacyAdd => ToResponse(request, await _application.AddPrivacyRuleAsync(ReadString(request.Payload, "type"), ReadString(request.Payload, "value"), cancellationToken)),
-                RuntimeOperation.PrivacyRemove => ToResponse(request, await _application.RemovePrivacyRuleAsync(ReadString(request.Payload, "id"), cancellationToken)),
-                RuntimeOperation.PrivacyTestCurrent => ToResponse(request, await _application.TestCurrentPrivacyAsync(cancellationToken)),
-                RuntimeOperation.RetentionStatus => ToResponse(request, await _application.GetRetentionStatusAsync(cancellationToken)),
-                RuntimeOperation.RetentionPreview => ToResponse(request, await _application.PreviewRetentionAsync(cancellationToken)),
-                RuntimeOperation.RetentionRun => ToResponse(request, await _application.RunRetentionAsync(Read<RetentionRequest>(request.Payload) ?? new RetentionRequest(false, false), cancellationToken)),
-                RuntimeOperation.AppAtomicResetV1 => ToResponse(request, await _application.PrepareAtomicResetAsync(
-                    Read<AtomicResetRequest>(request.Payload) ?? new AtomicResetRequest(false, false),
-                    cancellationToken)),
-                RuntimeOperation.PluginsList => ToResponse(request, await _application.GetPluginsAsync(cancellationToken)),
-                RuntimeOperation.PluginsShow => ToResponse(request, await _application.GetPluginAsync(ReadString(request.Payload, "id"), cancellationToken)),
-                RuntimeOperation.PluginsEnable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
-                RuntimeOperation.PluginsDisable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
-                RuntimeOperation.SettingsGet => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
-                RuntimeOperation.QuickSetupApplyV1 => ToResponse(request, await _application.ApplyQuickSetupProfileAsync(
-                    Read<QuickSetupProfileRequest>(request.Payload) ?? new QuickSetupProfileRequest(string.Empty, false),
-                    cancellationToken)),
-                RuntimeOperation.SettingsPatch => ToResponse(request, await _application.PatchSettingsAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
-                RuntimeOperation.WindowStateRestore => ToResponse(request, await _application.RestoreWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                RuntimeOperation.WindowStateSave => ToResponse(request, await _application.SaveWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
-                RuntimeOperation.StartupStatus => ToResponse(request, await _application.GetStartupStatusAsync(cancellationToken)),
-                RuntimeOperation.StartupEnable => ToResponse(request, await _application.SetStartupEnabledAsync(true, cancellationToken)),
-                RuntimeOperation.StartupDisable => ToResponse(request, await _application.SetStartupEnabledAsync(false, cancellationToken)),
-                RuntimeOperation.ProductGet => ToResponse(request, await _application.GetProductInformationAsync(cancellationToken)),
-                RuntimeOperation.ProductLinkOpen => ToResponse(request, await _application.OpenProductLinkAsync(ReadString(request.Payload, "linkKey"), cancellationToken)),
-                _ => throw new InvalidOperationException($"Runtime operation '{operation}' has no host dispatch handler.")
-            };
-        }
-        catch (OperationCanceledException)
-        {
-            return Failure(request, "operation.cancelled", "OperationCancelled");
-        }
-        catch (Exception exception)
-        {
-            // Never serialize exception messages: they can disclose local paths or external provider details.
-            _logger.LogWarning("Runtime operation failed. Operation={Operation} ExceptionType={ExceptionType}", request.Operation, exception.GetType().Name);
-            return Failure(request, "runtime.operation.failed", "RuntimeOperationFailed");
-        }
-    }
-
-    private static RuntimeResponseEnvelope ToResponse<T>(RuntimeRequestEnvelope request, OperationResult<T> result) => new(RuntimeProtocol.ProtocolVersion, request.RequestId, result.Succeeded, result.Code, result.MessageKey, result.Value, result.Issues);
-
-    private async Task<OperationResult<ScreenshotGallery>> DispatchScreenshotGalleryAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var galleryRequest = Read<ScreenshotGalleryRequest>(request.Payload);
-        return galleryRequest is null
-            ? OperationResult<ScreenshotGallery>.Failure("screenshot.gallery.invalid", "ScreenshotGalleryRequestInvalid")
-            : await _application.GetScreenshotGalleryAsync(galleryRequest.Date, cancellationToken);
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchSearchAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var searchRequest = Read<SearchRequest>(request.Payload);
-        return searchRequest is null
-            ? Failure(request, "search.query.invalid", "SearchQueryInvalid")
-            : ToResponse(request, await _application.SearchAsync(searchRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchSearchSuggestionsAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var suggestionRequest = Read<SearchSuggestionRequest>(request.Payload);
-        return suggestionRequest is null
-            ? Failure(request, "search.suggestions.invalid", "SearchQueryInvalid")
-            : ToResponse(request, await _application.GetSearchSuggestionsAsync(suggestionRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchScreenshotCaptureAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var captureRequest = Read<CaptureScreenshotRequest>(request.Payload);
-        return captureRequest is null
-            ? Failure(request, "screenshot.capture.invalid", "ScreenshotCaptureRequestInvalid")
-            : ToResponse(request, await _application.CaptureScreenshotAsync(captureRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchScreenshotAnalysisAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var analysisRequest = Read<AnalyzeCapturedScreenshotRequest>(request.Payload);
-        return analysisRequest is null
-            ? Failure(request, "screenshot.analysis.invalid", "AiConfigurationInvalid")
-            : ToResponse(request, await _application.AnalyzeCapturedScreenshotAsync(analysisRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchAiScreenshotReprocessPreviewAsync(
-        RuntimeRequestEnvelope request,
-        CancellationToken cancellationToken)
-    {
-        var previewRequest = Read<AiScreenshotReprocessRequest>(request.Payload);
-        return previewRequest is null
-            ? Failure(request, "ai.screenshot_reprocess.preview.invalid", "AiScreenshotReprocessInvalid")
-            : ToResponse(request, await _application.PreviewAiScreenshotReprocessingAsync(previewRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchDailyDigestAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var digest = Read<GenerateDailyDigestRequest>(request.Payload);
-        if (digest is null)
-        {
-            return Failure(request, "command.arguments.invalid", "InvalidDigestDate");
-        }
-
-        return ToResponse(request, await _application.GenerateDailyDigestAsync(digest.Date, digest.Open, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchReportQueryAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-    {
-        var query = Read<ReportQuery>(request.Payload);
-        if (query is null)
-        {
-            return Failure(request, "command.arguments.invalid", "InvalidReportQuery");
-        }
-
-        return ToResponse(request, await _application.GetReportAsync(query, cancellationToken));
-    }
-
-    private static RuntimeResponseEnvelope Failure(RuntimeRequestEnvelope request, string code, string messageKey) => new(RuntimeProtocol.ProtocolVersion, request.RequestId, false, code, messageKey, null, Array.Empty<ValidationIssue>());
-
-    private static T? Read<T>(JsonElement value) => value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ? default : value.Deserialize<T>(RuntimeProtocol.SerializerOptions);
-
-    private static string ReadString(JsonElement value, string name) => ReadStringOrNull(value, name) ?? string.Empty;
-
-    private static string? ReadStringOrNull(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String ? property.GetString() : null;
-
-    private static Guid ReadGuid(JsonElement value, string name) =>
-        Guid.TryParse(ReadStringOrNull(value, name), out var parsed) ? parsed : Guid.Empty;
-
-    private Task<OperationResult<string>> DispatchOpenScreenshotFolderAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
-        => ReadStringOrNull(request.Payload, "directory") is { } directory
-            ? _application.OpenScreenshotFolderAsync(directory, cancellationToken)
-            : _application.OpenScreenshotFolderAsync(cancellationToken);
-
-    private static bool ReadBool(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind is JsonValueKind.True or JsonValueKind.False && property.GetBoolean();
-
-    private static long ReadInt64(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out var result) ? result : 0L;
-
     private void ThrowIfDisposed()
     {
         if (_disposed)
@@ -502,79 +176,6 @@ public sealed class RuntimeHost : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Keeps named-mutex acquisition and release on one dedicated thread because Windows mutex ownership is thread-affine.
-    /// </summary>
-    private sealed class RuntimeMutexLease : IDisposable
-    {
-        private readonly ManualResetEventSlim _ready = new(false);
-        private readonly ManualResetEventSlim _release = new(false);
-        private readonly Thread _ownerThread;
-        private Exception? _failure;
-        private bool _disposed;
-
-        internal RuntimeMutexLease(string mutexName)
-        {
-            _ownerThread = new Thread(() => Own(mutexName))
-            {
-                IsBackground = true,
-                Name = "TrackMeUp runtime mutex"
-            };
-            _ownerThread.Start();
-            _ready.Wait();
-            if (_failure is not null)
-            {
-                Dispose();
-                throw new InvalidOperationException("Unable to acquire the TrackMeUp runtime mutex.", _failure);
-            }
-        }
-
-        internal bool Acquired { get; private set; }
-
-        public void Dispose()
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-            _release.Set();
-            _ownerThread.Join();
-            _release.Dispose();
-            _ready.Dispose();
-        }
-
-        private void Own(string mutexName)
-        {
-            try
-            {
-                using var mutex = new Mutex(false, mutexName);
-                try
-                {
-                    Acquired = mutex.WaitOne(0);
-                }
-                catch (AbandonedMutexException)
-                {
-                    Acquired = true;
-                }
-
-                _ready.Set();
-                if (!Acquired)
-                {
-                    return;
-                }
-
-                _release.Wait();
-                mutex.ReleaseMutex();
-            }
-            catch (Exception exception)
-            {
-                _failure = exception;
-                _ready.Set();
-            }
-        }
-    }
 }
 
 /// <summary>Provides a typed application facade backed by the local runtime pipe.</summary>

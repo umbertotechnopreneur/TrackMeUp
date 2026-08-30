@@ -140,7 +140,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly OpenAiPricingRefreshService? _pricingRefresh;
     private readonly AiScreenshotReprocessingService _screenshotReprocessing;
     private readonly DataArchiveService _archives;
-    private readonly WorldClockService _worldClocks;
+    private readonly WorldClockApplicationService _worldClockOperations;
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -237,7 +237,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             model => ResolveAiModel(model)?.Key ?? model.Trim(),
             _logger);
         _archives = new DataArchiveService(store);
-        _worldClocks = worldClockService ?? new WorldClockService();
+        _worldClockOperations = new WorldClockApplicationService(
+            worldClockService ?? new WorldClockService(),
+            _settingsSnapshot,
+            _utilities.SetApiKey,
+            PersistSettings);
         _observability = observability ?? new ObservabilityHealth(false, false, "unknown", false);
         _tracking.DashboardStateChanged += OnDashboardStateChanged;
         _tracking.TrackingStateChanged += OnTrackingStateChanged;
@@ -1965,25 +1969,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult<WorldClockCityCatalog>.Success(
-            "world_clocks.catalog.loaded",
-            "WorldClocksCatalogLoaded",
-            _worldClocks.GetCatalog()));
+        return Task.FromResult(_worldClockOperations.GetCatalog());
     }
 
     /// <inheritdoc />
     public async Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var settings = _settingsSnapshot.Value;
-        var snapshot = await _worldClocks.BuildCurrentSnapshotAsync(
-            settings.WorldClockCityIds,
-            settings.WorldClockWeatherEnabled,
-            cancellationToken).ConfigureAwait(false);
-        return OperationResult<WorldClockSnapshot>.Success(
-            "world_clocks.loaded",
-            "WorldClocksLoaded",
-            snapshot);
+        return await _worldClockOperations.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -1993,26 +1986,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        try
-        {
-            var snapshot = _worldClocks.BuildSnapshotForLocalTime(
-                _settingsSnapshot.Value.WorldClockCityIds,
-                request);
-            return Task.FromResult(OperationResult<WorldClockSnapshot>.Success(
-                "world_clocks.converted",
-                "WorldClocksConverted",
-                snapshot));
-        }
-        catch (WorldClockConversionException exception)
-        {
-            var field = exception.ValidationCode is "reference_not_selected" or "not_found"
-                ? "referenceCityId"
-                : "referenceLocalTime";
-            return Task.FromResult(OperationResult<WorldClockSnapshot>.Failure(
-                exception.Code,
-                exception.MessageKey,
-                new ValidationIssue(field, exception.ValidationCode, exception.MessageKey)));
-        }
+        return Task.FromResult(_worldClockOperations.Convert(request));
     }
 
     /// <inheritdoc />
@@ -2020,98 +1994,25 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         string cityId,
         CancellationToken cancellationToken)
     {
-        var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
-        _worldClocks.ValidateCityId(normalizedId);
-        return MutateAsync(() =>
-        {
-            var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
-            if (selection.Contains(normalizedId, StringComparer.Ordinal))
-            {
-                return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
-                    "world_clocks.duplicate",
-                    "WorldClocksDuplicate",
-                    new ValidationIssue("cityId", "duplicate", "WorldClocksDuplicate")));
-            }
-
-            if (selection.Count >= WorldClockSelection.MaximumClocks)
-            {
-                return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
-                    "world_clocks.maximum_reached",
-                    "WorldClocksMaximumReached",
-                    new ValidationIssue("cityId", "maximum_reached", "WorldClocksMaximumReached")));
-            }
-
-            selection.Add(normalizedId);
-            PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
-            return Task.FromResult(OperationResult<WorldClockSelectionState>.Success(
-                "world_clocks.added",
-                "WorldClocksAdded",
-                new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks)));
-        }, cancellationToken);
+        var normalizedId = _worldClockOperations.NormalizeAndValidateCityId(cityId);
+        return MutateAsync(
+            () => Task.FromResult(_worldClockOperations.AddValidated(normalizedId)),
+            cancellationToken);
     }
 
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(
         string cityId,
-        CancellationToken cancellationToken) => MutateAsync(() =>
-    {
-        var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
-        var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
-        if (selection.Count == 1)
-        {
-            return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
-                "world_clocks.minimum_reached",
-                "WorldClocksMinimumReached",
-                new ValidationIssue("cityId", "minimum_reached", "WorldClocksMinimumReached")));
-        }
-
-        if (!selection.Remove(normalizedId))
-        {
-            return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure(
-                "world_clocks.not_found",
-                "WorldClocksNotFound",
-                new ValidationIssue("cityId", "not_found", "WorldClocksNotFound")));
-        }
-
-        PersistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
-        return Task.FromResult(OperationResult<WorldClockSelectionState>.Success(
-            "world_clocks.removed",
-            "WorldClocksRemoved",
-            new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks)));
-    }, cancellationToken);
+        CancellationToken cancellationToken) => MutateAsync(
+            () => Task.FromResult(_worldClockOperations.Remove(cityId)),
+            cancellationToken);
 
     /// <inheritdoc />
     public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(
         string secret,
-        CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
-    {
-        var secretValue = secret ?? string.Empty;
-        if (!OpenWeatherCurrentProvider.IsPlausibleApiKey(secretValue))
-        {
-            secretValue = string.Empty;
-            return OperationResult<string>.Failure(
-                "world_clocks.weather.key.invalid",
-                "WorldClockWeatherKeyInvalid",
-                new ValidationIssue("secret", "invalid", "WorldClockWeatherKeyInvalid"));
-        }
-
-        try
-        {
-            // The secret is delegated directly to the environment store and never persisted or logged.
-            _utilities.SetApiKey(OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable, secretValue);
-            _worldClocks.InvalidateCurrentWeatherConfiguration();
-        }
-        finally
-        {
-            secretValue = string.Empty;
-        }
-
-        await Task.CompletedTask;
-        return OperationResult<string>.Success(
-            "world_clocks.weather.key.stored",
-            "WorldClockWeatherKeyStored",
-            OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable);
-    }, cancellationToken);
+        CancellationToken cancellationToken) => MutateVisualStateAsync(
+            () => Task.FromResult(_worldClockOperations.SetWeatherKey(secret)),
+            cancellationToken);
 
     /// <inheritdoc />
     public async Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(
@@ -2357,7 +2258,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _manualScreenshotCaptureGate.Dispose();
         _systemSnapshotGate.Dispose();
         await _usageSampler.DisposeAsync().ConfigureAwait(false);
-        _worldClocks.Dispose();
+        _worldClockOperations.Dispose();
         _mutations.Dispose();
     }
 

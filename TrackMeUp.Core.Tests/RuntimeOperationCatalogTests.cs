@@ -54,15 +54,16 @@ public sealed class RuntimeOperationCatalogTests
     [Fact]
     public void HostAndClient_ReferenceTheCompleteSharedTypedCatalog()
     {
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
-        var dispatchStart = source.IndexOf("return operation switch", StringComparison.Ordinal);
-        var dispatchEnd = source.IndexOf("catch (OperationCanceledException)", dispatchStart, StringComparison.Ordinal);
-        var clientStart = source.IndexOf("public sealed class RuntimeClient", StringComparison.Ordinal);
+        var hostAndClientSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
+        var dispatcherSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeRequestDispatcher.cs"));
+        var dispatchStart = dispatcherSource.IndexOf("return operation switch", StringComparison.Ordinal);
+        var dispatchEnd = dispatcherSource.IndexOf("catch (OperationCanceledException)", dispatchStart, StringComparison.Ordinal);
+        var clientStart = hostAndClientSource.IndexOf("public sealed class RuntimeClient", StringComparison.Ordinal);
         Assert.True(dispatchStart >= 0);
         Assert.True(dispatchEnd > dispatchStart);
-        Assert.True(clientStart > dispatchEnd);
-        var dispatchSource = source[dispatchStart..dispatchEnd];
-        var clientSource = source[clientStart..];
+        Assert.True(clientStart >= 0);
+        var dispatchSource = dispatcherSource[dispatchStart..dispatchEnd];
+        var clientSource = hostAndClientSource[clientStart..];
         var expected = RuntimeOperationCatalog.All
             .Select(static definition => definition.Operation.ToString())
             .OrderBy(static name => name, StringComparer.Ordinal)
@@ -86,7 +87,26 @@ public sealed class RuntimeOperationCatalogTests
         Assert.Contains("RuntimeOperation operation", clientSource, StringComparison.Ordinal);
         Assert.DoesNotContain("string operation", clientSource, StringComparison.Ordinal);
         Assert.All(RuntimeOperationCatalog.All, definition =>
-            Assert.DoesNotContain($"\"{definition.WireName}\"", source, StringComparison.Ordinal));
+        {
+            Assert.DoesNotContain($"\"{definition.WireName}\"", hostAndClientSource, StringComparison.Ordinal);
+            Assert.DoesNotContain($"\"{definition.WireName}\"", dispatcherSource, StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>Verifies that the host coordinates extracted runtime services instead of owning their implementation.</summary>
+    [Fact]
+    public void Host_DelegatesPipeServingDispatchAndMutexOwnership()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
+        var hostEnd = source.IndexOf("public sealed class RuntimeClient", StringComparison.Ordinal);
+
+        Assert.True(hostEnd >= 0);
+        var hostSource = source[..hostEnd];
+        Assert.Contains("new RuntimeMutexLease", hostSource, StringComparison.Ordinal);
+        Assert.Contains("new RuntimeRequestDispatcher", hostSource, StringComparison.Ordinal);
+        Assert.Contains("new RuntimePipeServer", hostSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("NamedPipeServerStream", hostSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("return operation switch", hostSource, StringComparison.Ordinal);
     }
 
     private static string RepositoryFile(params string[] segments)

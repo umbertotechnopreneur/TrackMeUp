@@ -91,7 +91,7 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem -Recurse -Filter *.Tests.csproj | ForEach-Object {
-            dotnet test $_.FullName -p:Platform=x64 --no-restore -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
+            dotnet test $_.FullName -p:Platform=x64 --no-restore -p:EnableNETAnalyzers=true -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
             if ($LASTEXITCODE -ne 0) {
               exit $LASTEXITCODE
             }
@@ -118,7 +118,7 @@ jobs:
         run: dotnet restore .\TrackMeUp.slnx -p:Configuration=Release-Unpackaged -p:Platform=${{ matrix.platform }}
 
       - name: Build Release solution
-        run: dotnet build .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=${{ matrix.platform }} --no-restore
+        run: dotnet build .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=${{ matrix.platform }} --no-restore -p:ContinuousIntegrationBuild=true -p:EnableNETAnalyzers=true -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
 
       - name: Test Release solution
         if: matrix.platform == 'x64'

@@ -340,20 +340,20 @@ public sealed partial class WorldClockOptionsControl : UserControl
         (string Key, string VisualState) presentation = status is null
             ? ("WorldClock.Options.Weather.ApiKeyStatus.Unavailable", "WeatherStatusInformational")
             : (status.State, status.ReasonCode) switch
-        {
-            ("available", _) => ("WorldClock.Options.Weather.ApiKeyStatus.Ready", "WeatherStatusReady"),
-            ("configuration-required", "missing-api-key") =>
-                ("WorldClock.Options.Weather.ApiKeyStatus.Missing", "WeatherStatusNeedsAttention"),
-            ("configuration-required", "invalid-api-key") =>
-                ("WorldClock.Options.Weather.ApiKeyStatus.Invalid", "WeatherStatusInvalid"),
-            ("disabled", "user-disabled") => ("WorldClock.WeatherStatus.Disabled", "WeatherStatusInformational"),
-            ("partial", _) => ("WorldClock.WeatherStatus.Partial", "WeatherStatusNeedsAttention"),
-            ("unavailable", _) => ("WorldClock.WeatherStatus.Unavailable", "WeatherStatusInformational"),
-            ("not-requested", "explicit-instant") =>
-                ("WorldClock.WeatherStatus.ReferenceInstant", "WeatherStatusInformational"),
-            _ => throw new InvalidDataException(
-                $"Unsupported world-clock weather status '{status.State}/{status.ReasonCode}'.")
-        };
+            {
+                ("available", _) => ("WorldClock.Options.Weather.ApiKeyStatus.Ready", "WeatherStatusReady"),
+                ("configuration-required", "missing-api-key") =>
+                    ("WorldClock.Options.Weather.ApiKeyStatus.Missing", "WeatherStatusNeedsAttention"),
+                ("configuration-required", "invalid-api-key") =>
+                    ("WorldClock.Options.Weather.ApiKeyStatus.Invalid", "WeatherStatusInvalid"),
+                ("disabled", "user-disabled") => ("WorldClock.WeatherStatus.Disabled", "WeatherStatusInformational"),
+                ("partial", _) => ("WorldClock.WeatherStatus.Partial", "WeatherStatusNeedsAttention"),
+                ("unavailable", _) => ("WorldClock.WeatherStatus.Unavailable", "WeatherStatusInformational"),
+                ("not-requested", "explicit-instant") =>
+                    ("WorldClock.WeatherStatus.ReferenceInstant", "WeatherStatusInformational"),
+                _ => throw new InvalidDataException(
+                    $"Unsupported world-clock weather status '{status.State}/{status.ReasonCode}'.")
+            };
         WeatherStatusText.Text = T(presentation.Key);
         AutomationProperties.SetName(WeatherStatusText, WeatherStatusText.Text);
         VisualStateManager.GoToState(this, presentation.VisualState, false);
