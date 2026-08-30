@@ -7,6 +7,11 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -122,4 +127,4 @@ jobs:
 
       - name: Test Release solution
         if: matrix.platform == 'x64'
-        run: dotnet test .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=x64 --no-build --no-restore
+        run: dotnet test .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=x64 --no-build --no-restore -m:1

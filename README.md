@@ -267,6 +267,7 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation g
 - [Architecture](docs/ARCHITECTURE.md)
 - [Manual validation guide](docs/VALIDATION.md)
 - [Public roadmap](ROADMAP.md)
+- [Project governance](GOVERNANCE.md)
 - [Changelog](CHANGELOG.md)
 - [CLI implementation plan](docs/CLI_IMPLEMENTATION_PLAN.md)
 - [Security policy](SECURITY.md)

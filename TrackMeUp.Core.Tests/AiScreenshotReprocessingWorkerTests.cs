@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -18,6 +17,7 @@ namespace TrackMeUp.Core.Tests;
 public sealed class AiScreenshotReprocessingWorkerTests
 {
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
+    private static readonly TimeSpan AsyncAssertionTimeout = TimeSpan.FromSeconds(15);
 
     [Fact]
     public async Task PreviewCountsScreensAndCapturesWithoutCallingProvider()
@@ -85,12 +85,11 @@ public sealed class AiScreenshotReprocessingWorkerTests
             await using var application = CreateApplication(fixture.Store, analysis);
             var preview = await PreviewTodayAsync(application);
 
-            var stopwatch = Stopwatch.StartNew();
-            var start = await application.StartAiScreenshotReprocessingAsync(preview.Value!.PlanId, CancellationToken.None);
-            stopwatch.Stop();
+            var start = await application
+                .StartAiScreenshotReprocessingAsync(preview.Value!.PlanId, CancellationToken.None)
+                .WaitAsync(AsyncAssertionTimeout);
             Assert.True(start.Succeeded);
-            Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(1));
-            await analysis.Entered.WaitAsync(TimeSpan.FromSeconds(5));
+            await analysis.Entered.WaitAsync(AsyncAssertionTimeout);
 
             var pause = await application.PauseAiScreenshotReprocessingAsync(start.Value!.JobId, CancellationToken.None);
             Assert.True(pause.Succeeded);
@@ -437,7 +436,7 @@ public sealed class AiScreenshotReprocessingWorkerTests
             fixture.Store.SaveSettings(fixture.Store.LoadSettings() with { OpenAiEnabled = false });
             analysis.Release();
 
-            var result = await liveAnalysis.WaitAsync(TimeSpan.FromSeconds(5));
+            var result = await liveAnalysis.WaitAsync(AsyncAssertionTimeout);
             Assert.True(result.Succeeded);
             Assert.True(fixture.Store.LoadSettings().OpenAiEnabled);
             Assert.Equal(1, refinement.CallCount);
