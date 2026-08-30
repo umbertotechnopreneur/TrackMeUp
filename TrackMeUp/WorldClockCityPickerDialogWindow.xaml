@@ -45,18 +45,14 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 TextWrapping="Wrap" />
-            <AutoSuggestBox
-                x:Name="CitySearchBox"
+            <ComboBox
+                x:Name="CityComboBox"
                 Grid.Row="1"
-                TextChanged="CitySearchBox_TextChanged" />
-            <ListView
-                x:Name="CityList"
-                Grid.Row="2"
                 DisplayMemberPath="DisplayName"
-                IsItemClickEnabled="True"
-                ItemClick="CityList_ItemClick"
-                SelectionChanged="CityList_SelectionChanged"
-                SelectionMode="Single" />
+                HorizontalAlignment="Stretch"
+                IsTextSearchEnabled="True"
+                MaxDropDownHeight="320"
+                SelectionChanged="CityComboBox_SelectionChanged" />
             <StackPanel
                 Grid.Row="3"
                 HorizontalAlignment="Right"

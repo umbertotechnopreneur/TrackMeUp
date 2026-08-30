@@ -60,6 +60,21 @@ internal sealed class WindowPlacementService : IDisposable
 
     internal double RasterizationScale => _rasterizationScale;
 
+    /// <summary>Applies the requested default size without choosing a screen position.</summary>
+    internal void ApplyDefaultSize(FrameworkElement root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        var scale = ResolveScale(root);
+        var area = OpeningWorkArea();
+        var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
+        var availableWidth = Math.Max(1, area.Width - (margin * 2));
+        var availableHeight = Math.Max(1, area.Height - (margin * 2));
+        var minimumSize = UpdateMinimumSize(scale, area);
+        var width = Math.Min(availableWidth, Math.Max(minimumSize.Width, (int)Math.Ceiling(_logicalDefaultWidth * scale)));
+        var height = Math.Min(availableHeight, Math.Max(minimumSize.Height, (int)Math.Ceiling(_logicalDefaultHeight * scale)));
+        _appWindow.Resize(new SizeInt32(width, height));
+    }
+
     internal void ApplyDefaultBounds(FrameworkElement root)
     {
         ArgumentNullException.ThrowIfNull(root);
@@ -73,6 +88,30 @@ internal sealed class WindowPlacementService : IDisposable
         var height = Math.Min(availableHeight, Math.Max(minimumSize.Height, (int)Math.Ceiling(_logicalDefaultHeight * scale)));
         _appWindow.Resize(new SizeInt32(width, height));
         CenterInWorkArea(area);
+    }
+
+    /// <summary>Restores saved bounds without replacing the user's position with an application-selected anchor.</summary>
+    internal async Task<bool> RestoreAsync(FrameworkElement root, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        if (_restoreAttempted)
+        {
+            return false;
+        }
+
+        _restoreAttempted = true;
+        var result = await _application.RestoreWindowStateAsync(
+            _windowKey,
+            _windowHandle.ToInt64(),
+            cancellationToken);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
+        }
+
+        // Restored coordinates are authoritative; only clamp bounds that no longer fit the active display topology.
+        KeepCurrentBoundsInWorkArea(root);
+        return result.Value is not null;
     }
 
     internal async Task RestoreAndCenterAsync(

@@ -9,6 +9,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the main player window.</summary>
     public const string Main = "main";
 
+    /// <summary>Identifies the world-clock city picker dialog.</summary>
+    public const string WorldClockCityPicker = "world-clock-city-picker";
+
     /// <summary>Identifies the reports window.</summary>
     public const string Reports = "reports";
 
@@ -75,6 +78,7 @@ public sealed class WindowStateService
 
         return windowKey switch
         {
+            WindowStateKeys.Main => new(470, 240),
             WindowStateKeys.Reports => new(720, 520),
             WindowStateKeys.ActivityCalendar => new(760, 560),
             WindowStateKeys.AiScreenshotReprocessing => new(640, 560),
@@ -87,6 +91,7 @@ public sealed class WindowStateService
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.QuickSetup => new(760, 560),
             WindowStateKeys.Dialog => new(320, 196),
+            WindowStateKeys.WorldClockCityPicker => new(500, 560),
             WindowStateKeys.AiPricing => new(620, 430),
             WindowStateKeys.AiConnectionTest => new(480, 480),
             _ => new(320, 240)

@@ -484,7 +484,7 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void MainWindow_IsFixedSizeAndDoesNotRestorePersistedWindowState()
+    public void MainWindow_IsFixedSizeAndRestoresUserPlacementWithoutAutomaticRecentering()
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
 
@@ -494,9 +494,12 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ResizeForCurrentLayout(animate: false);", source, StringComparison.Ordinal);
         Assert.Contains("_appWindow.Changed += AppWindow_Changed;", source, StringComparison.Ordinal);
         Assert.Contains("var workArea = CurrentWorkArea();", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("WindowStateKeys.Main", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("RestoreWindowState", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("SaveWindowState", source, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.Main", source, StringComparison.Ordinal);
+        Assert.Contains("await _placement.RestoreAsync(RootGrid, CancellationToken.None);", source, StringComparison.Ordinal);
+        Assert.Contains("await _placement.TrySaveForCloseAsync(CancellationToken.None);", source, StringComparison.Ordinal);
+        Assert.Contains("_placement.KeepCurrentBoundsInWorkArea(RootGrid);", source, StringComparison.Ordinal);
+        Assert.Contains("positionChangedByUser", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplyFlyoutPosition(_position);\r\n        Activate();", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -515,6 +518,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("RestoreWindowStateAsync", placement, StringComparison.Ordinal);
         Assert.Contains("SaveWindowStateAsync", placement, StringComparison.Ordinal);
         Assert.Contains("RestoreAndCenterAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("RestoreAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("ApplyDefaultSize", placement, StringComparison.Ordinal);
         Assert.Contains("OpeningWorkArea()", placement, StringComparison.Ordinal);
         Assert.Contains("KeepCurrentBoundsInWorkArea", placement, StringComparison.Ordinal);
         Assert.Contains("WindowStateService.GetMinimumSize(_windowKey)", placement, StringComparison.Ordinal);
@@ -612,7 +617,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
-        Assert.Contains("RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
+        Assert.Contains("RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowWidth = 470;", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeightPadding = 20;", source, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.ApplyPlayerWindowChrome", source, StringComparison.Ordinal);
@@ -756,7 +761,7 @@ public sealed class WinUiSurfaceContractTests
         var minimizeToTrayButton = player.Descendants().Single(element => HasName(element, "TitleBarMinimizeToTrayButton"));
 
         Assert.Equal("12", systemButtonGap.Attribute("Width")?.Value);
-        Assert.Equal("2", dragRegion.Attribute("Grid.ColumnSpan")?.Value);
+        Assert.Null(dragRegion.Attribute("Grid.ColumnSpan"));
         Assert.Null(dragRegion.Attribute("Grid.Column"));
         Assert.Equal("Collapsed", reportButton.Attribute("Visibility")?.Value);
         Assert.Equal("Collapsed", minimizeToTrayButton.Attribute("Visibility")?.Value);

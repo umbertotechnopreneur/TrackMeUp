@@ -51,7 +51,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
             application,
             this,
             _appWindow,
-            WindowStateKeys.Dialog,
+            WindowStateKeys.WorldClockCityPicker,
             LogicalWidth,
             LogicalHeight,
             LogicalScreenMargin,
@@ -66,17 +66,17 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
         }
 
         DialogTitleText.Text = Title;
-        CitySearchBox.PlaceholderText = strings.Translate("WorldClock.SearchCity");
+        CityComboBox.PlaceholderText = strings.Translate("WorldClock.SearchCity");
         CancelButton.Content = strings.Translate("Dialog.Cancel");
         AddButton.Content = strings.Translate("WorldClock.Add");
         AutomationProperties.SetName(RootGrid, Title);
         AutomationProperties.SetName(DialogTitleText, Title);
-        AutomationProperties.SetName(CitySearchBox, strings.Translate("WorldClock.SearchCity"));
-        AutomationProperties.SetName(CityList, Title);
+        AutomationProperties.SetName(CityComboBox, strings.Translate("WorldClock.SearchCity"));
         AutomationProperties.SetName(CancelButton, strings.Translate("Dialog.Cancel"));
         AutomationProperties.SetName(AddButton, strings.Translate("WorldClock.Add"));
-        CityList.ItemsSource = _options;
-        Closed += (_, _) => _completion.TrySetResult(_result);
+        CityComboBox.ItemsSource = _options;
+        _appWindow.Closing += AppWindow_Closing;
+        Closed += WorldClockCityPickerDialogWindow_Closed;
     }
 
     internal IntPtr WindowHandle => _windowHandle;
@@ -92,39 +92,18 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
-        CitySearchBox.Focus(FocusState.Programmatic);
+        _placement.ApplyDefaultSize(RootGrid);
+        await _placement.RestoreAsync(RootGrid, CancellationToken.None);
+        CityComboBox.Focus(FocusState.Programmatic);
     }
 
-    private void CitySearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-    {
-        if (args.Reason == AutoSuggestionBoxTextChangeReason.ProgrammaticChange)
-        {
-            return;
-        }
-
-        var query = sender.Text.Trim();
-        CityList.ItemsSource = string.IsNullOrEmpty(query)
-            ? _options
-            : _options.Where(option => option.DisplayName.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray();
-        CityList.SelectedItem = null;
-    }
-
-    private void CityList_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
-        AddButton.IsEnabled = CityList.SelectedItem is WorldClockCityPickerOption;
-
-    private async void CityList_ItemClick(object sender, ItemClickEventArgs e)
-    {
-        if (e.ClickedItem is WorldClockCityPickerOption option)
-        {
-            await CompleteAsync(option.Id);
-        }
-    }
+    /// <summary>Enables confirmation only for a city supplied by the packaged catalog.</summary>
+    private void CityComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        AddButton.IsEnabled = CityComboBox.SelectedItem is WorldClockCityPickerOption;
 
     private async void AddButton_Click(object sender, RoutedEventArgs e)
     {
-        if (CityList.SelectedItem is WorldClockCityPickerOption option)
+        if (CityComboBox.SelectedItem is WorldClockCityPickerOption option)
         {
             await CompleteAsync(option.Id);
         }
@@ -139,6 +118,25 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
             e.Handled = true;
             await CompleteAsync(null);
         }
+    }
+
+    /// <summary>Routes the native close command through the same placement-save path as dialog buttons.</summary>
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_isCompleting)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        await CompleteAsync(null);
+    }
+
+    private void WorldClockCityPickerDialogWindow_Closed(object sender, WindowEventArgs args)
+    {
+        _appWindow.Closing -= AppWindow_Closing;
+        Closed -= WorldClockCityPickerDialogWindow_Closed;
+        _completion.TrySetResult(_result);
     }
 
     private async Task CompleteAsync(string? cityId)

@@ -54,9 +54,12 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border
+                                x:Name="ClockCard"
                                 MinHeight="{Binding MinimumHeight}"
                                 BorderThickness="0"
-                                CornerRadius="0">
+                                CornerRadius="0"
+                                PointerEntered="ClockCard_PointerEntered"
+                                PointerExited="ClockCard_PointerExited">
                                 <Border.Background>
                                     <ImageBrush ImageSource="{Binding SkylineImage}" Stretch="UniformToFill" />
                                 </Border.Background>
@@ -98,9 +101,12 @@
                                                     Text="{Binding CityName}"
                                                     TextTrimming="CharacterEllipsis" />
                                                 <StackPanel
+                                                    x:Name="HeroClockActions"
                                                     Margin="0,1,1,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Top"
+                                                    IsHitTestVisible="False"
+                                                    Opacity="0"
                                                     Orientation="Horizontal"
                                                     Spacing="4">
                                                     <Button
@@ -111,6 +117,8 @@
                                                         BorderThickness="0"
                                                         Click="DetailButton_Click"
                                                         CornerRadius="15"
+                                                        GotFocus="ClockActionButton_GotFocus"
+                                                        LostFocus="ClockActionButton_LostFocus"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding DetailAccessibleName}">
                                                         <FontIcon
@@ -128,6 +136,8 @@
                                                         BorderThickness="0"
                                                         Click="RemoveButton_Click"
                                                         CornerRadius="15"
+                                                        GotFocus="ClockActionButton_GotFocus"
+                                                        LostFocus="ClockActionButton_LostFocus"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding RemoveAccessibleName}">
                                                         <SymbolIcon Foreground="#E8FFFFFF" Symbol="Delete" />
@@ -240,9 +250,12 @@
                                                     IsDaylight="{Binding IsDaylight}"
                                                     MoonPhaseAngleDegrees="{Binding MoonPhaseAngleDegrees}" />
                                                 <StackPanel
+                                                    x:Name="CompactClockActions"
                                                     Margin="0,1,1,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Top"
+                                                    IsHitTestVisible="False"
+                                                    Opacity="0"
                                                     Orientation="Horizontal"
                                                     Spacing="3">
                                                     <Button
@@ -253,6 +266,8 @@
                                                         BorderThickness="0"
                                                         Click="DetailButton_Click"
                                                         CornerRadius="14"
+                                                        GotFocus="ClockActionButton_GotFocus"
+                                                        LostFocus="ClockActionButton_LostFocus"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding DetailAccessibleName}">
                                                         <FontIcon
@@ -270,6 +285,8 @@
                                                         BorderThickness="0"
                                                         Click="RemoveButton_Click"
                                                         CornerRadius="14"
+                                                        GotFocus="ClockActionButton_GotFocus"
+                                                        LostFocus="ClockActionButton_LostFocus"
                                                         Padding="0"
                                                         ToolTipService.ToolTip="{Binding RemoveAccessibleName}">
                                                         <SymbolIcon Foreground="#E8FFFFFF" Symbol="Delete" />

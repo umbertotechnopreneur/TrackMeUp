@@ -4,7 +4,9 @@ using System.Runtime.CompilerServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -114,6 +116,100 @@ public sealed partial class WorldClockRailControl : UserControl
         }
     }
 
+    /// <summary>Fades card actions in without moving any clock content.</summary>
+    private void ClockCard_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ClockCardViewModel clock } card)
+        {
+            clock.IsPointerOver = true;
+            SetClockActionsVisible(card, isVisible: true);
+        }
+    }
+
+    /// <summary>Fades card actions out after pointer exit unless keyboard focus still owns them.</summary>
+    private void ClockCard_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ClockCardViewModel clock } card)
+        {
+            clock.IsPointerOver = false;
+            SetClockActionsVisible(card, clock.HasActionFocus);
+        }
+    }
+
+    private void ClockActionButton_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (FindClockCard(sender as DependencyObject) is { DataContext: ClockCardViewModel clock } card)
+        {
+            clock.HasActionFocus = true;
+            SetClockActionsVisible(card, isVisible: true);
+        }
+    }
+
+    private void ClockActionButton_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (FindClockCard(sender as DependencyObject) is not { DataContext: ClockCardViewModel clock } card)
+        {
+            return;
+        }
+
+        _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            clock.HasActionFocus = IsFocusWithin(card);
+            SetClockActionsVisible(card, clock.IsPointerOver || clock.HasActionFocus);
+        });
+    }
+
+    private static FrameworkElement? FindClockCard(DependencyObject? element)
+    {
+        for (var current = element; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is FrameworkElement { Name: "ClockCard" } card)
+            {
+                return card;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsFocusWithin(FrameworkElement card)
+    {
+        var focused = FocusManager.GetFocusedElement(card.XamlRoot) as DependencyObject;
+        for (var current = focused; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (ReferenceEquals(current, card))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void SetClockActionsVisible(FrameworkElement card, bool isVisible)
+    {
+        foreach (var actionName in new[] { "HeroClockActions", "CompactClockActions" })
+        {
+            if (card.FindName(actionName) is not FrameworkElement actions)
+            {
+                throw new InvalidOperationException($"World-clock action host '{actionName}' is missing.");
+            }
+
+            actions.IsHitTestVisible = isVisible;
+            var animation = new DoubleAnimation
+            {
+                From = actions.Opacity,
+                To = isVisible ? 1d : 0d,
+                Duration = new Duration(TimeSpan.FromMilliseconds(140))
+            };
+            Storyboard.SetTarget(animation, actions);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            var storyboard = new Storyboard();
+            storyboard.Children.Add(animation);
+            storyboard.Begin();
+        }
+    }
+
     private void DetailButton_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is ClockCardViewModel clock)
@@ -160,6 +256,9 @@ public sealed partial class WorldClockRailControl : UserControl
         private string? _skylineAssetPath;
         private BitmapImage _skylineImage = null!;
         private bool _hasVisualState;
+
+        public bool IsPointerOver { get; set; }
+        public bool HasActionFocus { get; set; }
 
         public ClockCardViewModel(WorldClockItem item, LocalizationService strings, bool isHero, bool isExpanded)
         {

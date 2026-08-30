@@ -31,7 +31,6 @@ public sealed partial class MainWindow : Window
     #region Fields
 
     private const int LogicalWindowWidth = 470;
-    private const int LogicalWorldClockRailWidth = 278;
     private const int LogicalWindowHeightPadding = 20;
     private const int LogicalScreenMargin = 22;
     private const int WindowResizeAnimationDurationMilliseconds = 180;
@@ -46,6 +45,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherQueueTimer _windowResizeAnimationTimer;
     private readonly DispatcherQueueTimer _worldClockRefreshTimer;
     private readonly AppWindow _appWindow;
+    private readonly WindowPlacementService _placement;
     private readonly MainWindowLayoutState _layoutState = new();
     private readonly MicaDialogService _dialogs;
     private readonly TrayIconService _trayIcon;
@@ -60,6 +60,8 @@ public sealed partial class MainWindow : Window
     private SizeInt32 _windowResizeAnimationTargetSize;
     private string _theme = "system";
     private string _position = FlyoutPositions.BottomCenter;
+    private bool _hasAppliedSettings;
+    private bool _mainPlacementRestored;
     private AppSettings? _menuSettings;
     private AboutWindow? _aboutWindow;
     private ScheduleWindow? _scheduleWindow;
@@ -89,7 +91,7 @@ public sealed partial class MainWindow : Window
     private Task? _optionsInitializationTask;
     private Task? _operationsInitializationTask;
     private WorldClockRailSnapshot? _worldClockSnapshot;
-    private bool _isWorldClockRailVisible;
+    private bool _isWorldClockFlyoutOpen;
     private int _worldClockRefreshInProgress;
     private bool _titleBarLayoutUpdateQueued;
 
@@ -164,6 +166,14 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _placement = new WindowPlacementService(
+            application,
+            this,
+            _appWindow,
+            WindowStateKeys.Main,
+            LogicalWindowWidth,
+            _layoutState.LogicalHeight,
+            LogicalScreenMargin);
         _currentWorkArea = CurrentWorkArea();
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += AppWindow_Closing;
@@ -244,11 +254,6 @@ public sealed partial class MainWindow : Window
         await ShowStartupAiWarningAsync();
         await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync();
-        await RefreshWorldClocksAsync();
-        if (_isWorldClockRailVisible)
-        {
-            _worldClockRefreshTimer.Start();
-        }
     }
 
     private async void WorldClockRefreshTimer_Tick(DispatcherQueueTimer sender, object args) =>
@@ -256,7 +261,7 @@ public sealed partial class MainWindow : Window
 
     private async Task RefreshWorldClocksAsync()
     {
-        if (WorldClockRail.Visibility != Visibility.Visible
+        if (!_isWorldClockFlyoutOpen
             || Interlocked.Exchange(ref _worldClockRefreshInProgress, 1) != 0)
         {
             return;
@@ -316,7 +321,6 @@ public sealed partial class MainWindow : Window
         {
             _worldClockSnapshot = result.Value;
             WorldClockRail.ApplySnapshot(result.Value, _strings);
-            ResizeForCurrentLayout(animate: true);
             return;
         }
 
@@ -334,30 +338,31 @@ public sealed partial class MainWindow : Window
                 MainNotificationBanner,
                 T("WorldClock.RemovedTitle"),
                 _strings.Format("WorldClock.RemovedMessage", e.CityName));
-            ResizeForCurrentLayout(animate: true);
             return;
         }
 
         _dialogs.ShowWarningBanner(MainNotificationBanner, T("WorldClock.ErrorTitle"), T(result.MessageKey));
     }
 
-    /// <summary>Toggles the player world-clock rail without changing the persisted city selection.</summary>
-    private async void WorldClockRailToggleButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Starts local clock refresh only while the title-bar flyout is open.</summary>
+    private async void WorldClockFlyout_Opened(object sender, object e)
     {
         if (_layoutState.Surface != MainWindowSurface.Player)
         {
+            WorldClockFlyout.Hide();
             return;
         }
 
-        _isWorldClockRailVisible = !_isWorldClockRailVisible;
-        ApplyWorldClockRailVisibility();
-        ResizeForCurrentLayout(animate: RootGrid.IsLoaded);
-        QueueTitleBarLayoutUpdate();
-        if (_isWorldClockRailVisible)
-        {
-            FadeIn(WorldClockRail);
-            await RefreshWorldClocksAsync();
-        }
+        _isWorldClockFlyoutOpen = true;
+        _worldClockRefreshTimer.Start();
+        await RefreshWorldClocksAsync();
+    }
+
+    /// <summary>Stops the minute timer as soon as the world-clock flyout is dismissed.</summary>
+    private void WorldClockFlyout_Closed(object sender, object e)
+    {
+        _isWorldClockFlyoutOpen = false;
+        _worldClockRefreshTimer.Stop();
     }
 
     private async Task<string?> ReconcileWindowsStartupAsync(LaunchOptions options)
@@ -860,9 +865,9 @@ public sealed partial class MainWindow : Window
             ElementRect(TitleBarMoreButton, scale),
             ElementRect(TitleBarSearchButton, scale)
         };
-        if (WorldClockRailToggleButton.Visibility == Visibility.Visible)
+        if (WorldClockButton.Visibility == Visibility.Visible)
         {
-            passthroughRects.Add(ElementRect(WorldClockRailToggleButton, scale));
+            passthroughRects.Add(ElementRect(WorldClockButton, scale));
         }
 
         if (TitleBarBackButton.Visibility == Visibility.Visible)
@@ -1338,10 +1343,6 @@ public sealed partial class MainWindow : Window
             await RefreshLastSessionIfDueAsync(force: true);
             FadeIn(DetailsPanel);
         }
-        if (!_windowResizeAnimationTimer.IsRunning)
-        {
-            ApplyFlyoutPosition(_position);
-        }
     }
 
     /// <summary>Shows or hides the presentation-only live activity-score histogram.</summary>
@@ -1353,11 +1354,6 @@ public sealed partial class MainWindow : Window
         if (isVisible)
         {
             FadeIn(ActivityScorePanel);
-        }
-
-        if (!_windowResizeAnimationTimer.IsRunning)
-        {
-            ApplyFlyoutPosition(_position);
         }
     }
 
@@ -1435,9 +1431,8 @@ public sealed partial class MainWindow : Window
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
-        WorldClockRail.Visibility = Visibility.Collapsed;
-        WorldClockRailColumn.Width = new GridLength(0);
-        WorldClockRailToggleButton.Visibility = Visibility.Collapsed;
+        WorldClockFlyout.Hide();
+        WorldClockButton.Visibility = Visibility.Collapsed;
         _worldClockRefreshTimer.Stop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
@@ -1445,7 +1440,6 @@ public sealed partial class MainWindow : Window
         _layoutState.ShowSurface(surface);
         TitleBarBackButton.Visibility = Visibility.Visible;
         ResizeForCurrentLayout(animate: false);
-        ApplyFlyoutPosition(_position);
         FadeIn(panel);
         QueueTitleBarLayoutUpdate();
     }
@@ -1457,33 +1451,11 @@ public sealed partial class MainWindow : Window
         OperationsPanel.Visibility = Visibility.Collapsed;
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
-        WorldClockRailToggleButton.Visibility = Visibility.Visible;
-        ApplyWorldClockRailVisibility();
+        WorldClockButton.Visibility = Visibility.Visible;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         ResizeForCurrentLayout(animate: false);
-        ApplyFlyoutPosition(_position);
         FadeIn(PlayerPanel);
         QueueTitleBarLayoutUpdate();
-    }
-
-    /// <summary>Applies the session-local world-clock rail state and its refresh policy.</summary>
-    private void ApplyWorldClockRailVisibility()
-    {
-        var isVisible = _isWorldClockRailVisible && _layoutState.Surface == MainWindowSurface.Player;
-        WorldClockRailColumn.Width = isVisible
-            ? new GridLength(LogicalWorldClockRailWidth)
-            : new GridLength(0);
-        WorldClockRail.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
-        if (isVisible)
-        {
-            _worldClockRefreshTimer.Start();
-        }
-        else
-        {
-            _worldClockRefreshTimer.Stop();
-        }
-
-        UpdateWorldClockRailToggleAccessibility();
     }
 
     /// <summary>Toggles one player section and resizes from the XAML content currently visible.</summary>
@@ -1509,7 +1481,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Measures the active XAML surface at the flyout width and applies the resulting window height.</summary>
     private void ResizeForCurrentLayout(bool animate)
     {
-        RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));
+        RootGrid.Measure(new Size(LogicalWindowWidth, double.PositiveInfinity));
         var logicalHeight = _layoutState.RecordMeasuredHeight(RootGrid.DesiredSize.Height);
         if (animate && RootGrid.IsLoaded)
         {
@@ -1837,10 +1809,14 @@ public sealed partial class MainWindow : Window
     /// <summary>Applies presentation settings already validated and persisted by the application layer.</summary>
     private void ApplySettings(AppSettings settings)
     {
+        var isInitialSettings = !_hasAppliedSettings;
         var showAiMonthlySpendChanged = _showAiMonthlySpend != settings.ShowAiMonthlySpend;
+        var positionChangedByUser = _hasAppliedSettings
+            && !string.Equals(_position, settings.FlyoutPosition, StringComparison.Ordinal);
         _strings = new LocalizationService(settings.UiLanguage);
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
+        _hasAppliedSettings = true;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
         _showAiMonthlySpend = settings.ShowAiMonthlySpend;
         if (!_showAiMonthlySpend)
@@ -1879,8 +1855,15 @@ public sealed partial class MainWindow : Window
         {
             WorldClockRail.ApplySnapshot(_worldClockSnapshot, _strings);
         }
-        ResizeForCurrentLayout(animate: false);
-        ApplyFlyoutPosition(_position);
+        if (!isInitialSettings || !_mainPlacementRestored)
+        {
+            ResizeForCurrentLayout(animate: false);
+        }
+        if (positionChangedByUser)
+        {
+            // A newly selected anchor is explicit user intent; routine layout changes never reposition the window.
+            ApplyFlyoutPosition(_position);
+        }
 
         SettingsApplied?.Invoke(settings);
     }
@@ -1892,21 +1875,12 @@ public sealed partial class MainWindow : Window
         SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
         SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
         SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
-        UpdateWorldClockRailToggleAccessibility();
+        SetIconButtonLabel(WorldClockButton, "WorldClock.ShowRail");
         SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
         SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
         AutomationProperties.SetName(TrackingStatusToast, T("Main.TrackingStatus"));
         AutomationProperties.SetName(ActivityScoreBarHost, T("Activity.LastThirtyMinutes"));
         UpdateScreenshotPreviewAccessibility();
-    }
-
-    private void UpdateWorldClockRailToggleAccessibility()
-    {
-        var key = _isWorldClockRailVisible ? "WorldClock.HideRail" : "WorldClock.ShowRail";
-        var label = T(key);
-        WorldClockRailToggleButton.Tag = key;
-        AutomationProperties.SetName(WorldClockRailToggleButton, label);
-        ToolTipService.SetToolTip(WorldClockRailToggleButton, label);
     }
 
     private void SetIconButtonLabel(Button button, string key)
@@ -2058,10 +2032,9 @@ public sealed partial class MainWindow : Window
             : $"{message}{Environment.NewLine}{Environment.NewLine}{detail}";
     }
 
-    /// <summary>Shows and positions the player when requested from the taskbar control.</summary>
+    /// <summary>Shows the player at its current user-controlled position.</summary>
     public void ShowFlyout()
     {
-        ApplyFlyoutPosition(_position);
         Activate();
     }
 
@@ -2099,9 +2072,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Starts the player entrance fade.</summary>
-    private void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        _rootLoaded.TrySetResult();
         if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
         {
             _xamlRoot = xamlRoot;
@@ -2109,7 +2081,9 @@ public sealed partial class MainWindow : Window
         }
 
         ResizeForCurrentLayout(animate: false);
-        ApplyFlyoutPosition(_position);
+        _mainPlacementRestored = await _placement.RestoreAsync(RootGrid, CancellationToken.None);
+        _currentWorkArea = CurrentWorkArea();
+        _rootLoaded.TrySetResult();
         FadeIn(PlayerPanel);
     }
 
@@ -2122,7 +2096,7 @@ public sealed partial class MainWindow : Window
         }
 
         ResizeForCurrentLayout(animate: false);
-        ApplyFlyoutPosition(_position);
+        _placement.KeepCurrentBoundsInWorkArea(RootGrid);
     }
 
     /// <summary>Reapplies the smart height limit when the flyout crosses onto another display.</summary>
@@ -2146,7 +2120,7 @@ public sealed partial class MainWindow : Window
 
         _currentWorkArea = workArea;
         ResizeForCurrentLayout(animate: false);
-        ApplyFlyoutPosition(_position);
+        _placement.KeepCurrentBoundsInWorkArea(RootGrid);
     }
 
     /// <summary>Confirms native close requests before the application suspends tracking and exits.</summary>
@@ -2187,6 +2161,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _allowClose = true;
         Close();
     }
@@ -2218,7 +2193,6 @@ public sealed partial class MainWindow : Window
         if (_windowResizeAnimationStartSize.Height == _windowResizeAnimationTargetSize.Height)
         {
             _appWindow.Resize(_windowResizeAnimationTargetSize);
-            ApplyFlyoutPosition(_position);
             QueueTitleBarLayoutUpdate();
             return;
         }
@@ -2237,7 +2211,6 @@ public sealed partial class MainWindow : Window
             _windowResizeAnimationStartSize.Height
             + ((_windowResizeAnimationTargetSize.Height - _windowResizeAnimationStartSize.Height) * easedProgress));
         _appWindow.Resize(new SizeInt32(_windowResizeAnimationTargetSize.Width, height));
-        ApplyFlyoutPosition(_position);
 
         if (progress >= 1d)
         {
@@ -2258,13 +2231,10 @@ public sealed partial class MainWindow : Window
         var availableWidth = Math.Max(1, workArea.Width - (physicalMargin * 2));
         var availableHeight = Math.Max(1, workArea.Height - (physicalMargin * 2));
         var boundedLogicalHeight = _layoutState.ResolveLogicalHeight(availableHeight / scale, LogicalWindowHeightPadding);
-        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(CurrentLogicalWindowWidth * scale));
+        var physicalWidth = Math.Min(availableWidth, (int)Math.Ceiling(LogicalWindowWidth * scale));
         var physicalHeight = Math.Min(availableHeight, (int)Math.Ceiling(boundedLogicalHeight * scale));
         return new SizeInt32(physicalWidth, physicalHeight);
     }
-
-    private int CurrentLogicalWindowWidth => LogicalWindowWidth
-        + (WorldClockRail.Visibility == Visibility.Visible ? LogicalWorldClockRailWidth : 0);
 
     /// <summary>Places the player at the selected visual anchor.</summary>
     private void ApplyFlyoutPosition(string position)
@@ -2304,6 +2274,7 @@ public sealed partial class MainWindow : Window
         _dialogs.CloseActive();
         _appWindow.Changed -= AppWindow_Changed;
         _appWindow.Closing -= AppWindow_Closing;
+        _placement.Dispose();
         _trayIcon.ExitRequested -= TrayIcon_ExitRequested;
         _trayIcon.Dispose();
         if (_optionsControl is not null)
