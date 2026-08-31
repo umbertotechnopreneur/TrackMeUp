@@ -12,7 +12,12 @@ if (lock.lockfileVersion !== 3 || typeof lock.packages !== 'object' || lock.pack
 }
 
 const productionPackages = Object.entries(lock.packages)
-  .filter(([packagePath, metadata]) => packagePath.startsWith('node_modules/') && !metadata.dev && !metadata.devOptional)
+  .filter(([packagePath, metadata]) => (
+    packagePath.startsWith('node_modules/')
+    && !metadata.dev
+    && !metadata.devOptional
+    && !(metadata.optional && (metadata.os || metadata.cpu))
+  ))
   .map(([packagePath, metadata]) => ({ packagePath, metadata }))
   .sort((left, right) => left.packagePath.localeCompare(right.packagePath, 'en'))
 
@@ -77,6 +82,7 @@ const lines = [
   '- Regenerate with `npm run notices:production` from `TrackMeUp.Reports.Web`.',
   '- Source of truth: `package-lock.json` plus the installed packages\' top-level license and notice files.',
   '- Scope: the complete production dependency closure resolved for the tracked web report bundle; development-only tooling is excluded.',
+  '- Platform-specific optional packages are excluded from the generated report distribution notices.',
   '',
   `Production packages: ${notices.length}.`,
   '',

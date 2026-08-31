@@ -5,6 +5,7 @@ This file is generated. Do not edit it manually.
 - Regenerate with `npm run notices:production` from `TrackMeUp.Reports.Web`.
 - Source of truth: `package-lock.json` plus the installed packages' top-level license and notice files.
 - Scope: the complete production dependency closure resolved for the tracked web report bundle; development-only tooling is excluded.
+- Platform-specific optional packages are excluded from the generated report distribution notices.
 
 Production packages: 29.
 
@@ -16,15 +17,15 @@ Production packages: 29.
 | `@babel/types` | `7.29.8` | `MIT` | `LICENSE` |
 | `@jridgewell/sourcemap-codec` | `1.5.5` | `MIT` | `LICENSE` |
 | `@mdi/js` | `7.4.47` | `Apache-2.0` | `LICENSE` |
-| `@vue/compiler-core` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/compiler-dom` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/compiler-sfc` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/compiler-ssr` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/reactivity` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/runtime-core` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/runtime-dom` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/server-renderer` | `3.5.40` | `MIT` | `LICENSE` |
-| `@vue/shared` | `3.5.40` | `MIT` | `LICENSE` |
+| `@vue/compiler-core` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/compiler-dom` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/compiler-sfc` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/compiler-ssr` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/reactivity` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/runtime-core` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/runtime-dom` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/server-renderer` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vue/shared` | `3.5.42` | `MIT` | `LICENSE` |
 | `csstype` | `3.2.3` | `MIT` | `LICENSE` |
 | `echarts` | `6.1.0` | `Apache-2.0` | `LICENSE`, `NOTICE` |
 | `entities` | `7.0.1` | `BSD-2-Clause` | `LICENSE` |
@@ -32,12 +33,12 @@ Production packages: 29.
 | `magic-string` | `0.30.21` | `MIT` | `LICENSE` |
 | `nanoid` | `3.3.18` | `MIT` | `LICENSE` |
 | `picocolors` | `1.1.1` | `ISC` | `LICENSE` |
-| `postcss` | `8.5.25` | `MIT` | `LICENSE` |
+| `postcss` | `8.5.26` | `MIT` | `LICENSE` |
 | `source-map-js` | `1.2.1` | `BSD-3-Clause` | `LICENSE` |
 | `tslib` | `2.3.0` | `0BSD` | `LICENSE.txt` |
-| `vue` | `3.5.40` | `MIT` | `LICENSE` |
-| `vue-echarts` | `8.0.1` | `MIT` | `LICENSE` |
-| `vuetify` | `4.1.7` | `MIT` | `LICENSE.md` |
+| `vue` | `3.5.42` | `MIT` | `LICENSE` |
+| `vue-echarts` | `8.1.0` | `MIT` | `LICENSE` |
+| `vuetify` | `4.1.12` | `MIT` | `LICENSE.md` |
 | `zrender` | `6.1.0` | `BSD-3-Clause` | `LICENSE` |
 
 ## @babel/helper-string-parser 7.29.7
@@ -218,7 +219,7 @@ licenses or are distributed under the Apache 2.0 license.
 The MIT license applies to all non-font and non-icon files.
 ```
 
-## @vue/compiler-core 3.5.40
+## @vue/compiler-core 3.5.42
 
 Declared license: `MIT`
 
@@ -248,7 +249,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/compiler-dom 3.5.40
+## @vue/compiler-dom 3.5.42
 
 Declared license: `MIT`
 
@@ -278,7 +279,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/compiler-sfc 3.5.40
+## @vue/compiler-sfc 3.5.42
 
 Declared license: `MIT`
 
@@ -308,7 +309,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/compiler-ssr 3.5.40
+## @vue/compiler-ssr 3.5.42
 
 Declared license: `MIT`
 
@@ -338,7 +339,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/reactivity 3.5.40
+## @vue/reactivity 3.5.42
 
 Declared license: `MIT`
 
@@ -368,7 +369,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/runtime-core 3.5.40
+## @vue/runtime-core 3.5.42
 
 Declared license: `MIT`
 
@@ -398,7 +399,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/runtime-dom 3.5.40
+## @vue/runtime-dom 3.5.42
 
 Declared license: `MIT`
 
@@ -428,7 +429,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/server-renderer 3.5.40
+## @vue/server-renderer 3.5.42
 
 Declared license: `MIT`
 
@@ -458,7 +459,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## @vue/shared 3.5.40
+## @vue/shared 3.5.42
 
 Declared license: `MIT`
 
@@ -862,7 +863,7 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-## postcss 8.5.25
+## postcss 8.5.26
 
 Declared license: `MIT`
 
@@ -949,7 +950,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-## vue 3.5.40
+## vue 3.5.42
 
 Declared license: `MIT`
 
@@ -979,7 +980,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## vue-echarts 8.0.1
+## vue-echarts 8.1.0
 
 Declared license: `MIT`
 
@@ -1009,7 +1010,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## vuetify 4.1.7
+## vuetify 4.1.12
 
 Declared license: `MIT`
 
