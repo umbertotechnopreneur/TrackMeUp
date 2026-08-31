@@ -5,6 +5,37 @@ using System.Runtime.InteropServices;
 
 namespace TrackMeUp.Services;
 
+/// <summary>Defines the native icon shown by a Windows system message box.</summary>
+public enum SystemMessageBoxSeverity
+{
+    /// <summary>Shows the standard information icon.</summary>
+    Information,
+
+    /// <summary>Shows the standard warning icon.</summary>
+    Warning,
+
+    /// <summary>Shows the standard error icon.</summary>
+    Error
+}
+
+/// <summary>Describes the localized title and message rendered by one Windows system message box.</summary>
+public sealed record SystemMessageBoxRequest(
+    string Title,
+    string Message,
+    SystemMessageBoxSeverity Severity)
+{
+    /// <summary>Creates a one-button informational request.</summary>
+    public static SystemMessageBoxRequest Informative(
+        string title,
+        string message,
+        SystemMessageBoxSeverity severity) =>
+        new(title, message, severity);
+
+    /// <summary>Creates a warning confirmation whose native Cancel button is the safe default.</summary>
+    public static SystemMessageBoxRequest Confirmation(string title, string message) =>
+        new(title, message, SystemMessageBoxSeverity.Warning);
+}
+
 /// <summary>Owns the native window operations shared by WinUI presentation surfaces.</summary>
 public static class WindowInteropService
 {
@@ -17,8 +48,15 @@ public static class WindowInteropService
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoActivate = 0x0010;
     private const uint MbOk = 0x00000000;
+    private const uint MbOkCancel = 0x00000001;
+    private const uint MbIconError = 0x00000010;
     private const uint MbIconWarning = 0x00000030;
+    private const uint MbIconInformation = 0x00000040;
+    private const uint MbDefaultButton2 = 0x00000100;
     private const uint MbSetForeground = 0x00010000;
+    private const uint MbTopMost = 0x00040000;
+    private const int IdOk = 1;
+    private const int IdCancel = 2;
     private static readonly IntPtr HwndTopMost = new(-1);
 
     /// <summary>Applies the optional native chrome used by the compact player window.</summary>
@@ -118,18 +156,71 @@ public static class WindowInteropService
         }
     }
 
-    /// <summary>Shows an owned Windows warning message with the standard acknowledgement action.</summary>
-    public static void ShowWarningMessage(IntPtr ownerHandle, string title, string message)
+    /// <summary>Shows an owned Windows message with the standard localized OK action.</summary>
+    public static void ShowInformativeMessage(IntPtr ownerHandle, SystemMessageBoxRequest request)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(ownerHandle, IntPtr.Zero);
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        ValidateSystemMessageRequest(request);
 
         // This synchronous Win32 call owns its modal loop and returns only after the standard OK action.
-        if (MessageBoxW(ownerHandle, message, title, MbOk | MbIconWarning | MbSetForeground) == 0)
+        var result = MessageBoxW(
+            ownerHandle,
+            request.Message,
+            request.Title,
+            MbOk | SeverityFlag(request.Severity) | MbSetForeground | MbTopMost);
+        if (result == 0)
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Unable to show the Windows warning message.");
+            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Unable to show the Windows system message.");
         }
+
+        if (result != IdOk)
+        {
+            throw new InvalidOperationException($"Windows returned unsupported informative message result {result}.");
+        }
+    }
+
+    /// <summary>Shows an owned Windows OK/Cancel confirmation with Cancel selected by default.</summary>
+    /// <returns><see langword="true"/> only when the user explicitly chooses the native OK action.</returns>
+    public static bool ShowConfirmationMessage(IntPtr ownerHandle, SystemMessageBoxRequest request)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(ownerHandle, IntPtr.Zero);
+        ValidateSystemMessageRequest(request);
+
+        var result = MessageBoxW(
+            ownerHandle,
+            request.Message,
+            request.Title,
+            MbOkCancel | MbDefaultButton2 | SeverityFlag(request.Severity) | MbSetForeground | MbTopMost);
+        if (result == 0)
+        {
+            // A P/Invoke failure is surfaced instead of being confused with user cancellation; either path
+            // prevents the caller from proceeding with a destructive action.
+            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Unable to show the Windows confirmation message.");
+        }
+
+        // Closing the box and every response other than the explicit OK action are safe cancellation.
+        return result switch
+        {
+            IdOk => true,
+            IdCancel => false,
+            _ => false
+        };
+    }
+
+    private static uint SeverityFlag(SystemMessageBoxSeverity severity) => severity switch
+    {
+        SystemMessageBoxSeverity.Information => MbIconInformation,
+        SystemMessageBoxSeverity.Warning => MbIconWarning,
+        SystemMessageBoxSeverity.Error => MbIconError,
+        _ => throw new ArgumentOutOfRangeException(nameof(severity), severity, "Unsupported system message severity.")
+    };
+
+    private static void ValidateSystemMessageRequest(SystemMessageBoxRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Message);
+        _ = SeverityFlag(request.Severity);
     }
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]

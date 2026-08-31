@@ -250,17 +250,18 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
 
                     Set(SearchIndexMutation.Delete($"screenshot:{change.EntityId}"));
                     Set(SearchIndexMutation.Delete($"screenshot-text:{change.EntityId}"));
-                    if (!string.Equals(change.Operation, "delete", StringComparison.Ordinal))
+                    // A text or telemetry delete does not imply that the retained image disappeared.
+                    // Re-read the authoritative artifact state for every mutation so analysis-only
+                    // deletion replaces the searchable document instead of removing it.
+                    var current = _store.GetScreenshotGalleryItem(change.EntityId, cancellationToken);
+                    if (current is not null)
                     {
-                        var current = _store.GetScreenshotGalleryItem(change.EntityId, cancellationToken);
-                        if (current is not null)
-                        {
-                            Set(SearchIndexMutation.Upsert(BuildScreenshotDocument(current, defaultLanguage)));
-                        }
-                        else if (_store.LoadScreenshotTextSnapshotByIdentity(change.EntityId) is { } text)
-                        {
-                            Set(SearchIndexMutation.Upsert(BuildOrphanTextDocument(change.EntityId, null, text, defaultLanguage)));
-                        }
+                        Set(SearchIndexMutation.Upsert(BuildScreenshotDocument(current, defaultLanguage)));
+                    }
+                    else if (!string.Equals(change.Operation, "delete", StringComparison.Ordinal)
+                        && _store.LoadScreenshotTextSnapshotByIdentity(change.EntityId) is { } text)
+                    {
+                        Set(SearchIndexMutation.Upsert(BuildOrphanTextDocument(change.EntityId, null, text, defaultLanguage)));
                     }
                     break;
 

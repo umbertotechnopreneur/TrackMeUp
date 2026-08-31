@@ -151,6 +151,7 @@ public sealed partial class OptionsControl : UserControl
         {
             SearchOptionsView.Visibility = Visibility.Collapsed;
             AppOptionsView.Visibility = Visibility.Visible;
+            TestConnectionButton.Visibility = Visibility.Collapsed;
             NotifyLayoutChanged();
             return;
         }
@@ -159,6 +160,7 @@ public sealed partial class OptionsControl : UserControl
         {
             AiOptionsView.Visibility = Visibility.Collapsed;
             AppOptionsView.Visibility = Visibility.Visible;
+            TestConnectionButton.Visibility = Visibility.Collapsed;
             NotifyLayoutChanged();
             return;
         }
@@ -171,6 +173,7 @@ public sealed partial class OptionsControl : UserControl
     {
         AppOptionsView.Visibility = Visibility.Collapsed;
         AiOptionsView.Visibility = Visibility.Visible;
+        TestConnectionButton.Visibility = Visibility.Visible;
         NotifyLayoutChanged();
         if (_aiState is not null)
         {
@@ -184,6 +187,7 @@ public sealed partial class OptionsControl : UserControl
     {
         AppOptionsView.Visibility = Visibility.Collapsed;
         SearchOptionsView.Visibility = Visibility.Visible;
+        TestConnectionButton.Visibility = Visibility.Collapsed;
         NotifyLayoutChanged();
     }
 

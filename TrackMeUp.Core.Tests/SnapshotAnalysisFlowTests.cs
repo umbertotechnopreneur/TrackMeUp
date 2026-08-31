@@ -138,8 +138,9 @@ public sealed class SnapshotAnalysisFlowTests
         }
     }
 
+    /// <summary>Ensures an unexpected OCR failure removes every captured artifact and returns an explicit failure.</summary>
     [Fact]
-    public async Task CaptureScreenshot_UnexpectedOcrFailureCleansRawAndReturnsFailure()
+    public async Task CaptureScreenshot_UnexpectedOcrFailureCleansAllArtifactsAndReturnsFailure()
     {
         var dataDirectory = CreateTemporaryDirectory();
         try
@@ -168,7 +169,7 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.NotNull(capture.RawPath);
             Assert.NotNull(capture.StoredPath);
             Assert.False(File.Exists(capture.RawPath));
-            Assert.True(File.Exists(capture.StoredPath));
+            Assert.False(File.Exists(capture.StoredPath));
             Assert.Equal(0, analysis.CallCount);
         }
         finally
@@ -853,8 +854,14 @@ public sealed class SnapshotAnalysisFlowTests
 
         public ScreenshotCaptureResult Result { get; private set; }
 
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin)
+        /// <inheritdoc />
+        public ScreenshotCaptureResult CaptureByMode(
+            string directory,
+            string captureMode,
+            string captureOrigin,
+            Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
         {
+            Authorize(authorizeCapture);
             CallCount++;
             LastCaptureOrigin = captureOrigin;
             LastCaptureMode = captureMode;
@@ -881,14 +888,29 @@ public sealed class SnapshotAnalysisFlowTests
 
         public string? StoredPath { get; private set; }
 
-        public ScreenshotCaptureResult CaptureByMode(string requestedDirectory, string captureMode, string captureOrigin)
+        /// <inheritdoc />
+        public ScreenshotCaptureResult CaptureByMode(
+            string requestedDirectory,
+            string captureMode,
+            string captureOrigin,
+            Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
         {
+            Authorize(authorizeCapture);
             var captureId = Guid.NewGuid().ToString("N");
             RawPath = Path.Combine(directory, $"{captureId}_1.0.0_{captureOrigin}_monitor-1-raw.webp");
             StoredPath = Path.Combine(directory, $"{captureId}_1.0.0_{captureOrigin}_monitor-1.webp");
             File.WriteAllBytes(RawPath, [1, 2, 3]);
             File.WriteAllBytes(StoredPath, [4, 5, 6]);
             return new ScreenshotCaptureResult(captureId, [RawPath], [StoredPath], captureOrigin);
+        }
+    }
+
+    private static void Authorize(Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
+    {
+        var decision = authorizeCapture(ScreenshotCaptureContext.Unavailable);
+        if (decision != ScreenshotCaptureDecision.Allowed)
+        {
+            throw new ScreenshotCapturePreconditionException(decision);
         }
     }
 

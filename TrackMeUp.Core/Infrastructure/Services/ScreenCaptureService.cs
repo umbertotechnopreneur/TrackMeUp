@@ -17,15 +17,65 @@ namespace TrackMeUp.Services;
 /// <summary>Captures one validated snapshot pass for application-layer orchestration.</summary>
 public interface IScreenCaptureService
 {
-    /// <summary>Captures the configured screen scope and returns AI and retained artifacts.</summary>
+    /// <summary>Captures only after the application authorizes the foreground context at the pixel boundary.</summary>
     /// <param name="directory">Root directory below which calendar-based capture folders are created.</param>
     /// <param name="captureMode">Capture mode: all-screens or active-window.</param>
     /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
+    /// <param name="authorizeCapture">Fail-closed application policy evaluated immediately before capture.</param>
     /// <returns>The captured analysis and retained artifact paths.</returns>
     ScreenshotCaptureResult CaptureByMode(
         string directory,
         string captureMode,
-        string captureOrigin);
+        string captureOrigin,
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture);
+}
+
+/// <summary>Classifies the application-owned policy decision made immediately before screenshot pixels are read.</summary>
+public enum ScreenshotCaptureDecision
+{
+    /// <summary>The current foreground context may be captured.</summary>
+    Allowed,
+
+    /// <summary>Screenshot capture was disabled while the operation was waiting to run.</summary>
+    ScreenshotsDisabled,
+
+    /// <summary>The current foreground context is private or cannot be proven safe.</summary>
+    PrivacyBlocked
+}
+
+/// <summary>Describes the foreground target observed at the capture boundary.</summary>
+/// <param name="ProcessName">Foreground process name, or empty when Windows cannot resolve it.</param>
+/// <param name="ApplicationName">Provider-normalized application label.</param>
+/// <param name="Context">Provider-normalized activity context.</param>
+/// <param name="WindowTitle">Foreground window title, or empty when unavailable.</param>
+public sealed record ScreenshotCaptureContext(
+    string ProcessName,
+    string ApplicationName,
+    string Context,
+    string WindowTitle)
+{
+    /// <summary>Represents foreground metadata that could not be resolved by an alternate capture implementation.</summary>
+    public static ScreenshotCaptureContext Unavailable { get; } = new(string.Empty, string.Empty, string.Empty, string.Empty);
+}
+
+/// <summary>Stops screenshot acquisition when application policy changes before pixels are read.</summary>
+public sealed class ScreenshotCapturePreconditionException : InvalidOperationException
+{
+    /// <summary>Creates a capture precondition failure for the supplied policy decision.</summary>
+    /// <param name="decision">Non-allowed decision returned by the application policy.</param>
+    public ScreenshotCapturePreconditionException(ScreenshotCaptureDecision decision)
+        : base($"Screenshot capture was rejected by the runtime policy: {decision}.")
+    {
+        if (decision == ScreenshotCaptureDecision.Allowed)
+        {
+            throw new ArgumentOutOfRangeException(nameof(decision), decision, "An allowed capture cannot produce a precondition failure.");
+        }
+
+        Decision = decision;
+    }
+
+    /// <summary>Gets the policy decision that rejected the capture.</summary>
+    public ScreenshotCaptureDecision Decision { get; }
 }
 
 /// <summary>
@@ -48,25 +98,28 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         _appVersion = string.IsNullOrWhiteSpace(appVersion) ? "0.0.0" : appVersion;
     }
 
-    /// <summary>
-    /// Captures clean screenshots and returns the shared AI/storage artifacts.
-    /// </summary>
-    /// <param name="directory">Directory where files are written.</param>
-    /// <param name="captureMode">Capture mode: all-screens or active-window.</param>
-    /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
+    /// <inheritdoc />
     public ScreenshotCaptureResult CaptureByMode(
         string directory,
         string captureMode,
-        string captureOrigin)
+        string captureOrigin,
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
     {
+        ArgumentNullException.ThrowIfNull(authorizeCapture);
         var captureId = Guid.NewGuid().ToString("N");
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         var capturedAt = DateTimeOffset.Now;
+        if (captureMode is not "active-window" and not "all-screens")
+        {
+            throw new ArgumentException("Screenshot capture mode must be 'all-screens' or 'active-window'.", nameof(captureMode));
+        }
+
+        var foreground = CaptureForegroundTarget();
+        EnsureCaptureAllowed(authorizeCapture(foreground.ToCaptureContext()));
         return captureMode switch
         {
-            "active-window" => CaptureActiveWindow(directory, captureId, validatedOrigin, capturedAt),
-            "all-screens" => CaptureAllScreens(directory, captureId, validatedOrigin, capturedAt),
-            _ => throw new ArgumentException("Screenshot capture mode must be 'all-screens' or 'active-window'.", nameof(captureMode))
+            "active-window" => CaptureActiveWindow(directory, captureId, validatedOrigin, capturedAt, foreground, authorizeCapture),
+            _ => CaptureAllScreens(directory, captureId, validatedOrigin, capturedAt, foreground, authorizeCapture)
         };
     }
 
@@ -83,31 +136,19 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         return OwnedArtifactName.IsMatch(Path.GetFileName(path));
     }
 
-    /// <summary>
-    /// Captures all monitors and returns a pair of analysis and storage screenshot lists.
-    /// </summary>
-    /// <param name="directory">Directory where files are written.</param>
-    /// <param name="captureId">Unique identifier shared by artifacts from this capture pass.</param>
-    /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
-    /// <returns>The captured analysis and retained artifact paths.</returns>
-    public ScreenshotCaptureResult CaptureAllScreens(
-        string directory,
-        string captureId,
-        string captureOrigin) =>
-        CaptureAllScreens(directory, captureId, captureOrigin, DateTimeOffset.Now);
-
     private ScreenshotCaptureResult CaptureAllScreens(
         string directory,
         string captureId,
         string captureOrigin,
-        DateTimeOffset capturedAt)
+        DateTimeOffset capturedAt,
+        ForegroundCaptureTarget foreground,
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
     {
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         var captureDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
         // All artifacts from this capture pass share one resolved day directory; directory creation failures abort capture.
         Directory.CreateDirectory(captureDirectory);
         var displays = EnumerateDisplays();
-        var foreground = CaptureForegroundTarget();
         var focusedDisplay = ResolveFocusedDisplay(displays, foreground.WindowBounds);
         var focusMetadata = CreateFocusMetadata(focusedDisplay, foreground, focusedDisplay.Stem);
         var captureOrder = displays
@@ -126,7 +167,8 @@ public sealed class ScreenCaptureService : IScreenCaptureService
                     display.Stem,
                     captureId,
                     validatedOrigin,
-                    capturedAt);
+                    capturedAt,
+                    authorizeCapture);
 
                 if (display.Index == focusedDisplay.Index)
                 {
@@ -154,30 +196,18 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             CapturedAt: capturedAt);
     }
 
-    /// <summary>
-    /// Captures current foreground window and returns a pair of analysis/storage screenshot paths.
-    /// </summary>
-    /// <param name="directory">Directory where files are written.</param>
-    /// <param name="captureId">Unique identifier shared by artifacts from this capture pass.</param>
-    /// <param name="captureOrigin">Stable manual or scheduled capture origin.</param>
-    /// <returns>The captured analysis and retained artifact paths.</returns>
-    public ScreenshotCaptureResult CaptureActiveWindow(
-        string directory,
-        string captureId,
-        string captureOrigin) =>
-        CaptureActiveWindow(directory, captureId, captureOrigin, DateTimeOffset.Now);
-
     private ScreenshotCaptureResult CaptureActiveWindow(
         string directory,
         string captureId,
         string captureOrigin,
-        DateTimeOffset capturedAt)
+        DateTimeOffset capturedAt,
+        ForegroundCaptureTarget foreground,
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
     {
         var validatedOrigin = ScreenshotCaptureOrigins.Validate(captureOrigin);
         var captureDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
         // The foreground capture uses the same durable calendar layout as multi-monitor capture.
         Directory.CreateDirectory(captureDirectory);
-        var foreground = CaptureForegroundTarget();
         var focusedDisplay = ResolveFocusedDisplay(EnumerateDisplays(), foreground.WindowBounds);
         var focusMetadata = CreateFocusMetadata(focusedDisplay, foreground, "active-window");
         var paths = CaptureRect(
@@ -186,7 +216,8 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             "active-window",
             captureId,
             validatedOrigin,
-            capturedAt);
+            capturedAt,
+            authorizeCapture);
         return new ScreenshotCaptureResult(
             captureId,
             paths.Analysis,
@@ -269,7 +300,7 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         var processName = ReadProcessName(window);
         var title = ReadWindowTitle(window);
         var context = new ActivityContextProviderRegistry().Resolve(new ForegroundWindowInfo(processName, title));
-        return new ForegroundCaptureTarget(window, bounds, context.Application, title);
+        return new ForegroundCaptureTarget(window, bounds, processName, context.Application, context.Context, title);
     }
 
     private static string ReadProcessName(IntPtr window)
@@ -277,25 +308,25 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         NativeMethods.GetWindowThreadProcessId(window, out var processId);
         if (processId == 0)
         {
-            return "System";
+            return string.Empty;
         }
 
         try
         {
             using var process = Process.GetProcessById((int)processId);
-            return string.IsNullOrWhiteSpace(process.ProcessName) ? "System" : process.ProcessName;
+            return string.IsNullOrWhiteSpace(process.ProcessName) ? string.Empty : process.ProcessName;
         }
         catch (ArgumentException)
         {
-            return "System";
+            return string.Empty;
         }
         catch (InvalidOperationException)
         {
-            return "System";
+            return string.Empty;
         }
         catch (System.ComponentModel.Win32Exception)
         {
-            return "System";
+            return string.Empty;
         }
     }
 
@@ -338,7 +369,8 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         string stem,
         string captureId,
         string captureOrigin,
-        DateTimeOffset capturedAt)
+        DateTimeOffset capturedAt,
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
     {
         var width = rect.Right - rect.Left;
         var height = rect.Bottom - rect.Top;
@@ -351,7 +383,9 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppRgb);
             using (var graphics = Graphics.FromImage(bitmap))
             {
-                // Pixel acquisition is performed once; all later artifacts reuse this in-memory buffer.
+                // Re-read the foreground immediately before every pixel acquisition. If Windows cannot
+                // provide metadata while privacy rules exist, the application guard rejects the pass.
+                AuthorizeCurrentForeground(authorizeCapture);
                 graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, new Size(width, height));
             }
 
@@ -365,6 +399,31 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         }
 
         return (new[] { screenshotPath }, new[] { screenshotPath });
+    }
+
+    private static void AuthorizeCurrentForeground(
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
+    {
+        ScreenshotCaptureContext context;
+        try
+        {
+            context = CaptureForegroundTarget().ToCaptureContext();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Missing foreground metadata is represented explicitly so configured privacy rules fail closed.
+            context = ScreenshotCaptureContext.Unavailable;
+        }
+
+        EnsureCaptureAllowed(authorizeCapture(context));
+    }
+
+    private static void EnsureCaptureAllowed(ScreenshotCaptureDecision decision)
+    {
+        if (decision != ScreenshotCaptureDecision.Allowed)
+        {
+            throw new ScreenshotCapturePreconditionException(decision);
+        }
     }
 
     private static void DeletePartialArtifacts(IEnumerable<string> paths)
@@ -469,5 +528,11 @@ internal readonly record struct CaptureDisplay(int Index, NativeMethods.Rect Bou
 internal sealed record ForegroundCaptureTarget(
     IntPtr WindowHandle,
     NativeMethods.Rect WindowBounds,
+    string ProcessName,
     string ApplicationName,
-    string WindowTitle);
+    string Context,
+    string WindowTitle)
+{
+    internal ScreenshotCaptureContext ToCaptureContext() =>
+        new(ProcessName, ApplicationName, Context, WindowTitle);
+}

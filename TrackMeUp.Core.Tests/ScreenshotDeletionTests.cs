@@ -21,20 +21,70 @@ public sealed class ScreenshotDeletionTests
     public async Task DeleteScreenshot_RemovesStoredAndRawArtifactsForCapture()
     {
         var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
         try
         {
             var store = CreateStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable
+            });
             var capture = CreateCapture(store, dataDirectory);
             var unrelatedPath = Path.Combine(dataDirectory, "unrelated.webp");
             File.WriteAllBytes(unrelatedPath, [7, 8, 9]);
-            await using var application = CreateApplication(store);
+            var analysis = new OpenAiAnalysisService(
+                store,
+                new UnexpectedCaptureService(),
+                decoder: new SuccessfulDecoder());
+            await analysis.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: true,
+                origin: "snapshot.manual",
+                CancellationToken.None);
+            Assert.NotNull(store.LoadLatestAnalysis());
+            await using var application = CreateApplication(store, analysis);
 
             var result = await application.DeleteScreenshotAsync(capture.StoredScreenshotPaths[0], CancellationToken.None);
 
             Assert.True(result.Succeeded);
             Assert.False(File.Exists(capture.StoredScreenshotPaths[0]));
             Assert.False(File.Exists(capture.AnalysisScreenshotPaths[0]));
+            Assert.Null(store.LoadLatestAnalysis());
+            Assert.Empty(store.LoadScreenshotCaptureTimes(capture.StoredScreenshotPaths, CancellationToken.None));
             Assert.True(File.Exists(unrelatedPath));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>Ensures deleting one monitor artifact retains capture provenance while a sibling monitor remains.</summary>
+    [Fact]
+    public async Task DeleteScreenshot_KeepsCaptureProvenanceWhileAnotherMonitorArtifactRemains()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var capture = CreateCapture(store, dataDirectory);
+            var siblingPath = Path.Combine(
+                Path.GetDirectoryName(capture.StoredScreenshotPaths[0])!,
+                $"{capture.CaptureId}_1.0.0_manual_monitor-2.webp");
+            File.WriteAllBytes(siblingPath, [7, 8, 9]);
+            await using var application = CreateApplication(store);
+
+            var result = await application.DeleteScreenshotAsync(capture.StoredScreenshotPaths[0], CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.True(File.Exists(siblingPath));
+            Assert.Contains(
+                siblingPath,
+                store.LoadScreenshotCaptureTimes([siblingPath], CancellationToken.None).Keys);
         }
         finally
         {
@@ -42,8 +92,9 @@ public sealed class ScreenshotDeletionTests
         }
     }
 
+    /// <summary>Ensures analysis-only deletion removes persisted enrichment while retaining the image artifact.</summary>
     [Fact]
-    public async Task DeleteSnapshot_RemovesAnalysisReferencingCapture()
+    public async Task DeleteScreenshotAnalysis_RemovesAnalysisButKeepsTheImage()
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
@@ -70,15 +121,175 @@ public sealed class ScreenshotDeletionTests
             Assert.NotNull(store.LoadLatestAnalysis());
             await using var application = CreateApplication(store, analysis);
 
-            var result = await application.DeleteSnapshotAsync(capture.StoredScreenshotPaths[0], CancellationToken.None);
+            var result = await application.DeleteScreenshotAnalysisAsync(capture.StoredScreenshotPaths[0], CancellationToken.None);
 
             Assert.True(result.Succeeded);
             Assert.Null(store.LoadLatestAnalysis());
             Assert.True(File.Exists(capture.StoredScreenshotPaths[0]));
+            var artifactIdentity = Path.GetFileNameWithoutExtension(capture.StoredScreenshotPaths[0]);
+            var finalSearchChange = store.LoadSearchSourceChanges(0, int.MaxValue)
+                .Last(change => change.Kind == "screenshot" && change.EntityId == artifactIdentity);
+            Assert.Equal("upsert", finalSearchChange.Operation);
         }
         finally
         {
             Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>Ensures an owned-looking path outside the configured store cannot delete retained analysis data.</summary>
+    [Fact]
+    public async Task DeleteScreenshotAnalysis_RejectsOwnedLookingPathOutsideConfiguredStoreWithoutDeletingData()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var outsideDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var capture = CreateCapture(store, dataDirectory, capturedAt);
+            var genuinePath = capture.StoredScreenshotPaths[0];
+            store.UpsertScreenshotTextSnapshot(capture.CaptureId, CreateTextSnapshot(genuinePath, capturedAt));
+            store.UpsertScreenshotIntervalTelemetry(
+                capture.CaptureId,
+                capture.StoredScreenshotPaths,
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-15), capturedAt, 30, 20));
+            var outsidePath = Path.Combine(outsideDirectory, Path.GetFileName(genuinePath));
+            File.WriteAllBytes(outsidePath, [7, 8, 9]);
+            await using var application = CreateApplication(store);
+
+            var result = await application.DeleteScreenshotAnalysisAsync(outsidePath, CancellationToken.None);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("screenshot.analysis.not_found", result.Code);
+            Assert.NotNull(store.LoadScreenshotTextSnapshot(genuinePath));
+            Assert.NotNull(store.LoadScreenshotIntervalTelemetry(genuinePath));
+            Assert.True(File.Exists(genuinePath));
+        }
+        finally
+        {
+            Directory.Delete(outsideDirectory, recursive: true);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>Ensures analysis deletion detaches only the selected monitor from a shared AI result.</summary>
+    [Fact]
+    public async Task DeleteScreenshotAnalysis_DisassociatesOnlySelectedMonitorFromSharedAiResult()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable
+            });
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var capture = CreateMultiMonitorCapture(store, dataDirectory, capturedAt);
+            var analysis = new OpenAiAnalysisService(
+                store,
+                new UnexpectedCaptureService(),
+                decoder: new SuccessfulDecoder());
+            await analysis.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: true,
+                origin: "snapshot.manual",
+                CancellationToken.None);
+            await using var application = CreateApplication(store, analysis);
+
+            var result = await application.DeleteScreenshotAnalysisAsync(capture.StoredScreenshotPaths[0], CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var retainedAnalysis = Assert.IsType<AiAnalysis>(store.LoadLatestAnalysis());
+            Assert.Equal(capture.StoredScreenshotPaths[1], retainedAnalysis.ScreenshotPaths);
+            Assert.True(File.Exists(capture.StoredScreenshotPaths[0]));
+            Assert.True(File.Exists(capture.StoredScreenshotPaths[1]));
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+            var selectedMonitor = Assert.Single(gallery.Items, item => item.Path == capture.StoredScreenshotPaths[0]);
+            var siblingMonitor = Assert.Single(gallery.Items, item => item.Path == capture.StoredScreenshotPaths[1]);
+            Assert.Null(selectedMonitor.AiDescriptionMarkdown);
+            Assert.Equal("## Activity\n\n- Coding.", siblingMonitor.AiDescriptionMarkdown);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>Ensures deleting one monitor retains the shared AI result for its surviving sibling.</summary>
+    [Fact]
+    public async Task DeleteScreenshot_DisassociatesDeletedMonitorButKeepsSiblingAiResult()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, "sk-test-only-key-1234567890", EnvironmentVariableTarget.Process);
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                OpenAiEnabled = true,
+                AiApiKeyName = TestApiKeyVariable
+            });
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var capture = CreateMultiMonitorCapture(store, dataDirectory, capturedAt);
+            var analysis = new OpenAiAnalysisService(
+                store,
+                new UnexpectedCaptureService(),
+                decoder: new SuccessfulDecoder());
+            await analysis.AnalyzeCapturedScreenAsync(
+                activity: null,
+                capture,
+                keepCapture: true,
+                origin: "snapshot.manual",
+                CancellationToken.None);
+            await using var application = CreateApplication(store, analysis);
+
+            var result = await application.DeleteScreenshotAsync(capture.StoredScreenshotPaths[0], CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.False(File.Exists(capture.StoredScreenshotPaths[0]));
+            Assert.True(File.Exists(capture.StoredScreenshotPaths[1]));
+            var retainedAnalysis = Assert.IsType<AiAnalysis>(store.LoadLatestAnalysis());
+            Assert.Equal(capture.StoredScreenshotPaths[1], retainedAnalysis.ScreenshotPaths);
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+            var siblingMonitor = Assert.Single(gallery.Items, item => item.Path == capture.StoredScreenshotPaths[1]);
+            Assert.Equal("## Activity\n\n- Coding.", siblingMonitor.AiDescriptionMarkdown);
+            Assert.Contains(
+                capture.StoredScreenshotPaths[1],
+                store.LoadScreenshotCaptureTimes([capture.StoredScreenshotPaths[1]], CancellationToken.None).Keys);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(TestApiKeyVariable, previousApiKey, EnvironmentVariableTarget.Process);
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>Ensures runtime health advertises the screenshot-analysis deletion capability.</summary>
+    [Fact]
+    public async Task RuntimeHealth_AdvertisesScreenshotAnalysisDeletionCapability()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            await using var application = CreateApplication(store);
+
+            var result = await application.GetRuntimeHealthAsync(CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.Contains("screenshots.analysis.delete.v1", result.Value!.Capabilities);
+        }
+        finally
+        {
             Directory.Delete(dataDirectory, recursive: true);
         }
     }
@@ -228,6 +439,34 @@ public sealed class ScreenshotDeletionTests
         }
     }
 
+    /// <summary>Ensures stored interval telemetry remains removable even when both sampled metrics are unavailable.</summary>
+    [Fact]
+    public void ScreenshotGallery_ReportsStoredIntervalTelemetryEvenWhenMetricsAreUnavailable()
+    {
+        var dataDirectory = CreateTemporaryDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var capture = CreateCapture(store, dataDirectory, capturedAt);
+            store.UpsertScreenshotIntervalTelemetry(
+                capture.CaptureId,
+                capture.StoredScreenshotPaths,
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-15), capturedAt, null, null));
+
+            var gallery = store.GetScreenshotGallery(DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime));
+
+            var item = Assert.Single(gallery.Items);
+            Assert.True(item.HasRemovableAnalysisData);
+            Assert.Null(item.CpuUsagePercent);
+            Assert.Null(item.GpuUsagePercent);
+        }
+        finally
+        {
+            Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
     [Fact]
     public void ScreenshotGallery_BatchesDailyActivityWithoutCrossingCaptureIntervals()
     {
@@ -368,6 +607,56 @@ public sealed class ScreenshotDeletionTests
         return result;
     }
 
+    private static ScreenshotCaptureResult CreateMultiMonitorCapture(
+        LocalStore store,
+        string directory,
+        DateTimeOffset capturedAt)
+    {
+        var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(directory, capturedAt);
+        Directory.CreateDirectory(dayDirectory);
+        var captureId = Guid.NewGuid().ToString("N");
+        var rawPaths = new List<string>();
+        var storedPaths = new List<string>();
+        for (var monitor = 1; monitor <= 2; monitor++)
+        {
+            var rawPath = Path.Combine(dayDirectory, $"{captureId}_1.0.0_manual_monitor-{monitor}-raw.webp");
+            var storedPath = Path.Combine(dayDirectory, $"{captureId}_1.0.0_manual_monitor-{monitor}.webp");
+            File.WriteAllBytes(rawPath, [1, 2, 3]);
+            File.WriteAllBytes(storedPath, [4, 5, 6]);
+            File.SetLastWriteTimeUtc(rawPath, capturedAt.UtcDateTime);
+            File.SetLastWriteTimeUtc(storedPath, capturedAt.UtcDateTime);
+            rawPaths.Add(rawPath);
+            storedPaths.Add(storedPath);
+        }
+
+        var result = new ScreenshotCaptureResult(
+            captureId,
+            rawPaths,
+            storedPaths,
+            ScreenshotCaptureOrigins.Manual,
+            CapturedAt: capturedAt);
+        store.RegisterScreenshotCapture(
+            captureId,
+            store.LoadSettings().InstallationId,
+            capturedAt,
+            ScreenshotCaptureOrigins.Manual);
+        return result;
+    }
+
+    private static ScreenshotTextSnapshot CreateTextSnapshot(string screenshotPath, DateTimeOffset capturedAt) =>
+        new(
+            screenshotPath,
+            new OcrRawSnapshot(
+                ScreenshotTextExtractionStatus.Succeeded,
+                "retained OCR text",
+                "en-US",
+                null,
+                capturedAt,
+                "test",
+                1,
+                1,
+                []));
+
     private static ActivitySample CreateActivitySample(
         DateTimeOffset timestamp,
         string spanLabel,
@@ -406,7 +695,12 @@ public sealed class ScreenshotDeletionTests
 
     private sealed class UnexpectedCaptureService : IScreenCaptureService
     {
-        public ScreenshotCaptureResult CaptureByMode(string directory, string captureMode, string captureOrigin) =>
+        /// <inheritdoc />
+        public ScreenshotCaptureResult CaptureByMode(
+            string directory,
+            string captureMode,
+            string captureOrigin,
+            Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture) =>
             throw new InvalidOperationException("The deletion tests must not capture a new screenshot.");
     }
 

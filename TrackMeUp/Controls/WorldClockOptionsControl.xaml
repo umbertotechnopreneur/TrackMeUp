@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="TrackMeUp.Controls.WorldClockOptionsControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="WorldClockOptionsSectionStyle" TargetType="Border">
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style
+            x:Key="WorldClockCityTimeTextStyle"
+            BasedOn="{StaticResource CaptionTextBlockStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="WorldClockCitySeparatorStyle" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid x:Name="OptionsRoot" Background="Transparent">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="WidthStates">
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="760" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="OptionsBody.ColumnSpacing" Value="20" />
+                        <Setter Target="SecondaryColumn.Width" Value="*" />
+                        <Setter Target="ClocksSection.(Grid.Row)" Value="0" />
+                        <Setter Target="ClocksSection.(Grid.Column)" Value="1" />
+                        <Setter Target="ClocksSection.Margin" Value="0" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+            <VisualStateGroup x:Name="WeatherStatusStates">
+                <VisualState x:Name="WeatherStatusReady">
+                    <VisualState.Setters>
+                        <Setter Target="WeatherStatusIcon.Foreground" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <Setter Target="WeatherStatusIcon.Glyph" Value="&#xE73E;" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WeatherStatusNeedsAttention">
+                    <VisualState.Setters>
+                        <Setter Target="WeatherStatusIcon.Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Setter Target="WeatherStatusIcon.Glyph" Value="&#xE7BA;" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WeatherStatusInvalid">
+                    <VisualState.Setters>
+                        <Setter Target="WeatherStatusIcon.Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                        <Setter Target="WeatherStatusIcon.Glyph" Value="&#xE711;" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WeatherStatusInformational">
+                    <VisualState.Setters>
+                        <Setter Target="WeatherStatusIcon.Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Setter Target="WeatherStatusIcon.Glyph" Value="&#xE946;" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <ScrollViewer
+            HorizontalContentAlignment="Stretch"
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Auto">
+            <Grid
+                x:Name="ContentGrid"
+                MaxWidth="960"
+                Padding="24,18,24,28"
+                HorizontalAlignment="Stretch"
+                RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock
+                    AutomationProperties.HeadingLevel="Level1"
+                    FontFamily="Segoe UI Variable Display"
+                    FontSize="28"
+                    FontWeight="SemiLight"
+                    Tag="WorldClock.Options.Title"
+                    Text="World clock options" />
+                <TextBlock
+                    Grid.Row="1"
+                    Margin="0,0,0,12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Tag="WorldClock.Options.Description"
+                    Text="Choose how world clocks and current weather behave."
+                    TextWrapping="Wrap" />
+
+                <Grid x:Name="OptionsBody" Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="SecondaryColumn" Width="0" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border
+                        x:Name="WeatherSection"
+                        Style="{StaticResource WorldClockOptionsSectionStyle}">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="7">
+                                <ToggleSwitch
+                                    x:Name="WeatherEnabledSwitch"
+                                    Header="Current weather"
+                                    IsOn="True"
+                                    OffContent="Off"
+                                    OnContent="On"
+                                    Tag="WorldClock.Options.Weather"
+                                    Toggled="WeatherEnabledSwitch_Toggled" />
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Tag="WorldClock.Options.Weather.Description"
+                                    Text="Show fresh current conditions for the selected cities."
+                                    TextWrapping="Wrap" />
+                                <Border
+                                    Padding="10,8"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon
+                                            x:Name="WeatherStatusIcon"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.AccessibilityView="Raw"
+                                            FontFamily="Segoe Fluent Icons"
+                                            FontSize="14"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Glyph="&#xE946;" />
+                                        <TextBlock
+                                            x:Name="WeatherStatusText"
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.LiveSetting="Polite"
+                                            FontWeight="SemiBold"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="Current weather status is unavailable."
+                                            TextWrapping="Wrap" />
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                            <StackPanel Spacing="8">
+                                <TextBlock
+                                    AutomationProperties.HeadingLevel="Level2"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Tag="WorldClock.Options.Weather.Setup"
+                                    Text="Weather provider setup" />
+                                <PasswordBox
+                                    x:Name="WeatherApiKeyBox"
+                                    Header="OpenWeather API key"
+                                    PasswordRevealMode="Peek"
+                                    PlaceholderText=""
+                                    Tag="WorldClock.Options.Weather.ApiKey" />
+                                <TextBlock
+                                    x:Name="WeatherApiKeyStorageNote"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Tag="WorldClock.Options.Weather.ApiKey.Placeholder"
+                                    Text="Saved in Windows, not in TrackMeUp settings"
+                                    TextWrapping="Wrap" />
+                                <HyperlinkButton
+                                    x:Name="WeatherProviderLinkButton"
+                                    Padding="0,2,0,2"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Open OpenWeather setup"
+                                    Click="WeatherProviderLinkButton_Click"
+                                    Tag="WorldClock.Options.Weather.ProviderLink">
+                                    <TextBlock
+                                        x:Name="WeatherProviderLinkText"
+                                        Tag="WorldClock.Options.Weather.ProviderLink"
+                                        Text="Open OpenWeather setup" />
+                                </HyperlinkButton>
+                                <Button
+                                    x:Name="SaveWeatherKeyButton"
+                                    HorizontalAlignment="Left"
+                                    AutomationProperties.Name="Set key for this PC"
+                                    Click="SaveWeatherKeyButton_Click"
+                                    Content="Set key for this PC"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Tag="WorldClock.Options.Weather.SaveKey" />
+                                <TextBlock
+                                    x:Name="WeatherActionStatusText"
+                                    AutomationProperties.LiveSetting="Polite"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    TextWrapping="Wrap"
+                                    Visibility="Collapsed" />
+                            </StackPanel>
+
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                            <ToggleSwitch
+                                x:Name="AlwaysOnTopSwitch"
+                                Header="Always on top"
+                                OffContent="Off"
+                                OnContent="On"
+                                Tag="WorldClock.Options.AlwaysOnTop"
+                                Toggled="AlwaysOnTopSwitch_Toggled" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        x:Name="ClocksSection"
+                        Grid.Row="1"
+                        Margin="0,16,0,0"
+                        Style="{StaticResource WorldClockOptionsSectionStyle}">
+                        <StackPanel Spacing="14">
+                            <StackPanel Spacing="4">
+                                <TextBlock
+                                    AutomationProperties.HeadingLevel="Level2"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Tag="WorldClock.Options.Clocks.Header"
+                                    Text="Clocks" />
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Tag="WorldClock.Options.Clocks.Description"
+                                    Text="Add or remove up to four cities and choose the reference city."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel
+                                x:Name="CitiesHost"
+                                Margin="0,2,0,0"
+                                Spacing="0" />
+                            <Button
+                                x:Name="AddClockButton"
+                                HorizontalAlignment="Left"
+                                Click="AddClockButton_Click"
+                                Tag="WorldClock.Add">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        Symbol="Add" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Tag="WorldClock.Add"
+                                        Text="Add clock" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+
+        <ProgressRing
+            x:Name="BusyIndicator"
+            Width="32"
+            Height="32"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            AutomationProperties.AccessibilityView="Raw"
+            IsActive="False"
+            Visibility="Collapsed" />
+    </Grid>
+</UserControl>

@@ -18,9 +18,15 @@
         </Grid.RowDefinitions>
 
         <Grid
-            x:Name="TitleDragRegion"
-            Padding="22,0">
+            x:Name="TitleDragRegion">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
             <TextBlock
+                Grid.Column="1"
+                Margin="22,0"
                 VerticalAlignment="Center"
                 AutomationProperties.AccessibilityView="Raw"
                 CharacterSpacing="150"

@@ -2,6 +2,16 @@
 
 namespace TrackMeUp.Presentation;
 
+/// <summary>Identifies the single top-level surface rendered by the detached world-clock window.</summary>
+public enum WorldClockWindowSurface
+{
+    /// <summary>The equal-column clock comparison is visible.</summary>
+    Clocks,
+
+    /// <summary>The world-clock options surface is visible.</summary>
+    Options
+}
+
 /// <summary>Describes the width projection for an equal-column world-clock surface.</summary>
 public sealed record WorldClockColumnsLayout(double MinimumWidth, double Width, bool IsCentered);
 
@@ -11,11 +21,26 @@ public sealed record WorldClockConversionFailureState(
     bool CustomProjectionValid,
     bool RestoreLastSnapshotControls);
 
-/// <summary>Projects timer and viewport state for the independent world-clock window.</summary>
-public static class WorldClockWindowLayoutState
+/// <summary>Owns the active world-clock surface and projects timer and viewport state.</summary>
+public sealed class WorldClockWindowLayoutState
 {
     private const double MinimumColumnWidth = 280d;
     private static readonly TimeSpan MinuteBoundaryMargin = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Gets the currently active top-level surface.</summary>
+    public WorldClockWindowSurface Surface { get; private set; } = WorldClockWindowSurface.Clocks;
+
+    /// <summary>Shows one top-level surface without resetting the current clock projection.</summary>
+    /// <param name="surface">Surface to make current.</param>
+    public void ShowSurface(WorldClockWindowSurface surface)
+    {
+        if (!Enum.IsDefined(surface))
+        {
+            throw new ArgumentOutOfRangeException(nameof(surface));
+        }
+
+        Surface = surface;
+    }
 
     /// <summary>Returns a one-shot delay that lands just after the next UTC minute boundary.</summary>
     public static TimeSpan DelayUntilNextMinute(DateTimeOffset instant)

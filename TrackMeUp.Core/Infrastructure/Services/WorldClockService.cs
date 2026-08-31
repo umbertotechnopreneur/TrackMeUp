@@ -84,7 +84,8 @@ internal static class WorldClockAtmosphereResolver
                 "snow" or
                 "mixed-precipitation" or
                 "fog" or
-                "lightning"))
+                "lightning" or
+                "unknown"))
         {
             throw new InvalidDataException($"Unsupported current weather condition '{currentConditionKey}'.");
         }
@@ -228,10 +229,27 @@ public sealed class WorldClockService : IDisposable
     /// <summary>Builds the current snapshot and optionally enriches it with fresh cached weather.</summary>
     public async Task<WorldClockSnapshot> BuildCurrentSnapshotAsync(
         IReadOnlyList<string>? cityIds,
+        bool weatherEnabled,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var selection = WorldClockSelection.NormalizePersisted(cityIds);
         var cities = LoadCities();
+        if (!weatherEnabled)
+        {
+            return BuildSnapshotCore(
+                selection,
+                cities,
+                _timeProvider.GetUtcNow(),
+                new Dictionary<string, WorldClockWeather>(StringComparer.Ordinal),
+                new WorldClockWeatherStatus(
+                    "openweather",
+                    "disabled",
+                    "user-disabled",
+                    selection.Count,
+                    0));
+        }
+
         var locations = selection.Select(cityId =>
         {
             if (!cities.TryGetValue(cityId, out var city))
@@ -252,6 +270,9 @@ public sealed class WorldClockService : IDisposable
             snapshotWeather.Observations,
             snapshotWeather.Status);
     }
+
+    /// <summary>Invalidates observations that were loaded with the previous provider configuration.</summary>
+    internal void InvalidateCurrentWeatherConfiguration() => _currentWeather.InvalidateConfiguration();
 
     private static WorldClockSnapshot BuildSnapshotCore(
         IReadOnlyList<string> selection,

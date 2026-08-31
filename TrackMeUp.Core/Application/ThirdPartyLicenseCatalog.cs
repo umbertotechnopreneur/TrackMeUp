@@ -20,7 +20,7 @@ public static class ThirdPartyLicenseCatalog
         new("Microsoft.Extensions.Logging.Abstractions", "10.0.10", "MIT"),
         new("Microsoft.Windows.SDK.BuildTools", "10.0.28000.2526", "Microsoft Windows SDK license terms"),
         new("Microsoft.WindowsAppSDK", "2.3.1", "Microsoft Software License Terms"),
-        new("Sentry.Extensions.Logging", "6.7.0", "MIT"),
+        new("Sentry.Extensions.Logging", "6.9.0", "MIT"),
         new("Serilog", "4.4.0", "Apache-2.0"),
         new("Serilog.Extensions.Logging", "10.0.0", "Apache-2.0"),
         new("Serilog.Sinks.Console", "6.1.1", "Apache-2.0"),

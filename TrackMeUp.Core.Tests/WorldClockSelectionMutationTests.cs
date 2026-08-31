@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -21,6 +22,7 @@ public sealed class WorldClockSelectionMutationTests
         try
         {
             var store = new LocalStore(dataDirectory);
+            Assert.True(store.LoadSettings().WorldClockWeatherEnabled);
             store.SaveSettings(store.LoadSettings() with
             {
                 WorldClockCityIds = ["ho-chi-minh-city"]
@@ -30,7 +32,13 @@ public sealed class WorldClockSelectionMutationTests
                 RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"),
                 provider,
                 TimeProvider.System);
-            var utilities = new UtilityService();
+            string? writtenKeyName = null;
+            string? writtenSecret = null;
+            var utilities = new UtilityService((keyName, secret) =>
+            {
+                writtenKeyName = keyName;
+                writtenSecret = secret;
+            });
             var capture = new ScreenCaptureService(utilities.GetAppVersion());
             await using var application = new TrackMeUpApplication(
                 store,
@@ -43,6 +51,22 @@ public sealed class WorldClockSelectionMutationTests
                 new BuildInformationService(),
                 worldClockService: worldClocks,
                 startScheduledSnapshotTimer: false);
+
+            var invalidWeatherKey = await application.SetWorldClockWeatherKeyAsync("short", CancellationToken.None);
+
+            Assert.False(invalidWeatherKey.Succeeded);
+            Assert.Equal("world_clocks.weather.key.invalid", invalidWeatherKey.Code);
+            Assert.Contains(invalidWeatherKey.Issues, issue => issue.Field == "secret");
+            Assert.Null(writtenKeyName);
+            Assert.Null(writtenSecret);
+
+            const string weatherKey = "0123456789abcdef0123456789abcdef";
+            var storedWeatherKey = await application.SetWorldClockWeatherKeyAsync(weatherKey, CancellationToken.None);
+
+            Assert.True(storedWeatherKey.Succeeded);
+            Assert.Equal("TRACKMEUP_OPENWEATHER_API_KEY", storedWeatherKey.Value);
+            Assert.Equal("TRACKMEUP_OPENWEATHER_API_KEY", writtenKeyName);
+            Assert.Equal(weatherKey, writtenSecret);
 
             var added = await application.AddWorldClockAsync("tokyo", CancellationToken.None);
 
@@ -68,6 +92,22 @@ public sealed class WorldClockSelectionMutationTests
 
             Assert.True(current.Succeeded);
             Assert.Equal("unavailable", current.Value?.WeatherStatus.State);
+            Assert.Equal(2, provider.CallCount);
+
+            var weatherDisabled = await application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?>
+                {
+                    ["world_clocks.weather.enabled"] = "false"
+                }),
+                CancellationToken.None);
+            var disabledSnapshot = await application.GetWorldClocksAsync(CancellationToken.None);
+
+            Assert.True(weatherDisabled.Succeeded);
+            Assert.False(weatherDisabled.Value?.WorldClockWeatherEnabled);
+            Assert.False(store.LoadSettings().WorldClockWeatherEnabled);
+            Assert.True(disabledSnapshot.Succeeded);
+            Assert.Equal("disabled", disabledSnapshot.Value?.WeatherStatus.State);
+            Assert.Equal("user-disabled", disabledSnapshot.Value?.WeatherStatus.ReasonCode);
             Assert.Equal(2, provider.CallCount);
 
             var removed = await application.RemoveWorldClockAsync("tokyo", CancellationToken.None);

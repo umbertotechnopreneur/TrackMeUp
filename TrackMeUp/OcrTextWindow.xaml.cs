@@ -23,12 +23,12 @@ internal sealed partial class OcrTextWindow : Window
     private const int MinimumQueryLength = 2;
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(400);
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly DispatcherQueueTimer _searchTimer;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private LocalizationService _strings;
     private string _ocrText = string.Empty;
-    private ElementTheme _theme;
     private XamlRoot? _xamlRoot;
 
     /// <summary>Creates an OCR text window anchored to the screenshot gallery display.</summary>
@@ -45,10 +45,16 @@ internal sealed partial class OcrTextWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
         _strings = new LocalizationService(language);
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -58,9 +64,6 @@ internal sealed partial class OcrTextWindow : Window
             LogicalWindowHeight,
             LogicalScreenMargin,
             ownerAppWindow.Id);
-        ConfigureWindowChrome();
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
-
         _searchTimer = DispatcherQueue.CreateTimer();
         _searchTimer.Interval = SearchDebounce;
         _searchTimer.IsRepeating = false;
@@ -79,9 +82,8 @@ internal sealed partial class OcrTextWindow : Window
         _searchTimer.Stop();
         _ocrText = ocrText;
         _strings = new LocalizationService(language);
-        _theme = theme;
         RootGrid.RequestedTheme = theme;
-        ApplyThemeChrome(theme == ElementTheme.Default ? RootGrid.ActualTheme : theme);
+        _titleBar.ApplyTheme(theme == ElementTheme.Default ? RootGrid.ActualTheme : theme);
         UiLocalization.Apply(RootGrid, _strings);
 
         var windowTitle = T("Screenshots.OcrText.WindowTitle");
@@ -118,7 +120,6 @@ internal sealed partial class OcrTextWindow : Window
             return;
         }
 
-        UpdateTitleBarInsets();
     }
 
     private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
@@ -177,7 +178,7 @@ internal sealed partial class OcrTextWindow : Window
         _lifetimeCancellation.Cancel();
         _searchTimer.Stop();
         _searchTimer.Tick -= SearchTimer_Tick;
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.Dispose();
         if (_xamlRoot is not null)
         {
             _xamlRoot.Changed -= XamlRoot_Changed;
@@ -188,73 +189,12 @@ internal sealed partial class OcrTextWindow : Window
         _lifetimeCancellation.Dispose();
     }
 
-    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
-
-    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
-
-    private void ConfigureWindowChrome()
-    {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-        _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-        _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-        _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-    }
-
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
-    {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var dark = effectiveTheme == ElementTheme.Dark;
-        var titleBar = _appWindow.TitleBar;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
-    }
-
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
-    {
-        if (_theme == ElementTheme.Default)
-        {
-            ApplyThemeChrome(sender.ActualTheme);
-        }
-    }
-
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
         if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-            UpdateTitleBarInsets();
         }
-    }
-
-    private void UpdateTitleBarInsets()
-    {
-        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
     }
 
     private string T(string key) => _strings.Translate(key);

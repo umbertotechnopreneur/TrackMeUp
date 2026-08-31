@@ -23,6 +23,7 @@ internal sealed partial class AiPricingDialogWindow : Window
     private readonly AiPricingOverview _overview;
     private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private bool _isCompleting;
@@ -43,10 +44,17 @@ internal sealed partial class AiPricingDialogWindow : Window
         InitializeComponent();
         Title = T("AiPricing.Title");
         RootGrid.RequestedTheme = theme;
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>(),
+            useTallTitleBar: false);
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.AiPricing, LogicalWidth, LogicalHeight, LogicalScreenMargin, ownerAppWindow.Id);
         WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
@@ -58,7 +66,11 @@ internal sealed partial class AiPricingDialogWindow : Window
         }
 
         ApplyContent();
-        Closed += (_, _) => _completion.TrySetResult();
+        Closed += (_, _) =>
+        {
+            _titleBar.Dispose();
+            _completion.TrySetResult();
+        };
     }
 
     /// <summary>Activates the detached acrylic surface and completes after closure.</summary>

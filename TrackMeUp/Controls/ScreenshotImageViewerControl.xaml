@@ -3,7 +3,7 @@
     x:Class="TrackMeUp.Controls.ScreenshotImageViewerControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    MinHeight="300"
+    MinHeight="340"
     AutomationProperties.Name="Screenshot viewer">
     <Grid x:Name="ViewerRoot" Background="Transparent">
         <ScrollViewer

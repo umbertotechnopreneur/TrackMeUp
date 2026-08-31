@@ -38,49 +38,170 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.DoesNotContain("WorldClockRefreshTimer", mainSource, StringComparison.Ordinal);
     }
 
+    /// <summary>Verifies the acrylic window, integrated header, options layer, and theme-aware clock compositing contract.</summary>
     [Fact]
-    public void Window_UsesMicaCompositeReferencePickerAndEqualOpenColumns()
+    public void Window_UsesDesktopAcrylicIntegratedHeaderOptionsSurfaceAndThemeAwareCompositing()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
         var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml"));
+        var titleBarStyles = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "TitleBarOverflowButtonStyles.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var titleBarSource = File.ReadAllText(RepositoryFile("TrackMeUp", "CustomTitleBarController.cs"));
         var columnSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml.cs"));
         var root = window.Descendants().Single(element => HasName(element, "RootGrid"));
         var scroller = window.Descendants().Single(element => HasName(element, "ClockColumnsScroller"));
         var columns = window.Descendants().Single(element => HasName(element, "ClockColumnsHost"));
+        var clocksSurface = window.Descendants().Single(element => HasName(element, "ClocksSurface"));
+        var optionsPanel = window.Descendants().Single(element => HasName(element, "OptionsPanel"));
+        var optionsHost = window.Descendants().Single(element => HasName(element, "OptionsHost"));
+        var header = window.Descendants().Single(element => HasName(element, "HeaderDragRegion"));
+        var titleBarLogo = window.Descendants().Single(element => HasName(element, "TitleBarLogo"));
+        var titleBarIdentityHost = window.Descendants().Single(element => HasName(element, "TitleBarIdentityHost"));
+        var titleBarOptionsHost = window.Descendants().Single(element => HasName(element, "TitleBarOptionsHost"));
+        var titleBarSystemButtonGap = window.Descendants().Single(element => HasName(element, "TitleBarSystemButtonGapColumn"));
         var skyline = column.Descendants().Single(element => HasName(element, "SkylineImage"));
-        var referenceInstant = window.Descendants().Single(element => HasName(element, "ReferenceInstantField"));
-        var moreButton = window.Descendants().Single(element => HasName(element, "HeaderMenuButton"));
+        var cityName = column.Descendants().Single(element => HasName(element, "CityNameText"));
+        var dateRelation = column.Descendants().Single(element => HasName(element, "DateRelationText"));
+        var referenceInstant = window.Descendants().Single(element => HasName(element, "ReferenceInstantButton"));
+        var optionsButton = window.Descendants().Single(element => HasName(element, "OptionsButton"));
+        var backButton = window.Descendants().Single(element => HasName(element, "HeaderBackButton"));
+        var optionsHeaderLabel = window.Descendants().Single(element => HasName(element, "OptionsHeaderLabel"));
+        var weatherProviderLink = options.Descendants().Single(element => HasName(element, "WeatherProviderLinkButton"));
+        var scene = column.Descendants().Single(element => HasName(element, "SceneGrid"));
+        var sceneChildren = scene.Elements().ToArray();
+        var windowThemeDictionaries = window.Descendants()
+            .Where(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key"))
+            .ToArray();
+        var columnThemeDictionaries = column.Descendants()
+            .Where(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key"))
+            .ToArray();
 
-        Assert.Equal("BaseAlt", (string?)window.Descendants().Single(element => element.Name.LocalName == "MicaBackdrop").Attribute("Kind"));
+        Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(window.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
+        Assert.DoesNotContain("MicaBackdrop", source, StringComparison.Ordinal);
         Assert.Equal("Transparent", root.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource WorldClockHeaderTintBrush}", header.Attribute("Background")?.Value);
+        Assert.Equal("48", root.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().First().Attribute("Height")?.Value);
+        Assert.Equal(["*", "328", "*"], header.Elements().Single(element => element.Name.LocalName == "Grid.ColumnDefinitions").Elements().Select(element => element.Attribute("Width")?.Value ?? string.Empty).ToArray());
+        Assert.Equal("0", titleBarIdentityHost.Attribute("Grid.Column")?.Value);
+        Assert.Equal("2", titleBarOptionsHost.Attribute("Grid.Column")?.Value);
+        Assert.Equal("12", titleBarSystemButtonGap.Attribute("Width")?.Value);
+        Assert.Equal("{StaticResource TrackMeUpTitleBarLogoStyle}", titleBarLogo.Attribute("Style")?.Value);
+        var titleBarLogoStyle = titleBarStyles.Descendants().Single(element => KeyValueOrNull(element) == "TrackMeUpTitleBarLogoStyle");
+        Assert.Contains(titleBarLogoStyle.Descendants(), element => element.Attribute("Property")?.Value == "Width" && element.Attribute("Value")?.Value == "22");
+        Assert.Contains(titleBarLogoStyle.Descendants(), element => element.Attribute("Property")?.Value == "Height" && element.Attribute("Value")?.Value == "22");
+        Assert.Contains(titleBarLogoStyle.Descendants(), element => element.Attribute("Property")?.Value == "Source" && element.Attribute("Value")?.Value == "ms-appx:///Assets/TrackMeUpSquare44Logo.png");
+        var columnRows = cityName.Parent?.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().ToArray() ?? [];
+        Assert.Equal("Auto", columnRows[0].Attribute("Height")?.Value);
+        Assert.Equal("18", columnRows[3].Attribute("Height")?.Value);
+        Assert.Equal("3", dateRelation.Attribute("Grid.Row")?.Value);
+        Assert.Equal("0", dateRelation.Attribute("Margin")?.Value);
+        Assert.Equal(["Dark", "HighContrast", "Light"], windowThemeDictionaries.Select(KeyValue).OrderBy(value => value).ToArray());
+        Assert.Equal(["Dark", "HighContrast", "Light"], columnThemeDictionaries.Select(KeyValue).OrderBy(value => value).ToArray());
+        Assert.All(windowThemeDictionaries, dictionary =>
+        {
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockWindowTintBrush");
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockHeaderTintBrush");
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockReferenceFieldBrush");
+        });
+        Assert.All(columnThemeDictionaries, dictionary =>
+        {
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockBackdropOpacity");
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockSkylineOpacity");
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockForegroundOpacity");
+            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockSceneFadeBrush");
+        });
         Assert.Equal("ScrollViewer", scroller.Name.LocalName);
         Assert.Equal("Enabled", scroller.Attribute("HorizontalScrollMode")?.Value);
         Assert.Equal("Auto", scroller.Attribute("HorizontalScrollBarVisibility")?.Value);
         Assert.Equal("Disabled", scroller.Attribute("VerticalScrollMode")?.Value);
         Assert.Equal("ClockColumnsScroller_SizeChanged", scroller.Attribute("SizeChanged")?.Value);
-        Assert.Equal("Border", referenceInstant.Name.LocalName);
+        Assert.Equal("DropDownButton", referenceInstant.Name.LocalName);
+        Assert.Equal("40", referenceInstant.Attribute("Height")?.Value);
+        Assert.Equal("1", referenceInstant.Attribute("Grid.Column")?.Value);
+        Assert.Null(referenceInstant.Attribute("Grid.ColumnSpan"));
+        Assert.Equal("Stretch", referenceInstant.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Center", referenceInstant.Attribute("VerticalAlignment")?.Value);
+        Assert.Contains(referenceInstant.Descendants(), element => element.Name.LocalName == "Flyout");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceCityComboBox") && element.Name.LocalName == "ComboBox");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceDatePicker") && element.Name.LocalName == "CalendarDatePicker");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceTimePicker") && element.Name.LocalName == "TimePicker");
         Assert.Contains(window.Descendants(), element => HasName(element, "NowButton"));
-        Assert.Equal("WorldClock.MoreOptions", moreButton.Attribute("Tag")?.Value);
-        Assert.Equal("{StaticResource TitleBarOverflowButtonStyle}", moreButton.Attribute("Style")?.Value);
-        Assert.Equal("True", moreButton.Attribute("AllowFocusOnInteraction")?.Value);
-        Assert.Equal("True", moreButton.Attribute("IsTabStop")?.Value);
-        Assert.Equal("HeaderMenuButton_Click", moreButton.Attribute("Click")?.Value);
-        Assert.Contains("new MenuFlyout", source, StringComparison.Ordinal);
-        Assert.Contains("new ToggleMenuFlyoutItem", source, StringComparison.Ordinal);
-        Assert.Contains("new Style(typeof(MenuFlyoutPresenter))", source, StringComparison.Ordinal);
-        Assert.Contains("SetMenuItemLabel(alwaysOnTopItem, \"WorldClock.AlwaysOnTop\");", source, StringComparison.Ordinal);
-        Assert.Contains("presenter.IsAlwaysOnTop = menuItem.IsChecked;", source, StringComparison.Ordinal);
+        Assert.Equal("WorldClock.Options.Open", optionsButton.Attribute("Tag")?.Value);
+        Assert.Equal("{StaticResource TrackMeUpTitleBarCommandButtonStyle}", optionsButton.Attribute("Style")?.Value);
+        Assert.Equal("OptionsButton_Click", optionsButton.Attribute("Click")?.Value);
+        Assert.Contains(optionsButton.Descendants(), element => element.Name.LocalName == "SymbolIcon" && element.Attribute("Symbol")?.Value == "More");
+        Assert.Equal("WorldClock.Options.Back", backButton.Attribute("Tag")?.Value);
+        Assert.Equal("{StaticResource TrackMeUpTitleBarCommandButtonStyle}", backButton.Attribute("Style")?.Value);
+        Assert.Equal("HeaderBackButton_Click", backButton.Attribute("Click")?.Value);
+        Assert.Equal("Collapsed", backButton.Attribute("Visibility")?.Value);
+        Assert.Equal("Collapsed", optionsHeaderLabel.Attribute("Visibility")?.Value);
+        Assert.Null(clocksSurface.Attribute("Visibility"));
+        Assert.Equal("Collapsed", optionsPanel.Attribute("Visibility")?.Value);
+        Assert.Equal("{ThemeResource WorldClockOptionsOverlayBrush}", optionsPanel.Attribute("Background")?.Value);
+        Assert.Equal("ContentPresenter", optionsHost.Name.LocalName);
+        Assert.Contains("ShowOptionsSurface()", source, StringComparison.Ordinal);
+        Assert.Contains("ClocksSurface.IsHitTestVisible = false;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ClocksSurface.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("OptionsPanel.Visibility = Visibility.Visible;", source, StringComparison.Ordinal);
+        Assert.Contains("_layoutState.ShowSurface(WorldClockWindowSurface.Options);", source, StringComparison.Ordinal);
+        Assert.Contains("HeaderBackButton.Focus(FocusState.Programmatic)", source, StringComparison.Ordinal);
+        Assert.Contains("OptionsHeaderLabel.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("OptionsPanel.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("ClocksSurface.Visibility = Visibility.Visible;", source, StringComparison.Ordinal);
+        Assert.Contains("ClocksSurface.IsHitTestVisible = true;", source, StringComparison.Ordinal);
+        Assert.Contains("_layoutState.ShowSurface(WorldClockWindowSurface.Clocks);", source, StringComparison.Ordinal);
+        Assert.Contains("OptionsButton.Focus(FocusState.Programmatic)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("new MenuFlyout", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToggleMenuFlyoutItem", source, StringComparison.Ordinal);
+        Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop();", source, StringComparison.Ordinal);
+        Assert.Contains("_titleBar = new CustomTitleBarController(", source, StringComparison.Ordinal);
+        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, OptionsButton]", source, StringComparison.Ordinal);
+        Assert.Contains("TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("InputNonClientPointerSource", source, StringComparison.Ordinal);
+        Assert.Contains("_window.ExtendsContentIntoTitleBar = true;", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("_window.SetTitleBar(_dragRegion);", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("PreferredHeightOption = TitleBarHeightOption.Tall;", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("titleBar.ButtonHoverForegroundColor = palette.HoverForeground;", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("titleBar.ButtonPressedBackgroundColor = palette.PressedBackground;", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("new AccessibilitySettings().HighContrast", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("NonClientRegionKind.Passthrough", titleBarSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsAlwaysOnTop = alwaysOnTop;", source, StringComparison.Ordinal);
         Assert.Contains("await AddCityAsync();", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("SetTitleBar(", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("ExtendsContentIntoTitleBar", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("NonClientRegionKind.Passthrough", source, StringComparison.Ordinal);
+        Assert.Contains(options.Descendants(), element => HasName(element, "WeatherEnabledSwitch") && element.Attribute("Tag")?.Value == "WorldClock.Options.Weather");
+        Assert.Contains(options.Descendants(), element => HasName(element, "WeatherEnabledSwitch") && element.Attribute("IsOn")?.Value == "True");
+        Assert.Contains(options.Descendants(), element => HasName(element, "WeatherApiKeyBox") && element.Name.LocalName == "PasswordBox");
+        Assert.Contains(options.Descendants(), element => HasName(element, "AlwaysOnTopSwitch") && element.Attribute("Tag")?.Value == "WorldClock.Options.AlwaysOnTop");
+        Assert.Contains(options.Descendants(), element => HasName(element, "CitiesHost"));
+        Assert.Contains(options.Descendants(), element => HasName(element, "AddClockButton") && element.Attribute("Tag")?.Value == "WorldClock.Add");
+        Assert.Equal("WorldClock.Options.Weather.ProviderLink", weatherProviderLink.Attribute("Tag")?.Value);
+        Assert.Equal("WeatherProviderLinkButton_Click", weatherProviderLink.Attribute("Click")?.Value);
+        Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger" && element.Attribute("MinWindowWidth")?.Value == "760");
+        Assert.Contains("PatchSettingsAsync(", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("[\"world_clocks.weather.enabled\"]", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("SetWorldClockWeatherKeyAsync(secret", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("WeatherApiKeyBox.Password = string.Empty;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler? ProviderLinkRequested;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("ProviderLinkRequested?.Invoke(this, EventArgs.Empty);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("options.ProviderLinkRequested += OptionsControl_ProviderLinkRequested;", source, StringComparison.Ordinal);
+        Assert.Contains("OpenProductLinkAsync(", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Environment.", optionsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpClient", optionsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", optionsSource, StringComparison.Ordinal);
         Assert.Equal("Custom", AttributeValue(columns, "AutomationProperties.LandmarkType"));
-        Assert.Equal("0.19", skyline.Attribute("Opacity")?.Value);
+        Assert.Equal("{ThemeResource WorldClockSkylineOpacity}", skyline.Attribute("Opacity")?.Value);
+        Assert.Equal("Uniform", skyline.Attribute("Stretch")?.Value);
         Assert.Contains(column.Descendants(), element => element.Name.LocalName == "CelestialPhaseControl");
+        Assert.Contains(column.Descendants(), element => HasName(element, "WeatherAdornmentHost"));
+        Assert.Contains(column.Descendants(), element => HasName(element, "SunriseLabelText"));
+        Assert.Contains(column.Descendants(), element => HasName(element, "SunsetLabelText"));
+        Assert.True(IndexOfName(sceneChildren, "BackdropLayerHost") < IndexOfName(sceneChildren, "SkylineImage"));
+        Assert.True(IndexOfName(sceneChildren, "SkylineImage") < IndexOfName(sceneChildren, "CelestialPhase"));
+        Assert.True(IndexOfName(sceneChildren, "CelestialPhase") < IndexOfName(sceneChildren, "ForegroundLayerHost"));
+        Assert.True(IndexOfName(sceneChildren, "ForegroundLayerHost") < IndexOfName(sceneChildren, "WeatherPanel"));
+        Assert.DoesNotContain(column.Descendants(), element => HasName(element, "ReferenceButton") || HasName(element, "RemoveButton"));
         Assert.Contains("new GridLength(1, GridUnitType.Star)", source, StringComparison.Ordinal);
         Assert.Contains("_refreshTimer.IsRepeating = false;", source, StringComparison.Ordinal);
         Assert.Contains("WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc)", source, StringComparison.Ordinal);
@@ -98,6 +219,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("FormatOffset(clock.LocalTime.Offset - referenceClock.LocalTime.Offset)", columnSource, StringComparison.Ordinal);
         Assert.Contains("!normalized.EndsWith(\".png\", StringComparison.OrdinalIgnoreCase)", columnSource, StringComparison.Ordinal);
         Assert.Contains("!double.IsFinite(clock.MoonPhaseAngleDegrees)", columnSource, StringComparison.Ordinal);
+        Assert.Contains("strings.Translate(\"WorldClock.LocalTime\")", columnSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -111,9 +233,12 @@ public sealed class WorldClockWindowSurfaceContractTests
 
         Assert.Contains("_window.ShowWorldClockOpenFailure();", appSource, StringComparison.Ordinal);
         Assert.Contains("internal void ShowWorldClockOpenFailure()", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.ShowWarningBanner(", mainSource, StringComparison.Ordinal);
         Assert.Contains("T(\"WorldClock.OpenFailed\")", mainSource, StringComparison.Ordinal);
-        Assert.Contains("the Mica backdrop remains visible", readme, StringComparison.Ordinal);
-        Assert.DoesNotContain("the Acrylic backdrop remains visible", readme, StringComparison.Ordinal);
+        Assert.Contains("the Desktop Acrylic backdrop remains visible", readme, StringComparison.Ordinal);
+        Assert.Contains("a full options layer appears over the clock canvas", readme, StringComparison.Ordinal);
+        Assert.Contains("current weather is enabled by default", readme, StringComparison.Ordinal);
+        Assert.DoesNotContain("the Mica backdrop remains visible", readme, StringComparison.Ordinal);
         Assert.Equal(10, catalogs.Length);
         Assert.All(catalogs, catalog =>
         {
@@ -123,6 +248,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
     }
 
+    /// <summary>Verifies that fresh current weather is presented only through localized text.</summary>
     [Fact]
     public void FreshCurrentWeather_IsRenderedAsLocalizedTextOnly()
     {
@@ -134,27 +260,35 @@ public sealed class WorldClockWindowSurfaceContractTests
             "snow",
             "mixed-precipitation",
             "fog",
-            "lightning"
+            "lightning",
+            "unknown"
         ];
         var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
         var weatherPanel = column.Descendants().Single(element => HasName(element, "WeatherPanel"));
+        var scene = column.Descendants().Single(element => HasName(element, "SceneGrid"));
         var localizationDirectory = RepositoryFile("TrackMeUp.Core", "Localization");
         var catalogs = Directory.GetFiles(localizationDirectory, "*.json", SearchOption.TopDirectoryOnly);
         var requiredLocalizationKeys = conditionKeys
             .Select(condition => $"WorldClock.WeatherCondition.{condition}")
             .Prepend("WorldClock.WeatherTemperature")
+            .Prepend("WorldClock.WeatherNoData")
+            .Prepend("WorldClock.SunsetLabel")
+            .Prepend("WorldClock.SunriseLabel")
             .ToArray();
 
         Assert.Equal("StackPanel", weatherPanel.Name.LocalName);
-        Assert.Equal("5", AttributeValue(weatherPanel, "Grid.Row"));
-        Assert.Equal("Collapsed", weatherPanel.Attribute("Visibility")?.Value);
+        Assert.Same(scene, weatherPanel.Parent);
+        Assert.Equal("Top", weatherPanel.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("0,170,0,0", weatherPanel.Attribute("Margin")?.Value);
+        Assert.Null(weatherPanel.Attribute("Visibility"));
         Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherTemperatureText"));
         Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherConditionText"));
         Assert.DoesNotContain(weatherPanel.Descendants(), element => element.Name.LocalName is "Button" or "FontIcon" or "SymbolIcon");
         Assert.Contains("weather is null || !weather.IsFresh", source, StringComparison.Ordinal);
-        Assert.Contains("WeatherPanel.Visibility = Visibility.Visible;", source, StringComparison.Ordinal);
-        Assert.Contains("WeatherPanel.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("WeatherTemperatureText.Text = \"—\";", source, StringComparison.Ordinal);
+        Assert.Contains("strings.Translate(\"WorldClock.WeatherNoData\")", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("WeatherPanel.Visibility", source, StringComparison.Ordinal);
         Assert.Contains("weather.TemperatureCelsius", source, StringComparison.Ordinal);
         Assert.All(conditionKeys, condition =>
             Assert.Contains($"\"{condition}\" => \"WorldClock.WeatherCondition.{condition}\"", source, StringComparison.Ordinal));
@@ -172,18 +306,64 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
     }
 
+    /// <summary>Verifies that night clocks expose localized lunar phase and illumination summaries accessibly.</summary>
     [Fact]
-    public void WeatherStatusAndRequiredOpenWeatherAttribution_AreVisibleOnlyWhenApplicable()
+    public void NightClock_PresentsLocalizedLunarPhaseAndIlluminationAccessibly()
+    {
+        string[] phaseKeys =
+        [
+            "WorldClock.MoonPhase.New",
+            "WorldClock.MoonPhase.WaxingCrescent",
+            "WorldClock.MoonPhase.FirstQuarter",
+            "WorldClock.MoonPhase.WaxingGibbous",
+            "WorldClock.MoonPhase.Full",
+            "WorldClock.MoonPhase.WaningGibbous",
+            "WorldClock.MoonPhase.LastQuarter",
+            "WorldClock.MoonPhase.WaningCrescent",
+            "WorldClock.MoonPhase.Summary"
+        ];
+        var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
+        var summary = column.Descendants().Single(element => HasName(element, "MoonPhaseSummaryText"));
+        var localizationDirectory = RepositoryFile("TrackMeUp.Core", "Localization");
+        var catalogs = Directory.GetFiles(localizationDirectory, "*.json", SearchOption.TopDirectoryOnly);
+
+        Assert.Equal("Collapsed", summary.Attribute("Visibility")?.Value);
+        Assert.Equal("CharacterEllipsis", summary.Attribute("TextTrimming")?.Value);
+        Assert.Contains("LunarPhaseProjection.Create(clock.MoonPhaseAngleDegrees)", source, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(MoonPhaseSummaryText, summary);", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(MoonPhaseSummaryText, summary);", source, StringComparison.Ordinal);
+        Assert.All(catalogs, catalog =>
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(catalog));
+            Assert.All(phaseKeys, key =>
+            {
+                Assert.True(document.RootElement.TryGetProperty(key, out var value), $"{catalog}: {key}");
+                Assert.False(string.IsNullOrWhiteSpace(value.GetString()), $"{catalog}: {key}");
+            });
+        });
+    }
+
+    /// <summary>Verifies explicit weather status in options and attribution limited to fresh observations.</summary>
+    [Fact]
+    public void WeatherStatus_IsExplicitInOptionsAndOpenWeatherAttributionAppearsOnlyForFreshObservations()
     {
         string[] statusKeys =
         [
             "WorldClock.WeatherStatus.Disabled",
+            "WorldClock.WeatherStatus.ConfigurationRequired",
             "WorldClock.WeatherStatus.Unavailable",
             "WorldClock.WeatherStatus.Partial",
-            "WorldClock.WeatherStatus.ReferenceInstant"
+            "WorldClock.WeatherStatus.ReferenceInstant",
+            "WorldClock.Options.Weather.ApiKeyStatus.Ready",
+            "WorldClock.Options.Weather.ApiKeyStatus.Missing",
+            "WorldClock.Options.Weather.ApiKeyStatus.Invalid",
+            "WorldClock.Options.Weather.ApiKeyStatus.Unavailable"
         ];
         string[] obsoleteKeys =
         [
+            "WorldClock.MoreOptions",
+            "WorldClock.AlwaysOnTop",
             "WorldClock.IlluminationCompact",
             "WorldClock.Detail",
             "WorldClock.Sun",
@@ -192,9 +372,11 @@ public sealed class WorldClockWindowSurfaceContractTests
             "WorldClock.Moonset"
         ];
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml.cs"));
         var applicationSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.cs"));
-        var status = window.Descendants().Single(element => HasName(element, "WeatherStatusText"));
+        var status = options.Descendants().Single(element => HasName(element, "WeatherStatusText"));
         var attribution = window.Descendants().Single(element => HasName(element, "WeatherAttributionButton"));
         var attributionText = window.Descendants().Single(element => HasName(element, "WeatherAttributionText"));
         var logo = attribution.Descendants().Single(element => HasName(element, "WeatherAttributionLogo"));
@@ -208,8 +390,8 @@ public sealed class WorldClockWindowSurfaceContractTests
         var localizationDirectory = RepositoryFile("TrackMeUp.Core", "Localization");
         var catalogs = Directory.GetFiles(localizationDirectory, "*.json", SearchOption.TopDirectoryOnly);
 
-        Assert.Equal("Collapsed", status.Attribute("Visibility")?.Value);
         Assert.Equal("Polite", AttributeValue(status, "AutomationProperties.LiveSetting"));
+        Assert.DoesNotContain(window.Descendants(), element => HasName(element, "WeatherStatusText"));
         Assert.Equal("HyperlinkButton", attribution.Name.LocalName);
         Assert.Equal("Collapsed", attribution.Attribute("Visibility")?.Value);
         Assert.Equal("WeatherAttributionButton_Click", attribution.Attribute("Click")?.Value);
@@ -221,10 +403,20 @@ public sealed class WorldClockWindowSurfaceContractTests
             Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(logoPath))).ToLowerInvariant());
 
         Assert.Contains("\"available\" => null", source, StringComparison.Ordinal);
-        Assert.Contains("\"disabled\" => \"WorldClock.WeatherStatus.Disabled\"", source, StringComparison.Ordinal);
+        Assert.Contains("\"disabled\" when status.ReasonCode == \"user-disabled\" => null", source, StringComparison.Ordinal);
+        Assert.Contains("\"configuration-required\" when status.ReasonCode == \"missing-api-key\" => null", source, StringComparison.Ordinal);
+        Assert.Contains("\"configuration-required\" when status.ReasonCode == \"invalid-api-key\" => null", source, StringComparison.Ordinal);
         Assert.Contains("\"partial\" => \"WorldClock.WeatherStatus.Partial\"", source, StringComparison.Ordinal);
         Assert.Contains("\"unavailable\" => \"WorldClock.WeatherStatus.Unavailable\"", source, StringComparison.Ordinal);
-        Assert.Contains("status.ReasonCode == \"explicit-instant\"", source, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.ShowWarningBanner(", source, StringComparison.Ordinal);
+        Assert.Contains("(\"available\", _) => (\"WorldClock.Options.Weather.ApiKeyStatus.Ready\", \"WeatherStatusReady\")", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("(\"WorldClock.Options.Weather.ApiKeyStatus.Missing\", \"WeatherStatusNeedsAttention\")", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("(\"WorldClock.Options.Weather.ApiKeyStatus.Invalid\", \"WeatherStatusInvalid\")", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("(\"disabled\", \"user-disabled\") => (\"WorldClock.WeatherStatus.Disabled\", \"WeatherStatusInformational\")", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("(\"WorldClock.WeatherStatus.ReferenceInstant\", \"WeatherStatusInformational\")", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("WeatherStatusText.Text = T(presentation.Key);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("VisualStateManager.GoToState(this, presentation.VisualState, false);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(WeatherStatusText, WeatherStatusText.Text);", optionsSource, StringComparison.Ordinal);
         Assert.Contains("string.Equals(snapshot.WeatherStatus.Provider, \"openweather\"", source, StringComparison.Ordinal);
         Assert.Contains("clock.Weather is { IsFresh: true }", source, StringComparison.Ordinal);
         Assert.Contains("WeatherAttributionButton.Visibility = displaysOpenWeatherObservation", source, StringComparison.Ordinal);
@@ -256,9 +448,6 @@ public sealed class WorldClockWindowSurfaceContractTests
             Assert.False(string.IsNullOrWhiteSpace(
                 document.RootElement.GetProperty("About.LinkFailed").GetString()));
             Assert.All(obsoleteKeys, key => Assert.False(document.RootElement.TryGetProperty(key, out _), $"{catalog}: {key}"));
-            Assert.DoesNotContain(
-                document.RootElement.EnumerateObject(),
-                property => property.Name.StartsWith("WorldClock.MoonPhase.", StringComparison.Ordinal));
         });
     }
 
@@ -288,15 +477,34 @@ public sealed class WorldClockWindowSurfaceContractTests
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
         var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml"));
+        var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml.cs"));
         var buttons = window.Descendants()
             .Concat(column.Descendants())
-            .Where(element => element.Name.LocalName == "Button" && element.Descendants().Any(child => child.Name.LocalName is "SymbolIcon" or "FontIcon"))
+            .Concat(options.Descendants())
+            .Where(element =>
+                element.Name.LocalName == "Button"
+                && element.Descendants().Any(child => child.Name.LocalName is "SymbolIcon" or "FontIcon")
+                && !element.Descendants().Any(child => child.Name.LocalName == "TextBlock"))
             .ToArray();
 
         Assert.NotEmpty(buttons);
-        Assert.All(buttons, button => Assert.Equal(
-            AttributeValue(button, "AutomationProperties.Name"),
-            AttributeValue(button, "ToolTipService.ToolTip")));
+        Assert.All(buttons, button =>
+        {
+            var accessibleName = AttributeValue(button, "AutomationProperties.Name");
+            Assert.False(string.IsNullOrWhiteSpace(accessibleName));
+            Assert.Equal(accessibleName, AttributeValue(button, "ToolTipService.ToolTip"));
+            Assert.StartsWith("WorldClock.", AttributeValue(button, "Tag"), StringComparison.Ordinal);
+        });
+        Assert.Contains("SetIconButtonLabel(OptionsButton, \"WorldClock.Options.Open\");", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SetIconButtonLabel(HeaderBackButton, \"WorldClock.Options.Back\");", windowSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(button, label);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(button, label);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(referenceButton, referenceName);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(referenceButton, referenceName);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(removeButton, removeName);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(removeButton, removeName);", optionsSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -350,6 +558,20 @@ public sealed class WorldClockWindowSurfaceContractTests
 
     private static bool HasName(XElement element, string name) =>
         element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == name);
+
+    private static string KeyValue(XElement element) =>
+        element.Attributes().Single(attribute => attribute.Name.LocalName == "Key").Value;
+
+    private static string? KeyValueOrNull(XElement element) =>
+        element.Attributes().SingleOrDefault(attribute => attribute.Name.LocalName == "Key")?.Value;
+
+    private static int IndexOfName(XElement[] elements, string name)
+    {
+        var index = Array.FindIndex(elements, element => HasName(element, name));
+        return index >= 0
+            ? index
+            : throw new InvalidDataException($"Expected '{name}' in the compositing stack.");
+    }
 
     private static string AttributeValue(XElement element, string localName) =>
         element.Attributes().Single(attribute => attribute.Name.LocalName == localName).Value;

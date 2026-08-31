@@ -30,6 +30,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F" alt="MIT License" /></a>
 </p>
 
+> [!IMPORTANT]
+> **Beta 1 is coming soon.** We are using the next two months to carefully evaluate AI and privacy risks before publishing the first public beta.
+
 ## Remember the moment, not the tab
 
 TrackMeUp is built for the moment when you know you saw something today, but cannot remember which app, window, or part of the day it belonged to.
@@ -52,6 +55,43 @@ TrackMeUp is built for the moment when you know you saw something today, but can
 </table>
 
 TrackMeUp does **not** store the content of what you type. It retains only non-content activity signals, such as input counts, needed to distinguish active work from idle time.
+
+## TrackMeUp in action
+
+These promotional product previews use synthetic demo data and show the English, Italian, and Vietnamese interfaces.
+
+<p align="center">
+  <img src="docs/images/readme/trackmeup-live-tracking-it.png" alt="TrackMeUp live activity tracking in Italian" width="100%" />
+  <br />
+  <sub><strong>Live tracking · Italiano</strong> — elapsed time, non-content input counts, and recent activity at a glance.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-captured-moments-en.png" alt="TrackMeUp Captured moments inspector in English" width="100%" />
+      <br />
+      <sub><strong>Captured moments · English</strong> — inspect one retained screenshot and move through the full-width timeline.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-local-search-vi.png" alt="TrackMeUp local search and OCR in Vietnamese" width="100%" />
+      <br />
+      <sub><strong>Local search and OCR · Tiếng Việt</strong> — recover context across applications, screenshots, OCR, and optional AI descriptions.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-activity-history-en.png" alt="TrackMeUp Activity history in English" width="100%" />
+      <br />
+      <sub><strong>Activity history · English</strong> — review observed activity intensity and exact daily signals without productivity scoring.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-world-clocks-it.png" alt="TrackMeUp World clocks in Italian" width="100%" />
+      <br />
+      <sub><strong>World clocks · Italiano</strong> — compare local time, astronomy, and optional current weather across cities.</sub>
+    </td>
+  </tr>
+</table>
 
 ## How TrackMeUp works
 
@@ -128,6 +168,8 @@ To produce a self-contained unpackaged build:
 ~~~powershell
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ~~~
+
+The utility recreates a clean platform-specific payload in `artifacts/unpackaged/<platform>/` so stale trimmed or ReadyToRun files cannot survive between publishes.
 
 The same utility can create a sideloadable MSIX or installer when release packaging is required. Package layouts are written to `artifacts/packages/`; final installers are written to `artifacts/installers/`.
 
@@ -218,23 +260,33 @@ Quick Setup validation checklist:
 - [ ] Start with owned screenshot files in the legacy flat directory: before tracking begins, the non-dismissible **Data migration** progress window appears, every raw/stored monitor artifact moves to `yyyy-MM/week-YYYY-WW/yyyy-MM-dd`, OCR and AI references still open the new paths, and a migration failure leaves tracking and the refresh timer stopped.
 - [ ] Enable **Start with Windows** and restart both package types: the MSIX must expose and enable its `TrackMeUpStartup` Windows startup task, recognize rich startup activation, and open in the notification area; the unpackaged build must keep an exact HKCU Run command for its current executable with `--start-with-windows` and repair stale paths without toggling the setting off and on.
 - [ ] While the shared runtime is completing a scheduled OCR/AI capture, launch a second desktop UI: Windows-startup reconciliation waits for the serialized mutation instead of reporting `runtime.unavailable`; a genuine startup-registration failure uses one owned standard Windows warning with its native **OK** action.
-- [ ] In the player title bar, reach the localized clock icon by keyboard and open **World clocks**: one independent resizable window appears, repeated activation focuses the same instance, hiding the player leaves it open, and closing the application closes it before the shared runtime shuts down; if the window cannot open, the player shows a localized warning.
-- [ ] Move and resize **World clocks**, close and reopen it, and verify its last valid placement is restored; choose **Add clock** and confirm the existing searchable city picker exposes every packaged city while preserving the four-clock maximum.
-- [ ] Inspect one through four world clocks: every city uses an equal open column separated by a 1-DIP divider, the Mica backdrop remains visible, the local astronomical phase composes golden-hour or star backdrops behind the faint skyline, fresh cloud conditions add the matching dawn/day/sunset/night cloud backdrop, and rain, fog, or snow renders independently in front; mixed precipitation combines rain and snow, while lightning adds its storm accent. Every reference/delete icon exposes the same localized tooltip and accessible name, and narrowing the window reveals horizontal scrolling before a column becomes unreadable.
-- [ ] Without `TRACKMEUP_OPENWEATHER_API_KEY`, open **World clocks** and confirm all local clocks remain available with a localized weather-disabled status. With a valid key, confirm only the live current projection shows fresh temperature and condition plus visible linked OpenWeather attribution using the official provider mark; partial or unavailable weather stays explicit without hiding clocks. Editing a historical or future reference instant shows that current weather was not requested, removes its layers, and never contacts the provider.
+- [ ] Trigger representative informational, warning, error, destructive-confirmation, and application-close flows: each uses one owned native Windows message box on the owner UI thread, Windows supplies the localized buttons, confirmations expose **Cancel** as the safe default, and dismissing or closing a confirmation never performs the action. Dedicated rich surfaces such as pickers, pricing, calendars, connection tests, and migrations remain separate windows.
+- [ ] In the player title bar, reach the localized clock icon by keyboard and open **World clocks**: one independent resizable window appears, repeated activation focuses the same instance, hiding the player leaves it open, and closing the application closes it before the shared runtime shuts down; if the window cannot open, the player shows a localized warning banner.
+- [ ] Move and resize **World clocks**, close and reopen it, and verify its last valid placement is restored. Open the localized icon-only three-dot options action: a full options layer appears over the clock canvas inside the same window, exposes weather, API-key, always-on-top, add/remove, and reference controls, and returns to the clocks with the localized Back action and restored keyboard focus. The searchable city picker still exposes every packaged city while preserving the four-clock maximum.
+- [ ] At 100%, 125%, 150%, and 200% display scale, compare the player and **World clocks** title bars in light, dark, and High Contrast: the 22-DIP PNG brand mark, labels, 40-DIP commands, and native caption buttons remain vertically aligned; every visible command receives clicks while the remaining header drags the window, and closing during startup cancels initialization without an unobserved failure.
+- [ ] Repeat the title-bar alignment, dragging, native-caption palette, and DPI checks in About, OCR text, Quick Setup, Reports, Schedule, Captured moments, Search indexing, Local search, and Third-party licenses; the standard windows retain the shared 48-DIP PNG header while the fixed-light floating search surface remains intentionally compact at 40 DIP.
+- [ ] Open the owned Activity calendar, AI connection test, AI pricing, AI reprocessing, screenshot-storage migration, and world-clock city picker dialogs at 100% and 200% scale: owner/modal behavior, blocked or routed closing, cancellation, and content remain unchanged while caption insets and light/dark/High Contrast palettes follow the shared title-bar controller; existing 44- and 48-DIP header heights remain stable.
+- [ ] Inspect one through four world clocks in light, dark, High Contrast, and with Windows transparency effects disabled: every city uses an equal open column separated by a 1-DIP divider, the Desktop Acrylic backdrop remains visible through transparent theme-aware surfaces (or uses the readable system fallback), and the image stack keeps astronomical, cloud, and lightning backdrops behind the faint skyline, places the scene fade and celestial body above the skyline, and keeps rain, fog, snow, or mixed-precipitation foreground effects in front. Every icon-only delete/options/back action exposes the same localized tooltip and accessible name, the reference control has an explicit accessible label, and narrowing the window reveals horizontal scrolling before a column becomes unreadable.
+- [ ] With clean settings, open **World clocks** and confirm current weather is enabled by default. Without `TRACKMEUP_OPENWEATHER_API_KEY`, clocks and astronomy remain available and the options surface shows a localized setup-required state rather than reporting that weather was user-disabled; entering a plausible key in the panel stores it only in the fixed Windows user/process environment variable and refreshes weather without an application restart. Turning weather off remains explicit and persistent. With a valid key, only the live current projection shows fresh temperature and condition plus visible linked OpenWeather attribution using the official provider mark; partial or unavailable weather stays explicit without hiding clocks. Editing a historical or future reference instant shows that current weather was not requested, removes its layers, and never contacts the provider.
+- [ ] Leave **World clocks** open across a weather refresh: after 12 minutes it keeps rendering the last valid observation while refreshing in the background, temporary provider failures retain that observation only up to the strict 45-minute limit, and an otherwise valid unknown condition keeps temperature, timestamp, and attribution without inventing a weather overlay. At night, verify all eight lunar phases expose their localized phase name and illumination percentage through both the visible tooltip and accessibility name.
 - [ ] Select another reference city without changing the shared instant, then edit its date and time: every column updates across date boundaries and fractional offsets, **Now** resumes a minute-aligned live refresh, and invalid or ambiguous daylight-saving times produce an explicit localized warning instead of choosing silently.
 - [ ] With the taskbar widget enabled, restart Explorer and verify the old transparent widget window closes before its replacement attaches; immediately exit during widget startup and confirm shutdown completes without a dispatcher timeout or a lingering widget process.
 - [ ] With the shared runtime already owned by a tray or startup process, launch a second desktop UI and verify that it paints completely and remains interactive; open and close **Captured moments** and confirm that window placement is saved before native teardown without terminating either process.
+- [ ] Publish `Release-Unpackaged` for x64, launch the executable from its `publish` directory with an existing settings file, and confirm the main window paints without a reflection-disabled JSON startup failure.
 - [ ] Open **Activity report** with OCR refinement usage in the selected range and verify that the report renders instead of rejecting the valid `ocr.refinement` usage origin.
 - [ ] In the screenshot inspector, the activity band adapts to the retained time range with a minimum four-hour window and five readable ticks, groups simultaneous multi-monitor captures, bottom-aligns activity bars on a visible baseline, anchors the selected half-hour label to its highlight, and stays synchronized with the full-width filmstrip at every window size and DPI scale; the header and detail pane report the real active privacy-rule count, while unavailable privacy state remains explicitly unknown.
 - [ ] With a large retained screenshot history, opening local search remains responsive and its availability summary appears without loading OCR, AI, activity, or thumbnail metadata for every capture.
 - [ ] Starting search-index reconstruction first paints the complete Mica progress window, then performs indexing without freezing its progress indicators or Cancel action.
 - [ ] While tracking a large activity history, keep the main dashboard open through several system samples and one screenshot: counters continue updating while repeated one-second refreshes do not rescan SQLite history or make pointer input stutter.
+- [ ] Disable screenshots while a capture is queued and switch to a privacy-blocked window before the next capture: no pixels or orphan files are written, the countdown disappears while disabled, concurrent manual requests create only one pending snapshot, and a simulated SQLite write failure reports degraded tracking health without stopping the runtime timer.
 - [ ] Starting TrackMeUp while tracking is disabled shows one Windows notification explaining that the app started paused and is not recording.
 - [ ] When an OS or file-system screenshot capture fails, a Windows notification shows the localized failure title and the captured exception details.
 - [ ] If activity hooks cannot start or screenshot storage drops below 512 MiB, TrackMeUp shows a toast with actionable failure details; if Windows sign-in startup genuinely cannot initialize, it shows the owned standard Windows warning described above.
+- [ ] Start without `TRACKMEUP_SENTRY_DSN`, then with malformed DSN or environment values: remote diagnostics stay disabled and health reports `disabled` or `invalid` without exposing configuration values. With a valid project DSN, an error containing a Windows path, credential assignment, DSN-like URL, structured values, and exception stack is sent only after identity, secrets, absolute paths, parameters, and extras have been removed or redacted.
 - [ ] In the screenshot inspector, the selected image contains no viewer toolbar, metadata chip, hover chrome, or other interactive overlay; the full-width filmstrip remains independently available below it.
+- [ ] In an installed MSIX build, open a populated screenshot day and switch dates and filmstrip selections rapidly: the selected WebP and realized thumbnails decode through the application facade, stale loads never replace the newest selection, an unreadable artifact shows an explicit error without turning the day into an empty gallery, and windows with no custom title-bar commands open and resize without a native crash.
 - [ ] In light, dark, and high-contrast themes, one borderless transparent WinUI `CommandBar` sits in the header between the large date and the privacy/date controls; date, time, and foreground app are plain toolbar content without chip backgrounds or shadows, actions use native dynamic overflow, and destructive actions remain critically red.
+- [ ] In **Captured moments**, deleting the retained image or deleting only its OCR/AI-provider analysis first opens an owned native Windows confirmation with **Cancel** as the safe default. Cancelling changes nothing; confirming analysis deletion keeps the image, confirming image deletion removes its retained files, and both remove the selected image's OCR, AI-provider description, and stored CPU/GPU interval telemetry while preserving general activity history. Either successful action closes any OCR window showing the deleted text, refreshes the gallery immediately, keeps a retained image searchable after analysis deletion, and prevents a duplicate destructive request.
 - [ ] Capture a new all-displays and active-window screenshot and verify each retained WebP contains only captured pixels: no host, timestamp, capture ID, monitor label, or other TrackMeUp text is burned into the image; historical labeled files remain unchanged.
 - [ ] In the screenshot filmstrip, each thumbnail is visibly larger and shows its installation color/icon beside a small gray clock and regular-weight gray time; changing selection animates only the preview to exactly 1.2x with a coral chrome/glow and at least four layout pixels of safety, without trimming its image or label, and keeps it centered through first/last capture, resize, rapid navigation, and container recycling.
 - [ ] In **Operations > Installations and data transfer**, rename an installation and choose among all 16 accent colors and 16 icons, export SQLite history with retained screenshots, preview the archive on a separate installation, then confirm the merge twice: the first import adds the source data with visible provenance and the second remains idempotent without duplicating records or files.
@@ -242,6 +294,7 @@ Quick Setup validation checklist:
 - [ ] In **Captured moments**, open or close snapshot details, close and reopen the inspector, and visit a temporarily empty day: the saved sidebar preference returns as soon as captures are available again.
 - [ ] In **Captured moments**, a snapshot with OCR shows a localized foreground-only action with the external-window icon; opening it reuses one OCR window, selecting another snapshot and opening again replaces the text, and snapshots without OCR do not show the action.
 - [ ] In **Captures and AI descriptions**, actions use explicit verbs, the latest capture occupies one ellipsized filename line with its full path in the tooltip, and progress stays aligned with the transparent Mica header without adding card backgrounds.
+- [ ] In the weekly capture planner, paint a schedule with quarter-hour boundaries and breaks such as `09:15-18:45` and `13:15-14:00`, save and reopen it, and verify every boundary round-trips unchanged. A persisted boundary outside the supported 15-minute grid must fail explicitly instead of moving silently.
 - [ ] In **Reports**, today, selected-date digest, and reports-folder actions appear as three separated sections; automatic opening is explained, the date follows the app language, and each returned path stays on one ellipsized line with its full value in the tooltip.
 - [ ] In **Keep or delete data**, load current criteria, preview eligible deletions, and permanent deletion appear in order as separate sections; preview removes nothing, deletion still requires confirmation, and folder/candidate paths remain compact with full-path tooltips.
 - [ ] In dark mode, the selected screenshot has no visible frame, border, internal padding, or overlaid controls; it keeps a clear theme-aware elevation, readable header/sidebar text, and the native calendar picker retains the localized **Select date** accessible label.
@@ -255,6 +308,7 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation g
 - [Architecture](docs/ARCHITECTURE.md)
 - [Manual validation guide](docs/VALIDATION.md)
 - [Public roadmap](ROADMAP.md)
+- [Project governance](GOVERNANCE.md)
 - [Changelog](CHANGELOG.md)
 - [CLI implementation plan](docs/CLI_IMPLEMENTATION_PLAN.md)
 - [Security policy](SECURITY.md)

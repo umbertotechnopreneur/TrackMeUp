@@ -70,8 +70,10 @@ public sealed class ReportsSurfaceContractTests
         Assert.Contains("InvalidateReportCache", reports, StringComparison.Ordinal);
         Assert.Contains("PatchSettingsAsync", reports, StringComparison.Ordinal);
         Assert.Contains("GetSettingsAsync", reports, StringComparison.Ordinal);
-        Assert.Contains("ExtendsContentIntoTitleBar = true", reports, StringComparison.Ordinal);
-        Assert.Contains("SetTitleBar(TitleBarDragRegion)", reports, StringComparison.Ordinal);
+        Assert.Contains("new CustomTitleBarController(", reports, StringComparison.Ordinal);
+        Assert.Contains("_titleBar.ApplyTheme(effectiveTheme);", reports, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetTitleBar(", reports, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateTitleBarInsets", reports, StringComparison.Ordinal);
         Assert.Contains("StartReports(options)", app, StringComparison.Ordinal);
         Assert.Contains("options.Theme", app, StringComparison.Ordinal);
         Assert.DoesNotContain("localStorage", webTheme, StringComparison.Ordinal);

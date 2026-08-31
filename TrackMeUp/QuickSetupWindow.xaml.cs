@@ -19,6 +19,7 @@ internal sealed partial class QuickSetupWindow : Window
     private const int LogicalScreenMargin = 24;
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -52,10 +53,16 @@ internal sealed partial class QuickSetupWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -100,7 +107,6 @@ internal sealed partial class QuickSetupWindow : Window
         }
 
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
-        UpdateTitleBarInsets();
         SelectedButton().Focus(FocusState.Programmatic);
     }
 
@@ -229,18 +235,7 @@ internal sealed partial class QuickSetupWindow : Window
             presenter.IsMaximizable = false;
         }
 
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        }
     }
-
-    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
-
-    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
@@ -248,18 +243,6 @@ internal sealed partial class QuickSetupWindow : Window
         {
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
-    }
-
-    private void UpdateTitleBarInsets()
-    {
-        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
     }
 
     private async void QuickSetupWindow_Closed(object sender, WindowEventArgs args)
@@ -272,6 +255,7 @@ internal sealed partial class QuickSetupWindow : Window
         }
         finally
         {
+            _titleBar.Dispose();
             _placement.Dispose();
             if (_xamlRoot is not null)
             {

@@ -46,12 +46,12 @@ public sealed class MainWindowLayoutStateTests
         state.RecordMeasuredHeight(1400);
 
         state.ShowSurface(MainWindowSurface.Options);
-        Assert.Equal(760, state.ResolveLogicalHeight(1200, 0));
-        Assert.Equal(620, state.ResolveLogicalHeight(620, 0));
+        Assert.Equal(520, state.ResolveLogicalHeight(1200, 0));
+        Assert.Equal(520, state.ResolveLogicalHeight(620, 0));
 
         state.ShowSurface(MainWindowSurface.Operations);
-        Assert.Equal(760, state.ResolveLogicalHeight(1200, 0));
-        Assert.Equal(620, state.ResolveLogicalHeight(620, 0));
+        Assert.Equal(520, state.ResolveLogicalHeight(1200, 0));
+        Assert.Equal(520, state.ResolveLogicalHeight(620, 0));
 
         state.ShowSurface(MainWindowSurface.Player);
         Assert.Equal(1200, state.ResolveLogicalHeight(1200, 0));

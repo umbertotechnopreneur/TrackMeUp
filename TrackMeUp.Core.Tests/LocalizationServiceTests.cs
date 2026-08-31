@@ -203,6 +203,87 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void WorldClockOptions_AreCompleteInEverySupportedLanguage()
+    {
+        string[] keys =
+        [
+            "WorldClock.Options.Open",
+            "WorldClock.Options.Back",
+            "WorldClock.Options.Title",
+            "WorldClock.Options.Description",
+            "WorldClock.Options.Clocks.Header",
+            "WorldClock.Options.Clocks.Description",
+            "WorldClock.Options.AlwaysOnTop.Header",
+            "WorldClock.Options.AlwaysOnTop.Off",
+            "WorldClock.Options.AlwaysOnTop.On",
+            "WorldClock.Options.Weather.Header",
+            "WorldClock.Options.Weather.Off",
+            "WorldClock.Options.Weather.On",
+            "WorldClock.Options.Weather.Description",
+            "WorldClock.Options.Weather.Setup",
+            "WorldClock.Options.Weather.ApiKey.Header",
+            "WorldClock.Options.Weather.ApiKey.Placeholder",
+            "WorldClock.Options.Weather.ApiKeyStatus.Ready",
+            "WorldClock.Options.Weather.ApiKeyStatus.Missing",
+            "WorldClock.Options.Weather.ApiKeyStatus.Invalid",
+            "WorldClock.Options.Weather.ApiKeyStatus.Unavailable",
+            "WorldClock.Options.Weather.KeyAction.Set",
+            "WorldClock.Options.Weather.KeyAction.Change",
+            "WorldClock.Options.Weather.SaveKey",
+            "WorldClock.Options.Weather.KeySaved",
+            "WorldClock.Options.Weather.KeyInvalid",
+            "WorldClock.Options.Weather.KeySaveFailed",
+            "WorldClock.Options.Weather.KeyRefreshFailed",
+            "WorldClock.Options.Weather.ProviderLink",
+            "WorldClock.WeatherStatus.ConfigurationRequired",
+            "WorldClock.SunriseLabel",
+            "WorldClock.SunsetLabel",
+            "WorldClock.WeatherNoData",
+            "WorldClock.LocalTime"
+        ];
+
+        Assert.All(LocalizationService.SupportedLanguages, language =>
+        {
+            var strings = new LocalizationService(language);
+            Assert.All(keys, key => Assert.NotEqual(key, strings.Translate(key)));
+        });
+
+        var english = new LocalizationService("en-US");
+        var italian = new LocalizationService("it-IT");
+        Assert.Equal("Open world clock options", english.Translate("WorldClock.Options.Open"));
+        Assert.Equal("Apri le opzioni degli orologi mondiali", italian.Translate("WorldClock.Options.Open"));
+        Assert.Equal("LOCAL TIME", english.Translate("WorldClock.LocalTime"));
+        Assert.Equal("ORA LOCALE", italian.Translate("WorldClock.LocalTime"));
+        Assert.Equal("Saved in Windows, not in TrackMeUp settings", english.Translate("WorldClock.Options.Weather.ApiKey.Placeholder"));
+        Assert.Equal("Salvata in Windows, non nelle impostazioni di TrackMeUp", italian.Translate("WorldClock.Options.Weather.ApiKey.Placeholder"));
+        Assert.Throws<KeyNotFoundException>(() => english.Translate("WorldClock.MoreOptions"));
+        Assert.Throws<KeyNotFoundException>(() => english.Translate("WorldClock.AlwaysOnTop"));
+    }
+
+    [Fact]
+    public void NativeSystemMessages_DoNotRetainApplicationLocalizedStandardButtonLabels()
+    {
+        string[] supersededKeys =
+        [
+            "Dialog.Ok",
+            "Dialog.CloseTracking.Confirm",
+            "Schedule.Apply",
+            "Operations.Retention.Confirm.Delete",
+            "Operations.AtomicNuke.First.Continue",
+            "Operations.AtomicNuke.Second.Confirm",
+            "Operations.AtomicNuke.Cancel",
+            "Operations.InstallationTransfer.Import.Confirm.Action"
+        ];
+
+        Assert.All(LocalizationService.SupportedLanguages, language =>
+        {
+            var strings = new LocalizationService(language);
+            Assert.All(supersededKeys, key =>
+                Assert.Throws<KeyNotFoundException>(() => strings.Translate(key)));
+        });
+    }
+
+    [Fact]
     public void OcrTextWindow_CopyIsAvailableInEverySupportedLanguage()
     {
         string[] keys =

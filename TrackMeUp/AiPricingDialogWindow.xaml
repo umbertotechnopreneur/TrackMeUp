@@ -50,9 +50,15 @@
 
         <Grid
             x:Name="TitleDragRegion"
-            Grid.Row="0"
-            Padding="22,0">
+            Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
             <TextBlock
+                Grid.Column="1"
+                Margin="22,0"
                 VerticalAlignment="Center"
                 CharacterSpacing="150"
                 FontSize="12"
