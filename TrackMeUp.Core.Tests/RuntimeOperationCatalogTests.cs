@@ -32,6 +32,9 @@ public sealed class RuntimeOperationCatalogTests
         Assert.Equal(
             "screenshot.analysis.delete.v1",
             RuntimeOperationCatalog.GetWireName(RuntimeOperation.ScreenshotAnalysisDeleteV1));
+        Assert.Equal(
+            "screenshot.image.get.v1",
+            RuntimeOperationCatalog.GetWireName(RuntimeOperation.ScreenshotImageGetV1));
     }
 
     /// <summary>Verifies that duplicate runtime wire names fail catalog construction.</summary>

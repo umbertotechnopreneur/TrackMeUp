@@ -430,6 +430,7 @@ public sealed class CliRouterTests
         public Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken) => Unsupported<string?>();
         public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
         public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotGallery>();
+        public Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(ScreenshotImageRequest request, CancellationToken cancellationToken) => Unsupported<ScreenshotImageContent>();
         public Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotStorageMigrationStatus>();
         public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) => Unsupported<ScreenshotStorageMigrationResult>();
         public Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(CancellationToken cancellationToken) => Unsupported<IReadOnlyList<InstallationProfile>>();

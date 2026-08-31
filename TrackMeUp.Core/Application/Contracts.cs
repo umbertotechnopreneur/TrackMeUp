@@ -47,6 +47,9 @@ public sealed record AnalyzeCapturedScreenshotRequest(
 /// <summary>Requests retained screenshots for one inclusive local calendar date.</summary>
 public sealed record ScreenshotGalleryRequest(DateOnly Date);
 
+/// <summary>Requests the bytes of one retained screenshot through the application boundary.</summary>
+public sealed record ScreenshotImageRequest(string ScreenshotPath);
+
 /// <summary>Provides the local snapshot counts and text-reading capability shown before opening search.</summary>
 public sealed record SearchAvailability(
     int TotalSnapshotCount,
@@ -170,6 +173,11 @@ public sealed record ActivityLabelSample(
 public sealed record ScreenshotGallery(
     DateOnly Date,
     IReadOnlyList<ScreenshotGalleryItem> Items);
+
+/// <summary>Contains one validated retained screenshot ready for presentation decoding.</summary>
+public sealed record ScreenshotImageContent(
+    string ArtifactIdentity,
+    byte[] Content);
 
 /// <summary>Reports whether owned screenshot artifacts still need the current calendar directory layout.</summary>
 public sealed record ScreenshotStorageMigrationStatus(bool Required, int ArtifactCount);
@@ -716,6 +724,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the retained screenshot gallery for the most recent local calendar date that contains a capture.</summary>
     Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken);
+
+    /// <summary>Reads one retained screenshot after validating ownership and storage containment.</summary>
+    Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(ScreenshotImageRequest request, CancellationToken cancellationToken);
 
     /// <summary>Inspects screenshot storage without moving files.</summary>
     Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken);

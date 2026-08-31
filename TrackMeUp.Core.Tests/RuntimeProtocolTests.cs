@@ -118,6 +118,72 @@ public sealed class RuntimeProtocolTests
         Assert.Equal(expected, actual);
     }
 
+    /// <summary>Verifies that retained image bytes survive the local JSON protocol exactly.</summary>
+    [Fact]
+    public async Task ScreenshotImageV1_RoundTripsRequestAndContentBytes()
+    {
+        var requestPayload = new ScreenshotImageRequest(@"C:\retained\capture.webp");
+        var request = new RuntimeRequestEnvelope(
+            RuntimeProtocol.ProtocolVersion,
+            Guid.NewGuid(),
+            "screenshot.image.get.v1",
+            JsonSerializer.SerializeToElement(requestPayload, RuntimeProtocol.SerializerOptions),
+            "it-IT",
+            "test");
+        await using var requestStream = new MemoryStream();
+
+        await RuntimeProtocol.WriteAsync(requestStream, request, CancellationToken.None);
+        requestStream.Position = 0;
+        var actualRequestEnvelope = await RuntimeProtocol.ReadAsync<RuntimeRequestEnvelope>(requestStream, CancellationToken.None);
+        var actualRequest = actualRequestEnvelope.Payload.Deserialize<ScreenshotImageRequest>(RuntimeProtocol.SerializerOptions);
+
+        Assert.Equal(requestPayload, actualRequest);
+
+        var expectedContent = new ScreenshotImageContent("capture", [1, 4, 9, 16]);
+        var response = new RuntimeResponseEnvelope(
+            RuntimeProtocol.ProtocolVersion,
+            request.RequestId,
+            true,
+            "screenshot.image.loaded",
+            "ScreenshotImageLoaded",
+            expectedContent,
+            []);
+        await using var responseStream = new MemoryStream();
+
+        await RuntimeProtocol.WriteAsync(responseStream, response, CancellationToken.None);
+        responseStream.Position = 0;
+        var actualResponseEnvelope = await RuntimeProtocol.ReadAsync<RuntimeResponseEnvelope>(responseStream, CancellationToken.None);
+        var payload = Assert.IsType<JsonElement>(actualResponseEnvelope.Payload);
+        var actualContent = payload.Deserialize<ScreenshotImageContent>(RuntimeProtocol.SerializerOptions);
+
+        Assert.NotNull(actualContent);
+        Assert.Equal(expectedContent.ArtifactIdentity, actualContent.ArtifactIdentity);
+        Assert.Equal(expectedContent.Content, actualContent.Content);
+    }
+
+    /// <summary>Verifies the typed client, host dispatcher, and application facade use the screenshot-image operation end to end.</summary>
+    [Fact]
+    public async Task ScreenshotImageV1_RoundTripsThroughTheRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, ScreenshotImageRuntimeProxy>();
+        var proxy = (ScreenshotImageRuntimeProxy)(object)application;
+        var installationId = $"screenshot-image-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+        const string screenshotPath = @"C:\retained\capture.webp";
+
+        var result = await client.GetScreenshotImageAsync(
+            new ScreenshotImageRequest(screenshotPath),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("screenshot.image.loaded", result.Code);
+        Assert.Equal("capture", result.Value?.ArtifactIdentity);
+        Assert.Equal(new byte[] { 1, 4, 9, 16 }, result.Value?.Content);
+        Assert.Equal(screenshotPath, proxy.Request?.ScreenshotPath);
+    }
+
     [Fact]
     public async Task ReportSnapshotV4_RoundTripsNullableDailyActivityScores()
     {
@@ -737,6 +803,33 @@ public sealed class RuntimeProtocolTests
                 "screenshot.analysis.deleted",
                 "ScreenshotAnalysisDeleted",
                 screenshotPath));
+        }
+    }
+
+    public class ScreenshotImageRuntimeProxy : DispatchProxy
+    {
+        public ScreenshotImageRequest? Request { get; private set; }
+
+        /// <inheritdoc />
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.GetScreenshotImageAsync) => GetScreenshotImage(
+                    (ScreenshotImageRequest)args![0]!),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private Task<OperationResult<ScreenshotImageContent>> GetScreenshotImage(ScreenshotImageRequest request)
+        {
+            Request = request;
+            return Task.FromResult(OperationResult<ScreenshotImageContent>.Success(
+                "screenshot.image.loaded",
+                "ScreenshotImageLoaded",
+                new ScreenshotImageContent("capture", [1, 4, 9, 16])));
         }
     }
 
