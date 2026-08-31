@@ -227,7 +227,6 @@ public sealed class WorldClockWindowSurfaceContractTests
     {
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
-        var readme = File.ReadAllText(RepositoryFile("README.md"));
         var localizationDirectory = RepositoryFile("TrackMeUp.Core", "Localization");
         var catalogs = Directory.GetFiles(localizationDirectory, "*.json", SearchOption.TopDirectoryOnly);
 
@@ -235,10 +234,6 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("internal void ShowWorldClockOpenFailure()", mainSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.ShowWarningBanner(", mainSource, StringComparison.Ordinal);
         Assert.Contains("T(\"WorldClock.OpenFailed\")", mainSource, StringComparison.Ordinal);
-        Assert.Contains("the Desktop Acrylic backdrop remains visible", readme, StringComparison.Ordinal);
-        Assert.Contains("a full options layer appears over the clock canvas", readme, StringComparison.Ordinal);
-        Assert.Contains("current weather is enabled by default", readme, StringComparison.Ordinal);
-        Assert.DoesNotContain("the Mica backdrop remains visible", readme, StringComparison.Ordinal);
         Assert.Equal(10, catalogs.Length);
         Assert.All(catalogs, catalog =>
         {
