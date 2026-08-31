@@ -12,6 +12,7 @@
             <KeyboardAccelerator Key="R" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="G" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="O" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
+            <KeyboardAccelerator Key="S" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
         </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
@@ -26,14 +27,13 @@
             IsHitTestVisible="False" />
         <Grid
             x:Name="DragRegion"
-            Height="48"
-            Loaded="DragRegion_Loaded"
-            SizeChanged="DragRegion_SizeChanged">
+            Height="48">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="TitleBarCaptionColumn" Width="*" MinWidth="64" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -44,16 +44,10 @@
             <Button
                 x:Name="TitleBarBackButton"
                 Grid.Column="1"
-                Width="40"
-                Height="40"
                 Margin="8,0,0,0"
-                Padding="8"
-                AllowFocusOnInteraction="False"
                 AutomationProperties.Name="Back"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarBackButton_Click"
-                IsTabStop="False"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="QuickSetup.Back"
                 ToolTipService.ToolTip="Back"
                 Visibility="Collapsed">
@@ -65,50 +59,39 @@
             </Button>
             <Button
                 x:Name="WorldClockButton"
-                Grid.Column="2"
-                Width="40"
-                Height="40"
-                Margin="4,0,0,0"
-                VerticalAlignment="Center"
-                Padding="8"
+                Grid.Column="4"
                 AllowFocusOnInteraction="True"
                 AutomationProperties.Name="Show world clocks"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="WorldClockButton_Click"
                 IsTabStop="True"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="WorldClock.OpenWindow"
                 ToolTipService.ToolTip="Show world clocks">
                 <SymbolIcon
                     AutomationProperties.AccessibilityView="Raw"
                     Symbol="Clock" />
             </Button>
+            <Image
+                x:Name="TitleBarLogo"
+                Grid.Column="2"
+                Margin="12,0,0,0"
+                Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
             <TextBlock
                 x:Name="TitleBarTitleText"
                 Grid.Column="3"
-                Margin="12,0,12,0"
-                VerticalAlignment="Center"
+                Margin="10,0,12,0"
                 AutomationProperties.AccessibilityView="Raw"
                 CharacterSpacing="130"
-                FontSize="13"
-                FontWeight="SemiBold"
-                IsHitTestVisible="False"
+                Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                 Text="TRACK ME UP"
                 TextTrimming="CharacterEllipsis" />
             <Button
                 x:Name="TitleBarMoreButton"
-                Grid.Column="4"
-                Width="46"
-                Height="40"
-                Padding="6,0,6,7"
-                AllowFocusOnInteraction="False"
+                Grid.Column="5"
+                Padding="6"
                 AutomationProperties.Name="Open application menu"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarMoreButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Main.Menu.Open"
                 ToolTipService.ToolTip="Open application menu">
                 <Button.KeyboardAccelerators>
@@ -122,17 +105,10 @@
             </Button>
             <Button
                 x:Name="TitleBarSearchButton"
-                Grid.Column="5"
-                Width="40"
-                Height="40"
-                Padding="8"
-                AllowFocusOnInteraction="False"
+                Grid.Column="6"
                 AutomationProperties.Name="Search history"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarSearchButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Search.Title"
                 ToolTipService.ToolTip="Search history">
                 <FontIcon
@@ -143,17 +119,10 @@
             </Button>
             <Button
                 x:Name="TitleBarReportButton"
-                Grid.Column="6"
-                Width="40"
-                Height="40"
-                Padding="8"
-                AllowFocusOnInteraction="False"
+                Grid.Column="7"
                 AutomationProperties.Name="Activity reports"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="TitleBarReportButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Reports.Title"
                 ToolTipService.ToolTip="Activity reports"
                 Visibility="Collapsed">
@@ -165,17 +134,10 @@
             </Button>
             <Button
                 x:Name="TitleBarMinimizeToTrayButton"
-                Grid.Column="7"
-                Width="40"
-                Height="40"
-                Padding="8"
-                AllowFocusOnInteraction="False"
+                Grid.Column="8"
                 AutomationProperties.Name="Minimize to notification area"
-                Background="Transparent"
-                BorderBrush="Transparent"
                 Click="MinimizeToTrayButton_Click"
-                IsTabStop="False"
-                Style="{StaticResource TitleBarOverflowButtonStyle}"
+                Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                 Tag="Main.Menu.MinimizeToTray"
                 ToolTipService.ToolTip="Minimize to notification area"
                 Visibility="Collapsed">
@@ -190,8 +152,8 @@
         <Border
             x:Name="PlayerPanel"
             Grid.Row="1"
-            Margin="12,4,12,8"
-            Padding="16,8,16,10"
+            Margin="12,2,12,8"
+            Padding="16,6,16,10"
             Background="Transparent">
             <Border.Resources>
                 <ResourceDictionary>
@@ -284,6 +246,17 @@
                                 <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
+                            <x:Double x:Key="MainPanoramaImageOpacity">0.17</x:Double>
+                            <LinearGradientBrush x:Key="MainPanoramaAtmosphereBrush" StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#00FFFFFF" Offset="0" />
+                                <GradientStop Color="#0CEB7559" Offset="0.45" />
+                                <GradientStop Color="#20AFC6E1" Offset="1" />
+                            </LinearGradientBrush>
+                            <LinearGradientBrush x:Key="MainPanoramaVeilBrush" StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FFF7F7F8" Offset="0" />
+                                <GradientStop Color="#B8F7F7F8" Offset="0.42" />
+                                <GradientStop Color="#00F7F7F8" Offset="1" />
+                            </LinearGradientBrush>
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="Dark">
                             <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
@@ -291,20 +264,49 @@
                                 <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
+                            <x:Double x:Key="MainPanoramaImageOpacity">0.24</x:Double>
+                            <LinearGradientBrush x:Key="MainPanoramaAtmosphereBrush" StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#00151619" Offset="0" />
+                                <GradientStop Color="#10E86C4F" Offset="0.45" />
+                                <GradientStop Color="#28152A43" Offset="1" />
+                            </LinearGradientBrush>
+                            <LinearGradientBrush x:Key="MainPanoramaVeilBrush" StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FF212123" Offset="0" />
+                                <GradientStop Color="#B8212123" Offset="0.42" />
+                                <GradientStop Color="#00212123" Offset="1" />
+                            </LinearGradientBrush>
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="HighContrast">
                             <SolidColorBrush x:Key="PlayerAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
+                            <x:Double x:Key="MainPanoramaImageOpacity">0</x:Double>
+                            <SolidColorBrush x:Key="MainPanoramaAtmosphereBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="MainPanoramaVeilBrush" Color="Transparent" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
             </Border.Resources>
-            <ScrollViewer
-                HorizontalScrollBarVisibility="Disabled"
-                HorizontalScrollMode="Disabled"
-                VerticalScrollBarVisibility="Hidden"
-                VerticalScrollMode="Enabled">
-                    <Grid Padding="0,0,6,0" RowSpacing="8">
+            <Grid>
+                <Grid
+                    Height="270"
+                    VerticalAlignment="Bottom"
+                    AutomationProperties.AccessibilityView="Raw"
+                    IsHitTestVisible="False">
+                    <Border Background="{ThemeResource MainPanoramaAtmosphereBrush}" />
+                    <Image
+                        Margin="-24,0,-24,-10"
+                        VerticalAlignment="Bottom"
+                        Opacity="{ThemeResource MainPanoramaImageOpacity}"
+                        Source="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png"
+                        Stretch="UniformToFill" />
+                    <Border Background="{ThemeResource MainPanoramaVeilBrush}" />
+                </Grid>
+                <ScrollViewer
+                    HorizontalScrollBarVisibility="Disabled"
+                    HorizontalScrollMode="Disabled"
+                    VerticalScrollBarVisibility="Hidden"
+                    VerticalScrollMode="Enabled">
+                    <Grid Padding="0,0,6,0" RowSpacing="6">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -410,6 +412,7 @@
                                         Tag="Schedule.Snapshots"
                                         Text="Screenshot schedule"
                                         ToolTipService.ToolTip="Choose the days, hours, and interval for automatic screenshots."
+                                        KeyboardAcceleratorTextOverride="Ctrl+Shift+S"
                                         Click="ScheduleScreenshotMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Foreground="#FF85A8DB" Glyph="&#xE8C0;" />
@@ -569,7 +572,7 @@
                             </RichTextBlock>
                         </Grid>
 
-                        <Grid Grid.Row="1" ColumnSpacing="16">
+                        <Grid Grid.Row="1" Margin="0,2,0,1" ColumnSpacing="14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*" />
@@ -581,8 +584,8 @@
                                     Spacing="9">
                             <Button
                                 x:Name="TrackingButton"
-                                Width="80"
-                                Height="80"
+                                Width="74"
+                                Height="74"
                                 Padding="0"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
@@ -591,7 +594,7 @@
                                 BorderBrush="#D9FFFFFF"
                                 BorderThickness="1"
                                 Click="TrackingButton_Click"
-                                CornerRadius="40"
+                                CornerRadius="37"
                                 Style="{StaticResource CircularActionButtonStyle}"
                                 ToolTipService.ToolTip="Start tracking"
                                 Translation="0,0,3">
@@ -602,7 +605,7 @@
                                     x:Name="PlayPauseIcon"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
-                                    FontSize="28"
+                                    FontSize="26"
                                     Foreground="{ThemeResource PlayerAccentGlyphBrush}"
                                     Glyph="&#xE768;"/>
                             </Button>
@@ -664,7 +667,7 @@
                                 Text="IN PAUSA" />
                             <TextBlock
                                 x:Name="ElapsedText"
-                                FontSize="36"
+                                FontSize="34"
                                 FontWeight="Light"
                                 Text="00:00" />
                             <Grid
@@ -736,7 +739,7 @@
                             <TextBlock
                                 x:Name="AiMonthlySpendText"
                                 HorizontalAlignment="Right"
-                                FontSize="36"
+                                FontSize="34"
                                 FontWeight="Light"
                                 Text="$0.0" />
                             <TextBlock
@@ -749,9 +752,9 @@
                         </Grid>
                     </Grid>
 
-                    <StackPanel Grid.Row="1" Spacing="7">
+                    <StackPanel Grid.Row="1" Spacing="6">
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <Grid Margin="0,4,4,2" ColumnSpacing="8">
+                        <Grid Margin="0,3,4,1" ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="1" />
@@ -785,15 +788,15 @@
                         </Grid>
                     </StackPanel>
 
-                    <Grid Grid.Row="2" Margin="0,2,0,0">
+                    <Grid Grid.Row="2" Margin="0,1,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Button
                             x:Name="ActivityScoreButton"
-                            MinHeight="34"
-                            Padding="2,7"
+                            MinHeight="32"
+                            Padding="2,6"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             AutomationProperties.Name="Hide activity score"
@@ -844,10 +847,10 @@
                             </Grid>
                         </Button>
 
-                        <Grid x:Name="ActivityScorePanel" Grid.Row="1" Margin="2,0,2,4" RowSpacing="5">
+                        <Grid x:Name="ActivityScorePanel" Grid.Row="1" Margin="2,0,2,3" RowSpacing="4">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="82" />
+                                <RowDefinition Height="54" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid ColumnSpacing="10">
@@ -900,9 +903,9 @@
                     <Button
                         x:Name="DetailsButton"
                         Grid.Row="3"
-                        MinHeight="36"
-                        Margin="0,2,0,0"
-                        Padding="2,8"
+                        MinHeight="34"
+                        Margin="0,1,0,0"
+                        Padding="2,7"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
                         AutomationProperties.Name="Show last session"
@@ -1018,7 +1021,6 @@
                                         <Image
                                             x:Name="LastScreenshotImage"
                                             AutomationProperties.AccessibilityView="Raw"
-                                            ImageFailed="LastScreenshotImage_ImageFailed"
                                             Stretch="UniformToFill"
                                             Visibility="Collapsed" />
                                         <Border
@@ -1075,7 +1077,8 @@
                         </Grid>
                     </Grid>
                 </Grid>
-            </ScrollViewer>
+                </ScrollViewer>
+            </Grid>
         </Border>
 
         <Border

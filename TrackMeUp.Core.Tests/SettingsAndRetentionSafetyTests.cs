@@ -179,6 +179,52 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Contains(invalid.Issues, issue => issue.Field == "ai.show_monthly_spend");
     }
 
+    [Fact]
+    public void WorldClockWeather_IsEnabledByDefaultAndRoundTripsThroughTheSettingsCatalog()
+    {
+        var defaults = Assert.IsType<AppSettings>(
+            JsonSerializer.Deserialize<AppSettings>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var disabled = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.weather.enabled"] = "false"
+            }));
+
+        Assert.True(defaults.WorldClockWeatherEnabled);
+        Assert.True(disabled.Succeeded);
+        var disabledSettings = Assert.IsType<AppSettings>(disabled.Value);
+        Assert.False(disabledSettings.WorldClockWeatherEnabled);
+        Assert.True(SettingsCatalog.TryGetValue(
+            disabledSettings,
+            "world_clocks.weather.enabled",
+            out var storedPreference));
+        Assert.Equal(false, storedPreference);
+
+        var restored = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>(
+            JsonSerializer.Serialize(disabledSettings, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.False(restored.WorldClockWeatherEnabled);
+
+        var enabled = SettingsCatalog.Apply(
+            restored,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.weather.enabled"] = "true"
+            }));
+        Assert.True(enabled.Succeeded);
+        Assert.True(enabled.Value?.WorldClockWeatherEnabled);
+
+        var invalid = SettingsCatalog.Apply(
+            defaults,
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.weather.enabled"] = "yes"
+            }));
+        Assert.False(invalid.Succeeded);
+        Assert.Contains(invalid.Issues, issue => issue.Field == "world_clocks.weather.enabled");
+    }
+
     [Theory]
     [InlineData("1")]
     [InlineData("0")]
@@ -289,6 +335,21 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Contains(result.Issues, issue => issue.Field == "active_hours");
     }
 
+    /// <summary>Verifies that active-hours boundaries must use quarter-hour increments.</summary>
+    [Fact]
+    public void Apply_RejectsActiveHoursOutsideTheQuarterHourContract()
+    {
+        var result = SettingsCatalog.Apply(
+            new AppSettings(),
+            new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["active_hours.monday.active"] = "09:10-18:45"
+            }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Issues, issue => issue.Field == "active_hours.monday.active");
+    }
+
     [Fact]
     public void InformationalSchedule_UsesTheDeviceLocalWeekdayForUtcSnapshots()
     {
@@ -363,6 +424,19 @@ public sealed class SettingsAndRetentionSafetyTests
 
         Assert.False(ActiveHoursSchedule.HasAnyActivePeriod(normalized.ActiveHours));
         Assert.All(normalized.ActiveHours!, day => Assert.Empty(day.ActivePeriod));
+    }
+
+    /// <summary>Verifies that persisted active-hours boundaries outside the supported grid are rejected.</summary>
+    [Fact]
+    public void NormalizePersisted_RejectsUnsupportedActiveHoursBoundaries()
+    {
+        var settings = new AppSettings(ActiveHours: [new ActiveHoursDay("monday", "09:10-18:45")]);
+
+        var exception = Assert.Throws<InvalidDataException>(() => SettingsCatalog.NormalizePersisted(
+            settings,
+            Path.Combine(Path.GetTempPath(), "TrackMeUp", "screenshots")));
+
+        Assert.Contains("15-minute increments", exception.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -626,6 +700,59 @@ public sealed class SettingsAndRetentionSafetyTests
 
             Assert.Throws<SqliteException>(() => monitor.PersistSample(sample));
             Assert.Null(monitor.CurrentSample);
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>Verifies that timer persistence failures are contained and reported once as degraded health.</summary>
+    [Fact]
+    public void ActivityMonitor_TimerPersistenceFailure_IsContainedAndReportsDegradedHealthOnce()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            using var tracking = new TrackingDomainService(store);
+            var persisted = new ActivitySample(
+                DateTimeOffset.UtcNow.AddSeconds(-5),
+                5,
+                "active",
+                "test",
+                "Test",
+                "persisted",
+                "window",
+                "test-installation",
+                1,
+                0);
+            var rejected = persisted with { Timestamp = DateTimeOffset.UtcNow, Context = "rejected" };
+            var changes = new List<TrackingRuntimeHealth>();
+            tracking.RuntimeHealthChanged += changes.Add;
+
+            Assert.True(tracking.TryPersistActivitySample(persisted));
+            using (var connection = new SqliteConnection($"Data Source={Path.Combine(dataDirectory, "activity.sqlite3")};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DROP TABLE activity_samples;";
+                command.ExecuteNonQuery();
+            }
+
+            Assert.False(tracking.TryPersistActivitySample(rejected));
+            Assert.False(tracking.TryPersistActivitySample(rejected));
+
+            var health = tracking.RuntimeHealth;
+            Assert.True(health.IsDegraded);
+            Assert.Equal("tracking.persistence.failed", health.StatusCode);
+            Assert.Equal(persisted.Timestamp, health.LastPersistedSampleAt);
+            Assert.NotNull(health.LastPersistenceFailureAt);
+            var transition = Assert.Single(changes);
+            Assert.True(transition.IsDegraded);
         }
         finally
         {

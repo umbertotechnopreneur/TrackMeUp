@@ -11,6 +11,19 @@ namespace TrackMeUp.Services;
 /// </summary>
 public sealed class UtilityService
 {
+    private readonly Action<string, string> _apiKeyWriter;
+
+    /// <summary>Creates the Windows utility service with the production user-and-process environment writer.</summary>
+    public UtilityService()
+        : this(SetUserAndProcessApiKey)
+    {
+    }
+
+    internal UtilityService(Action<string, string> apiKeyWriter)
+    {
+        _apiKeyWriter = apiKeyWriter ?? throw new ArgumentNullException(nameof(apiKeyWriter));
+    }
+
     /// <summary>
     /// Returns local application directory path under %LOCALAPPDATA%.
     /// </summary>
@@ -47,6 +60,11 @@ public sealed class UtilityService
     public void SetApiKey(string keyName, string value)
     {
         var name = string.IsNullOrWhiteSpace(keyName) ? "OPENAI_API_KEY" : keyName.Trim();
+        _apiKeyWriter(name, value);
+    }
+
+    private static void SetUserAndProcessApiKey(string name, string value)
+    {
         // Persist in both User and Process scopes: available now and on next app launches.
         Environment.SetEnvironmentVariable(name, value, EnvironmentVariableTarget.User);
         Environment.SetEnvironmentVariable(name, value, EnvironmentVariableTarget.Process);

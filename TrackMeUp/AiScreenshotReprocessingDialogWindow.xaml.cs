@@ -24,6 +24,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
     private readonly LocalizationService _strings;
     private readonly CultureInfo _culture;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -54,10 +55,16 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
         RootGrid.RequestedTheme = theme;
         RootGrid.Language = _strings.Language;
         UiLocalization.Apply(RootGrid, _strings);
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>());
         _placement = new WindowPlacementService(
             application,
             this,
@@ -598,6 +605,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
     {
         _isCompleting = true;
         _lifetimeCancellation.Cancel();
+        _titleBar.Dispose();
         _completion.TrySetResult();
     }
 

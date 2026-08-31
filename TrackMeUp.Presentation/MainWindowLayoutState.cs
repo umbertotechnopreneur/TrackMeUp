@@ -38,7 +38,7 @@ public enum MainWindowLayoutSection
 public sealed class MainWindowLayoutState
 {
     private const int InitialLogicalHeight = 304;
-    private const int PreferredSecondarySurfaceLogicalHeight = 760;
+    private const int PreferredSecondarySurfaceLogicalHeight = 520;
 
     /// <summary>Gets the currently active top-level surface.</summary>
     public MainWindowSurface Surface { get; private set; } = MainWindowSurface.Player;

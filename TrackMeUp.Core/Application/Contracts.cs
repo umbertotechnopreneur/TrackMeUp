@@ -47,6 +47,9 @@ public sealed record AnalyzeCapturedScreenshotRequest(
 /// <summary>Requests retained screenshots for one inclusive local calendar date.</summary>
 public sealed record ScreenshotGalleryRequest(DateOnly Date);
 
+/// <summary>Requests the bytes of one retained screenshot through the application boundary.</summary>
+public sealed record ScreenshotImageRequest(string ScreenshotPath);
+
 /// <summary>Provides the local snapshot counts and text-reading capability shown before opening search.</summary>
 public sealed record SearchAvailability(
     int TotalSnapshotCount,
@@ -132,6 +135,7 @@ public sealed record ScreenshotTextSnapshot(
 /// <param name="MouseClicks">The number of durable mouse clicks observed during the capture interval, or <see langword="null"/> when no activity samples overlap it.</param>
 /// <param name="CpuUsagePercent">The average CPU usage persisted for the capture interval, or <see langword="null"/> when telemetry was unavailable.</param>
 /// <param name="GpuUsagePercent">The average GPU usage persisted for the capture interval, or <see langword="null"/> when telemetry was unavailable.</param>
+/// <param name="HasRemovableAnalysisData">Whether OCR, AI-provider analysis, or interval telemetry is currently persisted for this artifact.</param>
 public sealed record ScreenshotGalleryItem(
     DateTimeOffset CapturedAt,
     string Path,
@@ -149,7 +153,8 @@ public sealed record ScreenshotGalleryItem(
     long? MouseClicks = null,
     int? CpuUsagePercent = null,
     int? GpuUsagePercent = null,
-    InstallationProfile? Installation = null);
+    InstallationProfile? Installation = null,
+    bool HasRemovableAnalysisData = false);
 
 /// <summary>Contains telemetry averaged between the previous retained screenshot and the current capture.</summary>
 public sealed record ScreenshotIntervalTelemetry(
@@ -168,6 +173,11 @@ public sealed record ActivityLabelSample(
 public sealed record ScreenshotGallery(
     DateOnly Date,
     IReadOnlyList<ScreenshotGalleryItem> Items);
+
+/// <summary>Contains one validated retained screenshot ready for presentation decoding.</summary>
+public sealed record ScreenshotImageContent(
+    string ArtifactIdentity,
+    byte[] Content);
 
 /// <summary>Reports whether owned screenshot artifacts still need the current calendar directory layout.</summary>
 public sealed record ScreenshotStorageMigrationStatus(bool Required, int ArtifactCount);
@@ -443,7 +453,15 @@ public sealed record RuntimeHealth(
     string InstallationFingerprint,
     bool IsRuntimeOwner,
     IReadOnlyList<string> Capabilities,
+    TrackingRuntimeHealth Tracking,
     ObservabilityHealth? Observability = null);
+
+/// <summary>Describes whether periodic activity samples are reaching durable storage.</summary>
+public sealed record TrackingRuntimeHealth(
+    bool IsDegraded,
+    DateTimeOffset? LastPersistedSampleAt,
+    DateTimeOffset? LastPersistenceFailureAt,
+    string StatusCode);
 
 /// <summary>Describes non-secret logging and remote-error-reporting diagnostics for the active host.</summary>
 public sealed record ObservabilityHealth(
@@ -653,6 +671,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Removes one city from the persisted world-clock selection.</summary>
     Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
 
+    /// <summary>Stores the current-weather API key only in its fixed Windows environment variable.</summary>
+    Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken);
+
     /// <summary>Gets the latest recorded session state.</summary>
     Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken);
 
@@ -692,8 +713,8 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Deletes all local image artifacts belonging to one retained screenshot capture.</summary>
     Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken);
 
-    /// <summary>Deletes local snapshot-analysis records associated with one retained screenshot capture.</summary>
-    Task<OperationResult<string>> DeleteSnapshotAsync(string screenshotPath, CancellationToken cancellationToken);
+    /// <summary>Deletes local OCR, AI-provider analysis, and interval telemetry associated with one retained screenshot.</summary>
+    Task<OperationResult<string>> DeleteScreenshotAnalysisAsync(string screenshotPath, CancellationToken cancellationToken);
 
     /// <summary>Gets the most recent retained screenshot.</summary>
     Task<OperationResult<string?>> GetLatestScreenshotAsync(CancellationToken cancellationToken);
@@ -703,6 +724,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the retained screenshot gallery for the most recent local calendar date that contains a capture.</summary>
     Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken);
+
+    /// <summary>Reads one retained screenshot after validating ownership and storage containment.</summary>
+    Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(ScreenshotImageRequest request, CancellationToken cancellationToken);
 
     /// <summary>Inspects screenshot storage without moving files.</summary>
     Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken);

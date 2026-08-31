@@ -196,9 +196,8 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         try
         {
             confirmed = await Context.Dialogs.ConfirmAsync(
-                Context.Application,
                 Context.OwnerWindow,
-                MicaDialogRequest.Confirmation(
+                SystemMessageBoxRequest.Confirmation(
                     T("Operations.InstallationTransfer.Import.Confirm.Title", "Merge archive data?"),
                     Format(
                         "Operations.InstallationTransfer.Import.Confirm.Message",
@@ -207,10 +206,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
                         (long)plan.AiRequestCount + plan.AiAnalysisCount,
                         plan.ScreenshotFileCount,
                         FormatBytes(plan.ScreenshotBytes),
-                        plan.Installations.Count),
-                    T("Operations.InstallationTransfer.Import.Confirm.Action", "Merge data"),
-                    T("Dialog.Cancel", "Cancel")),
-                RequestedTheme);
+                        plan.Installations.Count)));
         }
         catch (Exception)
         {

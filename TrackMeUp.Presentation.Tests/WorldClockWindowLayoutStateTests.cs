@@ -7,6 +7,27 @@ namespace TrackMeUp.Presentation.Tests;
 
 public sealed class WorldClockWindowLayoutStateTests
 {
+    [Fact]
+    public void Surface_DefaultsToClocksAndSwitchesWithoutLosingTheOwnerState()
+    {
+        var state = new WorldClockWindowLayoutState();
+
+        Assert.Equal(WorldClockWindowSurface.Clocks, state.Surface);
+        state.ShowSurface(WorldClockWindowSurface.Options);
+        Assert.Equal(WorldClockWindowSurface.Options, state.Surface);
+        state.ShowSurface(WorldClockWindowSurface.Clocks);
+        Assert.Equal(WorldClockWindowSurface.Clocks, state.Surface);
+    }
+
+    [Fact]
+    public void ShowSurface_RejectsUndefinedValues()
+    {
+        var state = new WorldClockWindowLayoutState();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            state.ShowSurface((WorldClockWindowSurface)int.MaxValue));
+    }
+
     [Theory]
     [InlineData("2026-08-30T12:34:00.0000000+00:00", 60.1d)]
     [InlineData("2026-08-30T12:34:15.2500000+00:00", 44.85d)]

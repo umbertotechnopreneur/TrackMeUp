@@ -123,6 +123,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var dayOverview = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDayOverviewControl.xaml"));
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
         var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
+        var bitmapLoaderSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotBitmapSourceLoader.cs"));
         var gallerySource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml.cs"));
         var timelineSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml.cs"));
         var dayOverviewSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDayOverviewControl.xaml.cs"));
@@ -138,7 +139,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var timelineCardRoot = timeline.Descendants().Single(element => HasName(element, "TimelineCardRoot"));
         var timelineThumbnailVisual = timeline.Descendants().Single(element => HasName(element, "TimelineThumbnailVisual"));
         var timelineThumbnailSlot = timelineCardRoot.Descendants().First(element =>
-            element.Name.LocalName == "RowDefinition" && element.Attribute("Height")?.Value == "114");
+            element.Name.LocalName == "RowDefinition" && element.Attribute("Height")?.Value == "69");
         var timelineImage = timeline.Descendants().Single(element => HasName(element, "TimelineImage"));
         var timelineImageFrame = timelineImage.Ancestors().First(element => element.Name.LocalName == "Border");
         var timelineSelectionGlow = timeline.Descendants().Single(element => HasName(element, "TimelineSelectionGlow"));
@@ -151,7 +152,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             element.Name.LocalName == "TextBlock" && element.Attribute("Text")?.Value == "{Binding TimeText}");
         var filmstripSurface = timeline.Descendants().Single(element =>
             element.Name.LocalName == "Border"
-            && element.Attribute("Background")?.Value == "{ThemeResource AcrylicInAppFillColorBaseBrush}");
+            && element.Attribute("Background")?.Value == "{ThemeResource ScreenshotFilmstripBackdropBrush}");
         var gallerySection = window.Descendants().Single(element => HasName(element, "GallerySection"));
         var detailsPane = window.Descendants().Single(element => HasName(element, "DetailsPane"));
         var markerCanvas = dayOverview.Descendants().Single(element => HasName(element, "MarkerCanvas"));
@@ -169,6 +170,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("Hidden", imageScroller.Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Equal("Auto", imageScroller.Attribute("VerticalScrollMode")?.Value);
         Assert.Equal("Uniform", screenshotImage.Attribute("Stretch")?.Value);
+        Assert.Null(screenshotImage.Attribute("ImageFailed"));
         Assert.Equal("ScreenshotImage_ImageOpened", screenshotImage.Attribute("ImageOpened")?.Value);
         Assert.Equal("ImageHost_PointerWheelChanged", imageHost.Attribute("PointerWheelChanged")?.Value);
         Assert.Equal("Transparent", screenshotFrame.Attribute("Background")?.Value);
@@ -199,7 +201,10 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("0", toolbar.Attribute("BorderThickness")?.Value);
         Assert.Equal("1", toolbar.Attribute("Grid.Column")?.Value);
         Assert.Equal("Collapsed", metadataPanel.Attribute("Visibility")?.Value);
-        Assert.DoesNotContain(metadataPanel.Descendants(), element => element.Name.LocalName is "Border" or "ThemeShadow");
+        Assert.Equal(3, metadataPanel.Descendants().Count(element =>
+            element.Name.LocalName == "Border"
+            && element.Attribute("Style")?.Value == "{StaticResource ScreenshotMetadataPillBorderStyle}"));
+        Assert.DoesNotContain(metadataPanel.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.Contains(header.Descendants(), element => HasName(element, "MetadataDateValueText"));
         Assert.Contains(header.Descendants(), element => HasName(element, "MetadataTimeValueText"));
         Assert.Contains(header.Descendants(), element => HasName(element, "MetadataAppValueText"));
@@ -216,13 +221,14 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains(timeline.Descendants(), element => HasName(element, "NextTimelineButton"));
         Assert.Contains(timeline.Descendants(), element =>
             element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
-        Assert.Equal("136", timelineCardRoot.Attribute("MinHeight")?.Value);
-        Assert.Equal("176", timelineCardRoot.Attribute("Width")?.Value);
-        Assert.Equal("142", timelineThumbnailVisual.Attribute("Width")?.Value);
-        Assert.Equal("90", timelineThumbnailVisual.Attribute("Height")?.Value);
-        Assert.Equal("71,45,0", timelineThumbnailVisual.Attribute("CenterPoint")?.Value);
-        Assert.Equal("132", timelineImageFrame.Attribute("Width")?.Value);
-        Assert.Equal("80", timelineImageFrame.Attribute("Height")?.Value);
+        Assert.Null(timelineImage.Attribute("ImageFailed"));
+        Assert.Equal("87", timelineCardRoot.Attribute("MinHeight")?.Value);
+        Assert.Equal("110", timelineCardRoot.Attribute("Width")?.Value);
+        Assert.Equal("88", timelineThumbnailVisual.Attribute("Width")?.Value);
+        Assert.Equal("54", timelineThumbnailVisual.Attribute("Height")?.Value);
+        Assert.Equal("44,27,0", timelineThumbnailVisual.Attribute("CenterPoint")?.Value);
+        Assert.Equal("80", timelineImageFrame.Attribute("Width")?.Value);
+        Assert.Equal("46", timelineImageFrame.Attribute("Height")?.Value);
         Assert.True(
             double.Parse(timelineCardRoot.Attribute("Width")!.Value, CultureInfo.InvariantCulture)
             - (double.Parse(timelineThumbnailVisual.Attribute("Width")!.Value, CultureInfo.InvariantCulture) * 1.2d)
@@ -241,7 +247,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
             Assert.Contains(element.Descendants(), child =>
                 child.Name.LocalName == "ScalarTransition"
                 && child.Attribute("Duration")?.Value == "0:0:0.16"));
-        Assert.Equal("11", timelineClockIcon.Attribute("FontSize")?.Value);
+        Assert.Equal("10", timelineClockIcon.Attribute("FontSize")?.Value);
         Assert.Equal("{Binding InstallationBrush}", timelineInstallationBadge.Attribute("Background")?.Value);
         Assert.Equal("{Binding InstallationGlyph}", timelineInstallationIcon.Attribute("Glyph")?.Value);
         Assert.Equal("Raw", timelineInstallationIcon.Attribute("AutomationProperties.AccessibilityView")?.Value);
@@ -249,13 +255,13 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("InstallationAppearance.GetIconGlyph(installation.Icon)", timelineSource, StringComparison.Ordinal);
         Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", timelineClockIcon.Attribute("Foreground")?.Value);
         Assert.Equal("Raw", timelineClockIcon.Attribute("AutomationProperties.AccessibilityView")?.Value);
-        Assert.Equal("12", timelineTimeText.Attribute("FontSize")?.Value);
+        Assert.Equal("11", timelineTimeText.Attribute("FontSize")?.Value);
         Assert.Equal("Normal", timelineTimeText.Attribute("FontWeight")?.Value);
         Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", timelineTimeText.Attribute("Foreground")?.Value);
         Assert.DoesNotContain(timeline.Descendants(), element => element.Attribute("Text")?.Value == "{Binding DateText}");
         Assert.Contains(timeline.Descendants(), element => HasName(element, "TimelineContainerRoot"));
         Assert.DoesNotContain(timeline.Descendants(), element => HasName(element, "FilmstripPanel"));
-        Assert.Equal("168", filmstripStrip.Attribute("Height")?.Value);
+        Assert.Equal("112", filmstripStrip.Attribute("Height")?.Value);
         Assert.Equal("1", filmstripStrip.Attribute("Opacity")?.Value);
         Assert.NotNull(filmstripSurface);
         Assert.Null(gallerySection.Attribute("Grid.RowSpan"));
@@ -300,7 +306,49 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("e.Handled = true;", viewerSource, StringComparison.Ordinal);
         Assert.Contains("Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 0.5d", timelineSource, StringComparison.Ordinal);
         Assert.Contains("ImageScroller.ChangeView", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("new BitmapImage", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("GetScreenshotImageAsync", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.Contains("bitmap.SetSourceAsync(stream)", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", viewerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", timelineSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", viewerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", timelineSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("StorageFile", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ImageFailed=", viewer.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("ImageFailed=", timeline.ToString(), StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource.CreateLinkedTokenSource", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("generation == _imageLoadGeneration", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(image.DataContext, registration.Entry)", timelineSource, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotViewer.Configure(_application, _lifetimeCancellation.Token);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("TimelineSection.Configure(_application, _lifetimeCancellation.Token);", windowSource, StringComparison.Ordinal);
+
+        var viewerAwait = viewerSource.IndexOf("var result = await loader.LoadAsync", StringComparison.Ordinal);
+        var viewerGuard = viewerSource.IndexOf("if (!IsCurrentImageLoad", viewerAwait, StringComparison.Ordinal);
+        var viewerAssignment = viewerSource.IndexOf("ScreenshotImage.Source = result.Bitmap;", viewerGuard, StringComparison.Ordinal);
+        Assert.True(viewerAwait >= 0 && viewerGuard > viewerAwait && viewerAssignment > viewerGuard);
+        var timelineAwait = timelineSource.IndexOf("var result = await loader.LoadAsync", StringComparison.Ordinal);
+        var timelineGuard = timelineSource.IndexOf("if (!IsCurrentThumbnailLoad", timelineAwait, StringComparison.Ordinal);
+        var timelineAssignment = timelineSource.IndexOf("image.Source = result.Succeeded ? result.Bitmap : null;", timelineGuard, StringComparison.Ordinal);
+        Assert.True(timelineAwait >= 0 && timelineGuard > timelineAwait && timelineAssignment > timelineGuard);
+        var beginViewerLoad = viewerSource.IndexOf("private void BeginImageLoad", StringComparison.Ordinal);
+        var cancelViewerLoad = viewerSource.IndexOf("CancelImageLoad();", beginViewerLoad, StringComparison.Ordinal);
+        var registerViewerLoad = viewerSource.IndexOf("_imageLoadCancellation = cancellation;", cancelViewerLoad, StringComparison.Ordinal);
+        Assert.True(beginViewerLoad >= 0 && cancelViewerLoad > beginViewerLoad && registerViewerLoad > cancelViewerLoad);
+        var beginTimelineLoad = timelineSource.IndexOf("private void BeginTimelineImageLoad", StringComparison.Ordinal);
+        var cancelTimelineLoad = timelineSource.IndexOf("CancelTimelineImageLoad(image);", beginTimelineLoad, StringComparison.Ordinal);
+        var registerTimelineLoad = timelineSource.IndexOf("_thumbnailLoads[image] = registration;", cancelTimelineLoad, StringComparison.Ordinal);
+        Assert.True(beginTimelineLoad >= 0 && cancelTimelineLoad > beginTimelineLoad && registerTimelineLoad > cancelTimelineLoad);
+        var setTimelineItems = timelineSource.IndexOf("public void SetItems", StringComparison.Ordinal);
+        var cancelAllTimelineLoads = timelineSource.IndexOf("CancelAllThumbnailLoads();", setTimelineItems, StringComparison.Ordinal);
+        var advanceTimelineGeneration = timelineSource.IndexOf("_thumbnailGeneration++;", cancelAllTimelineLoads, StringComparison.Ordinal);
+        var replaceTimelineItems = timelineSource.IndexOf("FilmstripList.ItemsSource = _entries;", advanceTimelineGeneration, StringComparison.Ordinal);
+        Assert.True(
+            setTimelineItems >= 0
+            && cancelAllTimelineLoads > setTimelineItems
+            && advanceTimelineGeneration > cancelAllTimelineLoads
+            && replaceTimelineItems > advanceTimelineGeneration);
         Assert.Contains("bitmap.PixelWidth", viewerSource, StringComparison.Ordinal);
         Assert.Contains("var containScale = Math.Min", viewerSource, StringComparison.Ordinal);
         Assert.Contains("PointerDeviceType.Mouse", viewerSource, StringComparison.Ordinal);
@@ -312,7 +360,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("scroller.ExtentWidth", timelineSource, StringComparison.Ordinal);
         Assert.Contains("private const float SelectedTimelineScale = 1.2f;", timelineSource, StringComparison.Ordinal);
         Assert.Contains("private const double EstimatedTimelineContainerWidth = 184d;", timelineSource, StringComparison.Ordinal);
-        Assert.Contains("DecodePixelWidth = 432", timelineSource, StringComparison.Ordinal);
+        Assert.Contains("decodePixelWidth: 432", timelineSource, StringComparison.Ordinal);
         Assert.Contains("cardRoot.FindName(\"TimelineThumbnailVisual\")", timelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Screenshots.Timeline.Date", timelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("string DateText", timelineSource, StringComparison.Ordinal);

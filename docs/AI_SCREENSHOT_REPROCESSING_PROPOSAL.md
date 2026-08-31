@@ -19,7 +19,7 @@ Il worker non deve ciclare direttamente l'attuale `AnalyzeCapturedScreenshotAsyn
 ## Stato attuale rilevante
 
 - `ActivityCalendarDialogWindow` è già una finestra Acrylic e legge solo `ITrackMeUpApplication.GetReportAsync(...)`, correttamente senza accesso diretto a SQLite o file.
-- `MicaDialogService` serializza le finestre modali con un unico `SemaphoreSlim`; il calendario mantiene quel lock fino alla chiusura.
+- `MicaDialogService` serializza con un unico `SemaphoreSlim` sia i MessageBox nativi usati per informazioni/conferme semplici sia le finestre ricche dedicate; il calendario mantiene quel lock fino alla chiusura.
 - `ScreenshotWindow` legge le gallerie tramite `GetScreenshotGalleryAsync` e riceve `AiDescriptionMarkdown` dalla più recente analisi che riferisce il file.
 - Le schermate conservate sono la fonte di verità del catalogo; `screenshot_interval_telemetry` associa `artifact_identity`, `capture_id` e ora della cattura.
 - `ai_analysis_results.screenshot_paths` contiene più percorsi separati da `;`. Questa forma non permette una query indicizzata per sapere se una singola schermata possiede già una descrizione.
@@ -40,7 +40,7 @@ Il calendario non deve caricare conteggi di screenshot durante la sua apertura n
 
 ### Transizione modale senza deadlock
 
-La nuova finestra non deve chiamare nuovamente il metodo pubblico di `MicaDialogService` mentre il calendario detiene già `_queue`.
+La nuova finestra ricca non deve chiamare nuovamente il metodo pubblico di `MicaDialogService` mentre il calendario detiene già `_queue`. I MessageBox nativi restano riservati ai flussi puramente informativi o di conferma e non sostituiscono questa superficie con stato e progresso.
 
 La soluzione consigliata è:
 

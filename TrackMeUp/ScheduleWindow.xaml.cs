@@ -13,15 +13,17 @@ namespace TrackMeUp;
 /// <summary>Collects screenshot scheduling input in a detached themed window.</summary>
 public sealed partial class ScheduleWindow : Window
 {
-    private const int LogicalWindowWidth = 860;
-    private const int LogicalWindowHeight = 700;
+    private const int LogicalWindowWidth = 900;
+    private const int LogicalWindowHeight = 620;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly ITrackMeUpApplication _application;
     private readonly MicaDialogService _dialogs;
     private LocalizationService _strings;
+    private string _theme;
     private XamlRoot? _xamlRoot;
 
     /// <summary>Occurs after the user confirms a valid screenshot schedule.</summary>
@@ -40,10 +42,17 @@ public sealed partial class ScheduleWindow : Window
         _application = application;
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _strings = new LocalizationService(uiLanguage);
+        _theme = theme;
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Schedule, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ApplyTheme(theme);
         ApplyLanguage(uiLanguage);
@@ -56,12 +65,14 @@ public sealed partial class ScheduleWindow : Window
     /// <summary>Applies the active application theme to the detached schedule editor.</summary>
     public void ApplyTheme(string theme)
     {
+        _theme = theme;
         RootGrid.RequestedTheme = theme switch
         {
             "light" => ElementTheme.Light,
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
+        _titleBar.ApplyTheme(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
     }
 
     /// <summary>Applies localized labels to schedule-specific commands and confirmations.</summary>
@@ -70,6 +81,8 @@ public sealed partial class ScheduleWindow : Window
         _strings = new LocalizationService(uiLanguage);
         Title = _strings.Translate("Schedule.WindowTitle");
         UiLocalization.Apply(RootGrid, _strings);
+        IntervalNumberBox.Header = null;
+        AutomationProperties.SetName(IntervalNumberBox, _strings.Translate("Schedule.Interval.Value.Header"));
         WorkingHoursEditor.ApplyLanguage(uiLanguage);
         AutomationProperties.SetName(StandardWorkWeekButton, _strings.Translate("Schedule.Preset.WorkWeek.Accessible"));
         AutomationProperties.SetName(ClearAllHoursButton, _strings.Translate("Schedule.ClearAll.Accessible"));
@@ -114,14 +127,10 @@ public sealed partial class ScheduleWindow : Window
     private async Task<bool> ConfirmReplacementAsync(string titleKey, string messageKey)
     {
         return await _dialogs.ConfirmAsync(
-            _application,
             this,
-            MicaDialogRequest.Confirmation(
+            SystemMessageBoxRequest.Confirmation(
                 _strings.Translate(titleKey),
-                _strings.Translate(messageKey),
-                _strings.Translate("Schedule.Apply"),
-                _strings.Translate("Schedule.Cancel")),
-            RootGrid.RequestedTheme);
+                _strings.Translate(messageKey)));
     }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
@@ -136,6 +145,7 @@ public sealed partial class ScheduleWindow : Window
     {
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
+        _titleBar.Dispose();
         _lifetimeCancellation.Cancel();
         if (_xamlRoot is not null)
         {

@@ -14,8 +14,18 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="TitleDragRegion" Height="48" Padding="24,0,180,0">
-            <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="9">
+        <Grid x:Name="TitleDragRegion" Height="48">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <StackPanel
+                Grid.Column="1"
+                Margin="24,0,12,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="9">
                 <FontIcon
                     AutomationProperties.AccessibilityView="Raw"
                     FontFamily="Segoe Fluent Icons"

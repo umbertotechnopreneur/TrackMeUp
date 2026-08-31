@@ -123,7 +123,8 @@ public sealed record AppSettings(
     IReadOnlyDictionary<string, TrackMeUp.Application.WindowState>? WindowStates = null,
     bool ScreenshotDetailsPaneOpen = false,
     IReadOnlyList<string>? WorldClockCityIds = null,
-    bool ShowAiMonthlySpend = false);
+    bool ShowAiMonthlySpend = false,
+    bool WorldClockWeatherEnabled = true);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

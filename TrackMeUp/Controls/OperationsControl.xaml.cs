@@ -209,30 +209,20 @@ public sealed partial class OperationsControl : UserControl
         }
 
         var firstConfirmation = await Dialogs.ConfirmAsync(
-            Application,
             OwnerWindow,
-            MicaDialogRequest.Confirmation(
+            SystemMessageBoxRequest.Confirmation(
                 _strings.Translate("Operations.AtomicNuke.First.Title"),
-                _strings.Translate("Operations.AtomicNuke.First.Message"),
-                _strings.Translate("Operations.AtomicNuke.First.Continue"),
-                _strings.Translate("Operations.AtomicNuke.Cancel"),
-                Windows.UI.Color.FromArgb(255, 232, 118, 43)),
-            ActualTheme);
+                _strings.Translate("Operations.AtomicNuke.First.Message")));
         if (!firstConfirmation)
         {
             return;
         }
 
         var finalConfirmation = await Dialogs.ConfirmAsync(
-            Application,
             OwnerWindow,
-            MicaDialogRequest.Confirmation(
+            SystemMessageBoxRequest.Confirmation(
                 _strings.Translate("Operations.AtomicNuke.Second.Title"),
-                _strings.Translate("Operations.AtomicNuke.Second.Message"),
-                _strings.Translate("Operations.AtomicNuke.Second.Confirm"),
-                _strings.Translate("Operations.AtomicNuke.Cancel"),
-                Windows.UI.Color.FromArgb(255, 200, 59, 49)),
-            ActualTheme);
+                _strings.Translate("Operations.AtomicNuke.Second.Message")));
         if (!finalConfirmation)
         {
             return;

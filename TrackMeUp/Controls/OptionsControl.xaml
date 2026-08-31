@@ -3,6 +3,21 @@
     x:Class="TrackMeUp.Controls.OptionsControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="OptionsPanoramaVioletBrush" Color="#FF6C63B7" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="OptionsPanoramaVioletBrush" Color="#FF958BEE" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="OptionsPanoramaVioletBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
     <Grid>
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="WidthStates">
@@ -13,8 +28,18 @@
                 </VisualState>
                 <VisualState x:Name="Wide">
                     <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="720" />
+                        <AdaptiveTrigger MinWindowWidth="560" />
                     </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="OptionsDividerColumn.Width" Value="1" />
+                        <Setter Target="OptionsSecondaryColumn.Width" Value="*" />
+                        <Setter Target="OptionsPrimaryPanel.Padding" Value="0,0,22,0" />
+                        <Setter Target="OptionsSecondaryPanel.Padding" Value="22,0,0,0" />
+                        <Setter Target="OptionsSecondaryPanel.(Grid.Row)" Value="0" />
+                        <Setter Target="OptionsSecondaryPanel.(Grid.Column)" Value="2" />
+                        <Setter Target="OptionsNarrowDivider.Visibility" Value="Collapsed" />
+                        <Setter Target="OptionsWideDivider.Visibility" Value="Visible" />
+                    </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
             <VisualStateGroup x:Name="ApiKeyStates">
@@ -74,8 +99,30 @@
                 HorizontalScrollMode="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 VerticalScrollMode="Auto">
-                <StackPanel Padding="0,0,18,12" Spacing="0">
-                    <TextBlock Tag="Options.Theme.Header" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Theme" />
+                <Grid x:Name="OptionsColumnsGrid" Padding="0,0,18,18" ColumnSpacing="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="OptionsPrimaryColumn" Width="*" />
+                        <ColumnDefinition x:Name="OptionsDividerColumn" Width="0" />
+                        <ColumnDefinition x:Name="OptionsSecondaryColumn" Width="0" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel x:Name="OptionsPrimaryPanel" Grid.Row="0" Grid.Column="0" Spacing="0">
+                    <Rectangle
+                        Width="34"
+                        Height="2"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Left"
+                        Fill="{ThemeResource BrandCoralBrush}" />
+                    <TextBlock
+                        Tag="Options.Theme.Header"
+                        CharacterSpacing="120"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Text="Theme" />
                     <Grid Margin="0,8,0,0" ColumnSpacing="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -186,20 +233,27 @@
                         <HyperlinkButton
                             x:Name="OpenScreenshotFolderButton"
                             Padding="0,5,0,0"
-                            HorizontalAlignment="Left"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             AutomationProperties.Name="Open snapshot and debug-image folder"
                             Click="OpenScreenshotFolderButton_Click"
                             ToolTipService.ToolTip="Open snapshot and debug-image folder">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Grid ColumnSpacing="7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
                                 <FontIcon
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
                                     FontSize="14"
                                     Glyph="&#xE8A7;" />
                                 <TextBlock
+                                    Grid.Column="1"
                                     Tag="Options.OpenFolderAction"
-                                    Text="Open snapshot and debug-image folder" />
-                            </StackPanel>
+                                    Text="Open snapshot and debug-image folder"
+                                    TextWrapping="Wrap" />
+                            </Grid>
                         </HyperlinkButton>
                     </StackPanel>
 
@@ -228,13 +282,48 @@
                             OnContent="" />
                     </Grid>
 
+                    </StackPanel>
+
+                    <Border
+                        x:Name="OptionsNarrowDivider"
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Height="1"
+                        Margin="0,20,0,20"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <Border
+                        x:Name="OptionsWideDivider"
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        Margin="0,0,0,2"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        Visibility="Collapsed" />
+
+                    <StackPanel x:Name="OptionsSecondaryPanel" Grid.Row="2" Grid.Column="0" Spacing="0">
+                    <Rectangle
+                        Width="34"
+                        Height="2"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Left"
+                        Fill="{ThemeResource OptionsPanoramaVioletBrush}" />
+                    <TextBlock
+                        Tag="Options.Section.Ai"
+                        CharacterSpacing="120"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Text="AI" />
                     <Button
-                        Margin="0,12,0,0"
+                        Margin="0,8,0,0"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
                         AutomationProperties.Name="Open AI configuration"
+                        Background="Transparent"
+                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
                         Click="AiSettingsButton_Click"
-                        Padding="12,10"
+                        CornerRadius="0"
+                        Padding="0,10"
                         Tag="Options.AiConfiguration.Title">
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
@@ -269,12 +358,16 @@
 
                     <Button
                         x:Name="SearchSettingsButton"
-                        Margin="0,8,0,0"
+                        Margin="0"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
                         AutomationProperties.Name="Open search and OCR settings"
+                        Background="Transparent"
+                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
                         Click="SearchSettingsButton_Click"
-                        Padding="12,10">
+                        CornerRadius="0"
+                        Padding="0,10">
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -320,161 +413,217 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Capture context, create reports, and manage the local rules and extensions that shape stored activity data."
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                     </StackPanel>
 
-                    <StackPanel Margin="0,14,0,0" Spacing="4">
+                    <StackPanel Margin="0,6,0,0" Spacing="0">
                         <TextBlock
                             Tag="Options.Navigation.SnapshotAi.Title"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="Screen captures and AI analysis" />
+                            Text="Screen captures and AI analysis"
+                            Visibility="Collapsed" />
                         <TextBlock
                             Tag="Options.Navigation.SnapshotAi.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Capture the current context, review the latest image, or ask the configured AI provider to analyze what is happening."
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                         <HyperlinkButton
                             x:Name="SnapshotAiOperationsLink"
                             MinHeight="36"
-                            Padding="0,5"
-                            HorizontalAlignment="Left"
+                            Padding="0,8"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             Click="SnapshotAiOperationsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Grid ColumnSpacing="7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
                                 <TextBlock
+                                    Grid.Column="1"
                                     Tag="Options.Navigation.SnapshotAi.Action"
-                                    Text="Open screen-capture and AI tools" />
+                                    Text="Open screen-capture and AI tools"
+                                    TextWrapping="Wrap" />
                                 <FontIcon
+                                    Grid.Column="2"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
                                     FontSize="12"
                                     Glyph="&#xE76C;" />
-                            </StackPanel>
+                            </Grid>
                         </HyperlinkButton>
                     </StackPanel>
 
-                    <StackPanel Margin="0,14,0,0" Spacing="4">
+                    <StackPanel Margin="0" Spacing="0">
                         <TextBlock
                             Tag="Options.Navigation.Reports.Title"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="Reports and digest" />
+                            Text="Reports and digest"
+                            Visibility="Collapsed" />
                         <TextBlock
                             Tag="Options.Navigation.Reports.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Create today's report or a digest for a selected date from data stored on this PC."
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                         <HyperlinkButton
                             x:Name="ReportsOperationsLink"
                             MinHeight="36"
-                            Padding="0,5"
-                            HorizontalAlignment="Left"
+                            Padding="0,8"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             Click="ReportsOperationsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Grid ColumnSpacing="7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF7D9FF8" Glyph="&#xE787;" />
                                 <TextBlock
+                                    Grid.Column="1"
                                     Tag="Options.Navigation.Reports.Action"
-                                    Text="Open reports and digest" />
+                                    Text="Open reports and digest"
+                                    TextWrapping="Wrap" />
                                 <FontIcon
+                                    Grid.Column="2"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
                                     FontSize="12"
                                     Glyph="&#xE76C;" />
-                            </StackPanel>
+                            </Grid>
                         </HyperlinkButton>
                     </StackPanel>
 
-                    <StackPanel Margin="0,14,0,0" Spacing="4">
+                    <StackPanel Margin="0" Spacing="0">
                         <TextBlock
                             Tag="Options.Navigation.Privacy.Title"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="Privacy" />
+                            Text="Privacy"
+                            Visibility="Collapsed" />
                         <TextBlock
                             Tag="Options.Navigation.Privacy.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Define on-device rules that prevent sensitive apps, window titles, or context details from being captured or shared with an AI provider."
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                         <HyperlinkButton
                             x:Name="PrivacyOperationsLink"
                             MinHeight="36"
-                            Padding="0,5"
-                            HorizontalAlignment="Left"
+                            Padding="0,8"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             Click="PrivacyOperationsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Grid ColumnSpacing="7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFA97BEA" Glyph="&#xE72E;" />
                                 <TextBlock
+                                    Grid.Column="1"
                                     Tag="Options.Navigation.Privacy.Action"
-                                    Text="Open privacy settings" />
+                                    Text="Open privacy settings"
+                                    TextWrapping="Wrap" />
                                 <FontIcon
+                                    Grid.Column="2"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
                                     FontSize="12"
                                     Glyph="&#xE76C;" />
-                            </StackPanel>
+                            </Grid>
                         </HyperlinkButton>
                     </StackPanel>
 
-                    <StackPanel Margin="0,14,0,0" Spacing="4">
+                    <StackPanel Margin="0" Spacing="0">
                         <TextBlock
                             Tag="Options.Navigation.Retention.Title"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="Data retention" />
+                            Text="Data retention"
+                            Visibility="Collapsed" />
                         <TextBlock
                             Tag="Options.Navigation.Retention.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Review how long activity and screen captures remain on this PC, preview cleanup, and remove eligible data with confirmation."
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                         <HyperlinkButton
                             x:Name="RetentionOperationsLink"
                             MinHeight="36"
-                            Padding="0,5"
-                            HorizontalAlignment="Left"
+                            Padding="0,8"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             Click="RetentionOperationsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Grid ColumnSpacing="7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF85A8DB" Glyph="&#xE823;" />
                                 <TextBlock
+                                    Grid.Column="1"
                                     Tag="Options.Navigation.Retention.Action"
-                                    Text="Open data-retention settings" />
+                                    Text="Open data-retention settings"
+                                    TextWrapping="Wrap" />
                                 <FontIcon
+                                    Grid.Column="2"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
                                     FontSize="12"
                                     Glyph="&#xE76C;" />
-                            </StackPanel>
+                            </Grid>
                         </HyperlinkButton>
                     </StackPanel>
 
-                    <StackPanel Margin="0,14,0,0" Spacing="4">
+                    <StackPanel Margin="0" Spacing="0">
                         <TextBlock
                             Tag="Options.Navigation.Plugins.Title"
                             Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="Context plugins" />
+                            Text="Context plugins"
+                            Visibility="Collapsed" />
                         <TextBlock
                             Tag="Options.Navigation.Plugins.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Manage local app-specific context enrichers without changing core activity tracking."
-                            TextWrapping="Wrap" />
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                         <HyperlinkButton
                             x:Name="PluginsOperationsLink"
                             MinHeight="36"
-                            Padding="0,5"
-                            HorizontalAlignment="Left"
+                            Padding="0,8"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             Click="PluginsOperationsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Grid ColumnSpacing="7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF71CBB7" Glyph="&#xE90F;" />
                                 <TextBlock
+                                    Grid.Column="1"
                                     Tag="Options.Navigation.Plugins.Action"
-                                    Text="Open context plugins" />
+                                    Text="Open context plugins"
+                                    TextWrapping="Wrap" />
                                 <FontIcon
+                                    Grid.Column="2"
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontFamily="Segoe Fluent Icons"
                                     FontSize="12"
                                     Glyph="&#xE76C;" />
-                            </StackPanel>
+                            </Grid>
                         </HyperlinkButton>
                     </StackPanel>
 
@@ -595,7 +744,8 @@
                         </ComboBox>
                         <TextBox x:Name="ScreenshotModeHintBox" Tag="Options.SnapshotResult" Header="Result" IsReadOnly="True" IsTabStop="False" TextWrapping="Wrap" />
                     </StackPanel>
-                </StackPanel>
+                    </StackPanel>
+                </Grid>
             </ScrollViewer>
         </Grid>
 
@@ -1095,11 +1245,12 @@
             <StackPanel Spacing="6">
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Button
                         x:Name="SaveOptionsButton"
+                        MinWidth="132"
                         Tag="Options.Save"
                         HorizontalAlignment="Stretch"
                         Click="SaveButton_Click"
@@ -1108,11 +1259,13 @@
                     <Button
                         x:Name="TestConnectionButton"
                         Grid.Column="1"
+                        MinWidth="132"
                         HorizontalAlignment="Stretch"
                         AutomationProperties.Name="Test AI connection"
                         Click="TestConnectionButton_Click"
                         Content="Test connection"
-                        Tag="Options.AiConnection.Test" />
+                        Tag="Options.AiConnection.Test"
+                        Visibility="Collapsed" />
                 </Grid>
                 <TextBlock
                     x:Name="StatusText"

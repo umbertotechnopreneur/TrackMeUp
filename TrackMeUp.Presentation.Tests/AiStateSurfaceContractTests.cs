@@ -29,7 +29,7 @@ public sealed class AiStateSurfaceContractTests
         Assert.Equal("Polite", statusText.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
         Assert.Equal("Raw", statusIcon.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
         Assert.Contains("AiState = new AiApplicationState(application);", mainSource, StringComparison.Ordinal);
-        Assert.Contains("options.InitializeAsync(_application, AiState, _surfaceLifetime.Token)", mainSource, StringComparison.Ordinal);
+        Assert.Contains("options.InitializeAsync(_application, AiState, _lifecycle.Token)", mainSource, StringComparison.Ordinal);
         Assert.Contains("DataContext = aiState;", optionsSource, StringComparison.Ordinal);
         Assert.Contains("UpdateApiKeyPresentation();", optionsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("[\"ai.enabled\"]", optionsSource, StringComparison.Ordinal);

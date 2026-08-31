@@ -33,9 +33,11 @@ public sealed class OcrTextWindowContractTests
         Assert.Contains("new SolidColorBrush(Colors.Yellow)", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.OcrText", source, StringComparison.Ordinal);
         Assert.Contains("public void UpdateContent(string ocrText, ElementTheme theme, string language)", source, StringComparison.Ordinal);
-        Assert.Contains("RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged", source, StringComparison.Ordinal);
-        Assert.Contains("RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyThemeChrome", source, StringComparison.Ordinal);
+        Assert.Contains("new CustomTitleBarController(", source, StringComparison.Ordinal);
+        Assert.Contains("_titleBar.ApplyTheme(theme == ElementTheme.Default ? RootGrid.ActualTheme : theme);", source, StringComparison.Ordinal);
+        Assert.Contains("_titleBar.Dispose();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("RootGrid_ActualThemeChanged", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplyThemeChrome", source, StringComparison.Ordinal);
         Assert.Contains("_xamlRoot.Changed += XamlRoot_Changed", source, StringComparison.Ordinal);
         Assert.Contains("_xamlRoot.Changed -= XamlRoot_Changed", source, StringComparison.Ordinal);
         Assert.Contains("_placement.KeepCurrentBoundsInWorkArea(RootGrid)", source, StringComparison.Ordinal);

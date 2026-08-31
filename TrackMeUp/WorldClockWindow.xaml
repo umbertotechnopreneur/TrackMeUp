@@ -2,209 +2,275 @@
 <Window
     x:Class="TrackMeUp.WorldClockWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:controls="using:TrackMeUp.Controls"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TrackMeUp.Controls"
     Title="TrackMeUp World Clocks">
-    <Window.SystemBackdrop>
-        <MicaBackdrop Kind="BaseAlt" />
-    </Window.SystemBackdrop>
-
     <Grid
         x:Name="RootGrid"
         Background="Transparent"
         Loaded="RootGrid_Loaded">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <SolidColorBrush x:Key="WorldClockWindowTintBrush" Color="#6CFFFFFF" />
+                        <SolidColorBrush x:Key="WorldClockHeaderTintBrush" Color="#24FFFFFF" />
+                        <SolidColorBrush x:Key="WorldClockReferenceFieldBrush" Color="#30FFFFFF" />
+                        <SolidColorBrush x:Key="WorldClockOptionsOverlayBrush" Color="#F2FAFAFA" />
+                        <SolidColorBrush x:Key="WorldClockColumnDividerBrush" Color="#26000000" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <SolidColorBrush x:Key="WorldClockWindowTintBrush" Color="#5A151619" />
+                        <SolidColorBrush x:Key="WorldClockHeaderTintBrush" Color="#22151619" />
+                        <SolidColorBrush x:Key="WorldClockReferenceFieldBrush" Color="#24101114" />
+                        <SolidColorBrush x:Key="WorldClockOptionsOverlayBrush" Color="#F2141518" />
+                        <SolidColorBrush x:Key="WorldClockColumnDividerBrush" Color="#34FFFFFF" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <StaticResource x:Key="WorldClockWindowTintBrush" ResourceKey="SystemColorWindowColorBrush" />
+                        <StaticResource x:Key="WorldClockHeaderTintBrush" ResourceKey="SystemColorWindowColorBrush" />
+                        <StaticResource x:Key="WorldClockReferenceFieldBrush" ResourceKey="SystemColorWindowColorBrush" />
+                        <StaticResource x:Key="WorldClockOptionsOverlayBrush" ResourceKey="SystemColorWindowColorBrush" />
+                        <StaticResource x:Key="WorldClockColumnDividerBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+            </ResourceDictionary>
+        </Grid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="48" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Border
-            Grid.RowSpan="3"
-            IsHitTestVisible="False"
-            Opacity="0.72"
-            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
-
+            Grid.RowSpan="2"
+            Background="{ThemeResource WorldClockWindowTintBrush}"
+            IsHitTestVisible="False" />
         <Border
+            x:Name="ColumnDividerResource"
+            BorderBrush="{ThemeResource WorldClockColumnDividerBrush}"
+            Visibility="Collapsed" />
+        <Grid
+            x:Name="HeaderDragRegion"
             Grid.Row="0"
+            Background="{ThemeResource WorldClockHeaderTintBrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="328" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
             <Grid
-                Margin="28,14,28,16"
-                ColumnSpacing="12">
+                x:Name="TitleBarIdentityHost"
+                Grid.Column="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="430" />
+                    <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-
-                <TextBlock
-                    x:Name="ReferenceInstantLabel"
-                    VerticalAlignment="Center"
-                    CharacterSpacing="70"
-                    FontSize="12"
-                    FontWeight="SemiBold"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Tag="WorldClock.ReferenceInstant"
-                    Text="REFERENCE INSTANT" />
-
                 <Grid
                     Grid.Column="1"
-                    HorizontalAlignment="Stretch">
-                    <ComboBox
-                        x:Name="ReferenceCityComboBox"
-                        AutomationProperties.AccessibilityView="Raw"
-                        DisplayMemberPath="CityName"
-                        SelectionChanged="ReferenceCityComboBox_SelectionChanged"
+                    Margin="8,0,12,0"
+                    VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        x:Name="HeaderBackButton"
+                        Grid.Column="0"
+                        AutomationProperties.Name="Back to world clocks"
+                        Click="HeaderBackButton_Click"
+                        Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
+                        Tag="WorldClock.Options.Back"
+                        ToolTipService.ToolTip="Back to world clocks"
+                        Visibility="Collapsed">
+                        <FontIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="17"
+                            Glyph="&#xE72B;" />
+                    </Button>
+                    <Image
+                        x:Name="TitleBarLogo"
+                        Grid.Column="1"
+                        Margin="8,0,10,0"
+                        Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
+                    <TextBlock
+                        x:Name="ReferenceInstantLabel"
+                        Grid.Column="2"
+                        CharacterSpacing="70"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
+                        Tag="WorldClock.ReferenceInstant"
+                        Text="REFERENCE INSTANT" />
+                    <TextBlock
+                        x:Name="OptionsHeaderLabel"
+                        Grid.Column="2"
+                        CharacterSpacing="70"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
+                        Text="WORLD CLOCK OPTIONS"
                         Visibility="Collapsed" />
-                    <Border
-                        x:Name="ReferenceInstantField"
-                        Height="44"
-                        AutomationProperties.Name="Reference instant"
-                        BorderBrush="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        ToolTipService.ToolTip="Reference instant">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="1" />
-                                <ColumnDefinition Width="190" />
-                            </Grid.ColumnDefinitions>
+                </Grid>
+            </Grid>
+
+            <DropDownButton
+                x:Name="ReferenceInstantButton"
+                Grid.Column="1"
+                Height="40"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Reference instant"
+                Background="{ThemeResource WorldClockReferenceFieldBrush}"
+                BorderBrush="{ThemeResource ControlStrongStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Tag="WorldClock.ReferenceInstant">
+                <DropDownButton.Content>
+                    <TextBlock
+                        x:Name="ReferenceInstantText"
+                        HorizontalAlignment="Center"
+                        CharacterSpacing="90"
+                        FontFamily="Segoe UI Variable Text"
+                        FontSize="15"
+                        Text="-- · --:--" />
+                </DropDownButton.Content>
+                <DropDownButton.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedLeft">
+                        <StackPanel Width="340" Spacing="12">
+                            <ComboBox
+                                x:Name="ReferenceCityComboBox"
+                                DisplayMemberPath="CityName"
+                                Header="Reference city"
+                                SelectionChanged="ReferenceCityComboBox_SelectionChanged"
+                                Tag="WorldClock.ReferenceCity" />
                             <CalendarDatePicker
                                 x:Name="ReferenceDatePicker"
-                                Height="42"
                                 HorizontalAlignment="Stretch"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                CornerRadius="4,0,0,4"
-                                DateChanged="ReferenceDatePicker_DateChanged" />
-                            <Border
-                                Grid.Column="1"
-                                Margin="0,8"
-                                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                DateChanged="ReferenceDatePicker_DateChanged"
+                                Header="Date"
+                                Tag="WorldClock.ReferenceDate" />
                             <TimePicker
                                 x:Name="ReferenceTimePicker"
-                                Grid.Column="2"
-                                Height="42"
                                 HorizontalAlignment="Stretch"
-                                Background="Transparent"
-                                BorderThickness="0"
                                 ClockIdentifier="24HourClock"
-                                CornerRadius="0,4,4,0"
+                                Header="Time"
                                 MinuteIncrement="1"
+                                Tag="WorldClock.ReferenceTime"
                                 TimeChanged="ReferenceTimePicker_TimeChanged" />
-                        </Grid>
-                    </Border>
-                </Grid>
+                            <Button
+                                x:Name="NowButton"
+                                HorizontalAlignment="Right"
+                                Click="NowButton_Click"
+                                Content="Now"
+                                Tag="WorldClock.Now"
+                                Visibility="Collapsed" />
+                        </StackPanel>
+                    </Flyout>
+                </DropDownButton.Flyout>
+            </DropDownButton>
 
+            <Grid
+                x:Name="TitleBarOptionsHost"
+                Grid.Column="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition x:Name="TitleBarSystemButtonGapColumn" Width="12" />
+                    <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+                </Grid.ColumnDefinitions>
                 <Button
-                    x:Name="NowButton"
-                    Grid.Column="2"
-                    Margin="0,0,48,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Click="NowButton_Click"
-                    Content="Now"
-                    Tag="WorldClock.Now"
-                    Visibility="Collapsed" />
-
-                <Button
-                    x:Name="HeaderMenuButton"
-                    Grid.Column="2"
-                    Width="46"
-                    Height="40"
-                    Padding="6,0,6,7"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    AllowFocusOnInteraction="True"
-                    AutomationProperties.Name="Open world clock menu"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="HeaderMenuButton_Click"
-                    IsTabStop="True"
-                    Style="{StaticResource TitleBarOverflowButtonStyle}"
-                    Tag="WorldClock.MoreOptions"
-                    ToolTipService.ToolTip="Open world clock menu">
-                    <Button.KeyboardAccelerators>
-                        <KeyboardAccelerator Key="M" Modifiers="Menu" />
-                    </Button.KeyboardAccelerators>
-                    <FontIcon
+                    x:Name="OptionsButton"
+                    Grid.Column="1"
+                    AutomationProperties.Name="Open world clock options"
+                    Click="OptionsButton_Click"
+                    Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
+                    Tag="WorldClock.Options.Open"
+                    ToolTipService.ToolTip="Open world clock options">
+                    <SymbolIcon
                         AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="19"
-                        Glyph="&#xE712;" />
+                        Symbol="More" />
                 </Button>
             </Grid>
-        </Border>
+        </Grid>
 
-        <StackPanel
-            Grid.Row="1"
-            Margin="28,10,28,0"
-            Spacing="8">
-            <TextBlock
-                x:Name="WeatherStatusText"
-                AutomationProperties.LiveSetting="Polite"
-                FontSize="12"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                TextWrapping="Wrap"
-                Visibility="Collapsed" />
+        <Grid
+            x:Name="ClocksSurface"
+            Grid.Row="1">
             <HyperlinkButton
                 x:Name="WeatherAttributionButton"
-                HorizontalAlignment="Left"
-                Padding="0"
+                Margin="0,0,16,76"
+                Padding="4,2"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Canvas.ZIndex="10"
                 Click="WeatherAttributionButton_Click"
                 Tag="WorldClock.WeatherAttribution"
                 Visibility="Collapsed">
-                <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="6">
                     <Border
                         x:Name="WeatherAttributionLogoContainer"
-                        Padding="4,2"
+                        Padding="3,1"
                         Background="White"
-                        CornerRadius="4">
+                        CornerRadius="3"
+                        Visibility="Collapsed">
                         <Image
                             x:Name="WeatherAttributionLogo"
-                            Width="84"
-                            Height="32"
+                            Width="44"
+                            Height="17"
                             AutomationProperties.AccessibilityView="Raw" />
                     </Border>
                     <TextBlock
                         x:Name="WeatherAttributionText"
                         VerticalAlignment="Center"
+                        FontSize="9"
                         Text="Weather data provided by OpenWeather" />
                 </StackPanel>
             </HyperlinkButton>
-            <controls:TimedInfoBar
-                x:Name="WorldClockNotificationBanner" />
-        </StackPanel>
 
-        <ScrollViewer
-            x:Name="ClockColumnsScroller"
-            Grid.Row="2"
-            Margin="24,12,24,24"
-            HorizontalContentAlignment="Stretch"
-            HorizontalScrollBarVisibility="Auto"
-            HorizontalScrollMode="Enabled"
-            SizeChanged="ClockColumnsScroller_SizeChanged"
-            VerticalContentAlignment="Stretch"
-            VerticalScrollBarVisibility="Disabled"
-            VerticalScrollMode="Disabled">
-            <Grid
-                x:Name="ClockColumnsHost"
-                AutomationProperties.LandmarkType="Custom" />
-        </ScrollViewer>
+            <ScrollViewer
+                x:Name="ClockColumnsScroller"
+                HorizontalContentAlignment="Stretch"
+                HorizontalScrollBarVisibility="Auto"
+                HorizontalScrollMode="Enabled"
+                SizeChanged="ClockColumnsScroller_SizeChanged"
+                VerticalContentAlignment="Stretch"
+                VerticalScrollBarVisibility="Disabled"
+                VerticalScrollMode="Disabled">
+                <Grid
+                    x:Name="ClockColumnsHost"
+                    AutomationProperties.LandmarkType="Custom" />
+            </ScrollViewer>
 
-        <ProgressRing
-            x:Name="LoadingIndicator"
-            Grid.Row="2"
-            Width="36"
-            Height="36"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            AutomationProperties.Name="Loading world clocks"
-            IsActive="False"
-            Visibility="Collapsed" />
+            <ProgressRing
+                x:Name="LoadingIndicator"
+                Width="36"
+                Height="36"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="Loading world clocks"
+                IsActive="False"
+                Visibility="Collapsed" />
+        </Grid>
+
+        <Border
+            x:Name="OptionsPanel"
+            Grid.Row="1"
+            Background="{ThemeResource WorldClockOptionsOverlayBrush}"
+            Canvas.ZIndex="50"
+            Visibility="Collapsed">
+            <ContentPresenter x:Name="OptionsHost" />
+        </Border>
+
+        <controls:TimedInfoBar
+            x:Name="WorldClockNotificationBanner"
+            Grid.Row="1"
+            Margin="24,0,24,20"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            Canvas.ZIndex="100" />
     </Grid>
 </Window>

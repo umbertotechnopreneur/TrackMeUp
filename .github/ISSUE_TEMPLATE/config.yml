@@ -1,8 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/umbertotechnopreneur/TrackMeUp/security/policy
+    url: https://github.com/umbertotechnopreneur/TrackMeUp/security/advisories/new
     about: Report security issues privately instead of opening a public issue.
+  - name: Questions and ideas
+    url: https://github.com/umbertotechnopreneur/TrackMeUp/discussions
+    about: Ask for help or discuss ideas with the community.
   - name: Support guidance
     url: https://github.com/umbertotechnopreneur/TrackMeUp/blob/main/SUPPORT.md
     about: Check what to include in a support request.

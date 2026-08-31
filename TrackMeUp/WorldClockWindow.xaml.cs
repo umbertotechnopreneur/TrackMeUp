@@ -8,11 +8,13 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
+using Windows.Graphics;
 
 namespace TrackMeUp;
 
@@ -25,15 +27,16 @@ public sealed partial class WorldClockWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly MicaDialogService _dialogs;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
+    private readonly WorldClockWindowLayoutState _layoutState = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly SemaphoreSlim _currentRefreshGate = new(1, 1);
     private readonly Dictionary<string, WorldClockColumnControl> _columns = new(StringComparer.Ordinal);
     private LocalizationService _strings = new("system");
-    private MenuFlyout? _worldClockMenuFlyout;
-    private MenuFlyoutItem? _addWorldClockMenuItem;
-    private ToggleMenuFlyoutItem? _alwaysOnTopMenuItem;
+    private AppSettings _settings;
+    private WorldClockOptionsControl? _optionsControl;
     private SvgImageSource? _weatherAttributionLogoSource;
     private WorldClockSnapshot? _snapshot;
     private XamlRoot? _xamlRoot;
@@ -47,6 +50,7 @@ public sealed partial class WorldClockWindow : Window
     private bool _allowClose;
     private bool _closeInProgress;
     private bool _closed;
+    private bool _weatherProviderLinkOpening;
     private bool _wasMinimized;
     private int _requestVersion;
 
@@ -61,9 +65,21 @@ public sealed partial class WorldClockWindow : Window
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         ArgumentNullException.ThrowIfNull(settings);
+        _settings = settings;
         InitializeComponent();
 
+        SystemBackdrop = new DesktopAcrylicBackdrop();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            HeaderDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => [HeaderBackButton, ReferenceInstantButton, OptionsButton]);
+        _titleBar.ThemeChanged += TitleBar_ThemeChanged;
+
         _placement = new WindowPlacementService(
             _application,
             this,
@@ -75,8 +91,8 @@ public sealed partial class WorldClockWindow : Window
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
-            presenter.IsMaximizable = true;
-            presenter.IsMinimizable = true;
+            presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
         }
 
         _refreshTimer = DispatcherQueue.CreateTimer();
@@ -85,7 +101,6 @@ public sealed partial class WorldClockWindow : Window
         _refreshTimer.Tick += RefreshTimer_Tick;
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += WorldClockWindow_Closing;
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         ApplySettings(settings);
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += WorldClockWindow_Closed;
@@ -95,6 +110,7 @@ public sealed partial class WorldClockWindow : Window
     internal void ApplySettings(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        _settings = settings;
         _strings = new LocalizationService(settings.UiLanguage);
         RootGrid.RequestedTheme = settings.Theme switch
         {
@@ -104,26 +120,20 @@ public sealed partial class WorldClockWindow : Window
         };
         UiLocalization.Apply(RootGrid, _strings);
         Title = T("WorldClock.Landmark");
-        ReferenceInstantLabel.Text = T("WorldClock.ReferenceInstant");
+        OptionsHeaderLabel.Text = T("WorldClock.Options.Title").ToUpper(_strings.Culture);
+        UpdateHeaderForSurface();
         NowButton.Content = T("WorldClock.Now");
-        var moreOptionsName = T("WorldClock.MoreOptions");
-        AutomationProperties.SetName(HeaderMenuButton, moreOptionsName);
-        ToolTipService.SetToolTip(HeaderMenuButton, moreOptionsName);
-        if (_addWorldClockMenuItem is not null)
-        {
-            SetMenuItemLabel(_addWorldClockMenuItem, "WorldClock.Add");
-        }
-
-        if (_alwaysOnTopMenuItem is not null)
-        {
-            SetMenuItemLabel(_alwaysOnTopMenuItem, "WorldClock.AlwaysOnTop");
-        }
+        SetIconButtonLabel(OptionsButton, "WorldClock.Options.Open");
+        SetIconButtonLabel(HeaderBackButton, "WorldClock.Options.Back");
+        ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");
+        ReferenceDatePicker.Header = T("WorldClock.ReferenceDate");
+        ReferenceTimePicker.Header = T("WorldClock.ReferenceTime");
         AutomationProperties.SetName(ReferenceCityComboBox, T("WorldClock.ReferenceCity"));
         AutomationProperties.SetName(ReferenceDatePicker, T("WorldClock.ReferenceDate"));
         AutomationProperties.SetName(ReferenceTimePicker, T("WorldClock.ReferenceTime"));
-        AutomationProperties.SetName(ReferenceInstantField, T("WorldClock.ReferenceInstant"));
-        ToolTipService.SetToolTip(ReferenceInstantField, T("WorldClock.ReferenceInstant"));
-        AutomationProperties.SetLabeledBy(ReferenceInstantField, ReferenceInstantLabel);
+        AutomationProperties.SetName(ReferenceInstantButton, T("WorldClock.ReferenceInstant"));
+        ToolTipService.SetToolTip(ReferenceInstantButton, T("WorldClock.ReferenceInstant"));
+        AutomationProperties.SetLabeledBy(ReferenceInstantButton, ReferenceInstantLabel);
         AutomationProperties.SetName(NowButton, T("WorldClock.Now"));
         AutomationProperties.SetName(ClockColumnsHost, T("WorldClock.Landmark"));
         AutomationProperties.SetLocalizedLandmarkType(ClockColumnsHost, T("WorldClock.Landmark"));
@@ -132,116 +142,158 @@ public sealed partial class WorldClockWindow : Window
         WeatherAttributionText.Text = weatherAttribution;
         AutomationProperties.SetName(WeatherAttributionButton, weatherAttribution);
         ToolTipService.SetToolTip(WeatherAttributionButton, weatherAttribution);
-        ApplyThemeChrome(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
+        _optionsControl?.ApplyLanguage(_strings);
+        _optionsControl?.ApplyState(settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
+        _titleBar.ApplyTheme(RootGrid.RequestedTheme == ElementTheme.Default ? RootGrid.ActualTheme : RootGrid.RequestedTheme);
         if (_snapshot is not null)
         {
             ApplySnapshot(_snapshot);
         }
+
+        _titleBar.QueueLayoutUpdate();
     }
 
-    private void HeaderMenuButton_Click(object sender, RoutedEventArgs e) =>
-        EnsureWorldClockMenuFlyout().ShowAt(HeaderMenuButton);
+    private void OptionsButton_Click(object sender, RoutedEventArgs e) => ShowOptionsSurface();
 
-    private MenuFlyout EnsureWorldClockMenuFlyout()
+    private async void HeaderBackButton_Click(object sender, RoutedEventArgs e) => await ShowClocksSurfaceAsync();
+
+    private void ShowOptionsSurface()
     {
-        if (_worldClockMenuFlyout is not null)
-        {
-            return _worldClockMenuFlyout;
-        }
-
-        var addItem = new MenuFlyoutItem
-        {
-            Icon = new SymbolIcon(Symbol.Add),
-            Tag = "WorldClock.Add"
-        };
-        SetMenuItemLabel(addItem, "WorldClock.Add");
-        addItem.Click += AddWorldClockMenuItem_Click;
-
-        var alwaysOnTopItem = new ToggleMenuFlyoutItem
-        {
-            Icon = new FontIcon
-            {
-                FontFamily = new FontFamily("Segoe Fluent Icons"),
-                Glyph = "\uE718"
-            },
-            Tag = "WorldClock.AlwaysOnTop"
-        };
-        SetMenuItemLabel(alwaysOnTopItem, "WorldClock.AlwaysOnTop");
-        alwaysOnTopItem.Click += AlwaysOnTopMenuItem_Click;
-
-        var presenterStyle = new Style(typeof(MenuFlyoutPresenter));
-        presenterStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 224d));
-        presenterStyle.Setters.Add(new Setter(Control.CornerRadiusProperty, new CornerRadius(12d)));
-        var flyout = new MenuFlyout
-        {
-            MenuFlyoutPresenterStyle = presenterStyle,
-            Placement = FlyoutPlacementMode.BottomEdgeAlignedRight,
-            ShouldConstrainToRootBounds = false
-        };
-        flyout.Items.Add(addItem);
-        flyout.Items.Add(alwaysOnTopItem);
-        flyout.Opened += WorldClockMenuFlyout_Opened;
-
-        _addWorldClockMenuItem = addItem;
-        _alwaysOnTopMenuItem = alwaysOnTopItem;
-        _worldClockMenuFlyout = flyout;
-        return flyout;
+        var options = EnsureOptionsControl();
+        options.ApplyState(_settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
+        ClocksSurface.IsHitTestVisible = false;
+        OptionsPanel.Visibility = Visibility.Visible;
+        _layoutState.ShowSurface(WorldClockWindowSurface.Options);
+        UpdateHeaderForSurface();
+        UpdateRefreshTimerState();
+        WorldClockNotificationBanner.Dismiss();
+        FadeIn(OptionsPanel);
+        _ = HeaderBackButton.Focus(FocusState.Programmatic);
+        _titleBar.QueueLayoutUpdate();
     }
 
-    private void WorldClockMenuFlyout_Opened(object? sender, object e)
+    private async Task ShowClocksSurfaceAsync()
     {
-        if (_addWorldClockMenuItem is null || _alwaysOnTopMenuItem is null)
+        OptionsPanel.Visibility = Visibility.Collapsed;
+        ClocksSurface.Visibility = Visibility.Visible;
+        ClocksSurface.IsHitTestVisible = true;
+        _layoutState.ShowSurface(WorldClockWindowSurface.Clocks);
+        UpdateHeaderForSurface();
+        FadeIn(ClocksSurface);
+        _ = OptionsButton.Focus(FocusState.Programmatic);
+        _titleBar.QueueLayoutUpdate();
+        if (_isLive)
         {
-            throw new InvalidOperationException("The world-clock menu must be initialized before it opens.");
+            await RefreshCurrentAsync();
+            return;
         }
 
-        _addWorldClockMenuItem.IsEnabled = _snapshot is { } snapshot
-            && snapshot.Clocks.Count < snapshot.MaximumClocks;
+        UpdateRefreshTimerState();
+    }
 
+    private WorldClockOptionsControl EnsureOptionsControl()
+    {
+        if (_optionsControl is not null)
+        {
+            return _optionsControl;
+        }
+
+        var options = new WorldClockOptionsControl();
+        options.RefreshRequested += OptionsControl_RefreshRequested;
+        options.AddRequested += OptionsControl_AddRequested;
+        options.ReferenceRequested += OptionsControl_ReferenceRequested;
+        options.RemoveRequested += OptionsControl_RemoveRequested;
+        options.AlwaysOnTopChanged += OptionsControl_AlwaysOnTopChanged;
+        options.SettingsSaved += OptionsControl_SettingsSaved;
+        options.WarningRequested += OptionsControl_WarningRequested;
+        options.ProviderLinkRequested += OptionsControl_ProviderLinkRequested;
+        options.Initialize(
+            _application,
+            _settings,
+            _snapshot,
+            _referenceCityId,
+            IsAlwaysOnTop(),
+            _strings,
+            _lifetimeCancellation.Token);
+        OptionsHost.Content = options;
+        _optionsControl = options;
+        return options;
+    }
+
+    private async void OptionsControl_RefreshRequested(object? sender, EventArgs e)
+    {
+        if (_isLive)
+        {
+            var refreshed = await RefreshCurrentAsync();
+            _optionsControl?.CompleteWeatherKeyRefresh(refreshed);
+            return;
+        }
+
+        _optionsControl?.ApplyState(_settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
+        _optionsControl?.CompleteWeatherKeyRefresh(succeeded: true);
+    }
+
+    private async void OptionsControl_AddRequested(object? sender, EventArgs e) => await AddCityAsync();
+
+    private void OptionsControl_ReferenceRequested(object? sender, WorldClockCityEventArgs e) =>
+        SetReferenceCity(e.CityId);
+
+    private async void OptionsControl_RemoveRequested(object? sender, WorldClockCityEventArgs e) =>
+        await RemoveCityAsync(e);
+
+    private void OptionsControl_AlwaysOnTopChanged(bool alwaysOnTop)
+    {
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            _alwaysOnTopMenuItem.IsEnabled = true;
-            _alwaysOnTopMenuItem.IsChecked = presenter.IsAlwaysOnTop;
-            return;
+            presenter.IsAlwaysOnTop = alwaysOnTop;
         }
 
-        _alwaysOnTopMenuItem.IsEnabled = false;
-        _alwaysOnTopMenuItem.IsChecked = false;
+        _optionsControl?.ApplyState(_settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
     }
 
-    private async void AddWorldClockMenuItem_Click(object sender, RoutedEventArgs e) =>
-        await AddCityAsync();
+    private void OptionsControl_SettingsSaved(AppSettings settings) => ApplySettings(settings);
 
-    private void AlwaysOnTopMenuItem_Click(object sender, RoutedEventArgs e)
+    private void OptionsControl_WarningRequested(string messageKey) => ShowFailure(messageKey);
+
+    private async void OptionsControl_ProviderLinkRequested(object? sender, EventArgs e) =>
+        await OpenWeatherProviderLinkAsync();
+
+    private bool IsAlwaysOnTop() =>
+        _appWindow.Presenter is OverlappedPresenter presenter && presenter.IsAlwaysOnTop;
+
+    private void UpdateHeaderForSurface()
     {
-        if (sender is not ToggleMenuFlyoutItem menuItem)
-        {
-            throw new InvalidOperationException("Always-on-top must be invoked by its toggle menu item.");
-        }
-
-        if (_appWindow.Presenter is not OverlappedPresenter presenter)
-        {
-            menuItem.IsChecked = false;
-            return;
-        }
-
-        presenter.IsAlwaysOnTop = menuItem.IsChecked;
+        var optionsVisible = _layoutState.Surface == WorldClockWindowSurface.Options;
+        ReferenceInstantLabel.Text = T("WorldClock.ReferenceInstant");
+        ReferenceInstantLabel.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        OptionsHeaderLabel.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
+        HeaderBackButton.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        ReferenceInstantButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        OptionsButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    private void SetMenuItemLabel(MenuFlyoutItem item, string key)
-    {
-        var label = T(key);
-        item.Text = label;
-        AutomationProperties.SetName(item, label);
-        ToolTipService.SetToolTip(item, label);
-    }
-
-    private void SetMenuItemLabel(ToggleMenuFlyoutItem item, string key)
+    private void SetIconButtonLabel(Button button, string key)
     {
         var label = T(key);
-        item.Text = label;
-        AutomationProperties.SetName(item, label);
-        ToolTipService.SetToolTip(item, label);
+        AutomationProperties.SetName(button, label);
+        ToolTipService.SetToolTip(button, label);
+    }
+
+    private static void FadeIn(FrameworkElement element)
+    {
+        element.Opacity = 0d;
+        var animation = new DoubleAnimation
+        {
+            From = 0d,
+            To = 1d,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180))
+        };
+        Storyboard.SetTarget(animation, element);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
     }
 
     /// <summary>Closes immediately while the composition root is already shutting down.</summary>
@@ -438,7 +490,6 @@ public sealed partial class WorldClockWindow : Window
             throw new InvalidDataException("The world-clock projection must contain at least one city.");
         }
 
-        UpdateWeatherStatus(snapshot.WeatherStatus);
         UpdateWeatherAttribution(snapshot);
         _snapshot = snapshot;
         if (_referenceCityId is null || snapshot.Clocks.All(clock => clock.CityId != _referenceCityId))
@@ -449,19 +500,19 @@ public sealed partial class WorldClockWindow : Window
         var referenceClock = snapshot.Clocks.Single(clock => clock.CityId == _referenceCityId);
         UpdateReferenceControls(snapshot.Clocks, referenceClock);
         EnsureColumns(snapshot.Clocks);
-        var canRemove = snapshot.Clocks.Count > 1;
         foreach (var clock in snapshot.Clocks)
         {
             _columns[clock.CityId].Apply(
                 clock,
                 referenceClock,
                 clock.CityId == referenceClock.CityId,
-                canRemove,
                 _strings);
         }
 
         NowButton.Visibility = _isLive ? Visibility.Collapsed : Visibility.Visible;
         WorldClockNotificationBanner.Dismiss();
+        UpdateWeatherStatus(snapshot.WeatherStatus);
+        _optionsControl?.ApplyState(_settings, snapshot, _referenceCityId, IsAlwaysOnTop());
         UpdateRefreshTimerState();
     }
 
@@ -471,25 +522,23 @@ public sealed partial class WorldClockWindow : Window
         var messageKey = status.State switch
         {
             "available" => null,
-            "not-requested" when status.ReasonCode == "explicit-instant" =>
-                "WorldClock.WeatherStatus.ReferenceInstant",
-            "disabled" => "WorldClock.WeatherStatus.Disabled",
+            "not-requested" when status.ReasonCode == "explicit-instant" => null,
+            "disabled" when status.ReasonCode == "user-disabled" => null,
+            "configuration-required" when status.ReasonCode == "missing-api-key" => null,
+            "configuration-required" when status.ReasonCode == "invalid-api-key" => null,
             "partial" => "WorldClock.WeatherStatus.Partial",
             "unavailable" => "WorldClock.WeatherStatus.Unavailable",
             _ => throw new InvalidDataException($"Unsupported world-clock weather status '{status.State}'.")
         };
         if (messageKey is null)
         {
-            WeatherStatusText.Text = string.Empty;
-            AutomationProperties.SetName(WeatherStatusText, string.Empty);
-            WeatherStatusText.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var message = T(messageKey);
-        WeatherStatusText.Text = message;
-        AutomationProperties.SetName(WeatherStatusText, message);
-        WeatherStatusText.Visibility = Visibility.Visible;
+        _dialogs.ShowWarningBanner(
+            WorldClockNotificationBanner,
+            T("WorldClock.ErrorTitle"),
+            T(messageKey));
     }
 
     private void UpdateWeatherAttribution(WorldClockSnapshot snapshot)
@@ -537,6 +586,27 @@ public sealed partial class WorldClockWindow : Window
         WeatherAttributionButton.IsEnabled = false;
         try
         {
+            await OpenWeatherProviderLinkAsync();
+        }
+        finally
+        {
+            if (!IsClosing)
+            {
+                WeatherAttributionButton.IsEnabled = true;
+            }
+        }
+    }
+
+    private async Task OpenWeatherProviderLinkAsync()
+    {
+        if (_weatherProviderLinkOpening || IsClosing)
+        {
+            return;
+        }
+
+        _weatherProviderLinkOpening = true;
+        try
+        {
             var result = await _application.OpenProductLinkAsync(
                 "openweather",
                 _lifetimeCancellation.Token);
@@ -558,10 +628,7 @@ public sealed partial class WorldClockWindow : Window
         }
         finally
         {
-            if (!IsClosing)
-            {
-                WeatherAttributionButton.IsEnabled = true;
-            }
+            _weatherProviderLinkOpening = false;
         }
     }
 
@@ -598,10 +665,11 @@ public sealed partial class WorldClockWindow : Window
             var referenceInstantText = referenceClock.LocalTime
                 .ToString("dd MMM yyyy · HH:mm", _strings.Culture)
                 .ToUpper(_strings.Culture);
+            ReferenceInstantText.Text = referenceInstantText;
             AutomationProperties.SetName(
-                ReferenceInstantField,
+                ReferenceInstantButton,
                 $"{T("WorldClock.ReferenceInstant")}: {referenceInstantText}");
-            ToolTipService.SetToolTip(ReferenceInstantField, referenceInstantText);
+            ToolTipService.SetToolTip(ReferenceInstantButton, referenceInstantText);
         }
         finally
         {
@@ -617,12 +685,6 @@ public sealed partial class WorldClockWindow : Window
             return;
         }
 
-        foreach (var column in _columns.Values)
-        {
-            column.ReferenceRequested -= Column_ReferenceRequested;
-            column.RemoveRequested -= Column_RemoveRequested;
-        }
-
         _columns.Clear();
         ClockColumnsHost.Children.Clear();
         ClockColumnsHost.ColumnDefinitions.Clear();
@@ -632,14 +694,12 @@ public sealed partial class WorldClockWindow : Window
         {
             ClockColumnsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var column = new WorldClockColumnControl();
-            column.ReferenceRequested += Column_ReferenceRequested;
-            column.RemoveRequested += Column_RemoveRequested;
             _columns.Add(clocks[index].CityId, column);
 
             var host = new Border
             {
                 Background = new SolidColorBrush(Colors.Transparent),
-                BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(42, 127, 127, 127)),
+                BorderBrush = ColumnDividerResource.BorderBrush,
                 BorderThickness = index < clocks.Count - 1 ? new Thickness(0, 0, 1, 0) : new Thickness(0),
                 Child = column
             };
@@ -676,9 +736,6 @@ public sealed partial class WorldClockWindow : Window
 
         SetReferenceCity(option.CityId);
     }
-
-    private void Column_ReferenceRequested(object? sender, WorldClockCityEventArgs e) =>
-        SetReferenceCity(e.CityId);
 
     private void SetReferenceCity(string cityId)
     {
@@ -808,7 +865,7 @@ public sealed partial class WorldClockWindow : Window
         }
     }
 
-    private async void Column_RemoveRequested(object? sender, WorldClockCityEventArgs e)
+    private async Task RemoveCityAsync(WorldClockCityEventArgs e)
     {
         try
         {
@@ -901,6 +958,7 @@ public sealed partial class WorldClockWindow : Window
         var minimized = _appWindow.Presenter is OverlappedPresenter presenter
             && presenter.State == OverlappedPresenterState.Minimized;
         if (_isLive
+            && _layoutState.Surface == WorldClockWindowSurface.Clocks
             && !minimized
             && !_lifetimeCancellation.IsCancellationRequested
             && _snapshot is { } snapshot)
@@ -915,7 +973,10 @@ public sealed partial class WorldClockWindow : Window
         _refreshTimer.Stop();
         var minimized = _appWindow.Presenter is OverlappedPresenter presenter
             && presenter.State == OverlappedPresenterState.Minimized;
-        if (_isLive && !minimized && !_lifetimeCancellation.IsCancellationRequested)
+        if (_isLive
+            && _layoutState.Surface == WorldClockWindowSurface.Clocks
+            && !minimized
+            && !_lifetimeCancellation.IsCancellationRequested)
         {
             _refreshTimer.Interval = TimeSpan.FromMinutes(1);
             _refreshTimer.Start();
@@ -929,42 +990,37 @@ public sealed partial class WorldClockWindow : Window
         var restored = _wasMinimized && !minimized;
         _wasMinimized = minimized;
         UpdateRefreshTimerState();
-        if (restored && _isLive && !IsClosing)
+        if (restored
+            && _isLive
+            && _layoutState.Surface == WorldClockWindowSurface.Clocks
+            && !IsClosing)
         {
             await RefreshCurrentAsync();
         }
     }
 
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
+    private void TitleBar_ThemeChanged(ElementTheme effectiveTheme)
     {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
+        if (_snapshot is not null)
+        {
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, ReapplyThemeAwareClockPresentation);
+        }
+    }
+
+    private void ReapplyThemeAwareClockPresentation()
+    {
+        if (IsClosing || _snapshot is not { } snapshot || _referenceCityId is not { } referenceCityId)
         {
             return;
         }
 
-        var dark = effectiveTheme == ElementTheme.Dark;
-        var titleBar = _appWindow.TitleBar;
-        titleBar.BackgroundColor = Colors.Transparent;
-        titleBar.InactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
-    }
-
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
-    {
-        if (RootGrid.RequestedTheme == ElementTheme.Default)
+        var referenceClock = snapshot.Clocks.Single(clock => clock.CityId == referenceCityId);
+        foreach (var clock in snapshot.Clocks)
         {
-            ApplyThemeChrome(sender.ActualTheme);
+            if (_columns.TryGetValue(clock.CityId, out var column))
+            {
+                column.Apply(clock, referenceClock, clock.CityId == referenceCityId, _strings);
+            }
         }
     }
 
@@ -975,6 +1031,7 @@ public sealed partial class WorldClockWindow : Window
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
 
+        _titleBar.QueueLayoutUpdate();
     }
 
     private async void WorldClockWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
@@ -1032,10 +1089,18 @@ public sealed partial class WorldClockWindow : Window
             _weatherAttributionLogoSource = null;
         }
 
-        foreach (var column in _columns.Values)
+        if (_optionsControl is not null)
         {
-            column.ReferenceRequested -= Column_ReferenceRequested;
-            column.RemoveRequested -= Column_RemoveRequested;
+            _optionsControl.RefreshRequested -= OptionsControl_RefreshRequested;
+            _optionsControl.AddRequested -= OptionsControl_AddRequested;
+            _optionsControl.ReferenceRequested -= OptionsControl_ReferenceRequested;
+            _optionsControl.RemoveRequested -= OptionsControl_RemoveRequested;
+            _optionsControl.AlwaysOnTopChanged -= OptionsControl_AlwaysOnTopChanged;
+            _optionsControl.SettingsSaved -= OptionsControl_SettingsSaved;
+            _optionsControl.WarningRequested -= OptionsControl_WarningRequested;
+            _optionsControl.ProviderLinkRequested -= OptionsControl_ProviderLinkRequested;
+            OptionsHost.Content = null;
+            _optionsControl = null;
         }
 
         _columns.Clear();
@@ -1044,7 +1109,8 @@ public sealed partial class WorldClockWindow : Window
             _xamlRoot.Changed -= XamlRoot_Changed;
         }
 
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.ThemeChanged -= TitleBar_ThemeChanged;
+        _titleBar.Dispose();
         _lifetimeCancellation.Cancel();
         _placement.Dispose();
         _lifetimeCancellation.Dispose();

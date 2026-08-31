@@ -21,6 +21,7 @@ public sealed partial class AboutWindow : Window
     private const string DarkHeroAsset = "ms-appx:///Assets/TrackMeUpAboutHero.theme-dark.png";
     private const string LightHeroAsset = "ms-appx:///Assets/TrackMeUpAboutHero.theme-light.png";
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
@@ -36,11 +37,17 @@ public sealed partial class AboutWindow : Window
         _strings = new LocalizationService(language);
         InitializeComponent();
         RootGrid.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         UiLocalization.Apply(RootGrid, _strings);
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
+        _titleBar.ThemeChanged += TitleBar_ThemeChanged;
         _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.About, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
@@ -56,7 +63,8 @@ public sealed partial class AboutWindow : Window
         _placement.Dispose();
         _lifetimeCancellation.Cancel();
         _licensesWindow?.Close();
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.ThemeChanged -= TitleBar_ThemeChanged;
+        _titleBar.Dispose();
         if (_xamlRoot is not null)
         {
             _xamlRoot.Changed -= XamlRoot_Changed;
@@ -73,7 +81,6 @@ public sealed partial class AboutWindow : Window
 
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
-        UpdateTitleBarInsets();
         UpdateThemeAssets();
 
         try
@@ -205,10 +212,6 @@ public sealed partial class AboutWindow : Window
         }
     }
 
-    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
-
-    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
-
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
         if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
@@ -217,7 +220,7 @@ public sealed partial class AboutWindow : Window
         }
     }
 
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args) => UpdateThemeAssets();
+    private void TitleBar_ThemeChanged(ElementTheme effectiveTheme) => UpdateThemeAssets();
 
     private void UpdateThemeAssets()
     {
@@ -239,24 +242,5 @@ public sealed partial class AboutWindow : Window
             presenter.IsMaximizable = false;
         }
 
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        }
-    }
-
-    private void UpdateTitleBarInsets()
-    {
-        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
     }
 }

@@ -31,6 +31,7 @@ public sealed partial class ScreenshotWindow : Window
 
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly MicaDialogService _dialogs = new();
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -45,10 +46,12 @@ public sealed partial class ScreenshotWindow : Window
     private int? _privacyRuleCount;
     private ScreenshotDetailsViewState? _selectedDetailsState;
     private OcrTextWindow? _ocrTextWindow;
+    private string? _ocrTextScreenshotPath;
     private bool _initialized;
     private bool _settingSelectedDate;
     private bool _detailsPaneOpenPreference;
     private bool _isSavingDetailsPanePreference;
+    private bool _deleteOperationInProgress;
     private bool _closeInProgress;
     private bool _allowClose;
     private uint? _detailsResizePointerId;
@@ -116,12 +119,19 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         InitializeComponent();
+        ScreenshotViewer.Configure(_application, _lifetimeCancellation.Token);
+        TimelineSection.Configure(_application, _lifetimeCancellation.Token);
         WireViewEvents();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            () => []);
         _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Screenshots, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
-        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         SetSelectedDate(_selectedDate);
         ApplyTheme(_theme);
         ApplyLocalization();
@@ -140,9 +150,10 @@ public sealed partial class ScreenshotWindow : Window
         HeaderSection.ShareRequested += HeaderSection_ShareRequested;
         HeaderSection.OpenFolderRequested += HeaderSection_OpenFolderRequested;
         HeaderSection.DeleteScreenshotRequested += HeaderSection_DeleteScreenshotRequested;
-        HeaderSection.DeleteSnapshotRequested += HeaderSection_DeleteSnapshotRequested;
+        HeaderSection.DeleteAnalysisRequested += HeaderSection_DeleteAnalysisRequested;
         HeaderSection.DetailsVisibilityRequested += HeaderSection_DetailsVisibilityRequested;
         ScreenshotViewer.ZoomStateChanged += ScreenshotViewer_ZoomStateChanged;
+        ScreenshotViewer.ImageLoadFailed += ScreenshotViewer_ImageLoadFailed;
         DetailsSection.OcrTextRequested += DetailsSection_OcrTextRequested;
         TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
         DayOverviewSection.SelectedIndexChanged += DayOverviewSection_SelectedIndexChanged;
@@ -485,6 +496,7 @@ public sealed partial class ScreenshotWindow : Window
         if (item is null)
         {
             HeaderSection.ClearMetadata();
+            HeaderSection.SetAnalysisDeletionAvailable(false);
             _selectedDetailsState = null;
             RenderDetails();
             return;
@@ -501,6 +513,7 @@ public sealed partial class ScreenshotWindow : Window
                 ? T("Screenshots.Application.Desktop")
                 : item.ForegroundApplication,
             installation);
+        HeaderSection.SetAnalysisDeletionAvailable(item.HasRemovableAnalysisData);
         var captureOrigin = FormatCaptureOrigin(item.CaptureOrigin);
         _selectedDetailsState = ScreenshotDetailsProjection.Create(
             item,
@@ -535,6 +548,7 @@ public sealed partial class ScreenshotWindow : Window
     private void DetailsSection_OcrTextRequested(string ocrText)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ocrText);
+        _ocrTextScreenshotPath = GetSelectedItem().Path;
 
         var requestedTheme = RootGrid.RequestedTheme;
         if (_ocrTextWindow is null)
@@ -564,6 +578,7 @@ public sealed partial class ScreenshotWindow : Window
 
         _ocrTextWindow.Closed -= OcrTextWindow_Closed;
         _ocrTextWindow = null;
+        _ocrTextScreenshotPath = null;
     }
 
     private void HeaderSection_ZoomOutRequested(object? sender, EventArgs e) => ScreenshotViewer.ZoomOut();
@@ -573,6 +588,12 @@ public sealed partial class ScreenshotWindow : Window
     private void HeaderSection_ZoomInRequested(object? sender, EventArgs e) => ScreenshotViewer.ZoomIn();
 
     private void ScreenshotViewer_ZoomStateChanged(object? sender, EventArgs e) => UpdateScreenshotToolbarState();
+
+    private void ScreenshotViewer_ImageLoadFailed(object? sender, EventArgs e) =>
+        _dialogs.ShowErrorBanner(
+            ScreenshotActionBanner,
+            T("Screenshots.Caption"),
+            T("Screenshots.Error.Unavailable"));
 
     private void UpdateScreenshotToolbarState() =>
         HeaderSection.SetViewerState(
@@ -784,23 +805,72 @@ public sealed partial class ScreenshotWindow : Window
         };
     }
 
-    private async void HeaderSection_DeleteScreenshotRequested(object? sender, EventArgs e)
+    private async void HeaderSection_DeleteScreenshotRequested(object? sender, EventArgs e) =>
+        await RunConfirmedDeletionAsync(
+            "Screenshots.DeleteScreenshot.Confirm.Title",
+            "Screenshots.DeleteScreenshot.Confirm.Message",
+            _application.DeleteScreenshotAsync,
+            "Screenshots.Action.ScreenshotDeleted");
+
+    private async void HeaderSection_DeleteAnalysisRequested(object? sender, EventArgs e) =>
+        await RunConfirmedDeletionAsync(
+            "Screenshots.DeleteAnalysis.Confirm.Title",
+            "Screenshots.DeleteAnalysis.Confirm.Message",
+            _application.DeleteScreenshotAnalysisAsync,
+            "Screenshots.Action.AnalysisDeleted");
+
+    private async Task RunConfirmedDeletionAsync(
+        string titleKey,
+        string messageKey,
+        Func<string, CancellationToken, Task<OperationResult<string>>> deleteAsync,
+        string successMessageKey)
     {
-        var selected = GetSelectedItem();
-        var result = await _application.DeleteScreenshotAsync(selected.Path, _lifetimeCancellation.Token);
-        if (result.Succeeded)
+        if (_deleteOperationInProgress || _lifetimeCancellation.IsCancellationRequested)
         {
-            await LoadGalleryAsync(_selectedDate);
+            return;
         }
 
-        ShowActionResult(result, "Screenshots.Action.ScreenshotDeleted");
+        _deleteOperationInProgress = true;
+        HeaderSection.SetDeletionActionsEnabled(false);
+        try
+        {
+            if (!await _dialogs.ConfirmAsync(
+                    this,
+                    SystemMessageBoxRequest.Confirmation(T(titleKey), T(messageKey))))
+            {
+                return;
+            }
+
+            var selected = GetSelectedItem();
+            var result = await deleteAsync(selected.Path, _lifetimeCancellation.Token);
+            if (result.Succeeded)
+            {
+                CloseOcrTextWindowForScreenshot(selected.Path);
+                await LoadGalleryAsync(_selectedDate);
+            }
+
+            ShowActionResult(result, successMessageKey);
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Closing the window owns cancellation; destructive commands do not surface a stale result.
+        }
+        finally
+        {
+            _deleteOperationInProgress = false;
+            HeaderSection.SetDeletionActionsEnabled(true);
+        }
     }
 
-    private async void HeaderSection_DeleteSnapshotRequested(object? sender, EventArgs e)
+    private void CloseOcrTextWindowForScreenshot(string screenshotPath)
     {
-        var selected = GetSelectedItem();
-        var result = await _application.DeleteSnapshotAsync(selected.Path, _lifetimeCancellation.Token);
-        ShowActionResult(result, "Screenshots.Action.SnapshotDeleted");
+        if (_ocrTextWindow is null
+            || !StringComparer.OrdinalIgnoreCase.Equals(_ocrTextScreenshotPath, screenshotPath))
+        {
+            return;
+        }
+
+        _ocrTextWindow.Close();
     }
 
     private async void HeaderSection_SaveRequested(object? sender, EventArgs e) =>
@@ -912,38 +982,7 @@ public sealed partial class ScreenshotWindow : Window
         var effectiveTheme = RootGrid.RequestedTheme == ElementTheme.Default
             ? RootGrid.ActualTheme
             : RootGrid.RequestedTheme;
-        ApplyThemeChrome(effectiveTheme);
-    }
-
-    private void ApplyThemeChrome(ElementTheme effectiveTheme)
-    {
-        if (!AppWindowTitleBar.IsCustomizationSupported())
-        {
-            return;
-        }
-
-        var dark = effectiveTheme == ElementTheme.Dark;
-        var titleBar = _appWindow.TitleBar;
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonForegroundColor = dark ? Colors.White : Colors.Black;
-        titleBar.ButtonInactiveForegroundColor = dark
-            ? Windows.UI.Color.FromArgb(160, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(160, 0, 0, 0);
-        titleBar.ButtonHoverBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(32, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(24, 0, 0, 0);
-        titleBar.ButtonPressedBackgroundColor = dark
-            ? Windows.UI.Color.FromArgb(48, 255, 255, 255)
-            : Windows.UI.Color.FromArgb(40, 0, 0, 0);
-    }
-
-    private void RootGrid_ActualThemeChanged(FrameworkElement sender, object args)
-    {
-        if (_theme == "system")
-        {
-            ApplyThemeChrome(sender.ActualTheme);
-        }
+        _titleBar.ApplyTheme(effectiveTheme);
     }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
@@ -1001,11 +1040,13 @@ public sealed partial class ScreenshotWindow : Window
         _appWindow.Closing -= ScreenshotWindow_Closing;
         DetailsSection.OcrTextRequested -= DetailsSection_OcrTextRequested;
         ScreenshotViewer.ZoomStateChanged -= ScreenshotViewer_ZoomStateChanged;
+        ScreenshotViewer.ImageLoadFailed -= ScreenshotViewer_ImageLoadFailed;
         DayOverviewSection.SelectedIndexChanged -= DayOverviewSection_SelectedIndexChanged;
         if (_ocrTextWindow is { } ocrTextWindow)
         {
             ocrTextWindow.Closed -= OcrTextWindow_Closed;
             _ocrTextWindow = null;
+            _ocrTextScreenshotPath = null;
             ocrTextWindow.Close();
         }
 
@@ -1019,7 +1060,7 @@ public sealed partial class ScreenshotWindow : Window
             _xamlRoot.Changed -= XamlRoot_Changed;
         }
 
-        RootGrid.ActualThemeChanged -= RootGrid_ActualThemeChanged;
+        _titleBar.Dispose();
         _lifetimeCancellation.Dispose();
     }
 }

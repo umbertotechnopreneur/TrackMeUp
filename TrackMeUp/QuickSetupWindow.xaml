@@ -218,9 +218,7 @@
 
         <Grid
             x:Name="TitleBarDragRegion"
-            Height="48"
-            Loaded="TitleBarDragRegion_Loaded"
-            SizeChanged="TitleBarDragRegion_SizeChanged">
+            Height="48">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="Auto" />
@@ -233,28 +231,13 @@
                 VerticalAlignment="Center"
                 Orientation="Horizontal"
                 Spacing="9">
-                <Border
+                <Image
                     x:Name="TitleBarBrandMark"
-                    Width="20"
-                    Height="20"
-                    AutomationProperties.AccessibilityView="Raw"
-                    BorderBrush="{StaticResource QuickSetupAccentBrush}"
-                    BorderThickness="1"
-                    CornerRadius="1">
-                    <Viewbox Margin="3">
-                        <Grid Width="16" Height="16">
-                            <Path Data="M1,13 L5,8 L8,11 L13,3" Stroke="{StaticResource QuickSetupAccentBrush}" StrokeEndLineCap="Round" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeThickness="2" />
-                            <Ellipse Width="2.5" Height="2.5" Margin="0,0,1,1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Fill="{StaticResource QuickSetupAccentBrush}" />
-                        </Grid>
-                    </Viewbox>
-                </Border>
+                    Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
                 <TextBlock
-                    VerticalAlignment="Center"
                     AutomationProperties.AccessibilityView="Raw"
                     CharacterSpacing="90"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    IsHitTestVisible="False"
+                    Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                     Text="TRACK ME UP" />
             </StackPanel>
             <Rectangle

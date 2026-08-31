@@ -86,14 +86,10 @@ public sealed partial class RetentionOperationsControl : UserControl
 
             RenderRetentionPreview(preview, executed: false);
             var confirmed = await Context.Dialogs.ConfirmAsync(
-                Context.Application,
                 Context.OwnerWindow,
-                MicaDialogRequest.Confirmation(
+                SystemMessageBoxRequest.Confirmation(
                     _strings.Translate("Operations.Retention.Confirm.Title"),
-                    _strings.Format("Operations.Retention.Confirm.Message", preview.FileCount, FormatBytes(preview.TotalBytes)),
-                    _strings.Translate("Operations.Retention.Confirm.Delete"),
-                    _strings.Translate("Dialog.Cancel")),
-                RequestedTheme);
+                    _strings.Format("Operations.Retention.Confirm.Message", preview.FileCount, FormatBytes(preview.TotalBytes))));
             if (!confirmed)
             {
                 Context.ShowStatus(

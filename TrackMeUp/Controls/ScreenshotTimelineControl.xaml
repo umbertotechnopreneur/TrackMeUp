@@ -6,26 +6,48 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <AcrylicBrush
+                        x:Key="ScreenshotFilmstripBackdropBrush"
+                        FallbackColor="#DCF4F7FA"
+                        TintColor="#FFF8FAFC"
+                        TintLuminosityOpacity="0.14"
+                        TintOpacity="0.05" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <AcrylicBrush
+                        x:Key="ScreenshotFilmstripBackdropBrush"
+                        FallbackColor="#D2141920"
+                        TintColor="#FF0F141A"
+                        TintLuminosityOpacity="0.20"
+                        TintOpacity="0.12" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="ScreenshotFilmstripBackdropBrush" ResourceKey="SystemColorWindowColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
             <Style
                 x:Key="TimelineNavigationButtonStyle"
                 BasedOn="{StaticResource ScreenshotToolbarButtonStyle}"
                 TargetType="Button">
-                <Setter Property="Width" Value="40" />
-                <Setter Property="Height" Value="40" />
-                <Setter Property="CornerRadius" Value="20" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="CornerRadius" Value="18" />
             </Style>
 
             <Style x:Key="TimelineItemContainerStyle" TargetType="ListViewItem">
-                <Setter Property="MinWidth" Value="184" />
-                <Setter Property="MinHeight" Value="136" />
-                <Setter Property="Margin" Value="4,0" />
+                <Setter Property="MinWidth" Value="116" />
+                <Setter Property="MinHeight" Value="87" />
+                <Setter Property="Margin" Value="3,0" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="VerticalContentAlignment" Value="Stretch" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderBrush" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="CornerRadius" Value="6" />
                 <Setter Property="UseSystemFocusVisuals" Value="True" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -88,20 +110,20 @@
             <DataTemplate x:Key="ScreenshotTimelineItemTemplate">
                 <Grid
                     x:Name="TimelineCardRoot"
-                    Width="176"
-                    MinHeight="136"
+                    Width="110"
+                    MinHeight="87"
                     AutomationProperties.Name="{Binding AutomationName}">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="114" />
-                        <RowDefinition Height="22" />
+                        <RowDefinition Height="69" />
+                        <RowDefinition Height="18" />
                     </Grid.RowDefinitions>
                     <Grid
                         x:Name="TimelineThumbnailVisual"
-                        Width="142"
-                        Height="90"
+                        Width="88"
+                        Height="54"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        CenterPoint="71,45,0">
+                        CenterPoint="44,27,0">
                         <Grid.ScaleTransition>
                             <Vector3Transition Duration="0:0:0.2" />
                         </Grid.ScaleTransition>
@@ -109,8 +131,8 @@
                             x:Name="TimelineSelectionGlow"
                             Background="{ThemeResource ScreenshotSelectionFillBrush}"
                             BorderBrush="{ThemeResource ScreenshotSelectionBorderBrush}"
-                            BorderThickness="3"
-                            CornerRadius="11"
+                            BorderThickness="2"
+                            CornerRadius="8"
                             IsHitTestVisible="False"
                             Opacity="0">
                             <Border.OpacityTransition>
@@ -121,7 +143,7 @@
                             x:Name="TimelineSelectionChrome"
                             BorderBrush="{ThemeResource ScreenshotSelectionBorderBrush}"
                             BorderThickness="2"
-                            CornerRadius="9"
+                            CornerRadius="7"
                             IsHitTestVisible="False"
                             Opacity="0">
                             <Border.OpacityTransition>
@@ -129,14 +151,14 @@
                             </Border.OpacityTransition>
                         </Border>
                         <Border
-                            Width="132"
-                            Height="80"
+                            Width="80"
+                            Height="46"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Background="Transparent"
                             BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            CornerRadius="6">
+                            CornerRadius="5">
                             <Image
                                 x:Name="TimelineImage"
                                 DataContextChanged="TimelineImage_DataContextChanged"
@@ -153,28 +175,28 @@
                         Spacing="5">
                         <Border
                             x:Name="TimelineInstallationBadge"
-                            Width="18"
-                            Height="18"
+                            Width="14"
+                            Height="14"
                             Background="{Binding InstallationBrush}"
-                            CornerRadius="9">
+                            CornerRadius="7">
                             <FontIcon
                                 x:Name="TimelineInstallationIcon"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 AutomationProperties.AccessibilityView="Raw"
                                 FontFamily="Segoe Fluent Icons"
-                                FontSize="8"
+                                FontSize="7"
                                 Foreground="White"
                                 Glyph="{Binding InstallationGlyph}" />
                         </Border>
                         <FontIcon
                             AutomationProperties.AccessibilityView="Raw"
                             FontFamily="Segoe Fluent Icons"
-                            FontSize="11"
+                            FontSize="10"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Glyph="&#xE823;" />
                         <TextBlock
-                            FontSize="12"
+                            FontSize="11"
                             FontWeight="Normal"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             LineHeight="16"
@@ -187,15 +209,15 @@
 
     <StackPanel
         x:Name="FilmstripStrip"
-        Height="168"
+        Height="112"
         HorizontalAlignment="Stretch"
         Opacity="1"
         Spacing="0"
         Visibility="Collapsed">
         <Border
-            Padding="24,14,24,16"
+            Padding="20,10,20,12"
             HorizontalAlignment="Stretch"
-            Background="{ThemeResource AcrylicInAppFillColorBaseBrush}"
+            Background="{ThemeResource ScreenshotFilmstripBackdropBrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0">
             <Grid x:Name="TimelineNavigationRail">

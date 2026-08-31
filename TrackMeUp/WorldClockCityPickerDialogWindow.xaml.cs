@@ -20,6 +20,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
     private readonly TaskCompletionSource<string?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly IReadOnlyList<WorldClockCityPickerOption> _options;
     private readonly AppWindow _appWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
     private string? _result;
@@ -45,10 +46,17 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
         Title = strings.Translate("WorldClock.PickerTitle");
         RootGrid.RequestedTheme = theme;
         RootGrid.Language = strings.Language;
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleDragRegion);
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>(),
+            useTallTitleBar: false);
         _placement = new WindowPlacementService(
             application,
             this,
@@ -138,6 +146,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
     {
         _appWindow.Closing -= AppWindow_Closing;
         Closed -= WorldClockCityPickerDialogWindow_Closed;
+        _titleBar.Dispose();
         _completion.TrySetResult(_result);
     }
 

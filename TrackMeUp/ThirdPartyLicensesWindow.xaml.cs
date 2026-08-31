@@ -18,6 +18,7 @@ internal sealed partial class ThirdPartyLicensesWindow : Window
     private const int LogicalScreenMargin = 22;
     private readonly AppWindow _appWindow;
     private readonly AppWindow _ownerAppWindow;
+    private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly ITrackMeUpApplication _application;
     private readonly LocalizationService _strings;
@@ -39,9 +40,15 @@ internal sealed partial class ThirdPartyLicensesWindow : Window
         DescriptionText.Text = _strings.Translate("About.Licenses.Description");
         FavoriteMessageText.Text = _strings.Translate("About.FavoriteMessage");
         Title = _strings.Translate("About.Licenses.Title");
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarDragRegion);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        _titleBar = new CustomTitleBarController(
+            this,
+            _appWindow,
+            RootGrid,
+            TitleBarDragRegion,
+            TitleBarLeftInsetColumn,
+            TitleBarRightInsetColumn,
+            static () => Array.Empty<FrameworkElement>());
         _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.Licenses, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin, ownerAppWindow.Id);
         ConfigureWindowBehavior();
         Closed += LicensesWindow_Closed;
@@ -69,18 +76,14 @@ internal sealed partial class ThirdPartyLicensesWindow : Window
     {
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
-        UpdateTitleBarInsets();
     }
 
     private async void LicensesWindow_Closed(object sender, WindowEventArgs args)
     {
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
+        _titleBar.Dispose();
         _placement.Dispose();
     }
-
-    private void TitleBarDragRegion_Loaded(object sender, RoutedEventArgs e) => UpdateTitleBarInsets();
-
-    private void TitleBarDragRegion_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTitleBarInsets();
 
     private void ConfigureWindowBehavior()
     {
@@ -89,25 +92,5 @@ internal sealed partial class ThirdPartyLicensesWindow : Window
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
         }
-
-        if (AppWindowTitleBar.IsCustomizationSupported())
-        {
-            _appWindow.TitleBar.BackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.InactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        }
-    }
-
-    private void UpdateTitleBarInsets()
-    {
-        if (!ExtendsContentIntoTitleBar || TitleBarDragRegion.XamlRoot is not { } xamlRoot)
-        {
-            return;
-        }
-
-        var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
-        TitleBarLeftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        TitleBarRightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
     }
 }

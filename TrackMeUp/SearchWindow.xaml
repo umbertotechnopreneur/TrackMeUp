@@ -22,9 +22,7 @@
 
         <Grid
             x:Name="TitleBarDragRegion"
-            Height="40"
-            Loaded="TitleBarDragRegion_Loaded"
-            SizeChanged="TitleBarDragRegion_SizeChanged">
+            Height="40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="*" />

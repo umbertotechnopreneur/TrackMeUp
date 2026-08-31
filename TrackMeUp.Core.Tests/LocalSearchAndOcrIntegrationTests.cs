@@ -551,6 +551,45 @@ public sealed class LocalSearchAndOcrIntegrationTests
         return path;
     }
 
+    /// <summary>Ensures deleting OCR refreshes, rather than removes, the retained screenshot search document.</summary>
+    [Fact]
+    public async Task SearchCoordinator_KeepsRetainedImageDocumentWhenOcrIsDeleted()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var screenshotDirectory = Path.Combine(dataDirectory, "screenshots");
+            Directory.CreateDirectory(screenshotDirectory);
+            var timestamp = DateTimeOffset.Now.AddSeconds(-1);
+            var captureId = new string('c', 32);
+            var screenshotPath = CreateOwnedScreenshot(screenshotDirectory, 'c', timestamp);
+            var artifactIdentity = Path.GetFileNameWithoutExtension(screenshotPath);
+            store.RegisterScreenshotCapture(
+                captureId,
+                store.LoadSettings().InstallationId,
+                timestamp,
+                ScreenshotCaptureOrigins.Manual);
+            store.UpsertScreenshotTextSnapshot(captureId, CreateTextSnapshot(screenshotPath, "temporary OCR text"));
+            var service = new ThreadRecordingSearchService();
+            await using var coordinator = new LocalSearchCoordinator(store, service);
+            _ = await coordinator.SearchAsync(new SearchRequest { Text = "temporary" }, CancellationToken.None);
+
+            Assert.Equal(1, store.DeleteScreenshotTextSnapshot(screenshotPath));
+            _ = await coordinator.SearchAsync(new SearchRequest { Text = "desktop" }, CancellationToken.None);
+
+            var imageMutation = Assert.Single(
+                service.LastBatch,
+                mutation => mutation.Id == $"screenshot:{artifactIdentity}");
+            Assert.NotNull(imageMutation.Document);
+            Assert.Equal(screenshotPath, imageMutation.Document.CapturePath);
+        }
+        finally
+        {
+            DeleteDataDirectory(dataDirectory);
+        }
+    }
+
     [Fact]
     public void ActivitySchema_VersionEightMigratesOnceAndSchedulesOneSearchRebuild()
     {

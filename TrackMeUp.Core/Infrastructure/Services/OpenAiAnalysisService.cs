@@ -117,7 +117,8 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             ? _capture.CaptureByMode(
                 settings.ScreenshotDirectory,
                 settings.ScreenshotCaptureMode,
-                captureOrigin: origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual)
+                captureOrigin: origin == "snapshot.scheduled" ? ScreenshotCaptureOrigins.Scheduled : ScreenshotCaptureOrigins.Manual,
+                authorizeCapture: context => TrackingDomainService.EvaluateScreenshotCapture(settings, context))
             : new ScreenshotCaptureResult(
                 Guid.NewGuid().ToString("N"),
                 Array.Empty<string>(),

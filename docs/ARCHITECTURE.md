@@ -53,6 +53,32 @@ The concrete `TrackMeUpApplication` composes Core services. Mutations are
 serialized in the application layer so the desktop and CLI cannot race separate
 stores or trackers.
 
+### Internal maintenance seams
+
+The public facade remains the only product-behavior boundary, but cohesive
+implementation details are kept in focused internal collaborators:
+
+- `WorldClockApplicationService` owns world-clock queries, selection rules,
+  conversion validation, and weather-key coordination. The facade still owns
+  mutation serialization and the single settings-persistence boundary.
+- `RuntimeHost` owns runtime acquisition and shutdown. `RuntimeMutexLease`
+  preserves thread-affine mutex ownership, `RuntimePipeServer` owns same-user
+  pipe acceptance and request draining, and `RuntimeRequestDispatcher` maps the
+  versioned wire catalog to the application facade.
+
+These collaborators are not alternate facades or runtimes. They isolate one
+reason to change while preserving the same mutex, named pipe, persistence, and
+failure contracts.
+
+### Automated architecture gates
+
+`ArchitectureBoundaryContractTests` locks the approved project-reference graph
+and rejects direct infrastructure work in WinUI code-behind or Spectre command
+and rendering sources. Runtime catalog tests require every typed operation to
+remain represented in both dispatch and client code. CI enables .NET analyzers,
+code-style enforcement, and warning-as-error behavior for tests and every
+Release architecture build.
+
 ## Local data flow
 
 1. Activity and system services collect the enabled non-content signals.

@@ -22,7 +22,13 @@ public sealed class ActivityMonitorService : IDisposable
     private readonly SettingsSnapshot _settingsSnapshot;
     private readonly ActivityContextProviderRegistry _providers = new();
     private readonly object _lifecycleLock = new();
+    private readonly object _healthLock = new();
     private readonly string _installationId;
+    private TrackingRuntimeHealth _runtimeHealth = new(
+        IsDegraded: false,
+        LastPersistedSampleAt: null,
+        LastPersistenceFailureAt: null,
+        StatusCode: "tracking.persistence.healthy");
     private Timer? _timer;
     private int _sampleInProgress;
     private int _sampleThreadId;
@@ -43,7 +49,21 @@ public sealed class ActivityMonitorService : IDisposable
     }
 
     public event Action<ActivitySample>? SampleRecorded;
+    internal event Action<TrackingRuntimeHealth>? RuntimeHealthChanged;
+
     public ActivitySample? CurrentSample { get; private set; }
+
+    /// <summary>Gets the latest durable-sampling health without querying SQLite.</summary>
+    public TrackingRuntimeHealth RuntimeHealth
+    {
+        get
+        {
+            lock (_healthLock)
+            {
+                return _runtimeHealth;
+            }
+        }
+    }
 
     /// <summary>
     /// Starts periodic sampling. If already running, it keeps existing cadence.
@@ -122,7 +142,26 @@ public sealed class ActivityMonitorService : IDisposable
             return;
         }
 
-        PersistSample(sample);
+        _ = TryPersistSample(sample);
+    }
+
+    /// <summary>
+    /// Persists one timer sample without allowing a storage failure to escape the timer callback.
+    /// The next periodic sample is the bounded retry; the last durable sample remains current meanwhile.
+    /// </summary>
+    internal bool TryPersistSample(ActivitySample sample)
+    {
+        ArgumentNullException.ThrowIfNull(sample);
+        try
+        {
+            PersistSample(sample);
+            return true;
+        }
+        catch
+        {
+            MarkPersistenceDegraded();
+            return false;
+        }
     }
 
     /// <summary>Persists a captured sample; storage failures propagate because tracking has no secondary store.</summary>
@@ -131,6 +170,7 @@ public sealed class ActivityMonitorService : IDisposable
         ArgumentNullException.ThrowIfNull(sample);
         _store.AppendSample(sample);
         CurrentSample = sample;
+        MarkPersistenceHealthy(sample.Timestamp);
         try
         {
             SampleRecorded?.Invoke(sample);
@@ -138,6 +178,63 @@ public sealed class ActivityMonitorService : IDisposable
         catch
         {
             // A presentation subscriber cannot invalidate an already durable activity sample.
+        }
+    }
+
+    private void MarkPersistenceHealthy(DateTimeOffset persistedAt)
+    {
+        TrackingRuntimeHealth? changed = null;
+        lock (_healthLock)
+        {
+            var wasDegraded = _runtimeHealth.IsDegraded;
+            _runtimeHealth = new TrackingRuntimeHealth(
+                IsDegraded: false,
+                LastPersistedSampleAt: persistedAt,
+                LastPersistenceFailureAt: _runtimeHealth.LastPersistenceFailureAt,
+                StatusCode: "tracking.persistence.healthy");
+            if (wasDegraded)
+            {
+                changed = _runtimeHealth;
+            }
+        }
+
+        PublishRuntimeHealthChange(changed);
+    }
+
+    private void MarkPersistenceDegraded()
+    {
+        TrackingRuntimeHealth? changed = null;
+        lock (_healthLock)
+        {
+            var wasDegraded = _runtimeHealth.IsDegraded;
+            _runtimeHealth = new TrackingRuntimeHealth(
+                IsDegraded: true,
+                LastPersistedSampleAt: CurrentSample?.Timestamp,
+                LastPersistenceFailureAt: DateTimeOffset.UtcNow,
+                StatusCode: "tracking.persistence.failed");
+            if (!wasDegraded)
+            {
+                changed = _runtimeHealth;
+            }
+        }
+
+        PublishRuntimeHealthChange(changed);
+    }
+
+    private void PublishRuntimeHealthChange(TrackingRuntimeHealth? health)
+    {
+        if (health is null)
+        {
+            return;
+        }
+
+        try
+        {
+            RuntimeHealthChanged?.Invoke(health);
+        }
+        catch
+        {
+            // Health consumers are supplementary; they cannot rethrow a contained persistence failure.
         }
     }
 

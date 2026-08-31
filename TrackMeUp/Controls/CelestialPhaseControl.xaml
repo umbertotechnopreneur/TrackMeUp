@@ -3,74 +3,142 @@
     x:Class="TrackMeUp.Controls.CelestialPhaseControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <RadialGradientBrush x:Key="CelestialSunOuterHaloBrush">
+                        <GradientStop Color="#58FFB24C" Offset="0.30" />
+                        <GradientStop Color="#20FF8A2C" Offset="0.68" />
+                        <GradientStop Color="#00FF7426" Offset="1" />
+                    </RadialGradientBrush>
+                    <RadialGradientBrush x:Key="CelestialSunInnerHaloBrush">
+                        <GradientStop Color="#72FFD977" Offset="0.38" />
+                        <GradientStop Color="#22FF8A2B" Offset="0.78" />
+                        <GradientStop Color="#00FF7426" Offset="1" />
+                    </RadialGradientBrush>
+                    <RadialGradientBrush x:Key="CelestialSunGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34">
+                        <GradientStop Color="#2EFFF8CB" Offset="0" />
+                        <GradientStop Color="#06FFFFFF" Offset="0.55" />
+                        <GradientStop Color="#52BD3A08" Offset="1" />
+                    </RadialGradientBrush>
+                    <SolidColorBrush x:Key="CelestialSunOutlineBrush" Color="#70F6B44D" />
+                    <RadialGradientBrush x:Key="CelestialMoonHaloBrush">
+                        <GradientStop Color="#405B8FC7" Offset="0.42" />
+                        <GradientStop Color="#16285988" Offset="0.74" />
+                        <GradientStop Color="#00233D61" Offset="1" />
+                    </RadialGradientBrush>
+                    <RadialGradientBrush x:Key="CelestialMoonGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34" RadiusX="0.7" RadiusY="0.7">
+                        <GradientStop Color="#12FFFFFF" Offset="0" />
+                        <GradientStop Color="#00FFFFFF" Offset="0.52" />
+                        <GradientStop Color="#880A1019" Offset="1" />
+                    </RadialGradientBrush>
+                    <SolidColorBrush x:Key="CelestialMoonShadowBrush" Color="#9A080D15" />
+                    <SolidColorBrush x:Key="CelestialMoonOutlineBrush" Color="#52A9BAD0" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <RadialGradientBrush x:Key="CelestialSunOuterHaloBrush">
+                        <GradientStop Color="#78FF9A3E" Offset="0.30" />
+                        <GradientStop Color="#38FF7B25" Offset="0.66" />
+                        <GradientStop Color="#00FF6A1F" Offset="1" />
+                    </RadialGradientBrush>
+                    <RadialGradientBrush x:Key="CelestialSunInnerHaloBrush">
+                        <GradientStop Color="#A0FFD068" Offset="0.38" />
+                        <GradientStop Color="#48FF7A22" Offset="0.78" />
+                        <GradientStop Color="#00FF6A1F" Offset="1" />
+                    </RadialGradientBrush>
+                    <RadialGradientBrush x:Key="CelestialSunGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34">
+                        <GradientStop Color="#38FFF6C2" Offset="0" />
+                        <GradientStop Color="#08FFFFFF" Offset="0.55" />
+                        <GradientStop Color="#65BD3A08" Offset="1" />
+                    </RadialGradientBrush>
+                    <SolidColorBrush x:Key="CelestialSunOutlineBrush" Color="#90FFD477" />
+                    <RadialGradientBrush x:Key="CelestialMoonHaloBrush">
+                        <GradientStop Color="#705B8FC7" Offset="0.42" />
+                        <GradientStop Color="#30285988" Offset="0.74" />
+                        <GradientStop Color="#00233D61" Offset="1" />
+                    </RadialGradientBrush>
+                    <RadialGradientBrush x:Key="CelestialMoonGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34" RadiusX="0.7" RadiusY="0.7">
+                        <GradientStop Color="#16FFFFFF" Offset="0" />
+                        <GradientStop Color="#00FFFFFF" Offset="0.52" />
+                        <GradientStop Color="#A30A1019" Offset="1" />
+                    </RadialGradientBrush>
+                    <SolidColorBrush x:Key="CelestialMoonShadowBrush" Color="#C0080D15" />
+                    <SolidColorBrush x:Key="CelestialMoonOutlineBrush" Color="#68D8E7F9" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="CelestialSunOuterHaloBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="CelestialSunInnerHaloBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="CelestialSunGlazeBrush" Color="Transparent" />
+                    <StaticResource x:Key="CelestialSunOutlineBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <SolidColorBrush x:Key="CelestialMoonHaloBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="CelestialMoonGlazeBrush" Color="Transparent" />
+                    <StaticResource x:Key="CelestialMoonShadowBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="CelestialMoonOutlineBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
     <Viewbox Stretch="Uniform">
-        <Grid Width="128" Height="128" AutomationProperties.AccessibilityView="Raw" IsHitTestVisible="False">
+        <Grid
+            Width="128"
+            Height="128"
+            AutomationProperties.AccessibilityView="Raw"
+            IsHitTestVisible="False">
             <Grid x:Name="SunVisual">
-                <Ellipse Width="126" Height="126" Opacity="0.28">
-                    <Ellipse.Fill>
-                        <RadialGradientBrush>
-                            <GradientStop Color="#70FF9A3E" Offset="0.30" />
-                            <GradientStop Color="#30FF7B25" Offset="0.66" />
-                            <GradientStop Color="#00FF6A1F" Offset="1" />
-                        </RadialGradientBrush>
-                    </Ellipse.Fill>
-                </Ellipse>
-                <Ellipse Width="108" Height="108" Opacity="0.42">
-                    <Ellipse.Fill>
-                        <RadialGradientBrush>
-                            <GradientStop Color="#90FFD068" Offset="0.38" />
-                            <GradientStop Color="#34FF7A22" Offset="0.78" />
-                            <GradientStop Color="#00FF6A1F" Offset="1" />
-                        </RadialGradientBrush>
-                    </Ellipse.Fill>
-                </Ellipse>
+                <Ellipse
+                    Width="126"
+                    Height="126"
+                    Fill="{ThemeResource CelestialSunOuterHaloBrush}" />
+                <Ellipse
+                    Width="108"
+                    Height="108"
+                    Fill="{ThemeResource CelestialSunInnerHaloBrush}" />
                 <Grid Width="92" Height="92">
                     <Ellipse Width="90" Height="90">
                         <Ellipse.Fill>
                             <ImageBrush ImageSource="ms-appx:///Assets/Celestial/sun-premium.png" Stretch="UniformToFill" />
                         </Ellipse.Fill>
                     </Ellipse>
-                    <Ellipse Width="92" Height="92" Opacity="0.35">
-                        <Ellipse.Fill>
-                            <RadialGradientBrush Center="0.42,0.38" GradientOrigin="0.38,0.34">
-                                <GradientStop Color="#38FFF6C2" Offset="0" />
-                                <GradientStop Color="#08FFFFFF" Offset="0.55" />
-                                <GradientStop Color="#65BD3A08" Offset="1" />
-                            </RadialGradientBrush>
-                        </Ellipse.Fill>
-                    </Ellipse>
+                    <Ellipse
+                        Width="92"
+                        Height="92"
+                        Fill="{ThemeResource CelestialSunGlazeBrush}" />
                 </Grid>
-                <Ellipse Width="92" Height="92" Stroke="#D8FFD477" StrokeThickness="1.2" />
+                <Ellipse
+                    Width="92"
+                    Height="92"
+                    Stroke="{ThemeResource CelestialSunOutlineBrush}"
+                    StrokeThickness="0.7" />
             </Grid>
 
             <Grid x:Name="MoonVisual" Visibility="Collapsed">
-                <Ellipse Width="122" Height="122" Opacity="0.30">
-                    <Ellipse.Fill>
-                        <RadialGradientBrush>
-                            <GradientStop Color="#605B8FC7" Offset="0.42" />
-                            <GradientStop Color="#20285988" Offset="0.74" />
-                            <GradientStop Color="#00233D61" Offset="1" />
-                        </RadialGradientBrush>
-                    </Ellipse.Fill>
-                </Ellipse>
+                <Ellipse
+                    Width="122"
+                    Height="122"
+                    Fill="{ThemeResource CelestialMoonHaloBrush}" />
                 <Grid Width="102" Height="102">
                     <Ellipse Width="100" Height="100">
                         <Ellipse.Fill>
                             <ImageBrush ImageSource="ms-appx:///Assets/Celestial/moon-premium.png" Stretch="UniformToFill" />
                         </Ellipse.Fill>
                     </Ellipse>
-                    <Ellipse Width="102" Height="102" Opacity="0.46">
-                        <Ellipse.Fill>
-                            <RadialGradientBrush Center="0.42,0.38" GradientOrigin="0.38,0.34" RadiusX="0.7" RadiusY="0.7">
-                                <GradientStop Color="#16FFFFFF" Offset="0" />
-                                <GradientStop Color="#00FFFFFF" Offset="0.52" />
-                                <GradientStop Color="#A30A1019" Offset="1" />
-                            </RadialGradientBrush>
-                        </Ellipse.Fill>
-                    </Ellipse>
-                    <Path x:Name="MoonShadow" Width="102" Height="102" Fill="#EE080D15" />
+                    <Ellipse
+                        Width="102"
+                        Height="102"
+                        Fill="{ThemeResource CelestialMoonGlazeBrush}" />
+                    <Path
+                        x:Name="MoonShadow"
+                        Width="102"
+                        Height="102"
+                        Fill="{ThemeResource CelestialMoonShadowBrush}" />
                 </Grid>
-                <Ellipse Width="102" Height="102" Stroke="#92D8E7F9" StrokeThickness="1" />
+                <Ellipse
+                    Width="102"
+                    Height="102"
+                    Stroke="{ThemeResource CelestialMoonOutlineBrush}"
+                    StrokeThickness="0.7" />
             </Grid>
         </Grid>
     </Viewbox>
