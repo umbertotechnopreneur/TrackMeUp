@@ -4,7 +4,6 @@ using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 
@@ -18,9 +17,13 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     private const double EstimatedTimelineContainerMargin = 4d;
     private const int CenteringPassLimit = 4;
 
+    private readonly Dictionary<Image, ThumbnailLoadRegistration> _thumbnailLoads = [];
+    private ScreenshotBitmapSourceLoader? _imageLoader;
+    private CancellationToken _lifetimeCancellation;
     private IReadOnlyList<ScreenshotTimelineEntry> _entries = Array.Empty<ScreenshotTimelineEntry>();
     private ScrollViewer? _timelineScroller;
     private int _selectionCenterGeneration;
+    private int _thumbnailGeneration;
     private bool _updatingSelection;
     private LocalizationService _strings = new("system");
 
@@ -29,6 +32,19 @@ public sealed partial class ScreenshotTimelineControl : UserControl
 
     /// <summary>Occurs when the user chooses a different retained screenshot.</summary>
     public event Action<int>? SelectedIndexChanged;
+
+    /// <summary>Connects the passive timeline to the application-owned screenshot loader.</summary>
+    public void Configure(ITrackMeUpApplication application, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        if (_imageLoader is not null)
+        {
+            throw new InvalidOperationException("The screenshot timeline is already configured.");
+        }
+
+        _imageLoader = new ScreenshotBitmapSourceLoader(application);
+        _lifetimeCancellation = cancellationToken;
+    }
 
     /// <summary>Gets the root timeline container.</summary>
     public StackPanel TimelineRoot => FilmstripStrip;
@@ -47,6 +63,8 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
+        CancelAllThumbnailLoads();
+        _thumbnailGeneration++;
         _strings = new LocalizationService(language);
         if (items.Count == 0 && selectedIndex != -1)
         {
@@ -79,9 +97,9 @@ public sealed partial class ScreenshotTimelineControl : UserControl
 
     private ScreenshotTimelineEntry CreateEntry(ScreenshotGalleryItem item, int index)
     {
-        if (!Uri.TryCreate(item.Path, UriKind.Absolute, out _))
+        if (!Path.IsPathFullyQualified(item.Path))
         {
-            throw new InvalidDataException($"Screenshot path is not an absolute URI: {item.Path}");
+            throw new InvalidDataException("Screenshot path is not fully qualified.");
         }
 
         var localTime = item.CapturedAt.ToLocalTime();
@@ -465,7 +483,7 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     {
         if (sender is Image image)
         {
-            SetTimelineImageSource(image);
+            BeginTimelineImageLoad(image);
         }
     }
 
@@ -473,7 +491,15 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     {
         if (sender is Image image)
         {
-            SetTimelineImageSource(image);
+            if (image.IsLoaded)
+            {
+                BeginTimelineImageLoad(image);
+            }
+            else
+            {
+                CancelTimelineImageLoad(image);
+                image.Source = null;
+            }
         }
     }
 
@@ -481,31 +507,96 @@ public sealed partial class ScreenshotTimelineControl : UserControl
     {
         if (sender is Image image)
         {
+            CancelTimelineImageLoad(image);
             image.Source = null;
         }
     }
 
-    private static void SetTimelineImageSource(Image image)
+    private void BeginTimelineImageLoad(Image image)
     {
+        CancelTimelineImageLoad(image);
+        image.Source = null;
         if (image.DataContext is not ScreenshotTimelineEntry entry)
         {
-            image.Source = null;
             return;
         }
 
-        var sourceUri = new Uri(entry.Path, UriKind.Absolute);
-        if (image.Source is BitmapImage { UriSource: { } currentUri }
-            && currentUri.Equals(sourceUri))
+        var loader = _imageLoader
+            ?? throw new InvalidOperationException("The screenshot timeline must be configured before rendering items.");
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation);
+        var registration = new ThumbnailLoadRegistration(entry, _thumbnailGeneration, cancellation);
+        _thumbnailLoads[image] = registration;
+        _ = LoadTimelineImageAsync(image, loader, registration);
+    }
+
+    private async Task LoadTimelineImageAsync(
+        Image image,
+        ScreenshotBitmapSourceLoader loader,
+        ThumbnailLoadRegistration registration)
+    {
+        try
+        {
+            // Only realized ListView containers request bytes; recycled containers cancel before a stale decode can bind.
+            var result = await loader.LoadAsync(
+                registration.Entry.Path,
+                decodePixelWidth: 432,
+                registration.Cancellation.Token);
+            if (!IsCurrentThumbnailLoad(image, registration))
+            {
+                return;
+            }
+
+            image.Source = result.Succeeded ? result.Bitmap : null;
+        }
+        catch (OperationCanceledException) when (registration.Cancellation.IsCancellationRequested)
+        {
+            // Container recycling or a new gallery projection owns the next thumbnail state.
+        }
+        catch (Exception)
+        {
+            if (IsCurrentThumbnailLoad(image, registration))
+            {
+                image.Source = null;
+            }
+        }
+        finally
+        {
+            if (_thumbnailLoads.TryGetValue(image, out var current)
+                && ReferenceEquals(current, registration))
+            {
+                _thumbnailLoads.Remove(image);
+            }
+
+            registration.Cancellation.Dispose();
+        }
+    }
+
+    private bool IsCurrentThumbnailLoad(Image image, ThumbnailLoadRegistration registration) =>
+        !registration.Cancellation.IsCancellationRequested
+        && registration.Generation == _thumbnailGeneration
+        && _thumbnailLoads.TryGetValue(image, out var current)
+        && ReferenceEquals(current, registration)
+        && ReferenceEquals(image.DataContext, registration.Entry)
+        && image.IsLoaded;
+
+    private void CancelTimelineImageLoad(Image image)
+    {
+        if (!_thumbnailLoads.Remove(image, out var registration))
         {
             return;
         }
 
-        // Only a realized ListView container reaches this path; recycled thumbnails release their decoded bitmap on Unloaded.
-        image.Source = new BitmapImage
+        registration.Cancellation.Cancel();
+    }
+
+    private void CancelAllThumbnailLoads()
+    {
+        foreach (var registration in _thumbnailLoads.Values)
         {
-            DecodePixelWidth = 432,
-            UriSource = sourceUri
-        };
+            registration.Cancellation.Cancel();
+        }
+
+        _thumbnailLoads.Clear();
     }
 
     private sealed record ScreenshotTimelineEntry(
@@ -514,4 +605,9 @@ public sealed partial class ScreenshotTimelineControl : UserControl
         string AutomationName,
         SolidColorBrush InstallationBrush,
         string InstallationGlyph);
+
+    private sealed record ThumbnailLoadRegistration(
+        ScreenshotTimelineEntry Entry,
+        int Generation,
+        CancellationTokenSource Cancellation);
 }

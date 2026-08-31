@@ -165,12 +165,19 @@ internal sealed class CustomTitleBarController : IDisposable
                 && element.ActualHeight > 0d)
             .Distinct()
             .Select(element => ElementRect(element, scale))
+            .Where(static rect => rect.Width > 0 && rect.Height > 0)
             .ToArray();
 
+        var pointerSource = InputNonClientPointerSource.GetForWindowId(_appWindow.Id);
+        if (passthroughRects.Length == 0)
+        {
+            // WinAppSDK rejects an empty SetRegionRects payload; clearing also removes stale passthrough regions.
+            pointerSource.ClearRegionRects(NonClientRegionKind.Passthrough);
+            return;
+        }
+
         // The OS retains dragging and caption buttons; only explicit XAML commands pass through.
-        InputNonClientPointerSource
-            .GetForWindowId(_appWindow.Id)
-            .SetRegionRects(NonClientRegionKind.Passthrough, passthroughRects);
+        pointerSource.SetRegionRects(NonClientRegionKind.Passthrough, passthroughRects);
     }
 
     private static RectInt32 ElementRect(FrameworkElement element, double scale)

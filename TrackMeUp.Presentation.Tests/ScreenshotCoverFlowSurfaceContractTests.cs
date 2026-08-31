@@ -123,6 +123,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         var dayOverview = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDayOverviewControl.xaml"));
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
         var viewerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotImageViewerControl.xaml.cs"));
+        var bitmapLoaderSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotBitmapSourceLoader.cs"));
         var gallerySource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotGalleryViewControl.xaml.cs"));
         var timelineSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotTimelineControl.xaml.cs"));
         var dayOverviewSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ScreenshotDayOverviewControl.xaml.cs"));
@@ -169,6 +170,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Equal("Hidden", imageScroller.Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Equal("Auto", imageScroller.Attribute("VerticalScrollMode")?.Value);
         Assert.Equal("Uniform", screenshotImage.Attribute("Stretch")?.Value);
+        Assert.Null(screenshotImage.Attribute("ImageFailed"));
         Assert.Equal("ScreenshotImage_ImageOpened", screenshotImage.Attribute("ImageOpened")?.Value);
         Assert.Equal("ImageHost_PointerWheelChanged", imageHost.Attribute("PointerWheelChanged")?.Value);
         Assert.Equal("Transparent", screenshotFrame.Attribute("Background")?.Value);
@@ -219,6 +221,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains(timeline.Descendants(), element => HasName(element, "NextTimelineButton"));
         Assert.Contains(timeline.Descendants(), element =>
             element.Name.LocalName == "Image" && element.Attribute("Stretch")?.Value == "Uniform");
+        Assert.Null(timelineImage.Attribute("ImageFailed"));
         Assert.Equal("87", timelineCardRoot.Attribute("MinHeight")?.Value);
         Assert.Equal("110", timelineCardRoot.Attribute("Width")?.Value);
         Assert.Equal("88", timelineThumbnailVisual.Attribute("Width")?.Value);
@@ -303,7 +306,49 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("e.Handled = true;", viewerSource, StringComparison.Ordinal);
         Assert.Contains("Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 0.5d", timelineSource, StringComparison.Ordinal);
         Assert.Contains("ImageScroller.ChangeView", viewerSource, StringComparison.Ordinal);
-        Assert.Contains("new BitmapImage", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("GetScreenshotImageAsync", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.Contains("bitmap.SetSourceAsync(stream)", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", viewerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", timelineSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", viewerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", timelineSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("StorageFile", bitmapLoaderSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ImageFailed=", viewer.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("ImageFailed=", timeline.ToString(), StringComparison.Ordinal);
+        Assert.Contains("CancellationTokenSource.CreateLinkedTokenSource", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("generation == _imageLoadGeneration", viewerSource, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(image.DataContext, registration.Entry)", timelineSource, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotViewer.Configure(_application, _lifetimeCancellation.Token);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("TimelineSection.Configure(_application, _lifetimeCancellation.Token);", windowSource, StringComparison.Ordinal);
+
+        var viewerAwait = viewerSource.IndexOf("var result = await loader.LoadAsync", StringComparison.Ordinal);
+        var viewerGuard = viewerSource.IndexOf("if (!IsCurrentImageLoad", viewerAwait, StringComparison.Ordinal);
+        var viewerAssignment = viewerSource.IndexOf("ScreenshotImage.Source = result.Bitmap;", viewerGuard, StringComparison.Ordinal);
+        Assert.True(viewerAwait >= 0 && viewerGuard > viewerAwait && viewerAssignment > viewerGuard);
+        var timelineAwait = timelineSource.IndexOf("var result = await loader.LoadAsync", StringComparison.Ordinal);
+        var timelineGuard = timelineSource.IndexOf("if (!IsCurrentThumbnailLoad", timelineAwait, StringComparison.Ordinal);
+        var timelineAssignment = timelineSource.IndexOf("image.Source = result.Succeeded ? result.Bitmap : null;", timelineGuard, StringComparison.Ordinal);
+        Assert.True(timelineAwait >= 0 && timelineGuard > timelineAwait && timelineAssignment > timelineGuard);
+        var beginViewerLoad = viewerSource.IndexOf("private void BeginImageLoad", StringComparison.Ordinal);
+        var cancelViewerLoad = viewerSource.IndexOf("CancelImageLoad();", beginViewerLoad, StringComparison.Ordinal);
+        var registerViewerLoad = viewerSource.IndexOf("_imageLoadCancellation = cancellation;", cancelViewerLoad, StringComparison.Ordinal);
+        Assert.True(beginViewerLoad >= 0 && cancelViewerLoad > beginViewerLoad && registerViewerLoad > cancelViewerLoad);
+        var beginTimelineLoad = timelineSource.IndexOf("private void BeginTimelineImageLoad", StringComparison.Ordinal);
+        var cancelTimelineLoad = timelineSource.IndexOf("CancelTimelineImageLoad(image);", beginTimelineLoad, StringComparison.Ordinal);
+        var registerTimelineLoad = timelineSource.IndexOf("_thumbnailLoads[image] = registration;", cancelTimelineLoad, StringComparison.Ordinal);
+        Assert.True(beginTimelineLoad >= 0 && cancelTimelineLoad > beginTimelineLoad && registerTimelineLoad > cancelTimelineLoad);
+        var setTimelineItems = timelineSource.IndexOf("public void SetItems", StringComparison.Ordinal);
+        var cancelAllTimelineLoads = timelineSource.IndexOf("CancelAllThumbnailLoads();", setTimelineItems, StringComparison.Ordinal);
+        var advanceTimelineGeneration = timelineSource.IndexOf("_thumbnailGeneration++;", cancelAllTimelineLoads, StringComparison.Ordinal);
+        var replaceTimelineItems = timelineSource.IndexOf("FilmstripList.ItemsSource = _entries;", advanceTimelineGeneration, StringComparison.Ordinal);
+        Assert.True(
+            setTimelineItems >= 0
+            && cancelAllTimelineLoads > setTimelineItems
+            && advanceTimelineGeneration > cancelAllTimelineLoads
+            && replaceTimelineItems > advanceTimelineGeneration);
         Assert.Contains("bitmap.PixelWidth", viewerSource, StringComparison.Ordinal);
         Assert.Contains("var containScale = Math.Min", viewerSource, StringComparison.Ordinal);
         Assert.Contains("PointerDeviceType.Mouse", viewerSource, StringComparison.Ordinal);
@@ -315,7 +360,7 @@ public sealed class ScreenshotCoverFlowSurfaceContractTests
         Assert.Contains("scroller.ExtentWidth", timelineSource, StringComparison.Ordinal);
         Assert.Contains("private const float SelectedTimelineScale = 1.2f;", timelineSource, StringComparison.Ordinal);
         Assert.Contains("private const double EstimatedTimelineContainerWidth = 184d;", timelineSource, StringComparison.Ordinal);
-        Assert.Contains("DecodePixelWidth = 432", timelineSource, StringComparison.Ordinal);
+        Assert.Contains("decodePixelWidth: 432", timelineSource, StringComparison.Ordinal);
         Assert.Contains("cardRoot.FindName(\"TimelineThumbnailVisual\")", timelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Screenshots.Timeline.Date", timelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("string DateText", timelineSource, StringComparison.Ordinal);

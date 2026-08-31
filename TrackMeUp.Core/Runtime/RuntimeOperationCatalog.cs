@@ -58,6 +58,8 @@ internal enum RuntimeOperation
     ScreenshotGallery,
     [RuntimeOperationWireName("screenshot.gallery.latest")]
     ScreenshotGalleryLatest,
+    [RuntimeOperationWireName("screenshot.image.get.v1")]
+    ScreenshotImageGetV1,
     [RuntimeOperationWireName("screenshot.storage_migration.status.v1")]
     ScreenshotStorageMigrationStatusV1,
     [RuntimeOperationWireName("screenshot.storage_migration.run.v1")]

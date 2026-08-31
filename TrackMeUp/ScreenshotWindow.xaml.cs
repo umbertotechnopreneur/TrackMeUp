@@ -119,6 +119,8 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         InitializeComponent();
+        ScreenshotViewer.Configure(_application, _lifetimeCancellation.Token);
+        TimelineSection.Configure(_application, _lifetimeCancellation.Token);
         WireViewEvents();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         _titleBar = new CustomTitleBarController(
@@ -151,6 +153,7 @@ public sealed partial class ScreenshotWindow : Window
         HeaderSection.DeleteAnalysisRequested += HeaderSection_DeleteAnalysisRequested;
         HeaderSection.DetailsVisibilityRequested += HeaderSection_DetailsVisibilityRequested;
         ScreenshotViewer.ZoomStateChanged += ScreenshotViewer_ZoomStateChanged;
+        ScreenshotViewer.ImageLoadFailed += ScreenshotViewer_ImageLoadFailed;
         DetailsSection.OcrTextRequested += DetailsSection_OcrTextRequested;
         TimelineSection.SelectedIndexChanged += TimelineSection_SelectedIndexChanged;
         DayOverviewSection.SelectedIndexChanged += DayOverviewSection_SelectedIndexChanged;
@@ -585,6 +588,12 @@ public sealed partial class ScreenshotWindow : Window
     private void HeaderSection_ZoomInRequested(object? sender, EventArgs e) => ScreenshotViewer.ZoomIn();
 
     private void ScreenshotViewer_ZoomStateChanged(object? sender, EventArgs e) => UpdateScreenshotToolbarState();
+
+    private void ScreenshotViewer_ImageLoadFailed(object? sender, EventArgs e) =>
+        _dialogs.ShowErrorBanner(
+            ScreenshotActionBanner,
+            T("Screenshots.Caption"),
+            T("Screenshots.Error.Unavailable"));
 
     private void UpdateScreenshotToolbarState() =>
         HeaderSection.SetViewerState(
@@ -1031,6 +1040,7 @@ public sealed partial class ScreenshotWindow : Window
         _appWindow.Closing -= ScreenshotWindow_Closing;
         DetailsSection.OcrTextRequested -= DetailsSection_OcrTextRequested;
         ScreenshotViewer.ZoomStateChanged -= ScreenshotViewer_ZoomStateChanged;
+        ScreenshotViewer.ImageLoadFailed -= ScreenshotViewer_ImageLoadFailed;
         DayOverviewSection.SelectedIndexChanged -= DayOverviewSection_SelectedIndexChanged;
         if (_ocrTextWindow is { } ocrTextWindow)
         {
