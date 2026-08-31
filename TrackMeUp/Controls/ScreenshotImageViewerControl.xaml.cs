@@ -21,7 +21,11 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
     private const float ZoomStep = 0.25f;
     private const float MouseWheelDeltaPerNotch = 120f;
 
-    private Uri? _currentSource;
+    private ScreenshotBitmapSourceLoader? _imageLoader;
+    private CancellationToken _lifetimeCancellation;
+    private CancellationTokenSource? _imageLoadCancellation;
+    private string? _currentPath;
+    private int _imageLoadGeneration;
     private bool _hasImage;
     private double _imagePixelWidth;
     private double _imagePixelHeight;
@@ -46,6 +50,22 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
     /// <summary>Raised whenever zoom or selected-image availability changes.</summary>
     public event EventHandler? ZoomStateChanged;
+
+    /// <summary>Raised when the selected retained image cannot be read or decoded.</summary>
+    public event EventHandler? ImageLoadFailed;
+
+    /// <summary>Connects the passive viewer to the application-owned screenshot loader.</summary>
+    public void Configure(ITrackMeUpApplication application, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        if (_imageLoader is not null)
+        {
+            throw new InvalidOperationException("The screenshot viewer is already configured.");
+        }
+
+        _imageLoader = new ScreenshotBitmapSourceLoader(application);
+        _lifetimeCancellation = cancellationToken;
+    }
 
     /// <summary>Gets the localized current zoom percentage.</summary>
     public string ZoomText => _strings.Format("Screenshots.ZoomPercent", ImageScroller.ZoomFactor);
@@ -85,19 +105,19 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
             throw new ArgumentOutOfRangeException(nameof(selectedIndex), selectedIndex, "The selected screenshot must exist in the viewer source.");
         }
 
-        if (!Uri.TryCreate(item.Path, UriKind.Absolute, out var source))
+        if (!Path.IsPathFullyQualified(item.Path))
         {
-            throw new InvalidDataException($"Screenshot path is not an absolute URI: {item.Path}");
+            throw new InvalidDataException("Screenshot path is not fully qualified.");
         }
 
-        if (_currentSource is null || !_currentSource.Equals(source))
+        if (_imageLoader is null)
         {
-            _currentSource = source;
-            _hasImage = true;
-            _imagePixelWidth = 0d;
-            _imagePixelHeight = 0d;
-            ScreenshotImage.Source = new BitmapImage { UriSource = source };
-            ResetZoom(disableAnimation: true);
+            throw new InvalidOperationException("The screenshot viewer must be configured before rendering an item.");
+        }
+
+        if (!string.Equals(_currentPath, item.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            BeginImageLoad(item.Path);
         }
 
         var localTime = item.CapturedAt.ToLocalTime();
@@ -109,14 +129,123 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
     private void ClearImage()
     {
-        _currentSource = null;
+        CancelImageLoad();
+        _currentPath = null;
         _hasImage = false;
         _imagePixelWidth = 0d;
         _imagePixelHeight = 0d;
         ScreenshotImage.Source = null;
         ScreenshotFrame.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(ScreenshotImage, _strings.Translate("Screenshots.Image.None"));
-        ResetZoom(disableAnimation: true);
+        UpdateBaseContentSize();
+        NotifyZoomStateChanged();
+    }
+
+    private void BeginImageLoad(string screenshotPath)
+    {
+        CancelImageLoad();
+        _currentPath = screenshotPath;
+        _hasImage = false;
+        _imagePixelWidth = 0d;
+        _imagePixelHeight = 0d;
+        ScreenshotImage.Source = null;
+        ScreenshotFrame.Visibility = Visibility.Collapsed;
+        UpdateBaseContentSize();
+        NotifyZoomStateChanged();
+
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation);
+        _imageLoadCancellation = cancellation;
+        var generation = ++_imageLoadGeneration;
+        _ = LoadImageAsync(screenshotPath, generation, cancellation);
+    }
+
+    private async Task LoadImageAsync(
+        string screenshotPath,
+        int generation,
+        CancellationTokenSource cancellation)
+    {
+        try
+        {
+            var loader = _imageLoader
+                ?? throw new InvalidOperationException("The screenshot viewer image loader is unavailable.");
+            var result = await loader.LoadAsync(screenshotPath, decodePixelWidth: 0, cancellation.Token);
+            if (!IsCurrentImageLoad(screenshotPath, generation, cancellation))
+            {
+                return;
+            }
+
+            if (!result.Succeeded || result.Bitmap is null)
+            {
+                HandleImageLoadFailure(screenshotPath, generation, cancellation);
+                return;
+            }
+
+            _hasImage = true;
+            ScreenshotImage.Source = result.Bitmap;
+            NotifyZoomStateChanged();
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            // A newer selection or the closing window owns the next visible image state.
+        }
+        catch (Exception)
+        {
+            if (IsCurrentImageLoad(screenshotPath, generation, cancellation))
+            {
+                HandleImageLoadFailure(screenshotPath, generation, cancellation);
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_imageLoadCancellation, cancellation))
+            {
+                _imageLoadCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
+    private bool IsCurrentImageLoad(
+        string screenshotPath,
+        int generation,
+        CancellationTokenSource cancellation) =>
+        !cancellation.IsCancellationRequested
+        && generation == _imageLoadGeneration
+        && ReferenceEquals(_imageLoadCancellation, cancellation)
+        && string.Equals(_currentPath, screenshotPath, StringComparison.OrdinalIgnoreCase);
+
+    private void HandleImageLoadFailure(
+        string screenshotPath,
+        int generation,
+        CancellationTokenSource cancellation)
+    {
+        if (!IsCurrentImageLoad(screenshotPath, generation, cancellation))
+        {
+            return;
+        }
+
+        _currentPath = null;
+        _hasImage = false;
+        _imagePixelWidth = 0d;
+        _imagePixelHeight = 0d;
+        ScreenshotImage.Source = null;
+        ScreenshotFrame.Visibility = Visibility.Collapsed;
+        UpdateBaseContentSize();
+        NotifyZoomStateChanged();
+        ImageLoadFailed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CancelImageLoad()
+    {
+        _imageLoadGeneration++;
+        if (_imageLoadCancellation is not { } cancellation)
+        {
+            return;
+        }
+
+        _imageLoadCancellation = null;
+        cancellation.Cancel();
     }
 
     private void ScreenshotImage_ImageOpened(object sender, RoutedEventArgs e)
@@ -166,7 +295,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
     private void SetZoom(float zoomFactor, Point viewportAnchor, bool disableAnimation)
     {
-        if (!_hasImage)
+        if (!_hasImage || !IsLoaded)
         {
             return;
         }
@@ -195,6 +324,12 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
         _dragPointerId = null;
         ImageScroller.ReleasePointerCaptures();
         UpdateBaseContentSize();
+        if (!_hasImage || !IsLoaded)
+        {
+            NotifyZoomStateChanged();
+            return;
+        }
+
         var (viewportWidth, viewportHeight) = GetViewportSize();
         ImageScroller.ChangeView(
             Math.Max(0d, (ImageHost.Width - viewportWidth) / 2d),
@@ -207,6 +342,11 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
     private void ImageScroller_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateBaseContentSize();
+        if (!_hasImage || !IsLoaded)
+        {
+            return;
+        }
+
         if (!DispatcherQueue.TryEnqueue(CenterCurrentView))
         {
             CenterCurrentView();
@@ -244,6 +384,11 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
     private void CenterCurrentView()
     {
+        if (!_hasImage || !IsLoaded)
+        {
+            return;
+        }
+
         var zoom = Math.Max(MinimumZoomFactor, ImageScroller.ZoomFactor);
         var (viewportWidth, viewportHeight) = GetViewportSize();
         ImageScroller.ChangeView(

@@ -11,7 +11,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using Microsoft.UI.Xaml.Input;
 using TrackMeUp.Application;
@@ -41,6 +40,7 @@ public sealed partial class MainWindow : Window
     private static readonly TimeSpan AiSpendRefreshInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan AiSpendFailureRetryInterval = TimeSpan.FromMinutes(5);
     private readonly ITrackMeUpApplication _application;
+    private readonly ScreenshotBitmapSourceLoader _screenshotBitmapLoader;
     private readonly MainViewModel _viewModel;
     private readonly DashboardRefreshCoordinator _dashboardRefreshCoordinator;
     private readonly WindowSurfaceLifecycle _lifecycle = new();
@@ -70,6 +70,8 @@ public sealed partial class MainWindow : Window
     private XamlRoot? _xamlRoot;
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
+    private CancellationTokenSource? _latestScreenshotLoadCancellation;
+    private int _latestScreenshotLoadGeneration;
     private bool _screenshotsEnabled;
     private bool _isTracking;
     private const int PendingSnapshotDeleteSeconds = 30;
@@ -149,6 +151,7 @@ public sealed partial class MainWindow : Window
         DashboardRefreshCoordinator dashboardRefreshCoordinator)
     {
         _application = application;
+        _screenshotBitmapLoader = new ScreenshotBitmapSourceLoader(application);
         _dashboardRefreshCoordinator = dashboardRefreshCoordinator ?? throw new ArgumentNullException(nameof(dashboardRefreshCoordinator));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _trayIcon = trayIcon ?? throw new ArgumentNullException(nameof(trayIcon));
@@ -1571,33 +1574,25 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Renders the latest-session labels and the screenshot URI supplied by the application facade.</summary>
+    /// <summary>Renders the latest-session labels and requests the retained screenshot through the application facade.</summary>
     private void UpdateLastSession(LastSessionState? session)
     {
         LastSessionAppText.Text = session?.Application ?? T("NoSession");
         LastSessionDetailText.Text = session?.Timestamp is { } timestamp
             ? _strings.Format("LastSession.Detail", timestamp, session.Context)
             : string.Empty;
-        if (session?.ScreenshotCapturedAt is { } capturedAt && Uri.TryCreate(session.ScreenshotPath, UriKind.Absolute, out var screenshotUri))
+        var screenshotPath = session?.ScreenshotPath;
+        if (session?.ScreenshotCapturedAt is { } capturedAt
+            && !string.IsNullOrWhiteSpace(screenshotPath)
+            && System.IO.Path.IsPathFullyQualified(screenshotPath))
         {
-            if (string.Equals(_latestScreenshotPath, session.ScreenshotPath, StringComparison.OrdinalIgnoreCase)
+            if (string.Equals(_latestScreenshotPath, screenshotPath, StringComparison.OrdinalIgnoreCase)
                 && _latestScreenshotCapturedAt == capturedAt)
             {
                 return;
             }
 
-            _latestScreenshotPath = session.ScreenshotPath;
-            _latestScreenshotCapturedAt = capturedAt;
-            var preview = new BitmapImage
-            {
-                DecodePixelWidth = ScreenshotPreviewDecodePixelWidth,
-                UriSource = screenshotUri
-            };
-            LastScreenshotImage.Source = preview;
-            LastScreenshotImage.Visibility = Visibility.Visible;
-            ScreenshotPlaceholderImage.Visibility = Visibility.Collapsed;
-            ScreenshotPreviewButton.IsHitTestVisible = true;
-            UpdateScreenshotPreviewAccessibility();
+            BeginLatestScreenshotLoad(screenshotPath, capturedAt);
             return;
         }
 
@@ -1632,13 +1627,104 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Falls back to the packaged pastoral placeholder when an artifact cannot be rendered.</summary>
-    private void LastScreenshotImage_ImageFailed(object sender, ExceptionRoutedEventArgs e) => ShowScreenshotPlaceholder();
+    private void BeginLatestScreenshotLoad(string screenshotPath, DateTimeOffset capturedAt)
+    {
+        CancelLatestScreenshotLoad();
+        _latestScreenshotPath = screenshotPath;
+        _latestScreenshotCapturedAt = capturedAt;
+        RenderScreenshotPlaceholder();
 
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifecycle.Token);
+        _latestScreenshotLoadCancellation = cancellation;
+        var generation = ++_latestScreenshotLoadGeneration;
+        _ = LoadLatestScreenshotAsync(screenshotPath, capturedAt, generation, cancellation);
+    }
+
+    private async Task LoadLatestScreenshotAsync(
+        string screenshotPath,
+        DateTimeOffset capturedAt,
+        int generation,
+        CancellationTokenSource cancellation)
+    {
+        try
+        {
+            var result = await _screenshotBitmapLoader.LoadAsync(
+                screenshotPath,
+                ScreenshotPreviewDecodePixelWidth,
+                cancellation.Token);
+            if (!IsCurrentLatestScreenshotLoad(screenshotPath, capturedAt, generation, cancellation))
+            {
+                return;
+            }
+
+            if (!result.Succeeded || result.Bitmap is null)
+            {
+                ShowScreenshotPlaceholder();
+                return;
+            }
+
+            LastScreenshotImage.Source = result.Bitmap;
+            LastScreenshotImage.Visibility = Visibility.Visible;
+            ScreenshotPlaceholderImage.Visibility = Visibility.Collapsed;
+            ScreenshotPreviewButton.IsHitTestVisible = true;
+            UpdateScreenshotPreviewAccessibility();
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            // A newer retained capture or the closing window owns the next preview state.
+        }
+        catch (Exception)
+        {
+            if (IsCurrentLatestScreenshotLoad(screenshotPath, capturedAt, generation, cancellation))
+            {
+                ShowScreenshotPlaceholder();
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_latestScreenshotLoadCancellation, cancellation))
+            {
+                _latestScreenshotLoadCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
+    private bool IsCurrentLatestScreenshotLoad(
+        string screenshotPath,
+        DateTimeOffset capturedAt,
+        int generation,
+        CancellationTokenSource cancellation) =>
+        !cancellation.IsCancellationRequested
+        && generation == _latestScreenshotLoadGeneration
+        && ReferenceEquals(_latestScreenshotLoadCancellation, cancellation)
+        && string.Equals(_latestScreenshotPath, screenshotPath, StringComparison.OrdinalIgnoreCase)
+        && _latestScreenshotCapturedAt == capturedAt;
+
+    private void CancelLatestScreenshotLoad()
+    {
+        _latestScreenshotLoadGeneration++;
+        if (_latestScreenshotLoadCancellation is not { } cancellation)
+        {
+            return;
+        }
+
+        _latestScreenshotLoadCancellation = null;
+        cancellation.Cancel();
+    }
+
+    /// <summary>Falls back to the packaged pastoral placeholder when an artifact cannot be rendered.</summary>
     private void ShowScreenshotPlaceholder()
     {
+        CancelLatestScreenshotLoad();
         _latestScreenshotPath = null;
         _latestScreenshotCapturedAt = null;
+        RenderScreenshotPlaceholder();
+    }
+
+    private void RenderScreenshotPlaceholder()
+    {
         LastScreenshotImage.Source = null;
         LastScreenshotImage.Visibility = Visibility.Collapsed;
         ScreenshotPlaceholderImage.Visibility = Visibility.Visible;
@@ -2111,6 +2197,7 @@ public sealed partial class MainWindow : Window
 
         _dashboardSurfaceClosed = true;
         _dashboardRefreshReady = false;
+        CancelLatestScreenshotLoad();
         _lifecycle.Cancel();
         _dashboardSubscription?.Dispose();
         _dashboardSubscription = null;

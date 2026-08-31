@@ -84,7 +84,7 @@ public sealed class ArchitectureBoundaryContractTests
         }
     }
 
-    /// <summary>Ensures WinUI code-behind delegates I/O and environment work to the application facade.</summary>
+    /// <summary>Ensures WinUI presentation sources delegate I/O and environment work to the application facade.</summary>
     [Fact]
     public void WinUiCodeBehind_DoesNotOwnInfrastructureOperations()
     {
@@ -92,6 +92,11 @@ public sealed class ArchitectureBoundaryContractTests
         var codeBehindFiles = Directory
             .EnumerateFiles(frontendDirectory, "*.xaml.cs", SearchOption.AllDirectories)
             .Where(path => !path.EndsWith($"{Path.DirectorySeparatorChar}App.xaml.cs", StringComparison.OrdinalIgnoreCase))
+            .Concat(Directory.EnumerateFiles(
+                Path.Combine(frontendDirectory, "Controls"),
+                "*.cs",
+                SearchOption.TopDirectoryOnly))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

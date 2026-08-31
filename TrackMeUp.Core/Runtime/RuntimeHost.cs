@@ -188,6 +188,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
+    internal static readonly TimeSpan ScreenshotImageTimeout = TimeSpan.FromSeconds(15);
     internal static readonly TimeSpan WorldClockQueryTimeout = TimeSpan.FromSeconds(15);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
@@ -270,6 +271,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>(RuntimeOperation.ScreenshotGallery, new ScreenshotGalleryRequest(date), cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken) => SendAsync<ScreenshotGallery>(RuntimeOperation.ScreenshotGalleryLatest, null, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(ScreenshotImageRequest request, CancellationToken cancellationToken) =>
+        SendAsync<ScreenshotImageContent>(RuntimeOperation.ScreenshotImageGetV1, request, cancellationToken, ScreenshotImageTimeout);
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken) =>
         SendAsync<ScreenshotStorageMigrationStatus>(RuntimeOperation.ScreenshotStorageMigrationStatusV1, null, cancellationToken, ScreenshotStorageMigrationTimeout);
