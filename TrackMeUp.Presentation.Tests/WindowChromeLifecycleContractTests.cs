@@ -45,6 +45,7 @@ public sealed class WindowChromeLifecycleContractTests
 
         Assert.Contains("PreferredHeightOption = TitleBarHeightOption.Tall", controller, StringComparison.Ordinal);
         Assert.Contains("xamlRoot.RasterizationScale", controller, StringComparison.Ordinal);
+        Assert.Contains(".Where(static rect => rect.Width > 0 && rect.Height > 0)", controller, StringComparison.Ordinal);
         Assert.Contains("_appWindow.TitleBar.LeftInset / scale", controller, StringComparison.Ordinal);
         Assert.Contains("_appWindow.TitleBar.RightInset / scale", controller, StringComparison.Ordinal);
         Assert.Contains("NonClientRegionKind.Passthrough", controller, StringComparison.Ordinal);
@@ -53,6 +54,21 @@ public sealed class WindowChromeLifecycleContractTests
         Assert.Contains("new CustomTitleBarController(", worldClock, StringComparison.Ordinal);
         Assert.DoesNotContain("InputNonClientPointerSource", main, StringComparison.Ordinal);
         Assert.DoesNotContain("InputNonClientPointerSource", worldClock, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies that windows without interactive title-bar controls clear instead of registering an empty region.</summary>
+    [Fact]
+    public void SharedTitleBar_ClearsPassthroughRegionsWhenNoInteractiveElementsRemain()
+    {
+        var controller = File.ReadAllText(RepositoryFile("TrackMeUp", "CustomTitleBarController.cs"));
+        var guardIndex = controller.IndexOf("if (passthroughRects.Length == 0)", StringComparison.Ordinal);
+        var setIndex = controller.IndexOf("pointerSource.SetRegionRects(", StringComparison.Ordinal);
+
+        Assert.True(guardIndex >= 0);
+        Assert.True(setIndex > guardIndex);
+        var emptyRegionBranch = controller[guardIndex..setIndex];
+        Assert.Contains("pointerSource.ClearRegionRects(NonClientRegionKind.Passthrough);", emptyRegionBranch, StringComparison.Ordinal);
+        Assert.Contains("return;", emptyRegionBranch, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies shared title-bar command sizing, label alignment, and PNG brand artwork.</summary>

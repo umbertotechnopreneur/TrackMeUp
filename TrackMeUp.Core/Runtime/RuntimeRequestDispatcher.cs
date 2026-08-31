@@ -67,6 +67,7 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.ScreenshotLatest => ToResponse(request, await _application.GetLatestScreenshotAsync(cancellationToken)),
                 RuntimeOperation.ScreenshotGallery => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
                 RuntimeOperation.ScreenshotGalleryLatest => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
+                RuntimeOperation.ScreenshotImageGetV1 => ToResponse(request, await DispatchScreenshotImageAsync(request, cancellationToken)),
                 RuntimeOperation.ScreenshotStorageMigrationStatusV1 => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
                 RuntimeOperation.ScreenshotStorageMigrationRunV1 => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
                 RuntimeOperation.InstallationsListV1 => ToResponse(request, await _application.GetInstallationProfilesAsync(cancellationToken)),
@@ -175,6 +176,16 @@ internal sealed class RuntimeRequestDispatcher
         return galleryRequest is null
             ? OperationResult<ScreenshotGallery>.Failure("screenshot.gallery.invalid", "ScreenshotGalleryRequestInvalid")
             : await _application.GetScreenshotGalleryAsync(galleryRequest.Date, cancellationToken);
+    }
+
+    private async Task<OperationResult<ScreenshotImageContent>> DispatchScreenshotImageAsync(
+        RuntimeRequestEnvelope request,
+        CancellationToken cancellationToken)
+    {
+        var imageRequest = Read<ScreenshotImageRequest>(request.Payload);
+        return imageRequest is null
+            ? OperationResult<ScreenshotImageContent>.Failure("screenshot.image.invalid", "ScreenshotImageInvalid")
+            : await _application.GetScreenshotImageAsync(imageRequest, cancellationToken);
     }
 
     private async Task<RuntimeResponseEnvelope> DispatchSearchAsync(

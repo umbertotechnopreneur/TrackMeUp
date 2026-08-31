@@ -163,6 +163,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private DateTimeOffset _lastScreenshotStorageWarningAt = DateTimeOffset.MinValue;
     private const int ManualScreenshotDeletionWindowSeconds = 30;
     private const int MaximumPendingNotifications = 32;
+    private const int MaximumScreenshotImageBytes = 10 * 1024 * 1024;
     private const long MinimumScreenshotFreeBytes = 512L * 1024 * 1024;
     private static readonly TimeSpan ScreenshotStorageNotificationInterval = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SystemSnapshotReuseWindow = TimeSpan.FromSeconds(75);
@@ -267,7 +268,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "tracking.health.v1", "sessions", "system", "screenshots", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.analysis.delete.v1", "screenshots.storage-migration.v1", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "tracking.health.v1", "sessions", "system", "screenshots", "screenshots.image.v1", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.analysis.delete.v1", "screenshots.storage-migration.v1", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
             _tracking.RuntimeHealth,
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
@@ -953,30 +954,199 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public async Task<OperationResult<ScreenshotGallery>> GetScreenshotGalleryAsync(DateOnly date, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        // Gallery projection performs directory enumeration, OCR deserialization, and SQLite reads;
-        // keep all of that work off the WinUI/pipe caller and cancel superseded date requests.
-        var gallery = await Task.Run(
-            () => _store.GetScreenshotGallery(date, cancellationToken),
-            cancellationToken).ConfigureAwait(false);
-        return OperationResult<ScreenshotGallery>.Success(
-            "screenshot.gallery.loaded",
-            "ScreenshotGalleryLoaded",
-            gallery);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Gallery projection performs directory enumeration, OCR deserialization, and SQLite reads;
+            // keep all of that work off the WinUI/pipe caller and cancel superseded date requests.
+            var gallery = await Task.Run(
+                () => _store.GetScreenshotGallery(date, cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            return OperationResult<ScreenshotGallery>.Success(
+                "screenshot.gallery.loaded",
+                "ScreenshotGalleryLoaded",
+                gallery);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "Screenshot gallery projection failed. Date={Date} ExceptionType={ExceptionType}",
+                date,
+                exception.GetType().Name);
+            return OperationResult<ScreenshotGallery>.Failure(
+                "screenshot.gallery.failed",
+                "ScreenshotGalleryFailed");
+        }
     }
 
     /// <inheritdoc />
     public async Task<OperationResult<ScreenshotGallery>> GetLatestScreenshotGalleryAsync(CancellationToken cancellationToken)
     {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // The latest-gallery lookup shares the same potentially large local projection path.
+            var gallery = await Task.Run(
+                () => _store.GetLatestScreenshotGallery(cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            return OperationResult<ScreenshotGallery>.Success(
+                "screenshot.gallery.latest.loaded",
+                "LatestScreenshotGalleryLoaded",
+                gallery);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                "Latest screenshot gallery projection failed. ExceptionType={ExceptionType}",
+                exception.GetType().Name);
+            return OperationResult<ScreenshotGallery>.Failure(
+                "screenshot.gallery.latest.failed",
+                "LatestScreenshotGalleryFailed");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(
+        ScreenshotImageRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        // The latest-gallery lookup shares the same potentially large local projection path.
-        var gallery = await Task.Run(
-            () => _store.GetLatestScreenshotGallery(cancellationToken),
-            cancellationToken).ConfigureAwait(false);
-        return OperationResult<ScreenshotGallery>.Success(
-            "screenshot.gallery.latest.loaded",
-            "LatestScreenshotGalleryLoaded",
-            gallery);
+        if (string.IsNullOrWhiteSpace(request.ScreenshotPath)
+            || !Path.IsPathFullyQualified(request.ScreenshotPath)
+            || !ScreenCaptureService.IsOwnedArtifact(request.ScreenshotPath))
+        {
+            return OperationResult<ScreenshotImageContent>.Failure(
+                "screenshot.image.invalid",
+                "ScreenshotImageInvalid",
+                new ValidationIssue("screenshotPath", "invalid", "ScreenshotImageInvalid"));
+        }
+
+        string requestedFullPath;
+        try
+        {
+            requestedFullPath = Path.GetFullPath(request.ScreenshotPath);
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return OperationResult<ScreenshotImageContent>.Failure(
+                "screenshot.image.invalid",
+                "ScreenshotImageInvalid",
+                new ValidationIssue("screenshotPath", "invalid", "ScreenshotImageInvalid"));
+        }
+
+        var artifactIdentity = LocalStore.ScreenshotIdentity(Path.GetFileName(requestedFullPath));
+        string? retainedPath;
+        try
+        {
+            // Root validation and directory enumeration are synchronous; keep them off the WinUI/pipe caller.
+            retainedPath = await Task.Run(
+                () => _store.FindScreenshotArtifacts(requestedFullPath)
+                    .FirstOrDefault(path => string.Equals(
+                        Path.GetFullPath(path),
+                        requestedFullPath,
+                        StringComparison.OrdinalIgnoreCase)),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(
+                "Retained screenshot image resolution failed. ArtifactIdentity={ArtifactIdentity} ExceptionType={ExceptionType}",
+                artifactIdentity,
+                exception.GetType().Name);
+            return OperationResult<ScreenshotImageContent>.Failure(
+                "screenshot.image.read_failed",
+                "ScreenshotImageReadFailed");
+        }
+
+        if (retainedPath is null)
+        {
+            return OperationResult<ScreenshotImageContent>.Failure(
+                "screenshot.image.not_found",
+                "ScreenshotImageNotFound",
+                new ValidationIssue("screenshotPath", "not_found", "ScreenshotImageNotFound"));
+        }
+
+        try
+        {
+            await using var stream = new FileStream(
+                retainedPath,
+                new FileStreamOptions
+                {
+                    Mode = FileMode.Open,
+                    Access = FileAccess.Read,
+                    Share = FileShare.Read | FileShare.Delete,
+                    BufferSize = 64 * 1024,
+                    Options = FileOptions.Asynchronous | FileOptions.SequentialScan
+                });
+            var length = stream.Length;
+            if (length <= 0)
+            {
+                return OperationResult<ScreenshotImageContent>.Failure(
+                    "screenshot.image.empty",
+                    "ScreenshotImageEmpty");
+            }
+
+            if (length > MaximumScreenshotImageBytes)
+            {
+                return OperationResult<ScreenshotImageContent>.Failure(
+                    "screenshot.image.too_large",
+                    "ScreenshotImageTooLarge");
+            }
+
+            // Read exactly the size validated on this open handle so a concurrently growing artifact cannot cause an unbounded allocation.
+            var content = new byte[checked((int)length)];
+            await stream.ReadExactlyAsync(content, cancellationToken).ConfigureAwait(false);
+            var trailingByte = new byte[1];
+            if (await stream.ReadAsync(trailingByte, cancellationToken).ConfigureAwait(false) != 0)
+            {
+                _logger.LogWarning(
+                    "Retained screenshot image read failed. ArtifactIdentity={ArtifactIdentity} ExceptionType={ExceptionType}",
+                    artifactIdentity,
+                    "ArtifactChangedDuringRead");
+                return OperationResult<ScreenshotImageContent>.Failure(
+                    "screenshot.image.read_failed",
+                    "ScreenshotImageReadFailed");
+            }
+
+            return OperationResult<ScreenshotImageContent>.Success(
+                "screenshot.image.loaded",
+                "ScreenshotImageLoaded",
+                new ScreenshotImageContent(artifactIdentity, content));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return OperationResult<ScreenshotImageContent>.Failure(
+                "screenshot.image.not_found",
+                "ScreenshotImageNotFound",
+                new ValidationIssue("screenshotPath", "not_found", "ScreenshotImageNotFound"));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(
+                "Retained screenshot image read failed. ArtifactIdentity={ArtifactIdentity} ExceptionType={ExceptionType}",
+                artifactIdentity,
+                exception.GetType().Name);
+            return OperationResult<ScreenshotImageContent>.Failure(
+                "screenshot.image.read_failed",
+                "ScreenshotImageReadFailed");
+        }
     }
 
     /// <inheritdoc />

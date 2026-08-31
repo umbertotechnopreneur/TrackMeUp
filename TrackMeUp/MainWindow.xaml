@@ -1021,7 +1021,6 @@
                                         <Image
                                             x:Name="LastScreenshotImage"
                                             AutomationProperties.AccessibilityView="Raw"
-                                            ImageFailed="LastScreenshotImage_ImageFailed"
                                             Stretch="UniformToFill"
                                             Visibility="Collapsed" />
                                         <Border

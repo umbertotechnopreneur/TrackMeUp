@@ -14,12 +14,29 @@ public sealed class PerformanceOptimizationSurfaceContractTests
     [Fact]
     public void MainPreview_UsesBoundedDecodeAndReleasesInvalidSource()
     {
+        var view = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var previewImage = view.Descendants().Single(element => HasName(element, "LastScreenshotImage"));
 
         Assert.Contains("private const int ScreenshotPreviewDecodePixelWidth = 384;", source, StringComparison.Ordinal);
-        Assert.Contains("DecodePixelWidth = ScreenshotPreviewDecodePixelWidth", source, StringComparison.Ordinal);
+        Assert.Contains("_screenshotBitmapLoader.LoadAsync(", source, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotPreviewDecodePixelWidth,", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("UriSource", source, StringComparison.Ordinal);
         Assert.Contains("LastScreenshotImage.Source = null;", source, StringComparison.Ordinal);
         Assert.Contains("_latestScreenshotCapturedAt == capturedAt", source, StringComparison.Ordinal);
+        Assert.Null(previewImage.Attribute("ImageFailed"));
+
+        var loadAwait = source.IndexOf("var result = await _screenshotBitmapLoader.LoadAsync", StringComparison.Ordinal);
+        var currentGuard = source.IndexOf("if (!IsCurrentLatestScreenshotLoad", loadAwait, StringComparison.Ordinal);
+        var sourceAssignment = source.IndexOf("LastScreenshotImage.Source = result.Bitmap;", currentGuard, StringComparison.Ordinal);
+        Assert.True(loadAwait >= 0 && currentGuard > loadAwait && sourceAssignment > currentGuard);
+        var beginLoad = source.IndexOf("private void BeginLatestScreenshotLoad", StringComparison.Ordinal);
+        var cancelLoad = source.IndexOf("CancelLatestScreenshotLoad();", beginLoad, StringComparison.Ordinal);
+        var registerLoad = source.IndexOf("_latestScreenshotLoadCancellation = cancellation;", cancelLoad, StringComparison.Ordinal);
+        Assert.True(beginLoad >= 0 && cancelLoad > beginLoad && registerLoad > cancelLoad);
+        Assert.Contains("generation == _latestScreenshotLoadGeneration", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(_latestScreenshotLoadCancellation, cancellation)", source, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(_latestScreenshotPath, screenshotPath", source, StringComparison.Ordinal);
     }
 
     [Fact]
