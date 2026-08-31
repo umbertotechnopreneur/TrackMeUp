@@ -30,6 +30,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2EA44F" alt="MIT License" /></a>
 </p>
 
+> [!IMPORTANT]
+> **Beta 1 is coming soon.** We are using the next two months to carefully evaluate AI and privacy risks before publishing the first public beta.
+
 ## Remember the moment, not the tab
 
 TrackMeUp is built for the moment when you know you saw something today, but cannot remember which app, window, or part of the day it belonged to.
@@ -52,6 +55,43 @@ TrackMeUp is built for the moment when you know you saw something today, but can
 </table>
 
 TrackMeUp does **not** store the content of what you type. It retains only non-content activity signals, such as input counts, needed to distinguish active work from idle time.
+
+## TrackMeUp in action
+
+These promotional product previews use synthetic demo data and show the English, Italian, and Vietnamese interfaces.
+
+<p align="center">
+  <img src="docs/images/readme/trackmeup-live-tracking-it.png" alt="TrackMeUp live activity tracking in Italian" width="100%" />
+  <br />
+  <sub><strong>Live tracking · Italiano</strong> — elapsed time, non-content input counts, and recent activity at a glance.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-captured-moments-en.png" alt="TrackMeUp Captured moments inspector in English" width="100%" />
+      <br />
+      <sub><strong>Captured moments · English</strong> — inspect one retained screenshot and move through the full-width timeline.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-local-search-vi.png" alt="TrackMeUp local search and OCR in Vietnamese" width="100%" />
+      <br />
+      <sub><strong>Local search and OCR · Tiếng Việt</strong> — recover context across applications, screenshots, OCR, and optional AI descriptions.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-activity-history-en.png" alt="TrackMeUp Activity history in English" width="100%" />
+      <br />
+      <sub><strong>Activity history · English</strong> — review observed activity intensity and exact daily signals without productivity scoring.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/readme/trackmeup-world-clocks-it.png" alt="TrackMeUp World clocks in Italian" width="100%" />
+      <br />
+      <sub><strong>World clocks · Italiano</strong> — compare local time, astronomy, and optional current weather across cities.</sub>
+    </td>
+  </tr>
+</table>
 
 ## How TrackMeUp works
 
