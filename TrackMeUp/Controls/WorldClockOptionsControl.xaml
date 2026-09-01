@@ -219,6 +219,33 @@
 
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
+                            <StackPanel Spacing="8">
+                                <TextBlock
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Tag="Options.Section.Window"
+                                    Text="Window" />
+                                <Slider
+                                    x:Name="WorldClockOpacitySlider"
+                                    Header="Window opacity"
+                                    Maximum="100"
+                                    Minimum="25"
+                                    StepFrequency="1"
+                                    Tag="Options.Window.Opacity"
+                                    PointerCaptureLost="WorldClockOpacitySlider_PointerCaptureLost"
+                                    KeyUp="WorldClockOpacitySlider_KeyUp"
+                                    ValueChanged="WorldClockOpacitySlider_ValueChanged"
+                                    Value="100" />
+                                <ToggleSwitch
+                                    x:Name="WorldClockShowInTaskbarSwitch"
+                                    Header="Show window icon in taskbar"
+                                    OffContent=""
+                                    OnContent=""
+                                    Tag="Options.Window.ShowInTaskbar"
+                                    Toggled="WorldClockShowInTaskbarSwitch_Toggled" />
+                            </StackPanel>
+
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
                             <ToggleSwitch
                                 x:Name="AlwaysOnTopSwitch"
                                 Header="Always on top"

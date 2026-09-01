@@ -23,9 +23,9 @@ public static class WorldClockSelection
             return Defaults;
         }
 
-        if (cityIds.Count is < 1 or > MaximumClocks)
+        if (cityIds.Count > MaximumClocks)
         {
-            throw new InvalidDataException($"World-clock selection must contain between 1 and {MaximumClocks} cities.");
+            throw new InvalidDataException($"World-clock selection cannot contain more than {MaximumClocks} cities.");
         }
 
         var normalized = cityIds.Select(static id => id?.Trim().ToLowerInvariant() ?? string.Empty).ToArray();
@@ -213,6 +213,7 @@ public sealed class WorldClockService : IDisposable
     {
         var selection = WorldClockSelection.NormalizePersisted(cityIds);
         var cities = LoadCities();
+        var providerConfiguration = _currentWeather.CaptureConfiguration();
         return BuildSnapshotCore(
             selection,
             cities,
@@ -223,7 +224,8 @@ public sealed class WorldClockService : IDisposable
                 "not-requested",
                 "explicit-instant",
                 selection.Count,
-                0));
+                0,
+                providerConfiguration.IsConfigured));
     }
 
     /// <summary>Builds the current snapshot and optionally enriches it with fresh cached weather.</summary>
@@ -235,6 +237,23 @@ public sealed class WorldClockService : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         var selection = WorldClockSelection.NormalizePersisted(cityIds);
         var cities = LoadCities();
+        var providerConfiguration = _currentWeather.CaptureConfiguration();
+        if (selection.Count == 0)
+        {
+            return BuildSnapshotCore(
+                selection,
+                cities,
+                _timeProvider.GetUtcNow(),
+                new Dictionary<string, WorldClockWeather>(StringComparer.Ordinal),
+                new WorldClockWeatherStatus(
+                    "openweather",
+                    "not-requested",
+                    "no-clocks",
+                    0,
+                    0,
+                    providerConfiguration.IsConfigured));
+        }
+
         if (!weatherEnabled)
         {
             return BuildSnapshotCore(
@@ -247,7 +266,8 @@ public sealed class WorldClockService : IDisposable
                     "disabled",
                     "user-disabled",
                     selection.Count,
-                    0));
+                    0,
+                    providerConfiguration.IsConfigured));
         }
 
         var locations = selection.Select(cityId =>
@@ -273,6 +293,12 @@ public sealed class WorldClockService : IDisposable
 
     /// <summary>Invalidates observations that were loaded with the previous provider configuration.</summary>
     internal void InvalidateCurrentWeatherConfiguration() => _currentWeather.InvalidateConfiguration();
+
+    /// <summary>Checks a candidate weather key directly with the configured provider.</summary>
+    internal Task<WorldClockWeatherApiKeyValidation> ValidateWeatherApiKeyAsync(
+        string secret,
+        CancellationToken cancellationToken) =>
+        _currentWeather.ValidateApiKeyAsync(secret, cancellationToken);
 
     private static WorldClockSnapshot BuildSnapshotCore(
         IReadOnlyList<string> selection,

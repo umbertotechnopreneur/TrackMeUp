@@ -223,6 +223,7 @@ public sealed class LocalizationServiceTests
             "WorldClock.Options.Weather.Setup",
             "WorldClock.Options.Weather.ApiKey.Header",
             "WorldClock.Options.Weather.ApiKey.Placeholder",
+            "WorldClock.Options.Weather.ApiKey.ConfiguredHelp",
             "WorldClock.Options.Weather.ApiKeyStatus.Ready",
             "WorldClock.Options.Weather.ApiKeyStatus.Missing",
             "WorldClock.Options.Weather.ApiKeyStatus.Invalid",
@@ -230,8 +231,12 @@ public sealed class LocalizationServiceTests
             "WorldClock.Options.Weather.KeyAction.Set",
             "WorldClock.Options.Weather.KeyAction.Change",
             "WorldClock.Options.Weather.SaveKey",
+            "WorldClock.Options.Weather.KeyValidating",
             "WorldClock.Options.Weather.KeySaved",
+            "WorldClock.Options.Weather.KeySavedRateLimited",
             "WorldClock.Options.Weather.KeyInvalid",
+            "WorldClock.Options.Weather.KeyRejected",
+            "WorldClock.Options.Weather.KeyValidationUnavailable",
             "WorldClock.Options.Weather.KeySaveFailed",
             "WorldClock.Options.Weather.KeyRefreshFailed",
             "WorldClock.Options.Weather.ProviderLink",
@@ -239,7 +244,10 @@ public sealed class LocalizationServiceTests
             "WorldClock.SunriseLabel",
             "WorldClock.SunsetLabel",
             "WorldClock.WeatherNoData",
-            "WorldClock.LocalTime"
+            "WorldClock.LocalTime",
+            "WorldClock.Loading",
+            "WorldClock.Empty.Title",
+            "WorldClock.Empty.Description"
         ];
 
         Assert.All(LocalizationService.SupportedLanguages, language =>
@@ -254,6 +262,8 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Apri le opzioni degli orologi mondiali", italian.Translate("WorldClock.Options.Open"));
         Assert.Equal("LOCAL TIME", english.Translate("WorldClock.LocalTime"));
         Assert.Equal("ORA LOCALE", italian.Translate("WorldClock.LocalTime"));
+        Assert.Equal("Caricamento dati…", italian.Translate("WorldClock.Loading"));
+        Assert.Equal("Nessun orologio", italian.Translate("WorldClock.Empty.Title"));
         Assert.Equal("Saved in Windows, not in TrackMeUp settings", english.Translate("WorldClock.Options.Weather.ApiKey.Placeholder"));
         Assert.Equal("Salvata in Windows, non nelle impostazioni di TrackMeUp", italian.Translate("WorldClock.Options.Weather.ApiKey.Placeholder"));
         Assert.Throws<KeyNotFoundException>(() => english.Translate("WorldClock.MoreOptions"));

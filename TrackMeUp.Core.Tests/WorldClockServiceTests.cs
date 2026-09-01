@@ -79,11 +79,33 @@ public sealed class WorldClockServiceTests
         Assert.Equal(TimeSpan.FromHours(25), autumn.EndUtc - autumn.StartUtc);
     }
 
+    /// <summary>Verifies empty selections are explicit while null still resolves to product defaults.</summary>
     [Fact]
     public void Selection_RejectsDuplicatesAndMoreThanFourClocks()
     {
+        Assert.Empty(WorldClockSelection.NormalizePersisted([]));
+        Assert.Equal(WorldClockSelection.Defaults, WorldClockSelection.NormalizePersisted(null));
         Assert.Throws<InvalidDataException>(() => WorldClockSelection.NormalizePersisted(["london", "london"]));
         Assert.Throws<InvalidDataException>(() => WorldClockSelection.NormalizePersisted(["london", "paris", "tokyo", "hanoi", "berlin"]));
+    }
+
+    /// <summary>Verifies an empty selection does not invoke optional weather and retains safe configuration state.</summary>
+    [Fact]
+    public async Task CurrentSnapshot_EmptySelectionSkipsWeatherAndPreservesProviderPresence()
+    {
+        var provider = new FakeWeatherProvider(_ => throw new InvalidOperationException("Weather must not run."));
+        using var service = new WorldClockService(
+            RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"),
+            provider,
+            TimeProvider.System);
+
+        var snapshot = await service.BuildCurrentSnapshotAsync([], weatherEnabled: true, CancellationToken.None);
+
+        Assert.Empty(snapshot.Clocks);
+        Assert.Equal(0, provider.CallCount);
+        Assert.Equal("not-requested", snapshot.WeatherStatus.State);
+        Assert.Equal("no-clocks", snapshot.WeatherStatus.ReasonCode);
+        Assert.True(snapshot.WeatherStatus.IsProviderConfigured);
     }
 
     [Fact]
@@ -267,6 +289,7 @@ public sealed class WorldClockServiceTests
         }
     }
 
+    /// <summary>Verifies provider response codes map to safe validation outcomes without echoing the candidate key.</summary>
     [Theory]
     [InlineData(211, "lightning")]
     [InlineData(301, "rain")]
@@ -285,6 +308,7 @@ public sealed class WorldClockServiceTests
     }
 
     /// <summary>Verifies that an unknown weather condition preserves the local sky without adding an overlay.</summary>
+    /// <summary>Verifies transport failures produce an unavailable result without exposing the candidate key.</summary>
     [Fact]
     public void UnknownWeatherCondition_KeepsTheLocalSkyWithoutInventingAnOverlay()
     {
@@ -450,6 +474,41 @@ public sealed class WorldClockServiceTests
         Assert.False(OpenWeatherCurrentProvider.IsPlausibleApiKey(" 0123456789abcdef0123456789abcdef"));
         Assert.False(OpenWeatherCurrentProvider.IsPlausibleApiKey("0123456789abcdef\n0123456789abcdef"));
         Assert.False(OpenWeatherCurrentProvider.IsPlausibleApiKey(new string('a', 129)));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, (int)WorldClockWeatherApiKeyValidation.Accepted)]
+    [InlineData(HttpStatusCode.Unauthorized, (int)WorldClockWeatherApiKeyValidation.Rejected)]
+    [InlineData(HttpStatusCode.Forbidden, (int)WorldClockWeatherApiKeyValidation.Rejected)]
+    [InlineData(HttpStatusCode.TooManyRequests, (int)WorldClockWeatherApiKeyValidation.RateLimited)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, (int)WorldClockWeatherApiKeyValidation.Unavailable)]
+    public async Task OpenWeatherApiKeyValidation_MapsProviderResponsesWithoutReturningTheSecret(
+        HttpStatusCode statusCode,
+        int expectedValue)
+    {
+        var expected = (WorldClockWeatherApiKeyValidation)expectedValue;
+        using var httpClient = new HttpClient(new RecordingHttpMessageHandler(_ => new HttpResponseMessage(statusCode)));
+        var provider = OpenWeatherCurrentProvider.CreateForTests(
+            httpClient,
+            new string('x', 32));
+        var candidate = new string('y', 32);
+
+        var result = await provider.ValidateApiKeyAsync(candidate, CancellationToken.None);
+
+        Assert.Equal(expected, result);
+        Assert.DoesNotContain(candidate, result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task OpenWeatherApiKeyValidation_ReportsNetworkFailureWithoutExposingTheSecret()
+    {
+        using var httpClient = new HttpClient(new RecordingHttpMessageHandler(_ =>
+            throw new HttpRequestException("Synthetic validation failure.")));
+        var provider = OpenWeatherCurrentProvider.CreateForTests(httpClient, new string('x', 32));
+
+        var result = await provider.ValidateApiKeyAsync(new string('z', 32), CancellationToken.None);
+
+        Assert.Equal(WorldClockWeatherApiKeyValidation.Unavailable, result);
     }
 
     [Fact]
@@ -1051,6 +1110,12 @@ public sealed class WorldClockServiceTests
 
         public int CallCount => Volatile.Read(ref _callCount);
 
+        /// <inheritdoc />
+        public Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+            string secret,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorldClockWeatherApiKeyValidation.Accepted);
+
         public Task<WorldClockWeatherObservation> GetCurrentAsync(
             WorldClockWeatherLocation location,
             CancellationToken cancellationToken)
@@ -1069,6 +1134,12 @@ public sealed class WorldClockServiceTests
         public string ConfigurationState => "configured";
 
         public bool IsConfigured => true;
+
+        /// <inheritdoc />
+        public Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+            string secret,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorldClockWeatherApiKeyValidation.Accepted);
 
         public Task<WorldClockWeatherObservation> GetCurrentAsync(
             WorldClockWeatherLocation location,
@@ -1111,6 +1182,12 @@ public sealed class WorldClockServiceTests
         public bool IsConfigured => true;
 
         public int CallCount => Volatile.Read(ref _callCount);
+
+        /// <inheritdoc />
+        public Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+            string secret,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorldClockWeatherApiKeyValidation.Accepted);
 
         internal Task Started => _started.Task;
 

@@ -76,11 +76,13 @@ public sealed partial class OptionsControl : UserControl
         AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
         ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
         AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
+        AutomationProperties.SetName(MainWindowOpacitySlider, T("Options.Window.Opacity.Header"));
+        AutomationProperties.SetName(MainWindowShowInTaskbarSwitch, T("Options.Window.ShowInTaskbar.Header"));
         AutomationProperties.SetName(KeepScreenshotsSwitch, T("Options.KeepSnapshots.Header"));
         AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
         AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
         AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
-        AutomationProperties.SetName(SearchSettingsButton, T("Options.SearchConfiguration.Title"));
+        AutomationProperties.SetName(OcrAiSettingsButton, T("Options.AiConfiguration.Title"));
         AutomationProperties.SetName(SearchSynonymsSwitch, T("Options.Search.Synonyms"));
         AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
         AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
@@ -144,21 +146,12 @@ public sealed partial class OptionsControl : UserControl
         }
     }
 
-    /// <summary>Moves from AI configuration to general options, then back to the player.</summary>
+    /// <summary>Moves from OCR and AI configuration to general options, then back to the player.</summary>
     public void NavigateBack()
     {
-        if (SearchOptionsView.Visibility == Visibility.Visible)
+        if (OcrAiOptionsView.Visibility == Visibility.Visible)
         {
-            SearchOptionsView.Visibility = Visibility.Collapsed;
-            AppOptionsView.Visibility = Visibility.Visible;
-            TestConnectionButton.Visibility = Visibility.Collapsed;
-            NotifyLayoutChanged();
-            return;
-        }
-
-        if (AiOptionsView.Visibility == Visibility.Visible)
-        {
-            AiOptionsView.Visibility = Visibility.Collapsed;
+            OcrAiOptionsView.Visibility = Visibility.Collapsed;
             AppOptionsView.Visibility = Visibility.Visible;
             TestConnectionButton.Visibility = Visibility.Collapsed;
             NotifyLayoutChanged();
@@ -168,11 +161,11 @@ public sealed partial class OptionsControl : UserControl
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Shows the focused AI configuration view without changing persisted settings.</summary>
-    private async void AiSettingsButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Shows the paired OCR and AI configuration view without changing persisted settings.</summary>
+    private async void OcrAiSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         AppOptionsView.Visibility = Visibility.Collapsed;
-        AiOptionsView.Visibility = Visibility.Visible;
+        OcrAiOptionsView.Visibility = Visibility.Visible;
         TestConnectionButton.Visibility = Visibility.Visible;
         NotifyLayoutChanged();
         if (_aiState is not null)
@@ -180,15 +173,6 @@ public sealed partial class OptionsControl : UserControl
             await _aiState.LoadAsync(CancellationToken.None);
         }
         UpdateAiQuotaPresentation();
-    }
-
-    /// <summary>Shows the focused local-search and OCR settings view.</summary>
-    private void SearchSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        AppOptionsView.Visibility = Visibility.Collapsed;
-        SearchOptionsView.Visibility = Visibility.Visible;
-        TestConnectionButton.Visibility = Visibility.Collapsed;
-        NotifyLayoutChanged();
     }
 
     private void SnapshotAiOperationsLink_Click(object sender, RoutedEventArgs e) =>
@@ -419,6 +403,8 @@ public sealed partial class OptionsControl : UserControl
             ["language"] = SelectedTag(LanguageBox, "system"),
             ["theme"] = SelectedTheme(),
             ["position"] = SelectedTag(PositionBox, "bottom-center"),
+            ["window.main.opacity_percent"] = MainWindowOpacitySlider.Value.ToString("0", CultureInfo.InvariantCulture),
+            ["window.main.show_in_taskbar"] = MainWindowShowInTaskbarSwitch.IsOn ? "true" : "false",
             ["taskbar.widget.visible"] = TaskbarWidgetVisibleSwitch.IsOn ? "true" : "false",
             ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left")
         });
@@ -480,6 +466,8 @@ public sealed partial class OptionsControl : UserControl
         SelectTag(ScreenshotModeBox, settings.ScreenshotCaptureMode, "all-screens");
         SelectTag(LanguageBox, settings.UiLanguage, "system");
         SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
+        MainWindowOpacitySlider.Value = settings.MainWindowOpacityPercent;
+        MainWindowShowInTaskbarSwitch.IsOn = settings.MainWindowShowInTaskbar;
         TaskbarWidgetVisibleSwitch.IsOn = settings.TaskbarWidgetVisible;
         SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
         TaskbarWidgetPositionBox.IsEnabled = settings.TaskbarWidgetVisible;

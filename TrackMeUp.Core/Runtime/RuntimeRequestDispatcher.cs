@@ -44,15 +44,15 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.TrackingPause => ToResponse(request, await _application.PauseTrackingAsync(cancellationToken)),
                 RuntimeOperation.TrackingToggle => ToResponse(request, await _application.ToggleTrackingAsync(cancellationToken)),
                 RuntimeOperation.DashboardGet => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
-                RuntimeOperation.WorldClocksGetV2 => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
-                RuntimeOperation.WorldClocksConvertV1 => ToResponse(request, await _application.ConvertWorldClocksAsync(
+                RuntimeOperation.WorldClocksGetV3 => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
+                RuntimeOperation.WorldClocksConvertV2 => ToResponse(request, await _application.ConvertWorldClocksAsync(
                     Read<WorldClockConversionRequest>(request.Payload)
                         ?? throw new InvalidDataException("A world-clock conversion request is required."),
                     cancellationToken)),
                 RuntimeOperation.WorldClocksCatalogV1 => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
                 RuntimeOperation.WorldClocksAddV3 => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
                 RuntimeOperation.WorldClocksRemoveV3 => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
-                RuntimeOperation.WorldClocksWeatherKeySetV1 => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
+                RuntimeOperation.WorldClocksWeatherKeySetV2 => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
                 RuntimeOperation.SessionLast => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 RuntimeOperation.SessionToday => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 RuntimeOperation.SearchQueryV1 => await DispatchSearchAsync(request, cancellationToken),

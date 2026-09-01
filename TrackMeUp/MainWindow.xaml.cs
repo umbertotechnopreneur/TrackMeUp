@@ -1747,6 +1747,8 @@ public sealed partial class MainWindow : Window
         _hasAppliedSettings = true;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
         _showAiMonthlySpend = settings.ShowAiMonthlySpend;
+        RootGrid.Opacity = settings.MainWindowOpacityPercent / 100d;
+        _appWindow.IsShownInSwitchers = settings.MainWindowShowInTaskbar;
         if (!_showAiMonthlySpend)
         {
             AiMonthlySpendPanel.Visibility = Visibility.Collapsed;

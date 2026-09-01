@@ -18,18 +18,18 @@ internal enum RuntimeOperation
     TrackingToggle,
     [RuntimeOperationWireName("dashboard.get")]
     DashboardGet,
-    [RuntimeOperationWireName("world_clocks.get.v2")]
-    WorldClocksGetV2,
-    [RuntimeOperationWireName("world_clocks.convert.v1")]
-    WorldClocksConvertV1,
+    [RuntimeOperationWireName("world_clocks.get.v3")]
+    WorldClocksGetV3,
+    [RuntimeOperationWireName("world_clocks.convert.v2")]
+    WorldClocksConvertV2,
     [RuntimeOperationWireName("world_clocks.catalog.v1")]
     WorldClocksCatalogV1,
     [RuntimeOperationWireName("world_clocks.add.v3")]
     WorldClocksAddV3,
     [RuntimeOperationWireName("world_clocks.remove.v3")]
     WorldClocksRemoveV3,
-    [RuntimeOperationWireName("world_clocks.weather.key.set.v1")]
-    WorldClocksWeatherKeySetV1,
+    [RuntimeOperationWireName("world_clocks.weather.key.set.v2")]
+    WorldClocksWeatherKeySetV2,
     [RuntimeOperationWireName("session.last")]
     SessionLast,
     [RuntimeOperationWireName("session.today")]

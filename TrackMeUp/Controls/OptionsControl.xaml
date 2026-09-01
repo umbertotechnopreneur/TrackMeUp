@@ -177,6 +177,28 @@
                         <ComboBoxItem Content="Top right" Tag="top-right" />
                     </ComboBox>
 
+                    <Border Height="1" Margin="0,18,0,0" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <StackPanel Margin="0,14,0,0" Spacing="8">
+                        <TextBlock
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Tag="Options.Section.Window"
+                            Text="Window" />
+                        <Slider
+                            x:Name="MainWindowOpacitySlider"
+                            Header="Window opacity"
+                            Maximum="100"
+                            Minimum="25"
+                            StepFrequency="1"
+                            Tag="Options.Window.Opacity"
+                            Value="100" />
+                        <ToggleSwitch
+                            x:Name="MainWindowShowInTaskbarSwitch"
+                            Header="Show window icon in taskbar"
+                            OffContent=""
+                            OnContent=""
+                            Tag="Options.Window.ShowInTaskbar" />
+                    </StackPanel>
+
                     <Border
                         Height="1"
                         Margin="0,18,0,0"
@@ -314,14 +336,15 @@
                         FontWeight="SemiBold"
                         Text="AI" />
                     <Button
+                        x:Name="OcrAiSettingsButton"
                         Margin="0,8,0,0"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
-                        AutomationProperties.Name="Open AI configuration"
+                        AutomationProperties.Name="Open OCR and AI settings"
                         Background="Transparent"
                         BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                         BorderThickness="0,0,0,1"
-                        Click="AiSettingsButton_Click"
+                        Click="OcrAiSettingsButton_Click"
                         CornerRadius="0"
                         Padding="0,10"
                         Tag="Options.AiConfiguration.Title">
@@ -338,55 +361,12 @@
                                 FontSize="17"
                                 Glyph="&#xE945;" />
                             <StackPanel Grid.Column="1" Spacing="1">
-                                <TextBlock Tag="Options.AiConfiguration.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="AI configuration" />
+                                <TextBlock Tag="Options.AiConfiguration.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="OCR / AI settings" />
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Tag="Options.AiConfiguration.Subtitle"
                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="Model, key and thinking effort"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-                            <FontIcon
-                                Grid.Column="2"
-                                VerticalAlignment="Center"
-                                AutomationProperties.AccessibilityView="Raw"
-                                FontFamily="Segoe Fluent Icons"
-                                FontSize="12"
-                                Glyph="&#xE76C;" />
-                        </Grid>
-                    </Button>
-
-                    <Button
-                        x:Name="SearchSettingsButton"
-                        Margin="0"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Stretch"
-                        AutomationProperties.Name="Open search and OCR settings"
-                        Background="Transparent"
-                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                        BorderThickness="0,0,0,1"
-                        Click="SearchSettingsButton_Click"
-                        CornerRadius="0"
-                        Padding="0,10">
-                        <Grid ColumnSpacing="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <FontIcon
-                                VerticalAlignment="Center"
-                                AutomationProperties.AccessibilityView="Raw"
-                                FontFamily="Segoe Fluent Icons"
-                                FontSize="17"
-                                Glyph="&#xE721;" />
-                            <StackPanel Grid.Column="1" Spacing="1">
-                                <TextBlock Tag="Options.SearchConfiguration.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Search and OCR" />
-                                <TextBlock
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Tag="Options.SearchConfiguration.Subtitle"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="Languages, synonyms and text extraction"
+                                    Text="Text extraction, search, and AI provider"
                                     TextWrapping="Wrap" />
                             </StackPanel>
                             <FontIcon
@@ -749,8 +729,15 @@
             </ScrollViewer>
         </Grid>
 
-        <Grid x:Name="SearchOptionsView" Visibility="Collapsed">
+        <Grid x:Name="OcrAiOptionsView" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="1" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <ScrollViewer
+                Grid.Column="0"
+                Margin="0,0,22,0"
                 HorizontalScrollBarVisibility="Disabled"
                 HorizontalScrollMode="Disabled"
                 VerticalScrollBarVisibility="Auto"
@@ -883,10 +870,12 @@
                         TextWrapping="Wrap" />
                 </StackPanel>
             </ScrollViewer>
-        </Grid>
-
-        <Grid x:Name="AiOptionsView" Visibility="Collapsed">
+            <Border
+                Grid.Column="1"
+                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
             <ScrollViewer
+                Grid.Column="2"
+                Margin="22,0,0,0"
                 HorizontalScrollBarVisibility="Disabled"
                 HorizontalScrollMode="Disabled"
                 VerticalScrollBarVisibility="Auto"

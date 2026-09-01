@@ -110,14 +110,6 @@ internal sealed class WorldClockApplicationService : IDisposable
     {
         var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;
         var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
-        if (selection.Count == 1)
-        {
-            return OperationResult<WorldClockSelectionState>.Failure(
-                "world_clocks.minimum_reached",
-                "WorldClocksMinimumReached",
-                new ValidationIssue("cityId", "minimum_reached", "WorldClocksMinimumReached"));
-        }
-
         if (!selection.Remove(normalizedId))
         {
             return OperationResult<WorldClockSelectionState>.Failure(
@@ -133,7 +125,9 @@ internal sealed class WorldClockApplicationService : IDisposable
             new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks));
     }
 
-    internal OperationResult<string> SetWeatherKey(string secret)
+    internal async Task<OperationResult<string>> SetWeatherKeyAsync(
+        string secret,
+        CancellationToken cancellationToken)
     {
         var secretValue = secret ?? string.Empty;
         if (!OpenWeatherCurrentProvider.IsPlausibleApiKey(secretValue))
@@ -147,20 +141,45 @@ internal sealed class WorldClockApplicationService : IDisposable
 
         try
         {
-            // The secret is delegated directly to the Windows environment store and never persisted or logged.
-            // Environment-write failures propagate; there is no safe fallback that could claim the key was stored.
+            var validation = await _worldClocks.ValidateWeatherApiKeyAsync(
+                secretValue,
+                cancellationToken).ConfigureAwait(false);
+            if (validation == WorldClockWeatherApiKeyValidation.Rejected)
+            {
+                return OperationResult<string>.Failure(
+                    "world_clocks.weather.key.rejected",
+                    "WorldClockWeatherKeyRejected",
+                    new ValidationIssue("secret", "rejected", "WorldClockWeatherKeyRejected"));
+            }
+
+            if (validation == WorldClockWeatherApiKeyValidation.Unavailable)
+            {
+                return OperationResult<string>.Failure(
+                    "world_clocks.weather.key.validation_unavailable",
+                    "WorldClockWeatherKeyValidationUnavailable");
+            }
+
+            if (validation is not (WorldClockWeatherApiKeyValidation.Accepted
+                or WorldClockWeatherApiKeyValidation.RateLimited))
+            {
+                throw new InvalidDataException($"Unsupported weather-key validation result '{validation}'.");
+            }
+
+            // Only a provider-accepted key reaches the Windows environment store; it is never persisted or logged elsewhere.
+            // Environment-write failures propagate because there is no safe fallback that could claim the key was stored.
             _setApiKey(OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable, secretValue);
             _worldClocks.InvalidateCurrentWeatherConfiguration();
+            return OperationResult<string>.Success(
+                validation == WorldClockWeatherApiKeyValidation.RateLimited
+                    ? "world_clocks.weather.key.stored_rate_limited"
+                    : "world_clocks.weather.key.stored",
+                "WorldClockWeatherKeyStored",
+                OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable);
         }
         finally
         {
             secretValue = string.Empty;
         }
-
-        return OperationResult<string>.Success(
-            "world_clocks.weather.key.stored",
-            "WorldClockWeatherKeyStored",
-            OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable);
     }
 
     /// <inheritdoc />

@@ -140,35 +140,86 @@
                 </DropDownButton.Content>
                 <DropDownButton.Flyout>
                     <Flyout Placement="BottomEdgeAlignedLeft">
-                        <StackPanel Width="340" Spacing="12">
-                            <ComboBox
-                                x:Name="ReferenceCityComboBox"
-                                DisplayMemberPath="CityName"
-                                Header="Reference city"
-                                SelectionChanged="ReferenceCityComboBox_SelectionChanged"
-                                Tag="WorldClock.ReferenceCity" />
-                            <CalendarDatePicker
-                                x:Name="ReferenceDatePicker"
-                                HorizontalAlignment="Stretch"
-                                DateChanged="ReferenceDatePicker_DateChanged"
-                                Header="Date"
-                                Tag="WorldClock.ReferenceDate" />
-                            <TimePicker
-                                x:Name="ReferenceTimePicker"
-                                HorizontalAlignment="Stretch"
-                                ClockIdentifier="24HourClock"
-                                Header="Time"
-                                MinuteIncrement="1"
-                                Tag="WorldClock.ReferenceTime"
-                                TimeChanged="ReferenceTimePicker_TimeChanged" />
-                            <Button
-                                x:Name="NowButton"
-                                HorizontalAlignment="Right"
-                                Click="NowButton_Click"
-                                Content="Now"
-                                Tag="WorldClock.Now"
-                                Visibility="Collapsed" />
-                        </StackPanel>
+                        <Border Width="480" Padding="20,18,20,16">
+                            <StackPanel Spacing="16">
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <SymbolIcon
+                                        VerticalAlignment="Center"
+                                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                        Symbol="Calendar" />
+                                    <TextBlock
+                                        x:Name="ReferenceInstantFlyoutTitle"
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        Tag="WorldClock.ReferenceInstant"
+                                        Text="REFERENCE INSTANT" />
+                                </Grid>
+                                <ComboBox
+                                    x:Name="ReferenceCityComboBox"
+                                    DisplayMemberPath="CityName"
+                                    Header="Reference city"
+                                    SelectionChanged="ReferenceCityComboBox_SelectionChanged"
+                                    Tag="WorldClock.ReferenceCity" />
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <CalendarDatePicker
+                                        x:Name="ReferenceDatePicker"
+                                        HorizontalAlignment="Stretch"
+                                        DateChanged="ReferenceDatePicker_DateChanged"
+                                        Header="Date"
+                                        Tag="WorldClock.ReferenceDate" />
+                                    <TimePicker
+                                        x:Name="ReferenceTimePicker"
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Stretch"
+                                        ClockIdentifier="24HourClock"
+                                        Header="Time"
+                                        MinuteIncrement="1"
+                                        Tag="WorldClock.ReferenceTime"
+                                        TimeChanged="ReferenceTimePicker_TimeChanged" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon
+                                        VerticalAlignment="Center"
+                                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                        Symbol="World" />
+                                    <TextBlock
+                                        x:Name="ReferenceTimeZoneText"
+                                        VerticalAlignment="Center"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="—" />
+                                </StackPanel>
+                                <Border
+                                    Height="1"
+                                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                <StackPanel
+                                    HorizontalAlignment="Right"
+                                    Orientation="Horizontal"
+                                    Spacing="8">
+                                    <Button
+                                        x:Name="NowButton"
+                                        Click="NowButton_Click"
+                                        Content="Now"
+                                        Tag="WorldClock.Now"
+                                        Visibility="Collapsed" />
+                                    <Button
+                                        x:Name="ApplyReferenceButton"
+                                        Click="ApplyReferenceButton_Click"
+                                        Content="Apply"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        Tag="WorldClock.Apply" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </Flyout>
                 </DropDownButton.Flyout>
             </DropDownButton>
@@ -202,7 +253,7 @@
             Grid.Row="1">
             <HyperlinkButton
                 x:Name="WeatherAttributionButton"
-                Margin="0,0,16,76"
+                Margin="0,0,16,8"
                 Padding="4,2"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
@@ -234,26 +285,87 @@
             <ScrollViewer
                 x:Name="ClockColumnsScroller"
                 HorizontalContentAlignment="Stretch"
-                HorizontalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Hidden"
                 HorizontalScrollMode="Enabled"
                 SizeChanged="ClockColumnsScroller_SizeChanged"
                 VerticalContentAlignment="Stretch"
                 VerticalScrollBarVisibility="Disabled"
-                VerticalScrollMode="Disabled">
+                VerticalScrollMode="Disabled"
+                Visibility="Collapsed">
                 <Grid
                     x:Name="ClockColumnsHost"
                     AutomationProperties.LandmarkType="Custom" />
             </ScrollViewer>
 
-            <ProgressRing
-                x:Name="LoadingIndicator"
-                Width="36"
-                Height="36"
+            <StackPanel
+                x:Name="LoadingState"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                AutomationProperties.Name="Loading world clocks"
-                IsActive="False"
-                Visibility="Collapsed" />
+                AutomationProperties.LiveSetting="Polite"
+                Spacing="12"
+                Visibility="Collapsed">
+                <ProgressRing
+                    x:Name="LoadingIndicator"
+                    Width="36"
+                    Height="36"
+                    HorizontalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw"
+                    IsActive="False"
+                    Visibility="Collapsed" />
+                <TextBlock
+                    x:Name="LoadingStatusText"
+                    HorizontalAlignment="Center"
+                    AutomationProperties.Name="Loading world clocks"
+                    FontWeight="SemiBold"
+                    Tag="WorldClock.Loading"
+                    Text="Loading world clocks"
+                    TextAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel
+                x:Name="EmptyClocksState"
+                Width="420"
+                MaxWidth="520"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12"
+                Visibility="Collapsed">
+                <SymbolIcon
+                    HorizontalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw"
+                    Symbol="Clock" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    AutomationProperties.HeadingLevel="Level2"
+                    FontSize="20"
+                    FontWeight="SemiBold"
+                    Tag="WorldClock.Empty.Title"
+                    Text="No clocks yet"
+                    TextAlignment="Center" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Tag="WorldClock.Empty.Description"
+                    Text="Use + to choose a city from the local catalog."
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+                <Button
+                    x:Name="EmptyStateAddButton"
+                    HorizontalAlignment="Center"
+                    Click="EmptyStateAddButton_Click"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Tag="WorldClock.Add">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon
+                            AutomationProperties.AccessibilityView="Raw"
+                            Symbol="Add" />
+                        <TextBlock
+                            Tag="WorldClock.Add"
+                            Text="Add clock" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <Border

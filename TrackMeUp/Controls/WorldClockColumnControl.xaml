@@ -16,7 +16,12 @@
                         <SolidColorBrush x:Key="WorldClockDayAccentBrush" Color="#FFE34A2C" />
                         <SolidColorBrush x:Key="WorldClockNightAccentBrush" Color="#FF6C63B7" />
                         <SolidColorBrush x:Key="WorldClockMarkerBrush" Color="#FFE34A2C" />
+                        <SolidColorBrush x:Key="WorldClockSolarRemainingBrush" Color="#FFC8C4DA" />
                         <SolidColorBrush x:Key="WorldClockCloudBrush" Color="#E8F7F8FA" />
+                        <LinearGradientBrush x:Key="WorldClockSolarFillBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#3DFFD8B0" Offset="0" />
+                            <GradientStop Color="#00FFD8B0" Offset="1" />
+                        </LinearGradientBrush>
                         <x:Double x:Key="WorldClockBackdropOpacity">0.12</x:Double>
                         <x:Double x:Key="WorldClockSkylineOpacity">0.20</x:Double>
                         <x:Double x:Key="WorldClockForegroundOpacity">0.16</x:Double>
@@ -30,7 +35,12 @@
                         <SolidColorBrush x:Key="WorldClockDayAccentBrush" Color="#FFFF7357" />
                         <SolidColorBrush x:Key="WorldClockNightAccentBrush" Color="#FF958BEE" />
                         <SolidColorBrush x:Key="WorldClockMarkerBrush" Color="#FFFF7357" />
+                        <SolidColorBrush x:Key="WorldClockSolarRemainingBrush" Color="#FFB9B3D8" />
                         <SolidColorBrush x:Key="WorldClockCloudBrush" Color="#E6F0F3F8" />
+                        <LinearGradientBrush x:Key="WorldClockSolarFillBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#50FFC29A" Offset="0" />
+                            <GradientStop Color="#00FFC29A" Offset="1" />
+                        </LinearGradientBrush>
                         <x:Double x:Key="WorldClockBackdropOpacity">0.20</x:Double>
                         <x:Double x:Key="WorldClockSkylineOpacity">0.30</x:Double>
                         <x:Double x:Key="WorldClockForegroundOpacity">0.24</x:Double>
@@ -44,7 +54,9 @@
                         <StaticResource x:Key="WorldClockDayAccentBrush" ResourceKey="SystemColorHighlightColorBrush" />
                         <StaticResource x:Key="WorldClockNightAccentBrush" ResourceKey="SystemColorHighlightColorBrush" />
                         <StaticResource x:Key="WorldClockMarkerBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                        <StaticResource x:Key="WorldClockSolarRemainingBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                         <StaticResource x:Key="WorldClockCloudBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                        <SolidColorBrush x:Key="WorldClockSolarFillBrush" Color="Transparent" />
                         <x:Double x:Key="WorldClockBackdropOpacity">0</x:Double>
                         <x:Double x:Key="WorldClockSkylineOpacity">0</x:Double>
                         <x:Double x:Key="WorldClockForegroundOpacity">0</x:Double>
@@ -147,7 +159,7 @@
             <Grid
                 x:Name="SceneGrid"
                 Grid.Row="5"
-                MinHeight="240"
+                MinHeight="332"
                 Margin="-24,8,-24,0"
                 Background="Transparent">
                 <Grid
@@ -165,52 +177,117 @@
                 <Border
                     Background="{ThemeResource WorldClockSceneFadeBrush}"
                     IsHitTestVisible="False" />
-                <controls:CelestialPhaseControl
-                    x:Name="CelestialPhase"
-                    Width="138"
-                    Height="138"
-                    Margin="0,8,0,0"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Top"
-                    AutomationProperties.AccessibilityView="Raw" />
-                <Grid
-                    x:Name="WeatherAdornmentHost"
-                    Width="58"
-                    Height="32"
-                    Margin="74,84,0,0"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Top"
-                    AutomationProperties.AccessibilityView="Raw"
-                    IsHitTestVisible="False"
-                    Visibility="Collapsed">
-                    <Ellipse
-                        Width="28"
-                        Height="24"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Bottom"
-                        Fill="{ThemeResource WorldClockCloudBrush}" />
-                    <Ellipse
-                        Width="34"
-                        Height="30"
-                        Margin="12,0,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Fill="{ThemeResource WorldClockCloudBrush}" />
-                    <Border
-                        Height="18"
-                        Margin="5,14,0,0"
-                        Background="{ThemeResource WorldClockCloudBrush}"
-                        CornerRadius="9" />
-                </Grid>
                 <Grid
                     x:Name="ForegroundLayerHost"
                     AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False"
                     Opacity="{ThemeResource WorldClockForegroundOpacity}" />
+                <Grid
+                    x:Name="SolarArcPanel"
+                    Height="228"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    AutomationProperties.AccessibilityView="Raw">
+                    <Viewbox
+                        Width="304"
+                        Height="150"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Stretch="Uniform">
+                        <Canvas Width="304" Height="150">
+                            <Path
+                                x:Name="SolarDaylightFill"
+                                Fill="{ThemeResource WorldClockSolarFillBrush}"
+                                IsHitTestVisible="False" />
+                            <Path
+                                x:Name="SolarDaylightPath"
+                                Stroke="{ThemeResource WorldClockSolarRemainingBrush}"
+                                StrokeLineJoin="Round"
+                                StrokeThickness="3"
+                                IsHitTestVisible="False" />
+                            <Path
+                                x:Name="SolarElapsedPath"
+                                Stroke="{ThemeResource WorldClockDayAccentBrush}"
+                                StrokeStartLineCap="Round"
+                                StrokeEndLineCap="Round"
+                                StrokeLineJoin="Round"
+                                StrokeThickness="3"
+                                IsHitTestVisible="False" />
+                            <Line
+                                x:Name="SolarCurrentGuide"
+                                Stroke="{ThemeResource WorldClockMarkerBrush}"
+                                StrokeDashArray="2,3"
+                                StrokeThickness="1"
+                                Visibility="Collapsed" />
+                            <Ellipse
+                                x:Name="SolarCurrentMarker"
+                                Width="14"
+                                Height="14"
+                                Fill="{ThemeResource WorldClockMarkerBrush}"
+                                Stroke="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                StrokeThickness="3"
+                                Visibility="Collapsed" />
+                        </Canvas>
+                    </Viewbox>
+                    <Grid
+                        Margin="0,148,0,0"
+                        VerticalAlignment="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel HorizontalAlignment="Left" Spacing="1">
+                            <TextBlock
+                                x:Name="SunriseLabelText"
+                                FontSize="10"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                x:Name="SunriseTimeText"
+                                FontSize="13"
+                                FontWeight="SemiBold" />
+                        </StackPanel>
+                        <StackPanel
+                            Grid.Column="1"
+                            HorizontalAlignment="Center"
+                            Spacing="1">
+                            <TextBlock
+                                x:Name="SolarCurrentTimeText"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource WorldClockMarkerBrush}"
+                                TextAlignment="Center"
+                                Visibility="Collapsed" />
+                        </StackPanel>
+                        <StackPanel
+                            Grid.Column="2"
+                            HorizontalAlignment="Right"
+                            Spacing="1">
+                            <TextBlock
+                                x:Name="SunsetLabelText"
+                                HorizontalAlignment="Right"
+                                FontSize="10"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                x:Name="SunsetTimeText"
+                                HorizontalAlignment="Right"
+                                FontSize="13"
+                                FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock
+                        x:Name="SolarDaylightDurationText"
+                        Margin="0,196,0,0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextAlignment="Center" />
+                </Grid>
                 <TextBlock
                     x:Name="MoonPhaseSummaryText"
                     MaxWidth="240"
-                    Margin="12,142,12,0"
+                    Margin="12,224,12,0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Top"
                     FontSize="11"
@@ -222,7 +299,7 @@
                 <StackPanel
                     x:Name="WeatherPanel"
                     MinHeight="62"
-                    Margin="0,170,0,0"
+                    Margin="0,254,0,0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Top"
                     Spacing="0">
@@ -233,109 +310,126 @@
                         FontSize="38"
                         FontWeight="Light"
                         TextAlignment="Center" />
-                    <TextBlock
-                        x:Name="WeatherConditionText"
+                    <StackPanel
                         HorizontalAlignment="Center"
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        TextAlignment="Center" />
+                        Orientation="Horizontal"
+                        Spacing="6">
+                        <Grid
+                            x:Name="WeatherAdornmentHost"
+                            Width="24"
+                            Height="20"
+                            VerticalAlignment="Center"
+                            AutomationProperties.AccessibilityView="Raw"
+                            IsHitTestVisible="False"
+                            Visibility="Collapsed">
+                            <FontIcon
+                                x:Name="WeatherSunIcon"
+                                Margin="-2,-4,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="16"
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                Glyph="&#xE706;"
+                                Visibility="Collapsed" />
+                            <Grid
+                                x:Name="WeatherCloudIcon"
+                                Width="20"
+                                Height="14"
+                                Margin="4,6,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Visibility="Collapsed">
+                                <Ellipse
+                                    Width="11"
+                                    Height="9"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom"
+                                    Fill="{ThemeResource WorldClockCloudBrush}" />
+                                <Ellipse
+                                    Width="14"
+                                    Height="12"
+                                    Margin="6,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Fill="{ThemeResource WorldClockCloudBrush}" />
+                                <Border
+                                    Height="8"
+                                    Margin="2,6,0,0"
+                                    Background="{ThemeResource WorldClockCloudBrush}"
+                                    CornerRadius="4" />
+                            </Grid>
+                            <Grid
+                                x:Name="WeatherRainIcon"
+                                Margin="5,14,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <Rectangle Width="1" Height="6" Fill="{ThemeResource SystemFillColorCautionBrush}" RenderTransformOrigin="0.5,0.5">
+                                        <Rectangle.RenderTransform><RotateTransform Angle="22" /></Rectangle.RenderTransform>
+                                    </Rectangle>
+                                    <Rectangle Width="1" Height="6" Fill="{ThemeResource SystemFillColorCautionBrush}" RenderTransformOrigin="0.5,0.5">
+                                        <Rectangle.RenderTransform><RotateTransform Angle="22" /></Rectangle.RenderTransform>
+                                    </Rectangle>
+                                    <Rectangle Width="1" Height="6" Fill="{ThemeResource SystemFillColorCautionBrush}" RenderTransformOrigin="0.5,0.5">
+                                        <Rectangle.RenderTransform><RotateTransform Angle="22" /></Rectangle.RenderTransform>
+                                    </Rectangle>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock
+                                x:Name="WeatherSnowIcon"
+                                Margin="7,10,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                FontFamily="Segoe UI Symbol"
+                                FontSize="12"
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                Text="❄"
+                                Visibility="Collapsed" />
+                            <Grid
+                                x:Name="WeatherFogIcon"
+                                Width="20"
+                                Height="8"
+                                Margin="2,11,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Visibility="Collapsed">
+                                <Rectangle Width="20" Height="1" VerticalAlignment="Top" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Rectangle Width="16" Height="1" HorizontalAlignment="Right" VerticalAlignment="Center" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Rectangle Width="20" Height="1" VerticalAlignment="Bottom" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Grid>
+                            <TextBlock
+                                x:Name="WeatherLightningIcon"
+                                Margin="8,9,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                Text="ϟ"
+                                Visibility="Collapsed" />
+                            <TextBlock
+                                x:Name="WeatherUnknownIcon"
+                                Margin="8,5,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="?"
+                                Visibility="Collapsed" />
+                        </Grid>
+                        <TextBlock
+                            x:Name="WeatherConditionText"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextAlignment="Center" />
+                    </StackPanel>
                 </StackPanel>
             </Grid>
 
-            <Grid
-                Grid.Row="6"
-                Height="68"
-                Margin="0,6,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="1" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid HorizontalAlignment="Center" ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Grid
-                        Width="28"
-                        Height="24"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AccessibilityView="Raw">
-                        <FontIcon
-                            x:Name="SunriseIcon"
-                            Margin="0,-3,0,0"
-                            VerticalAlignment="Center"
-                            FontFamily="Segoe Fluent Icons"
-                            FontSize="18"
-                            Glyph="&#xE706;" />
-                        <Rectangle
-                            x:Name="SunriseHorizon"
-                            Width="28"
-                            Height="1"
-                            VerticalAlignment="Bottom" />
-                    </Grid>
-                    <StackPanel
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Spacing="1">
-                        <TextBlock
-                            x:Name="SunriseLabelText"
-                            FontSize="10"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            TextAlignment="Left" />
-                        <TextBlock
-                            x:Name="SunriseTimeText"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            TextAlignment="Left" />
-                    </StackPanel>
-                </Grid>
-                <Rectangle
-                    Grid.Column="1"
-                    Width="1"
-                    Height="40"
-                    VerticalAlignment="Center"
-                    Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                <Grid Grid.Column="2" HorizontalAlignment="Center" ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Grid
-                        Width="28"
-                        Height="24"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AccessibilityView="Raw">
-                        <FontIcon
-                            x:Name="SunsetIcon"
-                            Margin="0,-3,0,0"
-                            VerticalAlignment="Center"
-                            FontFamily="Segoe Fluent Icons"
-                            FontSize="18"
-                            Glyph="&#xE706;" />
-                        <Rectangle
-                            x:Name="SunsetHorizon"
-                            Width="28"
-                            Height="1"
-                            VerticalAlignment="Bottom" />
-                    </Grid>
-                    <StackPanel
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Spacing="1">
-                        <TextBlock
-                            x:Name="SunsetLabelText"
-                            FontSize="10"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            TextAlignment="Left" />
-                        <TextBlock
-                            x:Name="SunsetTimeText"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            TextAlignment="Left" />
-                    </StackPanel>
-                </Grid>
-            </Grid>
         </Grid>
     </Grid>
 </UserControl>
