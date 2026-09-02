@@ -300,6 +300,8 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
                     apiKey,
                     captureResult.CaptureId,
                     cancellationToken: cancellationToken);
+                // A provider that completes after policy cancellation must not persist returned content.
+                AiPolicyCancellation.ThrowIfRevoked();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

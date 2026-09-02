@@ -150,6 +150,10 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         }
     }
 
+    /// <summary>Commits pending source deletions before a destructive operation can report success.</summary>
+    internal Task SynchronizeAsync(CancellationToken cancellationToken) =>
+        Task.Run(() => EnsureCurrentAsync(cancellationToken), cancellationToken);
+
     private async Task<int> RebuildCurrentSnapshotAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -37,8 +37,14 @@ public sealed class ActivityContextProviderRegistry
     /// <summary>
     /// Resolves contextual info using the first matching provider.
     /// </summary>
-    public ActivityContext Resolve(ForegroundWindowInfo window)
+    public ActivityContext Resolve(ForegroundWindowInfo window, AppSettings? settings = null)
     {
+        if (settings is not null && !IsDetailEnabled(window.ProcessName, settings))
+        {
+            // Disabled collectors retain only process identity; the generic provider must not restore titles.
+            return new ActivityContext(window.ProcessName, string.Empty);
+        }
+
         foreach (var provider in _providers)
         {
             if (provider.CanHandle(window))
@@ -49,6 +55,16 @@ public sealed class ActivityContextProviderRegistry
 
         return new ActivityContext(window.ProcessName, window.WindowTitle);
     }
+
+    /// <summary>Returns whether the current preferences permit collecting details for a process.</summary>
+    public static bool IsDetailEnabled(string processName, AppSettings settings) => processName.ToLowerInvariant() switch
+    {
+        "winword" => settings.EnableWordDetailPlugin,
+        "excel" => settings.EnableExcelDetailPlugin,
+        "code" or "code - insiders" => settings.EnableVsCodeDetailPlugin,
+        "chrome" or "msedge" or "firefox" or "brave" or "opera" or "vivaldi" => settings.EnableBrowserDetailPlugin,
+        _ => true
+    };
 }
 
 public sealed class MicrosoftOfficeContextProvider : IActivityContextProvider

@@ -205,6 +205,7 @@ public sealed class OpenAiPricingRefreshService : IAsyncDisposable
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromDays(1);
     private readonly LocalStore _store;
+    private readonly HttpClient _http;
     private readonly ILogger<OpenAiPricingRefreshService> _logger;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
@@ -215,9 +216,11 @@ public sealed class OpenAiPricingRefreshService : IAsyncDisposable
 
     internal OpenAiPricingRefreshService(
         LocalStore store,
-        ILogger<OpenAiPricingRefreshService>? logger = null)
+        ILogger<OpenAiPricingRefreshService>? logger = null,
+        HttpClient? httpClient = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _http = httpClient ?? Http;
         _logger = logger ?? NullLogger<OpenAiPricingRefreshService>.Instance;
     }
 
@@ -251,7 +254,14 @@ public sealed class OpenAiPricingRefreshService : IAsyncDisposable
         await _refreshGate.WaitAsync(linkedCancellation.Token).ConfigureAwait(false);
         try
         {
-            var markdown = await Http.GetStringAsync(
+            var settings = _store.LoadSettings();
+            if (!settings.OpenAiEnabled || !string.Equals(settings.AiProvider, AiPricingProviders.OpenAi, StringComparison.OrdinalIgnoreCase))
+            {
+                // Pricing is an optional provider-specific network flow; local-only/other-provider mode never starts it.
+                return 0;
+            }
+
+            var markdown = await _http.GetStringAsync(
                 OpenAiPricingMarkdownParser.PricingMarkdownUrl,
                 linkedCancellation.Token).ConfigureAwait(false);
             var retrievedAt = DateTimeOffset.UtcNow;

@@ -102,14 +102,14 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
-    public void IndexSchema_IsVersionedForTheExpandedLanguageAnalyzerContract()
+    public void IndexSchema_IsVersionedForAtomicSuggestions()
     {
-        Assert.Equal(2, LocalSearchService.IndexSchemaVersion);
-        Assert.Equal("lucene-v2", LocalSearchService.IndexDirectoryName);
+        Assert.Equal(3, LocalSearchService.IndexSchemaVersion);
+        Assert.Equal("lucene-v3", LocalSearchService.IndexDirectoryName);
     }
 
     [Fact]
-    public async Task SuggestAsync_UsesSeparateInfixIndexForThreeCharacterQueries()
+    public async Task SuggestAsync_UsesTokenInfixForThreeCharacterQueries()
     {
         await using var harness = new SearchHarness();
         await harness.RebuildAsync(
@@ -144,86 +144,67 @@ public sealed class LocalSearchServiceTests
     }
 
     [Fact]
-    public async Task SuggestAsync_LazilyRepairsStaleRevisionAfterReopen()
+    public async Task Suggestions_AreCommittedWithSourceDeletionsBeforeAnyLookup()
     {
         var root = SearchHarness.CreateRoot();
         var options = new SearchOptions { IndexRootPath = root };
-        var revisionPath = Path.Combine(root, LocalSearchService.SuggestionRevisionFileName);
         try
         {
             await using (var first = new LocalSearchService(options))
             {
                 await first.ApplyBatchAsync(
-                    [SearchIndexMutation.Upsert(CreateDocument("legacy") with { Application = "Legacy Workspace" })],
-                    1);
-                Assert.False(File.Exists(revisionPath));
-
-                var initial = await first.SuggestAsync(new SearchSuggestionRequest { Text = "leg" });
-                Assert.Contains(initial, suggestion => suggestion.Text == "Legacy Workspace");
-                Assert.Equal("1", File.ReadAllText(revisionPath));
-
+                    [SearchIndexMutation.Upsert(CreateDocument("old") with { Application = "Private Workspace" })], 1);
                 await first.ApplyBatchAsync(
-                [
-                    SearchIndexMutation.Delete("legacy"),
-                    SearchIndexMutation.Upsert(CreateDocument("current") with { Application = "Modern Workspace" })
-                ], 2);
-                Assert.Equal("1", File.ReadAllText(revisionPath));
+                    [SearchIndexMutation.Delete("old"),
+                     SearchIndexMutation.Upsert(CreateDocument("current") with { Application = "Modern Workspace" })], 2);
             }
-
             await using (var second = new LocalSearchService(options))
             {
-                Assert.Equal(2, second.CommittedSourceRevision);
-                var current = await second.SuggestAsync(new SearchSuggestionRequest { Text = "mod" });
-                var legacy = await second.SuggestAsync(new SearchSuggestionRequest { Text = "leg" });
-
-                Assert.Contains(current, suggestion => suggestion.Text == "Modern Workspace");
-                Assert.DoesNotContain(legacy, suggestion => suggestion.Text == "Legacy Workspace");
-                Assert.Equal("2", File.ReadAllText(revisionPath));
+                Assert.Empty(await second.SuggestAsync(new SearchSuggestionRequest { Text = "private" }));
+                Assert.Contains(await second.SuggestAsync(new SearchSuggestionRequest { Text = "mod" }),
+                    item => item.Text == "Modern Workspace");
+                using var directory = FSDirectory.Open(new DirectoryInfo(second.IndexPath));
+                using var reader = DirectoryReader.Open(directory);
+                var hits = new Lucene.Net.Search.IndexSearcher(reader).Search(
+                    new Lucene.Net.Search.TermQuery(new Term("suggestion_text", "private")), 10);
+                Assert.Equal(0, hits.TotalHits);
             }
         }
-        finally
-        {
-            SearchHarness.DeleteRoot(root);
-        }
+        finally { SearchHarness.DeleteRoot(root); }
     }
 
     [Fact]
-    public async Task SuggestAsync_RepairsAfterRevisionPersistenceFaultAndReopen()
+    public async Task Suggestions_IncrementReferenceCountsAndRollbackWithFailedRebuild()
     {
-        var root = SearchHarness.CreateRoot();
-        var options = new SearchOptions { IndexRootPath = root };
-        var revisionPath = Path.Combine(root, LocalSearchService.SuggestionRevisionFileName);
-        try
-        {
-            await using (var first = new LocalSearchService(options))
-            {
-                await first.ApplyBatchAsync(
-                    [SearchIndexMutation.Upsert(CreateDocument("recover") with { Application = "Recovery Workspace" })],
-                    1);
-                Directory.CreateDirectory(revisionPath);
+        await using var harness = new SearchHarness();
+        var first = CreateDocument("one") with { Application = "Shared Workspace" };
+        var second = CreateDocument("two") with { Application = "Shared Workspace" };
+        await harness.Service.RebuildAsync([first, second], 1);
+        Assert.Equal(2, Assert.Single(await harness.Service.SuggestAsync(
+            new SearchSuggestionRequest { Text = "shared" })).Weight);
+        await harness.Service.ApplyBatchAsync([SearchIndexMutation.Delete("one")], 2);
+        Assert.Equal(1, Assert.Single(await harness.Service.SuggestAsync(
+            new SearchSuggestionRequest { Text = "shared" })).Weight);
+        await Assert.ThrowsAsync<ArgumentException>(() => harness.Service.RebuildAsync([first, first], 3));
+        Assert.Equal(1, Assert.Single(await harness.Service.SuggestAsync(
+            new SearchSuggestionRequest { Text = "shared" })).Weight);
+        await harness.Service.ApplyBatchAsync([SearchIndexMutation.Delete("two")], 3);
+        Assert.Empty(await harness.Service.SuggestAsync(new SearchSuggestionRequest { Text = "shared" }));
+    }
 
-                var failure = await Record.ExceptionAsync(() => first.SuggestAsync(
-                    new SearchSuggestionRequest { Text = "rec" }));
-                Assert.True(
-                    failure is IOException or UnauthorizedAccessException,
-                    $"Expected a revision persistence failure, received {failure?.GetType().FullName ?? "no exception"}.");
-
-                var search = await first.SearchAsync(new SearchRequest { Text = "recovery" });
-                Assert.Equal("recover", Assert.Single(search.Hits).Document.Id);
-            }
-
-            Directory.Delete(revisionPath);
-            await using (var second = new LocalSearchService(options))
-            {
-                var suggestions = await second.SuggestAsync(new SearchSuggestionRequest { Text = "rec" });
-                Assert.Contains(suggestions, suggestion => suggestion.Text == "Recovery Workspace");
-                Assert.Equal("1", File.ReadAllText(revisionPath));
-            }
-        }
-        finally
-        {
-            SearchHarness.DeleteRoot(root);
-        }
+    [Fact]
+    public async Task SuggestionLookup_DoesNotWriteOrRebuildAfterOneSourceChange()
+    {
+        await using var harness = new SearchHarness();
+        await harness.Service.RebuildAsync(Enumerable.Range(0, 5000).Select(i =>
+            CreateDocument(i.ToString()) with { Context = $"Workspace item {i}" }), 1);
+        await harness.Service.ApplyBatchAsync(
+            [SearchIndexMutation.Upsert(CreateDocument("new") with { Context = "Workspace new" })], 2);
+        var before = Directory.GetFiles(harness.Service.IndexPath).ToDictionary(path => path, File.GetLastWriteTimeUtc);
+        Assert.NotEmpty(await harness.Service.SuggestAsync(new SearchSuggestionRequest { Text = "workspace" }));
+        var after = Directory.GetFiles(harness.Service.IndexPath).ToDictionary(path => path, File.GetLastWriteTimeUtc);
+        Assert.Equal(before.OrderBy(pair => pair.Key), after.OrderBy(pair => pair.Key));
+        Assert.Equal(2, harness.Service.CommittedSourceRevision);
     }
 
     [Fact]

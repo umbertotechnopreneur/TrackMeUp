@@ -13,7 +13,6 @@ public static class ThirdPartyLicenseCatalog
     [
         new("Lucene.Net", "4.8.0-beta00018", "Apache-2.0"),
         new("Lucene.Net.Analysis.Common", "4.8.0-beta00018", "Apache-2.0"),
-        new("Lucene.Net.Suggest", "4.8.0-beta00018", "Apache-2.0"),
         new("Microsoft.Data.Sqlite", "10.0.10", "MIT"),
         new("Microsoft.Extensions.DependencyInjection", "10.0.10", "MIT"),
         new("Microsoft.Extensions.Logging", "10.0.10", "MIT"),

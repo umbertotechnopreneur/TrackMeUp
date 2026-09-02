@@ -49,6 +49,7 @@ public sealed class ActivityMonitorService : IDisposable
     }
 
     public event Action<ActivitySample>? SampleRecorded;
+    internal event Action? SampleSuppressed;
     internal event Action<TrackingRuntimeHealth>? RuntimeHealthChanged;
 
     public ActivitySample? CurrentSample { get; private set; }
@@ -168,6 +169,22 @@ public sealed class ActivityMonitorService : IDisposable
     internal void PersistSample(ActivitySample sample)
     {
         ArgumentNullException.ThrowIfNull(sample);
+        var settings = _settingsSnapshot.Value;
+        if ((!string.IsNullOrWhiteSpace(settings.PrivacyWindowHints) && string.IsNullOrWhiteSpace(sample.WindowTitle))
+            || TrackingDomainService.IsHistoricalContextPrivate(settings, sample.ProcessName,
+            new AnalysisContextSnapshot(sample.Application, sample.Context, sample.WindowTitle, sample.State, sample.Attributes)))
+        {
+            // Excluded observations (including their input counts) never enter history or AI context.
+            CurrentSample = null;
+            SampleSuppressed?.Invoke();
+            return;
+        }
+
+        if (!ActivityContextProviderRegistry.IsDetailEnabled(sample.ProcessName, settings))
+        {
+            sample = sample with { Application = sample.ProcessName, Context = string.Empty, WindowTitle = string.Empty, Attributes = null };
+        }
+
         _store.AppendSample(sample);
         CurrentSample = sample;
         MarkPersistenceHealthy(sample.Timestamp);
@@ -251,11 +268,13 @@ public sealed class ActivityMonitorService : IDisposable
 
         try
         {
-            return new ForegroundWindowInfo(Process.GetProcessById((int)processId).ProcessName, title.ToString());
+            using var process = Process.GetProcessById((int)processId);
+            return new ForegroundWindowInfo(process.ProcessName, title.ToString());
         }
         catch
         {
-            return new ForegroundWindowInfo("System", title.ToString());
+            // An unavailable process must not masquerade as a safe process under exclusion rules.
+            return new ForegroundWindowInfo(string.Empty, title.ToString());
         }
     }
 

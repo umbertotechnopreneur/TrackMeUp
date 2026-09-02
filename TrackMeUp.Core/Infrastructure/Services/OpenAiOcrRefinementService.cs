@@ -101,6 +101,7 @@ internal sealed class OpenAiOcrRefinementService : IAiOcrRefinementService
                 capture.CaptureId,
                 RefinementRequestOptions,
                 cancellationToken).ConfigureAwait(false);
+            AiPolicyCancellation.ThrowIfRevoked();
         }
         catch (AiProviderRequestException exception)
         {

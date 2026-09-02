@@ -15,18 +15,27 @@ internal sealed class RuntimePipeServer
     private readonly ILogger _logger;
     private readonly Action<AtomicResetPlan> _atomicResetPrepared;
     private readonly ConcurrentDictionary<int, Task> _activeRequests = new();
+    private readonly SemaphoreSlim _connectionSlots;
+    private readonly TimeSpan _frameTimeout;
     private int _requestSequence;
 
     internal RuntimePipeServer(
         RuntimeEndpoint endpoint,
         RuntimeRequestDispatcher dispatcher,
         ILogger logger,
-        Action<AtomicResetPlan> atomicResetPrepared)
+        Action<AtomicResetPlan> atomicResetPrepared,
+        int maximumConnections = 4,
+        TimeSpan? frameTimeout = null)
     {
         _endpoint = endpoint;
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _atomicResetPrepared = atomicResetPrepared ?? throw new ArgumentNullException(nameof(atomicResetPrepared));
+        if (maximumConnections is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(maximumConnections));
+        _frameTimeout = frameTimeout ?? TimeSpan.FromSeconds(5);
+        if (_frameTimeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(frameTimeout));
+        // Four slots bound simultaneous 16 MiB input buffers to 64 MiB, including incomplete frames.
+        _connectionSlots = new SemaphoreSlim(maximumConnections, maximumConnections);
     }
 
     /// <summary>Serves connections until host shutdown cancels the accept loop.</summary>
@@ -34,28 +43,39 @@ internal sealed class RuntimePipeServer
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            // CurrentUserOnly is the OS boundary that prevents another Windows user from calling the local runtime.
-            var pipe = new NamedPipeServerStream(
-                _endpoint.PipeName,
-                PipeDirection.InOut,
-                NamedPipeServerStream.MaxAllowedServerInstances,
-                PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await _connectionSlots.WaitAsync(cancellationToken);
+            NamedPipeServerStream? pipe = null;
+            var handedOff = false;
             try
             {
+                // CurrentUserOnly is the OS boundary that prevents another Windows user from calling the local runtime.
+                pipe = new NamedPipeServerStream(
+                    _endpoint.PipeName,
+                    PipeDirection.InOut,
+                    NamedPipeServerStream.MaxAllowedServerInstances,
+                    PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await pipe.WaitForConnectionAsync(cancellationToken);
-                TrackRequest(HandleConnectionAsync(pipe, cancellationToken));
+                TrackRequest(HandleBoundedConnectionAsync(pipe, cancellationToken));
+                handedOff = true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                await pipe.DisposeAsync();
                 throw;
             }
             catch (Exception exception)
             {
-                await pipe.DisposeAsync();
                 // A transient accept failure is isolated; the next loop iteration remains the documented fallback.
                 _logger.LogWarning("Runtime pipe acceptance failed; continuing to serve requests. ExceptionType={ExceptionType}", exception.GetType().Name);
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
+            }
+            finally
+            {
+                if (!handedOff)
+                {
+                    if (pipe is not null) await pipe.DisposeAsync();
+                    _connectionSlots.Release();
+                }
             }
         }
     }
@@ -90,7 +110,9 @@ internal sealed class RuntimePipeServer
         {
             try
             {
-                var request = await RuntimeProtocol.ReadAsync<RuntimeRequestEnvelope>(pipe, shutdownToken);
+                using var readDeadline = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
+                readDeadline.CancelAfter(_frameTimeout);
+                var request = await RuntimeProtocol.ReadAsync<RuntimeRequestEnvelope>(pipe, readDeadline.Token);
                 using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
                 var disconnectMonitor = MonitorDisconnectAsync(pipe, requestCancellation);
                 RuntimeResponseEnvelope response;
@@ -104,7 +126,9 @@ internal sealed class RuntimePipeServer
                     await disconnectMonitor;
                 }
 
-                await RuntimeProtocol.WriteAsync(pipe, response, shutdownToken);
+                using var writeDeadline = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
+                writeDeadline.CancelAfter(_frameTimeout);
+                await RuntimeProtocol.WriteAsync(pipe, response, writeDeadline.Token);
                 if (request.Operation == RuntimeOperationCatalog.GetWireName(RuntimeOperation.AppAtomicResetV1)
                     && response.Succeeded
                     && response.Payload is AtomicResetPlan resetPlan)
@@ -127,6 +151,12 @@ internal sealed class RuntimePipeServer
                 _logger.LogWarning("Runtime pipe request failed; continuing to serve requests. ExceptionType={ExceptionType}", exception.GetType().Name);
             }
         }
+    }
+
+    private async Task HandleBoundedConnectionAsync(NamedPipeServerStream pipe, CancellationToken shutdownToken)
+    {
+        try { await HandleConnectionAsync(pipe, shutdownToken); }
+        finally { _connectionSlots.Release(); }
     }
 
     private static async Task MonitorDisconnectAsync(

@@ -242,6 +242,14 @@ Search interaction check:
 
 - [ ] Open local search, move focus to another window, and confirm it remains open without covering it. Enter at least three characters and confirm the local-index status and progress indicator appear until results are available, with no suggestion popup.
 
+Privacy and runtime regression checks:
+
+- [ ] Exclude a synthetic process/title/context and verify no activity is stored; disable each detail provider and verify titles/attributes are absent.
+- [ ] With an excluded window on another monitor, verify the entire screenshot is blocked. Use only synthetic content for this manual Windows check.
+- [ ] Interrupt screenshot deletion after file removal, retry/restart, and verify OCR and active search/suggestion documents disappear. Retention must also expire OCR whose image is already absent.
+- [ ] Hold an AI test provider pending: pause and AI-disable must complete promptly and cancel the request. AI-off/another-provider mode must not download the OpenAI pricing table.
+- [ ] Update one search document and verify suggestion lookup does not rebuild/write the index; incomplete test IPC frames must time out and release their bounded slots.
+
 ## Project documentation
 
 - [Privacy and data flow](docs/PRIVACY.md)

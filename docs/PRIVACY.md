@@ -1,6 +1,6 @@
 # TrackMeUp Privacy Policy
 
-**Last updated: August 30, 2026**
+**Last updated: September 2, 2026**
 
 This policy describes the data behavior of the current TrackMeUp application
 and source repository. TrackMeUp is a local-first Windows app designed to make
@@ -45,7 +45,9 @@ release. Privacy questions can be sent to **hello@umbertogiacobbi.biz**.
 | Diagnostic logs | Local logging is enabled for troubleshooting | `%LOCALAPPDATA%\TrackMeUp\logs` | Use the local log directory setting; delete local logs normally |
 | Portable data archive | Created only on explicit export | The `.tmuarchive` path selected by the user | Preview the destination and keep or delete the file normally |
 
-Window titles and document names can be sensitive. Privacy rules can block by process name, window-title text, or context hint. Those checks happen before a screenshot is taken and again before an AI request is made.
+Window titles and document names can be sensitive. Privacy rules block by process name, window-title text, or context hint before activity is persisted: excluded observations leave no activity sample or input aggregates. Disabling a detail provider retains process identity and counts, but not its title, context, or attributes. Privacy evaluation still uses transient raw metadata so disabling details cannot bypass exclusions.
+
+Screenshot checks cover the foreground and every visible, non-minimized, non-cloaked top-level window intersecting the capture rectangle, including other monitors. An excluded window rejects the entire capture; required metadata or window-enumeration failures stop acquisition. Checks run around pixel acquisition, before encoding, and again before an AI request. Occluded windows may conservatively block a capture. Desktop composition is not atomic with these checks: rapidly changing windows remain an OS-level race, not a guarantee of redaction. Disable screenshots when that limitation is unacceptable. Pause cancels pending live AI work; disabling AI prevents new requests and cancels pending live analysis without waiting for a slow provider. Cancellation cannot recall data already transmitted.
 
 The three-dot **World clocks** options action opens a panel over the clock canvas rather than a second settings window. Its Desktop Acrylic, light/dark theme resources, transparency fallback, and composited city imagery are presentation-only and do not change the data or network boundaries above.
 
@@ -63,6 +65,7 @@ only through an explicit user action or an enabled integration:
 4. **Redacted log sharing.** When the user chooses **Report a problem**, TrackMeUp creates a bounded copy of the current application log, removes known private paths and secrets, and opens the Windows Share UI. Redaction reduces exposure but cannot guarantee that future diagnostic text contains no sensitive context, so the user should review what they share.
 5. **Optional current weather.** The current-weather preference is on for clean settings. A missing `TRACKMEUP_OPENWEATHER_API_KEY` sends nothing and exposes a non-secret localized setup-required state. Once a key is available, only the live current world-clock projection sends the latitude and longitude of each of the one to four selected cities directly to OpenWeather's Current Weather endpoint. Responses contribute temperature, condition, and observation time only while valid, are revalidated after 12 minutes, expire after at most 45 minutes, remain in process memory only, and are not written to settings, SQLite, reports, diagnostics, or IPC history. The window keeps linked OpenWeather attribution visible whenever provider weather is shown. A stale response or provider failure leaves every local clock working and may continue showing the last still-valid observation during that bounded window. Historical and future reference-instant conversions never issue a current-weather request.
 6. **Optional Sentry diagnostics.** If `TRACKMEUP_SENTRY_DSN` is set, Sentry receives configured error events and breadcrumbs. It is not active by default.
+7. **Provider pricing download.** Only while AI is enabled and OpenAI is selected, the runtime may download its public pricing table from `https://developers.openai.com/api/docs/pricing.md` when the local daily cache is stale. The request contains no API key, activity, OCR, or screenshot, but exposes ordinary connection metadata such as IP address to the server. AI-disabled and other-provider configurations do not start this request.
 
 After data is sent to an AI provider, OpenWeather, Sentry, or an app selected through the
 Windows Share UI, that recipient's privacy and retention terms apply.
@@ -103,7 +106,7 @@ The following are the direct product and build packages relevant to data behavio
 | `Microsoft.WindowsAppSDK` | 2.3.1 | Windows desktop UI and platform integration. |
 | `Microsoft.Windows.SDK.BuildTools` | 10.0.28000.2526 | Windows build-time APIs and metadata. |
 | `Microsoft.Extensions.DependencyInjection` / logging packages | 10.0.10 | Application wiring and logging abstractions; no product analytics. |
-| `Lucene.Net`, `Lucene.Net.Analysis.Common`, `Lucene.Net.Suggest` | 4.8.0-beta00018 | Local full-text indexing, analysis, and suggestions; no network service. |
+| `Lucene.Net`, `Lucene.Net.Analysis.Common` | 4.8.0-beta00018 | Local full-text indexing, analysis, and suggestions; no network service. |
 
 ### CLI and reports
 
@@ -155,6 +158,10 @@ The source is the final authority. An error message added in the future must sti
 TrackMeUp exposes a read-only retention preview before deletion. A confirmed retention run removes only TrackMeUp-owned records and screenshot artifacts that match its ownership rules. It does not recursively delete arbitrary files from a selected folder.
 
 The default local retention period is 30 days for activity data and 30 days for retained screenshots. Settings can change those periods, including setting them to zero. Temporary screenshots are cleaned after analysis when retention is disabled, or when a manual capture is deleted during its player deletion window.
+
+Local OCR expires under data retention using its extraction timestamp, even after its image has been removed; screenshot interval telemetry expires using capture time. The preview includes these database records. Screenshot deletion records a local pending-deletion intent before removing files. Failures remain retryable, and pending operations are completed on the next runtime startup; paths must still validate under the configured screenshot root. A completed deletion/retention operation has also committed changes to the searchable index and suggestions. These are logical deletions, not promises of forensic erasure from SQLite pages, Lucene segments, backups, or storage media.
+
+Search and suggestions share one versioned local index and one commit. The obsolete separate suggestion index and previous search schema are discarded on upgrade and rebuilt from current local sources. Same-user IPC accepts at most four concurrent requests, with a five-second deadline for each initial frame and response write; incomplete input buffers are bounded to 64 MiB in aggregate. This does not grant access to other Windows users or remote clients.
 
 The separately confirmed atomic reset removes the current installation's
 validated TrackMeUp application-data directory and TrackMeUp-owned screenshot

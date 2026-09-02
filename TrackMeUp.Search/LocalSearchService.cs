@@ -6,8 +6,6 @@ using System.Runtime.ExceptionServices;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
 using Lucene.Net.Search;
-using Lucene.Net.Search.Suggest;
-using Lucene.Net.Search.Suggest.Analyzing;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
 using TrackMeUp.Search.Internal;
@@ -27,26 +25,17 @@ public sealed class LocalSearchService : ILocalSearchService
     private readonly SynonymCatalog _synonyms;
     private readonly FSDirectory _directory;
     private readonly StandardAnalyzer _suggestionAnalyzer;
-    private readonly AnalyzingInfixSuggester _suggester;
-    private readonly string _suggestionRevisionPath;
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private IndexWriter _writer;
     private Exception? _fault;
     private long _committedSourceRevision;
-    private long _committedSuggestionRevision = -1;
     private int _disposeStarted;
 
     /// <summary>Gets the current on-disk index schema version.</summary>
-    public const int IndexSchemaVersion = 2;
+    public const int IndexSchemaVersion = 3;
 
     /// <summary>Gets the versioned directory name created below <see cref="SearchOptions.IndexRootPath"/>.</summary>
-    public const string IndexDirectoryName = "lucene-v2";
-
-    /// <summary>Gets the private directory name used by the infix suggestion index.</summary>
-    public const string SuggestionIndexDirectoryName = "suggestions-v1";
-
-    /// <summary>Gets the sidecar file that records the source revision represented by suggestions.</summary>
-    public const string SuggestionRevisionFileName = "suggestions-v1.revision";
+    public const string IndexDirectoryName = "lucene-v3";
 
     /// <summary>
     /// Initializes a local search service and exclusively opens its Lucene writer.
@@ -57,13 +46,11 @@ public sealed class LocalSearchService : ILocalSearchService
         var rootPath = SearchValidation.ValidateOptions(options);
         _options = options;
         IndexPath = Path.Combine(rootPath, IndexDirectoryName);
-        _suggestionRevisionPath = Path.Combine(rootPath, SuggestionRevisionFileName);
+        RemoveSupersededIndexes(rootPath);
 
         LanguageAnalyzerCatalog? analyzers = null;
         FSDirectory? directory = null;
-        FSDirectory? suggestionDirectory = null;
         StandardAnalyzer? suggestionAnalyzer = null;
-        AnalyzingInfixSuggester? suggester = null;
         IndexWriter? writer = null;
         try
         {
@@ -88,27 +75,13 @@ public sealed class LocalSearchService : ILocalSearchService
             _writer = writer;
             _synonyms = new SynonymCatalog(options);
 
-            var suggestionPath = Path.Combine(rootPath, SuggestionIndexDirectoryName);
-            System.IO.Directory.CreateDirectory(suggestionPath);
-            suggestionDirectory = FSDirectory.Open(new DirectoryInfo(suggestionPath));
-            var suggestionIndexExists = DirectoryReader.IndexExists(suggestionDirectory);
             suggestionAnalyzer = new StandardAnalyzer(Version);
-            suggester = new AnalyzingInfixSuggester(Version, suggestionDirectory, suggestionAnalyzer);
             _suggestionAnalyzer = suggestionAnalyzer;
-            _suggester = suggester;
-            _committedSuggestionRevision = suggestionIndexExists
-                ? LoadSuggestionRevision(_suggestionRevisionPath)
-                : -1;
         }
         catch
         {
             writer?.Rollback();
             directory?.Dispose();
-            if (suggester is null)
-            {
-                suggestionDirectory?.Dispose();
-            }
-
             suggestionAnalyzer?.Dispose();
             analyzers?.Dispose();
             _operationGate.Dispose();
@@ -173,9 +146,12 @@ public sealed class LocalSearchService : ILocalSearchService
                 return;
             }
 
+            var uniqueChanges = prepared.GroupBy(change => change.Id, StringComparer.Ordinal).Select(group => group.Last()).ToList();
+            using var reader = DirectoryReader.Open(_directory);
             CommitWrite(() =>
             {
-                foreach (var mutation in prepared)
+                SuggestionProjection.Update(_writer, new IndexSearcher(reader), uniqueChanges);
+                foreach (var mutation in uniqueChanges)
                 {
                     var term = new Term(SearchFields.IdKey, mutation.Id);
                     if (mutation.Document is null)
@@ -188,7 +164,6 @@ public sealed class LocalSearchService : ILocalSearchService
                     }
                 }
             }, sourceRevision);
-            InvalidateSuggestions();
         }
         finally
         {
@@ -224,6 +199,7 @@ public sealed class LocalSearchService : ILocalSearchService
             {
                 _writer.DeleteAll();
                 var identifiers = new HashSet<string>(StringComparer.Ordinal);
+                var suggestions = new Dictionary<string, SuggestionProjection.Entry>(StringComparer.Ordinal);
                 foreach (var document in documents)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -239,9 +215,13 @@ public sealed class LocalSearchService : ILocalSearchService
                     // every Lucene document was the largest avoidable allocation during a full
                     // OCR index rebuild.
                     _writer.AddDocument(SearchDocumentMapper.ToLucene(document));
+                    foreach (var (key, entry) in SuggestionProjection.Entries([document]))
+                        suggestions[key] = suggestions.TryGetValue(key, out var previous)
+                            ? previous with { Weight = checked(previous.Weight + entry.Weight) } : entry;
                 }
+                foreach (var (key, entry) in suggestions)
+                    _writer.AddDocument(SuggestionProjection.ToDocument(key, entry));
             }, sourceRevision);
-            InvalidateSuggestions();
         }
         finally
         {
@@ -262,7 +242,7 @@ public sealed class LocalSearchService : ILocalSearchService
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
 
-            var query = new SearchQueryBuilder(_options, _analyzers, _synonyms).Build(request);
+            var query = SuggestionProjection.SourcesOnly(new SearchQueryBuilder(_options, _analyzers, _synonyms).Build(request));
             using var reader = DirectoryReader.Open(_directory);
             var searcher = new IndexSearcher(reader);
             var topDocuments = searcher.Search(query, checked(request.Offset + limit));
@@ -304,29 +284,8 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
-            EnsureSuggestionsCurrent(cancellationToken);
-            var results = _suggester.DoLookup(
-                request.Text.Trim(),
-                limit,
-                allTermsRequired: false,
-                doHighlight: false);
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var suggestions = ImmutableArray.CreateBuilder<SearchSuggestion>(results.Count);
-            foreach (var result in results)
-            {
-                if (string.IsNullOrWhiteSpace(result.Key) || !seen.Add(result.Key))
-                {
-                    continue;
-                }
-
-                suggestions.Add(new SearchSuggestion
-                {
-                    Text = result.Key,
-                    Weight = Math.Max(0, result.Value)
-                });
-            }
-
-            return suggestions.MoveToImmutable();
+            using var reader = DirectoryReader.Open(_directory);
+            return SuggestionProjection.Lookup(new IndexSearcher(reader), _suggestionAnalyzer, request.Text, limit).ToImmutableArray();
         }
         finally
         {
@@ -350,7 +309,6 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             _writer.Dispose();
             _directory.Dispose();
-            _suggester.Dispose();
             _suggestionAnalyzer.Dispose();
             _analyzers.Dispose();
         }
@@ -415,215 +373,21 @@ public sealed class LocalSearchService : ILocalSearchService
         writer.Commit();
     }
 
-    private static long LoadSuggestionRevision(string path)
+    private static void RemoveSupersededIndexes(string rootPath)
     {
-        if (!File.Exists(path))
+        // Explicit migration: old derived indexes are discarded, never read as a compatibility fallback.
+        foreach (var name in new[] { "lucene-v2", "suggestions-v1", "suggestions-v1.revision", "suggestions-v1.revision.tmp" })
         {
-            return -1;
+            var path = Path.GetFullPath(Path.Combine(rootPath, name));
+            var prefix = Path.GetFullPath(rootPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The obsolete index path escaped its root.");
+            if (!File.Exists(path) && !System.IO.Directory.Exists(path)) continue;
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Derived index migration does not follow links.");
+            if (System.IO.Directory.Exists(path)) System.IO.Directory.Delete(path, recursive: true);
+            else File.Delete(path);
         }
-
-        var value = File.ReadAllText(path).Trim();
-        return long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var revision)
-            && revision >= 0
-                ? revision
-                : -1;
-    }
-
-    private void EnsureSuggestionsCurrent(CancellationToken cancellationToken)
-    {
-        var sourceRevision = CommittedSourceRevision;
-        if (Interlocked.Read(ref _committedSuggestionRevision) == sourceRevision)
-        {
-            return;
-        }
-
-        // Suggestions are derived data: a missing or stale revision is repaired lazily so
-        // multiple source commits coalesce into one complete rebuild before the next lookup.
-        RebuildSuggestionsFromMainIndex(sourceRevision, cancellationToken);
-    }
-
-    private void RebuildSuggestions(
-        IEnumerable<SearchDocument> documents,
-        long sourceRevision,
-        CancellationToken cancellationToken)
-    {
-        var entries = BuildSuggestionEntries(documents, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        _suggester.Build(new SuggestionInputEnumerator(entries));
-        _suggester.Refresh();
-        PersistSuggestionRevision(sourceRevision);
-        Interlocked.Exchange(ref _committedSuggestionRevision, sourceRevision);
-    }
-
-    private void RebuildSuggestionsFromMainIndex(long sourceRevision, CancellationToken cancellationToken)
-    {
-        using var reader = DirectoryReader.Open(_directory);
-        if (reader.NumDocs == 0)
-        {
-            RebuildSuggestions([], sourceRevision, cancellationToken);
-            return;
-        }
-
-        var searcher = new IndexSearcher(reader);
-        var topDocuments = searcher.Search(new MatchAllDocsQuery(), reader.NumDocs);
-        RebuildSuggestions(
-            EnumerateIndexedDocuments(searcher, topDocuments.ScoreDocs, cancellationToken),
-            sourceRevision,
-            cancellationToken);
-    }
-
-    private static IEnumerable<SearchDocument> EnumerateIndexedDocuments(
-        IndexSearcher searcher,
-        IReadOnlyList<ScoreDoc> scoreDocuments,
-        CancellationToken cancellationToken)
-    {
-        foreach (var scoreDocument in scoreDocuments)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc));
-        }
-    }
-
-    private static IReadOnlyList<SuggestionEntry> BuildSuggestionEntries(
-        IEnumerable<SearchDocument> documents,
-        CancellationToken cancellationToken)
-    {
-        var entries = new Dictionary<string, SuggestionEntry>(StringComparer.OrdinalIgnoreCase);
-        foreach (var document in documents)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            foreach (var (value, weight) in EnumerateSuggestionValues(document))
-            {
-                var text = value.Trim();
-                if (text.Length < 3)
-                {
-                    continue;
-                }
-
-                text = text.Length > 180 ? text[..180].TrimEnd() : text;
-                var key = TextNormalization.ForAnalysis(text);
-                if (key.Length < 3)
-                {
-                    continue;
-                }
-
-                if (entries.TryGetValue(key, out var existing))
-                {
-                    entries[key] = existing with { Weight = Math.Min(long.MaxValue, existing.Weight + weight) };
-                }
-                else
-                {
-                    entries[key] = new SuggestionEntry(text, weight);
-                }
-            }
-        }
-
-        return [.. entries.Values
-            .OrderByDescending(entry => entry.Weight)
-            .ThenBy(entry => entry.Text, StringComparer.OrdinalIgnoreCase)
-        ];
-    }
-
-    private void PersistSuggestionRevision(long sourceRevision)
-    {
-        var temporaryPath = _suggestionRevisionPath + ".tmp";
-        try
-        {
-            // The sidecar is replaced only after the suggestion index refresh succeeds. A crash
-            // therefore leaves the previous revision visible and forces a safe rebuild on reopen.
-            File.WriteAllText(temporaryPath, sourceRevision.ToString(CultureInfo.InvariantCulture));
-            File.Move(temporaryPath, _suggestionRevisionPath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
-    }
-
-    private void InvalidateSuggestions() => Interlocked.Exchange(ref _committedSuggestionRevision, -1);
-
-    private static IEnumerable<(string Value, long Weight)> EnumerateSuggestionValues(SearchDocument document)
-    {
-        foreach (var value in new[]
-        {
-            document.Application,
-            document.ProcessName,
-            document.Context,
-            document.WindowTitle,
-            document.CaptureKind,
-            document.CaptureOrigin,
-            document.OcrRawText,
-            document.OcrCorrectedText,
-            document.OcrStructuredSummary,
-            document.AiDescription
-        })
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                yield return (value, 1);
-            }
-        }
-
-        foreach (var label in document.SpanLabels)
-        {
-            if (!string.IsNullOrWhiteSpace(label))
-            {
-                yield return (label, 2);
-            }
-        }
-
-        foreach (var pair in document.AttributesRaw)
-        {
-            if (!string.IsNullOrWhiteSpace(pair.Key))
-            {
-                yield return (pair.Key, 1);
-            }
-
-            if (!string.IsNullOrWhiteSpace(pair.Value))
-            {
-                yield return (pair.Value, 1);
-            }
-        }
-    }
-
-    private sealed record SuggestionEntry(string Text, long Weight);
-
-    private sealed class SuggestionInputEnumerator(IReadOnlyList<SuggestionEntry> entries) : IInputEnumerator
-    {
-        private readonly IEnumerator<SuggestionEntry> _entries = entries.GetEnumerator();
-
-        public BytesRef Current { get; private set; } = null!;
-
-        public long Weight { get; private set; }
-
-        public BytesRef? Payload => null;
-
-        public bool HasPayloads => false;
-
-        public ICollection<BytesRef>? Contexts => null;
-
-        public bool HasContexts => false;
-
-        public IComparer<BytesRef>? Comparer => null;
-
-        public bool MoveNext()
-        {
-            if (!_entries.MoveNext())
-            {
-                return false;
-            }
-
-            Current = new BytesRef(_entries.Current.Text);
-            Weight = _entries.Current.Weight;
-            return true;
-        }
-
-        public void Reset() => throw new NotSupportedException();
-
-        public void Dispose() => _entries.Dispose();
     }
 
     private void CommitWrite(Action mutation, long sourceRevision)

@@ -29,7 +29,7 @@ public static class TrackMeUpApplicationFactory
         var settings = store.LoadSettings();
         var settingsSnapshot = new SettingsSnapshot(settings);
         var tracking = new TrackingDomainService(store, settingsSnapshot);
-        var capture = new ScreenCaptureService(utilities.GetAppVersion());
+        var capture = new ScreenCaptureService(utilities.GetAppVersion(), settingsSnapshot);
         var snapshot = new SystemSnapshotService();
         var usageSampler = new SystemUsageSampler();
         var deviceContext = new DeviceContextService();
@@ -129,6 +129,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly IAiOcrRefinementService _ocrRefinement;
     private readonly ScreenshotTextExtractionCoordinator _textExtraction;
     private readonly LocalSearchCoordinator _search;
+    private readonly ScreenshotDeletionJournal _screenshotDeletions;
     private readonly ScreenshotShareService _screenshotShare;
     private readonly ApplicationLogService _applicationLogs;
     private readonly WindowStateService _windowState;
@@ -144,6 +145,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
+    private readonly object _liveWorkLock = new();
+    private CancellationTokenSource _liveWorkCancellation = new();
+    private int _liveWorkCount;
+    private TaskCompletionSource<bool>? _liveWorkDrained;
     private readonly SemaphoreSlim _captureWorker = new(1, 1);
     private readonly SemaphoreSlim _manualScreenshotCaptureGate = new(1, 1);
     private readonly SemaphoreSlim _systemSnapshotGate = new(1, 1);
@@ -221,6 +226,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _search = new LocalSearchCoordinator(
             store,
             localSearch ?? new LocalSearchService(new SearchOptions { IndexRootPath = store.SearchIndexRootDirectory }));
+        _screenshotDeletions = new ScreenshotDeletionJournal(store);
+        RecoverScreenshotDeletionsAsync(CancellationToken.None).GetAwaiter().GetResult();
         _startup = startup;
         _buildInformation = buildInformation;
         _aiModelCatalog = (aiModelCatalog ?? AiModelCatalog.LoadDefault()).Snapshot;
@@ -300,15 +307,21 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<DashboardState>> PauseTrackingAsync(CancellationToken cancellationToken) => MutateAsync(async () =>
+    public Task<OperationResult<DashboardState>> PauseTrackingAsync(CancellationToken cancellationToken)
     {
-        PauseScheduledSnapshots();
-        _tracking.Stop();
-        _logger.LogInformation("Tracking paused.");
-        var state = LoadDashboardState();
-        await Task.CompletedTask;
-        return OperationResult<DashboardState>.Success("tracking.paused", "TrackingPaused", state);
-    }, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        CancelLiveWork();
+        return MutateAsync(async () =>
+        {
+            PauseScheduledSnapshots();
+            _tracking.Stop();
+            CancelLiveWork();
+            _logger.LogInformation("Tracking paused.");
+            var state = LoadDashboardState();
+            await Task.CompletedTask;
+            return OperationResult<DashboardState>.Success("tracking.paused", "TrackingPaused", state);
+        }, cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task<OperationResult<DashboardState>> ToggleTrackingAsync(CancellationToken cancellationToken) => _tracking.IsTracking
@@ -370,7 +383,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
+    public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) =>
+        RunCancellableLiveWorkAsync(token => CaptureScreenshotCoreAsync(request, token), cancellationToken);
+
+    private Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotCoreAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _settingsSnapshot.Value;
         var mode = request.Mode switch
@@ -629,14 +645,18 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         var capture = registration.Capture;
-
+        var deletions = new List<ScreenshotDeletionJournal.Plan>();
         try
         {
-            foreach (var artifact in capture.AllScreenshotPaths.Where(File.Exists))
+            foreach (var artifact in capture.AllScreenshotPaths.DistinctBy(
+                         path => LocalStore.ScreenshotIdentity(Path.GetFileName(path)), StringComparer.OrdinalIgnoreCase))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                File.Delete(artifact);
+                var deletion = _screenshotDeletions.Begin(artifact, deleteAnalysis: true);
+                if (deletion is null) continue;
+                deletions.Add(deletion);
             }
+            foreach (var deletion in deletions) _screenshotDeletions.Execute(deletion);
         }
         catch (IOException)
         {
@@ -647,25 +667,17 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<bool>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
         }
 
-        foreach (var sourcePath in (capture.TextSnapshots ?? Array.Empty<ScreenshotTextSnapshot>())
-                     .Select(snapshot => snapshot.SourceScreenshotPath)
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            _store.DeleteScreenshotTextSnapshot(sourcePath);
-        }
-
-        foreach (var storedPath in capture.StoredScreenshotPaths)
-        {
-            _store.DeleteScreenshotIntervalTelemetry(storedPath);
-        }
-
+        await _search.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var deletion in deletions) _screenshotDeletions.Complete(deletion);
         Volatile.Write(ref _pendingManualScreenshot, null);
-        await Task.CompletedTask;
         return OperationResult<bool>.Success("snapshot.pending.deleted", "PendingManualSnapshotDeleted", true);
     }, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken)
+    public Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken) =>
+        RunCancellableLiveWorkAsync(token => AnalyzeCapturedScreenshotCoreAsync(request, token), cancellationToken);
+
+    private async Task<OperationResult<AiAnalysis>> AnalyzeCapturedScreenshotCoreAsync(AnalyzeCapturedScreenshotRequest request, CancellationToken cancellationToken)
     {
         var aiEnabledForAnalysis = false;
         string? aiFailureDetail = null;
@@ -885,19 +897,15 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<string>> DeleteScreenshotAsync(string screenshotPath, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var artifacts = _store.FindScreenshotArtifacts(screenshotPath);
-        if (artifacts.Count == 0)
+        var deletion = _screenshotDeletions.Begin(screenshotPath, deleteAnalysis: true);
+        if (deletion is null)
         {
             return OperationResult<string>.Failure("screenshot.not_found", "ScreenshotNotFound", new ValidationIssue("screenshotPath", "not_found", "ScreenshotNotFound"));
         }
 
         try
         {
-            foreach (var artifact in artifacts)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                File.Delete(artifact);
-            }
+            _screenshotDeletions.Execute(deletion);
         }
         catch (IOException)
         {
@@ -910,12 +918,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<string>.Failure("screenshot.delete.failed", "ScreenshotDeleteFailed");
         }
 
-        _store.DeleteAiAnalysesReferencingScreenshot(screenshotPath);
-        _store.DeleteScreenshotTextSnapshot(screenshotPath);
-        _store.DeleteScreenshotIntervalTelemetry(screenshotPath);
-        _store.DeleteScreenshotCaptureIfOrphaned(screenshotPath);
-
-        await Task.CompletedTask;
+        await _search.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
+        _screenshotDeletions.Complete(deletion);
         return OperationResult<string>.Success("screenshot.deleted", "ScreenshotDeleted", screenshotPath);
     }, cancellationToken);
 
@@ -942,6 +946,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             _store.DeleteScreenshotTextSnapshot(screenshotPath)
             + _store.DeleteScreenshotIntervalTelemetry(screenshotPath)
             + _store.DeleteAiAnalysesReferencingScreenshot(screenshotPath));
+        await _search.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
         if (deletedCount == 0)
         {
             return OperationResult<string>.Failure("screenshot.analysis.not_found", "ScreenshotAnalysisNotFound", new ValidationIssue("screenshotPath", "not_found", "ScreenshotAnalysisNotFound"));
@@ -1694,7 +1699,21 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
-    public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
+    public Task<OperationResult<AiStatus>> SetAiEnabledAsync(bool enabled, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!enabled) CancelLiveWork();
+        // Disabling is a priority policy write; it never waits for the remote visual-analysis gate.
+        return enabled ? SetAiEnabledCoreAsync(enabled, cancellationToken)
+            : MutateAsync(async () =>
+            {
+                PersistSettings(_settingsSnapshot.Value with { OpenAiEnabled = false });
+                await Task.CompletedTask;
+                return OperationResult<AiStatus>.Success("ai.disabled", "AiDisabled", BuildAiStatus());
+            }, cancellationToken);
+    }
+
+    private Task<OperationResult<AiStatus>> SetAiEnabledCoreAsync(bool enabled, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
     {
         var settings = _settingsSnapshot.Value with { OpenAiEnabled = enabled };
         var validatedSettings = settings;
@@ -1743,7 +1762,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
+    public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) =>
+        RunCancellableLiveWorkAsync(token => AnalyzeCurrentActivityCoreAsync(request, token), cancellationToken);
+
+    private Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityCoreAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var settings = _settingsSnapshot.Value;
         if (!settings.OpenAiEnabled)
@@ -1838,9 +1860,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 }
                 else
                 {
-                    result = await _screenshotReprocessing.RunLiveAnalysisAsync(async () =>
+                    result = await RunLiveAnalysisOutsideMutationAsync(async () =>
                     {
-                        _ = LoadValidatedAiSettingsAtVisualBoundary(requireImageInput: false);
+                        _ = await LoadValidatedAiSettingsAtVisualBoundaryAsync(requireImageInput: false, cancellationToken);
                         return await _analysis.AnalyzeCurrentScreenAsync(
                             _tracking.LatestAnalysisContext,
                             allowCapture: false,
@@ -2022,13 +2044,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             return OperationResult<RetentionPreview>.Failure("retention.confirmation.required", "RetentionConfirmationRequired", new ValidationIssue("confirmation", "required", "RetentionConfirmationRequired"));
         }
 
+        await RecoverScreenshotDeletionsAsync(cancellationToken).ConfigureAwait(false);
         var preview = BuildRetentionPreview(cancellationToken);
+        var deletions = new List<ScreenshotDeletionJournal.Plan>();
         foreach (var path in preview.Paths.Where(ScreenCaptureService.IsOwnedArtifact))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            File.Delete(path);
-            _store.DeleteScreenshotTextSnapshot(path);
-            _store.DeleteScreenshotIntervalTelemetry(path);
+            var deletion = _screenshotDeletions.Begin(path, deleteAnalysis: false);
+            if (deletion is null) continue;
+            _screenshotDeletions.Execute(deletion);
+            deletions.Add(deletion);
         }
 
         var settings = _settingsSnapshot.Value;
@@ -2038,7 +2063,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _store.PruneTerminalAiReprocessJobs(screenshotCutoff);
         _store.PruneOrphanedScreenshotCaptures(screenshotCutoff);
 
-        await Task.CompletedTask;
+        await _search.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var deletion in deletions) _screenshotDeletions.Complete(deletion);
         return OperationResult<RetentionPreview>.Success("retention.completed", "RetentionCompleted", preview);
     }, cancellationToken);
 
@@ -2411,7 +2437,16 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         _disposed = true;
+        CancelLiveWork();
         _runtimeTimerCancellation.Cancel();
+        Task liveWorkDrained;
+        lock (_liveWorkLock)
+        {
+            liveWorkDrained = _liveWorkCount == 0 ? Task.CompletedTask
+                : (_liveWorkDrained = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+        }
+        await liveWorkDrained.ConfigureAwait(false);
+        _liveWorkCancellation.Dispose();
         await _runtimeTimerTask.ConfigureAwait(false);
         _runtimeTimerCancellation.Dispose();
         await _screenshotReprocessing.DisposeAsync().ConfigureAwait(false);
@@ -2488,6 +2523,75 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
     }
 
+    private async Task<T> RunCancellableLiveWorkAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+    {
+        CancellationTokenSource linked;
+        CancellationToken policyToken;
+        lock (_liveWorkLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            policyToken = _liveWorkCancellation.Token;
+            linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, policyToken);
+            _liveWorkCount++;
+        }
+        try { return await AiPolicyCancellation.RunAsync(() => operation(linked.Token), policyToken).ConfigureAwait(false); }
+        finally
+        {
+            linked.Dispose();
+            lock (_liveWorkLock)
+            {
+                if (--_liveWorkCount == 0) _liveWorkDrained?.TrySetResult(true);
+            }
+        }
+    }
+
+    private void CancelLiveWork()
+    {
+        CancellationTokenSource previous;
+        lock (_liveWorkLock)
+        {
+            previous = _liveWorkCancellation;
+            _liveWorkCancellation = new CancellationTokenSource();
+        }
+        previous.Cancel();
+        previous.Dispose();
+    }
+
+    private async Task<T> RunLiveAnalysisOutsideMutationAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
+    {
+        // Visual work retains its own serialization boundary. The global command gate is not held
+        // while waiting for that boundary or the provider; stop/disable can persist policy immediately.
+        _mutations.Release();
+        try
+        {
+            return await _screenshotReprocessing.RunLiveAnalysisAsync(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var result = await operation().ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                return result;
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Reacquire even after cancellation: outer cleanup and mutation release still own this lease.
+            await _mutations.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RecoverScreenshotDeletionsAsync(CancellationToken cancellationToken)
+    {
+        var pending = _screenshotDeletions.Pending();
+        if (pending.Count == 0) return;
+        foreach (var deletion in pending)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _screenshotDeletions.Execute(deletion);
+        }
+        await _search.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var deletion in pending) _screenshotDeletions.Complete(deletion);
+    }
+
     private DashboardState LoadDashboardState() => EnrichDashboardState(_tracking.LoadCurrentDashboardState());
 
     private DashboardState EnrichDashboardState(DashboardState state)
@@ -2506,6 +2610,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         var previous = _settingsSnapshot.Value;
         _store.SaveSettings(settings);
         _settingsSnapshot.Replace(settings);
+        if (previous.OpenAiEnabled && !settings.OpenAiEnabled)
+        {
+            // Also cancel work that registered while the priority disable command was acquiring its lease.
+            CancelLiveWork();
+        }
         if (!string.Equals(previous.SearchLanguage, settings.SearchLanguage, StringComparison.OrdinalIgnoreCase)
             || previous.SearchSynonymsEnabled != settings.SearchSynonymsEnabled
             || previous.SearchTypoToleranceEnabled != settings.SearchTypoToleranceEnabled
@@ -2617,8 +2726,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private Task<OperationResult<T>> MutateVisualStateAsync<T>(
         Func<Task<OperationResult<T>>> operation,
         CancellationToken cancellationToken) =>
-        MutateAsync(
-            () => _screenshotReprocessing.RunExclusiveMutationAsync(operation, cancellationToken),
+        _screenshotReprocessing.RunExclusiveMutationAsync(
+            () => MutateAsync(operation, cancellationToken),
             cancellationToken);
 
     private async Task ProcessRuntimeTimerAsync()
@@ -2785,10 +2894,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         bool keepCapture,
         string origin,
         CancellationToken cancellationToken) =>
-        _screenshotReprocessing.RunLiveAnalysisAsync(async () =>
+        RunLiveAnalysisOutsideMutationAsync(async () =>
         {
             var refinedCapture = capture;
-            var authoritativeSettings = LoadValidatedAiSettingsAtVisualBoundary(requireImageInput: true);
+            var authoritativeSettings = await LoadValidatedAiSettingsAtVisualBoundaryAsync(requireImageInput: true, cancellationToken);
             var gate = BuildCostGate(authoritativeSettings);
             var remainingAllowance = Math.Max(
                 0,
@@ -2808,6 +2917,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 throw new AiDailyAnalysisQuotaReachedException();
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = await LoadValidatedAiSettingsAtVisualBoundaryAsync(requireImageInput: true, cancellationToken);
             var analysis = await _analysis.AnalyzeCapturedScreenAsync(
                 _tracking.LatestAnalysisContext,
                 refinedCapture,
@@ -2816,6 +2927,13 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 cancellationToken).ConfigureAwait(false);
             return (refinedCapture, analysis);
         }, cancellationToken);
+
+    private async Task<AppSettings> LoadValidatedAiSettingsAtVisualBoundaryAsync(bool requireImageInput, CancellationToken cancellationToken)
+    {
+        await _mutations.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { return LoadValidatedAiSettingsAtVisualBoundary(requireImageInput); }
+        finally { _mutations.Release(); }
+    }
 
     private AppSettings LoadValidatedAiSettingsAtVisualBoundary(bool requireImageInput)
     {
