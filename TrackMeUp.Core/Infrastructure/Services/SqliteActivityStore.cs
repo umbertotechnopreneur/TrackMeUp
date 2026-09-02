@@ -2639,7 +2639,10 @@ internal sealed class SqliteActivityStore
                        WHERE result.attempt_id = request.attempt_id
                          AND result.timestamp_utc_ticks >= $cutoff)),
                 (SELECT COALESCE(SUM(length(application) + length(context) + length(summary)), 0)
-                 FROM ai_analysis_results WHERE timestamp_utc_ticks < $cutoff);
+                 FROM ai_analysis_results WHERE timestamp_utc_ticks < $cutoff),
+                (SELECT COUNT(*) FROM screenshot_text_snapshots WHERE extracted_utc_ticks < $cutoff),
+                (SELECT COALESCE(SUM(length(snapshot_json) + length(source_path)), 0) FROM screenshot_text_snapshots WHERE extracted_utc_ticks < $cutoff),
+                (SELECT COUNT(*) FROM screenshot_interval_telemetry WHERE captured_utc_ticks < $cutoff);
             """;
         command.Parameters.AddWithValue("$cutoff", cutoffUtc.UtcDateTime.Ticks);
         using var reader = command.ExecuteReader();
@@ -2649,8 +2652,8 @@ internal sealed class SqliteActivityStore
         }
 
         return (
-            checked(reader.GetInt32(0) + reader.GetInt32(2) + reader.GetInt32(3)),
-            checked(reader.GetInt64(1) + reader.GetInt64(4) + reader.GetInt64(5)));
+            checked(reader.GetInt32(0) + reader.GetInt32(2) + reader.GetInt32(3) + reader.GetInt32(6) + reader.GetInt32(8)),
+            checked(reader.GetInt64(1) + reader.GetInt64(4) + reader.GetInt64(5) + reader.GetInt64(7)));
     }
 
     /// <summary>Deletes expired activity and AI rows, including their derived full-text search documents.</summary>
@@ -2676,8 +2679,10 @@ internal sealed class SqliteActivityStore
                   WHERE ai_analysis_results.attempt_id = ai_request_usage.attempt_id);
             """, cutoff);
         var removedActivity = ExecuteDelete(connection, transaction, "DELETE FROM activity_samples WHERE timestamp_utc_ticks < $cutoff;", cutoff);
+        var removedText = ExecuteDelete(connection, transaction, "DELETE FROM screenshot_text_snapshots WHERE extracted_utc_ticks < $cutoff;", cutoff);
+        var removedTelemetry = ExecuteDelete(connection, transaction, "DELETE FROM screenshot_interval_telemetry WHERE captured_utc_ticks < $cutoff;", cutoff);
         transaction.Commit();
-        return checked(removedActivity + removedRequests + removedResults);
+        return checked(removedActivity + removedRequests + removedResults + removedText + removedTelemetry);
     }
 
     private void InitializeSchema(bool databaseExisted)

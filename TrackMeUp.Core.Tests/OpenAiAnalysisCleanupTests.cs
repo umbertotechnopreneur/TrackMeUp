@@ -107,8 +107,10 @@ public sealed class OpenAiAnalysisCleanupTests
         }
     }
 
-    [Fact]
-    public async Task CancellationAfterSuccessfulProviderResponse_PersistsResultBeforeShutdown()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancellationAfterResponse_PreservesShutdownCheckpointButDiscardsRevokedPolicy(bool revokedPolicy)
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
@@ -124,12 +126,20 @@ public sealed class OpenAiAnalysisCleanupTests
                 new UnexpectedCaptureService(),
                 decoder: new PostResponseCancellationDecoder(cancellation));
 
-            var analysis = await service.AnalyzeCapturedScreenAsync(
+            var pending = AiPolicyCancellation.RunAsync(() => service.AnalyzeCapturedScreenAsync(
                 activity: null,
                 capture,
                 keepCapture: true,
                 origin: "snapshot.reprocess",
-                cancellation.Token);
+                cancellation.Token), revokedPolicy ? cancellation.Token : CancellationToken.None);
+
+            if (revokedPolicy)
+            {
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+                Assert.Null(store.LoadLatestAnalysis());
+                return;
+            }
+            var analysis = await pending;
 
             Assert.True(cancellation.IsCancellationRequested);
             Assert.Equal(capture.CaptureId, analysis.CorrelationId);

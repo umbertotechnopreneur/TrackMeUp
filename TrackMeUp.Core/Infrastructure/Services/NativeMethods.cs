@@ -18,6 +18,19 @@ internal static class NativeMethods
 
     internal delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
     internal delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, ref Rect rectangle, IntPtr data);
+    internal delegate bool WindowEnumProc(IntPtr window, IntPtr data);
+
+    [DllImport("user32.dll")]
+    internal static extern bool EnumWindows(WindowEnumProc callback, IntPtr data);
+
+    [DllImport("user32.dll")]
+    internal static extern bool IsWindowVisible(IntPtr window);
+
+    [DllImport("user32.dll")]
+    internal static extern bool IsIconic(IntPtr window);
+
+    [DllImport("dwmapi.dll")]
+    internal static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int size);
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct Rect

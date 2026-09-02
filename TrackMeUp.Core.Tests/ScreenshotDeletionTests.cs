@@ -126,10 +126,12 @@ public sealed class ScreenshotDeletionTests
             Assert.True(result.Succeeded);
             Assert.Null(store.LoadLatestAnalysis());
             Assert.True(File.Exists(capture.StoredScreenshotPaths[0]));
-            var artifactIdentity = Path.GetFileNameWithoutExtension(capture.StoredScreenshotPaths[0]);
-            var finalSearchChange = store.LoadSearchSourceChanges(0, int.MaxValue)
-                .Last(change => change.Kind == "screenshot" && change.EntityId == artifactIdentity);
-            Assert.Equal("upsert", finalSearchChange.Operation);
+            // Deletion now commits the derived projection before returning (the log keeps its last anchor).
+            using var directory = Lucene.Net.Store.FSDirectory.Open(new DirectoryInfo(Path.Combine(
+                store.SearchIndexRootDirectory, TrackMeUp.Search.LocalSearchService.IndexDirectoryName)));
+            using var reader = Lucene.Net.Index.DirectoryReader.Open(directory);
+            Assert.Equal(store.GetSearchSourceRevision().ToString(System.Globalization.CultureInfo.InvariantCulture),
+                reader.IndexCommit.UserData["trackmeup.search.source_revision"]);
         }
         finally
         {

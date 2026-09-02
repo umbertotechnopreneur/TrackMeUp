@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using SkiaSharp;
+using TrackMeUp.Application;
 using TrackMeUp.Providers;
 
 namespace TrackMeUp.Services;
@@ -88,14 +89,16 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         "^[0-9a-f]{32}_[0-9]+\\.[0-9]+\\.[0-9]+_(?:manual|scheduled)_(?:monitor-[1-9][0-9]*|active-window)(?:-raw)?\\.(?:webp|png)$",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.NonBacktracking);
     private readonly string _appVersion;
+    private readonly SettingsSnapshot? _settingsSnapshot;
 
     /// <summary>
     /// Creates capture service.
     /// </summary>
     /// <param name="appVersion">Optional version suffix used in file naming.</param>
-    public ScreenCaptureService(string? appVersion = null)
+    public ScreenCaptureService(string? appVersion = null, SettingsSnapshot? settingsSnapshot = null)
     {
         _appVersion = string.IsNullOrWhiteSpace(appVersion) ? "0.0.0" : appVersion;
+        _settingsSnapshot = settingsSnapshot;
     }
 
     /// <inheritdoc />
@@ -337,7 +340,7 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         return length <= 0 ? string.Empty : builder.ToString().Trim();
     }
 
-    private static ScreenshotFocusMetadata CreateFocusMetadata(
+    private ScreenshotFocusMetadata CreateFocusMetadata(
         CaptureDisplay display,
         ForegroundCaptureTarget foreground,
         string artifactStem)
@@ -349,7 +352,8 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             display.Bounds.Right - display.Bounds.Left,
             display.Bounds.Bottom - display.Bounds.Top,
             foreground.ApplicationName,
-            foreground.WindowTitle,
+            _settingsSnapshot is not null && !ActivityContextProviderRegistry.IsDetailEnabled(foreground.ProcessName, _settingsSnapshot.Value)
+                ? string.Empty : foreground.WindowTitle,
             artifactStem);
 
     private static long IntersectionArea(NativeMethods.Rect first, NativeMethods.Rect second)
@@ -383,10 +387,13 @@ public sealed class ScreenCaptureService : IScreenCaptureService
             using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppRgb);
             using (var graphics = Graphics.FromImage(bitmap))
             {
-                // Re-read the foreground immediately before every pixel acquisition. If Windows cannot
-                // provide metadata while privacy rules exist, the application guard rejects the pass.
+                // Check every visible intersecting window, including other monitors. Unknown metadata
+                // fails closed under configured rules. Recheck after acquisition before any file is written.
                 AuthorizeCurrentForeground(authorizeCapture);
+                AuthorizeVisibleWindows(rect, ReadVisibleWindows(), authorizeCapture);
                 graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, new Size(width, height));
+                AuthorizeVisibleWindows(rect, ReadVisibleWindows(), authorizeCapture);
+                AuthorizeCurrentForeground(authorizeCapture);
             }
 
             EncodeBitmapAsWebp(bitmap, screenshotPath);
@@ -424,6 +431,55 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         {
             throw new ScreenshotCapturePreconditionException(decision);
         }
+    }
+
+    internal sealed record VisibleCaptureWindow(NativeMethods.Rect Bounds, ScreenshotCaptureContext Context);
+
+    /// <summary>Rejects the entire capture when any potentially visible intersecting window is private.</summary>
+    internal static void AuthorizeVisibleWindows(NativeMethods.Rect area,
+        IEnumerable<VisibleCaptureWindow> windows,
+        Func<ScreenshotCaptureContext, ScreenshotCaptureDecision> authorizeCapture)
+    {
+        foreach (var window in windows)
+        {
+            if (IntersectionArea(area, window.Bounds) > 0)
+            {
+                EnsureCaptureAllowed(authorizeCapture(window.Context));
+            }
+        }
+    }
+
+    private static IReadOnlyList<VisibleCaptureWindow> ReadVisibleWindows()
+    {
+        var windows = new List<VisibleCaptureWindow>();
+        Exception? failure = null;
+        NativeMethods.WindowEnumProc callback = (window, _) =>
+        {
+            try
+            {
+                if (!NativeMethods.IsWindowVisible(window) || NativeMethods.IsIconic(window)) return true;
+                if (NativeMethods.DwmGetWindowAttribute(window, 14, out var cloaked, sizeof(int)) != 0)
+                    throw new InvalidOperationException("Unable to resolve window visibility for screenshot privacy.");
+                if (cloaked != 0) return true;
+                if (!NativeMethods.GetWindowRect(window, out var bounds))
+                    throw new InvalidOperationException("Unable to resolve visible window bounds for screenshot privacy.");
+                var process = ReadProcessName(window);
+                var title = ReadWindowTitle(window);
+                // Raw metadata is transient policy input, not retained focus metadata.
+                var context = new ActivityContextProviderRegistry().Resolve(new ForegroundWindowInfo(process, title));
+                windows.Add(new VisibleCaptureWindow(bounds, new ScreenshotCaptureContext(process, context.Application, context.Context, title)));
+                return true;
+            }
+            catch (Exception exception)
+            {
+                // Never propagate managed exceptions through the native enumeration callback.
+                failure = exception;
+                return false;
+            }
+        };
+        if (!NativeMethods.EnumWindows(callback, IntPtr.Zero) || failure is not null)
+            throw new InvalidOperationException("Screenshot window enumeration failed; no image will be retained.", failure);
+        return windows;
     }
 
     private static void DeletePartialArtifacts(IEnumerable<string> paths)

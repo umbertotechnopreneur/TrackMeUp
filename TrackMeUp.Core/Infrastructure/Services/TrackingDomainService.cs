@@ -34,6 +34,7 @@ public sealed class TrackingDomainService : IDisposable
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
         _monitor = new ActivityMonitorService(_store, _inputHooks, _settingsSnapshot);
         _monitor.SampleRecorded += HandleSampleRecorded;
+        _monitor.SampleSuppressed += HandleSampleSuppressed;
         _monitor.RuntimeHealthChanged += HandleRuntimeHealthChanged;
     }
 
@@ -209,6 +210,8 @@ public sealed class TrackingDomainService : IDisposable
     }
 
     private void HandleRuntimeHealthChanged(TrackingRuntimeHealth health) => RuntimeHealthChanged?.Invoke(health);
+
+    private void HandleSampleSuppressed() => _latestSample = null;
 
     /// <summary>Persists one already-captured sample through the same contained timer path.</summary>
     /// <remarks>Used by focused runtime verification without starting global input hooks.</remarks>
@@ -432,6 +435,12 @@ public sealed class TrackingDomainService : IDisposable
             return ScreenshotCaptureDecision.PrivacyBlocked;
         }
 
+        if (!string.IsNullOrWhiteSpace(settings.PrivacyWindowHints) && string.IsNullOrWhiteSpace(context.WindowTitle))
+        {
+            // Generic labels such as "No details" cannot prove a missing title-derived context safe.
+            return ScreenshotCaptureDecision.PrivacyBlocked;
+        }
+
         var analysisContext = new AnalysisContextSnapshot(
             context.ApplicationName,
             context.Context,
@@ -499,6 +508,7 @@ public sealed class TrackingDomainService : IDisposable
         _monitor.Stop();
         _inputHooks.Stop();
         _monitor.SampleRecorded -= HandleSampleRecorded;
+        _monitor.SampleSuppressed -= HandleSampleSuppressed;
         _monitor.RuntimeHealthChanged -= HandleRuntimeHealthChanged;
     }
 }
