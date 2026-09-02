@@ -27,6 +27,10 @@ public sealed class SearchSurfaceContractTests
         var availability = window.Descendants().Single(element => HasName(element, "SearchAvailabilityText"));
         var activityStatus = window.Descendants().Single(element => HasName(element, "SearchActivityStatus"));
         var activityProgressRing = window.Descendants().Single(element => HasName(element, "SearchActivityProgressRing"));
+        var emptyStateMarker = window.Descendants().Single(element =>
+            element.Name.LocalName == "Ellipse"
+            && element.Parent is { } parent
+            && HasName(parent, "EmptyStatePanel"));
         var activityText = activityStatus.Descendants().Single(element =>
             element.Name.LocalName == "TextBlock" && element.Attribute("Tag")?.Value == "Search.Working");
         var resultThumbnailFrame = resultControl.Descendants().Single(element =>
@@ -52,6 +56,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Equal("Collapsed", activityStatus.Attribute("Visibility")?.Value);
         Assert.Equal("ProgressRing", activityProgressRing.Name.LocalName);
         Assert.Equal("True", activityProgressRing.Attribute("IsActive")?.Value);
+        Assert.Equal("{StaticResource SearchActivityStatusBrush}", emptyStateMarker.Attribute("Fill")?.Value);
+        Assert.DoesNotContain("SearchSuggestionAccentBrush", window.ToString(), StringComparison.Ordinal);
         Assert.Equal("Border", activityGlow.Name.LocalName);
         Assert.Equal("3", activityGlow.Attribute("Height")?.Value);
         Assert.Equal("Collapsed", activityGlow.Attribute("Visibility")?.Value);

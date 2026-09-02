@@ -161,7 +161,7 @@
                         Height="6"
                         VerticalAlignment="Center"
                         AutomationProperties.AccessibilityView="Raw"
-                        Fill="{StaticResource SearchSuggestionAccentBrush}" />
+                        Fill="{StaticResource SearchActivityStatusBrush}" />
                     <TextBlock
                         Tag="Search.NoResults"
                         VerticalAlignment="Center"
