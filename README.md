@@ -302,3 +302,39 @@ Third-party components, data, and assets retain their own license terms. Review
 [Third-Party Notices](THIRD_PARTY_NOTICES.md), the
 [asset licensing record](ASSET_LICENSING.md), and any adjacent attribution or
 provenance file before redistributing repository material or packaged binaries.
+
+---
+
+<p align="center"><strong>MORE FROM UMBERTO</strong></p>
+
+<h2 align="center">Good ideas deserve great tools.</h2>
+
+<p align="center">
+  Enjoying TrackMeUp? Discover more ways to put AI to work, explore new perspectives,<br>
+  and turn your next big idea into something people can use.
+</p>
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>⌨️ PromptMeUp</h3>
+      <p><strong>Less command hunting. More getting things done.</strong></p>
+      <p>Your AI companion for the terminal: describe what you need, understand the next step, and review the exact command before you choose to run it.</p>
+      <p><a href="https://github.com/umbertotechnopreneur/PromptMeUp"><strong>Meet PromptMeUp →</strong></a></p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>🔎 ViewsApp.ai</h3>
+      <p><strong>One topic. Many AI perspectives.</strong></p>
+      <p>Explore how different AI models interpret people, events, and narratives. Compare their perspectives, spot common ground, and discover where the stories diverge.</p>
+      <p><a href="https://viewsapp.ai/"><strong>Explore Views →</strong></a></p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>🚀 Umberto Giacobbi</h3>
+      <p><strong>Big ambition? Let's build what's next.</strong></p>
+      <p>Meet the builder behind these projects. Explore my work as a fractional CTO, software developer, and technopreneur—from product strategy and architecture to hands-on execution.</p>
+      <p><a href="https://umbertogiacobbi.biz/"><strong>Let's talk about your next idea →</strong></a></p>
+    </td>
+  </tr>
+</table>
+
+<p align="center"><em>Better tools. Fresh perspectives. More room for your next big idea.</em></p>

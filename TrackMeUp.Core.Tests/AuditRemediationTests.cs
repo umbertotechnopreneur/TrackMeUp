@@ -61,13 +61,20 @@ public sealed class AuditRemediationTests : IDisposable
         var snapshot = new SettingsSnapshot(store.LoadSettings());
         using var hooks = new InputHookService();
         using var monitor = new ActivityMonitorService(store, hooks, snapshot);
-        snapshot.Replace(snapshot.Value with { EnableWordDetailPlugin = false, EnableExcelDetailPlugin = false,
-            EnableVsCodeDetailPlugin = false, EnableBrowserDetailPlugin = false });
+        snapshot.Replace(snapshot.Value with
+        {
+            EnableWordDetailPlugin = false,
+            EnableExcelDetailPlugin = false,
+            EnableVsCodeDetailPlugin = false,
+            EnableBrowserDetailPlugin = false
+        });
         var context = new ActivityContextProviderRegistry().Resolve(new ForegroundWindowInfo(process, "private title"), snapshot.Value);
         Assert.Empty(context.Context);
         monitor.PersistSample(Sample(store, "private title", DateTimeOffset.UtcNow) with
         {
-            ProcessName = process, Attributes = new Dictionary<string, string> { ["Title"] = "private title" }, KeyPresses = 7
+            ProcessName = process,
+            Attributes = new Dictionary<string, string> { ["Title"] = "private title" },
+            KeyPresses = 7
         });
         var persisted = store.LoadLatestSample()!;
         Assert.Empty(persisted.WindowTitle);
@@ -228,8 +235,14 @@ public sealed class AuditRemediationTests : IDisposable
         var root = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
         _roots.Add(root);
         var store = new LocalStore(root);
-        store.SaveSettings(store.LoadSettings() with { ScreenshotDirectory = Path.Combine(root, "screenshots"),
-            IncludeDeviceLocation = false, WorldClockWeatherEnabled = false, DataRetentionDays = 30, ScreenshotRetentionDays = 30 });
+        store.SaveSettings(store.LoadSettings() with
+        {
+            ScreenshotDirectory = Path.Combine(root, "screenshots"),
+            IncludeDeviceLocation = false,
+            WorldClockWeatherEnabled = false,
+            DataRetentionDays = 30,
+            ScreenshotRetentionDays = 30
+        });
         return store;
     }
 

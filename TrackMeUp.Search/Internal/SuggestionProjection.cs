@@ -27,15 +27,15 @@ internal static class SuggestionProjection
     {
         var entries = new Dictionary<string, Entry>(StringComparer.Ordinal);
         foreach (var document in documents)
-        foreach (var (value, weight) in Values(document))
-        {
-            var text = value.Trim();
-            text = text.Length > 180 ? text[..180].TrimEnd() : text;
-            var key = TextNormalization.ForAnalysis(text);
-            if (key.Length < 3) continue;
-            entries[key] = entries.TryGetValue(key, out var existing)
-                ? existing with { Weight = checked(existing.Weight + weight) } : new Entry(text, weight);
-        }
+            foreach (var (value, weight) in Values(document))
+            {
+                var text = value.Trim();
+                text = text.Length > 180 ? text[..180].TrimEnd() : text;
+                var key = TextNormalization.ForAnalysis(text);
+                if (key.Length < 3) continue;
+                entries[key] = entries.TryGetValue(key, out var existing)
+                    ? existing with { Weight = checked(existing.Weight + weight) } : new Entry(text, weight);
+            }
         return entries;
     }
 
@@ -98,7 +98,8 @@ internal static class SuggestionProjection
         var hits = searcher.Search(query, limit, new Sort(new SortField(Weight, SortFieldType.INT64, reverse: true)));
         return hits.ScoreDocs.Select(hit => searcher.Doc(hit.Doc)).Select(document => new SearchSuggestion
         {
-            Text = document.Get(Text), Weight = long.Parse(document.Get(Weight), CultureInfo.InvariantCulture)
+            Text = document.Get(Text),
+            Weight = long.Parse(document.Get(Weight), CultureInfo.InvariantCulture)
         }).ToArray();
     }
 
