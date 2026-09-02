@@ -4,6 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -18,14 +21,14 @@ public sealed class WorldClockApplicationServiceTests
     public void AddValidated_RejectsDuplicatesAndMaximumWithoutPersisting()
     {
         var settings = new SettingsSnapshot(new AppSettings(
-            WorldClockCityIds: ["london", "paris", "tokyo", "hanoi"]));
+            WorldClockCityIds: ["london", "paris", "tokyo", "hanoi", "berlin", "rome", "madrid", "lisbon", "oslo", "stockholm", "helsinki", "vienna"]));
         var persisted = new List<AppSettings>();
         using var service = CreateService(settings, persisted.Add);
 
         var duplicateId = service.NormalizeAndValidateCityId(" TOKYO ");
         var duplicate = service.AddValidated(duplicateId);
-        var berlinId = service.NormalizeAndValidateCityId("berlin");
-        var maximum = service.AddValidated(berlinId);
+        var pragueId = service.NormalizeAndValidateCityId("prague");
+        var maximum = service.AddValidated(pragueId);
 
         Assert.False(duplicate.Succeeded);
         Assert.Equal("world_clocks.duplicate", duplicate.Code);
@@ -34,12 +37,27 @@ public sealed class WorldClockApplicationServiceTests
         Assert.Equal("world_clocks.maximum_reached", maximum.Code);
         Assert.Equal("cityId", Assert.Single(maximum.Issues).Field);
         Assert.Empty(persisted);
-        Assert.Equal(["london", "paris", "tokyo", "hanoi"], settings.Value.WorldClockCityIds);
+        Assert.Equal(["london", "paris", "tokyo", "hanoi", "berlin", "rome", "madrid", "lisbon", "oslo", "stockholm", "helsinki", "vienna"], settings.Value.WorldClockCityIds);
     }
 
-    /// <summary>Ensures removal preserves the one-clock minimum and reports missing selections.</summary>
+    /// <summary>Ensures an explicitly empty selection can add its first clock through the normal mutation.</summary>
     [Fact]
-    public void Remove_RejectsUnknownAndFinalCityWithoutExtraPersistence()
+    public void AddValidated_FromEmptyPersistsTheFirstClock()
+    {
+        var settings = new SettingsSnapshot(new AppSettings(WorldClockCityIds: []));
+        var persisted = new List<AppSettings>();
+        using var service = CreateService(settings, persisted.Add);
+
+        var result = service.AddValidated(service.NormalizeAndValidateCityId(" TOKYO "));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(["tokyo"], result.Value?.CityIds);
+        Assert.Equal(["tokyo"], Assert.Single(persisted).WorldClockCityIds);
+    }
+
+    /// <summary>Ensures removal reports missing selections and can persist an intentional empty state.</summary>
+    [Fact]
+    public void Remove_RejectsUnknownAndPersistsAnEmptySelection()
     {
         var settings = new SettingsSnapshot(new AppSettings(WorldClockCityIds: ["london", "paris"]));
         var persisted = new List<AppSettings>();
@@ -47,16 +65,16 @@ public sealed class WorldClockApplicationServiceTests
 
         var missing = service.Remove("tokyo");
         var removed = service.Remove(" PARIS ");
-        var minimum = service.Remove("london");
+        var final = service.Remove("london");
 
         Assert.False(missing.Succeeded);
         Assert.Equal("world_clocks.not_found", missing.Code);
         Assert.True(removed.Succeeded);
         Assert.Equal(["london"], removed.Value?.CityIds);
-        Assert.False(minimum.Succeeded);
-        Assert.Equal("world_clocks.minimum_reached", minimum.Code);
-        Assert.Single(persisted);
-        Assert.Equal(["london"], settings.Value.WorldClockCityIds);
+        Assert.True(final.Succeeded);
+        Assert.Empty(final.Value?.CityIds ?? []);
+        Assert.Equal(2, persisted.Count);
+        Assert.Empty(settings.Value.WorldClockCityIds ?? []);
     }
 
     /// <summary>Ensures conversion failures identify the request field that needs correction.</summary>
@@ -80,9 +98,9 @@ public sealed class WorldClockApplicationServiceTests
         Assert.Equal("referenceLocalTime", Assert.Single(invalidCivilTime.Issues).Field);
     }
 
-    /// <summary>Ensures weather secrets are validated and written only through the environment contract.</summary>
+    /// <summary>Ensures weather secrets are remotely accepted before the environment contract is written.</summary>
     [Fact]
-    public void SetWeatherKey_ValidatesBeforeWritingAndUsesOnlyTheEnvironmentVariableContract()
+    public async Task SetWeatherKeyAsync_ValidatesBeforeWritingAndDoesNotEchoTheSecret()
     {
         var settings = new SettingsSnapshot(new AppSettings(WorldClockCityIds: ["london"]));
         var writes = new List<(string Name, string Secret)>();
@@ -90,9 +108,9 @@ public sealed class WorldClockApplicationServiceTests
             settings,
             setApiKey: (name, secret) => writes.Add((name, secret)));
 
-        var invalid = service.SetWeatherKey("short");
+        var invalid = await service.SetWeatherKeyAsync("short", CancellationToken.None);
         var secret = new string('a', 32);
-        var stored = service.SetWeatherKey(secret);
+        var stored = await service.SetWeatherKeyAsync(secret, CancellationToken.None);
 
         Assert.False(invalid.Succeeded);
         Assert.Equal("world_clocks.weather.key.invalid", invalid.Code);
@@ -100,16 +118,60 @@ public sealed class WorldClockApplicationServiceTests
         Assert.Equal(OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable, write.Name);
         Assert.Equal(secret, write.Secret);
         Assert.True(stored.Succeeded);
+        Assert.Equal("world_clocks.weather.key.stored", stored.Code);
         Assert.Equal(OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable, stored.Value);
+        Assert.DoesNotContain(secret, JsonSerializer.Serialize(stored), StringComparison.Ordinal);
+    }
+
+    /// <summary>Ensures rejected or unverifiable keys never reach the Windows environment writer.</summary>
+    [Theory]
+    [InlineData((int)WorldClockWeatherApiKeyValidation.Rejected, "world_clocks.weather.key.rejected")]
+    [InlineData((int)WorldClockWeatherApiKeyValidation.Unavailable, "world_clocks.weather.key.validation_unavailable")]
+    public async Task SetWeatherKeyAsync_DoesNotWriteWhenProviderValidationFails(
+        int validationValue,
+        string expectedCode)
+    {
+        var validation = (WorldClockWeatherApiKeyValidation)validationValue;
+        var writes = new List<(string Name, string Secret)>();
+        using var service = CreateService(
+            new SettingsSnapshot(new AppSettings(WorldClockCityIds: ["london"])),
+            setApiKey: (name, secret) => writes.Add((name, secret)),
+            validation: validation);
+
+        var result = await service.SetWeatherKeyAsync(new string('b', 32), CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(expectedCode, result.Code);
+        Assert.Empty(writes);
+    }
+
+    /// <summary>Ensures a recognized key is retained even when the provider reports a temporary quota limit.</summary>
+    [Fact]
+    public async Task SetWeatherKeyAsync_SavesARecognizedRateLimitedKeyWithExplicitFeedbackCode()
+    {
+        var writes = new List<(string Name, string Secret)>();
+        using var service = CreateService(
+            new SettingsSnapshot(new AppSettings(WorldClockCityIds: ["london"])),
+            setApiKey: (name, secret) => writes.Add((name, secret)),
+            validation: WorldClockWeatherApiKeyValidation.RateLimited);
+
+        var result = await service.SetWeatherKeyAsync(new string('c', 32), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("world_clocks.weather.key.stored_rate_limited", result.Code);
+        Assert.Single(writes);
     }
 
     private static WorldClockApplicationService CreateService(
         SettingsSnapshot settings,
         Action<AppSettings>? onPersist = null,
-        Action<string, string>? setApiKey = null)
+        Action<string, string>? setApiKey = null,
+        WorldClockWeatherApiKeyValidation validation = WorldClockWeatherApiKeyValidation.Accepted)
     {
         var worldClocks = new WorldClockService(
-            RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"));
+            RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"),
+            new ValidationWeatherProvider(validation),
+            TimeProvider.System);
         return new WorldClockApplicationService(
             worldClocks,
             settings,
@@ -119,6 +181,31 @@ public sealed class WorldClockApplicationServiceTests
                 onPersist?.Invoke(updated);
                 settings.Replace(updated);
             });
+    }
+
+    private sealed class ValidationWeatherProvider(WorldClockWeatherApiKeyValidation validation)
+        : IWorldClockWeatherProvider
+    {
+        public string Name => "validation-test-provider";
+
+        public string ConfigurationState => "configured";
+
+        public bool IsConfigured => true;
+
+        /// <inheritdoc />
+        public Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+            string secret,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(validation);
+        }
+
+        /// <inheritdoc />
+        public Task<WorldClockWeatherObservation> GetCurrentAsync(
+            WorldClockWeatherLocation location,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Weather observations are not used by this test service.");
     }
 
     private static string RepositoryFile(params string[] pathSegments)

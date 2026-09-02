@@ -182,6 +182,7 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
             _hasImage = true;
             ScreenshotImage.Source = result.Bitmap;
+            ApplyLoadedBitmapLayout(result.Bitmap);
             NotifyZoomStateChanged();
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -250,9 +251,17 @@ public sealed partial class ScreenshotImageViewerControl : UserControl
 
     private void ScreenshotImage_ImageOpened(object sender, RoutedEventArgs e)
     {
-        if (ScreenshotImage.Source is not BitmapImage bitmap
-            || bitmap.PixelWidth <= 0
-            || bitmap.PixelHeight <= 0)
+        if (ScreenshotImage.Source is not BitmapImage bitmap)
+        {
+            return;
+        }
+
+        ApplyLoadedBitmapLayout(bitmap);
+    }
+
+    private void ApplyLoadedBitmapLayout(BitmapImage bitmap)
+    {
+        if (bitmap.PixelWidth <= 0 || bitmap.PixelHeight <= 0)
         {
             return;
         }

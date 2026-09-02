@@ -23,10 +23,12 @@ public sealed class SearchSurfaceContractTests
         var viewModelSource = File.ReadAllText(RepositoryFile("TrackMeUp.Presentation", "SearchViewModel.cs"));
         var list = window.Descendants().Single(element => HasName(element, "SearchResultsList"));
         var queryBox = window.Descendants().Single(element => HasName(element, "QueryBox"));
-        var activityBar = window.Descendants().Single(element => HasName(element, "SearchActivityBar"));
         var activityGlow = window.Descendants().Single(element => HasName(element, "SearchActivityGlow"));
-        var activitySpectrum = window.Descendants().Single(element => HasName(element, "SearchActivitySpectrum"));
         var availability = window.Descendants().Single(element => HasName(element, "SearchAvailabilityText"));
+        var activityStatus = window.Descendants().Single(element => HasName(element, "SearchActivityStatus"));
+        var activityProgressRing = window.Descendants().Single(element => HasName(element, "SearchActivityProgressRing"));
+        var activityText = activityStatus.Descendants().Single(element =>
+            element.Name.LocalName == "TextBlock" && element.Attribute("Tag")?.Value == "Search.Working");
         var resultThumbnailFrame = resultControl.Descendants().Single(element =>
             element.Name.LocalName == "Border"
             && element.Attribute("Width")?.Value == "260"
@@ -43,29 +45,25 @@ public sealed class SearchSurfaceContractTests
         Assert.DoesNotContain(window.Descendants(), element => HasName(element, "WindowTitleText"));
         Assert.Equal("48", queryBox.Attribute("MinHeight")?.Value);
         Assert.Equal("Center", queryBox.Attribute("VerticalContentAlignment")?.Value);
-        Assert.Equal("Text", queryBox.Attribute("TextMemberPath")?.Value);
-        Assert.Equal("1", availability.Attribute("Grid.Row")?.Value);
-        Assert.Equal("ProgressBar", activityBar.Name.LocalName);
-        Assert.Equal("True", activityBar.Attribute("IsIndeterminate")?.Value);
+        Assert.Null(queryBox.Attribute("TextMemberPath"));
+        Assert.Equal("1", availability.Parent?.Attribute("Grid.Row")?.Value);
+        Assert.Equal("Search.Working", activityText.Attribute("Tag")?.Value);
+        Assert.Equal("Polite", activityText.Attribute("AutomationProperties.LiveSetting")?.Value);
+        Assert.Equal("Collapsed", activityStatus.Attribute("Visibility")?.Value);
+        Assert.Equal("ProgressRing", activityProgressRing.Name.LocalName);
+        Assert.Equal("True", activityProgressRing.Attribute("IsActive")?.Value);
         Assert.Equal("Border", activityGlow.Name.LocalName);
-        Assert.Equal("9", activityGlow.Attribute("Height")?.Value);
+        Assert.Equal("3", activityGlow.Attribute("Height")?.Value);
         Assert.Equal("Collapsed", activityGlow.Attribute("Visibility")?.Value);
-        Assert.Equal("SearchActivityGlow_SizeChanged", activityGlow.Attribute("SizeChanged")?.Value);
-        Assert.Equal("3", activitySpectrum.Attribute("Height")?.Value);
-        var activityGradientStops = activitySpectrum.Descendants()
+        Assert.Null(activityGlow.Attribute("SizeChanged"));
+        var activityGradientStops = activityGlow.Descendants()
             .Where(element => element.Name.LocalName == "GradientStop")
             .ToArray();
-        Assert.Equal(7, activityGradientStops.Length);
+        Assert.Equal(3, activityGradientStops.Length);
         Assert.Equal("0", activityGradientStops[0].Attribute("Offset")?.Value);
-        Assert.StartsWith("#00", activityGradientStops[0].Attribute("Color")?.Value, StringComparison.Ordinal);
-        Assert.Equal("SearchActivityLeftFadeStop", activityGradientStops[1].Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value);
-        Assert.Equal("SearchActivityRightFadeStop", activityGradientStops[^2].Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))?.Value);
         Assert.Equal("1", activityGradientStops[^1].Attribute("Offset")?.Value);
-        Assert.StartsWith("#00", activityGradientStops[^1].Attribute("Color")?.Value, StringComparison.Ordinal);
-        Assert.Contains(activitySpectrum.Descendants(), element => element.Name.LocalName == "ThemeShadow");
         Assert.DoesNotContain(window.Descendants(), element => HasName(element, "ResultCountText"));
-        Assert.Contains(queryBox.Descendants(), element => element.Name.LocalName == "Ellipse" && element.Attribute("Fill")?.Value == "{StaticResource SearchSuggestionAccentBrush}");
-        Assert.Contains(queryBox.Descendants(), element => element.Attribute("Text")?.Value == "{Binding ConfidenceDisplay}");
+        Assert.DoesNotContain(window.Descendants(), element => element.Name.LocalName == "AutoSuggestBox.ItemTemplate");
         Assert.Equal("True", list.Attribute("IsItemClickEnabled")?.Value);
         Assert.Contains(window.Descendants(), element => element.Name.LocalName == "SearchResultItemControl");
         Assert.Contains(resultControl.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Source")?.Value == "{Binding ScreenshotUri}");
@@ -96,15 +94,15 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("RenderInstallation(result);", resultControlSource, StringComparison.Ordinal);
         Assert.Contains("InstallationProfileCatalog.Colors", resultControlSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ElementCompositionPreview.SetIsTranslationEnabled", resultControlSource, StringComparison.Ordinal);
-        Assert.Contains("presenter.IsAlwaysOnTop = true;", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsAlwaysOnTop", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("MaximumLogicalWidth = 960", windowSource, StringComparison.Ordinal);
         Assert.Contains("CursorDisplayWidthRatio = 0.64d", windowSource, StringComparison.Ordinal);
-        Assert.Contains("Activated += SearchWindow_Activated", windowSource, StringComparison.Ordinal);
-        Assert.Contains("WindowActivationState.Deactivated", windowSource, StringComparison.Ordinal);
-        Assert.Contains("Close();", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SearchWindow_Activated", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("WindowActivationState.Deactivated", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("CloseIfStillInactive", windowSource, StringComparison.Ordinal);
         Assert.Contains("RootGrid.RequestedTheme = ElementTheme.Light;", windowSource, StringComparison.Ordinal);
         Assert.Contains("CompactLogicalHeight = 168", windowSource, StringComparison.Ordinal);
         Assert.Contains("ResultLogicalHeight = 180", windowSource, StringComparison.Ordinal);
@@ -118,17 +116,19 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("IncludeTextContent = true", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("MinimumQueryLength = 3", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("SearchDebounce", windowSource, StringComparison.Ordinal);
-        Assert.Contains("SearchActivityFadeLogicalLength = 48d", windowSource, StringComparison.Ordinal);
-        Assert.Contains("StartSearchActivityGlowAnimation();", windowSource, StringComparison.Ordinal);
-        Assert.Contains("StopSearchActivityGlowAnimation();", windowSource, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromMilliseconds(250)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SearchActivityStatus.Visibility = Visibility.Visible", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SearchActivityStatus.Visibility = Visibility.Collapsed", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateSuggestionsAsync", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SearchSuggestionDisplayItem", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ElementCompositionPreview", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Search.ResultCount", windowSource, StringComparison.Ordinal);
         Assert.Equal(2, windowSource.Split("BeginSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, windowSource.Split("EndSearchActivity();", StringSplitOptions.None).Length - 1);
-        Assert.DoesNotContain("SearchProgressRing", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SuggestAsync", windowSource, StringComparison.Ordinal);
         Assert.Contains("ItemsStackPanel", window.ToString(), StringComparison.Ordinal);
         Assert.Contains("Limit = MaximumResults", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("ToPlainTextPreview", viewModelSource, StringComparison.Ordinal);
-        Assert.Contains("CalculateSuggestionConfidence", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("OrderByDescending(hit => hit.Score)", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("CalculateMatchPercent", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("Func<long?, CultureInfo, string> formatClickCount", viewModelSource, StringComparison.Ordinal);
@@ -155,8 +155,9 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(options.Descendants(), element => HasName(element, "SearchTypoToleranceSwitch"));
         Assert.Contains(options.Descendants(), element => HasName(element, "OcrEnabledSwitch"));
         Assert.DoesNotContain(options.Descendants(), element => HasName(element, "SearchEnabledSwitch"));
-        Assert.Contains("[\"ocr.enabled\"] = OcrEnabledSwitch.IsOn ? \"true\" : \"false\"", source, StringComparison.Ordinal);
-        Assert.Contains("[\"search.synonyms\"] = SearchSynonymsSwitch.IsOn ? \"true\" : \"false\"", source, StringComparison.Ordinal);
+        Assert.Contains("QueueAutoSave(\"ocr.enabled\"", source, StringComparison.Ordinal);
+        Assert.Contains("QueueAutoSave(", source, StringComparison.Ordinal);
+        Assert.Contains("\"search.synonyms\"", source, StringComparison.Ordinal);
         Assert.Contains("SearchIndexingRequested?.Invoke", source, StringComparison.Ordinal);
         Assert.Contains("DeclaredChildren(root)", localization, StringComparison.Ordinal);
         Assert.Contains("case Panel panel:", localization, StringComparison.Ordinal);

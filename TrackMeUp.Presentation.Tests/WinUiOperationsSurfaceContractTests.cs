@@ -125,6 +125,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain("Operations.Snapshot.FolderOpened", snapshotSource, StringComparison.Ordinal);
         Assert.All(new[] { "SnapshotAiHost", "ReportsHost", "PrivacyHost", "RetentionHost", "PluginsHost", "InstallationTransferHost" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
+        Assert.All(
+            operations.Descendants().Where(element => element.Name.LocalName == "ContentPresenter" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value.EndsWith("Host", StringComparison.Ordinal))),
+            host => Assert.Null(host.Attribute("Visibility")));
 
         var operationLinkIcons = new[]
         {
@@ -266,6 +269,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         var progress = banner.Descendants().Single(element => element.Name.LocalName == "ProgressBar");
         Assert.Equal("620", banner.Root?.Attribute("MaxWidth")?.Value);
         Assert.Equal("Stretch", banner.Root?.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Top", banner.Root?.Attribute("VerticalContentAlignment")?.Value);
         Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "Border");
         Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "InfoBar.Resources");
         Assert.Equal("14", infoBar.Attribute("CornerRadius")?.Value);
@@ -281,6 +285,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Equal("True", infoBar.Attribute("IsClosable")?.Value);
         Assert.Equal("BannerInfoBar_Closing", infoBar.Attribute("Closing")?.Value);
         Assert.Equal("0", bannerSurface.Attribute("Opacity")?.Value);
+        Assert.Equal("Top", bannerSurface.Attribute("VerticalAlignment")?.Value);
         Assert.Equal("2", progress.Attribute("Height")?.Value);
         Assert.Equal("16,0,16,8", progress.Attribute("Margin")?.Value);
         Assert.Equal("{ThemeResource DividerStrokeColorDefaultBrush}", progress.Attribute("Background")?.Value);

@@ -49,7 +49,6 @@ public sealed class AiStateSurfaceContractTests
         var quotaDescription = options.Descendants().Single(element => HasName(element, "AiQuotaDescriptionText"));
         var quotaExpander = options.Descendants().Single(element => HasName(element, "AiDailyLimitExpander"));
         var quotaLimit = options.Descendants().Single(element => HasName(element, "AiDailyLimitBox"));
-        var quotaSave = options.Descendants().Single(element => HasName(element, "SaveAiDailyLimitButton"));
 
         Assert.Equal("Border", quotaPanel.Name.LocalName);
         Assert.Equal("Polite", quotaPanel.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
@@ -63,9 +62,12 @@ public sealed class AiStateSurfaceContractTests
         Assert.Equal("0", quotaLimit.Attribute("Minimum")?.Value);
         Assert.Equal("400", quotaLimit.Attribute("Maximum")?.Value);
         Assert.Equal("20", quotaLimit.Attribute("Value")?.Value);
-        Assert.Equal("SaveAiDailyLimitButton_Click", quotaSave.Attribute("Click")?.Value);
+        Assert.DoesNotContain(options.Descendants(), element => HasName(element, "SaveAiDailyLimitButton"));
         Assert.Contains("_openAiDailyLimit = settings.OpenAiDailyLimit;", optionsSource, StringComparison.Ordinal);
-        Assert.Contains("[\"ai.daily_limit\"]", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("QueueAutoSave(", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("\"ai.daily_limit\"", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("AiDailyLimitBox.ValueChanged +=", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("QueueAiDailyLimitSave();", optionsSource, StringComparison.Ordinal);
         Assert.Contains("SettingsCatalog.MaximumAiDailyLimit", optionsSource, StringComparison.Ordinal);
         Assert.Contains("costGate.DailyAnalysisCount", optionsSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(AiQuotaProgressBar", optionsSource, StringComparison.Ordinal);

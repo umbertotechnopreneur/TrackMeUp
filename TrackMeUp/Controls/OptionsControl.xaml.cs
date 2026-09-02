@@ -39,10 +39,17 @@ public sealed partial class OptionsControl : UserControl
     private string _requestedThinkingEffort = "auto";
     private bool _updatingAiToggle;
     private bool _updatingAiDailyLimit;
+    private bool _suppressAutoSave;
+    private bool _autoSaveReady;
     private int? _openAiDailyLimit;
+    private Task _autoSaveQueue = Task.CompletedTask;
 
     /// <summary>Initializes the options control.</summary>
-    public OptionsControl() => InitializeComponent();
+    public OptionsControl()
+    {
+        InitializeComponent();
+        RegisterAutoSaveHandlers();
+    }
 
     /// <summary>Occurs when the host should restore the player panel.</summary>
     public event EventHandler? BackRequested;
@@ -65,50 +72,59 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Applies an explicit language override or resolves the Windows UI language for system mode.</summary>
     public void ApplyLanguage(string language)
     {
-        _strings = new LocalizationService(language);
-        UiLocalization.Apply(this, _strings);
-        if (SelectedModel() is { } selectedModel)
+        var wasSuppressingAutoSave = _suppressAutoSave;
+        _suppressAutoSave = true;
+        try
         {
-            PopulateThinkingEfforts(selectedModel, SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort));
-            ModelDescriptionText.Text = LocalizedModelDescription(selectedModel);
+            _strings = new LocalizationService(language);
+            UiLocalization.Apply(this, _strings);
+            if (SelectedModel() is { } selectedModel)
+            {
+                PopulateThinkingEfforts(selectedModel, SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort));
+                ModelDescriptionText.Text = LocalizedModelDescription(selectedModel);
+            }
+            var openFolderLabel = T("Options.OpenFolderAction");
+            AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
+            ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
+            AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
+            AutomationProperties.SetName(MainWindowOpacitySlider, T("Options.Window.Opacity.Header"));
+            AutomationProperties.SetName(MainWindowShowInTaskbarSwitch, T("Options.Window.ShowInTaskbar.Header"));
+            AutomationProperties.SetName(KeepScreenshotsSwitch, T("Options.KeepSnapshots.Header"));
+            AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
+            AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
+            AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
+            AutomationProperties.SetName(OcrAiSettingsButton, T("Options.AiConfiguration.Title"));
+            AutomationProperties.SetName(SearchSynonymsSwitch, T("Options.Search.Synonyms"));
+            AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
+            AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
+            AutomationProperties.SetName(RebuildSearchIndexButton, T("Options.Search.Rebuild"));
+            AutomationProperties.SetName(ShowAiMonthlySpendSwitch, T("Options.AiMonthlySpendVisibility.Header"));
+            AutomationProperties.SetName(AiDailyLimitExpander, T("Options.AiQuota.Configure"));
+            AutomationProperties.SetHelpText(AiDailyLimitExpander, T("Options.AiQuota.LimitHint"));
+            AiDailyLimitActionText.Text = T("Options.AiQuota.Configure");
+            AiDailyLimitBox.Header = T("Options.AiQuota.Limit");
+            AiDailyLimitHintText.Text = T("Options.AiQuota.LimitHint");
+            AutomationProperties.SetName(AiDailyLimitBox, T("Options.AiQuota.Limit"));
+            AutomationProperties.SetHelpText(AiDailyLimitBox, T("Options.AiQuota.LimitHint"));
+            AutomationProperties.SetName(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Action"));
+            AutomationProperties.SetHelpText(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Description"));
+            AutomationProperties.SetName(ReportsOperationsLink, T("Options.Navigation.Reports.Action"));
+            AutomationProperties.SetHelpText(ReportsOperationsLink, T("Options.Navigation.Reports.Description"));
+            AutomationProperties.SetName(PrivacyOperationsLink, T("Options.Navigation.Privacy.Action"));
+            AutomationProperties.SetHelpText(PrivacyOperationsLink, T("Options.Navigation.Privacy.Description"));
+            AutomationProperties.SetName(RetentionOperationsLink, T("Options.Navigation.Retention.Action"));
+            AutomationProperties.SetHelpText(RetentionOperationsLink, T("Options.Navigation.Retention.Description"));
+            AutomationProperties.SetName(PluginsOperationsLink, T("Options.Navigation.Plugins.Action"));
+            AutomationProperties.SetHelpText(PluginsOperationsLink, T("Options.Navigation.Plugins.Description"));
+            UpdateApiKeyPresentation();
+            UpdateAiQuotaPresentation();
+            UpdateScreenshotModeHint();
+            NotifyLayoutChanged();
         }
-        var openFolderLabel = T("Options.OpenFolderAction");
-        AutomationProperties.SetName(OpenScreenshotFolderButton, openFolderLabel);
-        ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
-        AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
-        AutomationProperties.SetName(KeepScreenshotsSwitch, T("Options.KeepSnapshots.Header"));
-        AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
-        AutomationProperties.SetName(StartTrackingOnLaunchSwitch, T("Options.StartTracking.Header"));
-        AutomationProperties.SetName(ScreenshotsEnabledSwitch, T("Options.SnapshotsEnabled.Header"));
-        AutomationProperties.SetName(SearchSettingsButton, T("Options.SearchConfiguration.Title"));
-        AutomationProperties.SetName(SearchSynonymsSwitch, T("Options.Search.Synonyms"));
-        AutomationProperties.SetName(SearchTypoToleranceSwitch, T("Options.Search.TypoTolerance"));
-        AutomationProperties.SetName(OcrEnabledSwitch, T("Options.Ocr.Enabled"));
-        AutomationProperties.SetName(RebuildSearchIndexButton, T("Options.Search.Rebuild"));
-        AutomationProperties.SetName(ShowAiMonthlySpendSwitch, T("Options.AiMonthlySpendVisibility.Header"));
-        AutomationProperties.SetName(AiDailyLimitExpander, T("Options.AiQuota.Configure"));
-        AutomationProperties.SetHelpText(AiDailyLimitExpander, T("Options.AiQuota.LimitHint"));
-        AiDailyLimitActionText.Text = T("Options.AiQuota.Configure");
-        AiDailyLimitBox.Header = T("Options.AiQuota.Limit");
-        AiDailyLimitHintText.Text = T("Options.AiQuota.LimitHint");
-        SaveAiDailyLimitButton.Content = T("Options.AiQuota.Save");
-        AutomationProperties.SetName(AiDailyLimitBox, T("Options.AiQuota.Limit"));
-        AutomationProperties.SetHelpText(AiDailyLimitBox, T("Options.AiQuota.LimitHint"));
-        AutomationProperties.SetName(SaveAiDailyLimitButton, T("Options.AiQuota.Save"));
-        AutomationProperties.SetName(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Action"));
-        AutomationProperties.SetHelpText(SnapshotAiOperationsLink, T("Options.Navigation.SnapshotAi.Description"));
-        AutomationProperties.SetName(ReportsOperationsLink, T("Options.Navigation.Reports.Action"));
-        AutomationProperties.SetHelpText(ReportsOperationsLink, T("Options.Navigation.Reports.Description"));
-        AutomationProperties.SetName(PrivacyOperationsLink, T("Options.Navigation.Privacy.Action"));
-        AutomationProperties.SetHelpText(PrivacyOperationsLink, T("Options.Navigation.Privacy.Description"));
-        AutomationProperties.SetName(RetentionOperationsLink, T("Options.Navigation.Retention.Action"));
-        AutomationProperties.SetHelpText(RetentionOperationsLink, T("Options.Navigation.Retention.Description"));
-        AutomationProperties.SetName(PluginsOperationsLink, T("Options.Navigation.Plugins.Action"));
-        AutomationProperties.SetHelpText(PluginsOperationsLink, T("Options.Navigation.Plugins.Description"));
-        UpdateApiKeyPresentation();
-        UpdateAiQuotaPresentation();
-        UpdateScreenshotModeHint();
-        NotifyLayoutChanged();
+        finally
+        {
+            _suppressAutoSave = wasSuppressingAutoSave;
+        }
     }
 
     /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
@@ -133,7 +149,7 @@ public sealed partial class OptionsControl : UserControl
         if (!catalogResult.Succeeded || catalogResult.Value is null || catalogResult.Value.Models.Count == 0)
         {
             StatusText.Text = T("Options.ModelCatalogError");
-            SaveOptionsButton.IsEnabled = false;
+            StatusText.Visibility = Visibility.Visible;
             return;
         }
 
@@ -144,23 +160,13 @@ public sealed partial class OptionsControl : UserControl
         }
     }
 
-    /// <summary>Moves from AI configuration to general options, then back to the player.</summary>
+    /// <summary>Moves from OCR and AI configuration to general options, then back to the player.</summary>
     public void NavigateBack()
     {
-        if (SearchOptionsView.Visibility == Visibility.Visible)
+        if (OcrAiOptionsView.Visibility == Visibility.Visible)
         {
-            SearchOptionsView.Visibility = Visibility.Collapsed;
+            OcrAiOptionsView.Visibility = Visibility.Collapsed;
             AppOptionsView.Visibility = Visibility.Visible;
-            TestConnectionButton.Visibility = Visibility.Collapsed;
-            NotifyLayoutChanged();
-            return;
-        }
-
-        if (AiOptionsView.Visibility == Visibility.Visible)
-        {
-            AiOptionsView.Visibility = Visibility.Collapsed;
-            AppOptionsView.Visibility = Visibility.Visible;
-            TestConnectionButton.Visibility = Visibility.Collapsed;
             NotifyLayoutChanged();
             return;
         }
@@ -168,27 +174,17 @@ public sealed partial class OptionsControl : UserControl
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Shows the focused AI configuration view without changing persisted settings.</summary>
-    private async void AiSettingsButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Shows the paired OCR and AI configuration view without changing persisted settings.</summary>
+    private async void OcrAiSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         AppOptionsView.Visibility = Visibility.Collapsed;
-        AiOptionsView.Visibility = Visibility.Visible;
-        TestConnectionButton.Visibility = Visibility.Visible;
+        OcrAiOptionsView.Visibility = Visibility.Visible;
         NotifyLayoutChanged();
         if (_aiState is not null)
         {
             await _aiState.LoadAsync(CancellationToken.None);
         }
         UpdateAiQuotaPresentation();
-    }
-
-    /// <summary>Shows the focused local-search and OCR settings view.</summary>
-    private void SearchSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        AppOptionsView.Visibility = Visibility.Collapsed;
-        SearchOptionsView.Visibility = Visibility.Visible;
-        TestConnectionButton.Visibility = Visibility.Collapsed;
-        NotifyLayoutChanged();
     }
 
     private void SnapshotAiOperationsLink_Click(object sender, RoutedEventArgs e) =>
@@ -206,8 +202,11 @@ public sealed partial class OptionsControl : UserControl
     private void PluginsOperationsLink_Click(object sender, RoutedEventArgs e) =>
         OperationsSectionRequested?.Invoke(OperationsSection.Plugins);
 
-    private void OcrEnabledSwitch_Toggled(object sender, RoutedEventArgs e) =>
+    private void OcrEnabledSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
         OcrLanguageBox.IsEnabled = OcrEnabledSwitch.IsOn;
+        QueueAutoSave("ocr.enabled", OcrEnabledSwitch.IsOn ? "true" : "false");
+    }
 
     /// <summary>Requests the detached progress surface; the control does not own top-level windows.</summary>
     private void RebuildSearchIndexButton_Click(object sender, RoutedEventArgs e) =>
@@ -219,10 +218,14 @@ public sealed partial class OptionsControl : UserControl
         ThemeSystemButton.IsChecked = ReferenceEquals(sender, ThemeSystemButton);
         ThemeLightButton.IsChecked = ReferenceEquals(sender, ThemeLightButton);
         ThemeDarkButton.IsChecked = ReferenceEquals(sender, ThemeDarkButton);
+        QueueAutoSave("theme", SelectedTheme());
     }
 
-    private void TaskbarWidgetVisibleSwitch_Toggled(object sender, RoutedEventArgs e) =>
+    private void TaskbarWidgetVisibleSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
         TaskbarWidgetPositionBox.IsEnabled = TaskbarWidgetVisibleSwitch.IsOn;
+        QueueAutoSave("taskbar.widget.visible", TaskbarWidgetVisibleSwitch.IsOn ? "true" : "false");
+    }
 
     /// <summary>Shows or hides lower-frequency application settings.</summary>
     private void GeneralAdvancedButton_Click(object sender, RoutedEventArgs e)
@@ -269,7 +272,7 @@ public sealed partial class OptionsControl : UserControl
         }
 
         var result = await _application.OpenScreenshotFolderAsync(ScreenshotFolderBox.Text, CancellationToken.None);
-        StatusText.Text = result.Succeeded ? result.Value ?? string.Empty : T("Options.OpenFolderError");
+        ShowStatus(result.Succeeded ? result.Value ?? string.Empty : T("Options.OpenFolderError"));
     }
 
     /// <summary>Forwards a secret to the application facade without placing it in settings or UI state.</summary>
@@ -277,7 +280,7 @@ public sealed partial class OptionsControl : UserControl
     {
         if (_application is null || _aiState is null || string.IsNullOrWhiteSpace(ApiKeyBox.Password))
         {
-            StatusText.Text = T("ApiKeyMissing");
+            ShowStatus(T("ApiKeyMissing"));
             return;
         }
 
@@ -293,13 +296,13 @@ public sealed partial class OptionsControl : UserControl
             ApiKeyExpander.IsExpanded = false;
         }
 
-        StatusText.Text = keyReady
+        ShowStatus(keyReady
             ? T("ApiKeySaved")
             : result.Succeeded
                 ? T("Options.ApiKeyStatus.Invalid")
-            : result.Code == "ai.key.stored_status_unavailable"
-                ? T("Options.ApiKeyStatus.RefreshFailed")
-                : T("Options.ApiKeyError");
+                : result.Code == "ai.key.stored_status_unavailable"
+                    ? T("Options.ApiKeyStatus.RefreshFailed")
+                : T("Options.ApiKeyError"));
     }
 
     /// <summary>Forwards an AI enabled-state request through the shared observable application state.</summary>
@@ -319,13 +322,13 @@ public sealed partial class OptionsControl : UserControl
         _updatingAiToggle = true;
         OpenAiEnabledSwitch.IsOn = _aiState.Enabled;
         _updatingAiToggle = false;
-        StatusText.Text = T("Options.OpenAi.KeyRequired");
+        ShowStatus(T("Options.OpenAi.KeyRequired"));
     }
 
-    /// <summary>Persists only the validated daily screenshot-processing limit through the application facade.</summary>
-    private async void SaveAiDailyLimitButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Queues the validated daily screenshot-processing limit for immediate persistence.</summary>
+    private void QueueAiDailyLimitSave()
     {
-        if (_application is null || _updatingAiDailyLimit)
+        if (_updatingAiDailyLimit || !CanAutoSave)
         {
             return;
         }
@@ -336,105 +339,79 @@ public sealed partial class OptionsControl : UserControl
             || requestedValue < SettingsCatalog.MinimumAiDailyLimit
             || requestedValue > SettingsCatalog.MaximumAiDailyLimit)
         {
-            StatusText.Text = T("Options.AiQuota.Invalid");
+            ShowStatus(T("Options.AiQuota.Invalid"));
             return;
         }
 
-        _updatingAiDailyLimit = true;
-        SaveAiDailyLimitButton.IsEnabled = false;
-        var result = await _application.PatchSettingsAsync(
-            new SettingsPatch(new Dictionary<string, string?>
-            {
-                ["ai.daily_limit"] = ((int)requestedValue).ToString(CultureInfo.InvariantCulture)
-            }),
-            CancellationToken.None);
-        SaveAiDailyLimitButton.IsEnabled = true;
-        _updatingAiDailyLimit = false;
-
-        if (!result.Succeeded || result.Value is null)
-        {
-            StatusText.Text = T("Options.AiQuota.SaveError");
-            return;
-        }
-
-        ApplySettings(result.Value);
-        if (_aiState is not null)
-        {
-            await _aiState.LoadAsync(CancellationToken.None);
-        }
-        SettingsSaved?.Invoke(result.Value);
-        StatusText.Text = T("Options.AiQuota.Saved");
+        QueueAutoSave(
+            "ai.daily_limit",
+            ((int)requestedValue).ToString(CultureInfo.InvariantCulture),
+            refreshAiState: true);
     }
 
-    /// <summary>Builds a typed, whitelisted patch and forwards persistence to the application facade.</summary>
-    private async void SaveButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Queues a single typed setting change and serializes it with preceding local edits.</summary>
+    private void QueueAutoSave(string key, string? value, bool refreshAiState = false) =>
+        QueueAutoSave(new Dictionary<string, string?> { [key] = value }, refreshAiState);
+
+    /// <summary>Queues related typed setting changes as one atomic application request.</summary>
+    private void QueueAutoSave(IReadOnlyDictionary<string, string?> values, bool refreshAiState = false)
     {
+        if (!CanAutoSave)
+        {
+            return;
+        }
+
+        var patch = new SettingsPatch(new Dictionary<string, string?>(values));
+        _autoSaveQueue = PersistQueuedPatchAsync(_autoSaveQueue, patch, refreshAiState);
+    }
+
+    /// <summary>Persists a queued option patch after earlier edits so rapid UI changes retain their final order.</summary>
+    private async Task PersistQueuedPatchAsync(Task precedingSave, SettingsPatch patch, bool refreshAiState)
+    {
+        try
+        {
+            await precedingSave;
+        }
+        catch (Exception)
+        {
+            // The previous failure is already shown and must not block the user's later correction.
+        }
+
         if (_application is null)
         {
             return;
         }
 
-        var selectedModel = SelectedModel();
-        if (selectedModel is null)
+        OperationResult<AppSettings> result;
+        try
         {
-            StatusText.Text = T("Options.ModelRequired");
+            result = await _application.PatchSettingsAsync(patch, CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            // A persistence or IPC exception leaves the last validated snapshot authoritative.
+            await RestorePersistedSettingsAfterFailureAsync();
+            ShowStatus(T("Options.SaveError"));
             return;
         }
 
-        if (!selectedModel.SupportsImageInput)
-        {
-            StatusText.Text = T("Options.ModelImageUnsupported");
-            return;
-        }
-
-        var thinkingEffort = SelectedTag(AiReasoningEffortBox, "auto");
-        if (!selectedModel.SupportedThinkingEfforts.Contains(thinkingEffort, StringComparer.Ordinal))
-        {
-            StatusText.Text = T("Options.ThinkingEffortUnsupported");
-            return;
-        }
-
-        var patch = new SettingsPatch(new Dictionary<string, string?>
-        {
-            ["ai.model"] = selectedModel.Key,
-            ["screenshots.directory"] = ScreenshotFolderBox.Text,
-            ["screenshots.keep"] = KeepScreenshotsSwitch.IsOn ? "true" : "false",
-            ["screenshots.enabled"] = ScreenshotsEnabledSwitch.IsOn ? "true" : "false",
-            ["search.language"] = SelectedTag(SearchLanguageBox, "system"),
-            ["search.synonyms"] = SearchSynonymsSwitch.IsOn ? "true" : "false",
-            ["search.typo_tolerance"] = SearchTypoToleranceSwitch.IsOn ? "true" : "false",
-            ["ocr.enabled"] = OcrEnabledSwitch.IsOn ? "true" : "false",
-            ["ocr.language"] = SelectedTag(OcrLanguageBox, "system"),
-            ["startup.enabled"] = StartWithWindowsSwitch.IsOn ? "true" : "false",
-            ["tracking.start_on_launch"] = StartTrackingOnLaunchSwitch.IsOn ? "true" : "false",
-            ["ai.provider"] = SelectedTag(AiProviderBox, "openai"),
-            ["ai.endpoint"] = string.IsNullOrWhiteSpace(AiEndpointBox.Text) ? DefaultEndpoint(SelectedTag(AiProviderBox, "openai")) : AiEndpointBox.Text.Trim(),
-            ["ai.key_variable"] = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(SelectedTag(AiProviderBox, "openai")) : AiApiKeyNameBox.Text.Trim(),
-            ["ai.output_detail"] = SelectedTag(AiOutputDetailBox, "balanced"),
-            ["ai.reasoning_effort"] = thinkingEffort,
-            ["ai.custom_prompt"] = AiCustomPromptBox.Text,
-            ["ai.include_device_location"] = IncludeDeviceLocationSwitch.IsOn ? "true" : "false",
-            ["ai.show_monthly_spend"] = ShowAiMonthlySpendSwitch.IsOn ? "true" : "false",
-            ["screenshots.mode"] = SelectedTag(ScreenshotModeBox, "all-screens"),
-            ["language"] = SelectedTag(LanguageBox, "system"),
-            ["theme"] = SelectedTheme(),
-            ["position"] = SelectedTag(PositionBox, "bottom-center"),
-            ["taskbar.widget.visible"] = TaskbarWidgetVisibleSwitch.IsOn ? "true" : "false",
-            ["taskbar.widget.position"] = SelectedTag(TaskbarWidgetPositionBox, "left")
-        });
-        var result = await _application.PatchSettingsAsync(patch, CancellationToken.None);
         if (result.Succeeded && result.Value is not null)
         {
+            ApplySettings(result.Value);
             if (_aiState is not null)
             {
-                await _aiState.LoadAsync(CancellationToken.None);
+                if (refreshAiState)
+                {
+                    await _aiState.LoadAsync(CancellationToken.None);
+                }
             }
             SettingsSaved?.Invoke(result.Value);
-            StatusText.Text = T("OptionsSaved");
+            ShowStatus(T("OptionsSaved"));
         }
         else
         {
-            StatusText.Text = T("Options.SaveError");
+            await RestorePersistedSettingsAfterFailureAsync();
+            ShowStatus(T("Options.SaveError"));
         }
     }
 
@@ -447,53 +424,176 @@ public sealed partial class OptionsControl : UserControl
         var provider = SelectedTag(AiProviderBox, "openai");
         if (IsDefaultOrKnownEndpoint(AiEndpointBox.Text)) AiEndpointBox.Text = DefaultEndpoint(provider);
         if (IsDefaultOrKnownApiKeyName(AiApiKeyNameBox.Text)) AiApiKeyNameBox.Text = DefaultApiKeyName(provider);
+        QueueAutoSave(
+            new Dictionary<string, string?>
+            {
+                ["ai.provider"] = provider,
+                ["ai.endpoint"] = AiEndpointBox.Text.Trim(),
+                ["ai.key_variable"] = AiApiKeyNameBox.Text.Trim()
+            },
+            refreshAiState: true);
     }
 
     /// <summary>Updates the local capture-mode hint.</summary>
-    private void ScreenshotModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateScreenshotModeHint();
+    private void ScreenshotModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateScreenshotModeHint();
+        QueueAutoSave("screenshots.mode", SelectedTag(ScreenshotModeBox, "all-screens"));
+    }
 
     private void ApplySettings(AppSettings settings)
     {
-        _openAiDailyLimit = settings.OpenAiDailyLimit;
-        _updatingAiDailyLimit = true;
-        AiDailyLimitBox.Value = settings.OpenAiDailyLimit;
-        _updatingAiDailyLimit = false;
-        ApplyLanguage(settings.UiLanguage);
-        _requestedThinkingEffort = settings.AiReasoningEffort;
-        SelectModel(settings.Model);
-        ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
-        KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
-        ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
-        SelectTag(SearchLanguageBox, settings.SearchLanguage, "system");
-        SearchSynonymsSwitch.IsOn = settings.SearchSynonymsEnabled;
-        SearchTypoToleranceSwitch.IsOn = settings.SearchTypoToleranceEnabled;
-        OcrEnabledSwitch.IsOn = settings.OcrEnabled;
-        SelectTag(OcrLanguageBox, settings.OcrLanguage, "system");
-        OcrLanguageBox.IsEnabled = settings.OcrEnabled;
-        StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
-        StartTrackingOnLaunchSwitch.IsOn = settings.StartTrackingOnLaunch;
-        SelectTag(AiProviderBox, settings.AiProvider, "openai");
-        AiEndpointBox.Text = string.IsNullOrWhiteSpace(settings.AiEndpoint) ? DefaultEndpoint(settings.AiProvider) : settings.AiEndpoint;
-        AiApiKeyNameBox.Text = string.IsNullOrWhiteSpace(settings.AiApiKeyName) ? DefaultApiKeyName(settings.AiProvider) : settings.AiApiKeyName;
-        SelectTag(AiOutputDetailBox, settings.AiOutputDetail, "balanced");
-        SelectTag(AiReasoningEffortBox, settings.AiReasoningEffort, "auto");
-        SelectTag(ScreenshotModeBox, settings.ScreenshotCaptureMode, "all-screens");
-        SelectTag(LanguageBox, settings.UiLanguage, "system");
-        SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
-        TaskbarWidgetVisibleSwitch.IsOn = settings.TaskbarWidgetVisible;
-        SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
-        TaskbarWidgetPositionBox.IsEnabled = settings.TaskbarWidgetVisible;
-        SelectTheme(settings.Theme);
-        AiCustomPromptBox.Text = settings.AiCustomPrompt;
-        IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
-        ShowAiMonthlySpendSwitch.IsOn = settings.ShowAiMonthlySpend;
-        UpdateAiQuotaPresentation();
-        UpdateScreenshotModeHint();
-        NotifyLayoutChanged();
+        var wasSuppressingAutoSave = _suppressAutoSave;
+        _suppressAutoSave = true;
+        try
+        {
+            _openAiDailyLimit = settings.OpenAiDailyLimit;
+            _updatingAiDailyLimit = true;
+            AiDailyLimitBox.Value = settings.OpenAiDailyLimit;
+            _updatingAiDailyLimit = false;
+            ApplyLanguage(settings.UiLanguage);
+            _requestedThinkingEffort = settings.AiReasoningEffort;
+            SelectModel(settings.Model);
+            ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
+            KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
+            ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
+            SelectTag(SearchLanguageBox, settings.SearchLanguage, "system");
+            SearchSynonymsSwitch.IsOn = settings.SearchSynonymsEnabled;
+            SearchTypoToleranceSwitch.IsOn = settings.SearchTypoToleranceEnabled;
+            OcrEnabledSwitch.IsOn = settings.OcrEnabled;
+            SelectTag(OcrLanguageBox, settings.OcrLanguage, "system");
+            OcrLanguageBox.IsEnabled = settings.OcrEnabled;
+            StartWithWindowsSwitch.IsOn = settings.StartWithWindows;
+            StartTrackingOnLaunchSwitch.IsOn = settings.StartTrackingOnLaunch;
+            SelectTag(AiProviderBox, settings.AiProvider, "openai");
+            AiEndpointBox.Text = string.IsNullOrWhiteSpace(settings.AiEndpoint) ? DefaultEndpoint(settings.AiProvider) : settings.AiEndpoint;
+            AiApiKeyNameBox.Text = string.IsNullOrWhiteSpace(settings.AiApiKeyName) ? DefaultApiKeyName(settings.AiProvider) : settings.AiApiKeyName;
+            SelectTag(AiOutputDetailBox, settings.AiOutputDetail, "balanced");
+            SelectTag(AiReasoningEffortBox, settings.AiReasoningEffort, "auto");
+            SelectTag(ScreenshotModeBox, settings.ScreenshotCaptureMode, "all-screens");
+            SelectTag(LanguageBox, settings.UiLanguage, "system");
+            SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
+            MainWindowOpacitySlider.Value = settings.MainWindowOpacityPercent;
+            MainWindowShowInTaskbarSwitch.IsOn = settings.MainWindowShowInTaskbar;
+            TaskbarWidgetVisibleSwitch.IsOn = settings.TaskbarWidgetVisible;
+            SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
+            TaskbarWidgetPositionBox.IsEnabled = settings.TaskbarWidgetVisible;
+            SelectTheme(settings.Theme);
+            AiCustomPromptBox.Text = settings.AiCustomPrompt;
+            IncludeDeviceLocationSwitch.IsOn = settings.IncludeDeviceLocation;
+            ShowAiMonthlySpendSwitch.IsOn = settings.ShowAiMonthlySpend;
+            UpdateAiQuotaPresentation();
+            UpdateScreenshotModeHint();
+            NotifyLayoutChanged();
+        }
+        finally
+        {
+            _suppressAutoSave = wasSuppressingAutoSave;
+        }
+
+        _autoSaveReady = true;
     }
 
     /// <summary>Refreshes the passive options controls from a settings snapshot persisted by another surface.</summary>
     internal void ApplyExternalSettings(AppSettings settings) => ApplySettings(settings);
+
+    private bool CanAutoSave => _autoSaveReady && !_suppressAutoSave && _application is not null;
+
+    /// <summary>Connects ordinary option controls to their immediate, typed persistence route.</summary>
+    private void RegisterAutoSaveHandlers()
+    {
+        PositionBox.SelectionChanged += (_, _) => QueueAutoSave("position", SelectedTag(PositionBox, "bottom-center"));
+        MainWindowOpacitySlider.ValueChanged += (_, _) => QueueAutoSave(
+            "window.main.opacity_percent",
+            MainWindowOpacitySlider.Value.ToString("0", CultureInfo.InvariantCulture));
+        MainWindowShowInTaskbarSwitch.Toggled += (_, _) => QueueAutoSave(
+            "window.main.show_in_taskbar",
+            MainWindowShowInTaskbarSwitch.IsOn ? "true" : "false");
+        TaskbarWidgetPositionBox.SelectionChanged += (_, _) => QueueAutoSave(
+            "taskbar.widget.position",
+            SelectedTag(TaskbarWidgetPositionBox, "left"));
+        ScreenshotFolderBox.LostFocus += (_, _) => QueueAutoSave("screenshots.directory", ScreenshotFolderBox.Text);
+        KeepScreenshotsSwitch.Toggled += (_, _) => QueueAutoSave(
+            "screenshots.keep",
+            KeepScreenshotsSwitch.IsOn ? "true" : "false");
+        LanguageBox.SelectionChanged += (_, _) => QueueAutoSave("language", SelectedTag(LanguageBox, "system"));
+        StartWithWindowsSwitch.Toggled += (_, _) => QueueAutoSave(
+            "startup.enabled",
+            StartWithWindowsSwitch.IsOn ? "true" : "false");
+        StartTrackingOnLaunchSwitch.Toggled += (_, _) => QueueAutoSave(
+            "tracking.start_on_launch",
+            StartTrackingOnLaunchSwitch.IsOn ? "true" : "false");
+        ScreenshotsEnabledSwitch.Toggled += (_, _) => QueueAutoSave(
+            "screenshots.enabled",
+            ScreenshotsEnabledSwitch.IsOn ? "true" : "false");
+        SearchLanguageBox.SelectionChanged += (_, _) => QueueAutoSave("search.language", SelectedTag(SearchLanguageBox, "system"));
+        SearchSynonymsSwitch.Toggled += (_, _) => QueueAutoSave(
+            "search.synonyms",
+            SearchSynonymsSwitch.IsOn ? "true" : "false");
+        SearchTypoToleranceSwitch.Toggled += (_, _) => QueueAutoSave(
+            "search.typo_tolerance",
+            SearchTypoToleranceSwitch.IsOn ? "true" : "false");
+        OcrLanguageBox.SelectionChanged += (_, _) => QueueAutoSave("ocr.language", SelectedTag(OcrLanguageBox, "system"));
+        AiDailyLimitBox.ValueChanged += (_, _) => QueueAiDailyLimitSave();
+        AiReasoningEffortBox.SelectionChanged += (_, _) => QueueReasoningEffortSave();
+        AiOutputDetailBox.SelectionChanged += (_, _) => QueueAutoSave(
+            "ai.output_detail",
+            SelectedTag(AiOutputDetailBox, "balanced"),
+            refreshAiState: true);
+        AiCustomPromptBox.LostFocus += (_, _) => QueueAutoSave("ai.custom_prompt", AiCustomPromptBox.Text, refreshAiState: true);
+        IncludeDeviceLocationSwitch.Toggled += (_, _) => QueueAutoSave(
+            "ai.include_device_location",
+            IncludeDeviceLocationSwitch.IsOn ? "true" : "false",
+            refreshAiState: true);
+        ShowAiMonthlySpendSwitch.Toggled += (_, _) => QueueAutoSave(
+            "ai.show_monthly_spend",
+            ShowAiMonthlySpendSwitch.IsOn ? "true" : "false");
+        AiEndpointBox.LostFocus += (_, _) => QueueAutoSave("ai.endpoint", AiEndpointBox.Text.Trim(), refreshAiState: true);
+        AiApiKeyNameBox.LostFocus += (_, _) => QueueAutoSave("ai.key_variable", AiApiKeyNameBox.Text.Trim(), refreshAiState: true);
+    }
+
+    /// <summary>Persists a valid reasoning effort only with the currently selected, image-capable model.</summary>
+    private void QueueReasoningEffortSave()
+    {
+        var model = SelectedModel();
+        if (!CanAutoSave || model is null || !model.SupportsImageInput)
+        {
+            return;
+        }
+
+        var thinkingEffort = SelectedTag(AiReasoningEffortBox, "auto");
+        if (!model.SupportedThinkingEfforts.Contains(thinkingEffort, StringComparer.Ordinal))
+        {
+            ShowStatus(T("Options.ThinkingEffortUnsupported"));
+            return;
+        }
+
+        _requestedThinkingEffort = thinkingEffort;
+        QueueAutoSave("ai.reasoning_effort", thinkingEffort, refreshAiState: true);
+    }
+
+    /// <summary>Restores the last persisted settings when a typed change is rejected by the application layer.</summary>
+    private async Task RestorePersistedSettingsAfterFailureAsync()
+    {
+        if (_application is null)
+        {
+            return;
+        }
+
+        var current = await _application.GetSettingsAsync(CancellationToken.None);
+        if (current.Succeeded && current.Value is not null)
+        {
+            ApplySettings(current.Value);
+        }
+    }
+
+    /// <summary>Renders a concise, accessible persistence status only when there is feedback to show.</summary>
+    private void ShowStatus(string message)
+    {
+        StatusText.Text = message;
+        StatusText.Visibility = string.IsNullOrWhiteSpace(message) ? Visibility.Collapsed : Visibility.Visible;
+        NotifyLayoutChanged();
+    }
 
     private void UpdateScreenshotModeHint() => ScreenshotModeHintBox.Text = SelectedTag(ScreenshotModeBox, "all-screens") == "active-window" ? T("Options.SnapshotHintActive") : T("Options.SnapshotHintAll");
 
@@ -533,7 +633,10 @@ public sealed partial class OptionsControl : UserControl
         var preferredEffort = AiReasoningEffortBox.SelectedItem is null
             ? _requestedThinkingEffort
             : SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort);
+        var wasSuppressingAutoSave = _suppressAutoSave;
+        _suppressAutoSave = true;
         PopulateThinkingEfforts(model, preferredEffort);
+        _suppressAutoSave = wasSuppressingAutoSave;
         _requestedThinkingEffort = SelectedTag(AiReasoningEffortBox, "auto");
         var option = (AiModelOption)ModelBox.SelectedItem;
         ModelAccentBar.Background = option.AccentBrush;
@@ -546,6 +649,20 @@ public sealed partial class OptionsControl : UserControl
         ModelInfoCard.Visibility = Visibility.Visible;
         StatusText.Text = model.SupportsImageInput ? string.Empty : T("Options.ModelImageUnsupported");
         NotifyLayoutChanged();
+
+        if (!model.SupportsImageInput)
+        {
+            ShowStatus(T("Options.ModelImageUnsupported"));
+            return;
+        }
+
+        QueueAutoSave(
+            new Dictionary<string, string?>
+            {
+                ["ai.model"] = model.Key,
+                ["ai.reasoning_effort"] = _requestedThinkingEffort
+            },
+            refreshAiState: true);
     }
 
     private void NotifyLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);

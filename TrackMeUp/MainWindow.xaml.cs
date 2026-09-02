@@ -30,7 +30,7 @@ public sealed partial class MainWindow : Window
 {
     #region Fields
 
-    private const int LogicalWindowWidth = 600;
+    private const int LogicalWindowWidth = 576;
     private const int LogicalExpandedWindowWidth = 760;
     private const int LogicalWindowHeightPadding = 20;
     private const int LogicalScreenMargin = 22;
@@ -1747,6 +1747,8 @@ public sealed partial class MainWindow : Window
         _hasAppliedSettings = true;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
         _showAiMonthlySpend = settings.ShowAiMonthlySpend;
+        RootGrid.Opacity = settings.MainWindowOpacityPercent / 100d;
+        _appWindow.IsShownInSwitchers = settings.MainWindowShowInTaskbar;
         if (!_showAiMonthlySpend)
         {
             AiMonthlySpendPanel.Visibility = Visibility.Collapsed;

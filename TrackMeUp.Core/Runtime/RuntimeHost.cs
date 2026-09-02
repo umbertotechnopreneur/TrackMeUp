@@ -190,6 +190,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
     internal static readonly TimeSpan ScreenshotImageTimeout = TimeSpan.FromSeconds(15);
     internal static readonly TimeSpan WorldClockQueryTimeout = TimeSpan.FromSeconds(15);
+    internal static readonly TimeSpan WorldClockWeatherKeyTimeout = TimeSpan.FromSeconds(15);
     private readonly RuntimeEndpoint _endpoint;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RuntimeClient> _logger;
@@ -221,10 +222,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<DashboardState>> GetDashboardAsync(CancellationToken cancellationToken) => SendAsync<DashboardState>(RuntimeOperation.DashboardGet, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken) =>
-        SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksGetV2, null, cancellationToken, WorldClockQueryTimeout);
+        SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksGetV3, null, cancellationToken, WorldClockQueryTimeout);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken) =>
-        SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksConvertV1, request, cancellationToken);
+        SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksConvertV2, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => SendAsync<WorldClockCityCatalog>(RuntimeOperation.WorldClocksCatalogV1, null, cancellationToken);
     /// <inheritdoc />
@@ -235,7 +236,7 @@ public sealed class RuntimeClient : ITrackMeUpApplication
         SendAsync<WorldClockSelectionState>(RuntimeOperation.WorldClocksRemoveV3, new { cityId }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken) =>
-        SendAsync<string>(RuntimeOperation.WorldClocksWeatherKeySetV1, new { secret }, cancellationToken);
+        SendAsync<string>(RuntimeOperation.WorldClocksWeatherKeySetV2, new { secret }, cancellationToken, WorldClockWeatherKeyTimeout);
     /// <inheritdoc />
     public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => SendAsync<LastSessionState?>(RuntimeOperation.SessionLast, null, cancellationToken);
     /// <inheritdoc />

@@ -6,10 +6,12 @@
     xmlns:local="using:TrackMeUp"
     MaxWidth="620"
     HorizontalAlignment="Stretch"
+    VerticalContentAlignment="Top"
     Visibility="Collapsed">
     <Grid
         x:Name="BannerSurface"
-        Opacity="0">
+        Opacity="0"
+        VerticalAlignment="Top">
         <Grid.Shadow>
             <ThemeShadow />
         </Grid.Shadow>

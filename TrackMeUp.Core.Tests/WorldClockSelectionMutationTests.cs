@@ -135,6 +135,12 @@ public sealed class WorldClockSelectionMutationTests
 
         public int CallCount => Volatile.Read(ref _callCount);
 
+        /// <inheritdoc />
+        public Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+            string secret,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(WorldClockWeatherApiKeyValidation.Accepted);
+
         public Task<WorldClockWeatherObservation> GetCurrentAsync(
             WorldClockWeatherLocation location,
             CancellationToken cancellationToken)

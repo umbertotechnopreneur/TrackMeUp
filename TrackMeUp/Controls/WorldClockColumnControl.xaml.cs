@@ -9,12 +9,19 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
+using Windows.Foundation;
 
 namespace TrackMeUp.Controls;
 
 /// <summary>Renders one city in the detached world-clock comparison surface.</summary>
 public sealed partial class WorldClockColumnControl : UserControl
 {
+    private const double SolarArcStartX = 32d;
+    private const double SolarArcEndX = 272d;
+    private const double SolarArcBaselineY = 138d;
+    private const double SolarArcControlY = 4d;
+    private const int SolarArcSegments = 48;
+
     private string? _skylineAssetPath;
     private string[] _backdropAssetPaths = [];
     private string[] _foregroundAssetPaths = [];
@@ -45,11 +52,9 @@ public sealed partial class WorldClockColumnControl : UserControl
         LocalTimeText.Text = clock.LocalTime.ToString("HH:mm", strings.Culture);
         LocalTimeText.Foreground = accent;
         DayStateText.Text = strings.Translate(clock.IsDaylight ? "WorldClock.Day" : "WorldClock.Night");
-        DayStateText.Foreground = accent;
         OffsetText.Text = isReference
             ? strings.Translate("WorldClock.LocalTime")
             : strings.Format("WorldClock.OffsetFromReference", FormatOffset(clock.LocalTime.Offset - referenceClock.LocalTime.Offset));
-        OffsetText.Foreground = accent;
         DateRelationText.Text = DateRelation(clock.LocalTime.Date, referenceClock.LocalTime.Date, strings);
         DateRelationText.Visibility = string.IsNullOrEmpty(DateRelationText.Text) ? Visibility.Collapsed : Visibility.Visible;
 
@@ -64,13 +69,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             clock.Atmosphere.ForegroundAssetPaths,
             _foregroundAssetPaths,
             Stretch.UniformToFill);
-        CelestialPhase.IsDaylight = clock.IsDaylight;
-        CelestialPhase.MoonPhaseAngleDegrees = clock.MoonPhaseAngleDegrees;
         var moonPhaseSummary = ApplyMoonPhase(clock, strings, accent);
-        SunriseIcon.Foreground = accent;
-        SunsetIcon.Foreground = accent;
-        SunriseHorizon.Fill = accent;
-        SunsetHorizon.Fill = accent;
         var sunriseTime = FormatTime(clock.Sunrise, strings);
         var sunsetTime = FormatTime(clock.Sunset, strings);
         SunriseLabelText.Text = strings.Translate("WorldClock.SunriseLabel");
@@ -79,6 +78,7 @@ public sealed partial class WorldClockColumnControl : UserControl
         SunsetTimeText.Text = sunsetTime;
         var sunriseSummary = strings.Format("WorldClock.Sunrise", sunriseTime);
         var sunsetSummary = strings.Format("WorldClock.Sunset", sunsetTime);
+        var daylightSummary = ApplySolarTimeline(clock, strings);
         var weatherSummary = ApplyWeather(clock.Weather, strings);
 
         var accessibleDetails = new[]
@@ -90,7 +90,8 @@ public sealed partial class WorldClockColumnControl : UserControl
             moonPhaseSummary,
             weatherSummary,
             sunriseSummary,
-            sunsetSummary
+            sunsetSummary,
+            daylightSummary
         }.Where(static detail => !string.IsNullOrEmpty(detail));
         var accessibleSummary = string.Join(", ", accessibleDetails);
         AutomationProperties.SetName(ColumnRoot, accessibleSummary);
@@ -125,6 +126,95 @@ public sealed partial class WorldClockColumnControl : UserControl
         return summary;
     }
 
+    private string ApplySolarTimeline(WorldClockItem clock, LocalizationService strings)
+    {
+        if (clock.Sunrise is not { } sunrise || clock.Sunset is not { } sunset)
+        {
+            throw new InvalidDataException("The world-clock solar timeline requires both sunrise and sunset.");
+        }
+
+        var daylight = sunset - sunrise;
+        if (daylight <= TimeSpan.Zero || daylight > TimeSpan.FromHours(24))
+        {
+            throw new InvalidDataException("The world-clock daylight duration must be between zero and 24 hours.");
+        }
+
+        SolarDaylightFill.Data = BuildSolarFillGeometry();
+        SolarDaylightPath.Data = BuildSolarArcGeometry(0d, 1d);
+
+        var rawProgress = (clock.LocalTime - sunrise).TotalSeconds / daylight.TotalSeconds;
+        var isInDaylight = rawProgress is >= 0d and <= 1d;
+        var progress = Math.Clamp(rawProgress, 0d, 1d);
+        SolarElapsedPath.Data = BuildSolarArcGeometry(0d, progress);
+
+        var currentPoint = SolarArcPoint(progress);
+        Canvas.SetLeft(SolarCurrentMarker, currentPoint.X - (SolarCurrentMarker.Width / 2d));
+        Canvas.SetTop(SolarCurrentMarker, currentPoint.Y - (SolarCurrentMarker.Height / 2d));
+        SolarCurrentGuide.X1 = currentPoint.X;
+        SolarCurrentGuide.X2 = currentPoint.X;
+        SolarCurrentGuide.Y1 = currentPoint.Y + (SolarCurrentMarker.Height / 2d);
+        SolarCurrentGuide.Y2 = SolarArcBaselineY;
+        SolarCurrentMarker.Visibility = isInDaylight ? Visibility.Visible : Visibility.Collapsed;
+        SolarCurrentGuide.Visibility = isInDaylight ? Visibility.Visible : Visibility.Collapsed;
+        SolarCurrentTimeText.Text = isInDaylight ? FormatTime(clock.LocalTime, strings) : string.Empty;
+        SolarCurrentTimeText.Visibility = isInDaylight ? Visibility.Visible : Visibility.Collapsed;
+
+        var durationText = $"{(int)daylight.TotalHours} h {daylight.Minutes:00} min";
+        var summary = strings.Format("WorldClock.DaylightDuration", durationText);
+        SolarDaylightDurationText.Text = summary;
+        AutomationProperties.SetName(SolarArcPanel, summary);
+        return summary;
+    }
+
+    private static PathGeometry BuildSolarFillGeometry()
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(SolarArcStartX, SolarArcBaselineY),
+            IsClosed = true,
+            IsFilled = true
+        };
+        var arc = new PolyLineSegment();
+        for (var segment = 1; segment <= SolarArcSegments; segment++)
+        {
+            arc.Points.Add(SolarArcPoint((double)segment / SolarArcSegments));
+        }
+
+        figure.Segments.Add(arc);
+        figure.Segments.Add(new LineSegment { Point = new Point(SolarArcEndX, SolarArcBaselineY) });
+        return new PathGeometry { Figures = { figure } };
+    }
+
+    private static PathGeometry BuildSolarArcGeometry(double from, double to)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = SolarArcPoint(from),
+            IsFilled = false
+        };
+        var segmentCount = Math.Max(1, (int)Math.Ceiling((to - from) * SolarArcSegments));
+        var arc = new PolyLineSegment();
+        for (var segment = 1; segment <= segmentCount; segment++)
+        {
+            arc.Points.Add(SolarArcPoint(from + ((to - from) * segment / segmentCount)));
+        }
+
+        figure.Segments.Add(arc);
+        return new PathGeometry { Figures = { figure } };
+    }
+
+    private static Point SolarArcPoint(double progress)
+    {
+        var remaining = 1d - progress;
+        return new Point(
+            (remaining * remaining * SolarArcStartX)
+                + (2d * remaining * progress * ((SolarArcStartX + SolarArcEndX) / 2d))
+                + (progress * progress * SolarArcEndX),
+            (remaining * remaining * SolarArcBaselineY)
+                + (2d * remaining * progress * SolarArcControlY)
+                + (progress * progress * SolarArcBaselineY));
+    }
+
     private string ApplyWeather(WorldClockWeather? weather, LocalizationService strings)
     {
         if (weather is null || !weather.IsFresh)
@@ -132,7 +222,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             WeatherTemperatureText.Text = "—";
             WeatherConditionText.Text = strings.Translate("WorldClock.WeatherNoData");
             WeatherPanel.Opacity = 0.58d;
-            WeatherAdornmentHost.Visibility = Visibility.Collapsed;
+            ApplyWeatherIcon(null);
             var unavailableSummary = WeatherConditionText.Text;
             AutomationProperties.SetName(WeatherPanel, unavailableSummary);
             return unavailableSummary;
@@ -159,11 +249,23 @@ public sealed partial class WorldClockColumnControl : UserControl
         WeatherConditionText.Text = strings.Translate(conditionKey);
         var summary = $"{accessibleTemperature}, {WeatherConditionText.Text}";
         WeatherPanel.Opacity = 1d;
-        WeatherAdornmentHost.Visibility = weather.ConditionKey is "clear" or "unknown"
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        ApplyWeatherIcon(weather.ConditionKey);
         AutomationProperties.SetName(WeatherPanel, summary);
         return summary;
+    }
+
+    private void ApplyWeatherIcon(string? condition)
+    {
+        WeatherAdornmentHost.Visibility = condition is null ? Visibility.Collapsed : Visibility.Visible;
+        WeatherSunIcon.Visibility = condition is "clear" or "cloudy" ? Visibility.Visible : Visibility.Collapsed;
+        WeatherCloudIcon.Visibility = condition is "cloudy" or "rain" or "snow" or "mixed-precipitation" or "lightning"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        WeatherRainIcon.Visibility = condition is "rain" or "mixed-precipitation" ? Visibility.Visible : Visibility.Collapsed;
+        WeatherSnowIcon.Visibility = condition is "snow" or "mixed-precipitation" ? Visibility.Visible : Visibility.Collapsed;
+        WeatherFogIcon.Visibility = condition is "fog" ? Visibility.Visible : Visibility.Collapsed;
+        WeatherLightningIcon.Visibility = condition is "lightning" ? Visibility.Visible : Visibility.Collapsed;
+        WeatherUnknownIcon.Visibility = condition is "unknown" ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ApplySkyline(string assetPath)

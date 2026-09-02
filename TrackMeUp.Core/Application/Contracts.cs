@@ -604,7 +604,8 @@ public sealed record WorldClockWeatherStatus(
     string State,
     string? ReasonCode,
     int RequestedCities,
-    int AvailableObservations);
+    int AvailableObservations,
+    bool IsProviderConfigured);
 
 /// <summary>Contains one locally calculated city clock and its celestial events.</summary>
 public sealed record WorldClockItem(

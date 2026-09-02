@@ -2181,7 +2181,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(
         string secret,
         CancellationToken cancellationToken) => MutateVisualStateAsync(
-            () => Task.FromResult(_worldClockOperations.SetWeatherKey(secret)),
+            () => _worldClockOperations.SetWeatherKeyAsync(secret, cancellationToken),
             cancellationToken);
 
     /// <inheritdoc />

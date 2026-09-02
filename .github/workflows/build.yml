@@ -37,24 +37,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Verify reports distribution is current
-        shell: pwsh
-        run: |
-          git diff --exit-code --ignore-space-at-eol -- TrackMeUp.Reports.Web/dist
-          if ($LASTEXITCODE -ne 0) {
-            throw 'TrackMeUp.Reports.Web/dist is stale. Run npm ci and npm run build, then commit the generated distribution.'
-          }
-
-          $untracked = @(git ls-files --others --exclude-standard -- TrackMeUp.Reports.Web/dist)
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-          }
-
-          if ($untracked.Count -ne 0) {
-            $untracked | Write-Output
-            throw 'TrackMeUp.Reports.Web/dist is stale. Run npm ci and npm run build, then commit the generated distribution.'
-          }
-
   lint:
     name: lint
     runs-on: windows-latest

@@ -317,15 +317,13 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             defaultLanguage,
             RequireInstallation(sample.InstallationId))), cancellationToken);
 
-        var screenshotItems = _store.GetAllScreenshotGalleryItems();
-        var retainedScreenshotIdentities = screenshotItems
-            .Select(item => ScreenshotIdentity(item.Path))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var item in screenshotItems)
+        var retainedScreenshotIdentities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        _store.VisitAllScreenshotGalleryItems(item =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            var artifactIdentity = ScreenshotIdentity(item.Path);
+            retainedScreenshotIdentities.Add(artifactIdentity);
             documents.Add(BuildScreenshotDocument(item, defaultLanguage));
-        }
+        }, cancellationToken);
 
         _store.VisitScreenshotTextSnapshots((artifactIdentity, captureId, text) =>
         {

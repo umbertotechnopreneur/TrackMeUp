@@ -2,12 +2,10 @@
 
 using System.Globalization;
 using Microsoft.UI;
-using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
@@ -16,7 +14,7 @@ using Windows.Graphics;
 
 namespace TrackMeUp;
 
-/// <summary>Displays a light, always-on-top Acrylic surface for local screenshot search.</summary>
+/// <summary>Displays a light Acrylic surface for local screenshot search.</summary>
 public sealed partial class SearchWindow : Window
 {
     private const int LogicalWindowWidth = 960;
@@ -27,10 +25,9 @@ public sealed partial class SearchWindow : Window
     private const int ResultsChromeLogicalHeight = 162;
     private const int ResultLogicalHeight = 180;
     private const int LogicalScreenMargin = 22;
-    private const double SearchActivityFadeLogicalLength = 48d;
     private const double CursorDisplayWidthRatio = 0.64d;
     private const double MaximumCursorDisplayHeightRatio = 0.78d;
-    private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(700);
+    private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(250);
     private readonly SearchViewModel _viewModel;
     private readonly LocalizationService _strings;
     private readonly CultureInfo _culture;
@@ -42,9 +39,6 @@ public sealed partial class SearchWindow : Window
     private CancellationTokenSource? _debounceCancellation;
     private XamlRoot? _xamlRoot;
     private bool _hasExecutedQuery;
-    private bool _hasBeenActivated;
-    private bool _isActive;
-    private bool _closeOnDeactivationQueued;
     private bool _closing;
     private int _activeSearchOperationCount;
 
@@ -73,7 +67,7 @@ public sealed partial class SearchWindow : Window
         Title = _strings.Translate("Search.Title");
         QueryBox.PlaceholderText = _strings.Translate("Search.Placeholder");
         AutomationProperties.SetName(QueryBox, _strings.Translate("Search.Placeholder"));
-        AutomationProperties.SetName(SearchActivityBar, _strings.Translate("Search.Working"));
+        AutomationProperties.SetName(SearchActivityProgressRing, _strings.Translate("Search.Working"));
         SearchAvailabilityText.Text = string.Format(
             _culture,
             _strings.Translate("Search.Availability"),
@@ -98,7 +92,6 @@ public sealed partial class SearchWindow : Window
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, CompactLogicalHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
-        Activated += SearchWindow_Activated;
         Closed += SearchWindow_Closed;
     }
 
@@ -175,7 +168,7 @@ public sealed partial class SearchWindow : Window
         }
 
         CancelDebounce();
-        QueryBox.ItemsSource = null;
+        _queryCancellation?.Cancel();
         var query = sender.Text.Trim();
         if (query.Length < SearchViewModel.MinimumQueryLength)
         {
@@ -189,11 +182,11 @@ public sealed partial class SearchWindow : Window
         _debounceCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
         var cancellationToken = _debounceCancellation.Token;
         _ = DebounceSearchAsync(query, cancellationToken);
-        _ = UpdateSuggestionsAsync(query, cancellationToken);
     }
 
     private async Task DebounceSearchAsync(string query, CancellationToken cancellationToken)
     {
+        BeginSearchActivity();
         try
         {
             await Task.Delay(SearchDebounce, cancellationToken);
@@ -202,32 +195,6 @@ public sealed partial class SearchWindow : Window
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // A newer keystroke owns the next debounce window.
-        }
-    }
-
-    private async Task UpdateSuggestionsAsync(string query, CancellationToken cancellationToken)
-    {
-        BeginSearchActivity();
-        try
-        {
-            var result = await _viewModel.SuggestAsync(query, cancellationToken);
-            if (!cancellationToken.IsCancellationRequested && result.Succeeded)
-            {
-                QueryBox.ItemsSource = result.Value?
-                    .Select(suggestion => new SearchSuggestionDisplayItem(
-                        suggestion.Text,
-                        suggestion.ConfidenceDisplay,
-                        string.Format(
-                            _culture,
-                            _strings.Translate("Search.Suggestion.Confidence"),
-                            suggestion.ConfidencePercent)))
-                    .ToArray()
-                    ?? Array.Empty<SearchSuggestionDisplayItem>();
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // A newer keystroke owns the next suggestion request.
         }
         finally
         {
@@ -279,7 +246,7 @@ public sealed partial class SearchWindow : Window
         if (wasIdle)
         {
             SearchActivityGlow.Visibility = Visibility.Visible;
-            StartSearchActivityGlowAnimation();
+            SearchActivityStatus.Visibility = Visibility.Visible;
         }
     }
 
@@ -293,39 +260,9 @@ public sealed partial class SearchWindow : Window
         _activeSearchOperationCount--;
         if (_activeSearchOperationCount == 0)
         {
-            StopSearchActivityGlowAnimation();
             SearchActivityGlow.Visibility = Visibility.Collapsed;
+            SearchActivityStatus.Visibility = Visibility.Collapsed;
         }
-    }
-
-    private void SearchActivityGlow_SizeChanged(object sender, SizeChangedEventArgs args)
-    {
-        if (args.NewSize.Width <= 0)
-        {
-            return;
-        }
-
-        var fadeOffset = Math.Min(0.45d, SearchActivityFadeLogicalLength / args.NewSize.Width);
-        SearchActivityLeftFadeStop.Offset = fadeOffset;
-        SearchActivityRightFadeStop.Offset = 1d - fadeOffset;
-    }
-
-    private void StartSearchActivityGlowAnimation()
-    {
-        var visual = ElementCompositionPreview.GetElementVisual(SearchActivitySpectrum);
-        var animation = visual.Compositor.CreateScalarKeyFrameAnimation();
-        animation.InsertKeyFrame(0f, 0.58f);
-        animation.InsertKeyFrame(0.5f, 1f);
-        animation.InsertKeyFrame(1f, 0.58f);
-        animation.Duration = TimeSpan.FromMilliseconds(1500);
-        animation.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.StartAnimation("Opacity", animation);
-    }
-
-    private void StopSearchActivityGlowAnimation()
-    {
-        ElementCompositionPreview.GetElementVisual(SearchActivitySpectrum).StopAnimation("Opacity");
-        SearchActivitySpectrum.Opacity = 0.72d;
     }
 
     private void UpdateResultState(bool hasExecutedQuery)
@@ -419,7 +356,6 @@ public sealed partial class SearchWindow : Window
     {
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsAlwaysOnTop = true;
             presenter.IsResizable = false;
             presenter.IsMinimizable = false;
             presenter.IsMaximizable = false;
@@ -434,43 +370,11 @@ public sealed partial class SearchWindow : Window
         }
     }
 
-    private void SearchWindow_Activated(object sender, WindowActivatedEventArgs args)
-    {
-        _isActive = args.WindowActivationState != WindowActivationState.Deactivated;
-        if (_isActive)
-        {
-            _hasBeenActivated = true;
-            return;
-        }
-
-        if (!_hasBeenActivated || _closing || _closeOnDeactivationQueued)
-        {
-            return;
-        }
-
-        _closeOnDeactivationQueued = true;
-        void CloseIfStillInactive()
-        {
-            _closeOnDeactivationQueued = false;
-            if (!_isActive && !_closing)
-            {
-                _closing = true;
-                Close();
-            }
-        }
-
-        if (!DispatcherQueue.TryEnqueue(CloseIfStillInactive))
-        {
-            CloseIfStillInactive();
-        }
-    }
-
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
-        StopSearchActivityGlowAnimation();
         SearchActivityGlow.Visibility = Visibility.Collapsed;
-        Activated -= SearchWindow_Activated;
+        SearchActivityStatus.Visibility = Visibility.Collapsed;
         _lifetimeCancellation.Cancel();
         CancelDebounce();
         _queryCancellation?.Cancel();
@@ -485,9 +389,3 @@ public sealed partial class SearchWindow : Window
         }
     }
 }
-
-/// <summary>Contains localized values rendered by one AutoSuggestBox popup row.</summary>
-internal sealed record SearchSuggestionDisplayItem(
-    string Text,
-    string ConfidenceDisplay,
-    string ConfidenceLabel);

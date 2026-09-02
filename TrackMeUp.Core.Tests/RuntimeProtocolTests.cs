@@ -385,11 +385,12 @@ public sealed class RuntimeProtocolTests
         var installationId = $"world-clock-weather-key-test-{Guid.NewGuid():N}";
         await using var host = new RuntimeHost(application, installationId);
         Assert.True(host.TryStart());
-        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+        await using var client = new RuntimeClient(installationId, TimeSpan.Zero);
         const string secret = "0123456789abcdef0123456789abcdef";
 
         var result = await client.SetWorldClockWeatherKeyAsync(secret, CancellationToken.None);
 
+        Assert.Equal(TimeSpan.FromSeconds(15), RuntimeClient.WorldClockWeatherKeyTimeout);
         Assert.True(result.Succeeded);
         Assert.Equal("TRACKMEUP_OPENWEATHER_API_KEY", result.Value);
         Assert.Equal(secret, proxy.Secret);
@@ -497,11 +498,11 @@ public sealed class RuntimeProtocolTests
         Assert.Equal("Notification.AiAnalysisFailed.Message", notification.MessageKey);
     }
 
-    /// <summary>Verifies that screenshot-analysis deletion round-trips through protocol version 3.</summary>
+    /// <summary>Verifies that screenshot-analysis deletion round-trips through protocol version 4.</summary>
     [Fact]
-    public async Task ScreenshotAnalysisDeletionV1_RoundTripsThroughProtocolVersion3RuntimeFacade()
+    public async Task ScreenshotAnalysisDeletionV1_RoundTripsThroughProtocolVersion4RuntimeFacade()
     {
-        Assert.Equal(3, RuntimeProtocol.ProtocolVersion);
+        Assert.Equal(4, RuntimeProtocol.ProtocolVersion);
         var application = DispatchProxy.Create<ITrackMeUpApplication, ScreenshotAnalysisDeletionRuntimeProxy>();
         var proxy = (ScreenshotAnalysisDeletionRuntimeProxy)(object)application;
         var installationId = $"screenshot-analysis-deletion-test-{Guid.NewGuid():N}";
@@ -877,7 +878,8 @@ public sealed class RuntimeProtocolTests
                     "unavailable",
                     "request-failed",
                     1,
-                    0));
+                    0,
+                    IsProviderConfigured: true));
         }
     }
 

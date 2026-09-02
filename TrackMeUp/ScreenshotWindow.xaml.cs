@@ -52,7 +52,6 @@ public sealed partial class ScreenshotWindow : Window
     private bool _detailsPaneOpenPreference;
     private bool _isSavingDetailsPanePreference;
     private bool _deleteOperationInProgress;
-    private bool _closeInProgress;
     private bool _allowClose;
     private uint? _detailsResizePointerId;
     private double _detailsResizeStartPointerX;
@@ -994,45 +993,17 @@ public sealed partial class ScreenshotWindow : Window
 
     }
 
-    private async void ScreenshotWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    private void ScreenshotWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         if (_allowClose)
         {
             return;
         }
 
-        args.Cancel = true;
-        if (_closeInProgress)
-        {
-            return;
-        }
-
-        _closeInProgress = true;
-        var cancellationToken = _lifetimeCancellation.Token;
-        try
-        {
-            await _placement.SaveAsync(cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            _allowClose = true;
-            Close();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // Application shutdown owns the final close and intentionally skips optional placement persistence.
-        }
-        catch (Exception exception)
-        {
-            _closeInProgress = false;
-            _allowClose = true;
-            _dialogs.ShowErrorBanner(
-                ScreenshotActionBanner,
-                T("Screenshots.Error.Unavailable"),
-                $"{T("Screenshots.Action.Failed")} ({exception.GetType().Name})");
-        }
+        // Let the native close continue immediately; placement persistence starts while the handle is still valid
+        // and failure is traced by the close-safe helper instead of delaying or cancelling the user's X action.
+        _allowClose = true;
+        _ = _placement.TrySaveForCloseAsync(CancellationToken.None);
     }
 
     private void ScreenshotWindow_Closed(object sender, WindowEventArgs args)

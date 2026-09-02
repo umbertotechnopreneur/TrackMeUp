@@ -196,16 +196,19 @@
                         Click="WebsiteButton_Click"
                         Content="umbertogiacobbi.biz" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="21" Foreground="#FFFFD12E" Glyph="&#xE735;" />
-                    <TextBlock
-                        Tag="About.FavoriteMessage"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Like the app? Star it on GitHub,&#xA;or leave a review on the Microsoft Store!"
-                        TextWrapping="WrapWholeWords" />
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="8" VerticalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="10">
+                        <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="21" Foreground="#FFFFD12E" Glyph="&#xE735;" />
+                        <TextBlock
+                            Tag="About.FavoriteMessage"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Like the app? Star it on GitHub,&#xA;or leave a review on the Microsoft Store!"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
                     <Button
                         x:Name="RepositoryFooterButton"
                         Padding="12,7"
+                        HorizontalAlignment="Center"
                         Click="RepositoryButton_Click"
                         Content="GitHub repository"
                         Tag="About.Repository">

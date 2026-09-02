@@ -208,22 +208,6 @@ public sealed class LocalSearchService : ILocalSearchService
             throw new ArgumentOutOfRangeException(nameof(sourceRevision));
         }
 
-        var prepared = new List<Lucene.Net.Documents.Document>();
-        var identifiers = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var document in documents)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            SearchValidation.ValidateDocument(document, _options);
-            if (!identifiers.Add(document.Id))
-            {
-                throw new ArgumentException(
-                    $"The rebuild source contains duplicate document id '{document.Id}'.",
-                    nameof(documents));
-            }
-
-            prepared.Add(SearchDocumentMapper.ToLucene(document));
-        }
-
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -239,9 +223,22 @@ public sealed class LocalSearchService : ILocalSearchService
             CommitWrite(() =>
             {
                 _writer.DeleteAll();
-                foreach (var document in prepared)
+                var identifiers = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var document in documents)
                 {
-                    _writer.AddDocument(document);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    SearchValidation.ValidateDocument(document, _options);
+                    if (!identifiers.Add(document.Id))
+                    {
+                        throw new ArgumentException(
+                            $"The rebuild source contains duplicate document id '{document.Id}'.",
+                            nameof(documents));
+                    }
+
+                    // Add each mapped document directly to the writer. Holding a second list of
+                    // every Lucene document was the largest avoidable allocation during a full
+                    // OCR index rebuild.
+                    _writer.AddDocument(SearchDocumentMapper.ToLucene(document));
                 }
             }, sourceRevision);
             InvalidateSuggestions();
@@ -469,14 +466,22 @@ public sealed class LocalSearchService : ILocalSearchService
 
         var searcher = new IndexSearcher(reader);
         var topDocuments = searcher.Search(new MatchAllDocsQuery(), reader.NumDocs);
-        var documents = new List<SearchDocument>(topDocuments.ScoreDocs.Length);
-        foreach (var scoreDocument in topDocuments.ScoreDocs)
+        RebuildSuggestions(
+            EnumerateIndexedDocuments(searcher, topDocuments.ScoreDocs, cancellationToken),
+            sourceRevision,
+            cancellationToken);
+    }
+
+    private static IEnumerable<SearchDocument> EnumerateIndexedDocuments(
+        IndexSearcher searcher,
+        IReadOnlyList<ScoreDoc> scoreDocuments,
+        CancellationToken cancellationToken)
+    {
+        foreach (var scoreDocument in scoreDocuments)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            documents.Add(SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc)));
+            yield return SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc));
         }
-
-        RebuildSuggestions(documents, sourceRevision, cancellationToken);
     }
 
     private static IReadOnlyList<SuggestionEntry> BuildSuggestionEntries(

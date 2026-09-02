@@ -124,7 +124,11 @@ public sealed record AppSettings(
     bool ScreenshotDetailsPaneOpen = false,
     IReadOnlyList<string>? WorldClockCityIds = null,
     bool ShowAiMonthlySpend = false,
-    bool WorldClockWeatherEnabled = true);
+    bool WorldClockWeatherEnabled = true,
+    int MainWindowOpacityPercent = 100,
+    bool MainWindowShowInTaskbar = true,
+    int WorldClockWindowOpacityPercent = 100,
+    bool WorldClockWindowShowInTaskbar = true);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

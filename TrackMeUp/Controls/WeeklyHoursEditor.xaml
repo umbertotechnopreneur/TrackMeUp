@@ -141,6 +141,9 @@
                         <ColumnDefinition Width="96" />
                     </Grid.ColumnDefinitions>
                 </Grid>
+                <Rectangle
+                    x:Name="GridInteractionSurface"
+                    Fill="Transparent" />
             </Grid>
         </ScrollViewer>
 

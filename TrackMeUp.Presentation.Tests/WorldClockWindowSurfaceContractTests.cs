@@ -115,7 +115,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
         Assert.Equal("ScrollViewer", scroller.Name.LocalName);
         Assert.Equal("Enabled", scroller.Attribute("HorizontalScrollMode")?.Value);
-        Assert.Equal("Auto", scroller.Attribute("HorizontalScrollBarVisibility")?.Value);
+        Assert.Equal("Hidden", scroller.Attribute("HorizontalScrollBarVisibility")?.Value);
         Assert.Equal("Disabled", scroller.Attribute("VerticalScrollMode")?.Value);
         Assert.Equal("ClockColumnsScroller_SizeChanged", scroller.Attribute("SizeChanged")?.Value);
         Assert.Equal("DropDownButton", referenceInstant.Name.LocalName);
@@ -128,7 +128,14 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceCityComboBox") && element.Name.LocalName == "ComboBox");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceDatePicker") && element.Name.LocalName == "CalendarDatePicker");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceTimePicker") && element.Name.LocalName == "TimePicker");
+        Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceInstantFlyoutTitle") && element.Attribute("Tag")?.Value == "WorldClock.ReferenceInstant.Title");
+        Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceTimeZoneText"));
         Assert.Contains(window.Descendants(), element => HasName(element, "NowButton"));
+        Assert.Contains(window.Descendants(), element => HasName(element, "ApplyReferenceButton")
+            && element.Attribute("Tag")?.Value == "WorldClock.Apply"
+            && element.Attribute("Click")?.Value == "ApplyReferenceButton_Click");
+        Assert.Contains("ReferenceTimeZoneText.Text", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyReferenceButton_Click", source, StringComparison.Ordinal);
         Assert.Equal("WorldClock.Options.Open", optionsButton.Attribute("Tag")?.Value);
         Assert.Equal("{StaticResource TrackMeUpTitleBarCommandButtonStyle}", optionsButton.Attribute("Style")?.Value);
         Assert.Equal("OptionsButton_Click", optionsButton.Attribute("Click")?.Value);
@@ -193,14 +200,18 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Equal("Custom", AttributeValue(columns, "AutomationProperties.LandmarkType"));
         Assert.Equal("{ThemeResource WorldClockSkylineOpacity}", skyline.Attribute("Opacity")?.Value);
         Assert.Equal("Uniform", skyline.Attribute("Stretch")?.Value);
-        Assert.Contains(column.Descendants(), element => element.Name.LocalName == "CelestialPhaseControl");
+        Assert.Contains(column.Descendants(), element => HasName(element, "SolarArcPanel"));
+        Assert.Contains(column.Descendants(), element => HasName(element, "SolarDaylightPath"));
+        Assert.Contains(column.Descendants(), element => HasName(element, "SolarElapsedPath"));
+        Assert.Contains(column.Descendants(), element => HasName(element, "SolarCurrentTimeText"));
+        Assert.Contains(column.Descendants(), element => HasName(element, "SolarDaylightDurationText"));
         Assert.Contains(column.Descendants(), element => HasName(element, "WeatherAdornmentHost"));
         Assert.Contains(column.Descendants(), element => HasName(element, "SunriseLabelText"));
         Assert.Contains(column.Descendants(), element => HasName(element, "SunsetLabelText"));
         Assert.True(IndexOfName(sceneChildren, "BackdropLayerHost") < IndexOfName(sceneChildren, "SkylineImage"));
-        Assert.True(IndexOfName(sceneChildren, "SkylineImage") < IndexOfName(sceneChildren, "CelestialPhase"));
-        Assert.True(IndexOfName(sceneChildren, "CelestialPhase") < IndexOfName(sceneChildren, "ForegroundLayerHost"));
-        Assert.True(IndexOfName(sceneChildren, "ForegroundLayerHost") < IndexOfName(sceneChildren, "WeatherPanel"));
+        Assert.True(IndexOfName(sceneChildren, "SkylineImage") < IndexOfName(sceneChildren, "ForegroundLayerHost"));
+        Assert.True(IndexOfName(sceneChildren, "ForegroundLayerHost") < IndexOfName(sceneChildren, "SolarArcPanel"));
+        Assert.True(IndexOfName(sceneChildren, "SolarArcPanel") < IndexOfName(sceneChildren, "WeatherPanel"));
         Assert.DoesNotContain(column.Descendants(), element => HasName(element, "ReferenceButton") || HasName(element, "RemoveButton"));
         Assert.Contains("new GridLength(1, GridUnitType.Star)", source, StringComparison.Ordinal);
         Assert.Contains("_refreshTimer.IsRepeating = false;", source, StringComparison.Ordinal);
@@ -220,6 +231,108 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("!normalized.EndsWith(\".png\", StringComparison.OrdinalIgnoreCase)", columnSource, StringComparison.Ordinal);
         Assert.Contains("!double.IsFinite(clock.MoonPhaseAngleDegrees)", columnSource, StringComparison.Ordinal);
         Assert.Contains("strings.Translate(\"WorldClock.LocalTime\")", columnSource, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies mutually exclusive centered loading, empty, and populated clock presentation states.</summary>
+    [Fact]
+    public void LoadingAndEmptyStates_AreCenteredLocalizedAndReuseTheExistingAddFlow()
+    {
+        var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var loading = window.Descendants().Single(element => HasName(element, "LoadingState"));
+        var loadingText = window.Descendants().Single(element => HasName(element, "LoadingStatusText"));
+        var empty = window.Descendants().Single(element => HasName(element, "EmptyClocksState"));
+        var emptyAdd = window.Descendants().Single(element => HasName(element, "EmptyStateAddButton"));
+        var scroller = window.Descendants().Single(element => HasName(element, "ClockColumnsScroller"));
+        var catalogs = Directory.GetFiles(
+            RepositoryFile("TrackMeUp.Core", "Localization"),
+            "*.json",
+            SearchOption.TopDirectoryOnly);
+
+        Assert.Equal("Center", loading.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Center", loading.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("Polite", AttributeValue(loading, "AutomationProperties.LiveSetting"));
+        Assert.Equal("Collapsed", loading.Attribute("Visibility")?.Value);
+        Assert.Equal("WorldClock.Loading", loadingText.Attribute("Tag")?.Value);
+        Assert.Equal("Center", empty.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Center", empty.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("Collapsed", empty.Attribute("Visibility")?.Value);
+        Assert.Equal("WorldClock.Add", emptyAdd.Attribute("Tag")?.Value);
+        Assert.Equal("EmptyStateAddButton_Click", emptyAdd.Attribute("Click")?.Value);
+        Assert.Contains(emptyAdd.Descendants(), element =>
+            element.Name.LocalName == "SymbolIcon" && element.Attribute("Symbol")?.Value == "Add");
+        Assert.Equal("Collapsed", scroller.Attribute("Visibility")?.Value);
+        Assert.Contains("private async void EmptyStateAddButton_Click", source, StringComparison.Ordinal);
+        Assert.Contains("EmptyStateAddButton_Click(object sender, RoutedEventArgs e) => await AddCityAsync();", source, StringComparison.Ordinal);
+        Assert.Contains("LoadingState.Visibility = show ? Visibility.Visible : Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("EmptyClocksState.Visibility = !show && hasEmptySnapshot ? Visibility.Visible : Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("ClockColumnsScroller.Visibility = !show && hasClocks ? Visibility.Visible : Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("ShowLoading(_snapshot is null || _snapshot.Clocks.Count == 0);", source, StringComparison.Ordinal);
+        Assert.Contains("if (snapshot.Clocks.Count == 0)", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(ReferenceInstantButton, referenceInstantLabel);", source, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(ReferenceInstantButton, referenceInstantLabel);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("must contain at least one city", source, StringComparison.Ordinal);
+
+        Assert.All(catalogs, catalog =>
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(catalog));
+            Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("WorldClock.Loading").GetString()));
+            Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("WorldClock.Empty.Title").GetString()));
+            Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("WorldClock.Empty.Description").GetString()));
+        });
+    }
+
+    /// <summary>Verifies safe key masking and explicit inline feedback for every provider-validation outcome.</summary>
+    [Fact]
+    public void WeatherKeyConfiguration_UsesSafeMaskAndLocalizedValidationFeedback()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml.cs"));
+        var contracts = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "Contracts.cs"));
+        var keyBox = options.Descendants().Single(element => HasName(element, "WeatherApiKeyBox"));
+        var actionStatus = options.Descendants().Single(element => HasName(element, "WeatherActionStatusText"));
+        var catalogs = Directory.GetFiles(
+            RepositoryFile("TrackMeUp.Core", "Localization"),
+            "*.json",
+            SearchOption.TopDirectoryOnly);
+        string[] feedbackKeys =
+        [
+            "WorldClock.Options.Weather.ApiKey.ConfiguredHelp",
+            "WorldClock.Options.Weather.KeyValidating",
+            "WorldClock.Options.Weather.KeySaved",
+            "WorldClock.Options.Weather.KeySavedRateLimited",
+            "WorldClock.Options.Weather.KeyInvalid",
+            "WorldClock.Options.Weather.KeyRejected",
+            "WorldClock.Options.Weather.KeyValidationUnavailable",
+            "WorldClock.Options.Weather.KeySaveFailed"
+        ];
+
+        Assert.Equal("PasswordBox", keyBox.Name.LocalName);
+        Assert.Equal("Peek", keyBox.Attribute("PasswordRevealMode")?.Value);
+        Assert.Equal(string.Empty, keyBox.Attribute("PlaceholderText")?.Value);
+        Assert.Equal("Polite", AttributeValue(actionStatus, "AutomationProperties.LiveSetting"));
+        Assert.Contains("private const string ConfiguredWeatherKeyMask = \"****************\";", source, StringComparison.Ordinal);
+        Assert.Contains("SetWeatherKeyPresence(status?.IsProviderConfigured == true);", source, StringComparison.Ordinal);
+        Assert.Contains("WeatherApiKeyBox.PlaceholderText = configured", source, StringComparison.Ordinal);
+        Assert.Contains("WeatherApiKeyBox.Password = string.Empty;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("WeatherApiKeyBox.Password = ConfiguredWeatherKeyMask", source, StringComparison.Ordinal);
+        Assert.Contains("WorldClock.Options.Weather.KeyValidating", source, StringComparison.Ordinal);
+        Assert.Contains("world_clocks.weather.key.rejected", source, StringComparison.Ordinal);
+        Assert.Contains("world_clocks.weather.key.validation_unavailable", source, StringComparison.Ordinal);
+        Assert.Contains("world_clocks.weather.key.stored_rate_limited", source, StringComparison.Ordinal);
+        Assert.Contains("SetWeatherKeyPresence(configured: true);", source, StringComparison.Ordinal);
+        Assert.Contains("SetSaveWeatherKeyAction(\"WorldClock.Options.Weather.KeyAction.Change\");", source, StringComparison.Ordinal);
+        Assert.Contains("bool IsProviderConfigured", contracts, StringComparison.Ordinal);
+
+        Assert.All(catalogs, catalog =>
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(catalog));
+            Assert.All(feedbackKeys, key =>
+            {
+                Assert.True(document.RootElement.TryGetProperty(key, out var value), $"{catalog}: {key}");
+                Assert.False(string.IsNullOrWhiteSpace(value.GetString()), $"{catalog}: {key}");
+            });
+        });
     }
 
     [Fact]
@@ -243,7 +356,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
     }
 
-    /// <summary>Verifies that fresh current weather is presented only through localized text.</summary>
+    /// <summary>Verifies that fresh current weather is presented with localized text and a condition icon.</summary>
     [Fact]
     public void FreshCurrentWeather_IsRenderedAsLocalizedTextOnly()
     {
@@ -268,6 +381,7 @@ public sealed class WorldClockWindowSurfaceContractTests
             .Select(condition => $"WorldClock.WeatherCondition.{condition}")
             .Prepend("WorldClock.WeatherTemperature")
             .Prepend("WorldClock.WeatherNoData")
+            .Prepend("WorldClock.DaylightDuration")
             .Prepend("WorldClock.SunsetLabel")
             .Prepend("WorldClock.SunriseLabel")
             .ToArray();
@@ -275,16 +389,28 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Equal("StackPanel", weatherPanel.Name.LocalName);
         Assert.Same(scene, weatherPanel.Parent);
         Assert.Equal("Top", weatherPanel.Attribute("VerticalAlignment")?.Value);
-        Assert.Equal("0,170,0,0", weatherPanel.Attribute("Margin")?.Value);
+        Assert.Equal("0,254,0,0", weatherPanel.Attribute("Margin")?.Value);
         Assert.Null(weatherPanel.Attribute("Visibility"));
         Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherTemperatureText"));
         Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherConditionText"));
-        Assert.DoesNotContain(weatherPanel.Descendants(), element => element.Name.LocalName is "Button" or "FontIcon" or "SymbolIcon");
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherAdornmentHost"));
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherSunIcon") && element.Name.LocalName == "FontIcon");
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherCloudIcon"));
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherRainIcon"));
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherSnowIcon"));
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherFogIcon"));
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherLightningIcon"));
+        Assert.Contains(weatherPanel.Descendants(), element => HasName(element, "WeatherUnknownIcon"));
+        Assert.DoesNotContain(weatherPanel.Descendants(), element => element.Name.LocalName == "Button");
         Assert.Contains("weather is null || !weather.IsFresh", source, StringComparison.Ordinal);
         Assert.Contains("WeatherTemperatureText.Text = \"—\";", source, StringComparison.Ordinal);
         Assert.Contains("strings.Translate(\"WorldClock.WeatherNoData\")", source, StringComparison.Ordinal);
         Assert.DoesNotContain("WeatherPanel.Visibility", source, StringComparison.Ordinal);
         Assert.Contains("weather.TemperatureCelsius", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyWeatherIcon(weather.ConditionKey);", source, StringComparison.Ordinal);
+        Assert.Contains("WeatherSunIcon.Visibility", source, StringComparison.Ordinal);
+        Assert.Contains("WeatherRainIcon.Visibility", source, StringComparison.Ordinal);
+        Assert.Contains("WeatherSnowIcon.Visibility", source, StringComparison.Ordinal);
         Assert.All(conditionKeys, condition =>
             Assert.Contains($"\"{condition}\" => \"WorldClock.WeatherCondition.{condition}\"", source, StringComparison.Ordinal));
         Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
@@ -519,23 +645,19 @@ public sealed class WorldClockWindowSurfaceContractTests
     }
 
     [Fact]
-    public void CelestialPhaseControl_UsesPackagedSunAndMoonAssets()
+    public void SolarTimeline_UsesLocalizedDurationAndUnlabelledCurrentMarker()
     {
-        var celestial = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "CelestialPhaseControl.xaml"));
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "CelestialPhaseControl.xaml.cs"));
-        var project = XDocument.Load(RepositoryFile("TrackMeUp", "TrackMeUp.csproj"));
-        var assetSources = celestial.Descendants()
-            .Where(element => element.Name.LocalName is "Image" or "ImageBrush")
-            .Select(element => AttributeValue(element, element.Name.LocalName == "Image" ? "Source" : "ImageSource"))
-            .ToArray();
-        var celestialContent = project.Descendants().Single(element =>
-            element.Name.LocalName == "Content" && element.Attribute("Include")?.Value == @"Assets\Celestial\*.png");
+        var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
+        var currentTime = column.Descendants().Single(element => HasName(element, "SolarCurrentTimeText"));
+        var duration = column.Descendants().Single(element => HasName(element, "SolarDaylightDurationText"));
 
-        Assert.Equal(
-            ["ms-appx:///Assets/Celestial/sun-premium.png", "ms-appx:///Assets/Celestial/moon-premium.png"],
-            assetSources);
-        Assert.Equal("PreserveNewest", celestialContent.Elements().Single(element => element.Name.LocalName == "CopyToOutputDirectory").Value);
-        Assert.Contains("MoonShadow.Data = BuildMoonShadow", source, StringComparison.Ordinal);
+        Assert.Equal("Collapsed", currentTime.Attribute("Visibility")?.Value);
+        Assert.Equal("Center", currentTime.Attribute("TextAlignment")?.Value);
+        Assert.Equal("Center", duration.Attribute("TextAlignment")?.Value);
+        Assert.Contains("strings.Format(\"WorldClock.DaylightDuration\", durationText)", source, StringComparison.Ordinal);
+        Assert.Contains("SolarCurrentTimeText.Text = isInDaylight ? FormatTime(clock.LocalTime, strings) : string.Empty;", source, StringComparison.Ordinal);
+        Assert.Contains("BuildSolarArcGeometry", source, StringComparison.Ordinal);
     }
 
     private static string RepositoryFile(params string[] pathSegments)

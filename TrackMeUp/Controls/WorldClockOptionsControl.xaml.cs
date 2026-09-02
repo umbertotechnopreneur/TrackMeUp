@@ -3,6 +3,8 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 
@@ -11,14 +13,19 @@ namespace TrackMeUp.Controls;
 /// <summary>Collects world-clock presentation options and forwards mutations to the shared application facade.</summary>
 public sealed partial class WorldClockOptionsControl : UserControl
 {
+    private const string ConfiguredWeatherKeyMask = "****************";
     private ITrackMeUpApplication? _application;
     private LocalizationService _strings = new("system");
     private CancellationToken _lifetimeToken;
     private bool _updatingControls;
     private bool _busy;
     private bool _canAddClock;
+    private bool _weatherKeyConfigured;
     private bool _weatherKeyRefreshPending;
     private string? _weatherActionStatusKey;
+    private int _worldClockOpacityPercent = 100;
+    private int _pendingWorldClockOpacityPercent = 100;
+    private bool _worldClockShowInTaskbar = true;
 
     /// <summary>Creates the passive world-clock options surface.</summary>
     public WorldClockOptionsControl() => InitializeComponent();
@@ -78,6 +85,11 @@ public sealed partial class WorldClockOptionsControl : UserControl
         try
         {
             WeatherEnabledSwitch.IsOn = settings.WorldClockWeatherEnabled;
+            _worldClockOpacityPercent = settings.WorldClockWindowOpacityPercent;
+            _pendingWorldClockOpacityPercent = _worldClockOpacityPercent;
+            _worldClockShowInTaskbar = settings.WorldClockWindowShowInTaskbar;
+            WorldClockOpacitySlider.Value = _worldClockOpacityPercent;
+            WorldClockShowInTaskbarSwitch.IsOn = _worldClockShowInTaskbar;
             AlwaysOnTopSwitch.IsOn = alwaysOnTop;
         }
         finally
@@ -113,7 +125,11 @@ public sealed partial class WorldClockOptionsControl : UserControl
         if (!succeeded)
         {
             ShowWeatherActionStatus("WorldClock.Options.Weather.KeyRefreshFailed");
+            return;
         }
+
+        SetWeatherKeyPresence(configured: true);
+        SetSaveWeatherKeyAction("WorldClock.Options.Weather.KeyAction.Change");
     }
 
     private async void WeatherEnabledSwitch_Toggled(object sender, RoutedEventArgs e)
@@ -175,26 +191,38 @@ public sealed partial class WorldClockOptionsControl : UserControl
         }
 
         SetBusy(true);
+        ShowWeatherActionStatus("WorldClock.Options.Weather.KeyValidating");
         try
         {
             var result = await _application.SetWorldClockWeatherKeyAsync(secret, _lifetimeToken);
             if (result.Succeeded
-                && string.Equals(result.Code, "world_clocks.weather.key.stored", StringComparison.Ordinal))
+                && result.Code is "world_clocks.weather.key.stored" or "world_clocks.weather.key.stored_rate_limited")
             {
-                ShowWeatherActionStatus("WorldClock.Options.Weather.KeySaved");
+                SetWeatherKeyPresence(configured: true);
+                ShowWeatherActionStatus(result.Code == "world_clocks.weather.key.stored_rate_limited"
+                    ? "WorldClock.Options.Weather.KeySavedRateLimited"
+                    : "WorldClock.Options.Weather.KeySaved");
                 SetSaveWeatherKeyAction("WorldClock.Options.Weather.KeyAction.Change");
                 _weatherKeyRefreshPending = true;
                 RefreshRequested?.Invoke(this, EventArgs.Empty);
                 return;
             }
 
-            if (string.Equals(result.Code, "world_clocks.weather.key.invalid", StringComparison.Ordinal))
+            if (result.Code == "world_clocks.weather.key.invalid")
             {
                 ShowWeatherActionStatus("WorldClock.Options.Weather.KeyInvalid");
             }
+            else if (result.Code == "world_clocks.weather.key.rejected")
+            {
+                ShowWeatherActionStatus("WorldClock.Options.Weather.KeyRejected");
+            }
+            else if (result.Code == "world_clocks.weather.key.validation_unavailable")
+            {
+                ShowWeatherActionStatus("WorldClock.Options.Weather.KeyValidationUnavailable");
+            }
             else
             {
-                WarningRequested?.Invoke("WorldClock.Options.Weather.KeySaveFailed");
+                ShowWeatherActionStatus("WorldClock.Options.Weather.KeySaveFailed");
             }
         }
         catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
@@ -203,7 +231,7 @@ public sealed partial class WorldClockOptionsControl : UserControl
         }
         catch (Exception)
         {
-            WarningRequested?.Invoke("WorldClock.Options.Weather.KeySaveFailed");
+            ShowWeatherActionStatus("WorldClock.Options.Weather.KeySaveFailed");
         }
         finally
         {
@@ -220,6 +248,83 @@ public sealed partial class WorldClockOptionsControl : UserControl
         {
             AlwaysOnTopChanged?.Invoke(AlwaysOnTopSwitch.IsOn);
         }
+    }
+
+    private async void WorldClockOpacitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_updatingControls)
+        {
+            return;
+        }
+
+        _pendingWorldClockOpacityPercent = (int)Math.Round(e.NewValue);
+    }
+
+    private async void WorldClockOpacitySlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e) =>
+        await SavePendingWindowOpacityAsync();
+
+    private async void WorldClockOpacitySlider_KeyUp(object sender, KeyRoutedEventArgs e) =>
+        await SavePendingWindowOpacityAsync();
+
+    private async Task SavePendingWindowOpacityAsync()
+    {
+        if (_application is not null && !_busy && _pendingWorldClockOpacityPercent != _worldClockOpacityPercent)
+        {
+            await SaveWindowPresentationAsync(_pendingWorldClockOpacityPercent, _worldClockShowInTaskbar);
+        }
+    }
+
+    private async void WorldClockShowInTaskbarSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_updatingControls && _application is not null && !_busy)
+        {
+            await SaveWindowPresentationAsync(_worldClockOpacityPercent, WorldClockShowInTaskbarSwitch.IsOn);
+        }
+    }
+
+    private async Task SaveWindowPresentationAsync(int opacityPercent, bool showInTaskbar)
+    {
+        SetBusy(true);
+        try
+        {
+            var result = await _application!.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?>
+                {
+                    ["window.world_clocks.opacity_percent"] = opacityPercent.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["window.world_clocks.show_in_taskbar"] = showInTaskbar ? "true" : "false"
+                }),
+                _lifetimeToken);
+            if (result.Succeeded && result.Value is not null)
+            {
+                SettingsSaved?.Invoke(result.Value);
+                return;
+            }
+
+            RestoreWindowPresentation();
+            WarningRequested?.Invoke("Options.SaveError");
+        }
+        catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
+        {
+            // Closing the detached surface cancels the optional settings mutation.
+        }
+        catch (Exception)
+        {
+            RestoreWindowPresentation();
+            WarningRequested?.Invoke("Options.SaveError");
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void RestoreWindowPresentation()
+    {
+        _updatingControls = true;
+        _pendingWorldClockOpacityPercent = _worldClockOpacityPercent;
+        WorldClockOpacitySlider.Value = _worldClockOpacityPercent;
+        WorldClockShowInTaskbarSwitch.IsOn = _worldClockShowInTaskbar;
+        _updatingControls = false;
     }
 
     private void AddClockButton_Click(object sender, RoutedEventArgs e) => AddRequested?.Invoke(this, EventArgs.Empty);
@@ -315,7 +420,7 @@ public sealed partial class WorldClockOptionsControl : UserControl
                     BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
                     Content = new SymbolIcon(Symbol.Delete),
                     Tag = clock,
-                    IsEnabled = snapshot.Clocks.Count > 1
+                    IsEnabled = true
                 };
                 Grid.SetColumn(removeButton, 1);
                 var removeName = _strings.Format("WorldClock.Remove", clock.CityName);
@@ -346,6 +451,10 @@ public sealed partial class WorldClockOptionsControl : UserControl
                     ("WorldClock.Options.Weather.ApiKeyStatus.Missing", "WeatherStatusNeedsAttention"),
                 ("configuration-required", "invalid-api-key") =>
                     ("WorldClock.Options.Weather.ApiKeyStatus.Invalid", "WeatherStatusInvalid"),
+                ("not-requested", "no-clocks") when status.IsProviderConfigured =>
+                    ("WorldClock.Options.Weather.ApiKeyStatus.Ready", "WeatherStatusReady"),
+                ("not-requested", "no-clocks") =>
+                    ("WorldClock.Options.Weather.ApiKeyStatus.Missing", "WeatherStatusNeedsAttention"),
                 ("disabled", "user-disabled") => ("WorldClock.WeatherStatus.Disabled", "WeatherStatusInformational"),
                 ("partial", _) => ("WorldClock.WeatherStatus.Partial", "WeatherStatusNeedsAttention"),
                 ("unavailable", _) => ("WorldClock.WeatherStatus.Unavailable", "WeatherStatusInformational"),
@@ -357,10 +466,23 @@ public sealed partial class WorldClockOptionsControl : UserControl
         WeatherStatusText.Text = T(presentation.Key);
         AutomationProperties.SetName(WeatherStatusText, WeatherStatusText.Text);
         VisualStateManager.GoToState(this, presentation.VisualState, false);
-        SetSaveWeatherKeyAction((status is null
-            || status is { State: "configuration-required", ReasonCode: "missing-api-key" })
-            ? "WorldClock.Options.Weather.KeyAction.Set"
-            : "WorldClock.Options.Weather.KeyAction.Change");
+        SetWeatherKeyPresence(status?.IsProviderConfigured == true);
+        SetSaveWeatherKeyAction(status?.IsProviderConfigured == true
+            ? "WorldClock.Options.Weather.KeyAction.Change"
+            : "WorldClock.Options.Weather.KeyAction.Set");
+    }
+
+    private void SetWeatherKeyPresence(bool configured)
+    {
+        _weatherKeyConfigured = configured;
+        WeatherApiKeyBox.PlaceholderText = configured
+            ? ConfiguredWeatherKeyMask
+            : string.Empty;
+        AutomationProperties.SetHelpText(
+            WeatherApiKeyBox,
+            configured
+                ? T("WorldClock.Options.Weather.ApiKey.ConfiguredHelp")
+                : WeatherApiKeyStorageNote.Text);
     }
 
     private void RestoreWeatherToggle(bool value)
@@ -381,6 +503,8 @@ public sealed partial class WorldClockOptionsControl : UserControl
         SaveWeatherKeyButton.IsEnabled = !busy;
         AddClockButton.IsEnabled = !busy && _canAddClock;
         AlwaysOnTopSwitch.IsEnabled = !busy;
+        WorldClockOpacitySlider.IsEnabled = !busy;
+        WorldClockShowInTaskbarSwitch.IsEnabled = !busy;
     }
 
     private void ShowWeatherActionStatus(string key)
@@ -401,8 +525,10 @@ public sealed partial class WorldClockOptionsControl : UserControl
 
     private void ApplyLocalizedPresentation()
     {
-        WeatherApiKeyBox.PlaceholderText = string.Empty;
-        AutomationProperties.SetHelpText(WeatherApiKeyBox, WeatherApiKeyStorageNote.Text);
+        SetWeatherKeyPresence(_weatherKeyConfigured);
+        SetSaveWeatherKeyAction(_weatherKeyConfigured
+            ? "WorldClock.Options.Weather.KeyAction.Change"
+            : "WorldClock.Options.Weather.KeyAction.Set");
         AutomationProperties.SetName(WeatherProviderLinkButton, WeatherProviderLinkText.Text);
     }
 

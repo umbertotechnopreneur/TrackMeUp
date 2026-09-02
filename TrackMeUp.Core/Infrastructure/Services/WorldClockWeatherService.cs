@@ -2,6 +2,7 @@
 
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Net;
 using System.Security;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,10 @@ internal interface IWorldClockWeatherProvider
     WorldClockWeatherProviderConfiguration CaptureConfiguration() =>
         new(IsConfigured, ConfigurationState);
 
+    Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+        string secret,
+        CancellationToken cancellationToken);
+
     Task<WorldClockWeatherObservation> GetCurrentAsync(
         WorldClockWeatherLocation location,
         CancellationToken cancellationToken);
@@ -29,6 +34,14 @@ internal interface IWorldClockWeatherProvider
 internal readonly record struct WorldClockWeatherProviderConfiguration(
     bool IsConfigured,
     string State);
+
+internal enum WorldClockWeatherApiKeyValidation
+{
+    Accepted,
+    Rejected,
+    RateLimited,
+    Unavailable
+}
 
 internal sealed record WorldClockWeatherLocation(
     string CityId,
@@ -232,6 +245,14 @@ internal sealed class WorldClockWeatherService : IDisposable
 
     internal int CachedObservationCount => _cache.Count;
 
+    internal WorldClockWeatherProviderConfiguration CaptureConfiguration() =>
+        _provider.CaptureConfiguration();
+
+    internal Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+        string secret,
+        CancellationToken cancellationToken) =>
+        _provider.ValidateApiKeyAsync(secret, cancellationToken);
+
     internal void InvalidateConfiguration()
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
@@ -271,7 +292,8 @@ internal sealed class WorldClockWeatherService : IDisposable
                     unavailableState,
                     configurationState,
                     locations.Count,
-                    0));
+                    0,
+                    IsProviderConfigured: false));
         }
 
         var outcomes = await Task.WhenAll(locations.Select(location =>
@@ -307,7 +329,8 @@ internal sealed class WorldClockWeatherService : IDisposable
                 state,
                 reasonCode,
                 locations.Count,
-                observations.Count));
+                observations.Count,
+                IsProviderConfigured: true));
     }
 
     internal WorldClockWeatherLoadResult RevalidateForSnapshot(
@@ -654,6 +677,53 @@ internal sealed class OpenWeatherCurrentProvider : IWorldClockWeatherProvider
         && value.All(static character => character is >= '!' and <= '~');
 
     /// <inheritdoc />
+    public async Task<WorldClockWeatherApiKeyValidation> ValidateApiKeyAsync(
+        string secret,
+        CancellationToken cancellationToken)
+    {
+        if (!IsPlausibleApiKey(secret))
+        {
+            return WorldClockWeatherApiKeyValidation.Rejected;
+        }
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            BuildRequestUri(51.5074d, -0.1278d, secret));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_requestTimeout);
+        try
+        {
+            // Only the status code is needed; the key-bearing request URI is never logged or returned.
+            using var response = await _httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token).ConfigureAwait(false);
+            return response.StatusCode switch
+            {
+                >= HttpStatusCode.OK and < HttpStatusCode.MultipleChoices =>
+                    WorldClockWeatherApiKeyValidation.Accepted,
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
+                    WorldClockWeatherApiKeyValidation.Rejected,
+                HttpStatusCode.TooManyRequests =>
+                    WorldClockWeatherApiKeyValidation.RateLimited,
+                _ => WorldClockWeatherApiKeyValidation.Unavailable
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return WorldClockWeatherApiKeyValidation.Unavailable;
+        }
+        catch (HttpRequestException)
+        {
+            return WorldClockWeatherApiKeyValidation.Unavailable;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<WorldClockWeatherObservation> GetCurrentAsync(
         WorldClockWeatherLocation location,
         CancellationToken cancellationToken)
@@ -664,10 +734,7 @@ internal sealed class OpenWeatherCurrentProvider : IWorldClockWeatherProvider
             throw new InvalidOperationException("The current-weather provider is not configured.");
         }
 
-        var latitude = location.Latitude.ToString("0.######", CultureInfo.InvariantCulture);
-        var longitude = location.Longitude.ToString("0.######", CultureInfo.InvariantCulture);
-        var key = Uri.EscapeDataString(configuration.ApiKey);
-        var requestUri = new Uri($"{Endpoint}?lat={latitude}&lon={longitude}&appid={key}&units=metric");
+        var requestUri = BuildRequestUri(location.Latitude, location.Longitude, configuration.ApiKey);
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_requestTimeout);
@@ -704,6 +771,14 @@ internal sealed class OpenWeatherCurrentProvider : IWorldClockWeatherProvider
             // Hide the key-bearing request URI from the optional service's failure surface.
             throw new InvalidOperationException("Current weather provider request failed.");
         }
+    }
+
+    private static Uri BuildRequestUri(double latitude, double longitude, string apiKey)
+    {
+        var latitudeText = latitude.ToString("0.######", CultureInfo.InvariantCulture);
+        var longitudeText = longitude.ToString("0.######", CultureInfo.InvariantCulture);
+        var key = Uri.EscapeDataString(apiKey);
+        return new Uri($"{Endpoint}?lat={latitudeText}&lon={longitudeText}&appid={key}&units=metric");
     }
 
     private static async Task<byte[]> ReadBoundedContentAsync(

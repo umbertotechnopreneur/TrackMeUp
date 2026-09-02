@@ -63,7 +63,11 @@ public static class SettingsCatalog
         Choice("language", "Application language.", ProductLanguageCatalog.UiChoices, requiresRestart: true),
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
+        Integer("window.main.opacity_percent", "Player window opacity from 25 through 100 percent."),
+        Boolean("window.main.show_in_taskbar", "Show the player window in the Windows taskbar."),
         Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
+        Integer("window.world_clocks.opacity_percent", "World-clock window opacity from 25 through 100 percent."),
+        Boolean("window.world_clocks.show_in_taskbar", "Show the world-clock window in the Windows taskbar."),
         Boolean("taskbar.widget.visible", "Show the compact control in the Windows taskbar."),
         Choice("taskbar.widget.position", "Taskbar control anchor.", TaskbarAnchors),
         Text("activity.span_label", "Short local activity label, limited to 20 characters."),
@@ -133,7 +137,11 @@ public static class SettingsCatalog
             "language" => settings.UiLanguage,
             "theme" => settings.Theme,
             "position" => settings.FlyoutPosition,
+            "window.main.opacity_percent" => settings.MainWindowOpacityPercent,
+            "window.main.show_in_taskbar" => settings.MainWindowShowInTaskbar,
             "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
+            "window.world_clocks.opacity_percent" => settings.WorldClockWindowOpacityPercent,
+            "window.world_clocks.show_in_taskbar" => settings.WorldClockWindowShowInTaskbar,
             "taskbar.widget.visible" => settings.TaskbarWidgetVisible,
             "taskbar.widget.position" => settings.TaskbarWidgetPosition,
             "activity.span_label" => settings.SpanLabel,
@@ -246,7 +254,11 @@ public static class SettingsCatalog
                 case "language" when Canonical(ProductLanguageCatalog.UiChoices, value) is { } language: current = current with { UiLanguage = language }; break;
                 case "theme" when Canonical(Themes, value) is { } theme: current = current with { Theme = theme }; break;
                 case "position" when Canonical(FlyoutAnchors, value) is { } position: current = current with { FlyoutPosition = position }; break;
+                case "window.main.opacity_percent" when TryInteger(value, 25, 100, out var mainOpacity): current = current with { MainWindowOpacityPercent = mainOpacity }; break;
+                case "window.main.show_in_taskbar" when TryBoolean(value, out var mainShowInTaskbar): current = current with { MainWindowShowInTaskbar = mainShowInTaskbar }; break;
                 case "world_clocks.weather.enabled" when TryBoolean(value, out var worldClockWeatherEnabled): current = current with { WorldClockWeatherEnabled = worldClockWeatherEnabled }; break;
+                case "window.world_clocks.opacity_percent" when TryInteger(value, 25, 100, out var worldClockOpacity): current = current with { WorldClockWindowOpacityPercent = worldClockOpacity }; break;
+                case "window.world_clocks.show_in_taskbar" when TryBoolean(value, out var worldClockShowInTaskbar): current = current with { WorldClockWindowShowInTaskbar = worldClockShowInTaskbar }; break;
                 case "taskbar.widget.visible" when TryBoolean(value, out var taskbarVisible): current = current with { TaskbarWidgetVisible = taskbarVisible }; break;
                 case "taskbar.widget.position" when Canonical(TaskbarAnchors, value) is { } taskbarPosition: current = current with { TaskbarWidgetPosition = taskbarPosition }; break;
                 case "activity.span_label" when value is not null && value.Length <= 20: current = current with { SpanLabel = value }; break;
@@ -312,6 +324,8 @@ public static class SettingsCatalog
             FlyoutPosition = Canonical(FlyoutAnchors, settings.FlyoutPosition) ?? FlyoutPositions.BottomCenter,
             UiLanguage = RequiredPersistedChoice(ProductLanguageCatalog.UiChoices, settings.UiLanguage, "language"),
             Theme = Canonical(Themes, settings.Theme) ?? "system",
+            MainWindowOpacityPercent = Math.Clamp(settings.MainWindowOpacityPercent, 25, 100),
+            WorldClockWindowOpacityPercent = Math.Clamp(settings.WorldClockWindowOpacityPercent, 25, 100),
             TaskbarWidgetPosition = Canonical(TaskbarAnchors, settings.TaskbarWidgetPosition) ?? TaskbarWidgetPositions.Left,
             SpanLabel = settings.SpanLabel is { Length: <= 20 } ? settings.SpanLabel.Trim() : string.Empty,
             DailyDigestDirectory = digestDirectory,
