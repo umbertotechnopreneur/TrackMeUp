@@ -16,6 +16,8 @@
                         <SolidColorBrush x:Key="WorldClockDayAccentBrush" Color="#FFE34A2C" />
                         <SolidColorBrush x:Key="WorldClockNightAccentBrush" Color="#FF6C63B7" />
                         <SolidColorBrush x:Key="WorldClockMarkerBrush" Color="#FFE34A2C" />
+                        <SolidColorBrush x:Key="WorldClockMetadataBrush" Color="#FF4A4A4F" />
+                        <SolidColorBrush x:Key="WorldClockSolarTimeBrush" Color="#FF4A4A4F" />
                         <SolidColorBrush x:Key="WorldClockSolarRemainingBrush" Color="#FFC8C4DA" />
                         <SolidColorBrush x:Key="WorldClockCloudBrush" Color="#E8F7F8FA" />
                         <LinearGradientBrush x:Key="WorldClockSolarFillBrush" StartPoint="0,0" EndPoint="0,1">
@@ -27,14 +29,17 @@
                         <x:Double x:Key="WorldClockForegroundOpacity">0.16</x:Double>
                         <LinearGradientBrush x:Key="WorldClockSceneFadeBrush" StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#00FFFFFF" Offset="0" />
-                            <GradientStop Color="#18FFFFFF" Offset="0.58" />
-                            <GradientStop Color="#A8FFFFFF" Offset="1" />
+                            <GradientStop Color="#00FFFFFF" Offset="0.46" />
+                            <GradientStop Color="#98FFFFFF" Offset="0.78" />
+                            <GradientStop Color="#FFFFFFFF" Offset="1" />
                         </LinearGradientBrush>
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <SolidColorBrush x:Key="WorldClockDayAccentBrush" Color="#FFFF7357" />
                         <SolidColorBrush x:Key="WorldClockNightAccentBrush" Color="#FF958BEE" />
                         <SolidColorBrush x:Key="WorldClockMarkerBrush" Color="#FFFF7357" />
+                        <SolidColorBrush x:Key="WorldClockMetadataBrush" Color="#FFE4E1E6" />
+                        <SolidColorBrush x:Key="WorldClockSolarTimeBrush" Color="#FFE4E1E6" />
                         <SolidColorBrush x:Key="WorldClockSolarRemainingBrush" Color="#FFB9B3D8" />
                         <SolidColorBrush x:Key="WorldClockCloudBrush" Color="#E6F0F3F8" />
                         <LinearGradientBrush x:Key="WorldClockSolarFillBrush" StartPoint="0,0" EndPoint="0,1">
@@ -46,14 +51,17 @@
                         <x:Double x:Key="WorldClockForegroundOpacity">0.24</x:Double>
                         <LinearGradientBrush x:Key="WorldClockSceneFadeBrush" StartPoint="0,0" EndPoint="0,1">
                             <GradientStop Color="#00151619" Offset="0" />
-                            <GradientStop Color="#18151619" Offset="0.58" />
-                            <GradientStop Color="#A0151619" Offset="1" />
+                            <GradientStop Color="#00151619" Offset="0.46" />
+                            <GradientStop Color="#98151619" Offset="0.78" />
+                            <GradientStop Color="#FF151619" Offset="1" />
                         </LinearGradientBrush>
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="HighContrast">
                         <StaticResource x:Key="WorldClockDayAccentBrush" ResourceKey="SystemColorHighlightColorBrush" />
                         <StaticResource x:Key="WorldClockNightAccentBrush" ResourceKey="SystemColorHighlightColorBrush" />
                         <StaticResource x:Key="WorldClockMarkerBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                        <StaticResource x:Key="WorldClockMetadataBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                        <StaticResource x:Key="WorldClockSolarTimeBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                         <StaticResource x:Key="WorldClockSolarRemainingBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                         <StaticResource x:Key="WorldClockCloudBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                         <SolidColorBrush x:Key="WorldClockSolarFillBrush" Color="Transparent" />
@@ -134,6 +142,7 @@
                 CharacterSpacing="70"
                 FontSize="12"
                 FontWeight="SemiBold"
+                Foreground="{ThemeResource WorldClockMetadataBrush}"
                 TextAlignment="Center" />
 
             <TextBlock
@@ -154,6 +163,7 @@
                 CharacterSpacing="60"
                 FontSize="13"
                 FontWeight="SemiBold"
+                Foreground="{ThemeResource WorldClockMetadataBrush}"
                 TextAlignment="Center" />
 
             <Grid
@@ -174,14 +184,14 @@
                     IsHitTestVisible="False"
                     Opacity="{ThemeResource WorldClockSkylineOpacity}"
                     Stretch="Uniform" />
-                <Border
-                    Background="{ThemeResource WorldClockSceneFadeBrush}"
-                    IsHitTestVisible="False" />
                 <Grid
                     x:Name="ForegroundLayerHost"
                     AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False"
                     Opacity="{ThemeResource WorldClockForegroundOpacity}" />
+                <Border
+                    Background="{ThemeResource WorldClockSceneFadeBrush}"
+                    IsHitTestVisible="False" />
                 <Grid
                     x:Name="SolarArcPanel"
                     Height="228"
@@ -230,7 +240,7 @@
                         </Canvas>
                     </Viewbox>
                     <Grid
-                        Margin="0,148,0,0"
+                        Margin="32,148,32,0"
                         VerticalAlignment="Top">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -245,7 +255,8 @@
                             <TextBlock
                                 x:Name="SunriseTimeText"
                                 FontSize="13"
-                                FontWeight="SemiBold" />
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource WorldClockSolarTimeBrush}" />
                         </StackPanel>
                         <StackPanel
                             Grid.Column="1"
@@ -272,7 +283,8 @@
                                 x:Name="SunsetTimeText"
                                 HorizontalAlignment="Right"
                                 FontSize="13"
-                                FontWeight="SemiBold" />
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource WorldClockSolarTimeBrush}" />
                         </StackPanel>
                     </Grid>
                     <TextBlock
@@ -323,10 +335,9 @@
                             IsHitTestVisible="False"
                             Visibility="Collapsed">
                             <FontIcon
-                                x:Name="WeatherSunIcon"
-                                Margin="-2,-4,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                            x:Name="WeatherSunIcon"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 FontFamily="Segoe Fluent Icons"
                                 FontSize="16"
                                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
@@ -336,9 +347,8 @@
                                 x:Name="WeatherCloudIcon"
                                 Width="20"
                                 Height="14"
-                                Margin="4,6,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 Visibility="Collapsed">
                                 <Ellipse
                                     Width="11"
@@ -361,9 +371,8 @@
                             </Grid>
                             <Grid
                                 x:Name="WeatherRainIcon"
-                                Margin="5,14,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 Visibility="Collapsed">
                                 <StackPanel Orientation="Horizontal" Spacing="3">
                                     <Rectangle Width="1" Height="6" Fill="{ThemeResource SystemFillColorCautionBrush}" RenderTransformOrigin="0.5,0.5">
@@ -379,9 +388,8 @@
                             </Grid>
                             <TextBlock
                                 x:Name="WeatherSnowIcon"
-                                Margin="7,10,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 FontFamily="Segoe UI Symbol"
                                 FontSize="12"
                                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
@@ -391,9 +399,8 @@
                                 x:Name="WeatherFogIcon"
                                 Width="20"
                                 Height="8"
-                                Margin="2,11,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 Visibility="Collapsed">
                                 <Rectangle Width="20" Height="1" VerticalAlignment="Top" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <Rectangle Width="16" Height="1" HorizontalAlignment="Right" VerticalAlignment="Center" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -401,9 +408,8 @@
                             </Grid>
                             <TextBlock
                                 x:Name="WeatherLightningIcon"
-                                Margin="8,9,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
@@ -411,9 +417,8 @@
                                 Visibility="Collapsed" />
                             <TextBlock
                                 x:Name="WeatherUnknownIcon"
-                                Margin="8,5,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
                                 FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"

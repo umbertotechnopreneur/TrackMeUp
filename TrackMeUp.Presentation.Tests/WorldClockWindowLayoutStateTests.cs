@@ -44,6 +44,7 @@ public sealed class WorldClockWindowLayoutStateTests
     [InlineData(2, 500d, 560d, 560d, false)]
     [InlineData(3, 700d, 840d, 840d, false)]
     [InlineData(4, 1400d, 1120d, 1400d, false)]
+    [InlineData(12, 1400d, 3360d, 3360d, false)]
     public void CalculateColumnsLayout_PreservesReadableEqualColumns(
         int clockCount,
         double viewportWidth,
@@ -60,7 +61,7 @@ public sealed class WorldClockWindowLayoutStateTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(5)]
+    [InlineData(13)]
     public void CalculateColumnsLayout_RejectsUnsupportedClockCounts(int clockCount) =>
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             WorldClockWindowLayoutState.CalculateColumnsLayout(clockCount, 800d));

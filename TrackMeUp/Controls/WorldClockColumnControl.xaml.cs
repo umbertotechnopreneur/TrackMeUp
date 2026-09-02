@@ -16,8 +16,8 @@ namespace TrackMeUp.Controls;
 /// <summary>Renders one city in the detached world-clock comparison surface.</summary>
 public sealed partial class WorldClockColumnControl : UserControl
 {
-    private const double SolarArcStartX = 18d;
-    private const double SolarArcEndX = 286d;
+    private const double SolarArcStartX = 32d;
+    private const double SolarArcEndX = 272d;
     private const double SolarArcBaselineY = 138d;
     private const double SolarArcControlY = 4d;
     private const int SolarArcSegments = 48;
@@ -52,11 +52,9 @@ public sealed partial class WorldClockColumnControl : UserControl
         LocalTimeText.Text = clock.LocalTime.ToString("HH:mm", strings.Culture);
         LocalTimeText.Foreground = accent;
         DayStateText.Text = strings.Translate(clock.IsDaylight ? "WorldClock.Day" : "WorldClock.Night");
-        DayStateText.Foreground = accent;
         OffsetText.Text = isReference
             ? strings.Translate("WorldClock.LocalTime")
             : strings.Format("WorldClock.OffsetFromReference", FormatOffset(clock.LocalTime.Offset - referenceClock.LocalTime.Offset));
-        OffsetText.Foreground = accent;
         DateRelationText.Text = DateRelation(clock.LocalTime.Date, referenceClock.LocalTime.Date, strings);
         DateRelationText.Visibility = string.IsNullOrEmpty(DateRelationText.Text) ? Visibility.Collapsed : Visibility.Visible;
 

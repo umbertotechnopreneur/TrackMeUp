@@ -36,11 +36,11 @@ public sealed partial class WeeklyHoursEditor : UserControl
         TimeGridHost.Height = SlotsPerDay * SlotHeight;
         DaysHost.Height = TimeGridHost.Height;
         BuildGrid();
-        DaysHost.AddHandler(PointerPressedEvent, new PointerEventHandler(DaysHost_PointerPressed), true);
-        DaysHost.AddHandler(PointerMovedEvent, new PointerEventHandler(DaysHost_PointerMoved), true);
-        DaysHost.AddHandler(PointerReleasedEvent, new PointerEventHandler(DaysHost_PointerReleased), true);
-        DaysHost.PointerCanceled += DaysHost_PointerCanceled;
-        DaysHost.PointerCaptureLost += DaysHost_PointerCaptureLost;
+        GridInteractionSurface.AddHandler(PointerPressedEvent, new PointerEventHandler(GridInteractionSurface_PointerPressed), true);
+        GridInteractionSurface.AddHandler(PointerMovedEvent, new PointerEventHandler(GridInteractionSurface_PointerMoved), true);
+        GridInteractionSurface.AddHandler(PointerReleasedEvent, new PointerEventHandler(GridInteractionSurface_PointerReleased), true);
+        GridInteractionSurface.PointerCanceled += GridInteractionSurface_PointerCanceled;
+        GridInteractionSurface.PointerCaptureLost += GridInteractionSurface_PointerCaptureLost;
     }
 
     /// <summary>Applies the selected locale to instructions, weekday names, and slot accessibility labels.</summary>
@@ -168,7 +168,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
         }
     }
 
-    private void DaysHost_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void GridInteractionSurface_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         if (!TryGetSlot(e, out var slot))
         {
@@ -178,24 +178,24 @@ public sealed partial class WeeklyHoursEditor : UserControl
         if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
         {
             _touchPointerId = e.Pointer.PointerId;
-            _touchStartPosition = e.GetCurrentPoint(DaysHost).Position;
+            _touchStartPosition = e.GetCurrentPoint(GridInteractionSurface).Position;
             _touchMoved = false;
             return;
         }
 
         _dragSelectionValue = !(slot.IsChecked == true);
         slot.IsChecked = _dragSelectionValue;
-        DaysHost.CapturePointer(e.Pointer);
+        GridInteractionSurface.CapturePointer(e.Pointer);
         e.Handled = true;
     }
 
-    private void DaysHost_PointerMoved(object sender, PointerRoutedEventArgs e)
+    private void GridInteractionSurface_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
         {
             if (_touchPointerId == e.Pointer.PointerId)
             {
-                var position = e.GetCurrentPoint(DaysHost).Position;
+                var position = e.GetCurrentPoint(GridInteractionSurface).Position;
                 _touchMoved |= Math.Abs(position.X - _touchStartPosition.X) > TouchTapMovementThreshold
                     || Math.Abs(position.Y - _touchStartPosition.Y) > TouchTapMovementThreshold;
             }
@@ -210,7 +210,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
         }
     }
 
-    private void DaysHost_PointerReleased(object sender, PointerRoutedEventArgs e)
+    private void GridInteractionSurface_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
         if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
         {
@@ -229,17 +229,17 @@ public sealed partial class WeeklyHoursEditor : UserControl
         }
 
         _dragSelectionValue = null;
-        DaysHost.ReleasePointerCapture(e.Pointer);
+        GridInteractionSurface.ReleasePointerCapture(e.Pointer);
         e.Handled = true;
     }
 
-    private void DaysHost_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    private void GridInteractionSurface_PointerCanceled(object sender, PointerRoutedEventArgs e)
     {
         _dragSelectionValue = null;
         ClearTouchGesture();
     }
 
-    private void DaysHost_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    private void GridInteractionSurface_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
         _dragSelectionValue = null;
         ClearTouchGesture();

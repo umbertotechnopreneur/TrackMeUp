@@ -21,14 +21,14 @@ public sealed class WorldClockApplicationServiceTests
     public void AddValidated_RejectsDuplicatesAndMaximumWithoutPersisting()
     {
         var settings = new SettingsSnapshot(new AppSettings(
-            WorldClockCityIds: ["london", "paris", "tokyo", "hanoi"]));
+            WorldClockCityIds: ["london", "paris", "tokyo", "hanoi", "berlin", "rome", "madrid", "lisbon", "oslo", "stockholm", "helsinki", "vienna"]));
         var persisted = new List<AppSettings>();
         using var service = CreateService(settings, persisted.Add);
 
         var duplicateId = service.NormalizeAndValidateCityId(" TOKYO ");
         var duplicate = service.AddValidated(duplicateId);
-        var berlinId = service.NormalizeAndValidateCityId("berlin");
-        var maximum = service.AddValidated(berlinId);
+        var pragueId = service.NormalizeAndValidateCityId("prague");
+        var maximum = service.AddValidated(pragueId);
 
         Assert.False(duplicate.Succeeded);
         Assert.Equal("world_clocks.duplicate", duplicate.Code);
@@ -37,7 +37,7 @@ public sealed class WorldClockApplicationServiceTests
         Assert.Equal("world_clocks.maximum_reached", maximum.Code);
         Assert.Equal("cityId", Assert.Single(maximum.Issues).Field);
         Assert.Empty(persisted);
-        Assert.Equal(["london", "paris", "tokyo", "hanoi"], settings.Value.WorldClockCityIds);
+        Assert.Equal(["london", "paris", "tokyo", "hanoi", "berlin", "rome", "madrid", "lisbon", "oslo", "stockholm", "helsinki", "vienna"], settings.Value.WorldClockCityIds);
     }
 
     /// <summary>Ensures an explicitly empty selection can add its first clock through the normal mutation.</summary>

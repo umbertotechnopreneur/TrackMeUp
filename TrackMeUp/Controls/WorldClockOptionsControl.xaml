@@ -272,7 +272,7 @@
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Tag="WorldClock.Options.Clocks.Description"
-                                    Text="Add or remove up to four cities and choose the reference city."
+                                    Text="Add or remove up to 12 cities and choose the reference city."
                                     TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel

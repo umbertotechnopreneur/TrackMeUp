@@ -10,7 +10,7 @@ namespace TrackMeUp.Services;
 public static class WorldClockSelection
 {
     /// <summary>Maximum number of clocks visible in the comparison window.</summary>
-    public const int MaximumClocks = 4;
+    public const int MaximumClocks = 12;
 
     /// <summary>Initial selection matching the approved local-plus-capitals composition.</summary>
     public static IReadOnlyList<string> Defaults { get; } = ["ho-chi-minh-city", "london", "tokyo", "paris"];

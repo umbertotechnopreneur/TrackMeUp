@@ -730,19 +730,13 @@
         </Grid>
 
         <Grid x:Name="OcrAiOptionsView" Visibility="Collapsed">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="1" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
             <ScrollViewer
-                Grid.Column="0"
-                Margin="0,0,22,0"
                 HorizontalScrollBarVisibility="Disabled"
                 HorizontalScrollMode="Disabled"
                 VerticalScrollBarVisibility="Auto"
                 VerticalScrollMode="Auto">
-                <StackPanel Padding="0,0,18,12" Spacing="10">
+                <StackPanel x:Name="SearchOptionsView" Padding="0,0,18,12" Spacing="18">
+                    <StackPanel Spacing="10">
                     <StackPanel Spacing="2">
                         <TextBlock Tag="Options.Search.Section" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Local search" />
                     </StackPanel>
@@ -868,19 +862,9 @@
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="OCR changes apply after TrackMeUp restarts."
                         TextWrapping="Wrap" />
-                </StackPanel>
-            </ScrollViewer>
-            <Border
-                Grid.Column="1"
-                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-            <ScrollViewer
-                Grid.Column="2"
-                Margin="22,0,0,0"
-                HorizontalScrollBarVisibility="Disabled"
-                HorizontalScrollMode="Disabled"
-                VerticalScrollBarVisibility="Auto"
-                VerticalScrollMode="Auto">
-                <StackPanel Padding="0,0,18,12" Spacing="0">
+                    </StackPanel>
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <StackPanel x:Name="AiOptionsView" Spacing="0">
                     <Grid MinHeight="44" ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -1008,12 +992,6 @@
                                             Style="{StaticResource CaptionTextBlockStyle}"
                                             Text="Choose from 0 to 400. Set 0 to pause AI processing."
                                             TextWrapping="Wrap" />
-                                        <Button
-                                            x:Name="SaveAiDailyLimitButton"
-                                            Tag="Options.AiQuota.Save"
-                                            HorizontalAlignment="Stretch"
-                                            Click="SaveAiDailyLimitButton_Click"
-                                            Content="Save daily limit" />
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
@@ -1162,6 +1140,15 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                    <Button
+                        x:Name="TestConnectionButton"
+                        Margin="0,12,0,0"
+                        MinWidth="132"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Test AI connection"
+                        Click="TestConnectionButton_Click"
+                        Content="Test connection"
+                        Tag="Options.AiConnection.Test" />
                     <ComboBox
                         x:Name="AiReasoningEffortBox"
                         Margin="0,10,0,0"
@@ -1222,47 +1209,19 @@
                         <TextBox x:Name="AiApiKeyNameBox" Tag="Options.AiKeyVariable" Header="Windows key name" />
 
                     </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
 
-        <Border
+        <TextBlock
+            x:Name="StatusText"
             Grid.Row="1"
-            Padding="0,10,18,0"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-            BorderThickness="0,1,0,0">
-            <StackPanel Spacing="6">
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Button
-                        x:Name="SaveOptionsButton"
-                        MinWidth="132"
-                        Tag="Options.Save"
-                        HorizontalAlignment="Stretch"
-                        Click="SaveButton_Click"
-                        Content="Save options"
-                        Style="{StaticResource AccentButtonStyle}" />
-                    <Button
-                        x:Name="TestConnectionButton"
-                        Grid.Column="1"
-                        MinWidth="132"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Test AI connection"
-                        Click="TestConnectionButton_Click"
-                        Content="Test connection"
-                        Tag="Options.AiConnection.Test"
-                        Visibility="Collapsed" />
-                </Grid>
-                <TextBlock
-                    x:Name="StatusText"
-                    AutomationProperties.LiveSetting="Polite"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    TextWrapping="Wrap" />
-            </StackPanel>
-        </Border>
+            Margin="0,8,18,0"
+            AutomationProperties.LiveSetting="Polite"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Style="{StaticResource CaptionTextBlockStyle}"
+            TextWrapping="Wrap"
+            Visibility="Collapsed" />
     </Grid>
 </UserControl>

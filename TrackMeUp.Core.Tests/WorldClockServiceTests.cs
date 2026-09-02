@@ -81,12 +81,12 @@ public sealed class WorldClockServiceTests
 
     /// <summary>Verifies empty selections are explicit while null still resolves to product defaults.</summary>
     [Fact]
-    public void Selection_RejectsDuplicatesAndMoreThanFourClocks()
+    public void Selection_RejectsDuplicatesAndMoreThanTwelveClocks()
     {
         Assert.Empty(WorldClockSelection.NormalizePersisted([]));
         Assert.Equal(WorldClockSelection.Defaults, WorldClockSelection.NormalizePersisted(null));
         Assert.Throws<InvalidDataException>(() => WorldClockSelection.NormalizePersisted(["london", "london"]));
-        Assert.Throws<InvalidDataException>(() => WorldClockSelection.NormalizePersisted(["london", "paris", "tokyo", "hanoi", "berlin"]));
+        Assert.Throws<InvalidDataException>(() => WorldClockSelection.NormalizePersisted(["london", "paris", "tokyo", "hanoi", "berlin", "rome", "madrid", "lisbon", "oslo", "stockholm", "helsinki", "vienna", "prague"]));
     }
 
     /// <summary>Verifies an empty selection does not invoke optional weather and retains safe configuration state.</summary>

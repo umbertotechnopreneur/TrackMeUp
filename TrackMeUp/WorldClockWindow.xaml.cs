@@ -124,7 +124,7 @@ public sealed partial class WorldClockWindow : Window
         Title = T("WorldClock.Landmark");
         OptionsHeaderLabel.Text = T("WorldClock.Options.Title").ToUpper(_strings.Culture);
         UpdateHeaderForSurface();
-        NowButton.Content = T("WorldClock.Now");
+        NowButton.Content = T("WorldClock.RestoreNow");
         ApplyReferenceButton.Content = T("WorldClock.Apply");
         SetIconButtonLabel(OptionsButton, "WorldClock.Options.Open");
         SetIconButtonLabel(HeaderBackButton, "WorldClock.Options.Back");
@@ -137,7 +137,7 @@ public sealed partial class WorldClockWindow : Window
         AutomationProperties.SetName(ReferenceInstantButton, T("WorldClock.ReferenceInstant"));
         ToolTipService.SetToolTip(ReferenceInstantButton, T("WorldClock.ReferenceInstant"));
         AutomationProperties.SetLabeledBy(ReferenceInstantButton, ReferenceInstantLabel);
-        AutomationProperties.SetName(NowButton, T("WorldClock.Now"));
+        AutomationProperties.SetName(NowButton, T("WorldClock.RestoreNow"));
         AutomationProperties.SetName(ApplyReferenceButton, T("WorldClock.Apply"));
         AutomationProperties.SetName(ClockColumnsHost, T("WorldClock.Landmark"));
         AutomationProperties.SetLocalizedLandmarkType(ClockColumnsHost, T("WorldClock.Landmark"));
@@ -542,7 +542,7 @@ public sealed partial class WorldClockWindow : Window
                 _strings);
         }
 
-        NowButton.Visibility = _isLive ? Visibility.Collapsed : Visibility.Visible;
+        NowButton.Visibility = Visibility.Visible;
         WorldClockNotificationBanner.Dismiss();
         UpdateWeatherStatus(snapshot.WeatherStatus);
         _optionsControl?.ApplyState(_settings, snapshot, _referenceCityId, IsAlwaysOnTop());

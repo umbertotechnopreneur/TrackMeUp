@@ -18,13 +18,6 @@
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Border
-            Grid.RowSpan="2"
-            Background="{ThemeResource MainWindowSurfaceBrush}"
-            BorderBrush="#24FFFFFF"
-            BorderThickness="1"
-            CornerRadius="14"
-            IsHitTestVisible="False" />
         <Grid
             x:Name="DragRegion"
             Height="48">
@@ -246,17 +239,6 @@
                                 <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
-                            <x:Double x:Key="MainPanoramaImageOpacity">0.17</x:Double>
-                            <LinearGradientBrush x:Key="MainPanoramaAtmosphereBrush" StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#00FFFFFF" Offset="0" />
-                                <GradientStop Color="#0CEB7559" Offset="0.45" />
-                                <GradientStop Color="#20AFC6E1" Offset="1" />
-                            </LinearGradientBrush>
-                            <LinearGradientBrush x:Key="MainPanoramaVeilBrush" StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#FFF7F7F8" Offset="0" />
-                                <GradientStop Color="#B8F7F7F8" Offset="0.42" />
-                                <GradientStop Color="#00F7F7F8" Offset="1" />
-                            </LinearGradientBrush>
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="Dark">
                             <LinearGradientBrush x:Key="PlayerAccentBrush" StartPoint="0,0" EndPoint="0,1">
@@ -264,24 +246,10 @@
                                 <GradientStop Color="#FFD34D34" Offset="1" />
                             </LinearGradientBrush>
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="#FFFFFFFF" />
-                            <x:Double x:Key="MainPanoramaImageOpacity">0.24</x:Double>
-                            <LinearGradientBrush x:Key="MainPanoramaAtmosphereBrush" StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#00151619" Offset="0" />
-                                <GradientStop Color="#10E86C4F" Offset="0.45" />
-                                <GradientStop Color="#28152A43" Offset="1" />
-                            </LinearGradientBrush>
-                            <LinearGradientBrush x:Key="MainPanoramaVeilBrush" StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#FF212123" Offset="0" />
-                                <GradientStop Color="#B8212123" Offset="0.42" />
-                                <GradientStop Color="#00212123" Offset="1" />
-                            </LinearGradientBrush>
                         </ResourceDictionary>
                         <ResourceDictionary x:Key="HighContrast">
                             <SolidColorBrush x:Key="PlayerAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
                             <SolidColorBrush x:Key="PlayerAccentGlyphBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
-                            <x:Double x:Key="MainPanoramaImageOpacity">0</x:Double>
-                            <SolidColorBrush x:Key="MainPanoramaAtmosphereBrush" Color="Transparent" />
-                            <SolidColorBrush x:Key="MainPanoramaVeilBrush" Color="Transparent" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
@@ -292,14 +260,12 @@
                     VerticalAlignment="Bottom"
                     AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False">
-                    <Border Background="{ThemeResource MainPanoramaAtmosphereBrush}" />
                     <Image
                         Margin="-24,0,-24,-10"
+                        Opacity="0.1"
                         VerticalAlignment="Bottom"
-                        Opacity="{ThemeResource MainPanoramaImageOpacity}"
                         Source="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png"
                         Stretch="UniformToFill" />
-                    <Border Background="{ThemeResource MainPanoramaVeilBrush}" />
                 </Grid>
                 <ScrollViewer
                     HorizontalScrollBarVisibility="Disabled"
@@ -619,8 +585,8 @@
                                     Padding="0"
                                     HorizontalAlignment="Center"
                                     AutomationProperties.Name="Take snapshot"
-                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
                                     BorderThickness="1"
                                     Click="TakeScreenshotButton_Click"
                                     CornerRadius="16"
@@ -642,8 +608,8 @@
                                     Padding="0"
                                     HorizontalAlignment="Center"
                                     AutomationProperties.Name="Delete snapshot"
-                                    Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
                                     BorderThickness="1"
                                     Click="DeleteSnapshotButton_Click"
                                     CornerRadius="16"
@@ -1006,7 +972,7 @@
                                     Width="124"
                                     Height="78"
                                     Margin="4,8,4,6"
-                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    Background="Transparent"
                                     CornerRadius="9"
                                     Translation="0,0,20">
                                     <Border.Shadow>

@@ -11,9 +11,7 @@
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
         <Grid.Resources>
-            <SolidColorBrush x:Key="SearchSuggestionAccentBrush" Color="#FFFF8C78" />
-            <SolidColorBrush x:Key="SearchSuggestionBadgeBrush" Color="#20FF8C78" />
-            <SolidColorBrush x:Key="SearchSuggestionBadgeTextBrush" Color="#FF8A3E32" />
+            <SolidColorBrush x:Key="SearchActivityStatusBrush" Color="#FF8A3E32" />
         </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
@@ -48,113 +46,68 @@
                     FontSize="18"
                     GotFocus="QueryBox_GotFocus"
                     HorizontalContentAlignment="Stretch"
-                    MaxSuggestionListHeight="320"
                     PlaceholderText="Search text in snapshots"
                     QuerySubmitted="QueryBox_QuerySubmitted"
-                    TextMemberPath="Text"
                     TextChanged="QueryBox_TextChanged"
                     VerticalContentAlignment="Center">
                     <AutoSuggestBox.QueryIcon>
                         <SymbolIcon Symbol="Find" />
                     </AutoSuggestBox.QueryIcon>
-                    <AutoSuggestBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid
-                                MinHeight="46"
-                                Padding="12,6"
-                                HorizontalAlignment="Stretch"
-                                AutomationProperties.Name="{Binding Text}"
-                                AutomationProperties.HelpText="{Binding ConfidenceLabel}"
-                                ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Ellipse
-                                    Width="7"
-                                    Height="7"
-                                    VerticalAlignment="Center"
-                                    AutomationProperties.AccessibilityView="Raw"
-                                    Fill="{StaticResource SearchSuggestionAccentBrush}" />
-                                <TextBlock
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    FontSize="15"
-                                    MaxLines="1"
-                                    Text="{Binding Text}"
-                                    TextTrimming="CharacterEllipsis" />
-                                <Border
-                                    Grid.Column="2"
-                                    MinWidth="48"
-                                    Padding="9,3"
-                                    VerticalAlignment="Center"
-                                    Background="{StaticResource SearchSuggestionBadgeBrush}"
-                                    CornerRadius="10"
-                                    ToolTipService.ToolTip="{Binding ConfidenceLabel}">
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        FontSize="12"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource SearchSuggestionBadgeTextBrush}"
-                                        Text="{Binding ConfidenceDisplay}" />
-                                </Border>
-                            </Grid>
-                        </DataTemplate>
-                    </AutoSuggestBox.ItemTemplate>
                     <AutoSuggestBox.KeyboardAccelerators>
                         <KeyboardAccelerator Key="F" Modifiers="Control" />
                     </AutoSuggestBox.KeyboardAccelerators>
                 </AutoSuggestBox>
                 <Border
                     x:Name="SearchActivityGlow"
-                    Height="9"
+                    Height="3"
                     Margin="12,0,12,-1"
                     VerticalAlignment="Bottom"
                     IsHitTestVisible="False"
-                    SizeChanged="SearchActivityGlow_SizeChanged"
+                    CornerRadius="2"
+                    Opacity="0.72"
                     Visibility="Collapsed">
-                    <Grid>
-                        <Border
-                            x:Name="SearchActivitySpectrum"
-                            Height="3"
-                            VerticalAlignment="Center"
-                            CornerRadius="2"
-                            Opacity="0.72"
-                            Translation="0,0,12">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Offset="0" Color="#00FF8C78" />
-                                    <GradientStop x:Name="SearchActivityLeftFadeStop" Offset="0.055" Color="#FFFF8C78" />
-                                    <GradientStop Offset="0.28" Color="#FFFFC15C" />
-                                    <GradientStop Offset="0.5" Color="#FFA56EFF" />
-                                    <GradientStop Offset="0.72" Color="#FF4F8DFF" />
-                                    <GradientStop x:Name="SearchActivityRightFadeStop" Offset="0.945" Color="#FF46D4C8" />
-                                    <GradientStop Offset="1" Color="#0046D4C8" />
-                                </LinearGradientBrush>
-                            </Border.Background>
-                            <Border.Shadow>
-                                <ThemeShadow />
-                            </Border.Shadow>
-                        </Border>
-                        <ProgressBar
-                            x:Name="SearchActivityBar"
-                            AutomationProperties.Name="Searching the local index"
-                            IsHitTestVisible="False"
-                            IsIndeterminate="True"
-                            IsTabStop="False"
-                            Opacity="0" />
-                    </Grid>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Offset="0" Color="#FFFF8C78" />
+                            <GradientStop Offset="0.5" Color="#FFA56EFF" />
+                            <GradientStop Offset="1" Color="#FF46D4C8" />
+                        </LinearGradientBrush>
+                    </Border.Background>
                 </Border>
             </Grid>
 
-            <TextBlock
-                x:Name="SearchAvailabilityText"
-                Grid.Row="1"
-                Margin="4,0"
-                FontSize="12"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                TextWrapping="WrapWholeWords" />
+            <Grid Grid.Row="1" Margin="4,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    x:Name="SearchAvailabilityText"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextWrapping="WrapWholeWords" />
+                <StackPanel
+                    x:Name="SearchActivityStatus"
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed">
+                    <ProgressRing
+                        x:Name="SearchActivityProgressRing"
+                        Width="14"
+                        Height="14"
+                        IsActive="True"
+                        IsHitTestVisible="False" />
+                    <TextBlock
+                        Tag="Search.Working"
+                        AutomationProperties.LiveSetting="Polite"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource SearchActivityStatusBrush}"
+                        Text="Searching the local index" />
+                </StackPanel>
+            </Grid>
 
             <InfoBar
                 x:Name="SearchInfoBar"

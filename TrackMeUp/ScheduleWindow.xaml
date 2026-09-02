@@ -162,7 +162,7 @@
                                 SmallChange="1"
                                 LargeChange="5"
                                 Tag="Schedule.Interval.Value"
-                                SpinButtonPlacementMode="Compact" />
+                                SpinButtonPlacementMode="Inline" />
                             <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="min" />
                         </StackPanel>
                     </StackPanel>

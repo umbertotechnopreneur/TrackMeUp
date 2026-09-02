@@ -53,9 +53,9 @@ public sealed class WorldClockWindowLayoutState
     /// <summary>Calculates an equal-column width that scrolls instead of compressing narrow content.</summary>
     public static WorldClockColumnsLayout CalculateColumnsLayout(int clockCount, double viewportWidth)
     {
-        if (clockCount is < 1 or > 4)
+        if (clockCount is < 1 or > 12)
         {
-            throw new ArgumentOutOfRangeException(nameof(clockCount), clockCount, "World clocks support one through four columns.");
+            throw new ArgumentOutOfRangeException(nameof(clockCount), clockCount, "World clocks support one through twelve columns.");
         }
 
         if (!double.IsFinite(viewportWidth) || viewportWidth < 0d)

@@ -128,7 +128,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceCityComboBox") && element.Name.LocalName == "ComboBox");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceDatePicker") && element.Name.LocalName == "CalendarDatePicker");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceTimePicker") && element.Name.LocalName == "TimePicker");
-        Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceInstantFlyoutTitle") && element.Attribute("Tag")?.Value == "WorldClock.ReferenceInstant");
+        Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceInstantFlyoutTitle") && element.Attribute("Tag")?.Value == "WorldClock.ReferenceInstant.Title");
         Assert.Contains(window.Descendants(), element => HasName(element, "ReferenceTimeZoneText"));
         Assert.Contains(window.Descendants(), element => HasName(element, "NowButton"));
         Assert.Contains(window.Descendants(), element => HasName(element, "ApplyReferenceButton")

@@ -39,7 +39,7 @@ public sealed class WinUiSurfaceContractTests
         var licensesSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ThirdPartyLicensesWindow.xaml.cs"));
 
         Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ScrollViewer");
-        Assert.Equal(3, options.Descendants().Count(element => element.Name.LocalName == "ScrollViewer"));
+        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "ScrollViewer"));
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "Expander");
@@ -100,12 +100,16 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("active_hours.", optionsSource, StringComparison.Ordinal);
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelInfoCard") && element.Attribute("CornerRadius")?.Value == "6");
         Assert.Contains(options.Descendants(), element => HasName(element, "ModelAccentBar") && element.Attribute("CornerRadius")?.Value == "2");
-        Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
+        var ocrAiView = options.Descendants().Single(element => HasName(element, "OcrAiOptionsView"));
+        Assert.Single(ocrAiView.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.Equal(1, options.Descendants().Count(element => element.Name.LocalName == "StackPanel" && element.Attribute("Padding")?.Value == "0,0,18,12"));
         Assert.Contains(options.Descendants(), element => HasName(element, "OptionsColumnsGrid"));
         Assert.Contains(options.Descendants(), element => HasName(element, "OptionsSecondaryColumn") && element.Attribute("Width")?.Value == "0");
         Assert.Contains(options.Descendants(), element =>
             element.Name.LocalName == "AdaptiveTrigger" && element.Attribute("MinWindowWidth")?.Value == "560");
-        Assert.Contains(options.Descendants(), element => element.Name.LocalName == "Border" && element.Attribute("Padding")?.Value == "0,10,18,0");
+        Assert.DoesNotContain(options.Descendants(), element => HasName(element, "SaveOptionsButton"));
+        Assert.Contains("RegisterAutoSaveHandlers();", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("QueueAutoSave", optionsSource, StringComparison.Ordinal);
         var openFolderButton = options.Descendants().Single(element => HasName(element, "OpenScreenshotFolderButton"));
         Assert.Null(openFolderButton.Attribute("Content"));
         Assert.Contains(openFolderButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE8A7");
@@ -132,6 +136,7 @@ public sealed class WinUiSurfaceContractTests
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
         var aiView = options.Descendants().Single(element => HasName(element, "AiOptionsView"));
         var modelPicker = options.Descendants().Single(element => HasName(element, "ModelBox"));
+        var testConnectionButton = options.Descendants().Single(element => HasName(element, "TestConnectionButton"));
         var thinkingEffortPicker = options.Descendants().Single(element => HasName(element, "AiReasoningEffortBox"));
 
         Assert.Equal("ComboBox", modelPicker.Name.LocalName);
@@ -142,6 +147,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Options.Reasoning", thinkingEffortPicker.Attribute("Tag")?.Value);
         Assert.Contains(thinkingEffortPicker.Ancestors(), element => ReferenceEquals(element, aiView));
         Assert.DoesNotContain(thinkingEffortPicker.Ancestors(), element => HasName(element, "AiAdvancedPanel"));
+        Assert.Contains(testConnectionButton.Ancestors(), element => ReferenceEquals(element, aiView));
+        Assert.Equal("TestConnectionButton_Click", testConnectionButton.Attribute("Click")?.Value);
         Assert.DoesNotContain(options.Descendants(), element =>
             HasName(element, "AnalysisIntervalBox") || HasName(element, "AutomaticAnalysisBox"));
         Assert.DoesNotContain(options.Descendants(), element =>
@@ -205,13 +212,13 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
         Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
         Assert.Equal("32", takeScreenshotButton.Attribute("Width")?.Value);
-        Assert.Equal("{ThemeResource ControlFillColorSecondaryBrush}", takeScreenshotButton.Attribute("Background")?.Value);
+        Assert.Equal("Transparent", takeScreenshotButton.Attribute("Background")?.Value);
         Assert.Equal("Collapsed", pendingSnapshotPanel.Attribute("Visibility")?.Value);
         Assert.Equal("32", deleteSnapshotButton.Attribute("Width")?.Value);
         Assert.Equal("Snapshot.Delete", deleteSnapshotButton.Attribute("Tag")?.Value);
         Assert.Equal("Delete snapshot", deleteSnapshotButton.Attribute("AutomationProperties.Name")?.Value);
         Assert.Equal(deleteSnapshotButton.Attribute("AutomationProperties.Name")?.Value, deleteSnapshotButton.Attribute("ToolTipService.ToolTip")?.Value);
-        Assert.Equal("{ThemeResource ControlFillColorSecondaryBrush}", deleteSnapshotButton.Attribute("Background")?.Value);
+        Assert.Equal("Transparent", deleteSnapshotButton.Attribute("Background")?.Value);
         Assert.Same(takeScreenshotButton.Parent, deleteSnapshotButton.Parent);
         Assert.Contains(captureActions.Descendants(), element => ReferenceEquals(element, deleteSnapshotButton));
         Assert.Equal("Collapsed", deleteSnapshotButton.Attribute("Visibility")?.Value);
@@ -482,10 +489,18 @@ public sealed class WinUiSurfaceContractTests
         var schedule = XDocument.Load(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var scheduleSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
+        var weeklyHours = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml"));
+        var weeklyHoursSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml.cs"));
 
         Assert.Equal("Window", schedule.Root?.Name.LocalName);
         Assert.Contains(schedule.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(schedule.Descendants(), element => HasName(element, "WorkingHoursEditor"));
+        Assert.Equal(
+            "Inline",
+            schedule.Descendants().Single(element => HasName(element, "IntervalNumberBox")).Attribute("SpinButtonPlacementMode")?.Value);
+        Assert.Equal("Rectangle", weeklyHours.Descendants().Single(element => HasName(element, "GridInteractionSurface")).Name.LocalName);
+        Assert.Contains("GridInteractionSurface.CapturePointer", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains("GridInteractionSurface_PointerMoved", weeklyHoursSource, StringComparison.Ordinal);
         Assert.Contains("settingsResult.Value.ScreenshotIntervalMinutes", mainSource, StringComparison.Ordinal);
         Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ScheduleScreenshotDialog", mainSource, StringComparison.Ordinal);
@@ -629,7 +644,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
         Assert.Contains("RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowWidth = 600;", source, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowWidth = 576;", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalExpandedWindowWidth = 760;", source, StringComparison.Ordinal);
         Assert.Contains("_layoutState.Surface == MainWindowSurface.Player", source, StringComparison.Ordinal);
         Assert.Contains("private const int LogicalWindowHeightPadding = 20;", source, StringComparison.Ordinal);
@@ -916,7 +931,8 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Equal("Collapsed", panel.Attribute("Visibility")?.Value);
         Assert.Equal("Options.AiMonthlySpendVisibility", visibilitySwitch.Attribute("Tag")?.Value);
-        Assert.Contains("[\"ai.show_monthly_spend\"] = ShowAiMonthlySpendSwitch.IsOn", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("QueueAutoSave(", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("\"ai.show_monthly_spend\"", optionsSource, StringComparison.Ordinal);
         Assert.Contains("ShowAiMonthlySpendSwitch.IsOn = settings.ShowAiMonthlySpend;", optionsSource, StringComparison.Ordinal);
         Assert.Equal(
             2,
@@ -978,7 +994,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Null(visibilitySwitch.Attribute("IsOn"));
         Assert.Equal("False", positionPicker.Attribute("IsEnabled")?.Value);
         Assert.Equal(["left", "right"], positions);
-        Assert.Contains("[\"taskbar.widget.visible\"] = TaskbarWidgetVisibleSwitch.IsOn ? \"true\" : \"false\"", source, StringComparison.Ordinal);
+        Assert.Contains("QueueAutoSave(\"taskbar.widget.visible\"", source, StringComparison.Ordinal);
         Assert.Contains("TaskbarWidgetPositionBox.IsEnabled = TaskbarWidgetVisibleSwitch.IsOn;", source, StringComparison.Ordinal);
     }
 
@@ -1081,20 +1097,18 @@ public sealed class WinUiSurfaceContractTests
     public void ScreenshotWindow_SavesPlacementBeforeItsNativeHandleIsDestroyed()
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
-        var closingStart = source.IndexOf("private async void ScreenshotWindow_Closing", StringComparison.Ordinal);
+        var closingStart = source.IndexOf("private void ScreenshotWindow_Closing", StringComparison.Ordinal);
         var closedStart = source.IndexOf("private void ScreenshotWindow_Closed", StringComparison.Ordinal);
 
         Assert.True(closingStart >= 0 && closedStart > closingStart, "Screenshot close lifecycle source contract was not found.");
         var closingSource = source[closingStart..closedStart];
         var closedSource = source[closedStart..];
         Assert.Contains("_appWindow.Closing += ScreenshotWindow_Closing;", source, StringComparison.Ordinal);
-        Assert.Contains("args.Cancel = true;", closingSource, StringComparison.Ordinal);
-        Assert.Contains("await _placement.SaveAsync(cancellationToken);", closingSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("args.Cancel = true;", closingSource, StringComparison.Ordinal);
+        Assert.Contains("_ = _placement.TrySaveForCloseAsync(CancellationToken.None);", closingSource, StringComparison.Ordinal);
         Assert.True(
-            closingSource.IndexOf("await _placement.SaveAsync", StringComparison.Ordinal) < closingSource.IndexOf("Close();", StringComparison.Ordinal),
-            "Placement must be persisted while the screenshot window handle is still valid.");
-        Assert.Contains("catch (Exception exception)", closingSource, StringComparison.Ordinal);
-        Assert.Contains("ShowErrorBanner", closingSource, StringComparison.Ordinal);
+            closingSource.IndexOf("TrySaveForCloseAsync", StringComparison.Ordinal) >= 0,
+            "Placement persistence must start while the screenshot window handle is still valid.");
         Assert.DoesNotContain("_placement.SaveAsync", closedSource, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", closedSource, StringComparison.Ordinal);
         Assert.Contains("_screenshotsWindow.CloseForShutdown();", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);

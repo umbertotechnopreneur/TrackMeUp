@@ -1150,6 +1150,41 @@ public sealed class LocalStore
             .ToArray();
     }
 
+    /// <summary>Visits retained screenshot projections one gallery day at a time.</summary>
+    /// <remarks>
+    /// A full materialization keeps every OCR and AI payload alive while the search index is
+    /// rebuilt. The visitor keeps the projection lifetime bounded to one day instead.
+    /// </remarks>
+    internal void VisitAllScreenshotGalleryItems(
+        Action<ScreenshotGalleryItem> visitor,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(visitor);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var settings = LoadSettings();
+        if (!Directory.Exists(settings.ScreenshotDirectory))
+        {
+            return;
+        }
+
+        var dates = ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory)
+            .Select(path => ScreenshotStorageLayout.GetDay(settings.ScreenshotDirectory, path))
+            .Distinct()
+            .Order()
+            .ToArray();
+        foreach (var date in dates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var gallery = GetScreenshotGallery(date, cancellationToken);
+            foreach (var item in gallery.Items)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                visitor(item);
+            }
+        }
+    }
+
     private IReadOnlyList<AiScreenshotReprocessCandidate> MaterializeAiReprocessCandidates(
         IReadOnlyList<AiReprocessCatalogRecord> records,
         IReadOnlyDictionary<string, FileInfo> retainedByIdentity,
