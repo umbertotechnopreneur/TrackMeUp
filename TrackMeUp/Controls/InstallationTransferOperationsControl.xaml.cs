@@ -197,7 +197,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         {
             confirmed = await Context.Dialogs.ConfirmAsync(
                 Context.OwnerWindow,
-                SystemMessageBoxRequest.Confirmation(
+                DialogRequest.Confirmation(
                     T("Operations.InstallationTransfer.Import.Confirm.Title", "Merge archive data?"),
                     Format(
                         "Operations.InstallationTransfer.Import.Confirm.Message",
@@ -206,7 +206,9 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
                         (long)plan.AiRequestCount + plan.AiAnalysisCount,
                         plan.ScreenshotFileCount,
                         FormatBytes(plan.ScreenshotBytes),
-                        plan.Installations.Count)));
+                        plan.Installations.Count),
+                    T("Dialog.Ok", "OK"),
+                    T("Dialog.Cancel", "Cancel")));
         }
         catch (Exception)
         {

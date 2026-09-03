@@ -19,6 +19,7 @@ public sealed partial class OperationsControl : UserControl
     private ITrackMeUpApplication? _application;
     private MicaDialogService? _dialogs;
     private Window? _ownerWindow;
+    private TimedInfoBar? _notificationHost;
     private LocalizationService _strings = new("system");
     private bool _operationInProgress;
     private bool _returnToOverviewOnBack;
@@ -70,11 +71,12 @@ public sealed partial class OperationsControl : UserControl
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
-    internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow)
+    internal void Initialize(ITrackMeUpApplication application, MicaDialogService dialogs, Window ownerWindow, TimedInfoBar notificationHost)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _ownerWindow = ownerWindow ?? throw new ArgumentNullException(nameof(ownerWindow));
+        _notificationHost = notificationHost ?? throw new ArgumentNullException(nameof(notificationHost));
     }
 
     /// <summary>Returns to the landing page for local tool navigation, or to the surface that opened a direct settings link.</summary>
@@ -114,6 +116,8 @@ public sealed partial class OperationsControl : UserControl
     private MicaDialogService Dialogs => _dialogs ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private Window OwnerWindow => _ownerWindow ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
+
+    private TimedInfoBar OperationBanner => _notificationHost ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
     private async void RuntimeHealthButton_Click(object sender, RoutedEventArgs e)
     {
@@ -210,9 +214,11 @@ public sealed partial class OperationsControl : UserControl
 
         var firstConfirmation = await Dialogs.ConfirmAsync(
             OwnerWindow,
-            SystemMessageBoxRequest.Confirmation(
+            DialogRequest.Confirmation(
                 _strings.Translate("Operations.AtomicNuke.First.Title"),
-                _strings.Translate("Operations.AtomicNuke.First.Message")));
+                _strings.Translate("Operations.AtomicNuke.First.Message"),
+                _strings.Translate("Dialog.Ok"),
+                _strings.Translate("Dialog.Cancel")));
         if (!firstConfirmation)
         {
             return;
@@ -220,9 +226,11 @@ public sealed partial class OperationsControl : UserControl
 
         var finalConfirmation = await Dialogs.ConfirmAsync(
             OwnerWindow,
-            SystemMessageBoxRequest.Confirmation(
+            DialogRequest.Confirmation(
                 _strings.Translate("Operations.AtomicNuke.Second.Title"),
-                _strings.Translate("Operations.AtomicNuke.Second.Message")));
+                _strings.Translate("Operations.AtomicNuke.Second.Message"),
+                _strings.Translate("Dialog.Ok"),
+                _strings.Translate("Dialog.Cancel")));
         if (!finalConfirmation)
         {
             return;
@@ -447,16 +455,16 @@ public sealed partial class OperationsControl : UserControl
         switch (severity)
         {
             case InfoBarSeverity.Success:
-                Dialogs.ShowSuccessBanner(OperationBanner, title, message);
+                Dialogs.Notifications.ShowSuccess(OperationBanner, title, message);
                 break;
             case InfoBarSeverity.Error:
-                Dialogs.ShowErrorBanner(OperationBanner, title, message);
+                Dialogs.Notifications.ShowError(OperationBanner, title, message);
                 break;
             case InfoBarSeverity.Warning:
-                Dialogs.ShowWarningBanner(OperationBanner, title, message);
+                Dialogs.Notifications.ShowWarning(OperationBanner, title, message);
                 break;
             default:
-                Dialogs.ShowInfoBanner(OperationBanner, title, message);
+                Dialogs.Notifications.ShowInfo(OperationBanner, title, message);
                 break;
         }
     }

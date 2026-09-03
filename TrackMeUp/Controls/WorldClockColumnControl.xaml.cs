@@ -25,11 +25,59 @@ public sealed partial class WorldClockColumnControl : UserControl
     private string? _skylineAssetPath;
     private string[] _backdropAssetPaths = [];
     private string[] _foregroundAssetPaths = [];
+    private WorldClockPresentationMode _presentationMode = WorldClockPresentationMode.Expanded;
+    private double _viewportWidth;
+    private double _viewportHeight;
+
+    /// <summary>Gets the measured height needed by the explicitly requested presentation, before window chrome.</summary>
+    public double PreferredContentHeight { get; private set; }
 
     /// <summary>Creates one passive world-clock column.</summary>
     public WorldClockColumnControl()
     {
         InitializeComponent();
+    }
+
+    private void ColumnRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // ActualWidth/ActualHeight bindings do not notify on resize. Keep every decorative
+        // layer in the arranged column bounds without letting bitmap dimensions measure the content.
+        SceneGrid.Width = e.NewSize.Width;
+        SceneGrid.Height = e.NewSize.Height;
+        SceneGrid.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, e.NewSize.Width, e.NewSize.Height) };
+    }
+
+    /// <summary>Switches this passive city surface between detailed and widget density.</summary>
+    public void SetPresentationMode(WorldClockPresentationMode presentationMode)
+    {
+        if (!Enum.IsDefined(presentationMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(presentationMode));
+        }
+
+        _presentationMode = presentationMode;
+        ApplyPresentationMode();
+    }
+
+    /// <summary>Measures the non-wrapping clock at its largest type size, including accessibility text scaling.</summary>
+    public double MeasureMinimumWidth()
+    {
+        LocalTimeText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        return Math.Max(320d, Math.Ceiling(LocalTimeText.DesiredSize.Width * 58d / LocalTimeText.FontSize) + 32d);
+    }
+
+    /// <summary>Renders only the detail that fits the viewport without allowing decorative assets to dictate its size.</summary>
+    public void SetViewportSize(double width, double height)
+    {
+        if (!double.IsFinite(width) || !double.IsFinite(height) || width < 0d || height < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), "The viewport must be finite and non-negative.");
+        }
+
+        _viewportWidth = width;
+        _viewportHeight = height;
+        MinHeight = height;
+        ApplyPresentationMode();
     }
 
     /// <summary>Applies the latest locally calculated city projection.</summary>
@@ -80,12 +128,16 @@ public sealed partial class WorldClockColumnControl : UserControl
         var sunsetSummary = strings.Format("WorldClock.Sunset", sunsetTime);
         var daylightSummary = ApplySolarTimeline(clock, strings);
         var weatherSummary = ApplyWeather(clock.Weather, strings);
+        CompactDaylightDurationText.Text = daylightSummary;
+        CompactTimeZoneText.Text = string.Concat("UTC", FormatOffset(clock.LocalTime.Offset));
+        ApplyPresentationMode();
 
         var accessibleDetails = new[]
         {
             clock.CityName,
             LocalTimeText.Text,
             OffsetText.Text,
+            DateRelationText.Text,
             DayStateText.Text,
             moonPhaseSummary,
             weatherSummary,
@@ -96,6 +148,77 @@ public sealed partial class WorldClockColumnControl : UserControl
         var accessibleSummary = string.Join(", ", accessibleDetails);
         AutomationProperties.SetName(ColumnRoot, accessibleSummary);
         AutomationProperties.SetLocalizedLandmarkType(ColumnRoot, clock.CityName);
+    }
+
+    private void ApplyPresentationMode()
+    {
+        if (_viewportWidth <= 0d)
+        {
+            return;
+        }
+
+        // Measure actual localized text (including Windows text scaling), not a fixed window-height preset.
+        ApplyDetailLayout(WorldClockDetailLevel.Summary, inlineWeather: false);
+        TimeInfo.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        WeatherPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var inlineWeather = TimeInfo.DesiredSize.Width + WeatherPanel.DesiredSize.Width + 48d <= _viewportWidth;
+
+        ApplyDetailLayout(WorldClockDetailLevel.Expanded, inlineWeather: false);
+        ClockDetailsLayout.Measure(new Size(_viewportWidth, double.PositiveInfinity));
+        var expandedHeight = ClockDetailsLayout.DesiredSize.Height + ColumnRoot.RowDefinitions[0].Height.Value;
+
+        ApplyDetailLayout(WorldClockDetailLevel.Summary, inlineWeather);
+        ClockDetailsLayout.Measure(new Size(_viewportWidth, double.PositiveInfinity));
+        var summaryHeight = ClockDetailsLayout.DesiredSize.Height;
+        PreferredContentHeight = _presentationMode == WorldClockPresentationMode.Expanded ? expandedHeight : summaryHeight;
+
+        var detail = WorldClockWindowLayoutState.CalculateDetailLevel(
+            _presentationMode, _viewportHeight, expandedHeight, summaryHeight);
+        ApplyDetailLayout(detail, inlineWeather);
+    }
+
+    private void ApplyDetailLayout(WorldClockDetailLevel detail, bool inlineWeather)
+    {
+        var expanded = detail == WorldClockDetailLevel.Expanded;
+        var sideBySide = !expanded && inlineWeather;
+        ReferenceMarker.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        ColumnRoot.RowDefinitions[0].Height = new GridLength(expanded ? 38 : 0);
+        ClockDetailsLayout.ColumnSpacing = sideBySide ? 16d : 0d;
+        WeatherColumn.Width = sideBySide ? GridLength.Auto : new GridLength(0);
+        SkylineSpacerRow.MinHeight = 0d;
+
+        CityNameText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        CityNameText.FontSize = expanded ? 20d : 18d;
+        CityNameText.TextAlignment = expanded ? TextAlignment.Center : TextAlignment.Left;
+        Grid.SetColumnSpan(TimeInfo, sideBySide ? 1 : 2);
+        TimeInfo.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        LocalTimeText.FontSize = expanded ? 58d : 56d;
+        LocalTimeText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        OffsetText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        OffsetText.TextAlignment = expanded ? TextAlignment.Center : TextAlignment.Left;
+        DateRelationText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        DateRelationText.TextAlignment = expanded ? TextAlignment.Center : TextAlignment.Left;
+        // Day changes remain visible even in the smallest comparison.
+        DateRelationText.Visibility = string.IsNullOrEmpty(DateRelationText.Text) ? Visibility.Collapsed : Visibility.Visible;
+        DayStateText.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        SolarArcPanel.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        MoonPhaseSummaryText.Visibility = expanded && !string.IsNullOrEmpty(MoonPhaseSummaryText.Text)
+            ? Visibility.Visible : Visibility.Collapsed;
+
+        Grid.SetRow(WeatherPanel, sideBySide ? 1 : 5);
+        Grid.SetColumn(WeatherPanel, sideBySide ? 1 : 0);
+        Grid.SetColumnSpan(WeatherPanel, sideBySide ? 1 : 2);
+        WeatherPanel.Margin = sideBySide ? new Thickness(0) : new Thickness(0, 8, 0, 0);
+        WeatherPanel.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        WeatherPanel.VerticalAlignment = VerticalAlignment.Top;
+        WeatherTemperatureText.FontSize = expanded ? 38d : 36d;
+        WeatherConditionText.FontSize = 12d;
+
+        CompactFooter.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        CompactDaylightDurationText.Visibility = detail == WorldClockDetailLevel.Summary
+            && !string.IsNullOrEmpty(CompactDaylightDurationText.Text) ? Visibility.Visible : Visibility.Collapsed;
+        CompactTimeZoneText.Visibility = !expanded && !string.IsNullOrEmpty(CompactTimeZoneText.Text)
+            ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private string ApplyMoonPhase(

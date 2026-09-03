@@ -6,8 +6,10 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
+using TrackMeUp.Controls;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 using Windows.Graphics;
@@ -20,10 +22,8 @@ public sealed partial class SearchWindow : Window
     private const int LogicalWindowWidth = 960;
     private const int MaximumLogicalWidth = 960;
     private const int CompactLogicalHeight = 168;
-    private const int EmptyLogicalHeight = 204;
-    private const int ErrorLogicalHeight = 250;
-    private const int ResultsChromeLogicalHeight = 162;
-    private const int ResultLogicalHeight = 180;
+    private const int ResultLogicalHeight = 92;
+    private const double StackedPreviewWidth = 760d;
     private const int LogicalScreenMargin = 22;
     private const double CursorDisplayWidthRatio = 0.64d;
     private const double MaximumCursorDisplayHeightRatio = 0.78d;
@@ -70,13 +70,20 @@ public sealed partial class SearchWindow : Window
         AutomationProperties.SetName(SearchActivityProgressRing, _strings.Translate("Search.Working"));
         SearchAvailabilityText.Text = string.Format(
             _culture,
-            _strings.Translate("Search.Availability"),
+            _strings.Translate("Search.SnapshotCounts"),
             availability.TotalSnapshotCount,
-            availability.TodaySnapshotCount,
-            _strings.Translate(availability.TextReadingEnabled
-                ? "Search.TextReading.Enabled"
-                : "Search.TextReading.Disabled"));
+            availability.TodaySnapshotCount);
+        TextReadingStatusText.Text = _strings.Translate(availability.TextReadingEnabled
+            ? "Search.TextReading.Status.Enabled"
+            : "Search.TextReading.Status.Disabled");
+        TextReadingStatusDot.Fill = (Brush)Microsoft.UI.Xaml.Application.Current.Resources[availability.TextReadingEnabled
+            ? "SystemFillColorSuccessBrush"
+            : "TextFillColorSecondaryBrush"];
         AutomationProperties.SetName(SearchAvailabilityText, SearchAvailabilityText.Text);
+        AutomationProperties.SetName(TextReadingStatusText, TextReadingStatusText.Text);
+        AutomationProperties.SetName(SearchResultsList, _strings.Translate("Search.Results.Title"));
+        AutomationProperties.SetName(PreviewScroller, _strings.Translate("Search.Preview.Title"));
+        AutomationProperties.SetName(OpenSnapshotButton, _strings.Translate("Search.Preview.Open"));
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         _titleBar = new CustomTitleBarController(
@@ -228,6 +235,7 @@ public sealed partial class SearchWindow : Window
         }
         catch (Exception)
         {
+            _viewModel.Clear();
             SearchInfoBar.Title = _strings.Translate("Search.Error");
             SearchInfoBar.Message = string.Empty;
             SearchInfoBar.IsOpen = true;
@@ -245,8 +253,8 @@ public sealed partial class SearchWindow : Window
         _activeSearchOperationCount++;
         if (wasIdle)
         {
-            SearchActivityGlow.Visibility = Visibility.Visible;
-            SearchActivityStatus.Visibility = Visibility.Visible;
+            SearchActivityGlow.Opacity = 1d;
+            UpdateResultState(_hasExecutedQuery);
         }
     }
 
@@ -260,8 +268,8 @@ public sealed partial class SearchWindow : Window
         _activeSearchOperationCount--;
         if (_activeSearchOperationCount == 0)
         {
-            SearchActivityGlow.Visibility = Visibility.Collapsed;
-            SearchActivityStatus.Visibility = Visibility.Collapsed;
+            SearchActivityGlow.Opacity = 0.72d;
+            UpdateResultState(_hasExecutedQuery);
         }
     }
 
@@ -269,21 +277,38 @@ public sealed partial class SearchWindow : Window
     {
         _hasExecutedQuery = hasExecutedQuery;
         var hasResults = _viewModel.Results.Count > 0;
-        SearchResultsList.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
-        EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults ? Visibility.Visible : Visibility.Collapsed;
+        var isSearchingWithoutResults = _activeSearchOperationCount > 0 && !hasResults;
+        ResultsSurface.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
+        var countKey = _viewModel.TotalCount > _viewModel.Results.Count
+            ? "Search.Results.Limited"
+            : _viewModel.Results.Count == 1 ? "Search.Results.One" : "Search.Results.Many";
+        ResultCountText.Text = string.Format(_culture, _strings.Translate(countKey),
+            _viewModel.Results.Count, _viewModel.TotalCount);
+        SearchResultsList.SelectedItem = _viewModel.SelectedResult;
+        RenderSelectedPreview();
+        EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults && !isSearchingWithoutResults && !SearchInfoBar.IsOpen
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SearchActivityStatus.Visibility = isSearchingWithoutResults ? Visibility.Visible : Visibility.Collapsed;
         ResizeForCurrentState();
     }
 
     private void ResizeForCurrentState()
     {
         var resultCount = _viewModel.Results.Count;
+        var width = RootGrid.ActualWidth > 0d ? RootGrid.ActualWidth : LogicalWindowWidth;
+        var measureSize = new Windows.Foundation.Size(width, double.PositiveInfinity);
+        SearchQueryHost.Measure(measureSize);
+        SearchFooter.Measure(measureSize);
+        SearchInfoBar.Measure(measureSize);
+        SearchActivityStatus.Measure(measureSize);
+        EmptyStatePanel.Measure(measureSize);
+        var chromeHeight = 40d + SearchQueryHost.DesiredSize.Height + SearchFooter.DesiredSize.Height + SearchInfoBar.DesiredSize.Height;
+        var previewHeight = width < StackedPreviewWidth ? 420d : 280d;
         var logicalHeight = resultCount > 0
-            ? checked(ResultsChromeLogicalHeight + (resultCount * ResultLogicalHeight))
-            : SearchInfoBar.IsOpen
-                ? ErrorLogicalHeight
-                : _hasExecutedQuery
-                    ? EmptyLogicalHeight
-                    : CompactLogicalHeight;
+            ? checked((int)Math.Ceiling(chromeHeight + Math.Max(previewHeight, Math.Min(6, resultCount) * ResultLogicalHeight)))
+            : checked((int)Math.Ceiling(Math.Max(CompactLogicalHeight,
+                chromeHeight + Math.Max(SearchActivityStatus.DesiredSize.Height, EmptyStatePanel.DesiredSize.Height))));
         _placement.ResizeAndCenterOnCursorDisplay(
             RootGrid,
             CursorDisplayWidthRatio,
@@ -292,14 +317,56 @@ public sealed partial class SearchWindow : Window
             MaximumCursorDisplayHeightRatio);
     }
 
-    private void SearchResultsList_ItemClick(object sender, ItemClickEventArgs e)
+    private void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (e.ClickedItem is ScreenshotSearchResult result)
+        _viewModel.SelectResult(SearchResultsList.SelectedItem as ScreenshotSearchResult);
+        RenderSelectedPreview();
+        PreviewScroller.ChangeView(null, 0d, null, disableAnimation: true);
+    }
+
+    private void RenderSelectedPreview()
+    {
+        var result = _viewModel.SelectedResult;
+        PreviewPane.DataContext = result;
+        SearchTextHighlight.Apply(PreviewTitleText, result?.TitleDisplay, result?.Query);
+        SearchTextHighlight.Apply(PreviewBodyText, result?.PreviewText, result?.Query);
+        PreviewInstallationText.Visibility = string.IsNullOrWhiteSpace(result?.InstallationDisplay)
+            ? Visibility.Collapsed : Visibility.Visible;
+        OpenSnapshotButton.IsEnabled = result is not null;
+    }
+
+    private void OpenSnapshotButton_Click(object sender, RoutedEventArgs e) => OpenSelectedSnapshot();
+
+    private void SearchResultsList_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter && _viewModel.SelectedResult is not null)
+        {
+            e.Handled = true;
+            OpenSelectedSnapshot();
+        }
+    }
+
+    private void OpenSelectedSnapshot()
+    {
+        if (_viewModel.SelectedResult is { } result)
         {
             ScreenshotRequested?.Invoke(
                 this,
                 new ScreenshotPreviewRequestedEventArgs(result.ScreenshotPath, result.CapturedAt));
         }
+    }
+
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var stacked = e.NewSize.Width < StackedPreviewWidth;
+        ResultsListColumn.Width = new GridLength(stacked ? 1d : 2d, GridUnitType.Star);
+        PreviewColumn.Width = stacked ? new GridLength(0d) : new GridLength(3d, GridUnitType.Star);
+        ResultsListRow.Height = stacked ? GridLength.Auto : new GridLength(1d, GridUnitType.Star);
+        PreviewRow.Height = stacked ? new GridLength(1d, GridUnitType.Star) : new GridLength(0d);
+        SearchResultsPane.MaxHeight = stacked ? 200d : double.PositiveInfinity;
+        Grid.SetColumn(PreviewPane, stacked ? 0 : 1);
+        Grid.SetRow(PreviewPane, stacked ? 1 : 0);
+        PreviewPane.BorderThickness = stacked ? new Thickness(0, 1, 0, 0) : new Thickness(1, 0, 0, 0);
     }
 
     private void QueryBox_GotFocus(object sender, RoutedEventArgs e)

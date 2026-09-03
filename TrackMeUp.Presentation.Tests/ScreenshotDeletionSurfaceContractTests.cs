@@ -7,17 +7,17 @@ using Xunit;
 
 namespace TrackMeUp.Presentation.Tests;
 
-/// <summary>Guards native confirmation, reentrancy, and refresh behavior for screenshot deletion commands.</summary>
+/// <summary>Guards standard confirmation, reentrancy, and refresh behavior for screenshot deletion commands.</summary>
 public sealed class ScreenshotDeletionSurfaceContractTests
 {
-    /// <summary>Ensures both destructive paths use the owned system dialog and one guarded operation.</summary>
+    /// <summary>Ensures both destructive paths use the owned standard dialog and one guarded operation.</summary>
     [Fact]
-    public void ScreenshotDeletionUsesOwnedNativeConfirmationAndRefreshesTheGallery()
+    public void ScreenshotDeletionUsesOwnedStandardConfirmationAndRefreshesTheGallery()
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
 
         Assert.Contains("_dialogs.ConfirmAsync(", source, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxRequest.Confirmation", source, StringComparison.Ordinal);
+        Assert.Contains("DialogRequest.Confirmation", source, StringComparison.Ordinal);
         Assert.Contains("Screenshots.DeleteScreenshot.Confirm.Title", source, StringComparison.Ordinal);
         Assert.Contains("Screenshots.DeleteAnalysis.Confirm.Title", source, StringComparison.Ordinal);
         Assert.Contains("_deleteOperationInProgress", source, StringComparison.Ordinal);

@@ -108,16 +108,16 @@ internal sealed class OperationsSectionContext
         switch (severity)
         {
             case InfoBarSeverity.Success:
-                Dialogs.ShowSuccessBanner(_status, title, message);
+                Dialogs.Notifications.ShowSuccess(_status, title, message);
                 break;
             case InfoBarSeverity.Error:
-                Dialogs.ShowErrorBanner(_status, title, message);
+                Dialogs.Notifications.ShowError(_status, title, message);
                 break;
             case InfoBarSeverity.Warning:
-                Dialogs.ShowWarningBanner(_status, title, message);
+                Dialogs.Notifications.ShowWarning(_status, title, message);
                 break;
             default:
-                Dialogs.ShowInfoBanner(_status, title, message);
+                Dialogs.Notifications.ShowInfo(_status, title, message);
                 break;
         }
     }

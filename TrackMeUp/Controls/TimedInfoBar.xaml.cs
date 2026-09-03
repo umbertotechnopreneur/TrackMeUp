@@ -10,7 +10,7 @@ using Windows.UI.ViewManagement;
 
 namespace TrackMeUp.Controls;
 
-/// <summary>Renders one closable Acrylic InfoBar with a subtle timeout indicator over its lower edge.</summary>
+/// <summary>Renders one opaque, closable InfoBar with a timeout indicator inside its frame.</summary>
 public sealed partial class TimedInfoBar : UserControl
 {
     private const float BannerElevation = 18f;

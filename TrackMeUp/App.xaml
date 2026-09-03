@@ -18,35 +18,47 @@
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF5C5C" Offset="0"/><GradientStop Color="#CFFF8B77" Offset="0.55"/><GradientStop Color="#00FF8B77" Offset="1"/></LinearGradientBrush>
                     <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
                     <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFB7422E" />
-                    <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarErrorSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarInformationalSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
-                    <StaticResource x:Key="InfoBarSuccessSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
-                    <StaticResource x:Key="InfoBarWarningSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
-                    <StaticResource x:Key="InfoBarErrorSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
+                    <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="#FFD9F0FF" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FFDCF6E4" />
+                    <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="#FFFFE6B3" />
+                    <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="#FFFFDCE0" />
+                    <SolidColorBrush x:Key="InfoBarInformationalSeverityIconBackground" Color="#FF0078D4" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF107C41" />
+                    <SolidColorBrush x:Key="InfoBarWarningSeverityIconBackground" Color="#FF9A6700" />
+                    <SolidColorBrush x:Key="InfoBarErrorSeverityIconBackground" Color="#FFC42B1C" />
                     <StaticResource x:Key="InfoBarInformationalSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
                     <StaticResource x:Key="InfoBarWarningSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
                     <StaticResource x:Key="InfoBarErrorSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
+                    <SolidColorBrush x:Key="ToastBorderBrush" Color="#FF6A94B6" />
+                    <SolidColorBrush x:Key="ToastCountdownTrackBrush" Color="#FFABC7D8" />
+                    <SolidColorBrush x:Key="ToastCountdownForegroundBrush" Color="#FF0879C9" />
+                    <SolidColorBrush x:Key="TrackingStatusToastBackgroundBrush" Color="#FF173148" />
+                    <SolidColorBrush x:Key="ToastTextBrush" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="ToastSecondaryTextBrush" Color="#FFD6E8F3" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="ActivityLineBrush" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FFFF6B6B" Offset="0"/><GradientStop Color="#BFFF927B" Offset="0.55"/><GradientStop Color="#00FF927B" Offset="1"/></LinearGradientBrush>
                     <SolidColorBrush x:Key="BrandCoralBrush" Color="#FFF9665B" />
                     <SolidColorBrush x:Key="PlayerAccentTextBrush" Color="#FFFF9B82" />
-                    <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarSuccessSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarWarningSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarErrorSeverityBackgroundBrush" ResourceKey="AcrylicInAppFillColorDefaultBrush" />
-                    <StaticResource x:Key="InfoBarInformationalSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
-                    <StaticResource x:Key="InfoBarSuccessSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
-                    <StaticResource x:Key="InfoBarWarningSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
-                    <StaticResource x:Key="InfoBarErrorSeverityIconBackground" ResourceKey="ControlFillColorTransparentBrush" />
+                    <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="#FF103B5A" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#FF173F31" />
+                    <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="#FF513D12" />
+                    <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="#FF57242A" />
+                    <SolidColorBrush x:Key="InfoBarInformationalSeverityIconBackground" Color="#FF5CC8FF" />
+                    <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#FF6FD99B" />
+                    <SolidColorBrush x:Key="InfoBarWarningSeverityIconBackground" Color="#FFFFC857" />
+                    <SolidColorBrush x:Key="InfoBarErrorSeverityIconBackground" Color="#FFFF8A91" />
                     <StaticResource x:Key="InfoBarInformationalSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
                     <StaticResource x:Key="InfoBarSuccessSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
                     <StaticResource x:Key="InfoBarWarningSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
                     <StaticResource x:Key="InfoBarErrorSeverityIconForeground" ResourceKey="TextFillColorPrimaryBrush" />
+                    <SolidColorBrush x:Key="ToastBorderBrush" Color="#FF789BB8" />
+                    <SolidColorBrush x:Key="ToastCountdownTrackBrush" Color="#FF34546C" />
+                    <SolidColorBrush x:Key="ToastCountdownForegroundBrush" Color="#FF5CC8FF" />
+                    <SolidColorBrush x:Key="TrackingStatusToastBackgroundBrush" Color="#FF173148" />
+                    <SolidColorBrush x:Key="ToastTextBrush" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="ToastSecondaryTextBrush" Color="#FFD6E8F3" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <StaticResource x:Key="BrandCoralBrush" ResourceKey="SystemColorHighlightColorBrush" />
@@ -63,6 +75,12 @@
                     <StaticResource x:Key="InfoBarSuccessSeverityIconForeground" ResourceKey="SystemColorWindowTextColorBrush" />
                     <StaticResource x:Key="InfoBarWarningSeverityIconForeground" ResourceKey="SystemColorWindowTextColorBrush" />
                     <StaticResource x:Key="InfoBarErrorSeverityIconForeground" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ToastBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ToastCountdownTrackBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ToastCountdownForegroundBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="TrackingStatusToastBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ToastTextBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ToastSecondaryTextBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <Style TargetType="ScrollViewer">
@@ -78,7 +96,7 @@
                 <Setter Property="Foreground" Value="{ThemeResource PlayerAccentTextBrush}" />
             </Style>
             <Style TargetType="InfoBar">
-                <Setter Property="BorderBrush" Value="{ThemeResource SurfaceStrokeColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ToastBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="12" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />

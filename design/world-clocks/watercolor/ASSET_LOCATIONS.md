@@ -6,8 +6,8 @@ derivatives, and the composable atmosphere layers.
 ## Original city masters
 
 - Directory: `design/world-clocks/watercolor/masters-v1/`
-- Contents: 202 transparent PNG files, one `summer` and one `winter` master for
-  each of the 101 catalog cities.
+- Contents: one `summer` and one `winter` transparent PNG master for every
+  city declared in the generation manifest.
 - Naming: `<city-id>-summer.png` and `<city-id>-winter.png`.
 - Typical dimensions: 1672×941 RGBA; a small accepted early subset is
   1672×940 and remains within the validated 16:9 tolerance.
@@ -21,8 +21,8 @@ generation/review boundary in [`PROVENANCE.md`](PROVENANCE.md).
 
 ## Intermediate city WebP files
 
-- Build directory: `design/world-clocks/watercolor/runtime-v1/`
-- Contents: 202 alpha WebP files at 1280×720 plus
+- Current build directory: `design/world-clocks/watercolor/runtime-v3/`
+- Contents: one alpha WebP file per reviewed city/season pair at 1280×720 plus
   `runtime-asset-manifest.json`.
 - Transformation: FFmpeg/libwebp quality 82, compression level 4, with decoded
   codec, dimensions, alpha range, byte length, and SHA-256 verified per file.
@@ -32,7 +32,7 @@ generation/review boundary in [`PROVENANCE.md`](PROVENANCE.md).
 ## Packaged city PNG files
 
 - Directory: `TrackMeUp/Assets/WorldClocks/Skylines/`.
-- Contents: 202 RGBA PNG files at 1280×720.
+- Contents: one RGBA PNG per reviewed city/season pair at 1280×720.
 - Transformation: each reviewed intermediate WebP is decoded and re-encoded
   losslessly as a WinUI-supported PNG. The packaged manifest records the
   intermediate and master hashes as well as each PNG hash and byte length.
@@ -57,7 +57,7 @@ produce/install the reviewed PNG catalog with
 - Provenance: `TrackMeUp/Assets/WorldClocks/Overlays/PROVENANCE.md`.
 
 These overlay PNGs are currently both the selected generated originals and the
-runtime files; they are intentionally separate from the 202 city masters and
+runtime files; they are intentionally separate from the manifest-declared city masters and
 WebP derivatives. Local sunrise/sunset/day/night data selects decorative
 backdrops. Rain, fog, snow, lightning, and aurora are never inferred from city,
 season, or clock time and require real source-backed observations or an
@@ -67,11 +67,11 @@ explicit decorative option.
 
 `TrackMeUp/Assets/WorldClocks/` also contains:
 
-- `world-clocks.sqlite3` — 101 cities and 202 `Skylines/` asset records;
+- `world-clocks.sqlite3` — the manifest-declared city catalog and matching `Skylines/` asset records;
 - `SOURCE-MANIFEST.json` — packaged copy of the generation contract;
 - `RUNTIME-ASSET-MANIFEST.json` — packaged copy of the exact intermediate WebP
   manifest;
-- `PACKAGED-ASSET-MANIFEST.json` — exact source-bound manifest for the 202 PNG
+- `PACKAGED-ASSET-MANIFEST.json` — exact source-bound manifest for the packaged PNG
   files loaded by WinUI;
 - `ATTRIBUTION.json` and `ATTRIBUTION.md` — data/artwork attribution and hashes;
 - `PROVENANCE.md` — release-ready city artwork provenance; and

@@ -247,10 +247,10 @@ public sealed partial class MainWindow : Window
         {
             await _dialogs.ShowInformativeAsync(
                 this,
-                SystemMessageBoxRequest.Informative(
+                DialogRequest.Informative(
                     T("Notification.WindowsStartupFailed.Title"),
                     $"{T("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{startupRegistrationFailureCode}",
-                    SystemMessageBoxSeverity.Warning));
+                    T("Dialog.Ok")));
         }
 
         if (initialization.Succeeded && initialization.Value?.StartedPaused == true)
@@ -344,10 +344,10 @@ public sealed partial class MainWindow : Window
     {
         await _dialogs.ShowInformativeAsync(
             this,
-            SystemMessageBoxRequest.Informative(
+            DialogRequest.Informative(
                 T("Dialog.DataMigration.Failed.Title"),
                 _strings.Format("Dialog.DataMigration.Failed.Message", code),
-                SystemMessageBoxSeverity.Error));
+                T("Dialog.Ok")));
     }
 
     private void SetScreenshotStorageReady(bool isReady)
@@ -504,10 +504,10 @@ public sealed partial class MainWindow : Window
         _startupAiWarningShown = true;
         await _dialogs.ShowInformativeAsync(
             this,
-            SystemMessageBoxRequest.Informative(
+            DialogRequest.Informative(
                 T("Dialog.AiKeyMissing.Title"),
                 _strings.Format("Dialog.AiKeyMissing.Message", aiStatus.KeyVariable),
-                SystemMessageBoxSeverity.Warning));
+                T("Dialog.Ok")));
     }
 
     private async Task DrainApplicationNotificationsAsync(CancellationToken cancellationToken = default)
@@ -541,18 +541,12 @@ public sealed partial class MainWindow : Window
                     continue;
                 }
 
-                var severity = notification.Severity switch
-                {
-                    ApplicationNotificationSeverity.Error => SystemMessageBoxSeverity.Error,
-                    ApplicationNotificationSeverity.Warning => SystemMessageBoxSeverity.Warning,
-                    _ => SystemMessageBoxSeverity.Information
-                };
                 await _dialogs.ShowInformativeAsync(
                     this,
-                    SystemMessageBoxRequest.Informative(
+                    DialogRequest.Informative(
                         T(notification.TitleKey),
                         FormatNotificationMessage(notification),
-                        severity));
+                        T("Dialog.Ok")));
             }
         }
         finally
@@ -579,20 +573,20 @@ public sealed partial class MainWindow : Window
         switch (notification.Severity)
         {
             case ApplicationNotificationSeverity.Error:
-                _dialogs.ShowErrorBanner(MainNotificationBanner, title, message);
+                _dialogs.Notifications.ShowError(MainNotificationBanner, title, message);
                 break;
             case ApplicationNotificationSeverity.Warning:
-                _dialogs.ShowWarningBanner(MainNotificationBanner, title, message);
+                _dialogs.Notifications.ShowWarning(MainNotificationBanner, title, message);
                 break;
             default:
-                _dialogs.ShowInfoBanner(MainNotificationBanner, title, message);
+                _dialogs.Notifications.ShowInfo(MainNotificationBanner, title, message);
                 break;
         }
     }
 
     /// <summary>Shows a localized warning when the independent world-clock surface cannot open.</summary>
     internal void ShowWorldClockOpenFailure() =>
-        _dialogs.ShowWarningBanner(
+        _dialogs.Notifications.ShowWarning(
             MainNotificationBanner,
             T("WorldClock.ErrorTitle"),
             T("WorldClock.OpenFailed"));
@@ -873,7 +867,7 @@ public sealed partial class MainWindow : Window
         operations.BackRequested += OperationsControl_BackRequested;
         operations.LayoutChanged += OperationsControl_LayoutChanged;
         operations.AtomicResetPrepared += OperationsControl_AtomicResetPrepared;
-        operations.Initialize(_application, _dialogs, this);
+        operations.Initialize(_application, _dialogs, this, MainNotificationBanner);
         operations.ApplyLanguage(_strings.Language);
         _operationsInitializationTask = Task.CompletedTask;
         return _operationsInitializationTask;
@@ -881,10 +875,10 @@ public sealed partial class MainWindow : Window
 
     private Task ShowLazySurfaceFailureAsync() => _dialogs.ShowInformativeAsync(
         this,
-        SystemMessageBoxRequest.Informative(
+        DialogRequest.Informative(
             T("Operations.Status.RuntimeUnavailable.Title"),
             T("Operations.Status.RuntimeUnavailable.Message"),
-            SystemMessageBoxSeverity.Error));
+            T("Dialog.Ok")));
 
     /// <summary>Forwards Quick Setup activation to the application composition root.</summary>
     private void QuickSetupMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1015,10 +1009,10 @@ public sealed partial class MainWindow : Window
         {
             await _dialogs.ShowInformativeAsync(
                 this,
-                SystemMessageBoxRequest.Informative(
+                DialogRequest.Informative(
                     T("Tray.UnavailableTitle"),
                     T("Tray.UnavailableMessage"),
-                    SystemMessageBoxSeverity.Error));
+                    T("Dialog.Ok")));
         }
     }
 
@@ -1038,10 +1032,10 @@ public sealed partial class MainWindow : Window
 
             await _dialogs.ShowInformativeAsync(
                 this,
-                SystemMessageBoxRequest.Informative(
+                DialogRequest.Informative(
                     T("AiPricing.UnavailableTitle"),
                     T("AiPricing.UnavailableMessage"),
-                    SystemMessageBoxSeverity.Warning));
+                    T("Dialog.Ok")));
         }
         finally
         {
@@ -1055,7 +1049,12 @@ public sealed partial class MainWindow : Window
         MoreButton.Flyout.Hide();
         if (_aboutWindow is null)
         {
-            _aboutWindow = new AboutWindow(_application, _theme, _strings.RequestedLanguage);
+            _aboutWindow = new AboutWindow(
+                _application,
+                _theme,
+                _strings.RequestedLanguage,
+                _appWindow,
+                WinRT.Interop.WindowNative.GetWindowHandle(this));
             _aboutWindow.Closed += (_, _) => _aboutWindow = null;
         }
 
@@ -1747,7 +1746,7 @@ public sealed partial class MainWindow : Window
         _hasAppliedSettings = true;
         _screenshotsEnabled = settings.ScreenshotsEnabled;
         _showAiMonthlySpend = settings.ShowAiMonthlySpend;
-        RootGrid.Opacity = settings.MainWindowOpacityPercent / 100d;
+        WindowContent.Opacity = settings.MainWindowOpacityPercent / 100d;
         _appWindow.IsShownInSwitchers = settings.MainWindowShowInTaskbar;
         if (!_showAiMonthlySpend)
         {
@@ -2079,9 +2078,11 @@ public sealed partial class MainWindow : Window
         {
             var confirmed = await _dialogs.ConfirmAsync(
                 this,
-                SystemMessageBoxRequest.Confirmation(
+                DialogRequest.Confirmation(
                     T("Dialog.CloseTracking.Title"),
-                    T("Dialog.CloseTracking.Message")));
+                    T("Dialog.CloseTracking.Message"),
+                    T("Dialog.Ok"),
+                    T("Dialog.Cancel")));
             if (!confirmed)
             {
                 return;

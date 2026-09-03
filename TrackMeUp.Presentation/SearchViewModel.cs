@@ -17,6 +17,7 @@ public sealed record ScreenshotSearchResult(
     string WindowTitle,
     string ActiveWindowDisplay,
     string TextSnippet,
+    string PreviewText,
     string Query,
     string ActivityDisplay,
     string MatchLabel,
@@ -27,6 +28,12 @@ public sealed record ScreenshotSearchResult(
     string? InstallationColor = null,
     string? InstallationIcon = null)
 {
+    /// <summary>Gets the captured window title, or its application when no title was recorded.</summary>
+    public string TitleDisplay => WindowTitle == "—" ? Application : WindowTitle;
+
+    /// <summary>Gets the source and capture time shown in the list and selected preview.</summary>
+    public string SourceDisplay => $"{Application} · {CapturedAtDisplay}";
+
     /// <summary>Gets the Lucene relevance normalized against the best hit in the current query.</summary>
     public string MatchPercentDisplay => $"{MatchPercent}%";
 
@@ -54,6 +61,7 @@ public sealed class SearchViewModel : ViewModelBase
     private IReadOnlyList<ScreenshotSearchResult> _results = Array.Empty<ScreenshotSearchResult>();
     private bool _isSearching;
     private int _totalCount;
+    private ScreenshotSearchResult? _selectedResult;
 
     /// <summary>Gets the maximum number of screenshot rows rendered by the floating window.</summary>
     public const int MaximumResults = 20;
@@ -97,9 +105,28 @@ public sealed class SearchViewModel : ViewModelBase
         private set => Set(ref _totalCount, value);
     }
 
+    /// <summary>Gets the current preview selection from the active result set.</summary>
+    public ScreenshotSearchResult? SelectedResult
+    {
+        get => _selectedResult;
+        private set => Set(ref _selectedResult, value);
+    }
+
+    /// <summary>Selects an active result for preview without loading its screenshot or querying a provider.</summary>
+    public void SelectResult(ScreenshotSearchResult? result)
+    {
+        if (result is not null && !Results.Contains(result))
+        {
+            throw new ArgumentException("The preview must belong to the current search results.", nameof(result));
+        }
+
+        SelectedResult = result;
+    }
+
     /// <summary>Clears the current query results without accessing application state.</summary>
     public void Clear()
     {
+        SelectedResult = null;
         Results = Array.Empty<ScreenshotSearchResult>();
         TotalCount = 0;
     }
@@ -143,10 +170,11 @@ public sealed class SearchViewModel : ViewModelBase
                     Limit = MaximumResults
                 },
                 cancellationToken);
+            // A superseded query must not replace the current preview even if the facade completes late.
+            cancellationToken.ThrowIfCancellationRequested();
             if (!response.Succeeded || response.Value is null)
             {
-                Results = Array.Empty<ScreenshotSearchResult>();
-                TotalCount = 0;
+                Clear();
                 return new OperationResult<IReadOnlyList<ScreenshotSearchResult>>(
                     false,
                     response.Code,
@@ -180,6 +208,7 @@ public sealed class SearchViewModel : ViewModelBase
 
             Results = projected;
             TotalCount = response.Value.TotalCount;
+            SelectedResult = projected.FirstOrDefault();
             return OperationResult<IReadOnlyList<ScreenshotSearchResult>>.Success(
                 "search.query.completed",
                 "SearchQueryCompleted",
@@ -305,7 +334,8 @@ public sealed class SearchViewModel : ViewModelBase
         var cpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.CpuUsagePercent);
         var gpuUsagePercent = ReadPercentage(document, SearchAttributeKeys.GpuUsagePercent);
         var installation = ReadInstallation(document);
-        var snippet = BuildSnippet(document, query);
+        var preview = BuildPreview(document, query);
+        var snippet = BuildSnippet(preview, query);
         var activeWindowDisplay = windowTitle == "—" || SnippetRepresentsWindowTitle(snippet, windowTitle)
             ? application
             : $"{application} · {windowTitle}";
@@ -318,6 +348,7 @@ public sealed class SearchViewModel : ViewModelBase
             windowTitle,
             activeWindowDisplay,
             snippet,
+            preview,
             query,
             FormatActivity(mouseClicks, cpuUsagePercent, gpuUsagePercent, culture, formatClickCount),
             matchLabel,
@@ -409,7 +440,7 @@ public sealed class SearchViewModel : ViewModelBase
         return $"{clicks} · CPU {(cpuUsagePercent is { } cpu ? $"{cpu}%" : "—")} · GPU {(gpuUsagePercent is { } gpu ? $"{gpu}%" : "—")}";
     }
 
-    private static string BuildSnippet(SearchDocument document, string query)
+    private static string BuildPreview(SearchDocument document, string query)
     {
         var candidates = new[]
         {
@@ -435,7 +466,11 @@ public sealed class SearchViewModel : ViewModelBase
             return "—";
         }
 
-        var compact = string.Join(' ', plainText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return string.Join(' ', plainText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string BuildSnippet(string compact, string query)
+    {
         var matchIndex = compact.IndexOf(query, StringComparison.OrdinalIgnoreCase);
         if (matchIndex < 0 || compact.Length <= 180)
         {

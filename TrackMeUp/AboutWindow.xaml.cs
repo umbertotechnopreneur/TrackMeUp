@@ -15,8 +15,8 @@ namespace TrackMeUp;
 /// <summary>Displays product information and delegates diagnostics actions to the application facade.</summary>
 public sealed partial class AboutWindow : Window
 {
-    private const int LogicalWindowWidth = 940;
-    private const int LogicalWindowHeight = 650;
+    private const int LogicalWindowWidth = 1000;
+    private const int LogicalWindowHeight = 740;
     private const int LogicalScreenMargin = 22;
     private const string DarkHeroAsset = "ms-appx:///Assets/TrackMeUpAboutHero.theme-dark.png";
     private const string LightHeroAsset = "ms-appx:///Assets/TrackMeUpAboutHero.theme-light.png";
@@ -30,15 +30,27 @@ public sealed partial class AboutWindow : Window
     private XamlRoot? _xamlRoot;
     private ElementTheme? _heroTheme;
 
-    /// <summary>Creates and sizes the compact about window.</summary>
-    public AboutWindow(ITrackMeUpApplication application, string theme, string language)
+    /// <summary>Creates and sizes the About window on the display that contains its owner.</summary>
+    public AboutWindow(
+        ITrackMeUpApplication application,
+        string theme,
+        string language,
+        AppWindow ownerAppWindow,
+        IntPtr ownerHandle)
     {
-        _application = application;
+        _application = application ?? throw new ArgumentNullException(nameof(application));
+        ArgumentNullException.ThrowIfNull(ownerAppWindow);
+        if (ownerHandle == IntPtr.Zero)
+        {
+            throw new ArgumentException("An owner window handle is required.", nameof(ownerHandle));
+        }
+
         _strings = new LocalizationService(language);
         InitializeComponent();
         RootGrid.RequestedTheme = theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         UiLocalization.Apply(RootGrid, _strings);
-        _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
+        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(windowHandle));
         _titleBar = new CustomTitleBarController(
             this,
             _appWindow,
@@ -48,7 +60,16 @@ public sealed partial class AboutWindow : Window
             TitleBarRightInsetColumn,
             () => []);
         _titleBar.ThemeChanged += TitleBar_ThemeChanged;
-        _placement = new WindowPlacementService(_application, this, _appWindow, WindowStateKeys.About, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
+        _placement = new WindowPlacementService(
+            _application,
+            this,
+            _appWindow,
+            WindowStateKeys.About,
+            LogicalWindowWidth,
+            LogicalWindowHeight,
+            LogicalScreenMargin,
+            ownerAppWindow.Id);
+        WindowInteropService.SetOwner(windowHandle, ownerHandle);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += AboutWindow_Closed;
@@ -92,7 +113,7 @@ public sealed partial class AboutWindow : Window
             }
 
             VersionText.Text = result.Value.Build.SemVer;
-            BuiltAtText.Text = result.Value.Build.BuiltAtLocal.ToString("d", _strings.Culture);
+            BuiltAtText.Text = result.Value.Build.BuiltAtLocal.ToString("g", _strings.Culture);
             CommitText.Text = result.Value.Build.GitCommitShort;
             DirtyIndicator.Visibility = result.Value.Build.GitDirty ? Visibility.Visible : Visibility.Collapsed;
         }

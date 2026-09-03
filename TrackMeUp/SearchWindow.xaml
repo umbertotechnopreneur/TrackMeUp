@@ -8,19 +8,15 @@
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
-
-    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
-        <Grid.Resources>
-            <SolidColorBrush x:Key="SearchActivityStatusBrush" Color="#FF8A3E32" />
-        </Grid.Resources>
+    <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded" SizeChanged="RootGrid_SizeChanged">
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-
-        <Grid
-            x:Name="TitleBarDragRegion"
-            Height="40">
+        <Grid x:Name="TitleBarDragRegion" Height="40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="*" />
@@ -28,148 +24,193 @@
             </Grid.ColumnDefinitions>
         </Grid>
 
-        <Grid Grid.Row="1" Padding="28,8,28,18" RowSpacing="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Grid x:Name="SearchQueryHost" Grid.Row="1" Margin="24,6,24,14">
+            <AutoSuggestBox
+                x:Name="QueryBox"
+                MinHeight="48"
+                Tag="Search.Placeholder"
+                AutomationProperties.Name="Search snapshots"
+                CornerRadius="8"
+                FontSize="18"
+                GotFocus="QueryBox_GotFocus"
+                HorizontalContentAlignment="Stretch"
+                PlaceholderText="Search text in snapshots"
+                QuerySubmitted="QueryBox_QuerySubmitted"
+                TextChanged="QueryBox_TextChanged"
+                VerticalContentAlignment="Center">
+                <AutoSuggestBox.QueryIcon>
+                    <SymbolIcon Symbol="Find" />
+                </AutoSuggestBox.QueryIcon>
+                <AutoSuggestBox.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="F" Modifiers="Control" />
+                </AutoSuggestBox.KeyboardAccelerators>
+            </AutoSuggestBox>
+            <Border
+                x:Name="SearchActivityGlow"
+                Height="3"
+                Margin="10,0,10,-1"
+                VerticalAlignment="Bottom"
+                IsHitTestVisible="False"
+                CornerRadius="2"
+                Opacity="0.72">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Offset="0" Color="#FFFF8C78" />
+                        <GradientStop Offset="0.5" Color="#FFA56EFF" />
+                        <GradientStop Offset="1" Color="#FF46D4C8" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </Grid>
 
-            <Grid>
-                <AutoSuggestBox
-                    x:Name="QueryBox"
-                    MinHeight="48"
-                    Tag="Search.Placeholder"
-                    AutomationProperties.Name="Search snapshots"
-                    CornerRadius="8"
-                    FontSize="18"
-                    GotFocus="QueryBox_GotFocus"
-                    HorizontalContentAlignment="Stretch"
-                    PlaceholderText="Search text in snapshots"
-                    QuerySubmitted="QueryBox_QuerySubmitted"
-                    TextChanged="QueryBox_TextChanged"
-                    VerticalContentAlignment="Center">
-                    <AutoSuggestBox.QueryIcon>
-                        <SymbolIcon Symbol="Find" />
-                    </AutoSuggestBox.QueryIcon>
-                    <AutoSuggestBox.KeyboardAccelerators>
-                        <KeyboardAccelerator Key="F" Modifiers="Control" />
-                    </AutoSuggestBox.KeyboardAccelerators>
-                </AutoSuggestBox>
-                <Border
-                    x:Name="SearchActivityGlow"
-                    Height="3"
-                    Margin="12,0,12,-1"
-                    VerticalAlignment="Bottom"
-                    IsHitTestVisible="False"
-                    CornerRadius="2"
-                    Opacity="0.72"
-                    Visibility="Collapsed">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Offset="0" Color="#FFFF8C78" />
-                            <GradientStop Offset="0.5" Color="#FFA56EFF" />
-                            <GradientStop Offset="1" Color="#FF46D4C8" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                </Border>
-            </Grid>
+        <InfoBar
+            x:Name="SearchInfoBar"
+            Grid.Row="2"
+            Margin="24,0,24,8"
+            IsClosable="True"
+            IsOpen="False"
+            Severity="Error" />
 
-            <Grid Grid.Row="1" Margin="4,0">
+        <Grid Grid.Row="3">
+            <Grid x:Name="ResultsSurface" Visibility="Collapsed">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition x:Name="ResultsListColumn" Width="2*" />
+                    <ColumnDefinition x:Name="PreviewColumn" Width="3*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock
-                    x:Name="SearchAvailabilityText"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextWrapping="WrapWholeWords" />
-                <StackPanel
-                    x:Name="SearchActivityStatus"
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    VerticalAlignment="Center"
-                    Visibility="Collapsed">
-                    <ProgressRing
-                        x:Name="SearchActivityProgressRing"
-                        Width="14"
-                        Height="14"
-                        IsActive="True"
-                        IsHitTestVisible="False" />
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="ResultsListRow" Height="*" />
+                    <RowDefinition x:Name="PreviewRow" Height="0" />
+                </Grid.RowDefinitions>
+                <Grid x:Name="SearchResultsPane" Padding="16,8,16,12" RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
                     <TextBlock
-                        Tag="Search.Working"
+                        x:Name="ResultCountText"
+                        Margin="10,0,0,0"
                         AutomationProperties.LiveSetting="Polite"
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource SearchActivityStatusBrush}"
-                        Text="Searching the local index" />
-                </StackPanel>
+                        FontSize="13"
+                        TextWrapping="WrapWholeWords" />
+                    <ListView
+                        x:Name="SearchResultsList"
+                        Grid.Row="1"
+                        HorizontalContentAlignment="Stretch"
+                        ItemsSource="{Binding Results, Mode=OneWay}"
+                        SelectionChanged="SearchResultsList_SelectionChanged"
+                        KeyDown="SearchResultsList_KeyDown"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.HorizontalScrollMode="Disabled"
+                        SelectionMode="Single"
+                        IsItemClickEnabled="False">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate><ItemsStackPanel /></ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Margin" Value="0,0,0,4" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="CornerRadius" Value="6" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate><controls:SearchResultItemControl Result="{Binding}" /></DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+
+                <Grid
+                    x:Name="PreviewPane"
+                    Grid.Column="1"
+                    Padding="24,12,24,16"
+                    RowSpacing="16"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="1,0,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ScrollViewer
+                        x:Name="PreviewScroller"
+                        HorizontalContentAlignment="Stretch"
+                        HorizontalScrollBarVisibility="Disabled"
+                        HorizontalScrollMode="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="12">
+                            <TextBlock
+                                Tag="Search.Preview.Title"
+                                CharacterSpacing="50"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="TEXT PREVIEW"
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="PreviewTitleText"
+                                AutomationProperties.HeadingLevel="Level2"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                FontSize="13"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{Binding SourceDisplay}"
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="PreviewInstallationText"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{Binding InstallationDisplay}"
+                                TextWrapping="WrapWholeWords"
+                                Visibility="Collapsed" />
+                            <Border
+                                Margin="0,12,0,0"
+                                Padding="12,0,0,0"
+                                BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}"
+                                BorderThickness="2,0,0,0">
+                                <TextBlock
+                                    x:Name="PreviewBodyText"
+                                    FontSize="15"
+                                    IsTextSelectionEnabled="True"
+                                    TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <Button
+                        x:Name="OpenSnapshotButton"
+                        Grid.Row="1"
+                        HorizontalAlignment="Right"
+                        Click="OpenSnapshotButton_Click"
+                        Content="Open snapshot"
+                        Tag="Search.Preview.Open" />
+                </Grid>
             </Grid>
 
-            <InfoBar
-                x:Name="SearchInfoBar"
-                Grid.Row="2"
-                IsClosable="True"
-                IsOpen="False"
-                Severity="Error" />
+            <Grid x:Name="EmptyStatePanel" Margin="28,4,28,12" VerticalAlignment="Top" ColumnSpacing="8" Visibility="Collapsed">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Ellipse Width="6" Height="6" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock Grid.Column="1" Tag="Search.NoResults" FontSize="13" Text="No matching snapshots" TextWrapping="WrapWholeWords" />
+            </Grid>
+            <Grid x:Name="SearchActivityStatus" Margin="28,4,28,12" VerticalAlignment="Top" ColumnSpacing="8" Visibility="Collapsed">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <ProgressRing x:Name="SearchActivityProgressRing" Width="14" Height="14" IsActive="True" IsHitTestVisible="False" />
+                <TextBlock Grid.Column="1" Tag="Search.Working" AutomationProperties.LiveSetting="Polite" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Searching the local index" TextWrapping="WrapWholeWords" />
+            </Grid>
+        </Grid>
 
-            <Grid Grid.Row="3">
-                <ListView
-                    x:Name="SearchResultsList"
-                    Margin="0"
-                    HorizontalContentAlignment="Stretch"
-                    IsItemClickEnabled="True"
-                    ItemClick="SearchResultsList_ItemClick"
-                    ItemsSource="{Binding Results, Mode=OneWay}"
-                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                    ScrollViewer.HorizontalScrollMode="Disabled"
-                    SelectionMode="None"
-                    Visibility="Collapsed">
-                    <ListView.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <ItemsStackPanel />
-                        </ItemsPanelTemplate>
-                    </ListView.ItemsPanel>
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="Background" Value="Transparent" />
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                            <Setter Property="Margin" Value="0" />
-                            <Setter Property="Padding" Value="0" />
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <controls:SearchResultItemControl Result="{Binding}" />
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-
-                <StackPanel
-                    x:Name="EmptyStatePanel"
-                    Margin="4,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    Visibility="Collapsed">
-                    <Ellipse
-                        Width="6"
-                        Height="6"
-                        VerticalAlignment="Center"
-                        AutomationProperties.AccessibilityView="Raw"
-                        Fill="{StaticResource SearchActivityStatusBrush}" />
-                    <TextBlock
-                        Tag="Search.NoResults"
-                        VerticalAlignment="Center"
-                        FontSize="13"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="No matching snapshots"
-                        TextTrimming="CharacterEllipsis" />
-                </StackPanel>
+        <Grid
+            x:Name="SearchFooter"
+            Grid.Row="4"
+            Padding="24,12"
+            ColumnSpacing="16"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <TextBlock x:Name="SearchAvailabilityText" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="WrapWholeWords" />
+            <Grid Grid.Column="1" HorizontalAlignment="Right" ColumnSpacing="8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Ellipse x:Name="TextReadingStatusDot" Width="8" Height="8" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" />
+                <TextBlock x:Name="TextReadingStatusText" Grid.Column="1" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="WrapWholeWords" />
             </Grid>
         </Grid>
     </Grid>

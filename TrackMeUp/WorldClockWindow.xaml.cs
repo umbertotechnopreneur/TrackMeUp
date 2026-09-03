@@ -32,6 +32,7 @@ public sealed partial class WorldClockWindow : Window
     private readonly WorldClockWindowLayoutState _layoutState = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly DispatcherQueueTimer _refreshTimer;
+    private string? _lastWeatherMessageKey;
     private readonly SemaphoreSlim _currentRefreshGate = new(1, 1);
     private readonly Dictionary<string, WorldClockColumnControl> _columns = new(StringComparer.Ordinal);
     private LocalizationService _strings = new("system");
@@ -77,7 +78,7 @@ public sealed partial class WorldClockWindow : Window
             HeaderDragRegion,
             TitleBarLeftInsetColumn,
             TitleBarRightInsetColumn,
-            () => [HeaderBackButton, ReferenceInstantButton, OptionsButton]);
+            () => [HeaderBackButton, ReferenceInstantButton, PresentationModeButton, OptionsButton]);
         _titleBar.ThemeChanged += TitleBar_ThemeChanged;
 
         _placement = new WindowPlacementService(
@@ -118,9 +119,10 @@ public sealed partial class WorldClockWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-        RootGrid.Opacity = settings.WorldClockWindowOpacityPercent / 100d;
+        WindowContent.Opacity = settings.WorldClockWindowOpacityPercent / 100d;
         _appWindow.IsShownInSwitchers = settings.WorldClockWindowShowInTaskbar;
         UiLocalization.Apply(RootGrid, _strings);
+        UiLocalization.Apply(ReferenceInstantFlyoutContent, _strings);
         Title = T("WorldClock.Landmark");
         OptionsHeaderLabel.Text = T("WorldClock.Options.Title").ToUpper(_strings.Culture);
         UpdateHeaderForSurface();
@@ -128,6 +130,7 @@ public sealed partial class WorldClockWindow : Window
         ApplyReferenceButton.Content = T("WorldClock.Apply");
         SetIconButtonLabel(OptionsButton, "WorldClock.Options.Open");
         SetIconButtonLabel(HeaderBackButton, "WorldClock.Options.Back");
+        UpdatePresentationModeCommand();
         ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");
         ReferenceDatePicker.Header = T("WorldClock.ReferenceDate");
         ReferenceTimePicker.Header = T("WorldClock.ReferenceTime");
@@ -162,6 +165,24 @@ public sealed partial class WorldClockWindow : Window
 
     private async void HeaderBackButton_Click(object sender, RoutedEventArgs e) => await ShowClocksSurfaceAsync();
 
+    private void PresentationModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        var presentationMode = _layoutState.TogglePresentationMode();
+        foreach (var column in _columns.Values)
+        {
+            column.SetPresentationMode(presentationMode);
+        }
+
+        if (_snapshot is { Clocks.Count: > 0 } snapshot)
+        {
+            UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
+            ApplySmartWindowSizing(snapshot.Clocks.Count);
+        }
+
+        UpdatePresentationModeCommand();
+        _titleBar.QueueLayoutUpdate();
+    }
+
     private void ShowOptionsSurface()
     {
         var options = EnsureOptionsControl();
@@ -171,7 +192,7 @@ public sealed partial class WorldClockWindow : Window
         _layoutState.ShowSurface(WorldClockWindowSurface.Options);
         UpdateHeaderForSurface();
         UpdateRefreshTimerState();
-        WorldClockNotificationBanner.Dismiss();
+        _dialogs.Notifications.Hide(WorldClockNotificationBanner);
         FadeIn(OptionsPanel);
         _ = HeaderBackButton.Focus(FocusState.Programmatic);
         _titleBar.QueueLayoutUpdate();
@@ -183,6 +204,11 @@ public sealed partial class WorldClockWindow : Window
         ClocksSurface.Visibility = Visibility.Visible;
         ClocksSurface.IsHitTestVisible = true;
         _layoutState.ShowSurface(WorldClockWindowSurface.Clocks);
+        if (_snapshot is { Clocks.Count: > 0 } snapshot)
+        {
+            ApplySmartWindowSizing(snapshot.Clocks.Count);
+        }
+
         UpdateHeaderForSurface();
         FadeIn(ClocksSurface);
         _ = OptionsButton.Focus(FocusState.Programmatic);
@@ -271,13 +297,50 @@ public sealed partial class WorldClockWindow : Window
     private void UpdateHeaderForSurface()
     {
         var optionsVisible = _layoutState.Surface == WorldClockWindowSurface.Options;
+        var narrowHeader = RootGrid.ActualWidth < 880d;
         ReferenceInstantLabel.Text = T("WorldClock.ReferenceInstant");
-        ReferenceInstantLabel.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        ReferenceInstantLabel.Visibility = optionsVisible || narrowHeader ? Visibility.Collapsed : Visibility.Visible;
+        ReferenceInstantText.FontSize = narrowHeader ? 13d : 15d;
         OptionsHeaderLabel.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
         HeaderBackButton.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
         TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         ReferenceInstantButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        PresentationModeButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         OptionsButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void UpdatePresentationModeCommand()
+    {
+        var key = _layoutState.PresentationMode == WorldClockPresentationMode.Compact
+            ? "WorldClock.Layout.Expanded"
+            : "WorldClock.Layout.Compact";
+        PresentationModeButton.Tag = key;
+        PresentationModeIcon.Glyph = _layoutState.PresentationMode == WorldClockPresentationMode.Compact
+            ? "\uE73F"
+            : "\uE740";
+        SetIconButtonLabel(PresentationModeButton, key);
+    }
+
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateHeaderForSurface();
+        if (ReferenceInstantFlyout.IsOpen)
+        {
+            UpdateReferenceFlyoutConstraints();
+        }
+
+        _titleBar.QueueLayoutUpdate();
+    }
+
+    private void ReferenceInstantFlyout_Opening(object sender, object e) => UpdateReferenceFlyoutConstraints();
+
+    private void UpdateReferenceFlyoutConstraints()
+    {
+        var bounds = WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(
+            RootGrid.ActualWidth, RootGrid.ActualHeight);
+        // Constrain the child as well as its presenter; only the fields scroll, leaving both actions reachable.
+        ReferenceInstantFlyoutContent.Width = bounds.ContentWidth;
+        ReferenceInstantFlyoutContent.MaxHeight = bounds.ContentMaxHeight;
     }
 
     private void SetIconButtonLabel(Button button, string key)
@@ -328,7 +391,8 @@ public sealed partial class WorldClockWindow : Window
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
-            await _placement.RestoreAsync(RootGrid, _lifetimeCancellation.Token);
+            var restored = await _placement.RestoreAsync(RootGrid, _lifetimeCancellation.Token);
+            _layoutState.SetPlacementRestored(restored);
         }
         catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
         {
@@ -515,8 +579,8 @@ public sealed partial class WorldClockWindow : Window
             AutomationProperties.SetName(ReferenceInstantButton, referenceInstantLabel);
             ToolTipService.SetToolTip(ReferenceInstantButton, referenceInstantLabel);
             EnsureColumns(snapshot.Clocks);
+            _layoutState.ResetWindowSizing();
             NowButton.Visibility = Visibility.Collapsed;
-            WorldClockNotificationBanner.Dismiss();
             UpdateWeatherStatus(snapshot.WeatherStatus);
             _optionsControl?.ApplyState(_settings, snapshot, null, IsAlwaysOnTop());
             ShowLoading(false);
@@ -542,8 +606,10 @@ public sealed partial class WorldClockWindow : Window
                 _strings);
         }
 
+        ApplySmartWindowSizing(snapshot.Clocks.Count);
+        UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
+
         NowButton.Visibility = Visibility.Visible;
-        WorldClockNotificationBanner.Dismiss();
         UpdateWeatherStatus(snapshot.WeatherStatus);
         _optionsControl?.ApplyState(_settings, snapshot, _referenceCityId, IsAlwaysOnTop());
         UpdateRefreshTimerState();
@@ -564,12 +630,19 @@ public sealed partial class WorldClockWindow : Window
             "unavailable" => "WorldClock.WeatherStatus.Unavailable",
             _ => throw new InvalidDataException($"Unsupported world-clock weather status '{status.State}'.")
         };
+        if (messageKey == _lastWeatherMessageKey)
+        {
+            return;
+        }
+
+        // A periodic snapshot must neither clear an action toast nor restart an unchanged weather warning.
+        _lastWeatherMessageKey = messageKey;
         if (messageKey is null)
         {
             return;
         }
 
-        _dialogs.ShowWarningBanner(
+        _dialogs.Notifications.ShowWarning(
             WorldClockNotificationBanner,
             T("WorldClock.ErrorTitle"),
             T(messageKey));
@@ -682,7 +755,7 @@ public sealed partial class WorldClockWindow : Window
             UpdateRefreshTimerState();
         }
 
-        // ApplySnapshot dismisses the previous banner, so publish the conversion failure last.
+        // Publish the conversion failure after refreshing the snapshot's weather status.
         ShowFailure(messageKey);
     }
 
@@ -738,6 +811,7 @@ public sealed partial class WorldClockWindow : Window
         {
             ClockColumnsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var column = new WorldClockColumnControl();
+            column.SetPresentationMode(_layoutState.PresentationMode);
             _columns.Add(clocks[index].CityId, column);
 
             var host = new Border
@@ -750,6 +824,8 @@ public sealed partial class WorldClockWindow : Window
             Grid.SetColumn(host, index);
             ClockColumnsHost.Children.Add(host);
         }
+
+        UpdateClockColumnsLayout(clocks.Count, ClockColumnsScroller.ActualWidth);
     }
 
     private void ClockColumnsScroller_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -762,13 +838,51 @@ public sealed partial class WorldClockWindow : Window
 
     private void UpdateClockColumnsLayout(int clockCount, double viewportWidth)
     {
-        var layout = WorldClockWindowLayoutState.CalculateColumnsLayout(clockCount, Math.Max(0d, viewportWidth));
+        var layout = WorldClockWindowLayoutState.CalculateColumnsLayout(
+            clockCount,
+            Math.Max(0d, viewportWidth),
+            _columns.Count == 0 ? 320d : _columns.Values.Max(column => column.MeasureMinimumWidth()));
         ClockColumnsHost.MinWidth = layout.MinimumWidth;
         ClockColumnsHost.Width = layout.Width;
         ClockColumnsHost.MaxWidth = layout.Width;
-        ClockColumnsHost.HorizontalAlignment = layout.IsCentered
-            ? HorizontalAlignment.Center
-            : HorizontalAlignment.Left;
+        ClockColumnsHost.HorizontalAlignment = HorizontalAlignment.Left;
+        var columnWidth = layout.Width / clockCount;
+        var viewportHeight = Math.Max(0d, ClockColumnsScroller.ActualHeight);
+        foreach (var column in _columns.Values)
+        {
+            column.SetViewportSize(Math.Max(0d, columnWidth - 1d), viewportHeight);
+        }
+    }
+
+    private void ApplySmartWindowSizing(int clockCount)
+    {
+        if (!_loaded || _layoutState.Surface != WorldClockWindowSurface.Clocks)
+        {
+            return;
+        }
+
+        var request = _layoutState.GetWindowResizeRequest(clockCount);
+        if (request is null)
+        {
+            return;
+        }
+
+        if (request.ResizeToPreferred)
+        {
+            // Measure against the target column width before sizing so the detailed command actually reveals its content.
+            UpdateClockColumnsLayout(clockCount, request.Sizing.PreferredLogicalWidth);
+            WeatherAttributionButton.Measure(new Windows.Foundation.Size(request.Sizing.PreferredLogicalWidth, double.PositiveInfinity));
+            var measuredHeight = _columns.Values.Max(column => column.PreferredContentHeight)
+                + HeaderDragRegion.ActualHeight + WeatherAttributionButton.DesiredSize.Height + 16d;
+            _placement.ResizeForContent(
+                RootGrid,
+                request.Sizing.PreferredLogicalWidth,
+                Math.Max(request.Sizing.PreferredLogicalHeight, (int)Math.Ceiling(measuredHeight)));
+            UpdateClockColumnsLayout(clockCount, ClockColumnsScroller.ActualWidth);
+        }
+
+        _layoutState.AcceptWindowResizeRequest(request);
+        _titleBar.QueueLayoutUpdate();
     }
 
     private void ReferenceCityComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -870,31 +984,18 @@ public sealed partial class WorldClockWindow : Window
                 return;
             }
 
-            var selectedCityId = await _dialogs.ShowWorldClockCityPickerAsync(
+            var addedCity = await _dialogs.ShowWorldClockCityPickerAsync(
                 _application,
                 this,
                 options,
                 RootGrid.RequestedTheme,
                 _strings);
-            if (IsClosing || selectedCityId is null)
+            if (IsClosing || !addedCity)
             {
                 return;
             }
 
             Interlocked.Increment(ref _requestVersion);
-            var result = await _application.AddWorldClockAsync(selectedCityId, _lifetimeCancellation.Token);
-            if (IsClosing)
-            {
-                return;
-            }
-
-            Interlocked.Increment(ref _requestVersion);
-            if (!result.Succeeded || result.Value is null)
-            {
-                ShowFailure(result.MessageKey);
-                return;
-            }
-
             _ = _isLive
                 ? await RefreshCurrentAsync()
                 : await ConvertFromControlsAsync();
@@ -970,7 +1071,7 @@ public sealed partial class WorldClockWindow : Window
 
             if (projectionApplied && !IsClosing)
             {
-                _dialogs.ShowInfoBanner(
+                _dialogs.Notifications.ShowInfo(
                     WorldClockNotificationBanner,
                     T("WorldClock.RemovedTitle"),
                     _strings.Format("WorldClock.RemovedMessage", e.CityName));
@@ -993,7 +1094,7 @@ public sealed partial class WorldClockWindow : Window
     {
         if (!IsClosing)
         {
-            _dialogs.ShowWarningBanner(
+            _dialogs.Notifications.ShowWarning(
                 WorldClockNotificationBanner,
                 T("WorldClock.ErrorTitle"),
                 T(messageKey));
@@ -1085,9 +1186,19 @@ public sealed partial class WorldClockWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
+        if (ReferenceInstantFlyout.IsOpen)
+        {
+            UpdateReferenceFlyoutConstraints();
+        }
+
         if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);
+        }
+
+        if (_snapshot is { Clocks.Count: > 0 } snapshot)
+        {
+            UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
         }
 
         _titleBar.QueueLayoutUpdate();
@@ -1127,7 +1238,7 @@ public sealed partial class WorldClockWindow : Window
         {
             _closeInProgress = false;
             _allowClose = true;
-            _dialogs.ShowErrorBanner(
+            _dialogs.Notifications.ShowError(
                 WorldClockNotificationBanner,
                 T("WorldClock.ErrorTitle"),
                 $"{T("WorldClock.PlacementFailed")} ({exception.GetType().Name})");

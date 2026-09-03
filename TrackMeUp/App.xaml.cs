@@ -271,10 +271,10 @@ public partial class App : Microsoft.UI.Xaml.Application
                 var strings = new LocalizationService("system");
                 await _dialogs.ShowInformativeAsync(
                     _window,
-                    SystemMessageBoxRequest.Informative(
+                    DialogRequest.Informative(
                         strings.Translate("QuickSetup.Unavailable.Title"),
                         strings.Translate("QuickSetup.Unavailable.Message"),
-                        SystemMessageBoxSeverity.Error));
+                        strings.Translate("Dialog.Ok")));
             }
 
             return;
@@ -453,10 +453,10 @@ public partial class App : Microsoft.UI.Xaml.Application
                 var strings = new LocalizationService(settings.Value.UiLanguage);
                 await _dialogs.ShowInformativeAsync(
                     _window,
-                    SystemMessageBoxRequest.Informative(
+                    DialogRequest.Informative(
                         strings.Translate("Search.Empty.Title"),
                         strings.Translate("Search.Empty.Message"),
-                        SystemMessageBoxSeverity.Information));
+                        strings.Translate("Dialog.Ok")));
                 return;
             }
 
@@ -491,7 +491,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        _screenshotsWindow = new ScreenshotWindow(application, launchTheme, screenshotPath, capturedAt);
+        _screenshotsWindow = new ScreenshotWindow(application, _dialogs, launchTheme, screenshotPath, capturedAt);
         _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
         _screenshotsWindow.Activate();
     }
@@ -505,7 +505,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        _screenshotsWindow = new ScreenshotWindow(application, launchTheme);
+        _screenshotsWindow = new ScreenshotWindow(application, _dialogs, launchTheme);
         _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
         _screenshotsWindow.Activate();
     }
@@ -522,7 +522,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        _screenshotsWindow = new ScreenshotWindow(application, launchTheme, requestedDate: selectedDate);
+        _screenshotsWindow = new ScreenshotWindow(application, _dialogs, launchTheme, requestedDate: selectedDate);
         _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
         _screenshotsWindow.Activate();
     }

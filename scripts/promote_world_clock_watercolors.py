@@ -18,8 +18,6 @@ from pathlib import Path
 
 
 SEASONS = ("summer", "winter")
-EXPECTED_CITY_COUNT = 101
-EXPECTED_ASSET_COUNT = EXPECTED_CITY_COUNT * len(SEASONS)
 GENERATION_SCHEMA_VERSION = 1
 RUNTIME_SCHEMA_VERSION = 1
 PACKAGED_SCHEMA_VERSION = 1
@@ -80,20 +78,19 @@ def require_direct_child(root: Path, path: Path, *, must_exist: bool = True) -> 
 
 def expected_assets(
     generation_manifest: dict,
-) -> tuple[dict[str, str], dict[tuple[str, str], dict[str, str]]]:
+) -> tuple[dict[str, str], dict[tuple[str, str], dict[str, str]], dict[str, dict]]:
     if (
         generation_manifest.get("schemaVersion") != GENERATION_SCHEMA_VERSION
         or generation_manifest.get("styleId") != STYLE_ID
-        or generation_manifest.get("assetCountExpected") != EXPECTED_ASSET_COUNT
     ):
-        raise RuntimeError("Unsupported generation manifest schema, style, or asset count.")
+        raise RuntimeError("Unsupported generation manifest schema or style.")
 
     cities = generation_manifest.get("cities")
-    if not isinstance(cities, list) or len(cities) != EXPECTED_CITY_COUNT:
-        raise RuntimeError(
-            f"Generation manifest must contain {EXPECTED_CITY_COUNT} cities; "
-            f"found {len(cities) if isinstance(cities, list) else 'invalid data'}."
-        )
+    if not isinstance(cities, list) or not cities:
+        raise RuntimeError("Generation manifest must contain at least one city.")
+    expected_asset_count = len(cities) * len(SEASONS)
+    if generation_manifest.get("assetCountExpected") != expected_asset_count:
+        raise RuntimeError("Generation manifest asset count does not match its declared city list.")
 
     names: dict[str, str] = {}
     for city in cities:
@@ -112,13 +109,13 @@ def expected_assets(
         names[city_id] = display_name.strip()
 
     expected = {(city_id, season) for city_id in names for season in SEASONS}
-    if len(expected) != EXPECTED_ASSET_COUNT:
+    if len(expected) != expected_asset_count:
         raise AssertionError("Expected asset expansion is inconsistent.")
 
     reviewed_masters = generation_manifest.get("reviewedMasters")
-    if not isinstance(reviewed_masters, list) or len(reviewed_masters) != EXPECTED_ASSET_COUNT:
+    if not isinstance(reviewed_masters, list) or len(reviewed_masters) != expected_asset_count:
         raise RuntimeError(
-            "Generation manifest must bind exactly 202 reviewed master checksums."
+            "Generation manifest must bind one reviewed master checksum per city and season."
         )
 
     reviewed: dict[tuple[str, str], dict[str, str]] = {}
@@ -149,7 +146,54 @@ def expected_assets(
     if reviewed.keys() != expected:
         missing = sorted(expected - reviewed.keys())
         raise RuntimeError(f"Reviewed-master bindings are incomplete: {missing}")
-    return names, reviewed
+
+    additional_catalog_cities = generation_manifest.get("additionalCatalogCities", [])
+    if not isinstance(additional_catalog_cities, list):
+        raise RuntimeError("additionalCatalogCities must be a list when supplied.")
+    additional_records: dict[str, dict] = {}
+    required_catalog_fields = {
+        "cityId",
+        "geonameId",
+        "name",
+        "countryCode",
+        "countryName",
+        "latitude",
+        "longitude",
+        "population",
+        "timeZoneId",
+        "isCapital",
+        "hemisphere",
+    }
+    for record in additional_catalog_cities:
+        if not isinstance(record, dict) or set(record) != required_catalog_fields:
+            raise RuntimeError("Additional catalog city records must declare the complete city schema.")
+        city_id = record["cityId"]
+        if (
+            not isinstance(city_id, str)
+            or city_id not in names
+            or city_id in additional_records
+            or not isinstance(record["geonameId"], int)
+            or record["geonameId"] <= 0
+            or not isinstance(record["name"], str)
+            or not record["name"].strip()
+            or not isinstance(record["countryCode"], str)
+            or len(record["countryCode"]) != 2
+            or not isinstance(record["countryName"], str)
+            or not record["countryName"].strip()
+            or not isinstance(record["latitude"], (int, float))
+            or not -90 <= record["latitude"] <= 90
+            or not isinstance(record["longitude"], (int, float))
+            or not -180 <= record["longitude"] <= 180
+            or not isinstance(record["population"], int)
+            or record["population"] < 0
+            or not isinstance(record["timeZoneId"], str)
+            or not record["timeZoneId"].strip()
+            or not isinstance(record["isCapital"], bool)
+            or record["hemisphere"] not in ("north", "south", "equatorial")
+        ):
+            raise RuntimeError(f"Invalid additional catalog city record: {record!r}")
+        additional_records[city_id] = record
+    return names, reviewed, additional_records
 
 
 def command_output(command: list[str], description: str) -> str:
@@ -298,9 +342,10 @@ def validate_runtime(
     runtime_root: Path,
     generation_manifest: dict,
     generation_manifest_path: Path,
-) -> tuple[dict[str, str], dict[tuple[str, str], dict], dict, Path]:
-    names, reviewed_masters = expected_assets(generation_manifest)
+) -> tuple[dict[str, str], dict[str, dict], dict[tuple[str, str], dict], dict, Path]:
+    names, reviewed_masters, additional_catalog_cities = expected_assets(generation_manifest)
     expected = set(reviewed_masters)
+    expected_asset_count = len(expected)
     manifest_path = require_direct_child(runtime_root, runtime_root / "runtime-asset-manifest.json")
     runtime_manifest = read_json(manifest_path)
     assets = runtime_manifest.get("assets")
@@ -315,12 +360,12 @@ def validate_runtime(
         or not isinstance(runtime_manifest.get("transformation"), str)
         or not runtime_manifest["transformation"].strip()
         or runtime_manifest.get("complete") is not True
-        or runtime_manifest.get("expectedAssetCount") != EXPECTED_ASSET_COUNT
-        or runtime_manifest.get("generatedAssetCount") != EXPECTED_ASSET_COUNT
+        or runtime_manifest.get("expectedAssetCount") != expected_asset_count
+        or runtime_manifest.get("generatedAssetCount") != expected_asset_count
         or not isinstance(assets, list)
-        or len(assets) != EXPECTED_ASSET_COUNT
+        or len(assets) != expected_asset_count
     ):
-        raise RuntimeError("Runtime manifest is not a complete, source-bound 202-asset set.")
+        raise RuntimeError("Runtime manifest is not a complete, source-bound asset set.")
 
     ffprobe = shutil.which("ffprobe")
     ffmpeg = shutil.which("ffmpeg")
@@ -374,7 +419,7 @@ def validate_runtime(
             f"Runtime set mismatch; missing={sorted(missing)}, "
             f"unexpected={sorted(actual_file_names - allowed_file_names)}"
         )
-    return names, validated, runtime_manifest, manifest_path
+    return names, additional_catalog_cities, validated, runtime_manifest, manifest_path
 
 
 def build_packaged_assets(
@@ -443,8 +488,8 @@ def build_packaged_assets(
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         converted = dict(executor.map(convert, sorted(runtime_assets.items())))
-    if set(converted) != set(runtime_assets) or len(converted) != EXPECTED_ASSET_COUNT:
-        raise RuntimeError("Packaged PNG conversion did not produce the exact 202-asset set.")
+    if set(converted) != set(runtime_assets) or len(converted) != len(runtime_assets):
+        raise RuntimeError("Packaged PNG conversion did not produce the exact runtime asset set.")
 
     ffmpeg_version = next(
         line
@@ -478,9 +523,9 @@ def build_packaged_assets(
             "encoder": "png",
             "encoderDescription": encoder_description,
         },
-        "expectedAssetCount": EXPECTED_ASSET_COUNT,
+        "expectedAssetCount": len(runtime_assets),
         "generatedAssetCount": len(converted),
-        "complete": len(converted) == EXPECTED_ASSET_COUNT,
+        "complete": len(converted) == len(runtime_assets),
         "assets": [converted[key] for key in sorted(converted)],
     }
     return converted, packaged_manifest
@@ -490,6 +535,7 @@ def update_database(
     source_database: Path,
     destination_database: Path,
     names: dict[str, str],
+    additional_catalog_cities: dict[str, dict],
     assets: dict[tuple[str, str], dict],
     transformation: str,
 ) -> None:
@@ -497,6 +543,41 @@ def update_database(
     connection = sqlite3.connect(destination_database)
     try:
         connection.execute("PRAGMA foreign_keys = ON")
+        for city_id, record in additional_catalog_cities.items():
+            expected_city = (
+                record["geonameId"],
+                record["name"],
+                record["countryCode"],
+                record["countryName"],
+                record["latitude"],
+                record["longitude"],
+                record["population"],
+                record["timeZoneId"],
+                int(record["isCapital"]),
+                record["hemisphere"],
+            )
+            existing_city = connection.execute(
+                """
+                SELECT geoname_id, name, country_code, country_name, latitude, longitude,
+                       population, timezone_id, is_capital, hemisphere
+                  FROM city
+                 WHERE id = ?
+                """,
+                (city_id,),
+            ).fetchone()
+            if existing_city is None:
+                connection.execute(
+                    """
+                    INSERT INTO city(
+                        id, geoname_id, name, country_code, country_name, latitude, longitude,
+                        population, timezone_id, is_capital, hemisphere)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (city_id, *expected_city),
+                )
+            elif existing_city != expected_city:
+                raise RuntimeError(f"SQLite city record does not match the declared catalog entry: {city_id}.")
+
         catalog_city_ids = {row[0] for row in connection.execute("SELECT id FROM city")}
         if catalog_city_ids != set(names):
             raise RuntimeError("SQLite city IDs do not exactly match the generation manifest.")
@@ -507,6 +588,21 @@ def update_database(
                 f"Project-directed Urban Wash watercolor for {names[city_id]} ({season}); "
                 "transparent 16:9 packaged PNG derivative."
             )
+            values = (
+                f"{SKYLINE_DIRECTORY_NAME}/{asset['fileName']}",
+                title,
+                ARTWORK_AUTHOR,
+                "",
+                "",
+                ARTWORK_LICENSE,
+                "",
+                description,
+                1280,
+                720,
+                asset["sha256"],
+                city_id,
+                season,
+            )
             cursor = connection.execute(
                 """
                 UPDATE skyline_asset
@@ -515,24 +611,32 @@ def update_database(
                        source_width = ?, source_height = ?, sha256 = ?
                  WHERE city_id = ? AND season = ?
                 """,
-                (
-                    f"{SKYLINE_DIRECTORY_NAME}/{asset['fileName']}",
-                    title,
-                    ARTWORK_AUTHOR,
-                    "",
-                    "",
-                    ARTWORK_LICENSE,
-                    "",
-                    description,
-                    1280,
-                    720,
-                    asset["sha256"],
-                    city_id,
-                    season,
-                ),
+                values,
             )
-            if cursor.rowcount != 1:
-                raise RuntimeError(f"SQLite asset row is missing for {city_id}/{season}.")
+            if cursor.rowcount == 0:
+                connection.execute(
+                    """
+                    INSERT INTO skyline_asset(
+                        city_id, season, relative_path, title, author, source_url, download_url,
+                        license_name, license_url, description, source_width, source_height, sha256)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        city_id,
+                        season,
+                        f"{SKYLINE_DIRECTORY_NAME}/{asset['fileName']}",
+                        title,
+                        ARTWORK_AUTHOR,
+                        "",
+                        "",
+                        ARTWORK_LICENSE,
+                        "",
+                        description,
+                        1280,
+                        720,
+                        asset["sha256"],
+                    ),
+                )
 
         metadata = {
             "image_source": "TrackMeUp Urban Wash project-generated artwork",
@@ -544,10 +648,10 @@ def update_database(
             "INSERT OR REPLACE INTO catalog_metadata(key, value) VALUES(?, ?)",
             metadata.items(),
         )
-        if connection.execute("SELECT COUNT(*) FROM city").fetchone()[0] != EXPECTED_CITY_COUNT:
-            raise RuntimeError("SQLite catalog does not contain exactly 101 cities.")
-        if connection.execute("SELECT COUNT(*) FROM skyline_asset").fetchone()[0] != EXPECTED_ASSET_COUNT:
-            raise RuntimeError("SQLite catalog does not contain exactly 202 assets.")
+        if connection.execute("SELECT COUNT(*) FROM city").fetchone()[0] != len(names):
+            raise RuntimeError("SQLite catalog city count does not match the generation manifest.")
+        if connection.execute("SELECT COUNT(*) FROM skyline_asset").fetchone()[0] != len(assets):
+            raise RuntimeError("SQLite catalog asset count does not match the generation manifest.")
         connection.commit()
         if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
             raise RuntimeError("SQLite integrity check failed after watercolor promotion.")
@@ -665,7 +769,7 @@ def write_packaged_provenance(
         "# Urban Wash world-clock artwork provenance",
         "",
         f"- Style: `{STYLE_ID}`.",
-        f"- Scope: {EXPECTED_CITY_COUNT} cities, two independently generated seasonal variants, {EXPECTED_ASSET_COUNT} packaged assets.",
+        f"- Scope: {len(packaged_manifest['assets']) // len(SEASONS)} cities, two independently generated seasonal variants, {len(packaged_manifest['assets'])} packaged assets.",
         "- Generation mode: built-in OpenAI ImageGen, one call per distinct master; rejected outputs were not promoted.",
         "- Direction: transparent editorial architectural watercolor with landmark clusters outside the central celestial-orb safe area.",
         "- Atmosphere layers: the separately generated `Overlays/` tree is preserved and composed at runtime; source-backed weather layers are not inferred from the clock.",
@@ -687,13 +791,13 @@ def write_packaged_provenance(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_asset_map(path: Path) -> None:
+def write_asset_map(path: Path, city_count: int, asset_count: int) -> None:
     lines = [
         "# World-clock asset locations",
         "",
         "## Packaged runtime",
         "",
-        f"- `Skylines/`: exactly {EXPECTED_ASSET_COUNT} city/season RGBA PNG files at 1280×720.",
+        f"- `Skylines/`: exactly {asset_count} city/season RGBA PNG files at 1280×720.",
         "- `Overlays/Backdrops/`: eight generated RGBA PNG atmosphere backdrops.",
         "- `Overlays/Foregrounds/`: three generated RGBA PNG weather foregrounds.",
         "- `Overlays/PROVENANCE.md`: overlay prompts, layering contract, checksums, and release boundary.",
@@ -704,9 +808,9 @@ def write_asset_map(path: Path) -> None:
         "",
         "## Repository-only masters and build output",
         "",
-        "- `design/world-clocks/watercolor/masters-v1/`: 202 original transparent PNG city masters.",
-        "- `design/world-clocks/watercolor/runtime-v1/`: 202 converted alpha WebP files plus the intermediate runtime manifest; these files are not loaded by WinUI.",
-        "- `design/world-clocks/watercolor/generation-manifest-v1.json`: the 101-city, two-season generation contract.",
+        f"- `design/world-clocks/watercolor/masters-v1/`: {asset_count} original transparent PNG city masters.",
+        f"- `design/world-clocks/watercolor/runtime-v3/`: {asset_count} converted alpha WebP files plus the intermediate runtime manifest; these files are not loaded by WinUI.",
+        f"- `design/world-clocks/watercolor/generation-manifest-v1.json`: the {city_count}-city, two-season generation contract.",
         "- `design/world-clocks/watercolor/GENERATION_RULES.md` and `PROVENANCE.md`: prompt and review records.",
         "",
         "Overlay PNGs are currently both the selected generated originals and the packaged runtime files;",
@@ -738,8 +842,8 @@ def verify_staged_product(
     if any(not path.is_file() for path in image_children):
         raise RuntimeError("Staged skyline directory must contain files only.")
     actual_names = {path.name for path in image_children}
-    if actual_names != expected_names or len(actual_names) != EXPECTED_ASSET_COUNT:
-        raise RuntimeError("Staged product image directory is not the exact 202-file set.")
+    if actual_names != expected_names or len(actual_names) != len(assets):
+        raise RuntimeError("Staged product image directory is not the exact manifest-bound set.")
     if any(Path(name).suffix != ".png" for name in actual_names):
         raise RuntimeError("Staged product image directory must contain packaged PNG files only.")
     for asset in assets.values():
@@ -760,7 +864,7 @@ def verify_staged_product(
                 """
             )
         }
-        if set(database_rows) != set(assets) or len(database_rows) != EXPECTED_ASSET_COUNT:
+        if set(database_rows) != set(assets) or len(database_rows) != len(assets):
             raise RuntimeError("Staged SQLite keys do not match the packaged manifest.")
         for (city_id, season), asset in assets.items():
             expected_row = (
@@ -834,8 +938,8 @@ def verify_staged_product(
         packaged_manifest.get("schemaVersion") != PACKAGED_SCHEMA_VERSION
         or packaged_manifest.get("styleId") != STYLE_ID
         or packaged_manifest.get("complete") is not True
-        or packaged_manifest.get("expectedAssetCount") != EXPECTED_ASSET_COUNT
-        or packaged_manifest.get("generatedAssetCount") != EXPECTED_ASSET_COUNT
+        or packaged_manifest.get("expectedAssetCount") != len(assets)
+        or packaged_manifest.get("generatedAssetCount") != len(assets)
         or packaged_manifest.get("assets") != [assets[key] for key in sorted(assets)]
         or packaged_manifest.get("sourceRuntimeManifest")
         != {
@@ -850,7 +954,7 @@ def verify_staged_product(
             "sha256": generation_manifest_hash,
         }
     ):
-        raise RuntimeError("Staged packaged manifest is not the exact source-bound 202-asset set.")
+        raise RuntimeError("Staged packaged manifest is not the exact source-bound city asset set.")
 
 
 def build_staged_product(
@@ -860,6 +964,7 @@ def build_staged_product(
     generation_manifest_path: Path,
     runtime_manifest_path: Path,
     names: dict[str, str],
+    additional_catalog_cities: dict[str, dict],
     runtime_assets: dict[tuple[str, str], dict],
     runtime_manifest: dict,
 ) -> None:
@@ -892,6 +997,7 @@ def build_staged_product(
         staged_root / "world-clocks.sqlite3",
         staged_database,
         names,
+        additional_catalog_cities,
         packaged_assets,
         str(packaged_manifest["transformation"]),
     )
@@ -917,7 +1023,7 @@ def build_staged_product(
         packaged_manifest_hash,
         packaged_manifest,
     )
-    write_asset_map(staged_root / "ASSET-MAP.md")
+    write_asset_map(staged_root / "ASSET-MAP.md", len(names), len(packaged_assets))
     verify_staged_product(
         staged_root,
         names,
@@ -1017,7 +1123,7 @@ def promote(
     reject_reparse_tree(product_root)
 
     generation_manifest = read_json(generation_manifest_path)
-    names, assets, runtime_manifest, runtime_manifest_path = validate_runtime(
+    names, additional_catalog_cities, assets, runtime_manifest, runtime_manifest_path = validate_runtime(
         runtime_root, generation_manifest, generation_manifest_path
     )
     database_path = product_root / "world-clocks.sqlite3"
@@ -1040,6 +1146,7 @@ def promote(
             generation_manifest_path,
             runtime_manifest_path,
             names,
+            additional_catalog_cities,
             assets,
             runtime_manifest,
         )
@@ -1096,7 +1203,7 @@ def main() -> None:
     parser.add_argument(
         "--runtime",
         type=Path,
-        default=repository_root / "design" / "world-clocks" / "watercolor" / "runtime-v1",
+        default=repository_root / "design" / "world-clocks" / "watercolor" / "runtime-v3",
     )
     parser.add_argument(
         "--generation-manifest",

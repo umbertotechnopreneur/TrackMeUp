@@ -63,8 +63,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(about.Descendants(), element => HasName(element, "DiagnosticsInfoBar"));
         Assert.Contains(about.Descendants(), element => HasName(element, "CloseButton") && element.Attribute("HorizontalAlignment")?.Value == "Right");
         Assert.DoesNotContain(about.Descendants(), element => element.Attribute("Text")?.Value == "•••");
-        Assert.Contains("private const int LogicalWindowWidth = 940;", aboutSource, StringComparison.Ordinal);
-        Assert.Contains("private const int LogicalWindowHeight = 650;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowWidth = 1000;", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("private const int LogicalWindowHeight = 740;", aboutSource, StringComparison.Ordinal);
         Assert.Contains("_titleBar = new CustomTitleBarController(", aboutSource, StringComparison.Ordinal);
         Assert.DoesNotContain("SetTitleBar(TitleBarDragRegion);", aboutSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsResizable = false;", aboutSource, StringComparison.Ordinal);
@@ -73,6 +73,9 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("_application.ShareApplicationLogAsync", aboutSource, StringComparison.Ordinal);
         Assert.Contains("_application.OpenProductLinkAsync", aboutSource, StringComparison.Ordinal);
         Assert.Contains("ThirdPartyLicensesWindow", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("ownerAppWindow.Id", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("WindowInteropService.SetOwner(windowHandle, ownerHandle);", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("BuiltAtText.Text = result.Value.Build.BuiltAtLocal.ToString(\"g\", _strings.Culture);", aboutSource, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", aboutSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Process.", aboutSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.", aboutSource, StringComparison.Ordinal);
@@ -362,8 +365,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(viewer.Descendants(), element =>
             element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton" or "CommandBar");
         Assert.Contains("ShowActionResult(result", source, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowSuccess(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowError(ScreenshotActionBanner, title, message);", source, StringComparison.Ordinal);
         Assert.Contains("DeleteScreenshotAsync", source, StringComparison.Ordinal);
         Assert.Contains("DeleteScreenshotAnalysisAsync", source, StringComparison.Ordinal);
     }
@@ -559,6 +562,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("WindowStateKeys.About", about, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Schedule", schedule, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.SearchIndexing", searchIndexing, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.About => new(900, 700)", core, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Screenshots => new(760, 540)", core, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", reports, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", worldClocks, StringComparison.Ordinal);
@@ -810,7 +814,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("_appWindow.Closing += AppWindow_Closing;", mainSource, StringComparison.Ordinal);
         Assert.Contains("args.Cancel = true;", closeSource, StringComparison.Ordinal);
         Assert.Contains("_closeConfirmationInProgress", closeSource, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxRequest.Confirmation(", closeSource, StringComparison.Ordinal);
+        Assert.Contains("DialogRequest.Confirmation(", closeSource, StringComparison.Ordinal);
         Assert.Contains("T(\"Dialog.CloseTracking.Message\")", closeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Dialog.CloseTracking.Confirm", closeSource, StringComparison.Ordinal);
         Assert.True(
@@ -852,13 +856,12 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void InfoBars_UseGlobalNeutralGlassAndSoftElevation()
+    public void InfoBars_UseGlobalOpaqueSeveritySurfacesAndSoftElevation()
     {
         var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
         var infoBarStyle = app.Descendants().Single(element =>
             element.Name.LocalName == "Style" && element.Attribute("TargetType")?.Value == "InfoBar");
         var severityResources = app.Descendants()
-            .Where(element => element.Name.LocalName == "StaticResource")
             .Where(element => element.Attributes().Any(attribute =>
                 attribute.Name.LocalName == "Key" && attribute.Value.StartsWith("InfoBar", StringComparison.Ordinal)))
             .ToArray();
@@ -876,20 +879,26 @@ public sealed class WinUiSurfaceContractTests
             .ToArray();
 
         Assert.Equal(12, severityBackgrounds.Length);
-        Assert.Equal(8, severityBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "AcrylicInAppFillColorDefaultBrush"));
+        Assert.Equal(8, severityBackgrounds.Count(resource => resource.Name.LocalName == "SolidColorBrush"));
         Assert.Equal(4, severityBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush"));
         Assert.Equal(12, severityIconBackgrounds.Length);
-        Assert.Equal(8, severityIconBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "ControlFillColorTransparentBrush"));
+        Assert.Equal(8, severityIconBackgrounds.Count(resource => resource.Name.LocalName == "SolidColorBrush"));
         Assert.Equal(4, severityIconBackgrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush"));
         Assert.Equal(12, severityIconForegrounds.Length);
         Assert.Equal(8, severityIconForegrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "TextFillColorPrimaryBrush"));
         Assert.Equal(4, severityIconForegrounds.Count(resource => resource.Attribute("ResourceKey")?.Value == "SystemColorWindowTextColorBrush"));
+        Assert.All(
+            severityResources.Where(resource => resource.Name.LocalName == "SolidColorBrush"),
+            resource => Assert.StartsWith("#FF", resource.Attribute("Color")?.Value, StringComparison.Ordinal));
         Assert.DoesNotContain(app.Descendants(), element =>
-            (element.Name.LocalName is "AcrylicBrush" or "SolidColorBrush" or "LinearGradientBrush") &&
-            element.Attributes().Any(attribute =>
-                attribute.Name.LocalName == "Key" && attribute.Value.StartsWith("InfoBar", StringComparison.Ordinal)));
+            element.Name.LocalName == "StaticResource" &&
+            element.Attribute("ResourceKey")?.Value == "AcrylicInAppFillColorDefaultBrush");
+        Assert.Equal(
+            3,
+            app.Descendants().Count(element =>
+                element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "ToastBorderBrush")));
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "ThemeShadow");
-        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "BorderBrush" && element.Attribute("Value")?.Value == "{ThemeResource SurfaceStrokeColorDefaultBrush}");
+        Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "BorderBrush" && element.Attribute("Value")?.Value == "{ThemeResource ToastBorderBrush}");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "BorderThickness" && element.Attribute("Value")?.Value == "1");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "CornerRadius" && element.Attribute("Value")?.Value == "12");
         Assert.Contains(infoBarStyle.Descendants(), element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "Foreground" && element.Attribute("Value")?.Value == "{ThemeResource TextFillColorPrimaryBrush}");
