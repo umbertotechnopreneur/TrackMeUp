@@ -24,6 +24,12 @@ TrackMeUp/BuildInfo.json
 Thumbs.db
 desktop.ini
 .DS_Store
+.codex-remote-attachments/
+__pycache__/
+
+# Local generation candidates and superseded derivatives; selected masters and runtime-v3 are tracked.
+/design/world-clocks/watercolor/staging-additional-cities-v1/
+/design/world-clocks/watercolor/runtime-v2/
 
 # Local JavaScript dependencies
 node_modules/
