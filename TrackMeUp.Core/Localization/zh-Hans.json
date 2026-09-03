@@ -925,7 +925,7 @@
   "Operations.InstallationTransfer.Navigation.Action": "管理安装和归档",
   "Screenshots.Installation": "安装",
   "WorldClock.Landmark": "世界时间", "WorldClock.OpenWindow": "打开世界时钟", "WorldClock.Add": "添加时钟",
-  "WorldClock.Options.Open": "打开世界时钟选项", "WorldClock.Options.Back": "返回世界时钟", "WorldClock.Options.Title": "世界时钟选项", "WorldClock.Options.Description": "选择世界时钟和当前天气的工作方式。",
+  "WorldClock.Options.Open": "打开世界时钟选项", "WorldClock.Options.Back": "返回世界时钟", "WorldClock.Layout.Compact": "切换到紧凑布局", "WorldClock.Layout.Expanded": "切换到详细布局", "WorldClock.Options.Title": "世界时钟选项", "WorldClock.Options.Description": "选择世界时钟和当前天气的工作方式。",
   "WorldClock.Options.Clocks.Header": "时钟", "WorldClock.Options.Clocks.Description": "添加或移除最多 12 个城市，并选择参考城市。",
   "WorldClock.Options.AlwaysOnTop.Header": "始终置顶", "WorldClock.Options.AlwaysOnTop.Off": "关闭", "WorldClock.Options.AlwaysOnTop.On": "开启",
   "WorldClock.Options.Weather.Header": "当前天气", "WorldClock.Options.Weather.Off": "关闭", "WorldClock.Options.Weather.On": "开启", "WorldClock.Options.Weather.Description": "显示所选城市的最新天气状况。", "WorldClock.Options.Weather.Setup": "天气提供商设置",

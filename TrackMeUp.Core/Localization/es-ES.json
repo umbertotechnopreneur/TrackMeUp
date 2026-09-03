@@ -929,6 +929,8 @@
   "WorldClock.Add": "Añadir reloj",
   "WorldClock.Options.Open": "Abrir las opciones de los relojes mundiales",
   "WorldClock.Options.Back": "Volver a los relojes mundiales",
+  "WorldClock.Layout.Compact": "Cambiar al diseño compacto",
+  "WorldClock.Layout.Expanded": "Cambiar al diseño detallado",
   "WorldClock.Options.Title": "Opciones de los relojes mundiales",
   "WorldClock.Options.Description": "Elige cómo se comportan los relojes mundiales y el tiempo actual.",
   "WorldClock.Options.Clocks.Header": "Relojes",

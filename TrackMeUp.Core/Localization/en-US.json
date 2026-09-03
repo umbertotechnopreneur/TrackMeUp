@@ -929,6 +929,8 @@
   "WorldClock.Add": "Add clock",
   "WorldClock.Options.Open": "Open world clock options",
   "WorldClock.Options.Back": "Back to world clocks",
+  "WorldClock.Layout.Compact": "Switch to compact layout",
+  "WorldClock.Layout.Expanded": "Switch to detailed layout",
   "WorldClock.Options.Title": "World clock options",
   "WorldClock.Options.Description": "Choose how world clocks and current weather behave.",
   "WorldClock.Options.Clocks.Header": "Clocks",

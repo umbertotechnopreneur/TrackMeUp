@@ -8,7 +8,8 @@
     <Grid
         x:Name="RootGrid"
         Background="Transparent"
-        Loaded="RootGrid_Loaded">
+        Loaded="RootGrid_Loaded"
+        SizeChanged="RootGrid_SizeChanged">
         <Grid.Resources>
             <ResourceDictionary>
                 <ResourceDictionary.ThemeDictionaries>
@@ -77,9 +78,9 @@
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="328" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <Grid
@@ -103,6 +104,8 @@
                         Grid.Column="0"
                         AutomationProperties.Name="Back to world clocks"
                         Click="HeaderBackButton_Click"
+                        IsTabStop="True"
+                        AllowFocusOnInteraction="True"
                         Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                         Tag="WorldClock.Options.Back"
                         ToolTipService.ToolTip="Back to world clocks"
@@ -141,6 +144,8 @@
                 x:Name="ReferenceInstantButton"
                 Grid.Column="1"
                 Height="40"
+                MaxWidth="328"
+                Margin="0,0,8,0"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch"
                 VerticalAlignment="Center"
@@ -157,6 +162,7 @@
                         CharacterSpacing="90"
                         FontFamily="Segoe UI Variable Text"
                         FontSize="15"
+                        TextTrimming="CharacterEllipsis"
                         Text="-- · --:--" />
                 </DropDownButton.Content>
                 <DropDownButton.Flyout>
@@ -256,14 +262,34 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="44" />
                     <ColumnDefinition x:Name="TitleBarSystemButtonGapColumn" Width="12" />
                     <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <Button
-                    x:Name="OptionsButton"
+                    x:Name="PresentationModeButton"
                     Grid.Column="1"
+                    AutomationProperties.Name="Switch to compact layout"
+                    Click="PresentationModeButton_Click"
+                    IsTabStop="True"
+                    AllowFocusOnInteraction="True"
+                    Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
+                    Tag="WorldClock.Layout.Compact"
+                    ToolTipService.ToolTip="Switch to compact layout">
+                    <FontIcon
+                        x:Name="PresentationModeIcon"
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="16"
+                        Glyph="&#xE740;" />
+                </Button>
+                <Button
+                    x:Name="OptionsButton"
+                    Grid.Column="2"
                     AutomationProperties.Name="Open world clock options"
                     Click="OptionsButton_Click"
+                    IsTabStop="True"
+                    AllowFocusOnInteraction="True"
                     Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                     Tag="WorldClock.Options.Open"
                     ToolTipService.ToolTip="Open world clock options">
@@ -277,13 +303,17 @@
         <Grid
             x:Name="ClocksSurface"
             Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <HyperlinkButton
                 x:Name="WeatherAttributionButton"
-                Margin="0,0,16,8"
+                Grid.Row="1"
+                Margin="0,2,16,6"
                 Padding="4,2"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
-                Canvas.ZIndex="10"
                 Click="WeatherAttributionButton_Click"
                 Tag="WorldClock.WeatherAttribution"
                 Visibility="Collapsed">
@@ -311,12 +341,12 @@
             <ScrollViewer
                 x:Name="ClockColumnsScroller"
                 HorizontalContentAlignment="Stretch"
-                HorizontalScrollBarVisibility="Hidden"
+                HorizontalScrollBarVisibility="Auto"
                 HorizontalScrollMode="Enabled"
                 SizeChanged="ClockColumnsScroller_SizeChanged"
                 VerticalContentAlignment="Stretch"
-                VerticalScrollBarVisibility="Disabled"
-                VerticalScrollMode="Disabled"
+                VerticalScrollBarVisibility="Auto"
+                VerticalScrollMode="Enabled"
                 Visibility="Collapsed">
                 <Grid
                     x:Name="ClockColumnsHost"

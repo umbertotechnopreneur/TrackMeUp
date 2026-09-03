@@ -242,6 +242,10 @@ Search interaction check:
 
 - [ ] Open local search, move focus to another window, and confirm it remains open without covering it. Enter at least three characters and confirm the local-index status and progress indicator appear until results are available, with no suggestion popup.
 
+- [ ] In World Clocks with one, two, and three cities, use the title-bar layout icon to switch between the compact widget and detailed comparison. Confirm the compact widget keeps time, weather, skyline, and atmosphere while omitting solar/lunar detail; confirm the window chooses the content-led size, still permits manual resizing, and horizontal scroll begins before columns become unreadable.
+- [ ] Resize World Clocks from tall to short with one, two, and twelve cities, including Windows text scaling at 200% and long translated weather labels. Confirm columns fill the available width, time/weather reflow without overlapping, solar/lunar detail and then daylight duration progressively hide, date changes remain visible, and overflow remains scrollable. Enlarge again to reveal detail; the explicit compact choice must never reveal the solar arc.
+- [ ] In World Clocks, reach the layout icon with Tab and activate it with Space. Verify UTC and weather attribution occupy separate rows. Resize manually, close/reopen, and wait through a minute refresh: the saved bounds must remain. With a custom reference instant, add/remove a city in options and return: content sizing must apply without switching back to live time.
+
 Privacy and runtime regression checks:
 
 - [ ] Exclude a synthetic process/title/context and verify no activity is stored; disable each detail provider and verify titles/attributes are absent.

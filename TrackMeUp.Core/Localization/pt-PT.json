@@ -925,7 +925,7 @@
   "Operations.InstallationTransfer.Navigation.Action": "Gerir instalações e arquivos",
   "Screenshots.Installation": "Instalação",
   "WorldClock.Landmark": "Hora mundial", "WorldClock.OpenWindow": "Abrir relógios mundiais", "WorldClock.Add": "Adicionar relógio",
-  "WorldClock.Options.Open": "Abrir opções dos relógios mundiais", "WorldClock.Options.Back": "Voltar aos relógios mundiais", "WorldClock.Options.Title": "Opções dos relógios mundiais", "WorldClock.Options.Description": "Escolha como funcionam os relógios mundiais e o estado do tempo atual.",
+  "WorldClock.Options.Open": "Abrir opções dos relógios mundiais", "WorldClock.Options.Back": "Voltar aos relógios mundiais", "WorldClock.Layout.Compact": "Mudar para o esquema compacto", "WorldClock.Layout.Expanded": "Mudar para o esquema detalhado", "WorldClock.Options.Title": "Opções dos relógios mundiais", "WorldClock.Options.Description": "Escolha como funcionam os relógios mundiais e o estado do tempo atual.",
   "WorldClock.Options.Clocks.Header": "Relógios", "WorldClock.Options.Clocks.Description": "Adicione ou remova até 12 cidades e escolha a cidade de referência.",
   "WorldClock.Options.AlwaysOnTop.Header": "Sempre em primeiro plano", "WorldClock.Options.AlwaysOnTop.Off": "Desativado", "WorldClock.Options.AlwaysOnTop.On": "Ativado",
   "WorldClock.Options.Weather.Header": "Estado do tempo atual", "WorldClock.Options.Weather.Off": "Desativado", "WorldClock.Options.Weather.On": "Ativado", "WorldClock.Options.Weather.Description": "Apresenta as condições meteorológicas atuais das cidades selecionadas.", "WorldClock.Options.Weather.Setup": "Configuração do fornecedor de meteorologia",

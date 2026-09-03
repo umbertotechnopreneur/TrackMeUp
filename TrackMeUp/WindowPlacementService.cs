@@ -223,6 +223,41 @@ internal sealed class WindowPlacementService : IDisposable
         CenterInWorkArea(area);
     }
 
+    /// <summary>Resizes content within the shared native minimum without replacing the user's placement.</summary>
+    internal void ResizeForContent(
+        FrameworkElement root,
+        int preferredLogicalWidth,
+        int preferredLogicalHeight)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        if (preferredLogicalWidth <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(preferredLogicalWidth));
+        }
+
+        if (preferredLogicalHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(preferredLogicalHeight));
+        }
+
+        if (_logicalMinimumSize.Width > preferredLogicalWidth || _logicalMinimumSize.Height > preferredLogicalHeight)
+        {
+            throw new ArgumentException("The minimum content size cannot exceed the preferred size.");
+        }
+
+        var scale = ResolveScale(root);
+        var area = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
+        var availableWidth = Math.Max(1, area.Width - (margin * 2));
+        var availableHeight = Math.Max(1, area.Height - (margin * 2));
+        var minimumSize = UpdateMinimumSize(scale, area);
+        var width = Math.Clamp((int)Math.Ceiling(preferredLogicalWidth * scale), minimumSize.Width, availableWidth);
+        var height = Math.Clamp((int)Math.Ceiling(preferredLogicalHeight * scale), minimumSize.Height, availableHeight);
+        // Resize first, then retain the user's monitor and position while clamping only an off-screen edge.
+        _appWindow.Resize(new SizeInt32(width, height));
+        KeepCurrentBoundsInWorkArea(root);
+    }
+
     internal async Task SaveAsync(CancellationToken cancellationToken)
     {
         var result = await _application.SaveWindowStateAsync(

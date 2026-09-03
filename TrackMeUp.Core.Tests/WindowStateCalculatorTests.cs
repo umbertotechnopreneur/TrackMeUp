@@ -20,9 +20,21 @@ public sealed class WindowStateCalculatorTests
         Assert.Equal(new WindowMinimumSize(560, 420), WindowStateService.GetMinimumSize(WindowStateKeys.SearchIndexing));
         Assert.Equal(new WindowMinimumSize(620, 480), WindowStateService.GetMinimumSize(WindowStateKeys.Schedule));
         Assert.Equal(new WindowMinimumSize(320, 196), WindowStateService.GetMinimumSize(WindowStateKeys.Dialog));
-        Assert.Equal(new WindowMinimumSize(840, 700), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks));
+        Assert.Equal(new WindowMinimumSize(480, 320), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks));
         Assert.Equal(new WindowMinimumSize(500, 560), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClockCityPicker));
         Assert.Equal(new WindowMinimumSize(480, 480), WindowStateService.GetMinimumSize(WindowStateKeys.AiConnectionTest));
+    }
+
+    [Fact]
+    public void WorldClockRestore_PreservesManualWidgetBoundsBelowTheFormerDetailedMinimum()
+    {
+        var saved = new WindowState(120, 160, 520, 360, @"\\.\DISPLAY1");
+        var workArea = new WindowWorkArea(0, 0, 1920, 1080);
+        var minimum = WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks);
+
+        var restored = WindowStateCalculator.ClampToWorkArea(saved, workArea, @"\\.\DISPLAY1", minimum.Width, minimum.Height);
+
+        Assert.Equal(saved, restored);
     }
 
     [Fact]

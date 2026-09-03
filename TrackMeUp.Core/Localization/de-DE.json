@@ -929,6 +929,8 @@
   "WorldClock.Add": "Uhr hinzufügen",
   "WorldClock.Options.Open": "Optionen für Weltuhren öffnen",
   "WorldClock.Options.Back": "Zurück zu den Weltuhren",
+  "WorldClock.Layout.Compact": "Zur kompakten Ansicht wechseln",
+  "WorldClock.Layout.Expanded": "Zur detaillierten Ansicht wechseln",
   "WorldClock.Options.Title": "Weltuhr-Optionen",
   "WorldClock.Options.Description": "Legen Sie fest, wie sich Weltuhren und das aktuelle Wetter verhalten.",
   "WorldClock.Options.Clocks.Header": "Uhren",
