@@ -103,7 +103,7 @@
                 <Image
                     x:Name="SkylineImage"
                     HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
                     AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False"
                     Opacity="{ThemeResource WorldClockSkylineOpacity}"

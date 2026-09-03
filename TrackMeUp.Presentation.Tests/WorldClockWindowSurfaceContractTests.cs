@@ -38,10 +38,17 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("ReferenceInstantFlyoutContent.MaxHeight = bounds.ContentMaxHeight;", source, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.Apply(ReferenceInstantFlyoutContent, _strings);", source, StringComparison.Ordinal);
         Assert.Contains("TextWrapping=\"Wrap\"", actions.ToString(), StringComparison.Ordinal);
+
+        var date = window.Descendants().Single(element => HasName(element, "ReferenceDatePicker"));
+        var time = window.Descendants().Single(element => HasName(element, "ReferenceTimePicker"));
+        Assert.Same(date.Parent, time.Parent);
+        Assert.Null(time.Attribute("Grid.Row"));
+        Assert.Equal("1", time.Attribute("Grid.Column")?.Value);
+        Assert.Equal(2, date.Parent!.Elements().Single(element => element.Name.LocalName == "Grid.ColumnDefinitions").Elements().Count());
     }
 
     [Fact]
-    public void SceneLayers_FollowTheArrangedColumnAndCannotBleedIntoAdjacentClocks()
+    public void SceneLayers_StayBottomAnchoredWithinTheScaleLimitAndCannotBleedIntoAdjacentClocks()
     {
         var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
@@ -53,11 +60,16 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Equal("Canvas", scene.Parent!.Name.LocalName);
         Assert.Equal("0", scene.Attribute("Width")?.Value);
         Assert.Equal("0", scene.Attribute("Height")?.Value);
-        Assert.Equal("Stretch", skyline.Attribute("VerticalAlignment")?.Value);
-        Assert.Contains("SceneGrid.Width = e.NewSize.Width;", source, StringComparison.Ordinal);
-        Assert.Contains("SceneGrid.Height = e.NewSize.Height;", source, StringComparison.Ordinal);
+        Assert.Equal("Bottom", skyline.Attribute("VerticalAlignment")?.Value);
+        Assert.Contains("WorldClockWindowLayoutState.CalculateSceneHeight(", source, StringComparison.Ordinal);
+        Assert.Contains("width, ColumnRoot.ActualHeight, XamlRoot.RasterizationScale)", source, StringComparison.Ordinal);
+        Assert.Contains("SceneGrid.Width = width;", source, StringComparison.Ordinal);
+        Assert.Contains("SceneGrid.Height = height;", source, StringComparison.Ordinal);
+        Assert.Contains("Canvas.SetTop(SceneGrid, ColumnRoot.ActualHeight - height);", source, StringComparison.Ordinal);
         Assert.Contains("SceneGrid.Clip = new RectangleGeometry", source, StringComparison.Ordinal);
-        Assert.Contains("new Rect(0d, 0d, e.NewSize.Width, e.NewSize.Height)", source, StringComparison.Ordinal);
+        Assert.Contains("new Rect(0d, 0d, width, height)", source, StringComparison.Ordinal);
+        Assert.Contains("VerticalAlignment = VerticalAlignment.Bottom", source, StringComparison.Ordinal);
+        Assert.Contains("DecodePixelWidth = WorldClockWindowLayoutState.ScenePixelWidth", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -567,6 +579,8 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Equal("WeatherAttributionButton_Click", attribution.Attribute("Click")?.Value);
         Assert.Equal("WorldClock.WeatherAttribution", attribution.Attribute("Tag")?.Value);
         Assert.Equal("Weather data provided by OpenWeather", attributionText.Attribute("Text")?.Value);
+        Assert.Equal("Collapsed", attributionText.Attribute("Visibility")?.Value);
+        Assert.Contains("WeatherAttributionText.Visibility = Visibility.Visible;", source, StringComparison.Ordinal);
         Assert.Null(logo.Element(logo.Name.Namespace + "Image.Source"));
         Assert.Equal(
             "fd0ad613ebcdb5f013df98bf75603c83fe1f3f0a5f677118b99557da8ac9281c",
@@ -684,20 +698,27 @@ public sealed class WorldClockWindowSurfaceContractTests
     }
 
     [Fact]
-    public void ResponsiveLayout_ReservesAttributionSpaceAndAppliesPendingResizeBeforeTheLiveBranch()
+    public void ResponsiveLayout_FloatsAttributionWithoutCoveringTextAndAppliesPendingResizeBeforeTheLiveBranch()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
         var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
         var attribution = window.Descendants().Single(element => HasName(element, "WeatherAttributionButton"));
         var scroller = window.Descendants().Single(element => HasName(element, "ClockColumnsScroller"));
-        var surfaceRows = attribution.Parent!.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().ToArray();
+        var columnSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
         var duration = column.Descendants().Single(element => HasName(element, "CompactDaylightDurationText"));
         var utc = column.Descendants().Single(element => HasName(element, "CompactTimeZoneText"));
         var scene = column.Descendants().Single(element => HasName(element, "SceneGrid"));
 
-        Assert.Equal("1", attribution.Attribute("Grid.Row")?.Value);
-        Assert.Equal("Auto", surfaceRows[1].Attribute("Height")?.Value);
+        Assert.Same(scroller.Parent, attribution.Parent);
+        Assert.DoesNotContain(attribution.Parent!.Elements(), element => element.Name.LocalName == "Grid.RowDefinitions");
+        Assert.Null(attribution.Attribute("Grid.Row"));
+        Assert.Equal("1", attribution.Attribute("Canvas.ZIndex")?.Value);
+        Assert.Equal("Right", attribution.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Bottom", attribution.Attribute("VerticalAlignment")?.Value);
+        Assert.Contains("WeatherAttributionButton.Height + WeatherAttributionButton.Margin.Bottom", source, StringComparison.Ordinal);
+        Assert.Contains("16d + bottomOverlayHeight", columnSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("WeatherAttributionButton.DesiredSize.Height", source, StringComparison.Ordinal);
         Assert.Null(scroller.Attribute("Grid.Row"));
         Assert.Equal("Auto", scroller.Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Same(duration.Parent, utc.Parent);

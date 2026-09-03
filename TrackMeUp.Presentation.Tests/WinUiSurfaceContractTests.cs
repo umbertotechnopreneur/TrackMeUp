@@ -496,14 +496,26 @@ public sealed class WinUiSurfaceContractTests
         var weeklyHoursSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml.cs"));
 
         Assert.Equal("Window", schedule.Root?.Name.LocalName);
-        Assert.Contains(schedule.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        var backdrop = schedule.Descendants().Single(element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Equal("Base", backdrop.Attribute("Kind")?.Value);
+        Assert.DoesNotContain(schedule.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(schedule.Descendants(), element => HasName(element, "WorkingHoursEditor"));
+        Assert.Equal("1040", schedule.Descendants().Single(element => HasName(element, "ScheduleBodyGrid")).Attribute("MaxWidth")?.Value);
+        Assert.Equal("Transparent", schedule.Descendants().Single(element => HasName(element, "ScheduleFooterGrid")).Attribute("Background")?.Value);
+        Assert.Contains(schedule.Descendants(), element =>
+            element.Name.LocalName == "AdaptiveTrigger"
+            && element.Attribute("MinWindowWidth")?.Value == "820");
+        Assert.DoesNotContain("ScheduleAtmosphere", schedule.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Assets/WorldClocks/Skylines", schedule.ToString(), StringComparison.Ordinal);
         Assert.Equal(
             "Inline",
             schedule.Descendants().Single(element => HasName(element, "IntervalNumberBox")).Attribute("SpinButtonPlacementMode")?.Value);
-        Assert.Equal("Rectangle", weeklyHours.Descendants().Single(element => HasName(element, "GridInteractionSurface")).Name.LocalName);
-        Assert.Contains("GridInteractionSurface.CapturePointer", weeklyHoursSource, StringComparison.Ordinal);
-        Assert.Contains("GridInteractionSurface_PointerMoved", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(weeklyHours.Descendants(), element => element.Name.LocalName == "Ellipse");
+        Assert.DoesNotContain(weeklyHours.Descendants(), element => HasName(element, "GridInteractionSurface"));
+        Assert.Contains(weeklyHours.Descendants(), element => HasName(element, "SelectionIndicator"));
+        Assert.Contains("DaysHost.CapturePointer", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains("DaysHost_PointerMoved", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinitions[candidateDayIndex + 1].ActualWidth", weeklyHoursSource, StringComparison.Ordinal);
         Assert.Contains("settingsResult.Value.ScreenshotIntervalMinutes", mainSource, StringComparison.Ordinal);
         Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ScheduleScreenshotDialog", mainSource, StringComparison.Ordinal);

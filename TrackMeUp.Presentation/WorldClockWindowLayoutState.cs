@@ -60,6 +60,9 @@ public sealed record WorldClockConversionFailureState(
 /// <summary>Owns the active world-clock surface and projects timer and viewport state.</summary>
 public sealed class WorldClockWindowLayoutState
 {
+    /// <summary>Gets the packaged skyline width used to retain native scene detail when decoding layers.</summary>
+    public const int ScenePixelWidth = 1280;
+    private const double ScenePixelHeight = 720d;
     private static readonly TimeSpan MinuteBoundaryMargin = TimeSpan.FromMilliseconds(100);
     private WorldClockWindowSizing? _appliedWindowSizing;
     private bool _preserveRestoredSize;
@@ -124,6 +127,29 @@ public sealed class WorldClockWindowLayoutState
         var minimumWidth = minimumColumnWidth * clockCount;
         // Fill the viewport even for one or two cities; scroll only below the readable column width.
         return new WorldClockColumnsLayout(minimumWidth, Math.Max(minimumWidth, viewportWidth));
+    }
+
+    /// <summary>Caps vertical scene growth at native resolution, allowing only the enlargement needed to cover the column width.</summary>
+    public static double CalculateSceneHeight(double columnWidth, double columnHeight, double rasterizationScale)
+    {
+        if (!double.IsFinite(columnWidth) || columnWidth < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(columnWidth));
+        }
+
+        if (!double.IsFinite(columnHeight) || columnHeight < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(columnHeight));
+        }
+
+        if (!double.IsFinite(rasterizationScale) || rasterizationScale <= 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rasterizationScale));
+        }
+
+        // Taller windows add empty space above the scene. Very wide columns still fill edge to edge.
+        var maximumHeight = Math.Max(ScenePixelHeight / rasterizationScale, columnWidth * (ScenePixelHeight / ScenePixelWidth));
+        return Math.Min(columnHeight, maximumHeight);
     }
 
     /// <summary>Calculates content-led bounds so a small city set stays compact without restricting manual resize.</summary>

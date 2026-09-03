@@ -227,11 +227,11 @@
                                             Header="Reference city"
                                             SelectionChanged="ReferenceCityComboBox_SelectionChanged"
                                             Tag="WorldClock.ReferenceCity" />
-                                        <Grid RowSpacing="10">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
                                             <CalendarDatePicker
                                                 x:Name="ReferenceDatePicker"
                                                 MinWidth="0"
@@ -242,7 +242,7 @@
                                             <TimePicker
                                                 x:Name="ReferenceTimePicker"
                                                 MinWidth="0"
-                                                Grid.Row="1"
+                                                Grid.Column="1"
                                                 HorizontalAlignment="Stretch"
                                                 ClockIdentifier="24HourClock"
                                                 Header="Time"
@@ -360,14 +360,12 @@
             <Grid
                 x:Name="ClocksSurface"
                 Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
                 <HyperlinkButton
                     x:Name="WeatherAttributionButton"
-                    Grid.Row="1"
-                    Margin="0,2,16,6"
+                    Canvas.ZIndex="1"
+                    Height="28"
+                    MinHeight="0"
+                    Margin="0,0,16,8"
                     Padding="4,2"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
@@ -391,7 +389,8 @@
                             x:Name="WeatherAttributionText"
                             VerticalAlignment="Center"
                             FontSize="9"
-                            Text="Weather data provided by OpenWeather" />
+                            Text="Weather data provided by OpenWeather"
+                            Visibility="Collapsed" />
                     </StackPanel>
                 </HyperlinkButton>
 

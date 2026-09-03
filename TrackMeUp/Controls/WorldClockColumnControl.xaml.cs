@@ -38,13 +38,24 @@ public sealed partial class WorldClockColumnControl : UserControl
         InitializeComponent();
     }
 
-    private void ColumnRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void ColumnRoot_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateSceneLayout();
+
+    private void UpdateSceneLayout()
     {
-        // ActualWidth/ActualHeight bindings do not notify on resize. Keep every decorative
-        // layer in the arranged column bounds without letting bitmap dimensions measure the content.
-        SceneGrid.Width = e.NewSize.Width;
-        SceneGrid.Height = e.NewSize.Height;
-        SceneGrid.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, e.NewSize.Width, e.NewSize.Height) };
+        if (XamlRoot is null)
+        {
+            // Defer decoration until the column is attached and its display scale is available.
+            return;
+        }
+
+        var width = ColumnRoot.ActualWidth;
+        var height = WorldClockWindowLayoutState.CalculateSceneHeight(
+            width, ColumnRoot.ActualHeight, XamlRoot.RasterizationScale);
+        // Move and clip the whole composition together; images never measure the clock content.
+        SceneGrid.Width = width;
+        SceneGrid.Height = height;
+        Canvas.SetTop(SceneGrid, ColumnRoot.ActualHeight - height);
+        SceneGrid.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, width, height) };
     }
 
     /// <summary>Switches this passive city surface between detailed and widget density.</summary>
@@ -66,18 +77,26 @@ public sealed partial class WorldClockColumnControl : UserControl
         return Math.Max(320d, Math.Ceiling(LocalTimeText.DesiredSize.Width * 58d / LocalTimeText.FontSize) + 32d);
     }
 
-    /// <summary>Renders only the detail that fits the viewport without allowing decorative assets to dictate its size.</summary>
-    public void SetViewportSize(double width, double height)
+    /// <summary>Renders the detail that fits the viewport, reserving text clearance for the floating attribution.</summary>
+    public void SetViewportSize(double width, double height, double bottomOverlayHeight)
     {
         if (!double.IsFinite(width) || !double.IsFinite(height) || width < 0d || height < 0d)
         {
             throw new ArgumentOutOfRangeException(nameof(width), "The viewport must be finite and non-negative.");
         }
 
+        if (!double.IsFinite(bottomOverlayHeight) || bottomOverlayHeight < 0d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bottomOverlayHeight));
+        }
+
         _viewportWidth = width;
         _viewportHeight = height;
         MinHeight = height;
+        ClockDetailsLayout.Padding = new Thickness(16d, 12d, 16d, 16d + bottomOverlayHeight);
         ApplyPresentationMode();
+        // The window also refreshes the viewport when moving between monitors with different DPI.
+        UpdateSceneLayout();
     }
 
     /// <summary>Applies the latest locally calculated city projection.</summary>
@@ -422,7 +441,7 @@ public sealed partial class WorldClockColumnControl : UserControl
                 Source = PackagedBitmap(assetPath),
                 Stretch = stretch,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Bottom,
                 IsHitTestVisible = false
             };
             AutomationProperties.SetAccessibilityView(image, AccessibilityView.Raw);
@@ -450,7 +469,7 @@ public sealed partial class WorldClockColumnControl : UserControl
 
         return new BitmapImage(new Uri($"ms-appx:///{normalized}"))
         {
-            DecodePixelWidth = 960
+            DecodePixelWidth = WorldClockWindowLayoutState.ScenePixelWidth
         };
     }
 
