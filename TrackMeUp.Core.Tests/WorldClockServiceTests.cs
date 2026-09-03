@@ -87,6 +87,38 @@ public sealed class WorldClockServiceTests
     }
 
     [Fact]
+    public void Astronomy_GlobalProjectionTracksEquinoxSunAndFiniteMoonPosition()
+    {
+        var projection = LocalAstronomy.CalculateGlobal(
+            new DateTimeOffset(2026, 3, 20, 12, 0, 0, TimeSpan.Zero));
+
+        Assert.InRange(projection.SunLatitude, -1d, 1d);
+        Assert.InRange(projection.SunLongitude, -5d, 5d);
+        Assert.InRange(projection.MoonLatitude, -90d, 90d);
+        Assert.InRange(projection.MoonLongitude, -180d, 180d);
+        Assert.InRange(projection.MoonPhaseAngleDegrees, 0d, 360d);
+    }
+
+    [Fact]
+    public void Snapshot_MapCarriesSelectedCitiesAndCelestialProjection()
+    {
+        using var service = new WorldClockService(
+            RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"));
+
+        var snapshot = service.BuildSnapshot(
+            ["ho-chi-minh-city", "rome", "new-york"],
+            new DateTimeOffset(2026, 9, 4, 0, 45, 0, TimeSpan.Zero));
+
+        Assert.Equal(snapshot.Clocks.Select(static clock => clock.CityId), snapshot.Map.Cities.Select(static city => city.CityId));
+        Assert.Equal(10.8231d, snapshot.Map.Cities[0].Latitude, precision: 3);
+        Assert.Equal(106.6297d, snapshot.Map.Cities[0].Longitude, precision: 3);
+        Assert.InRange(snapshot.Map.Sun.Latitude, -90d, 90d);
+        Assert.InRange(snapshot.Map.Sun.Longitude, -180d, 180d);
+        Assert.InRange(snapshot.Map.Moon.Latitude, -90d, 90d);
+        Assert.InRange(snapshot.Map.Moon.Longitude, -180d, 180d);
+    }
+
+    [Fact]
     public void Astronomy_LocalDayBoundsHandleMidnightDstTransitionsExplicitly()
     {
         var cuba = TimeZoneInfo.FindSystemTimeZoneById("Cuba Standard Time");

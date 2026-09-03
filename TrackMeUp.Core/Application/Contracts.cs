@@ -623,6 +623,23 @@ public sealed record WorldClockItem(
     WorldClockAtmosphere Atmosphere,
     WorldClockWeather? Weather);
 
+/// <summary>Identifies one geographic point used by the world day/night projection.</summary>
+public sealed record WorldClockMapCoordinate(double Latitude, double Longitude);
+
+/// <summary>Identifies one selected city on the world day/night projection.</summary>
+public sealed record WorldClockMapCity(
+    string CityId,
+    string CityName,
+    double Latitude,
+    double Longitude);
+
+/// <summary>Contains the global celestial and city positions for one shared instant.</summary>
+public sealed record WorldClockMapProjection(
+    WorldClockMapCoordinate Sun,
+    WorldClockMapCoordinate Moon,
+    double MoonPhaseAngleDegrees,
+    IReadOnlyList<WorldClockMapCity> Cities);
+
 /// <summary>Requests a conversion from one city's local civil time to a shared UTC instant.</summary>
 public sealed record WorldClockConversionRequest(string ReferenceCityId, DateTime ReferenceLocalTime);
 
@@ -631,7 +648,8 @@ public sealed record WorldClockSnapshot(
     DateTimeOffset InstantUtc,
     IReadOnlyList<WorldClockItem> Clocks,
     int MaximumClocks,
-    WorldClockWeatherStatus WeatherStatus);
+    WorldClockWeatherStatus WeatherStatus,
+    WorldClockMapProjection Map);
 
 /// <summary>Signals a runtime state transition to all presentation clients.</summary>
 public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, string Code);

@@ -225,7 +225,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.DoesNotContain("ToggleMenuFlyoutItem", source, StringComparison.Ordinal);
         Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop();", source, StringComparison.Ordinal);
         Assert.Contains("_titleBar = new CustomTitleBarController(", source, StringComparison.Ordinal);
-        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, PresentationModeButton, OptionsButton]", source, StringComparison.Ordinal);
+        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, WorldMapToggleButton, PresentationModeButton, OptionsButton]", source, StringComparison.Ordinal);
         Assert.Contains("TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("InputNonClientPointerSource", source, StringComparison.Ordinal);
         Assert.Contains("_window.ExtendsContentIntoTitleBar = true;", titleBarSource, StringComparison.Ordinal);
@@ -698,6 +698,46 @@ public sealed class WorldClockWindowSurfaceContractTests
     }
 
     [Fact]
+    public void DayNightMap_IsAnOptionalBottomPanelWithCoreOwnedCelestialPositions()
+    {
+        var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
+        var map = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldDayNightMapControl.xaml"));
+        var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var mapSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldDayNightMapControl.xaml.cs"));
+        var contracts = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "Contracts.cs"));
+        var service = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "WorldClockService.cs"));
+        var toggle = window.Descendants().Single(element => HasName(element, "WorldMapToggleButton"));
+        var panel = window.Descendants().Single(element => HasName(element, "WorldMapPanel"));
+        var mapRow = window.Descendants().Single(element => HasName(element, "WorldMapRow"));
+        var mapControl = panel.Descendants().Single(element => HasName(element, "WorldMapControl"));
+
+        Assert.Equal("WorldClock.Map.Show", toggle.Attribute("Tag")?.Value);
+        Assert.Equal("WorldMapToggleButton_Click", toggle.Attribute("Click")?.Value);
+        Assert.Equal("True", toggle.Attribute("IsTabStop")?.Value);
+        Assert.Equal("True", toggle.Attribute("AllowFocusOnInteraction")?.Value);
+        Assert.Equal(AttributeValue(toggle, "AutomationProperties.Name"), AttributeValue(toggle, "ToolTipService.ToolTip"));
+        Assert.Equal("0", mapRow.Attribute("Height")?.Value);
+        Assert.Equal("1", panel.Attribute("Grid.Row")?.Value);
+        Assert.Equal("Collapsed", panel.Attribute("Visibility")?.Value);
+        Assert.Equal("WorldDayNightMapControl", mapControl.Name.LocalName);
+        Assert.Contains(map.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Source")?.Value == "ms-appx:///Assets/WorldClocks/Maps/world-map-day.png");
+        Assert.Contains("WorldMapControl.Apply(snapshot.Map, _strings);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("WorldClockWindowLayoutState.CalculateWorldMapPanelHeight", windowSource, StringComparison.Ordinal);
+        Assert.Contains("WorldMapLightingProjection.Sample(", mapSource, StringComparison.Ordinal);
+        Assert.Contains("DayMapAssetUri", mapSource, StringComparison.Ordinal);
+        Assert.Contains("NightMapAssetUri", mapSource, StringComparison.Ordinal);
+        Assert.Contains("sample.DayTextureBlend", mapSource, StringComparison.Ordinal);
+        Assert.Contains("sample.TwilightBlend", mapSource, StringComparison.Ordinal);
+        Assert.Contains("LunarPhaseProjection.Create(projection.MoonPhaseAngleDegrees)", mapSource, StringComparison.Ordinal);
+        Assert.Contains("WorldClockMapProjection Map", contracts, StringComparison.Ordinal);
+        Assert.Contains("LocalAstronomy.CalculateGlobal(utcInstant)", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.", mapSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpClient", mapSource, StringComparison.Ordinal);
+        Assert.True(File.Exists(RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "Maps", "world-map-day.png")));
+        Assert.True(File.Exists(RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "Maps", "world-map-night.png")));
+    }
+
+    [Fact]
     public void ResponsiveLayout_FloatsAttributionWithoutCoveringTextAndAppliesPendingResizeBeforeTheLiveBranch()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
@@ -711,15 +751,15 @@ public sealed class WorldClockWindowSurfaceContractTests
         var scene = column.Descendants().Single(element => HasName(element, "SceneGrid"));
 
         Assert.Same(scroller.Parent, attribution.Parent);
-        Assert.DoesNotContain(attribution.Parent!.Elements(), element => element.Name.LocalName == "Grid.RowDefinitions");
-        Assert.Null(attribution.Attribute("Grid.Row"));
+        Assert.Contains(attribution.Parent!.Elements(), element => element.Name.LocalName == "Grid.RowDefinitions");
+        Assert.Equal("0", attribution.Attribute("Grid.Row")?.Value);
         Assert.Equal("1", attribution.Attribute("Canvas.ZIndex")?.Value);
         Assert.Equal("Right", attribution.Attribute("HorizontalAlignment")?.Value);
         Assert.Equal("Bottom", attribution.Attribute("VerticalAlignment")?.Value);
         Assert.Contains("WeatherAttributionButton.Height + WeatherAttributionButton.Margin.Bottom", source, StringComparison.Ordinal);
         Assert.Contains("16d + bottomOverlayHeight", columnSource, StringComparison.Ordinal);
         Assert.DoesNotContain("WeatherAttributionButton.DesiredSize.Height", source, StringComparison.Ordinal);
-        Assert.Null(scroller.Attribute("Grid.Row"));
+        Assert.Equal("0", scroller.Attribute("Grid.Row")?.Value);
         Assert.Equal("Auto", scroller.Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Same(duration.Parent, utc.Parent);
         Assert.Equal("1", utc.Attribute("Grid.Column")?.Value);
@@ -761,6 +801,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
         Assert.Contains("SetIconButtonLabel(OptionsButton, \"WorldClock.Options.Open\");", windowSource, StringComparison.Ordinal);
         Assert.Contains("SetIconButtonLabel(HeaderBackButton, \"WorldClock.Options.Back\");", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SetIconButtonLabel(WorldMapToggleButton, key);", windowSource, StringComparison.Ordinal);
         Assert.Contains("SetIconButtonLabel(PresentationModeButton, key);", windowSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(button, label);", windowSource, StringComparison.Ordinal);
         Assert.Contains("ToolTipService.SetToolTip(button, label);", windowSource, StringComparison.Ordinal);

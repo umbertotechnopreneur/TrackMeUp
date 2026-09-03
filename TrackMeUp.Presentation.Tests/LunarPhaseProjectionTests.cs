@@ -28,6 +28,7 @@ public sealed class LunarPhaseProjectionTests
 
         Assert.Equal(expectedKey, presentation.LocalizationKey);
         Assert.Equal(expectedPercentage, presentation.IlluminatedPercentage);
+        Assert.False(string.IsNullOrWhiteSpace(presentation.Glyph));
     }
 
     /// <summary>Verifies that lunar phase projection rejects non-finite phase angles.</summary>

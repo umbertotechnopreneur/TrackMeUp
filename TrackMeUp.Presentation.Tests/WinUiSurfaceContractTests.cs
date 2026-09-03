@@ -1363,24 +1363,31 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(player.Descendants(), element => HasName(element, "QuickSetupMenuItem") && element.Attribute("Tag")?.Value == "QuickSetup.MenuTitle");
     }
 
-    [Theory]
-    [InlineData("TrackMeUp/MainWindow.xaml")]
-    [InlineData("TrackMeUp/Controls/OptionsControl.xaml")]
-    [InlineData("TrackMeUp.Taskbar/TaskbarWidgetWindow.xaml")]
-    public void IconOnlyButtons_HaveExplicitAutomationNames(string relativePath)
+    [Fact]
+    public void IconOnlyButtons_HaveMatchingAutomationNamesAndTooltipsAcrossFirstPartyXaml()
     {
-        var document = XDocument.Load(RepositoryFile(relativePath.Split('/')));
-        var iconOnlyButtons = document
-            .Descendants()
-            .Where(element => element.Name.LocalName == "Button")
-            .Where(element => element.Attribute("Content") is null)
-            .Where(element => element.Descendants().Any(child => child.Name.LocalName is "FontIcon" or "Image"))
+        var roots = new[] { RepositoryFile("TrackMeUp"), RepositoryFile("TrackMeUp.Taskbar") };
+        var xamlFiles = roots.SelectMany(root => Directory.GetFiles(root, "*.xaml", SearchOption.AllDirectories))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var iconOnlyButtons = xamlFiles
+            .SelectMany(path => XDocument.Load(path).Descendants().Select(element => (Path: path, Element: element)))
+            .Where(item => item.Element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton")
+            .Where(item => item.Element.Attribute("Content") is null && item.Element.Attribute("Label") is null)
+            .Where(item => item.Element.Descendants().Any(child => child.Name.LocalName is "FontIcon" or "SymbolIcon" or "PathIcon" or "Image"))
+            .Where(item => !item.Element.Descendants().Any(child => child.Name.LocalName == "TextBlock"))
             .ToArray();
 
         Assert.NotEmpty(iconOnlyButtons);
-        Assert.All(
-            iconOnlyButtons,
-            button => Assert.Contains(button.Attributes(), attribute => attribute.Name.LocalName == "AutomationProperties.Name"));
+        Assert.All(iconOnlyButtons, item =>
+        {
+            var name = item.Element.Attributes().SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.Name")?.Value;
+            var tooltip = item.Element.Attributes().SingleOrDefault(attribute =>
+                attribute.Name.LocalName is "ToolTipService.ToolTip" or "ToolTip")?.Value;
+            Assert.False(string.IsNullOrWhiteSpace(name), $"{item.Path}: icon-only control has no accessible name.");
+            Assert.Equal(name, tooltip);
+        });
     }
 
     private static string RepositoryFile(params string[] pathSegments)

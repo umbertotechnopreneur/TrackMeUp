@@ -933,6 +933,7 @@
   "Screenshots.Installation": "설치",
   "WorldClock.Landmark": "세계 시간", "WorldClock.OpenWindow": "세계 시계 열기", "WorldClock.Add": "시계 추가",
   "WorldClock.Options.Open": "세계 시계 옵션 열기", "WorldClock.Options.Back": "세계 시계로 돌아가기", "WorldClock.Layout.Compact": "간결한 레이아웃으로 전환", "WorldClock.Layout.Expanded": "자세한 레이아웃으로 전환", "WorldClock.Options.Title": "세계 시계 옵션", "WorldClock.Options.Description": "세계 시계와 현재 날씨의 작동 방식을 선택하세요.",
+  "WorldClock.Map.Show": "세계 낮과 밤 지도 표시", "WorldClock.Map.Hide": "세계 낮과 밤 지도 숨기기", "WorldClock.Map.Title": "세계 낮과 밤 지도", "WorldClock.Map.Night": "밤", "WorldClock.Map.Dawn": "새벽", "WorldClock.Map.Day": "낮", "WorldClock.Map.Sunset": "해질녘", "WorldClock.Map.Sun": "태양", "WorldClock.Map.Moon": "달",
   "WorldClock.Options.Clocks.Header": "시계", "WorldClock.Options.Clocks.Description": "최대 12개의 도시를 추가하거나 제거하고 기준 도시를 선택하세요.",
   "WorldClock.Options.AlwaysOnTop.Header": "항상 위에 표시", "WorldClock.Options.AlwaysOnTop.Off": "꺼짐", "WorldClock.Options.AlwaysOnTop.On": "켜짐",
   "WorldClock.Options.Weather.Header": "현재 날씨", "WorldClock.Options.Weather.Off": "꺼짐", "WorldClock.Options.Weather.On": "켜짐", "WorldClock.Options.Weather.Description": "선택한 도시의 최신 현재 날씨를 표시합니다.", "WorldClock.Options.Weather.Setup": "날씨 제공업체 설정",

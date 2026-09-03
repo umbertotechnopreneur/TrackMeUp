@@ -78,6 +78,35 @@ public sealed class WorldClockResponsiveLayoutTests
     }
 
     [Fact]
+    public void OptionalMap_AddsResponsiveHeightAndRestoresThePreviousSizingContract()
+    {
+        var state = new WorldClockWindowLayoutState();
+        var clocksOnly = Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3));
+        state.AcceptWindowResizeRequest(clocksOnly);
+
+        Assert.True(state.ToggleWorldMap());
+        var withMap = Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3));
+        Assert.Equal(clocksOnly.Sizing.PreferredLogicalWidth, withMap.Sizing.PreferredLogicalWidth);
+        Assert.Equal(
+            clocksOnly.Sizing.PreferredLogicalHeight
+            + (int)Math.Ceiling(WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(clocksOnly.Sizing.PreferredLogicalWidth)),
+            withMap.Sizing.PreferredLogicalHeight);
+        state.AcceptWindowResizeRequest(withMap);
+
+        Assert.False(state.ToggleWorldMap());
+        Assert.Equal(clocksOnly.Sizing, Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3)).Sizing);
+    }
+
+    [Theory]
+    [InlineData(480d, 220d)]
+    [InlineData(1120d, 268.8d)]
+    [InlineData(2000d, 340d)]
+    public void MapPanelHeight_RemainsReadableWithoutDominatingTheWindow(double width, double expected)
+    {
+        Assert.Equal(expected, WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(width), precision: 5);
+    }
+
+    [Fact]
     public void ScaledTimeText_ExpandsColumnsEquallyAndScrollsInsteadOfClipping()
     {
         var columns = WorldClockWindowLayoutState.CalculateColumnsLayout(2, 640d, minimumColumnWidth: 410d);

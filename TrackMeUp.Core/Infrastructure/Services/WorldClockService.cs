@@ -308,6 +308,7 @@ public sealed class WorldClockService : IDisposable
         WorldClockWeatherStatus weatherStatus)
     {
         var items = new List<WorldClockItem>(selection.Count);
+        var mapCities = new List<WorldClockMapCity>(selection.Count);
         foreach (var cityId in selection)
         {
             if (!cities.TryGetValue(cityId, out var city))
@@ -342,13 +343,21 @@ public sealed class WorldClockService : IDisposable
                     isDaylight,
                     weather?.ConditionKey),
                 weather));
+            mapCities.Add(new WorldClockMapCity(city.Id, city.Name, city.Latitude, city.Longitude));
         }
+
+        var celestial = LocalAstronomy.CalculateGlobal(utcInstant);
 
         return new WorldClockSnapshot(
             utcInstant.ToUniversalTime(),
             items,
             WorldClockSelection.MaximumClocks,
-            weatherStatus);
+            weatherStatus,
+            new WorldClockMapProjection(
+                new WorldClockMapCoordinate(celestial.SunLatitude, celestial.SunLongitude),
+                new WorldClockMapCoordinate(celestial.MoonLatitude, celestial.MoonLongitude),
+                celestial.MoonPhaseAngleDegrees,
+                mapCities));
     }
 
     /// <summary>Resolves a selected city's local civil time and projects every selected clock at that instant.</summary>
@@ -516,6 +525,13 @@ internal static class LocalAstronomy
         double SunAltitudeDegrees,
         double MoonPhaseAngleDegrees);
 
+    internal sealed record GlobalResult(
+        double SunLatitude,
+        double SunLongitude,
+        double MoonLatitude,
+        double MoonLongitude,
+        double MoonPhaseAngleDegrees);
+
     /// <summary>Calculates apparent rise/set crossings and the lunar phase for one local civil day.</summary>
     public static Result Calculate(double latitude, double longitude, TimeZoneInfo timeZone, DateTimeOffset utcNow)
     {
@@ -533,6 +549,21 @@ internal static class LocalAstronomy
             ToLocal(sunCrossings.Set, timeZone),
             Altitude(sun, latitude, longitude, utcNow),
             phaseAngle);
+    }
+
+    /// <summary>Calculates the subsolar and sublunar points for one UTC instant.</summary>
+    internal static GlobalResult CalculateGlobal(DateTimeOffset utcNow)
+    {
+        var julianDay = JulianDay(utcNow);
+        var sun = SunPosition(julianDay);
+        var moon = MoonPosition(julianDay);
+        var sidereal = GreenwichSiderealDegrees(julianDay);
+        return new GlobalResult(
+            sun.DeclinationDegrees,
+            NormalizeSignedDegrees(sun.RightAscensionDegrees - sidereal),
+            moon.DeclinationDegrees,
+            NormalizeSignedDegrees(moon.RightAscensionDegrees - sidereal),
+            NormalizeDegrees(moon.EclipticLongitudeDegrees - sun.EclipticLongitudeDegrees));
     }
 
     /// <summary>Resolves the first UTC instant of one local date and the following local date.</summary>
@@ -712,15 +743,20 @@ internal static class LocalAstronomy
     private static double Altitude(EquatorialPosition position, double latitude, double longitude, DateTimeOffset utc)
     {
         var julianDay = JulianDay(utc);
-        var centuries = (julianDay - 2451545d) / 36525d;
-        var sidereal = NormalizeDegrees(280.46061837
-            + 360.98564736629 * (julianDay - 2451545d)
-            + 0.000387933 * centuries * centuries
-            - centuries * centuries * centuries / 38710000d);
+        var sidereal = GreenwichSiderealDegrees(julianDay);
         var hourAngle = NormalizeSignedDegrees(sidereal + longitude - position.RightAscensionDegrees) * DegreesToRadians;
         var lat = latitude * DegreesToRadians;
         var dec = position.DeclinationDegrees * DegreesToRadians;
         return Math.Asin(Math.Sin(lat) * Math.Sin(dec) + Math.Cos(lat) * Math.Cos(dec) * Math.Cos(hourAngle)) * RadiansToDegrees;
+    }
+
+    private static double GreenwichSiderealDegrees(double julianDay)
+    {
+        var centuries = (julianDay - 2451545d) / 36525d;
+        return NormalizeDegrees(280.46061837
+            + 360.98564736629 * (julianDay - 2451545d)
+            + 0.000387933 * centuries * centuries
+            - centuries * centuries * centuries / 38710000d);
     }
 
     private static double JulianDay(DateTimeOffset instant) => instant.ToUniversalTime().ToUnixTimeMilliseconds() / 86400000d + 2440587.5d;

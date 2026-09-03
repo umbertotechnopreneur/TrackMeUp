@@ -320,12 +320,30 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="44" />
                         <ColumnDefinition Width="44" />
+                        <ColumnDefinition Width="44" />
                         <ColumnDefinition x:Name="TitleBarSystemButtonGapColumn" Width="12" />
                         <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
                     </Grid.ColumnDefinitions>
                     <Button
-                        x:Name="PresentationModeButton"
+                        x:Name="WorldMapToggleButton"
                         Grid.Column="1"
+                        AutomationProperties.Name="Show world day and night map"
+                        Click="WorldMapToggleButton_Click"
+                        IsTabStop="True"
+                        AllowFocusOnInteraction="True"
+                        Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
+                        Tag="WorldClock.Map.Show"
+                        ToolTipService.ToolTip="Show world day and night map">
+                        <FontIcon
+                            x:Name="WorldMapToggleIcon"
+                            AutomationProperties.AccessibilityView="Raw"
+                            FontFamily="Segoe Fluent Icons"
+                            FontSize="16"
+                            Glyph="&#xE774;" />
+                    </Button>
+                    <Button
+                        x:Name="PresentationModeButton"
+                        Grid.Column="2"
                         AutomationProperties.Name="Switch to compact layout"
                         Click="PresentationModeButton_Click"
                         IsTabStop="True"
@@ -342,7 +360,7 @@
                     </Button>
                     <Button
                         x:Name="OptionsButton"
-                        Grid.Column="2"
+                        Grid.Column="3"
                         AutomationProperties.Name="Open world clock options"
                         Click="OptionsButton_Click"
                         IsTabStop="True"
@@ -360,8 +378,13 @@
             <Grid
                 x:Name="ClocksSurface"
                 Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition x:Name="WorldMapRow" Height="0" />
+                </Grid.RowDefinitions>
                 <HyperlinkButton
                     x:Name="WeatherAttributionButton"
+                    Grid.Row="0"
                     Canvas.ZIndex="1"
                     Height="28"
                     MinHeight="0"
@@ -396,6 +419,7 @@
 
                 <ScrollViewer
                     x:Name="ClockColumnsScroller"
+                    Grid.Row="0"
                     HorizontalContentAlignment="Stretch"
                     HorizontalScrollBarVisibility="Auto"
                     HorizontalScrollMode="Enabled"
@@ -411,6 +435,7 @@
 
                 <StackPanel
                     x:Name="LoadingState"
+                    Grid.Row="0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     AutomationProperties.LiveSetting="Polite"
@@ -436,6 +461,7 @@
 
                 <StackPanel
                     x:Name="EmptyClocksState"
+                    Grid.Row="0"
                     Width="420"
                     MaxWidth="520"
                     Padding="24"
@@ -478,6 +504,15 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
+
+                <Border
+                    x:Name="WorldMapPanel"
+                    Grid.Row="1"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0"
+                    Visibility="Collapsed">
+                    <controls:WorldDayNightMapControl x:Name="WorldMapControl" />
+                </Border>
             </Grid>
 
             <Border
