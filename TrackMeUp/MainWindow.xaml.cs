@@ -1797,6 +1797,7 @@ public sealed partial class MainWindow : Window
     private void ApplyMainAccessibility()
     {
         SetIconButtonLabel(TitleBarBackButton, "QuickSetup.Back");
+        SetIconButtonLabel(MoreButton, "Main.Menu.Open");
         SetIconButtonLabel(TitleBarMoreButton, "Main.Menu.Open");
         SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
         SetIconButtonLabel(TitleBarReportButton, "Reports.Title");

@@ -1009,15 +1009,52 @@ function Resolve-TrackMeUpPackageCertificate {
     return $certificate
 }
 
-function Assert-TrackMeUpPackageSigned {
+function Assert-TrackMeUpPackageIntegrity {
     param([Parameter(Mandatory)][System.IO.FileInfo]$PackageFile)
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($PackageFile.FullName)
     try {
-        $signatureEntry = $archive.Entries | Where-Object { $_.FullName -eq 'AppxSignature.p7x' } | Select-Object -First 1
-        if ($null -eq $signatureEntry) {
+        $entries = @{}
+        foreach ($entry in $archive.Entries) {
+            $entries[$entry.FullName.Replace('\', '/')] = $entry
+        }
+
+        if (-not $entries.ContainsKey('AppxSignature.p7x')) {
             throw "MSIX package is not signed: $($PackageFile.FullName)"
+        }
+
+        foreach ($requiredEntry in @('ReportsWeb/index.html', 'ReportsWeb/THIRD_PARTY_NOTICES.md')) {
+            if (-not $entries.ContainsKey($requiredEntry)) {
+                throw "MSIX package is missing required report asset '$requiredEntry': $($PackageFile.FullName)"
+            }
+        }
+
+        $indexStream = $entries['ReportsWeb/index.html'].Open()
+        try {
+            $reader = [System.IO.StreamReader]::new($indexStream)
+            try {
+                $indexHtml = $reader.ReadToEnd()
+            }
+            finally {
+                $reader.Dispose()
+            }
+        }
+        finally {
+            $indexStream.Dispose()
+        }
+
+        # Every bundle referenced by the packaged entry point must exist in that same signed archive.
+        $assetMatches = [regex]::Matches($indexHtml, '(?:src|href)=["'']\./(?<path>assets/[^"'']+)["'']')
+        if ($assetMatches.Count -eq 0) {
+            throw "MSIX report entry point contains no local production asset references: $($PackageFile.FullName)"
+        }
+
+        foreach ($assetMatch in $assetMatches) {
+            $assetEntry = "ReportsWeb/$($assetMatch.Groups['path'].Value)"
+            if (-not $entries.ContainsKey($assetEntry)) {
+                throw "MSIX package is missing report bundle '$assetEntry': $($PackageFile.FullName)"
+            }
         }
     }
     finally {
@@ -1026,6 +1063,8 @@ function Assert-TrackMeUpPackageSigned {
 }
 
 function Invoke-TrackMeUpMsixPackage {
+    Invoke-TrackMeUpBuildReports
+
     $runtime = Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform
     $certificate = Resolve-TrackMeUpPackageCertificate
     $packageDirectory = Join-Path $script:RepositoryRoot 'artifacts\packages'
@@ -1052,7 +1091,7 @@ function Invoke-TrackMeUpMsixPackage {
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments
 
     $packageFile = Get-TrackMeUpLatestPackageFile
-    Assert-TrackMeUpPackageSigned -PackageFile $packageFile
+    Assert-TrackMeUpPackageIntegrity -PackageFile $packageFile
     Write-Host "Signed MSIX package ready: $($packageFile.FullName)" -ForegroundColor Green
 }
 
@@ -1116,7 +1155,7 @@ function Invoke-TrackMeUpInstallerCreation {
     }
 
     $packageFile = Get-TrackMeUpLatestPackageFile
-    Assert-TrackMeUpPackageSigned -PackageFile $packageFile
+    Assert-TrackMeUpPackageIntegrity -PackageFile $packageFile
     if ($InstallerFormat -eq 'Zip') {
         $outputPath = Resolve-TrackMeUpInstallerOutputPath -DefaultExtension '.zip'
         Assert-OutputFileCanBeWritten -Path $outputPath

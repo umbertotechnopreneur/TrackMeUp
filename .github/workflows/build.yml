@@ -37,6 +37,18 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify tracked reports distribution is current
+        shell: pwsh
+        run: |
+          $changes = @(git status --porcelain --untracked-files=all -- TrackMeUp.Reports.Web/dist)
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          if ($changes.Count -gt 0) {
+            $changes | Write-Host
+            throw 'The tracked reports distribution does not match a clean production build.'
+          }
+
   lint:
     name: lint
     runs-on: windows-latest

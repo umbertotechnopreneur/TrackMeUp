@@ -289,9 +289,10 @@
 
                         <Button
                             x:Name="MoreButton"
-                            AutomationProperties.Name="Application menu"
+                            AutomationProperties.Name="Open application menu"
                             Background="Transparent"
                             BorderBrush="Transparent"
+                            ToolTipService.ToolTip="Open application menu"
                             Visibility="Collapsed">
                             <FontIcon
                                 AutomationProperties.AccessibilityView="Raw"

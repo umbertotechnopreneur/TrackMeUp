@@ -37,6 +37,18 @@ The light source was produced by adapting only the theme and contrast while pres
 
 Bahnschrift is used from the local Windows installation only to rasterize the wordmark. No font file is redistributed by this directory.
 
+## GitHub social preview derivative
+
+- Date: 2026-09-04.
+- Method: Codex built-in image editing using the selected dark Recall Timeline banner as the sole visual source, followed by deterministic local downscaling to 1280 x 640.
+- Purpose: reframe the established 3:1 composition as a 2:1 GitHub repository social preview without introducing a new visual direction.
+- Output: `output/trackmeup-social-preview-github-1280x640.png`.
+- Constraints supplied to the editor: preserve the exact `TrackMeUp` wordmark, its white-and-coral treatment, the dark navy palette, coral retrieval gesture, blue timeline, glassy Windows-inspired objects, and safe social-preview margins; add no new messaging, people, logos, or watermarks.
+
+The selected output was downscaled from the generated 1774 x 887 image with
+high-quality bicubic interpolation. The generated source remains outside the
+repository; the publication-sized derivative is recorded in `manifest.json`.
+
 ## Publication approval
 
 The intended destination is the public TrackMeUp repository. These images are

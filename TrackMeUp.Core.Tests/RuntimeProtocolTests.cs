@@ -879,7 +879,12 @@ public sealed class RuntimeProtocolTests
                     "request-failed",
                     1,
                     0,
-                    IsProviderConfigured: true));
+                    IsProviderConfigured: true),
+                new WorldClockMapProjection(
+                    new WorldClockMapCoordinate(8d, 0d),
+                    new WorldClockMapCoordinate(-12d, 145d),
+                    180d,
+                    [new WorldClockMapCity("london", "London", 51.5074d, -0.1278d)]));
         }
     }
 

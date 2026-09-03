@@ -16,18 +16,18 @@ namespace TrackMeUp.Controls;
 public sealed partial class WeeklyHoursEditor : UserControl
 {
     private const int SlotsPerDay = WeeklyHoursGridProjection.SlotsPerDay;
-    private const double TimeLabelWidth = 64d;
-    private const double DayColumnWidth = 96d;
     private const double SlotHeight = 12d;
-    private const double TouchTapMovementThreshold = 8d;
+    private const double DragMovementThreshold = 4d;
     private static IReadOnlyList<string> Days => ActiveHoursSchedule.Days;
     private readonly Dictionary<string, ToggleButton[]> _daySlots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TextBlock> _dayLabels = new(StringComparer.Ordinal);
     private LocalizationService _strings = new("system");
+    private uint? _dragPointerId;
+    private Point _dragStartPosition;
+    private int _lastDragDayIndex;
+    private int _lastDragSlotIndex;
     private bool? _dragSelectionValue;
-    private uint? _touchPointerId;
-    private Point _touchStartPosition;
-    private bool _touchMoved;
+    private bool _isDragging;
 
     /// <summary>Creates the reusable weekly hours editor.</summary>
     public WeeklyHoursEditor()
@@ -36,11 +36,11 @@ public sealed partial class WeeklyHoursEditor : UserControl
         TimeGridHost.Height = SlotsPerDay * SlotHeight;
         DaysHost.Height = TimeGridHost.Height;
         BuildGrid();
-        GridInteractionSurface.AddHandler(PointerPressedEvent, new PointerEventHandler(GridInteractionSurface_PointerPressed), true);
-        GridInteractionSurface.AddHandler(PointerMovedEvent, new PointerEventHandler(GridInteractionSurface_PointerMoved), true);
-        GridInteractionSurface.AddHandler(PointerReleasedEvent, new PointerEventHandler(GridInteractionSurface_PointerReleased), true);
-        GridInteractionSurface.PointerCanceled += GridInteractionSurface_PointerCanceled;
-        GridInteractionSurface.PointerCaptureLost += GridInteractionSurface_PointerCaptureLost;
+        DaysHost.AddHandler(PointerPressedEvent, new PointerEventHandler(DaysHost_PointerPressed), true);
+        DaysHost.AddHandler(PointerMovedEvent, new PointerEventHandler(DaysHost_PointerMoved), true);
+        DaysHost.AddHandler(PointerReleasedEvent, new PointerEventHandler(DaysHost_PointerReleased), true);
+        DaysHost.PointerCanceled += DaysHost_PointerCanceled;
+        DaysHost.PointerCaptureLost += DaysHost_PointerCaptureLost;
     }
 
     /// <summary>Applies the selected locale to instructions, weekday names, and slot accessibility labels.</summary>
@@ -151,12 +151,12 @@ public sealed partial class WeeklyHoursEditor : UserControl
                 var day = Days[dayIndex];
                 var button = new ToggleButton
                 {
-                    Width = DayColumnWidth,
                     Height = SlotHeight,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch,
                     Padding = new Thickness(0),
                     Margin = new Thickness(0),
                     CornerRadius = new CornerRadius(0),
-                    IsHitTestVisible = false,
                     Style = slotStyle,
                     Tag = slot
                 };
@@ -168,97 +168,183 @@ public sealed partial class WeeklyHoursEditor : UserControl
         }
     }
 
-    private void GridInteractionSurface_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void DaysHost_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (!TryGetSlot(e, out var slot))
-        {
-            return;
-        }
-
         if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
         {
-            _touchPointerId = e.Pointer.PointerId;
-            _touchStartPosition = e.GetCurrentPoint(GridInteractionSurface).Position;
-            _touchMoved = false;
             return;
         }
 
+        var point = e.GetCurrentPoint(DaysHost);
+        if ((e.Pointer.PointerDeviceType == PointerDeviceType.Mouse && !point.Properties.IsLeftButtonPressed)
+            || !TryGetSlot(point.Position, out var dayIndex, out var slotIndex, out var slot))
+        {
+            return;
+        }
+
+        _dragPointerId = e.Pointer.PointerId;
+        _dragStartPosition = point.Position;
+        _lastDragDayIndex = dayIndex;
+        _lastDragSlotIndex = slotIndex;
         _dragSelectionValue = !(slot.IsChecked == true);
-        slot.IsChecked = _dragSelectionValue;
-        GridInteractionSurface.CapturePointer(e.Pointer);
-        e.Handled = true;
+        _isDragging = false;
     }
 
-    private void GridInteractionSurface_PointerMoved(object sender, PointerRoutedEventArgs e)
+    private void DaysHost_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch
+            || _dragPointerId != e.Pointer.PointerId
+            || !_dragSelectionValue.HasValue)
         {
-            if (_touchPointerId == e.Pointer.PointerId)
-            {
-                var position = e.GetCurrentPoint(GridInteractionSurface).Position;
-                _touchMoved |= Math.Abs(position.X - _touchStartPosition.X) > TouchTapMovementThreshold
-                    || Math.Abs(position.Y - _touchStartPosition.Y) > TouchTapMovementThreshold;
-            }
-
             return;
         }
 
-        if (_dragSelectionValue.HasValue && e.Pointer.IsInContact && TryGetSlot(e, out var slot))
+        var point = e.GetCurrentPoint(DaysHost);
+        if ((e.Pointer.PointerDeviceType == PointerDeviceType.Mouse && !point.Properties.IsLeftButtonPressed)
+            || (e.Pointer.PointerDeviceType != PointerDeviceType.Mouse && !point.IsInContact))
         {
-            slot.IsChecked = _dragSelectionValue;
-            e.Handled = true;
+            return;
         }
-    }
 
-    private void GridInteractionSurface_PointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch)
+        var position = point.Position;
+        var hasTargetSlot = TryGetSlot(position, out var dayIndex, out var slotIndex, out _);
+        if (!_isDragging)
         {
-            if (_touchPointerId == e.Pointer.PointerId
-                && !_touchMoved
-                && TryGetSlot(e, out var touchSlot))
+            var horizontalMovement = Math.Abs(position.X - _dragStartPosition.X);
+            var verticalMovement = Math.Abs(position.Y - _dragStartPosition.Y);
+            var enteredAnotherSlot = hasTargetSlot
+                && (dayIndex != _lastDragDayIndex || slotIndex != _lastDragSlotIndex);
+            if (!enteredAnotherSlot
+                && horizontalMovement <= DragMovementThreshold
+                && verticalMovement <= DragMovementThreshold)
             {
-                ClearTouchGesture();
-                touchSlot.IsChecked = !(touchSlot.IsChecked == true);
-                e.Handled = true;
                 return;
             }
 
-            ClearTouchGesture();
-            return;
+            if (!DaysHost.CapturePointer(e.Pointer))
+            {
+                return;
+            }
+
+            _isDragging = true;
+            _daySlots[Days[_lastDragDayIndex]][_lastDragSlotIndex].IsChecked = _dragSelectionValue.Value;
         }
 
-        _dragSelectionValue = null;
-        GridInteractionSurface.ReleasePointerCapture(e.Pointer);
+        if (hasTargetSlot)
+        {
+            ApplyDragPath(dayIndex, slotIndex, _dragSelectionValue.Value);
+        }
+
         e.Handled = true;
     }
 
-    private void GridInteractionSurface_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    private void DaysHost_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        _dragSelectionValue = null;
-        ClearTouchGesture();
-    }
-
-    private void GridInteractionSurface_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
-    {
-        _dragSelectionValue = null;
-        ClearTouchGesture();
-    }
-
-    private void ClearTouchGesture()
-    {
-        _touchPointerId = null;
-        _touchMoved = false;
-    }
-
-    private bool TryGetSlot(PointerRoutedEventArgs e, out ToggleButton slot)
-    {
-        var position = e.GetCurrentPoint(DaysHost).Position;
-        var dayIndex = (int)Math.Floor((position.X - TimeLabelWidth) / DayColumnWidth);
-        var slotIndex = (int)Math.Floor(position.Y / SlotHeight);
-        if (dayIndex < 0 || dayIndex >= Days.Count || slotIndex < 0 || slotIndex >= SlotsPerDay)
+        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch || _dragPointerId != e.Pointer.PointerId)
         {
-            slot = null!;
+            return;
+        }
+
+        if (_isDragging)
+        {
+            DaysHost.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+        }
+
+        ClearDragGesture();
+    }
+
+    private void DaysHost_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    {
+        if (_dragPointerId == e.Pointer.PointerId)
+        {
+            ClearDragGesture();
+        }
+    }
+
+    private void DaysHost_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        if (_dragPointerId == e.Pointer.PointerId)
+        {
+            ClearDragGesture();
+        }
+    }
+
+    private void ClearDragGesture()
+    {
+        _dragPointerId = null;
+        _dragSelectionValue = null;
+        _isDragging = false;
+    }
+
+    private void ApplyDragPath(int targetDayIndex, int targetSlotIndex, bool selectionValue)
+    {
+        var dayIndex = _lastDragDayIndex;
+        var slotIndex = _lastDragSlotIndex;
+        var dayDistance = Math.Abs(targetDayIndex - dayIndex);
+        var dayStep = dayIndex < targetDayIndex ? 1 : -1;
+        var slotDistance = -Math.Abs(targetSlotIndex - slotIndex);
+        var slotStep = slotIndex < targetSlotIndex ? 1 : -1;
+        var error = dayDistance + slotDistance;
+
+        while (true)
+        {
+            _daySlots[Days[dayIndex]][slotIndex].IsChecked = selectionValue;
+            if (dayIndex == targetDayIndex && slotIndex == targetSlotIndex)
+            {
+                break;
+            }
+
+            var doubledError = 2 * error;
+            if (doubledError >= slotDistance)
+            {
+                error += slotDistance;
+                dayIndex += dayStep;
+            }
+
+            if (doubledError <= dayDistance)
+            {
+                error += dayDistance;
+                slotIndex += slotStep;
+            }
+        }
+
+        _lastDragDayIndex = targetDayIndex;
+        _lastDragSlotIndex = targetSlotIndex;
+    }
+
+    private bool TryGetSlot(Point position, out int dayIndex, out int slotIndex, out ToggleButton slot)
+    {
+        dayIndex = -1;
+        slotIndex = -1;
+        slot = null!;
+
+        if (position.X < 0 || position.Y < 0 || position.Y >= DaysHost.ActualHeight)
+        {
+            return false;
+        }
+
+        var columnStart = DaysHost.ColumnDefinitions[0].ActualWidth;
+        for (var candidateDayIndex = 0; candidateDayIndex < Days.Count; candidateDayIndex++)
+        {
+            var columnWidth = DaysHost.ColumnDefinitions[candidateDayIndex + 1].ActualWidth;
+            if (position.X >= columnStart && position.X < columnStart + columnWidth)
+            {
+                dayIndex = candidateDayIndex;
+                break;
+            }
+
+            columnStart += columnWidth;
+        }
+
+        if (dayIndex < 0 || DaysHost.ActualHeight <= 0)
+        {
+            return false;
+        }
+
+        slotIndex = (int)Math.Floor(position.Y / (DaysHost.ActualHeight / SlotsPerDay));
+        if (slotIndex < 0 || slotIndex >= SlotsPerDay)
+        {
             return false;
         }
 

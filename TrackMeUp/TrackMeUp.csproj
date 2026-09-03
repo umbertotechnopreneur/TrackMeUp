@@ -25,6 +25,7 @@
     <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'Unpackaged'">None</WindowsPackageType>
     <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'MSIX'">MSIX</WindowsPackageType>
     <TrackMeUpBuildInfoPath>$(MSBuildProjectDirectory)\BuildInfo.json</TrackMeUpBuildInfoPath>
+    <TrackMeUpReportsWebDistPath>$(MSBuildProjectDirectory)\..\TrackMeUp.Reports.Web\dist</TrackMeUpReportsWebDistPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -58,13 +59,23 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(TrackMeUpBuildInfoPath)" Link="BuildInfo.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
-    <Content Include="..\TrackMeUp.Reports.Web\dist\**\*">
+    <Content Include="$(TrackMeUpReportsWebDistPath)\**\*">
       <Link>ReportsWeb\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <TargetPath>ReportsWeb\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+
+  <Target Name="ValidateTrackMeUpReportsWebAssets" BeforeTargets="PrepareForBuild">
+    <!-- Packaging must fail before compilation when the checked-in web distribution is incomplete. -->
+    <Error
+      Condition="!Exists('$(TrackMeUpReportsWebDistPath)\index.html')"
+      Text="TrackMeUp report web entry point is missing. Run: pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action BuildReports" />
+    <Error
+      Condition="!Exists('$(TrackMeUpReportsWebDistPath)\THIRD_PARTY_NOTICES.md')"
+      Text="TrackMeUp report web production notices are missing. Run: pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action BuildReports" />
+  </Target>
 
   <Target Name="GenerateTrackMeUpBuildInformation" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\TrackMeUp.ps1&quot; -Action BuildInfo -VersionStatePath &quot;$(MSBuildProjectDirectory)\build-version.json&quot; -OutputPath &quot;$(TrackMeUpBuildInfoPath)&quot; -PackageManifestPath &quot;$(MSBuildProjectDirectory)\Package.appxmanifest&quot; -Configuration &quot;$(Configuration)&quot; -Platform &quot;$(Platform)&quot; -RuntimeIdentifier &quot;$(RuntimeIdentifier)&quot;" />

@@ -78,7 +78,7 @@ public sealed partial class WorldClockWindow : Window
             HeaderDragRegion,
             TitleBarLeftInsetColumn,
             TitleBarRightInsetColumn,
-            () => [HeaderBackButton, ReferenceInstantButton, PresentationModeButton, OptionsButton]);
+            () => [HeaderBackButton, ReferenceInstantButton, WorldMapToggleButton, PresentationModeButton, OptionsButton]);
         _titleBar.ThemeChanged += TitleBar_ThemeChanged;
 
         _placement = new WindowPlacementService(
@@ -130,6 +130,8 @@ public sealed partial class WorldClockWindow : Window
         ApplyReferenceButton.Content = T("WorldClock.Apply");
         SetIconButtonLabel(OptionsButton, "WorldClock.Options.Open");
         SetIconButtonLabel(HeaderBackButton, "WorldClock.Options.Back");
+        WorldMapControl.ApplyLanguage(_strings);
+        UpdateWorldMapCommand();
         UpdatePresentationModeCommand();
         ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");
         ReferenceDatePicker.Header = T("WorldClock.ReferenceDate");
@@ -164,6 +166,19 @@ public sealed partial class WorldClockWindow : Window
     private void OptionsButton_Click(object sender, RoutedEventArgs e) => ShowOptionsSurface();
 
     private async void HeaderBackButton_Click(object sender, RoutedEventArgs e) => await ShowClocksSurfaceAsync();
+
+    private void WorldMapToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        var isVisible = _layoutState.ToggleWorldMap();
+        ApplyWorldMapVisibility(isVisible);
+        if (_snapshot is { Clocks.Count: > 0 } snapshot)
+        {
+            ApplySmartWindowSizing(snapshot.Clocks.Count);
+            UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
+        }
+
+        _titleBar.QueueLayoutUpdate();
+    }
 
     private void PresentationModeButton_Click(object sender, RoutedEventArgs e)
     {
@@ -305,8 +320,40 @@ public sealed partial class WorldClockWindow : Window
         HeaderBackButton.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
         TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         ReferenceInstantButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        WorldMapToggleButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         PresentationModeButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         OptionsButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void ApplyWorldMapVisibility(bool isVisible)
+    {
+        if (isVisible)
+        {
+            WorldMapRow.Height = new GridLength(WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(
+                Math.Max(1d, RootGrid.ActualWidth)));
+            WorldMapPanel.Visibility = Visibility.Visible;
+            if (_snapshot is not null)
+            {
+                WorldMapControl.Apply(_snapshot.Map, _strings);
+            }
+        }
+        else
+        {
+            WorldMapPanel.Visibility = Visibility.Collapsed;
+            WorldMapRow.Height = new GridLength(0d);
+        }
+
+        UpdateWorldMapCommand();
+    }
+
+    private void UpdateWorldMapCommand()
+    {
+        var key = _layoutState.IsWorldMapVisible
+            ? "WorldClock.Map.Hide"
+            : "WorldClock.Map.Show";
+        WorldMapToggleButton.Tag = key;
+        WorldMapToggleIcon.Opacity = _layoutState.IsWorldMapVisible ? 1d : 0.72d;
+        SetIconButtonLabel(WorldMapToggleButton, key);
     }
 
     private void UpdatePresentationModeCommand()
@@ -324,6 +371,12 @@ public sealed partial class WorldClockWindow : Window
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateHeaderForSurface();
+        if (_layoutState.IsWorldMapVisible && e.NewSize.Width > 0d)
+        {
+            WorldMapRow.Height = new GridLength(
+                WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(e.NewSize.Width));
+        }
+
         if (ReferenceInstantFlyout.IsOpen)
         {
             UpdateReferenceFlyoutConstraints();
@@ -560,6 +613,9 @@ public sealed partial class WorldClockWindow : Window
         _snapshot = snapshot;
         if (snapshot.Clocks.Count == 0)
         {
+            _layoutState.HideWorldMap();
+            ApplyWorldMapVisibility(isVisible: false);
+            WorldMapToggleButton.IsEnabled = false;
             _referenceCityId = null;
             _updatingReferenceControls = true;
             try
@@ -588,6 +644,8 @@ public sealed partial class WorldClockWindow : Window
             return;
         }
 
+        WorldMapToggleButton.IsEnabled = true;
+        WorldMapControl.Apply(snapshot.Map, _strings);
         ReferenceInstantButton.IsEnabled = true;
         if (_referenceCityId is null || snapshot.Clocks.All(clock => clock.CityId != _referenceCityId))
         {
@@ -682,11 +740,18 @@ public sealed partial class WorldClockWindow : Window
         source.UriSource = new Uri("ms-appx:///Assets/WorldClocks/ThirdParty/OpenWeather/ow_logo.svg");
     }
 
-    private void WeatherAttributionLogo_Opened(SvgImageSource sender, SvgImageSourceOpenedEventArgs args) =>
+    private void WeatherAttributionLogo_Opened(SvgImageSource sender, SvgImageSourceOpenedEventArgs args)
+    {
         WeatherAttributionLogoContainer.Visibility = Visibility.Visible;
+        WeatherAttributionText.Visibility = Visibility.Collapsed;
+    }
 
-    private void WeatherAttributionLogo_OpenFailed(SvgImageSource sender, SvgImageSourceFailedEventArgs args) =>
+    private void WeatherAttributionLogo_OpenFailed(SvgImageSource sender, SvgImageSourceFailedEventArgs args)
+    {
+        // Keep the existing text attribution available when the optional SVG cannot be decoded.
         WeatherAttributionLogoContainer.Visibility = Visibility.Collapsed;
+        WeatherAttributionText.Visibility = Visibility.Visible;
+    }
 
     private async void WeatherAttributionButton_Click(object sender, RoutedEventArgs e)
     {
@@ -848,9 +913,12 @@ public sealed partial class WorldClockWindow : Window
         ClockColumnsHost.HorizontalAlignment = HorizontalAlignment.Left;
         var columnWidth = layout.Width / clockCount;
         var viewportHeight = Math.Max(0d, ClockColumnsScroller.ActualHeight);
+        var bottomOverlayHeight = WeatherAttributionButton.Visibility == Visibility.Visible
+            ? WeatherAttributionButton.Height + WeatherAttributionButton.Margin.Bottom
+            : 0d;
         foreach (var column in _columns.Values)
         {
-            column.SetViewportSize(Math.Max(0d, columnWidth - 1d), viewportHeight);
+            column.SetViewportSize(Math.Max(0d, columnWidth - 1d), viewportHeight, bottomOverlayHeight);
         }
     }
 
@@ -871,9 +939,12 @@ public sealed partial class WorldClockWindow : Window
         {
             // Measure against the target column width before sizing so the detailed command actually reveals its content.
             UpdateClockColumnsLayout(clockCount, request.Sizing.PreferredLogicalWidth);
-            WeatherAttributionButton.Measure(new Windows.Foundation.Size(request.Sizing.PreferredLogicalWidth, double.PositiveInfinity));
             var measuredHeight = _columns.Values.Max(column => column.PreferredContentHeight)
-                + HeaderDragRegion.ActualHeight + WeatherAttributionButton.DesiredSize.Height + 16d;
+                + HeaderDragRegion.ActualHeight
+                + (_layoutState.IsWorldMapVisible
+                    ? WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(request.Sizing.PreferredLogicalWidth)
+                    : 0d)
+                + 16d;
             _placement.ResizeForContent(
                 RootGrid,
                 request.Sizing.PreferredLogicalWidth,

@@ -6,16 +6,18 @@
   </picture>
 </p>
 
-<h1 align="center">TrackMeUp</h1>
+<h1 align="center">TrackMeUp — Private, local-first activity tracker for Windows</h1>
 
 <p align="center"><strong>Your workday, searchable. Your history, local by default.</strong></p>
 
 <p align="center">
-  A private workday memory for Windows. Recover lost context, search captured moments,
-  and understand how your day unfolded—without a TrackMeUp account or hidden cloud sync.
+  A private, local-first activity tracker and searchable workday memory for Windows.
+  Recover lost context, search captured moments, and understand how your day unfolded—without a TrackMeUp account or hidden cloud sync.
 </p>
 
 <p align="center">
+  <a href="https://umbertogiacobbi.biz/trackmeup/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_product_page"><strong>Product page</strong></a>
+  ·
   <a href="#remember-the-moment-not-the-tab"><strong>Explore the product</strong></a>
   ·
   <a href="#get-trackmeup"><strong>Build locally</strong></a>
@@ -247,16 +249,18 @@ Search interaction check:
 - [ ] Trigger informational, success, warning, and error feedback. Confirm every toast uses an opaque severity-colored surface and border, and its timeout bar stays inside the toast frame.
 - [ ] Set main-window and World Clocks opacity to 25%, including the Operations surface: toast text, fill, border, and countdown must remain fully opaque. Trigger a removal just before a minute boundary and verify the toast keeps its full timeout through the refresh.
 - [ ] Open a standard acknowledgement and a destructive confirmation. Confirm both are WinUI dialogs with localized `OK`/`Annulla` actions, and that dismissing a confirmation does not execute it.
+- [ ] Resize the screenshot schedule from its 620 × 480 DIP minimum to a maximized window, including 200% text scaling. Confirm the Mica surface remains unobscured, the header actions reflow, all seven day columns fill the available width, empty quarter-hour cells show no dot, and mouse click/drag selection remains aligned with the pointer. On touch, a tap selects one cell while a vertical swipe scrolls without changing the schedule.
 - [ ] Queue dialogs from two windows, close the waiting owner, then dismiss the active dialog: the closed owner's request must not appear. Exit with a dialog open and check that dialogs, pending requests, and toast timers are cleared. Check that a tray-hidden owner is restored for a standard dialog and its selected theme is respected.
 - [ ] In World Clocks, choose a city and use **Aggiungi un altro**. Confirm the picker stays open, shows the `Orologio aggiunto` toast, removes that city from the choices, and accepts another addition; regular **Aggiungi orologio** should still close the picker.
 - [ ] During a slow city addition, verify Cancel, Esc, native close, and additional submissions cannot close or mutate the picker concurrently. Shut down during the pending addition: no late toast or control update should target the closed picker.
-- [ ] In World Clocks, confirm each city skyline fills its clock column up to the column edges, with no blank side inset or letterboxing.
+- [ ] In World Clocks, confirm each city skyline fills its clock column up to the side edges. In a tall window, skyline, atmosphere, and fade must stay anchored together at the bottom, leaving space above once the scene reaches native resolution; widening the column may still scale the scene to fill its width.
 - [ ] In World Clocks, search for every European capital and sample the expanded USA, Australia, and Russia groups. Confirm all capitals are selectable and each of those three countries exposes ten supported cities with seasonal skyline artwork.
 - [ ] In World Clocks with one, two, and three cities, use the title-bar layout icon to switch between the compact widget and detailed comparison. Confirm the compact widget keeps time, weather, skyline, and atmosphere while omitting solar/lunar detail; confirm the window chooses the content-led size, still permits manual resizing, and horizontal scroll begins before columns become unreadable.
 - [ ] Resize World Clocks from tall to short with one, two, and twelve cities, including Windows text scaling at 200% and long translated weather labels. Confirm columns fill the available width, time/weather reflow without overlapping, solar/lunar detail and then daylight duration progressively hide, date changes remain visible, and overflow remains scrollable. Enlarge again to reveal detail; the explicit compact choice must never reveal the solar arc.
-- [ ] In World Clocks, reach the layout icon with Tab and activate it with Space. Verify UTC and weather attribution occupy separate rows. Resize manually, close/reopen, and wait through a minute refresh: the saved bounds must remain. With a custom reference instant, add/remove a city in options and return: content sizing must apply without switching back to live time.
-- [ ] Resize World Clocks repeatedly from wide/tall to the 480 × 240 DIP minimum, with two cities and at 100%, 150%, and 200% display scaling. Confirm skyline, atmosphere, and fade fill each column and stay clipped to it. In compact mode, no mandatory skyline spacer should prevent further height reduction; overflowing clock text must remain scrollable.
-- [ ] Open the reference-instant panel in a narrow/short World Clocks window, then resize while it is open. At 200% text scaling and with long translated labels, verify the title, city, date, time, and time-zone text fit or scroll vertically, while Restore now and Apply remain visible and usable. Verify the title uses the selected UI language.
+- [ ] In World Clocks, reach the layout icon with Tab and activate it with Space. Verify the OpenWeather logo floats at the bottom right over the scene, without a full-width footer band or overlap with UTC/daylight text; its localized tooltip and accessible name must identify the attribution. Resize manually, close/reopen, and wait through a minute refresh: the saved bounds must remain. With a custom reference instant, add/remove a city in options and return: content sizing must apply without switching back to live time.
+- [ ] Resize World Clocks repeatedly from wide/tall to the 480 × 240 DIP minimum, with two cities and at 100%, 150%, and 200% display scaling, including moving between monitors. Confirm skyline, atmosphere, and fade share the same bottom edge and stay clipped to their column; extra height must increase the space above the scene after its scale limit. In compact mode, no mandatory skyline spacer should prevent further height reduction; overflowing clock text must remain scrollable.
+- [ ] Open the reference-instant panel in a narrow/short World Clocks window, then resize while it is open. Confirm date and time share one row. At 200% text scaling and with long translated labels, verify the title, city, date, time, and time-zone text fit or scroll vertically, while Restore now and Apply remain visible and usable. Verify the title uses the selected UI language.
+- [ ] In World Clocks, use the globe icon in the title bar to show and hide the additional bottom panel. Confirm the window grows without compressing unreadable clock columns; the map follows the selected reference instant and shows distinct night, dawn, day, and sunset zones, the Sun, the Moon with its current phase, and markers for every selected city. Verify the globe icon tooltip and accessible name switch between the localized show and hide actions.
 
 Privacy and runtime regression checks:
 
@@ -342,13 +346,13 @@ provenance file before redistributing repository material or packaged binaries.
       <h3>🔎 ViewsApp.ai</h3>
       <p><strong>One topic. Many AI perspectives.</strong></p>
       <p>Explore how different AI models interpret people, events, and narratives. Compare their perspectives, spot common ground, and discover where the stories diverge.</p>
-      <p><a href="https://viewsapp.ai/"><strong>Explore Views →</strong></a></p>
+      <p><a href="https://www.viewsapp.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_more_views"><strong>Explore Views →</strong></a></p>
     </td>
     <td width="33%" valign="top">
       <h3>🚀 Umberto Giacobbi</h3>
       <p><strong>Big ambition? Let's build what's next.</strong></p>
       <p>Meet the builder behind these projects. Explore my work as a fractional CTO, software developer, and technopreneur—from product strategy and architecture to hands-on execution.</p>
-      <p><a href="https://umbertogiacobbi.biz/"><strong>Let's talk about your next idea →</strong></a></p>
+      <p><a href="https://umbertogiacobbi.biz/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_author_cta"><strong>Let's talk about your next idea →</strong></a></p>
     </td>
   </tr>
 </table>

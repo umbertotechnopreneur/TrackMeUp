@@ -496,14 +496,26 @@ public sealed class WinUiSurfaceContractTests
         var weeklyHoursSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml.cs"));
 
         Assert.Equal("Window", schedule.Root?.Name.LocalName);
-        Assert.Contains(schedule.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        var backdrop = schedule.Descendants().Single(element => element.Name.LocalName == "MicaBackdrop");
+        Assert.Equal("Base", backdrop.Attribute("Kind")?.Value);
+        Assert.DoesNotContain(schedule.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(schedule.Descendants(), element => HasName(element, "WorkingHoursEditor"));
+        Assert.Equal("1040", schedule.Descendants().Single(element => HasName(element, "ScheduleBodyGrid")).Attribute("MaxWidth")?.Value);
+        Assert.Equal("Transparent", schedule.Descendants().Single(element => HasName(element, "ScheduleFooterGrid")).Attribute("Background")?.Value);
+        Assert.Contains(schedule.Descendants(), element =>
+            element.Name.LocalName == "AdaptiveTrigger"
+            && element.Attribute("MinWindowWidth")?.Value == "820");
+        Assert.DoesNotContain("ScheduleAtmosphere", schedule.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Assets/WorldClocks/Skylines", schedule.ToString(), StringComparison.Ordinal);
         Assert.Equal(
             "Inline",
             schedule.Descendants().Single(element => HasName(element, "IntervalNumberBox")).Attribute("SpinButtonPlacementMode")?.Value);
-        Assert.Equal("Rectangle", weeklyHours.Descendants().Single(element => HasName(element, "GridInteractionSurface")).Name.LocalName);
-        Assert.Contains("GridInteractionSurface.CapturePointer", weeklyHoursSource, StringComparison.Ordinal);
-        Assert.Contains("GridInteractionSurface_PointerMoved", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(weeklyHours.Descendants(), element => element.Name.LocalName == "Ellipse");
+        Assert.DoesNotContain(weeklyHours.Descendants(), element => HasName(element, "GridInteractionSurface"));
+        Assert.Contains(weeklyHours.Descendants(), element => HasName(element, "SelectionIndicator"));
+        Assert.Contains("DaysHost.CapturePointer", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains("DaysHost_PointerMoved", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinitions[candidateDayIndex + 1].ActualWidth", weeklyHoursSource, StringComparison.Ordinal);
         Assert.Contains("settingsResult.Value.ScreenshotIntervalMinutes", mainSource, StringComparison.Ordinal);
         Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ScheduleScreenshotDialog", mainSource, StringComparison.Ordinal);
@@ -1351,24 +1363,31 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(player.Descendants(), element => HasName(element, "QuickSetupMenuItem") && element.Attribute("Tag")?.Value == "QuickSetup.MenuTitle");
     }
 
-    [Theory]
-    [InlineData("TrackMeUp/MainWindow.xaml")]
-    [InlineData("TrackMeUp/Controls/OptionsControl.xaml")]
-    [InlineData("TrackMeUp.Taskbar/TaskbarWidgetWindow.xaml")]
-    public void IconOnlyButtons_HaveExplicitAutomationNames(string relativePath)
+    [Fact]
+    public void IconOnlyButtons_HaveMatchingAutomationNamesAndTooltipsAcrossFirstPartyXaml()
     {
-        var document = XDocument.Load(RepositoryFile(relativePath.Split('/')));
-        var iconOnlyButtons = document
-            .Descendants()
-            .Where(element => element.Name.LocalName == "Button")
-            .Where(element => element.Attribute("Content") is null)
-            .Where(element => element.Descendants().Any(child => child.Name.LocalName is "FontIcon" or "Image"))
+        var roots = new[] { RepositoryFile("TrackMeUp"), RepositoryFile("TrackMeUp.Taskbar") };
+        var xamlFiles = roots.SelectMany(root => Directory.GetFiles(root, "*.xaml", SearchOption.AllDirectories))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var iconOnlyButtons = xamlFiles
+            .SelectMany(path => XDocument.Load(path).Descendants().Select(element => (Path: path, Element: element)))
+            .Where(item => item.Element.Name.LocalName is "Button" or "ToggleButton" or "AppBarButton" or "AppBarToggleButton")
+            .Where(item => item.Element.Attribute("Content") is null && item.Element.Attribute("Label") is null)
+            .Where(item => item.Element.Descendants().Any(child => child.Name.LocalName is "FontIcon" or "SymbolIcon" or "PathIcon" or "Image"))
+            .Where(item => !item.Element.Descendants().Any(child => child.Name.LocalName == "TextBlock"))
             .ToArray();
 
         Assert.NotEmpty(iconOnlyButtons);
-        Assert.All(
-            iconOnlyButtons,
-            button => Assert.Contains(button.Attributes(), attribute => attribute.Name.LocalName == "AutomationProperties.Name"));
+        Assert.All(iconOnlyButtons, item =>
+        {
+            var name = item.Element.Attributes().SingleOrDefault(attribute => attribute.Name.LocalName == "AutomationProperties.Name")?.Value;
+            var tooltip = item.Element.Attributes().SingleOrDefault(attribute =>
+                attribute.Name.LocalName is "ToolTipService.ToolTip" or "ToolTip")?.Value;
+            Assert.False(string.IsNullOrWhiteSpace(name), $"{item.Path}: icon-only control has no accessible name.");
+            Assert.Equal(name, tooltip);
+        });
     }
 
     private static string RepositoryFile(params string[] pathSegments)

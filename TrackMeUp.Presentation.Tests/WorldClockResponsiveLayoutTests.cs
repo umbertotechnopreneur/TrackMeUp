@@ -8,6 +8,22 @@ namespace TrackMeUp.Presentation.Tests;
 
 public sealed class WorldClockResponsiveLayoutTests
 {
+    /// <summary>Growing taller stops magnifying the scene at each display scale, while wide columns still fill their width.</summary>
+    [Theory]
+    [InlineData(640d, 1d, 720d)]
+    [InlineData(640d, 1.5d, 480d)]
+    [InlineData(640d, 2d, 360d)]
+    [InlineData(1600d, 1d, 900d)]
+    [InlineData(960d, 2d, 540d)]
+    public void Scene_StopsGrowingAtItsResolutionLimitAndRecoversAfterShrinking(double width, double scale, double limit)
+    {
+        Assert.Equal(limit - 1d, WorldClockWindowLayoutState.CalculateSceneHeight(width, limit - 1d, scale));
+        Assert.Equal(limit, WorldClockWindowLayoutState.CalculateSceneHeight(width, limit, scale));
+        Assert.Equal(limit, WorldClockWindowLayoutState.CalculateSceneHeight(width, limit + 1d, scale));
+        Assert.Equal(limit, WorldClockWindowLayoutState.CalculateSceneHeight(width, 3000d, scale));
+        Assert.Equal(120d, WorldClockWindowLayoutState.CalculateSceneHeight(width, 120d, scale));
+    }
+
     [Theory]
     [InlineData(480d, 240d)]
     [InlineData(640d, 320d)]
@@ -59,6 +75,35 @@ public sealed class WorldClockResponsiveLayoutTests
         Assert.Equal(sizing.PreferredLogicalWidth, columns.Width);
         Assert.Equal(minimum.Width, sizing.MinimumLogicalWidth);
         Assert.Equal(minimum.Height, sizing.MinimumLogicalHeight);
+    }
+
+    [Fact]
+    public void OptionalMap_AddsResponsiveHeightAndRestoresThePreviousSizingContract()
+    {
+        var state = new WorldClockWindowLayoutState();
+        var clocksOnly = Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3));
+        state.AcceptWindowResizeRequest(clocksOnly);
+
+        Assert.True(state.ToggleWorldMap());
+        var withMap = Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3));
+        Assert.Equal(clocksOnly.Sizing.PreferredLogicalWidth, withMap.Sizing.PreferredLogicalWidth);
+        Assert.Equal(
+            clocksOnly.Sizing.PreferredLogicalHeight
+            + (int)Math.Ceiling(WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(clocksOnly.Sizing.PreferredLogicalWidth)),
+            withMap.Sizing.PreferredLogicalHeight);
+        state.AcceptWindowResizeRequest(withMap);
+
+        Assert.False(state.ToggleWorldMap());
+        Assert.Equal(clocksOnly.Sizing, Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3)).Sizing);
+    }
+
+    [Theory]
+    [InlineData(480d, 220d)]
+    [InlineData(1120d, 268.8d)]
+    [InlineData(2000d, 340d)]
+    public void MapPanelHeight_RemainsReadableWithoutDominatingTheWindow(double width, double expected)
+    {
+        Assert.Equal(expected, WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(width), precision: 5);
     }
 
     [Fact]

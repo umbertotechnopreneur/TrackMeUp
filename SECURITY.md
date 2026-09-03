@@ -1,4 +1,4 @@
-# Security Policy
+# TrackMeUp Security Policy
 
 ## Supported Versions
 

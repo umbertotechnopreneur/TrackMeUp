@@ -6,71 +6,10 @@
     xmlns:controls="using:TrackMeUp.Controls"
     Title="Snapshot schedule">
     <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
+        <MicaBackdrop Kind="Base" />
     </Window.SystemBackdrop>
 
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded">
-        <Grid.Resources>
-            <ResourceDictionary>
-                <ResourceDictionary.ThemeDictionaries>
-                    <ResourceDictionary x:Key="Light">
-                        <x:Double x:Key="ScheduleDecorationOpacity">1</x:Double>
-                        <SolidColorBrush x:Key="ScheduleEditorSurfaceBrush" Color="#C9FFFFFF" />
-                        <SolidColorBrush x:Key="ScheduleEditorStrokeBrush" Color="#24000000" />
-                        <SolidColorBrush x:Key="ScheduleFooterSurfaceBrush" Color="#B8FFFFFF" />
-                        <LinearGradientBrush x:Key="ScheduleAtmosphereBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-                            <GradientStop Color="#7CFFB27B" Offset="0" />
-                            <GradientStop Color="#5DF8CFC1" Offset="0.25" />
-                            <GradientStop Color="#4FC8D5EE" Offset="0.58" />
-                            <GradientStop Color="#6557668D" Offset="1" />
-                        </LinearGradientBrush>
-                        <LinearGradientBrush x:Key="ScheduleAtmosphereFadeBrush" StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#F2FFFFFF" Offset="0" />
-                            <GradientStop Color="#B8FFFFFF" Offset="0.38" />
-                            <GradientStop Color="#18FFFFFF" Offset="1" />
-                        </LinearGradientBrush>
-                        <SolidColorBrush x:Key="ScheduleOrbitBrush" Color="#78FFFFFF" />
-                    </ResourceDictionary>
-                    <ResourceDictionary x:Key="Dark">
-                        <x:Double x:Key="ScheduleDecorationOpacity">1</x:Double>
-                        <SolidColorBrush x:Key="ScheduleEditorSurfaceBrush" Color="#BC17191F" />
-                        <SolidColorBrush x:Key="ScheduleEditorStrokeBrush" Color="#30FFFFFF" />
-                        <SolidColorBrush x:Key="ScheduleFooterSurfaceBrush" Color="#B514161B" />
-                        <LinearGradientBrush x:Key="ScheduleAtmosphereBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-                            <GradientStop Color="#745E3227" Offset="0" />
-                            <GradientStop Color="#5B4A394D" Offset="0.28" />
-                            <GradientStop Color="#59404A69" Offset="0.62" />
-                            <GradientStop Color="#77222945" Offset="1" />
-                        </LinearGradientBrush>
-                        <LinearGradientBrush x:Key="ScheduleAtmosphereFadeBrush" StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#EE15171C" Offset="0" />
-                            <GradientStop Color="#A815171C" Offset="0.38" />
-                            <GradientStop Color="#1215171C" Offset="1" />
-                        </LinearGradientBrush>
-                        <SolidColorBrush x:Key="ScheduleOrbitBrush" Color="#65FFFFFF" />
-                    </ResourceDictionary>
-                    <ResourceDictionary x:Key="HighContrast">
-                        <x:Double x:Key="ScheduleDecorationOpacity">0</x:Double>
-                        <StaticResource x:Key="ScheduleEditorSurfaceBrush" ResourceKey="SystemColorWindowColorBrush" />
-                        <StaticResource x:Key="ScheduleEditorStrokeBrush" ResourceKey="SystemColorWindowTextColorBrush" />
-                        <StaticResource x:Key="ScheduleFooterSurfaceBrush" ResourceKey="SystemColorWindowColorBrush" />
-                        <StaticResource x:Key="ScheduleAtmosphereBrush" ResourceKey="SystemColorWindowColorBrush" />
-                        <StaticResource x:Key="ScheduleAtmosphereFadeBrush" ResourceKey="SystemColorWindowColorBrush" />
-                        <StaticResource x:Key="ScheduleOrbitBrush" ResourceKey="SystemColorWindowTextColorBrush" />
-                    </ResourceDictionary>
-                </ResourceDictionary.ThemeDictionaries>
-                <RadialGradientBrush x:Key="ScheduleSunHaloBrush">
-                    <GradientStop Color="#68FFD36B" Offset="0.18" />
-                    <GradientStop Color="#28FF9B43" Offset="0.58" />
-                    <GradientStop Color="#00FF8A3D" Offset="1" />
-                </RadialGradientBrush>
-                <RadialGradientBrush x:Key="ScheduleMoonHaloBrush">
-                    <GradientStop Color="#66DCE9FF" Offset="0.18" />
-                    <GradientStop Color="#24586F9C" Offset="0.62" />
-                    <GradientStop Color="#00586F9C" Offset="1" />
-                </RadialGradientBrush>
-            </ResourceDictionary>
-        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
@@ -99,122 +38,119 @@
         </Grid>
 
         <Grid
+            x:Name="ScheduleBodyGrid"
             Grid.Row="1"
-            AutomationProperties.AccessibilityView="Raw"
-            IsHitTestVisible="False"
-            Opacity="{ThemeResource ScheduleDecorationOpacity}">
-            <Rectangle Height="270" VerticalAlignment="Bottom" Fill="{ThemeResource ScheduleAtmosphereBrush}" />
-            <Image
-                Height="205"
-                Margin="0,0,0,4"
-                VerticalAlignment="Bottom"
-                Opacity="0.11"
-                Source="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png"
-                Stretch="UniformToFill" />
-            <Rectangle Height="270" VerticalAlignment="Bottom" Fill="{ThemeResource ScheduleAtmosphereFadeBrush}" />
-            <Canvas Width="760" Height="230" HorizontalAlignment="Center" VerticalAlignment="Bottom">
-                <Path
-                    Data="M 64,182 C 246,74 518,74 696,182"
-                    Stroke="{ThemeResource ScheduleOrbitBrush}"
-                    StrokeDashArray="2,6"
-                    StrokeThickness="1.2" />
-                <Ellipse Canvas.Left="24" Canvas.Top="136" Width="92" Height="92" Fill="{StaticResource ScheduleSunHaloBrush}" />
-                <Image
-                    Canvas.Left="42"
-                    Canvas.Top="154"
-                    Width="56"
-                    Height="56"
-                    Opacity="0.88"
-                    Source="ms-appx:///Assets/Celestial/sun-premium.png" />
-                <Ellipse Canvas.Left="648" Canvas.Top="136" Width="92" Height="92" Fill="{StaticResource ScheduleMoonHaloBrush}" />
-                <Image
-                    Canvas.Left="666"
-                    Canvas.Top="154"
-                    Width="56"
-                    Height="56"
-                    Opacity="0.88"
-                    Source="ms-appx:///Assets/Celestial/moon-premium.png" />
-            </Canvas>
-        </Grid>
+            MaxWidth="1040"
+            Margin="24,14,40,12"
+            HorizontalAlignment="Stretch"
+            RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <ScrollViewer
-            Grid.Row="1"
-            Padding="24,14,40,18"
-            HorizontalScrollBarVisibility="Disabled"
-            VerticalScrollBarVisibility="Auto">
-            <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="14">
-                <Grid Padding="0,0,0,14" ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="184" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="5">
-                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Tag="Schedule.Interval.Title" Text="Capture interval" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <NumberBox
-                                x:Name="IntervalNumberBox"
-                                Width="120"
-                                Value="15"
-                                Minimum="1"
-                                Maximum="1440"
-                                SmallChange="1"
-                                LargeChange="5"
-                                Tag="Schedule.Interval.Value"
-                                SpinButtonPlacementMode="Inline" />
-                            <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="min" />
-                        </StackPanel>
+            <Grid x:Name="ScheduleHeaderGrid" ColumnSpacing="16" RowSpacing="10">
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroup x:Name="ScheduleWidthStates">
+                        <VisualState x:Name="NarrowSchedule">
+                            <VisualState.StateTriggers>
+                                <AdaptiveTrigger MinWindowWidth="0" />
+                            </VisualState.StateTriggers>
+                        </VisualState>
+                        <VisualState x:Name="WideSchedule">
+                            <VisualState.StateTriggers>
+                                <AdaptiveTrigger MinWindowWidth="820" />
+                            </VisualState.StateTriggers>
+                            <VisualState.Setters>
+                                <Setter Target="HeaderActionsColumn.Width" Value="Auto" />
+                                <Setter Target="HeaderActionsPanel.(Grid.Row)" Value="0" />
+                                <Setter Target="HeaderActionsPanel.(Grid.Column)" Value="2" />
+                                <Setter Target="HeaderActionsPanel.(Grid.ColumnSpan)" Value="1" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateManager.VisualStateGroups>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition x:Name="HeaderActionsColumn" Width="0" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="5">
+                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Tag="Schedule.Interval.Title" Text="Capture interval" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <NumberBox
+                            x:Name="IntervalNumberBox"
+                            Width="120"
+                            Value="15"
+                            Minimum="1"
+                            Maximum="1440"
+                            SmallChange="1"
+                            LargeChange="5"
+                            Tag="Schedule.Interval.Value"
+                            SpinButtonPlacementMode="Inline" />
+                        <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="min" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Tag="Schedule.WorkingHours.Title" Text="Working hours" />
-                        <TextBlock
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Tag="Schedule.WorkingHours.Description"
-                            Text="Select the 15-minute periods when scheduled snapshots may run."
-                            TextWrapping="Wrap" />
-                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Tag="Schedule.WorkingHours.Title" Text="Working hours" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Tag="Schedule.WorkingHours.Description"
+                        Text="Select the 15-minute periods when scheduled snapshots may run."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel
+                    x:Name="HeaderActionsPanel"
+                    Grid.Row="1"
+                    Grid.ColumnSpan="2"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="8">
                     <Button
                         x:Name="StandardWorkWeekButton"
-                        Grid.Column="2"
                         MinWidth="124"
-                        VerticalAlignment="Center"
                         AutomationProperties.Name="Apply the 09:00-18:00 work week"
                         Click="StandardWorkWeekButton_Click"
                         Content="09:00-18:00"
                         Tag="Schedule.Preset.WorkWeek" />
                     <Button
                         x:Name="ClearAllHoursButton"
-                        Grid.Column="3"
                         MinWidth="108"
-                        VerticalAlignment="Center"
                         AutomationProperties.Name="Clear all working hours"
                         Click="ClearAllHoursButton_Click"
                         Content="Clear all"
                         Tag="Schedule.ClearAll" />
-                </Grid>
+                </StackPanel>
+            </Grid>
 
-                <Border
-                    Padding="18,16,18,14"
-                    Background="{ThemeResource ScheduleEditorSurfaceBrush}"
-                    BorderBrush="{ThemeResource ScheduleEditorStrokeBrush}"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                    <StackPanel Spacing="10">
-                        <controls:WeeklyHoursEditor x:Name="WorkingHoursEditor" />
-                        <TextBlock
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Tag="Schedule.WorkingHours.CaptureNote"
-                            Text="When screen capture is enabled, an eligible snapshot also includes a screen capture."
-                            TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+            <controls:WeeklyHoursEditor
+                x:Name="WorkingHoursEditor"
+                Grid.Row="1"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
 
-        <Grid Grid.Row="2" Padding="24,13,40,18" Background="{ThemeResource ScheduleFooterSurfaceBrush}" ColumnSpacing="8">
+            <TextBlock
+                Grid.Row="2"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Tag="Schedule.WorkingHours.CaptureNote"
+                Text="When screen capture is enabled, an eligible snapshot also includes a screen capture."
+                TextWrapping="Wrap" />
+        </Grid>
+
+        <Grid
+            x:Name="ScheduleFooterGrid"
+            Grid.Row="2"
+            Padding="24,13,40,18"
+            Background="Transparent"
+            ColumnSpacing="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

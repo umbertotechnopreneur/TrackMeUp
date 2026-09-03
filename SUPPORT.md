@@ -1,4 +1,4 @@
-# Support
+# TrackMeUp Support
 
 Use GitHub issues for:
 

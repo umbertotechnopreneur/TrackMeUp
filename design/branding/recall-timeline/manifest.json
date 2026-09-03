@@ -41,6 +41,14 @@
       "sha256": "a5a8f2181f7552be05f9e24182e6e994e253e510f075e001165ceda565bde426"
     },
     {
+      "file": "output/trackmeup-social-preview-github-1280x640.png",
+      "width": 1280,
+      "height": 640,
+      "bit_depth": 8,
+      "color_type": 6,
+      "sha256": "0fddc7a9665685bfce07177f42b67bbaeec2732d2f12ff1e6dc2a7d062840dbe"
+    },
+    {
       "file": "output/trackmeup-recall-timeline-banner-theme-light-master-3840x1280.png",
       "width": 3840,
       "height": 1280,
