@@ -122,6 +122,7 @@ public sealed partial class WorldClockWindow : Window
         WindowContent.Opacity = settings.WorldClockWindowOpacityPercent / 100d;
         _appWindow.IsShownInSwitchers = settings.WorldClockWindowShowInTaskbar;
         UiLocalization.Apply(RootGrid, _strings);
+        UiLocalization.Apply(ReferenceInstantFlyoutContent, _strings);
         Title = T("WorldClock.Landmark");
         OptionsHeaderLabel.Text = T("WorldClock.Options.Title").ToUpper(_strings.Culture);
         UpdateHeaderForSurface();
@@ -323,7 +324,23 @@ public sealed partial class WorldClockWindow : Window
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateHeaderForSurface();
+        if (ReferenceInstantFlyout.IsOpen)
+        {
+            UpdateReferenceFlyoutConstraints();
+        }
+
         _titleBar.QueueLayoutUpdate();
+    }
+
+    private void ReferenceInstantFlyout_Opening(object sender, object e) => UpdateReferenceFlyoutConstraints();
+
+    private void UpdateReferenceFlyoutConstraints()
+    {
+        var bounds = WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(
+            RootGrid.ActualWidth, RootGrid.ActualHeight);
+        // Constrain the child as well as its presenter; only the fields scroll, leaving both actions reachable.
+        ReferenceInstantFlyoutContent.Width = bounds.ContentWidth;
+        ReferenceInstantFlyoutContent.MaxHeight = bounds.ContentMaxHeight;
     }
 
     private void SetIconButtonLabel(Button button, string key)
@@ -1169,6 +1186,11 @@ public sealed partial class WorldClockWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
+        if (ReferenceInstantFlyout.IsOpen)
+        {
+            UpdateReferenceFlyoutConstraints();
+        }
+
         if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
         {
             _placement.KeepCurrentBoundsInWorkArea(RootGrid);

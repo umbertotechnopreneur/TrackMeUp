@@ -8,6 +8,7 @@
         x:Name="ColumnRoot"
         MinWidth="0"
         Background="Transparent"
+        SizeChanged="ColumnRoot_SizeChanged"
         AutomationProperties.LandmarkType="Custom">
         <Grid.Resources>
             <ResourceDictionary>
@@ -91,8 +92,8 @@
         <Canvas Grid.RowSpan="2" IsHitTestVisible="False">
             <Grid
                 x:Name="SceneGrid"
-                Width="{Binding ActualWidth, ElementName=ColumnRoot}"
-                Height="{Binding ActualHeight, ElementName=ColumnRoot}"
+                Width="0"
+                Height="0"
                 Background="Transparent">
                 <Grid
                     x:Name="BackdropLayerHost"
@@ -101,7 +102,8 @@
                     Opacity="{ThemeResource WorldClockBackdropOpacity}" />
                 <Image
                     x:Name="SkylineImage"
-                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
                     AutomationProperties.AccessibilityView="Raw"
                     IsHitTestVisible="False"
                     Opacity="{ThemeResource WorldClockSkylineOpacity}"

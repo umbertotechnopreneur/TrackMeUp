@@ -9,6 +9,43 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class WorldClockResponsiveLayoutTests
 {
     [Theory]
+    [InlineData(480d, 240d)]
+    [InlineData(640d, 320d)]
+    [InlineData(1250d, 850d)]
+    [InlineData(320d, 480d)]
+    public void ReferenceEditor_FitsBothRootAxesIncludingItsBorderAndInsets(double width, double height)
+    {
+        var bounds = WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(width, height);
+
+        Assert.InRange(bounds.ContentWidth, 1d, 478d);
+        Assert.InRange(bounds.ContentMaxHeight, 1d, 718d);
+        Assert.True(bounds.ContentWidth + 2d + 24d <= width);
+        Assert.True(bounds.ContentMaxHeight + 2d + 24d <= height);
+    }
+
+    [Fact]
+    public void ReferenceEditor_RecalculatesAfterShrinkingAndGrowingTheWindow()
+    {
+        var large = WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(1280d, 900d);
+        var small = WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(480d, 240d);
+
+        Assert.True(small.ContentWidth < large.ContentWidth);
+        Assert.True(small.ContentMaxHeight < large.ContentMaxHeight);
+        Assert.Equal(large, WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(1280d, 900d));
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(-1d)]
+    [InlineData(0d)]
+    public void ReferenceEditor_RejectsUnusableRootBounds(double value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(value, 480d));
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorldClockWindowLayoutState.CalculateReferenceFlyoutBounds(480d, value));
+    }
+
+    [Theory]
     [InlineData(1, WorldClockPresentationMode.Compact)]
     [InlineData(2, WorldClockPresentationMode.Compact)]
     [InlineData(1, WorldClockPresentationMode.Expanded)]

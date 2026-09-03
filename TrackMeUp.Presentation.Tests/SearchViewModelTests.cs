@@ -18,6 +18,64 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class SearchViewModelTests
 {
     [Fact]
+    public async Task Preview_UsesBoundedInertIndexTextBeyondTheListSnippet()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
+        var proxy = (SearchApplicationProxy)(object)application;
+        proxy.PreviewOverride = "## Notes\n\n**riunione** [agenda](https://example.test/private) " + string.Concat(Enumerable.Repeat("Testo della riunione da consultare. ", 200));
+        var viewModel = CreateViewModel(application);
+
+        await viewModel.SearchAsync("riunione", CultureInfo.GetCultureInfo("it-IT"), CancellationToken.None);
+        var result = viewModel.Results[0];
+
+        Assert.InRange(result.PreviewText.Length, 181, 4001);
+        Assert.True(result.TextSnippet.Length < result.PreviewText.Length);
+        Assert.Contains("riunione", result.PreviewText, StringComparison.Ordinal);
+        Assert.DoesNotContain("**", result.PreviewText, StringComparison.Ordinal);
+        Assert.DoesNotContain("https://", result.PreviewText, StringComparison.Ordinal);
+        Assert.Equal("Project review", result.TitleDisplay);
+        Assert.StartsWith("Teams · ", result.SourceDisplay, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Selection_TracksCurrentResultsAndClearsWithoutAnotherQuery()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
+        var proxy = (SearchApplicationProxy)(object)application;
+        var viewModel = CreateViewModel(application);
+        await viewModel.SearchAsync("riunione", CultureInfo.InvariantCulture, CancellationToken.None);
+        Assert.Equal(viewModel.Results[0], viewModel.SelectedResult);
+
+        var selected = viewModel.Results[1];
+        viewModel.SelectResult(selected);
+        Assert.Equal(selected, viewModel.SelectedResult);
+        Assert.Equal(1, proxy.SearchCalls);
+
+        viewModel.Clear();
+        Assert.Null(viewModel.SelectedResult);
+        Assert.Empty(viewModel.Results);
+        Assert.Throws<ArgumentException>(() => viewModel.SelectResult(selected));
+    }
+
+    [Fact]
+    public async Task CanceledLateResponse_DoesNotReplaceTheCurrentPreview()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
+        var proxy = (SearchApplicationProxy)(object)application;
+        var viewModel = CreateViewModel(application);
+        await viewModel.SearchAsync("riunione", CultureInfo.InvariantCulture, CancellationToken.None);
+        viewModel.SelectResult(viewModel.Results[1]);
+        var selected = viewModel.SelectedResult;
+        using var cancellation = new CancellationTokenSource();
+        proxy.CancelOnSearch = cancellation;
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => viewModel.SearchAsync("another query", CultureInfo.InvariantCulture, cancellation.Token));
+
+        Assert.Same(selected, viewModel.SelectedResult);
+        Assert.False(viewModel.IsSearching);
+    }
+
+    [Fact]
     public async Task SearchAsync_RequestsAtMostTwentyScreenshotsAndProjectsDateAndUri()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
@@ -100,6 +158,10 @@ public sealed class SearchViewModelTests
 
     public class SearchApplicationProxy : DispatchProxy
     {
+        public string? PreviewOverride { get; set; }
+        public int SearchCalls { get; private set; }
+        public CancellationTokenSource? CancelOnSearch { get; set; }
+
         public SearchRequest? Request { get; private set; }
 
         public SearchSuggestionRequest? SuggestionRequest { get; private set; }
@@ -108,6 +170,8 @@ public sealed class SearchViewModelTests
         {
             if (targetMethod?.Name == nameof(ITrackMeUpApplication.SearchAsync))
             {
+                SearchCalls++;
+                CancelOnSearch?.Cancel();
                 Request = Assert.IsType<SearchRequest>(args![0]);
                 var response = new SearchResponse
                 {
@@ -153,7 +217,7 @@ public sealed class SearchViewModelTests
                                 Timestamp = new DateTimeOffset(2026, 8, 9, 9, 30, 0, TimeSpan.Zero),
                                 Application = "Teams",
                                 WindowTitle = "Project review",
-                                OcrRawText = "## Activity\n\nAppunti della **riunione** di progetto",
+                                OcrRawText = PreviewOverride ?? "## Activity\n\nAppunti della **riunione** di progetto",
                                 AttributesRaw = ImmutableDictionary<string, string?>.Empty
                                     .Add(SearchAttributeKeys.MouseClicks, "42")
                                     .Add(SearchAttributeKeys.CpuUsagePercent, "37")

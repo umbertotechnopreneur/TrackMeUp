@@ -27,6 +27,9 @@ public enum WorldClockPresentationMode
 /// <summary>Describes the width projection for an equal-column world-clock surface.</summary>
 public sealed record WorldClockColumnsLayout(double MinimumWidth, double Width);
 
+/// <summary>Constrains reference-editor content inside the flyout border and the current XAML root.</summary>
+public sealed record WorldClockReferenceFlyoutBounds(double ContentWidth, double ContentMaxHeight);
+
 /// <summary>Describes the preferred and minimum logical bounds for a responsive world-clock surface.</summary>
 public sealed record WorldClockWindowSizing(
     int PreferredLogicalWidth,
@@ -146,8 +149,24 @@ public sealed class WorldClockWindowLayoutState
             _ => 1120
         };
         var minimum = WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks);
-        return new(preferredWidth, presentationMode == WorldClockPresentationMode.Compact ? 400 : 680,
+        return new(preferredWidth, presentationMode == WorldClockPresentationMode.Compact ? 280 : 680,
             minimum.Width, minimum.Height);
+    }
+
+    /// <summary>Reserves a 12-DIP root inset and the flyout border so neither axis can clip its content.</summary>
+    public static WorldClockReferenceFlyoutBounds CalculateReferenceFlyoutBounds(double rootWidth, double rootHeight)
+    {
+        if (!double.IsFinite(rootWidth) || rootWidth <= 26d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rootWidth));
+        }
+
+        if (!double.IsFinite(rootHeight) || rootHeight <= 26d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rootHeight));
+        }
+
+        return new(Math.Min(480d, rootWidth - 24d) - 2d, Math.Min(720d, rootHeight - 24d) - 2d);
     }
 
     /// <summary>Preserves successfully restored manual bounds on the first populated snapshot.</summary>

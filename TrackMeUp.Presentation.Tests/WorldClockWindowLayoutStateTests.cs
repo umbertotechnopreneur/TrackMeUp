@@ -75,11 +75,11 @@ public sealed class WorldClockWindowLayoutStateTests
             WorldClockWindowLayoutState.CalculateColumnsLayout(clockCount, 800d));
 
     [Theory]
-    [InlineData(1, WorldClockPresentationMode.Compact, 480, 400, 480, 320)]
-    [InlineData(2, WorldClockPresentationMode.Compact, 960, 400, 480, 320)]
-    [InlineData(3, WorldClockPresentationMode.Compact, 1120, 400, 480, 320)]
-    [InlineData(1, WorldClockPresentationMode.Expanded, 480, 680, 480, 320)]
-    [InlineData(2, WorldClockPresentationMode.Expanded, 780, 680, 480, 320)]
+    [InlineData(1, WorldClockPresentationMode.Compact, 480, 280, 480, 240)]
+    [InlineData(2, WorldClockPresentationMode.Compact, 960, 280, 480, 240)]
+    [InlineData(3, WorldClockPresentationMode.Compact, 1120, 280, 480, 240)]
+    [InlineData(1, WorldClockPresentationMode.Expanded, 480, 680, 480, 240)]
+    [InlineData(2, WorldClockPresentationMode.Expanded, 780, 680, 480, 240)]
     public void CalculateWindowSizing_UsesTheCityCountAndPresentationMode(
         int clockCount,
         WorldClockPresentationMode presentationMode,

@@ -49,8 +49,16 @@
                 </ResourceDictionary.ThemeDictionaries>
                 <Style x:Key="ReferenceInstantFlyoutPresenterStyle" TargetType="FlyoutPresenter">
                     <Setter Property="Padding" Value="0" />
+                    <Setter Property="MinWidth" Value="0" />
+                    <Setter Property="MaxWidth" Value="480" />
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="MaxHeight" Value="720" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="VerticalContentAlignment" Value="Stretch" />
                     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
                     <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
+                    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+                    <Setter Property="ScrollViewer.VerticalScrollMode" Value="Disabled" />
                     <Setter Property="Background" Value="{ThemeResource WorldClockReferenceFlyoutBrush}" />
                     <Setter Property="BorderBrush" Value="{ThemeResource WorldClockReferenceFlyoutBorderBrush}" />
                     <Setter Property="BorderThickness" Value="1" />
@@ -173,91 +181,134 @@
                     </DropDownButton.Content>
                     <DropDownButton.Flyout>
                         <Flyout
+                            x:Name="ReferenceInstantFlyout"
                             Placement="Bottom"
+                            Opening="ReferenceInstantFlyout_Opening"
+                            ShouldConstrainToRootBounds="True"
                             FlyoutPresenterStyle="{StaticResource ReferenceInstantFlyoutPresenterStyle}">
-                            <Border Width="480" Padding="20,18,20,16">
-                                <StackPanel Spacing="16">
-                                    <Grid ColumnSpacing="10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <SymbolIcon
-                                            VerticalAlignment="Center"
-                                            Foreground="{ThemeResource WorldClockReferenceAccentBrush}"
-                                            Symbol="Calendar" />
-                                        <TextBlock
-                                            x:Name="ReferenceInstantFlyoutTitle"
-                                            Grid.Column="1"
-                                            VerticalAlignment="Center"
-                                            FontSize="20"
-                                            FontWeight="SemiBold"
-                                            Tag="WorldClock.ReferenceInstant.Title"
-                                            Text="Set reference instant" />
-                                    </Grid>
-                                    <ComboBox
-                                        x:Name="ReferenceCityComboBox"
-                                        DisplayMemberPath="CityName"
-                                        Header="Reference city"
-                                        SelectionChanged="ReferenceCityComboBox_SelectionChanged"
-                                        Tag="WorldClock.ReferenceCity" />
-                                    <Grid RowSpacing="10">
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <CalendarDatePicker
-                                            x:Name="ReferenceDatePicker"
+                            <Grid x:Name="ReferenceInstantFlyoutContent" MinWidth="0" MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <ScrollViewer
+                                    x:Name="ReferenceInstantFieldsScroller"
+                                    Padding="20,18,20,16"
+                                    HorizontalContentAlignment="Stretch"
+                                    HorizontalScrollBarVisibility="Disabled"
+                                    HorizontalScrollMode="Disabled"
+                                    VerticalScrollBarVisibility="Auto"
+                                    VerticalScrollMode="Enabled">
+                                    <StackPanel Spacing="16">
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <SymbolIcon
+                                                VerticalAlignment="Center"
+                                                Foreground="{ThemeResource WorldClockReferenceAccentBrush}"
+                                                Symbol="Calendar" />
+                                            <TextBlock
+                                                x:Name="ReferenceInstantFlyoutTitle"
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                FontSize="20"
+                                                FontWeight="SemiBold"
+                                                TextWrapping="Wrap"
+                                                Tag="WorldClock.ReferenceInstant.Title"
+                                                Text="Set reference instant" />
+                                        </Grid>
+                                        <ComboBox
+                                            x:Name="ReferenceCityComboBox"
+                                            MinWidth="0"
                                             HorizontalAlignment="Stretch"
-                                            DateChanged="ReferenceDatePicker_DateChanged"
-                                            Header="Date"
-                                            Tag="WorldClock.ReferenceDate" />
-                                        <TimePicker
-                                            x:Name="ReferenceTimePicker"
-                                            Grid.Row="1"
-                                            HorizontalAlignment="Stretch"
-                                            ClockIdentifier="24HourClock"
-                                            Header="Time"
-                                            MinuteIncrement="1"
-                                            Tag="WorldClock.ReferenceTime"
-                                            TimeChanged="ReferenceTimePicker_TimeChanged" />
-                                    </Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <SymbolIcon
-                                            VerticalAlignment="Center"
-                                            Foreground="{ThemeResource WorldClockReferenceAccentBrush}"
-                                            Symbol="World" />
-                                        <TextBlock
-                                            x:Name="ReferenceTimeZoneText"
-                                            VerticalAlignment="Center"
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Text="—" />
+                                            DisplayMemberPath="CityName"
+                                            Header="Reference city"
+                                            SelectionChanged="ReferenceCityComboBox_SelectionChanged"
+                                            Tag="WorldClock.ReferenceCity" />
+                                        <Grid RowSpacing="10">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <CalendarDatePicker
+                                                x:Name="ReferenceDatePicker"
+                                                MinWidth="0"
+                                                HorizontalAlignment="Stretch"
+                                                DateChanged="ReferenceDatePicker_DateChanged"
+                                                Header="Date"
+                                                Tag="WorldClock.ReferenceDate" />
+                                            <TimePicker
+                                                x:Name="ReferenceTimePicker"
+                                                MinWidth="0"
+                                                Grid.Row="1"
+                                                HorizontalAlignment="Stretch"
+                                                ClockIdentifier="24HourClock"
+                                                Header="Time"
+                                                MinuteIncrement="1"
+                                                Tag="WorldClock.ReferenceTime"
+                                                TimeChanged="ReferenceTimePicker_TimeChanged" />
+                                        </Grid>
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <SymbolIcon
+                                                VerticalAlignment="Center"
+                                                Foreground="{ThemeResource WorldClockReferenceAccentBrush}"
+                                                Symbol="World" />
+                                            <TextBlock
+                                                x:Name="ReferenceTimeZoneText"
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                TextWrapping="Wrap"
+                                                Text="—" />
+                                        </Grid>
                                     </StackPanel>
-                                    <Border
-                                        Height="1"
-                                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                                    <StackPanel
-                                        HorizontalAlignment="Right"
-                                        Orientation="Horizontal"
-                                        Spacing="12">
+                                </ScrollViewer>
+                                <Grid
+                                    x:Name="ReferenceInstantActions"
+                                    Grid.Row="1"
+                                    Padding="20,16"
+                                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                    BorderThickness="0,1,0,0"
+                                    ColumnSpacing="12">
+                                    <Grid.Resources>
+                                        <DataTemplate x:Key="ReferenceInstantActionTemplate">
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </DataTemplate>
+                                    </Grid.Resources>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
                                         <Button
                                             x:Name="NowButton"
+                                            MinWidth="0"
+                                            HorizontalAlignment="Stretch"
                                             Click="NowButton_Click"
                                             Content="Now"
+                                            ContentTemplate="{StaticResource ReferenceInstantActionTemplate}"
                                             Tag="WorldClock.RestoreNow"
                                             Visibility="Visible" />
                                         <Button
                                             x:Name="ApplyReferenceButton"
+                                            Grid.Column="1"
+                                            MinWidth="0"
+                                            HorizontalAlignment="Stretch"
                                             Click="ApplyReferenceButton_Click"
                                             Content="Apply"
+                                            ContentTemplate="{StaticResource ReferenceInstantActionTemplate}"
                                             Background="{ThemeResource WorldClockReferenceAccentBrush}"
                                             BorderBrush="{ThemeResource WorldClockReferenceAccentBrush}"
                                             Foreground="{ThemeResource WorldClockReferenceAccentTextBrush}"
                                             Style="{StaticResource AccentButtonStyle}"
                                             Tag="WorldClock.Apply" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
+                                </Grid>
+                            </Grid>
                         </Flyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>

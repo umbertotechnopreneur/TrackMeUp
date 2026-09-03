@@ -96,7 +96,7 @@ public sealed class WindowStateService
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.QuickSetup => new(760, 560),
             WindowStateKeys.Dialog => new(320, 196),
-            WindowStateKeys.WorldClocks => new(480, 320),
+            WindowStateKeys.WorldClocks => new(480, 240),
             WindowStateKeys.WorldClockCityPicker => new(500, 560),
             WindowStateKeys.AiPricing => new(620, 430),
             WindowStateKeys.AiConnectionTest => new(480, 480),

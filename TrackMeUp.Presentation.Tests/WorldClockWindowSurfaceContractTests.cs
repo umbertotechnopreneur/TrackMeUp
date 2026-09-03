@@ -13,6 +13,54 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class WorldClockWindowSurfaceContractTests
 {
     [Fact]
+    public void ReferenceEditor_ConstrainsThePresenterAndScrollsFieldsWithoutHidingActions()
+    {
+        var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var presenterStyle = window.Descendants().Single(element => KeyValueOrNull(element) == "ReferenceInstantFlyoutPresenterStyle");
+        var flyout = window.Descendants().Single(element => HasName(element, "ReferenceInstantFlyout"));
+        var content = window.Descendants().Single(element => HasName(element, "ReferenceInstantFlyoutContent"));
+        var fields = window.Descendants().Single(element => HasName(element, "ReferenceInstantFieldsScroller"));
+        var actions = window.Descendants().Single(element => HasName(element, "ReferenceInstantActions"));
+
+        Assert.Contains(presenterStyle.Elements(), element => element.Attribute("Property")?.Value == "MaxWidth" && element.Attribute("Value")?.Value == "480");
+        Assert.Equal("True", flyout.Attribute("ShouldConstrainToRootBounds")?.Value);
+        Assert.Equal("ReferenceInstantFlyout_Opening", flyout.Attribute("Opening")?.Value);
+        Assert.Null(content.Attribute("Width"));
+        Assert.Equal("Auto", fields.Attribute("VerticalScrollBarVisibility")?.Value);
+        Assert.Equal("Disabled", fields.Attribute("HorizontalScrollMode")?.Value);
+        Assert.Same(content, actions.Parent);
+        Assert.Equal("1", actions.Attribute("Grid.Row")?.Value);
+        Assert.Contains(actions.Descendants(), element => HasName(element, "NowButton"));
+        Assert.Contains(actions.Descendants(), element => HasName(element, "ApplyReferenceButton"));
+        Assert.DoesNotContain(fields.Descendants(), element => HasName(element, "NowButton") || HasName(element, "ApplyReferenceButton"));
+        Assert.Contains("ReferenceInstantFlyoutContent.Width = bounds.ContentWidth;", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceInstantFlyoutContent.MaxHeight = bounds.ContentMaxHeight;", source, StringComparison.Ordinal);
+        Assert.Contains("UiLocalization.Apply(ReferenceInstantFlyoutContent, _strings);", source, StringComparison.Ordinal);
+        Assert.Contains("TextWrapping=\"Wrap\"", actions.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SceneLayers_FollowTheArrangedColumnAndCannotBleedIntoAdjacentClocks()
+    {
+        var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
+        var root = column.Descendants().Single(element => HasName(element, "ColumnRoot"));
+        var scene = column.Descendants().Single(element => HasName(element, "SceneGrid"));
+        var skyline = column.Descendants().Single(element => HasName(element, "SkylineImage"));
+
+        Assert.Equal("ColumnRoot_SizeChanged", root.Attribute("SizeChanged")?.Value);
+        Assert.Equal("Canvas", scene.Parent!.Name.LocalName);
+        Assert.Equal("0", scene.Attribute("Width")?.Value);
+        Assert.Equal("0", scene.Attribute("Height")?.Value);
+        Assert.Equal("Stretch", skyline.Attribute("VerticalAlignment")?.Value);
+        Assert.Contains("SceneGrid.Width = e.NewSize.Width;", source, StringComparison.Ordinal);
+        Assert.Contains("SceneGrid.Height = e.NewSize.Height;", source, StringComparison.Ordinal);
+        Assert.Contains("SceneGrid.Clip = new RectangleGeometry", source, StringComparison.Ordinal);
+        Assert.Contains("new Rect(0d, 0d, e.NewSize.Width, e.NewSize.Height)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Player_OpensOneIndependentWorldClockWindowInsteadOfAFlyout()
     {
         var main = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));

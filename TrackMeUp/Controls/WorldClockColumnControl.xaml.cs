@@ -38,6 +38,15 @@ public sealed partial class WorldClockColumnControl : UserControl
         InitializeComponent();
     }
 
+    private void ColumnRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // ActualWidth/ActualHeight bindings do not notify on resize. Keep every decorative
+        // layer in the arranged column bounds without letting bitmap dimensions measure the content.
+        SceneGrid.Width = e.NewSize.Width;
+        SceneGrid.Height = e.NewSize.Height;
+        SceneGrid.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, e.NewSize.Width, e.NewSize.Height) };
+    }
+
     /// <summary>Switches this passive city surface between detailed and widget density.</summary>
     public void SetPresentationMode(WorldClockPresentationMode presentationMode)
     {
@@ -176,7 +185,7 @@ public sealed partial class WorldClockColumnControl : UserControl
         ColumnRoot.RowDefinitions[0].Height = new GridLength(expanded ? 38 : 0);
         ClockDetailsLayout.ColumnSpacing = sideBySide ? 16d : 0d;
         WeatherColumn.Width = sideBySide ? GridLength.Auto : new GridLength(0);
-        SkylineSpacerRow.MinHeight = detail == WorldClockDetailLevel.Summary ? 24d : 0d;
+        SkylineSpacerRow.MinHeight = 0d;
 
         CityNameText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
         CityNameText.FontSize = expanded ? 20d : 18d;
