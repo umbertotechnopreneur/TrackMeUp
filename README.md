@@ -6,16 +6,18 @@
   </picture>
 </p>
 
-<h1 align="center">TrackMeUp</h1>
+<h1 align="center">TrackMeUp — Private, local-first activity tracker for Windows</h1>
 
 <p align="center"><strong>Your workday, searchable. Your history, local by default.</strong></p>
 
 <p align="center">
-  A private workday memory for Windows. Recover lost context, search captured moments,
-  and understand how your day unfolded—without a TrackMeUp account or hidden cloud sync.
+  A private, local-first activity tracker and searchable workday memory for Windows.
+  Recover lost context, search captured moments, and understand how your day unfolded—without a TrackMeUp account or hidden cloud sync.
 </p>
 
 <p align="center">
+  <a href="https://umbertogiacobbi.biz/trackmeup/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_product_page"><strong>Product page</strong></a>
+  ·
   <a href="#remember-the-moment-not-the-tab"><strong>Explore the product</strong></a>
   ·
   <a href="#get-trackmeup"><strong>Build locally</strong></a>
@@ -343,13 +345,13 @@ provenance file before redistributing repository material or packaged binaries.
       <h3>🔎 ViewsApp.ai</h3>
       <p><strong>One topic. Many AI perspectives.</strong></p>
       <p>Explore how different AI models interpret people, events, and narratives. Compare their perspectives, spot common ground, and discover where the stories diverge.</p>
-      <p><a href="https://viewsapp.ai/"><strong>Explore Views →</strong></a></p>
+      <p><a href="https://www.viewsapp.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_more_views"><strong>Explore Views →</strong></a></p>
     </td>
     <td width="33%" valign="top">
       <h3>🚀 Umberto Giacobbi</h3>
       <p><strong>Big ambition? Let's build what's next.</strong></p>
       <p>Meet the builder behind these projects. Explore my work as a fractional CTO, software developer, and technopreneur—from product strategy and architecture to hands-on execution.</p>
-      <p><a href="https://umbertogiacobbi.biz/"><strong>Let's talk about your next idea →</strong></a></p>
+      <p><a href="https://umbertogiacobbi.biz/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_author_cta"><strong>Let's talk about your next idea →</strong></a></p>
     </td>
   </tr>
 </table>

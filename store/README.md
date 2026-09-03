@@ -9,7 +9,7 @@ The editorial source of truth is [`listing.json`](listing.json). It keeps the pr
 - Product: TrackMeUp
 - Category: Productivity
 - Source code: <https://github.com/umbertotechnopreneur/TrackMeUp>
-- Publisher website: <https://www.umbertogiacobbi.biz/>
+- Publisher website: <https://umbertogiacobbi.biz/trackmeup/?utm_source=microsoft_store&utm_medium=referral&utm_campaign=trackmeup&utm_content=publisher_website>
 - Privacy policy: <https://github.com/umbertotechnopreneur/TrackMeUp/blob/main/docs/PRIVACY.md>
 - Support: <https://github.com/umbertotechnopreneur/TrackMeUp/issues>
 

@@ -174,7 +174,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private static readonly TimeSpan SystemSnapshotReuseWindow = TimeSpan.FromSeconds(75);
     private const string ProductRepositoryUrl = "https://github.com/umbertotechnopreneur/TrackMeUp";
     private const string ProductIssuesUrl = "https://github.com/umbertotechnopreneur/TrackMeUp/issues";
-    private const string ProductAuthorUrl = "https://umbertogiacobbi.biz";
+    private const string ProductAuthorUrl = "https://umbertogiacobbi.biz/?utm_source=trackmeup_app&utm_medium=referral&utm_campaign=trackmeup&utm_content=about_author";
     private const string OpenWeatherUrl = "https://openweathermap.org/";
     private bool _disposed;
 

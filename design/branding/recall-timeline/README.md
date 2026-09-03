@@ -10,6 +10,7 @@ All files under `output/` are PNG truecolor RGBA with 8 bits per channel (32 bit
 
 - `*-master-3840x1280.png`: large 3:1 master banners.
 - `*-readme-2400x800.png`: GitHub README banners.
+- `trackmeup-social-preview-github-1280x640.png`: 2:1 GitHub repository social preview, kept below GitHub's 1 MB upload limit.
 - `*-mark-*-1024x1024.png`: square symbol crops.
 - `trackmeup-wordmark-*-transparent-2400x600.png`: transparent wordmarks for dark or light backgrounds.
 - `trackmeup-recall-timeline-theme-pair-preview-2400x1600.png`: stacked comparison preview.
@@ -30,6 +31,10 @@ The root README uses automatic light/dark selection:
 ```
 
 Keep both referenced README banners in place when reorganizing or regenerating the branding assets.
+
+Upload `output/trackmeup-social-preview-github-1280x640.png` in the repository's
+**Settings → General → Social preview** section. This is a repository setting;
+the README cannot select the social preview image itself.
 
 ## Rebuild
 
