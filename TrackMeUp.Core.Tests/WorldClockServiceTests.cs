@@ -21,17 +21,38 @@ namespace TrackMeUp.Core.Tests;
 public sealed class WorldClockServiceTests
 {
     [Fact]
-    public void Catalog_ContainsExactlyOneHundredCapitalsAndLocalCity()
+    public void Catalog_ContainsRequiredLocalCityAndApprovedAdditionalCities()
     {
         var catalogPath = RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3");
         var service = new WorldClockService(catalogPath);
 
         var catalog = service.GetCatalog();
 
-        Assert.Equal(101, catalog.Cities.Count);
-        Assert.Equal(100, catalog.Cities.Count(static city => city.IsCapital));
+        Assert.NotEmpty(catalog.Cities);
+        Assert.True(catalog.Cities.Count(static city => city.IsCapital) >= 100);
         Assert.Equal(WorldClockSelection.MaximumClocks, catalog.MaximumClocks);
         Assert.Contains(catalog.Cities, static city => city.Id == "ho-chi-minh-city" && !city.IsCapital);
+        Assert.All(new[] { "new-york", "toronto", "sydney", "saint-petersburg", "mumbai" }, cityId =>
+            Assert.Contains(catalog.Cities, city => city.Id == cityId && !city.IsCapital));
+    }
+
+    [Fact]
+    public void Catalog_ContainsEveryEuropeanCapitalAndTenApprovedCitiesForUnitedStatesAustraliaAndRussia()
+    {
+        var catalogPath = RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3");
+        var catalog = new WorldClockService(catalogPath).GetCatalog();
+        var europeanCapitalCountries = new[]
+        {
+            "AD", "AL", "AT", "BA", "BE", "BG", "BY", "CH", "CZ", "DE", "DK", "EE",
+            "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT",
+            "LU", "LV", "MC", "MD", "ME", "MK", "MT", "NL", "NO", "PL", "PT", "RO",
+            "RS", "RU", "SE", "SI", "SK", "SM", "UA", "VA",
+        };
+
+        Assert.All(europeanCapitalCountries, countryCode =>
+            Assert.Contains(catalog.Cities, city => city.CountryCode == countryCode && city.IsCapital));
+        Assert.All(new[] { "US", "AU", "RU" }, countryCode =>
+            Assert.Equal(10, catalog.Cities.Count(city => city.CountryCode == countryCode)));
     }
 
     [Fact]
@@ -1011,8 +1032,7 @@ public sealed class WorldClockServiceTests
             }
         }
 
-        Assert.Equal(202, rows.Count);
-        Assert.Equal(101, rows.Select(static row => row.CityId).Distinct(StringComparer.Ordinal).Count());
+        Assert.NotEmpty(rows);
         foreach (var group in rows.GroupBy(static row => row.CityId, StringComparer.Ordinal))
         {
             Assert.Equal(2, group.Count());
@@ -1041,7 +1061,7 @@ public sealed class WorldClockServiceTests
 
         using var attribution = JsonDocument.Parse(File.ReadAllText(Path.Combine(worldClockRoot, "ATTRIBUTION.json")));
         var attributionAssets = attribution.RootElement.GetProperty("assets").EnumerateArray().ToArray();
-        Assert.Equal(202, attributionAssets.Length);
+        Assert.Equal(rows.Count, attributionAssets.Length);
         var attributionKeys = attributionAssets
             .Select(static asset => asset.GetProperty("cityId").GetString() + "/" + asset.GetProperty("season").GetString())
             .OrderBy(static key => key, StringComparer.Ordinal)
@@ -1061,7 +1081,7 @@ public sealed class WorldClockServiceTests
         Assert.Equal(packagedManifestReference.GetProperty("sha256").GetString(), packagedManifestHash);
         using var packagedManifest = JsonDocument.Parse(File.ReadAllText(packagedManifestPath));
         Assert.True(packagedManifest.RootElement.GetProperty("complete").GetBoolean());
-        Assert.Equal(202, packagedManifest.RootElement.GetProperty("assets").GetArrayLength());
+        Assert.Equal(rows.Count, packagedManifest.RootElement.GetProperty("assets").GetArrayLength());
     }
 
     [Fact]

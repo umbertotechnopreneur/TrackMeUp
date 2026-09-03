@@ -14,13 +14,17 @@ This record accompanies the generated seasonal skyline masters and their determi
 
 The shared prompt, composition rules, forbidden content, seasonal modes, and alpha acceptance checks are defined in [`GENERATION_RULES.md`](GENERATION_RULES.md).
 
-City-specific landmarks, palettes, and seasonal cues are defined in [`generation-manifest-v1.json`](generation-manifest-v1.json). The manifest contains exactly 101 unique catalog cities and binds the SHA-256 of each of the 202 selected master files under `reviewedMasters`. Those technical bindings identify the selected files and the publication record below identifies the owner's authorization.
+City-specific landmarks, palettes, and seasonal cues are defined in [`generation-manifest-v1.json`](generation-manifest-v1.json). The manifest declares the approved city catalog and binds the SHA-256 of every selected master file under `reviewedMasters`. Those technical bindings identify the selected files and the publication record below identifies the owner's authorization.
 
 Each prompt combines the shared Urban Wash template with the corresponding city and season record. In summary:
 
 > Panoramic 16:9 architectural watercolor with restrained graphite underdrawing, broad translucent pigment, real RGBA transparency, a recognizable landmark on a lateral third, low urban mass, and a quiet central safe area for the live celestial orb. No sky, paper rectangle, checkerboard, text, people, vehicles, flags, logos, sun, moon, weather icon, signature, or watermark.
 
 The technical `winter` id does not force European winter imagery. Tropical and equatorial cities use wet/dry or palette-only variants, and southern-hemisphere season cues follow local conditions.
+
+## 2026-09-03 catalog expansion
+
+The 50-city expansion was generated with the built-in image-generation workflow, one independent call for each city-season pair. It completes the geographic-European capital coverage and adds ten supported cities each for the United States, Australia, and Russia. The selected outputs remain bound to their per-file hashes in the generation manifest; rejected variants were not copied into `masters-v1/`.
 
 ## Selection and validation
 
@@ -35,7 +39,7 @@ The technical `winter` id does not force European winter imagery. Tropical and e
 
 ## Publication authorization
 
-On 2026-08-30 the project owner explicitly authorized public publication of the complete generated asset set and accepted the applicable ImageGen service terms in that context. The 202 selected Urban Wash masters, their intermediate WebP derivatives, and their packaged PNG derivatives may therefore be published with TrackMeUp. This authorization does not place the artwork under the repository's MIT license; the asset-specific classification remains the one recorded in the repository licensing and attribution files.
+On 2026-08-30 the project owner explicitly authorized public publication of the complete generated asset set and accepted the applicable ImageGen service terms in that context. The manifest-selected Urban Wash masters, their intermediate WebP derivatives, and their packaged PNG derivatives may therefore be published with TrackMeUp. This authorization does not place the artwork under the repository's MIT license; the asset-specific classification remains the one recorded in the repository licensing and attribution files.
 
 The promoted catalog uses `TrackMeUp/Assets/WorldClocks/Skylines/`; the former
 generic `Images/` directory is removed. `ASSET_LICENSING.md`,

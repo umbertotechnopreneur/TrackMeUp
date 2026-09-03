@@ -32,6 +32,7 @@ public sealed partial class WorldClockWindow : Window
     private readonly WorldClockWindowLayoutState _layoutState = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly DispatcherQueueTimer _refreshTimer;
+    private string? _lastWeatherMessageKey;
     private readonly SemaphoreSlim _currentRefreshGate = new(1, 1);
     private readonly Dictionary<string, WorldClockColumnControl> _columns = new(StringComparer.Ordinal);
     private LocalizationService _strings = new("system");
@@ -118,7 +119,7 @@ public sealed partial class WorldClockWindow : Window
             "dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-        RootGrid.Opacity = settings.WorldClockWindowOpacityPercent / 100d;
+        WindowContent.Opacity = settings.WorldClockWindowOpacityPercent / 100d;
         _appWindow.IsShownInSwitchers = settings.WorldClockWindowShowInTaskbar;
         UiLocalization.Apply(RootGrid, _strings);
         Title = T("WorldClock.Landmark");
@@ -190,7 +191,7 @@ public sealed partial class WorldClockWindow : Window
         _layoutState.ShowSurface(WorldClockWindowSurface.Options);
         UpdateHeaderForSurface();
         UpdateRefreshTimerState();
-        WorldClockNotificationBanner.Dismiss();
+        _dialogs.Notifications.Hide(WorldClockNotificationBanner);
         FadeIn(OptionsPanel);
         _ = HeaderBackButton.Focus(FocusState.Programmatic);
         _titleBar.QueueLayoutUpdate();
@@ -563,7 +564,6 @@ public sealed partial class WorldClockWindow : Window
             EnsureColumns(snapshot.Clocks);
             _layoutState.ResetWindowSizing();
             NowButton.Visibility = Visibility.Collapsed;
-            WorldClockNotificationBanner.Dismiss();
             UpdateWeatherStatus(snapshot.WeatherStatus);
             _optionsControl?.ApplyState(_settings, snapshot, null, IsAlwaysOnTop());
             ShowLoading(false);
@@ -593,7 +593,6 @@ public sealed partial class WorldClockWindow : Window
         UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
 
         NowButton.Visibility = Visibility.Visible;
-        WorldClockNotificationBanner.Dismiss();
         UpdateWeatherStatus(snapshot.WeatherStatus);
         _optionsControl?.ApplyState(_settings, snapshot, _referenceCityId, IsAlwaysOnTop());
         UpdateRefreshTimerState();
@@ -614,12 +613,19 @@ public sealed partial class WorldClockWindow : Window
             "unavailable" => "WorldClock.WeatherStatus.Unavailable",
             _ => throw new InvalidDataException($"Unsupported world-clock weather status '{status.State}'.")
         };
+        if (messageKey == _lastWeatherMessageKey)
+        {
+            return;
+        }
+
+        // A periodic snapshot must neither clear an action toast nor restart an unchanged weather warning.
+        _lastWeatherMessageKey = messageKey;
         if (messageKey is null)
         {
             return;
         }
 
-        _dialogs.ShowWarningBanner(
+        _dialogs.Notifications.ShowWarning(
             WorldClockNotificationBanner,
             T("WorldClock.ErrorTitle"),
             T(messageKey));
@@ -732,7 +738,7 @@ public sealed partial class WorldClockWindow : Window
             UpdateRefreshTimerState();
         }
 
-        // ApplySnapshot dismisses the previous banner, so publish the conversion failure last.
+        // Publish the conversion failure after refreshing the snapshot's weather status.
         ShowFailure(messageKey);
     }
 
@@ -961,31 +967,18 @@ public sealed partial class WorldClockWindow : Window
                 return;
             }
 
-            var selectedCityId = await _dialogs.ShowWorldClockCityPickerAsync(
+            var addedCity = await _dialogs.ShowWorldClockCityPickerAsync(
                 _application,
                 this,
                 options,
                 RootGrid.RequestedTheme,
                 _strings);
-            if (IsClosing || selectedCityId is null)
+            if (IsClosing || !addedCity)
             {
                 return;
             }
 
             Interlocked.Increment(ref _requestVersion);
-            var result = await _application.AddWorldClockAsync(selectedCityId, _lifetimeCancellation.Token);
-            if (IsClosing)
-            {
-                return;
-            }
-
-            Interlocked.Increment(ref _requestVersion);
-            if (!result.Succeeded || result.Value is null)
-            {
-                ShowFailure(result.MessageKey);
-                return;
-            }
-
             _ = _isLive
                 ? await RefreshCurrentAsync()
                 : await ConvertFromControlsAsync();
@@ -1061,7 +1054,7 @@ public sealed partial class WorldClockWindow : Window
 
             if (projectionApplied && !IsClosing)
             {
-                _dialogs.ShowInfoBanner(
+                _dialogs.Notifications.ShowInfo(
                     WorldClockNotificationBanner,
                     T("WorldClock.RemovedTitle"),
                     _strings.Format("WorldClock.RemovedMessage", e.CityName));
@@ -1084,7 +1077,7 @@ public sealed partial class WorldClockWindow : Window
     {
         if (!IsClosing)
         {
-            _dialogs.ShowWarningBanner(
+            _dialogs.Notifications.ShowWarning(
                 WorldClockNotificationBanner,
                 T("WorldClock.ErrorTitle"),
                 T(messageKey));
@@ -1223,7 +1216,7 @@ public sealed partial class WorldClockWindow : Window
         {
             _closeInProgress = false;
             _allowClose = true;
-            _dialogs.ShowErrorBanner(
+            _dialogs.Notifications.ShowError(
                 WorldClockNotificationBanner,
                 T("WorldClock.ErrorTitle"),
                 $"{T("WorldClock.PlacementFailed")} ({exception.GetType().Name})");

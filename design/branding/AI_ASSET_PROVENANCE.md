@@ -28,7 +28,7 @@ declaration date:
   `TrackMeUp/Assets/Celestial/moon-premium.png`; and
 - the text-prompt-generated world-clock watercolor pilot recorded under
   `design/world-clocks/watercolor/pilot-v1/`;
-- the 202 selected Urban Wash city masters and their deterministic WebP
+- the manifest-defined selected Urban Wash city masters and their deterministic WebP
   derivatives under `design/world-clocks/watercolor/` and
   `TrackMeUp/Assets/WorldClocks/Skylines/`; and
 - the 11 composable atmosphere overlays under
@@ -47,7 +47,7 @@ relicense them under MIT or grant trademark rights.
 
 This declaration does not cover third-party data, software, fonts, or media.
 In particular, it does not replace the GeoNames record for the packaged
-world-clock catalog. The 101-city Urban Wash catalog and atmosphere overlays
+world-clock catalog. The manifest-defined Urban Wash catalog and atmosphere overlays
 retain their separate generation manifests, checksums, and asset-specific
 license boundary. Any asset derived from third-party material must keep its
 original source, license, attribution, and applicable redistribution

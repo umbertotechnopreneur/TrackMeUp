@@ -17,8 +17,6 @@ $ffprobe = Get-Command ffprobe -ErrorAction Stop
 $ffmpeg = Get-Command ffmpeg -ErrorAction Stop
 $expectedRatio = 16.0 / 9.0
 $ratioTolerance = 0.01
-$expectedCityCount = 101
-$expectedAssetCount = 202
 $cityIdPattern = '^[a-z0-9]+(?:-[a-z0-9]+)*$'
 $sha256Pattern = '^[0-9a-f]{64}$'
 
@@ -28,13 +26,15 @@ if (-not [string]::IsNullOrWhiteSpace($ManifestPath)) {
     $resolvedManifest = (Resolve-Path -LiteralPath $ManifestPath).Path
     $manifest = Get-Content -LiteralPath $resolvedManifest -Raw | ConvertFrom-Json
     $cities = @($manifest.cities)
+    $expectedCityCount = $cities.Count
+    $expectedAssetCount = $expectedCityCount * 2
     if ([int] $manifest.schemaVersion -ne 1 -or [string] $manifest.styleId -ne 'urban-wash-v1' `
         -or [int] $manifest.assetCountExpected -ne $expectedAssetCount) {
         throw "Unsupported generation manifest schema, style, or asset count."
     }
 
-    if ($cities.Count -ne $expectedCityCount) {
-        throw "The generation manifest must contain exactly $expectedCityCount cities; found $($cities.Count)."
+    if ($expectedCityCount -eq 0) {
+        throw 'The generation manifest must contain at least one city.'
     }
 
     $invalidIds = @($cities | Where-Object {

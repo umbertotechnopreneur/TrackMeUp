@@ -246,7 +246,7 @@ public sealed partial class SearchWindow : Window
         if (wasIdle)
         {
             SearchActivityGlow.Visibility = Visibility.Visible;
-            SearchActivityStatus.Visibility = Visibility.Visible;
+            UpdateResultState(_hasExecutedQuery);
         }
     }
 
@@ -261,7 +261,7 @@ public sealed partial class SearchWindow : Window
         if (_activeSearchOperationCount == 0)
         {
             SearchActivityGlow.Visibility = Visibility.Collapsed;
-            SearchActivityStatus.Visibility = Visibility.Collapsed;
+            UpdateResultState(_hasExecutedQuery);
         }
     }
 
@@ -269,8 +269,12 @@ public sealed partial class SearchWindow : Window
     {
         _hasExecutedQuery = hasExecutedQuery;
         var hasResults = _viewModel.Results.Count > 0;
+        var isSearchingWithoutResults = _activeSearchOperationCount > 0 && !hasResults;
         SearchResultsList.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
-        EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults ? Visibility.Visible : Visibility.Collapsed;
+        EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults && !isSearchingWithoutResults
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SearchActivityStatus.Visibility = isSearchingWithoutResults ? Visibility.Visible : Visibility.Collapsed;
         ResizeForCurrentState();
     }
 

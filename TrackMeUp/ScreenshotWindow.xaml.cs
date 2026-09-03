@@ -32,7 +32,7 @@ public sealed partial class ScreenshotWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly AppWindow _appWindow;
     private readonly CustomTitleBarController _titleBar;
-    private readonly MicaDialogService _dialogs = new();
+    private readonly MicaDialogService _dialogs;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly string? _launchTheme;
@@ -82,8 +82,9 @@ public sealed partial class ScreenshotWindow : Window
     private FontIcon FilmstripChevronIcon => TimelineSection.ToggleChevronIcon;
 
     /// <summary>Creates the translucent screenshot inspector backed by the shared application facade.</summary>
-    public ScreenshotWindow(
+    internal ScreenshotWindow(
         ITrackMeUpApplication application,
+        MicaDialogService dialogs,
         string? launchTheme = null,
         string? requestedScreenshotPath = null,
         DateTimeOffset? requestedCapturedAt = null,
@@ -105,6 +106,7 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         _application = application;
+        _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _launchTheme = launchTheme;
         _requestedScreenshotPath = requestedScreenshotPath;
         _requestedDate = requestedDate;
@@ -589,7 +591,7 @@ public sealed partial class ScreenshotWindow : Window
     private void ScreenshotViewer_ZoomStateChanged(object? sender, EventArgs e) => UpdateScreenshotToolbarState();
 
     private void ScreenshotViewer_ImageLoadFailed(object? sender, EventArgs e) =>
-        _dialogs.ShowErrorBanner(
+        _dialogs.Notifications.ShowError(
             ScreenshotActionBanner,
             T("Screenshots.Caption"),
             T("Screenshots.Error.Unavailable"));
@@ -664,7 +666,7 @@ public sealed partial class ScreenshotWindow : Window
     }
 
     private void ShowDetailsPanePreferenceFailure() =>
-        _dialogs.ShowErrorBanner(
+        _dialogs.Notifications.ShowError(
             ScreenshotActionBanner,
             T("Screenshots.Caption"),
             T("Screenshots.Action.Failed"));
@@ -835,7 +837,7 @@ public sealed partial class ScreenshotWindow : Window
         {
             if (!await _dialogs.ConfirmAsync(
                     this,
-                    SystemMessageBoxRequest.Confirmation(T(titleKey), T(messageKey))))
+                    DialogRequest.Confirmation(T(titleKey), T(messageKey), T("Dialog.Ok"), T("Dialog.Cancel"))))
             {
                 return;
             }
@@ -921,11 +923,11 @@ public sealed partial class ScreenshotWindow : Window
         var message = _strings.Translate(result.Succeeded ? successKey : "Screenshots.Action.Failed");
         if (result.Succeeded)
         {
-            _dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);
+            _dialogs.Notifications.ShowSuccess(ScreenshotActionBanner, title, message);
         }
         else
         {
-            _dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);
+            _dialogs.Notifications.ShowError(ScreenshotActionBanner, title, message);
         }
     }
 

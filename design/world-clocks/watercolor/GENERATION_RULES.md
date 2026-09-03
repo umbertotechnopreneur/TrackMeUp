@@ -4,7 +4,7 @@ These rules define the approved TrackMeUp world-clock skyline asset family.
 
 ## Deliverables
 
-- Catalog scope: 101 cities.
+- Catalog scope: manifest-driven; every declared city has two reviewed seasonal masters.
 - Two technical season ids per city: `summer` and `winter`.
 - Production master name: `masters-v1/<city-id>-<season>.png`.
 - Master format: 16:9 RGBA PNG with genuine transparency.
@@ -69,6 +69,6 @@ For every selected master:
 
 `Test-WorldClockWatercolorAssets.ps1` is the shared executable quality gate. It
 requires one actual PNG stream, `pix_fmt=rgba`, the accepted near-16:9 master
-dimensions, full 0-255 alpha range, the exact 101-city/202-file set when run
-with `-RequireComplete`, and the reviewed SHA-256 binding. The converter invokes
-that same gate before producing any runtime derivative.
+dimensions, full 0-255 alpha range, the exact manifest-declared city/season set
+when run with `-RequireComplete`, and the reviewed SHA-256 binding. The converter
+invokes that same gate before producing any runtime derivative.

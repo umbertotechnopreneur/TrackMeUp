@@ -51,6 +51,7 @@ public sealed class SearchSurfaceContractTests
         Assert.Equal("Center", queryBox.Attribute("VerticalContentAlignment")?.Value);
         Assert.Null(queryBox.Attribute("TextMemberPath"));
         Assert.Equal("1", availability.Parent?.Attribute("Grid.Row")?.Value);
+        Assert.Equal("3", activityStatus.Parent?.Attribute("Grid.Row")?.Value);
         Assert.Equal("Search.Working", activityText.Attribute("Tag")?.Value);
         Assert.Equal("Polite", activityText.Attribute("AutomationProperties.LiveSetting")?.Value);
         Assert.Equal("Collapsed", activityStatus.Attribute("Visibility")?.Value);
@@ -123,8 +124,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("MinimumQueryLength = 3", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("SearchDebounce", windowSource, StringComparison.Ordinal);
         Assert.Contains("TimeSpan.FromMilliseconds(250)", windowSource, StringComparison.Ordinal);
-        Assert.Contains("SearchActivityStatus.Visibility = Visibility.Visible", windowSource, StringComparison.Ordinal);
-        Assert.Contains("SearchActivityStatus.Visibility = Visibility.Collapsed", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SearchActivityStatus.Visibility = isSearchingWithoutResults", windowSource, StringComparison.Ordinal);
+        Assert.Contains("EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults && !isSearchingWithoutResults", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("UpdateSuggestionsAsync", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("SearchSuggestionDisplayItem", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ElementCompositionPreview", windowSource, StringComparison.Ordinal);

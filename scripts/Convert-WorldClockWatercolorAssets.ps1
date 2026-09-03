@@ -4,7 +4,7 @@ param(
     [string] $MasterRoot = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\masters-v1'),
 
     [Parameter()]
-    [string] $OutputRoot = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\runtime-v1'),
+    [string] $OutputRoot = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\runtime-v3'),
 
     [Parameter()]
     [string] $ManifestPath = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\generation-manifest-v1.json'),
@@ -15,8 +15,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$expectedCityCount = 101
-$expectedAssetCount = 202
 $expectedSchemaVersion = 1
 $expectedStyleId = 'urban-wash-v1'
 $cityIdPattern = '^[a-z0-9]+(?:-[a-z0-9]+)*$'
@@ -45,11 +43,13 @@ $resolvedMasterRoot = (Resolve-Path -LiteralPath $MasterRoot).Path
 $resolvedManifestPath = (Resolve-Path -LiteralPath $ManifestPath).Path
 $manifest = Get-Content -LiteralPath $resolvedManifestPath -Raw | ConvertFrom-Json
 $cities = @($manifest.cities)
+$expectedCityCount = $cities.Count
+$expectedAssetCount = $expectedCityCount * 2
 if ([int] $manifest.schemaVersion -ne $expectedSchemaVersion -or [string] $manifest.styleId -ne $expectedStyleId) {
     throw "Unsupported generation manifest schema/style: $($manifest.schemaVersion)/$($manifest.styleId)."
 }
-if ($cities.Count -ne $expectedCityCount -or [int] $manifest.assetCountExpected -ne $expectedAssetCount) {
-    throw "The generation manifest must contain exactly $expectedCityCount cities and $expectedAssetCount assets; found $($cities.Count)/$($manifest.assetCountExpected)."
+if ($expectedCityCount -eq 0 -or [int] $manifest.assetCountExpected -ne $expectedAssetCount) {
+    throw "The generation manifest asset count must match its declared city list; found $($cities.Count)/$($manifest.assetCountExpected)."
 }
 
 $invalidIds = @($cities | Where-Object {

@@ -271,11 +271,11 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
-    public void NativeSystemMessages_DoNotRetainApplicationLocalizedStandardButtonLabels()
+    public void StandardContentDialogs_UseLocalizedButtonsAndDiscardSupersededActionLabels()
     {
+        string[] standardButtonKeys = ["Dialog.Ok", "Dialog.Cancel"];
         string[] supersededKeys =
         [
-            "Dialog.Ok",
             "Dialog.CloseTracking.Confirm",
             "Schedule.Apply",
             "Operations.Retention.Confirm.Delete",
@@ -288,6 +288,8 @@ public sealed class LocalizationServiceTests
         Assert.All(LocalizationService.SupportedLanguages, language =>
         {
             var strings = new LocalizationService(language);
+            Assert.All(standardButtonKeys, key =>
+                Assert.False(string.IsNullOrWhiteSpace(strings.Translate(key))));
             Assert.All(supersededKeys, key =>
                 Assert.Throws<KeyNotFoundException>(() => strings.Translate(key)));
         });

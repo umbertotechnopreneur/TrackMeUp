@@ -128,9 +128,11 @@ public sealed partial class ScheduleWindow : Window
     {
         return await _dialogs.ConfirmAsync(
             this,
-            SystemMessageBoxRequest.Confirmation(
+            DialogRequest.Confirmation(
                 _strings.Translate(titleKey),
-                _strings.Translate(messageKey)));
+                _strings.Translate(messageKey),
+                _strings.Translate("Dialog.Ok"),
+                _strings.Translate("Dialog.Cancel")));
     }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)

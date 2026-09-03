@@ -85,7 +85,7 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains("internal async Task<DateOnly?> ShowActivityCalendarAsync", dialogs, StringComparison.Ordinal);
         Assert.Contains("new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle)", dialogs, StringComparison.Ordinal);
         Assert.Contains("result.Action == ActivityCalendarAction.OpenScreenshots", dialogs, StringComparison.Ordinal);
-        Assert.Contains("await _queue.WaitAsync()", dialogs, StringComparison.Ordinal);
+        Assert.Contains("using var session = await _queue.EnterAsync(ownerLifetime.Token)", dialogs, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle)", dialogs, StringComparison.Ordinal);
         Assert.Contains("var result = await ShowDialogWindowAsync(dialog", dialogs, StringComparison.Ordinal);
         Assert.Contains("new AiScreenshotReprocessingDialogWindow(", dialogs, StringComparison.Ordinal);
@@ -101,7 +101,7 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains("_window.ScreenshotGalleryDateRequested += MainWindow_ScreenshotGalleryDateRequested", app, StringComparison.Ordinal);
         Assert.Contains("await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.Date)", app, StringComparison.Ordinal);
         Assert.Contains("await _screenshotsWindow.FocusDateAsync(selectedDate)", app, StringComparison.Ordinal);
-        Assert.Contains("new ScreenshotWindow(application, launchTheme, requestedDate: selectedDate)", app, StringComparison.Ordinal);
+        Assert.Contains("new ScreenshotWindow(application, _dialogs, launchTheme, requestedDate: selectedDate)", app, StringComparison.Ordinal);
         Assert.Contains("public async Task FocusDateAsync(DateOnly date)", screenshotWindow, StringComparison.Ordinal);
         Assert.Contains("_requestedScreenshotPath is null && _requestedDate is null ? null : _selectedDate", screenshotWindow, StringComparison.Ordinal);
     }

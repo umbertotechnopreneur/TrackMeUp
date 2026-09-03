@@ -11,20 +11,29 @@ using Windows.System;
 
 namespace TrackMeUp;
 
-/// <summary>Collects one world-clock city selection without owning catalog or persistence behavior.</summary>
+/// <summary>Collects and applies world-clock city choices through the shared application facade.</summary>
 internal sealed partial class WorldClockCityPickerDialogWindow : Window
 {
     private const int LogicalWidth = 500;
     private const int LogicalHeight = 560;
     private const int LogicalScreenMargin = 24;
-    private readonly TaskCompletionSource<string?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly IReadOnlyList<WorldClockCityPickerOption> _options;
+    private readonly TaskCompletionSource<bool> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ITrackMeUpApplication _application;
+    private readonly List<WorldClockCityPickerOption> _options;
+    private readonly ToastNotificationService _notifications;
+    private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
     private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
-    private string? _result;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private bool _addedCity;
+    private bool _isAdding;
     private bool _isCompleting;
+    private bool _allowClose;
+    private bool _closed;
+
+    private bool IsClosing => _isCompleting || _closed;
 
     internal WorldClockCityPickerDialogWindow(
         ITrackMeUpApplication application,
@@ -32,20 +41,22 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
         ElementTheme theme,
         LocalizationService strings,
         AppWindow ownerAppWindow,
-        IntPtr ownerHandle)
+        IntPtr ownerHandle,
+        ToastNotificationService notifications)
     {
-        ArgumentNullException.ThrowIfNull(application);
+        _application = application ?? throw new ArgumentNullException(nameof(application));
         ArgumentNullException.ThrowIfNull(cities);
-        ArgumentNullException.ThrowIfNull(strings);
+        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
         ArgumentNullException.ThrowIfNull(ownerAppWindow);
+        _notifications = notifications ?? throw new ArgumentNullException(nameof(notifications));
         _options = cities
             .Select(city => new WorldClockCityPickerOption(city.Id, $"{city.Name} · {city.CountryCode}"))
             .OrderBy(option => option.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .ToArray();
+            .ToList();
         InitializeComponent();
-        Title = strings.Translate("WorldClock.PickerTitle");
+        Title = _strings.Translate("WorldClock.PickerTitle");
         RootGrid.RequestedTheme = theme;
-        RootGrid.Language = strings.Language;
+        RootGrid.Language = _strings.Language;
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
         _titleBar = new CustomTitleBarController(
@@ -58,7 +69,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
             static () => Array.Empty<FrameworkElement>(),
             useTallTitleBar: false);
         _placement = new WindowPlacementService(
-            application,
+            _application,
             this,
             _appWindow,
             WindowStateKeys.WorldClockCityPicker,
@@ -76,14 +87,16 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
         }
 
         DialogTitleText.Text = Title;
-        CityComboBox.PlaceholderText = strings.Translate("WorldClock.SearchCity");
-        CancelButton.Content = strings.Translate("Dialog.Cancel");
-        AddButton.Content = strings.Translate("WorldClock.Add");
+        CityComboBox.PlaceholderText = _strings.Translate("WorldClock.SearchCity");
+        CancelButton.Content = _strings.Translate("Dialog.Cancel");
+        AddAnotherButton.Content = _strings.Translate("WorldClock.AddAnother");
+        AddButton.Content = _strings.Translate("WorldClock.Add");
         AutomationProperties.SetName(RootGrid, Title);
         AutomationProperties.SetName(DialogTitleText, Title);
-        AutomationProperties.SetName(CityComboBox, strings.Translate("WorldClock.SearchCity"));
-        AutomationProperties.SetName(CancelButton, strings.Translate("Dialog.Cancel"));
-        AutomationProperties.SetName(AddButton, strings.Translate("WorldClock.Add"));
+        AutomationProperties.SetName(CityComboBox, _strings.Translate("WorldClock.SearchCity"));
+        AutomationProperties.SetName(CancelButton, _strings.Translate("Dialog.Cancel"));
+        AutomationProperties.SetName(AddAnotherButton, _strings.Translate("WorldClock.AddAnother"));
+        AutomationProperties.SetName(AddButton, _strings.Translate("WorldClock.Add"));
         CityComboBox.ItemsSource = _options;
         _appWindow.Closing += AppWindow_Closing;
         Closed += WorldClockCityPickerDialogWindow_Closed;
@@ -91,7 +104,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
 
     internal IntPtr WindowHandle => _windowHandle;
 
-    internal Task<string?> ShowAsync()
+    internal Task<bool> ShowAsync()
     {
         WindowInteropService.MakeTopmostWithoutActivation(_windowHandle);
         Activate();
@@ -100,69 +113,195 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
 
     internal void DisposePlacement() => _placement.Dispose();
 
-    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    /// <summary>Cancels pending work and closes immediately when the owner or application shuts down.</summary>
+    internal void CloseForShutdown()
     {
-        _placement.ApplyDefaultSize(RootGrid);
-        await _placement.RestoreAsync(RootGrid, CancellationToken.None);
-        CityComboBox.Focus(FocusState.Programmatic);
+        if (_closed)
+        {
+            return;
+        }
+
+        _isCompleting = true;
+        _allowClose = true;
+        _lifetimeCancellation.Cancel();
+        Close();
     }
 
-    /// <summary>Enables confirmation only for a city supplied by the packaged catalog.</summary>
-    private void CityComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
-        AddButton.IsEnabled = CityComboBox.SelectedItem is WorldClockCityPickerOption;
-
-    private async void AddButton_Click(object sender, RoutedEventArgs e)
+    private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (CityComboBox.SelectedItem is WorldClockCityPickerOption option)
+        try
         {
-            await CompleteAsync(option.Id);
+            _placement.ApplyDefaultSize(RootGrid);
+            await _placement.RestoreAsync(RootGrid, _lifetimeCancellation.Token);
+            if (!IsClosing)
+            {
+                CityComboBox.Focus(FocusState.Programmatic);
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Closing the owner cancels placement restoration; do not touch the detached controls.
         }
     }
 
-    private async void CancelButton_Click(object sender, RoutedEventArgs e) => await CompleteAsync(null);
+    /// <summary>Enables confirmation only for a city supplied by the packaged catalog.</summary>
+    private void CityComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateCommandState();
+
+    private async void AddButton_Click(object sender, RoutedEventArgs e)
+    {
+        await AddSelectedCityAsync(closeWhenAdded: true);
+    }
+
+    private async void AddAnotherButton_Click(object sender, RoutedEventArgs e) =>
+        await AddSelectedCityAsync(closeWhenAdded: false);
+
+    private async void CancelButton_Click(object sender, RoutedEventArgs e) => await CompleteAsync();
 
     private async void RootGrid_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Escape)
         {
             e.Handled = true;
-            await CompleteAsync(null);
+            await CompleteAsync();
         }
     }
 
     /// <summary>Routes the native close command through the same placement-save path as dialog buttons.</summary>
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_isCompleting)
+        if (_allowClose)
         {
             return;
         }
 
         args.Cancel = true;
-        await CompleteAsync(null);
+        await CompleteAsync();
     }
 
     private void WorldClockCityPickerDialogWindow_Closed(object sender, WindowEventArgs args)
     {
+        _closed = true;
+        _lifetimeCancellation.Cancel();
         _appWindow.Closing -= AppWindow_Closing;
         Closed -= WorldClockCityPickerDialogWindow_Closed;
         _titleBar.Dispose();
-        _completion.TrySetResult(_result);
+        _completion.TrySetResult(_addedCity);
+        _lifetimeCancellation.Dispose();
     }
 
-    private async Task CompleteAsync(string? cityId)
+    private async Task AddSelectedCityAsync(bool closeWhenAdded)
     {
-        if (_isCompleting)
+        if (IsClosing || _isAdding || CityComboBox.SelectedItem is not WorldClockCityPickerOption option)
+        {
+            return;
+        }
+
+        _isAdding = true;
+        UpdateCommandState();
+        var shouldClose = false;
+        try
+        {
+            // User dismissal is disabled while a mutation is pending; shutdown cancels its lifetime.
+            var result = await _application.AddWorldClockAsync(option.Id, _lifetimeCancellation.Token);
+            if (IsClosing)
+            {
+                return;
+            }
+
+            if (!result.Succeeded || result.Value is null)
+            {
+                // The picker remains usable after a rejected mutation so the user can select another city.
+                _notifications.ShowWarning(
+                    PickerNotificationBanner,
+                    _strings.Translate("WorldClock.ErrorTitle"),
+                    ResultMessage(result.MessageKey));
+                return;
+            }
+
+            _addedCity = true;
+            _options.Remove(option);
+            CityComboBox.SelectedItem = null;
+            CityComboBox.ItemsSource = null;
+            CityComboBox.ItemsSource = _options;
+            _notifications.ShowSuccess(
+                PickerNotificationBanner,
+                _strings.Translate("WorldClock.AddedTitle"),
+                _strings.Format("WorldClock.AddedMessage", option.DisplayName));
+
+            shouldClose = closeWhenAdded;
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Shutdown may race the provider response. Never publish feedback into a closed window.
+        }
+        catch (Exception)
+        {
+            // Late faults are observed, but only a live picker can render an operation failure.
+            if (!IsClosing)
+            {
+                _notifications.ShowError(
+                    PickerNotificationBanner,
+                    _strings.Translate("WorldClock.ErrorTitle"),
+                    _strings.Translate("WorldClock.CatalogUnavailable"));
+            }
+        }
+        finally
+        {
+            _isAdding = false;
+            if (!IsClosing)
+            {
+                UpdateCommandState();
+            }
+        }
+
+        if (!IsClosing)
+        {
+            if (shouldClose)
+            {
+                await CompleteAsync();
+            }
+            else
+            {
+                CityComboBox.Focus(FocusState.Programmatic);
+            }
+        }
+    }
+
+    private string ResultMessage(string messageKey) =>
+        _strings.TryTranslate(messageKey, out var message)
+            ? message
+            : _strings.Translate("WorldClock.CatalogUnavailable");
+
+    private void UpdateCommandState()
+    {
+        if (_closed)
+        {
+            return;
+        }
+
+        var canInteract = !IsClosing && !_isAdding;
+        CancelButton.IsEnabled = canInteract;
+        CityComboBox.IsEnabled = canInteract;
+        var canAdd = canInteract && CityComboBox.SelectedItem is WorldClockCityPickerOption;
+        AddButton.IsEnabled = canAdd;
+        AddAnotherButton.IsEnabled = canAdd;
+    }
+
+    private async Task CompleteAsync()
+    {
+        if (IsClosing || _isAdding)
         {
             return;
         }
 
         _isCompleting = true;
-        AddButton.IsEnabled = false;
-        CancelButton.IsEnabled = false;
-        _result = cityId;
-        _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
-        Close();
+        UpdateCommandState();
+        _ = await _placement.TrySaveForCloseAsync(_lifetimeCancellation.Token);
+        if (!_closed)
+        {
+            _allowClose = true;
+            Close();
+        }
     }
 
     private sealed record WorldClockCityPickerOption(string Id, string DisplayName);

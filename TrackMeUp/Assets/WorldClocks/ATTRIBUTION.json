@@ -14,15 +14,15 @@
   },
   "sourceManifest": {
     "file": "SOURCE-MANIFEST.json",
-    "sha256": "43e2945d3edad4e09892c6f07abc1bbc206d116e89617d2f13f467e87d4a8797"
+    "sha256": "a90acc76e8472e04b3f81a6a100f59348ab4e32720273a48f9d80783c80c8101"
   },
   "runtimeManifest": {
     "file": "RUNTIME-ASSET-MANIFEST.json",
-    "sha256": "40a6aa305d2d3a8f39f471721e6a57001f3da780764d3265b9c442b285dd4231"
+    "sha256": "f2acce3b97f0c736dc01f0e94787a25d2154931cc4751c669ab3032e32929986"
   },
   "packagedManifest": {
     "file": "PACKAGED-ASSET-MANIFEST.json",
-    "sha256": "eb83ec307119812093fb09a07dc810851ddc4443a89439ae3af2879efeb5735d"
+    "sha256": "0a4b313c39f1401a206bae244fec5eafadabb1d9125736db999242b1577ed5fb"
   },
   "assets": [
     {
@@ -122,6 +122,30 @@
       "sha256": "fc6833883976a50c4349a74f4b61882f4fc722e1f3368a7d038b443051c7db11"
     },
     {
+      "cityId": "adelaide",
+      "city": "Adelaide",
+      "season": "summer",
+      "relativePath": "Skylines/adelaide-summer.png",
+      "title": "Adelaide Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "2cdfc13eb2a1c0ed7a3755f184d7d719884cc3bc309b3e4917a433e99b33c27e"
+    },
+    {
+      "cityId": "adelaide",
+      "city": "Adelaide",
+      "season": "winter",
+      "relativePath": "Skylines/adelaide-winter.png",
+      "title": "Adelaide Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "f2d3c5fc859c2d162bf5a187973def7c9da5f3aa1f0449be6f1b2726c4f2054b"
+    },
+    {
       "cityId": "algiers",
       "city": "Algiers",
       "season": "summer",
@@ -168,6 +192,54 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "e4ca3ec087e61ff0d4af197177feeb9019d7ecd4230ead6945f15fc1a66b9f5e"
+    },
+    {
+      "cityId": "amsterdam",
+      "city": "Amsterdam",
+      "season": "summer",
+      "relativePath": "Skylines/amsterdam-summer.png",
+      "title": "Amsterdam Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "89e78acd3ce1852f434b061a4e7b5f4b7d6c1f3e9b24ce28c9a3008590633839"
+    },
+    {
+      "cityId": "amsterdam",
+      "city": "Amsterdam",
+      "season": "winter",
+      "relativePath": "Skylines/amsterdam-winter.png",
+      "title": "Amsterdam Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "6ddf09907abf239844e0b79ab0c9ef2b0c2d2f4db3681a9f9f943d58116e1d75"
+    },
+    {
+      "cityId": "andorra-la-vella",
+      "city": "Andorra la Vella",
+      "season": "summer",
+      "relativePath": "Skylines/andorra-la-vella-summer.png",
+      "title": "Andorra la Vella Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "ffb250a241a9b2bcbf18353c019552e2675077c98de52b4b7b7171cd8419f222"
+    },
+    {
+      "cityId": "andorra-la-vella",
+      "city": "Andorra la Vella",
+      "season": "winter",
+      "relativePath": "Skylines/andorra-la-vella-winter.png",
+      "title": "Andorra la Vella Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "4f514a3517fea1d16a7044fd6856928a43ede36e920542b3aa20d88f998f6d4a"
     },
     {
       "cityId": "ankara",
@@ -288,6 +360,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "dc8a13e937edb5c4cc20fc27933d370a5f5fa2f318a7d0e3934621fb4095cf11"
+    },
+    {
+      "cityId": "athens",
+      "city": "Athens",
+      "season": "summer",
+      "relativePath": "Skylines/athens-summer.png",
+      "title": "Athens Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "0d24ec679e9c10e2f1355658d35b42b4d9eeaf4805c70631337007896c86da7c"
+    },
+    {
+      "cityId": "athens",
+      "city": "Athens",
+      "season": "winter",
+      "relativePath": "Skylines/athens-winter.png",
+      "title": "Athens Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "4f951ec0bd7212388207e29147e1a63f0fc8c8d8ebf3763a8312548c82392ad8"
     },
     {
       "cityId": "baghdad",
@@ -482,6 +578,30 @@
       "sha256": "688cbbfee0ba47103b836cdbab4d2572d99bccea635cccc25fe605858b11c071"
     },
     {
+      "cityId": "bern",
+      "city": "Bern",
+      "season": "summer",
+      "relativePath": "Skylines/bern-summer.png",
+      "title": "Bern Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "2d715b81beedecc2d83f815f274b310c420c96f7cc3a405f62fc5682b8e39ffa"
+    },
+    {
+      "cityId": "bern",
+      "city": "Bern",
+      "season": "winter",
+      "relativePath": "Skylines/bern-winter.png",
+      "title": "Bern Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "0345205a938a38dbbff9822a914a4d83cc0e83b4382c4f14f9d27f64f5dd3d90"
+    },
+    {
       "cityId": "bogota",
       "city": "Bogotá",
       "season": "summer",
@@ -530,6 +650,30 @@
       "sha256": "3f160ff9a99875314af7e6c9a7cbe21a6442544c3bd7481b48b0ed9dd3d96776"
     },
     {
+      "cityId": "bratislava",
+      "city": "Bratislava",
+      "season": "summer",
+      "relativePath": "Skylines/bratislava-summer.png",
+      "title": "Bratislava Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "e39e0107f55acbf98195a3c1019aaedb2b58ed97a07c5e7da8dace2d57880140"
+    },
+    {
+      "cityId": "bratislava",
+      "city": "Bratislava",
+      "season": "winter",
+      "relativePath": "Skylines/bratislava-winter.png",
+      "title": "Bratislava Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "7238802d12b462ad6eb94de2ca1fb85888214852f12249f0052391562a58b578"
+    },
+    {
       "cityId": "brazzaville",
       "city": "Brazzaville",
       "season": "summer",
@@ -552,6 +696,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "1c4b3b3cec16cbed0f3447045afa816dcc89a16f03bd40e4264d14c5aa863149"
+    },
+    {
+      "cityId": "brisbane",
+      "city": "Brisbane",
+      "season": "summer",
+      "relativePath": "Skylines/brisbane-summer.png",
+      "title": "Brisbane Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "cbc17c27069b584d21558f386b29746c00baaa2943abf20c5c12e973a62c1e13"
+    },
+    {
+      "cityId": "brisbane",
+      "city": "Brisbane",
+      "season": "winter",
+      "relativePath": "Skylines/brisbane-winter.png",
+      "title": "Brisbane Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "262e157a5a2336ac3fdca17a8724eb1032f68ba71140a06ac2ca9ccb8f36e3fc"
     },
     {
       "cityId": "brussels",
@@ -674,6 +842,30 @@
       "sha256": "e888f431ad0071e0e82723da7dcde7e925a0e6ed5d374735391b43ceb96835b3"
     },
     {
+      "cityId": "canberra",
+      "city": "Canberra",
+      "season": "summer",
+      "relativePath": "Skylines/canberra-summer.png",
+      "title": "Canberra Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "61095a553379201791256587c15c5015a82f267c8ffca4b87fa47300a0e843a1"
+    },
+    {
+      "cityId": "canberra",
+      "city": "Canberra",
+      "season": "winter",
+      "relativePath": "Skylines/canberra-winter.png",
+      "title": "Canberra Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "448a1e10f0be1e7f0aa423e9a7cbda614d9aa00016de5a31326a76c16b147609"
+    },
+    {
       "cityId": "caracas",
       "city": "Caracas",
       "season": "summer",
@@ -696,6 +888,78 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "a200536b43eeb65aecb146dd3f17dbe565a6387882e02a2366de5d287bf96b12"
+    },
+    {
+      "cityId": "chelyabinsk",
+      "city": "Chelyabinsk",
+      "season": "summer",
+      "relativePath": "Skylines/chelyabinsk-summer.png",
+      "title": "Chelyabinsk Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "40d799736551ddcd7e97041f756c52055979a72fbef8180ab3952987b0e774e9"
+    },
+    {
+      "cityId": "chelyabinsk",
+      "city": "Chelyabinsk",
+      "season": "winter",
+      "relativePath": "Skylines/chelyabinsk-winter.png",
+      "title": "Chelyabinsk Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "30be58657cd295a1c5eab594c3c4131c5341a507b6febc58e4540c53e597af6d"
+    },
+    {
+      "cityId": "chicago",
+      "city": "Chicago",
+      "season": "summer",
+      "relativePath": "Skylines/chicago-summer.png",
+      "title": "Chicago Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "fc33c94270c89cd19892f14b0b902b0384e2c345d6e1cda730bbefb0c4abc9cb"
+    },
+    {
+      "cityId": "chicago",
+      "city": "Chicago",
+      "season": "winter",
+      "relativePath": "Skylines/chicago-winter.png",
+      "title": "Chicago Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "fd8711b19afdf6ae1587472c997cad431cd6466517877d197efb0d3db30f308c"
+    },
+    {
+      "cityId": "chisinau",
+      "city": "Chisinau",
+      "season": "summer",
+      "relativePath": "Skylines/chisinau-summer.png",
+      "title": "Chisinau Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "752c95d9c91da170cc5837131a6e858cf0f03ce098218cc890263ca6da979cb6"
+    },
+    {
+      "cityId": "chisinau",
+      "city": "Chisinau",
+      "season": "winter",
+      "relativePath": "Skylines/chisinau-winter.png",
+      "title": "Chisinau Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d0d93c7cc8a7b9d0bcf6f839b1d1318a9c1a5664f1fb5eefcfd097c47ad00d78"
     },
     {
       "cityId": "conakry",
@@ -770,6 +1034,30 @@
       "sha256": "959d16c1877c26a413d52483be8aa40c81d4ed87d610de9b39b3c85518c829e2"
     },
     {
+      "cityId": "dallas",
+      "city": "Dallas",
+      "season": "summer",
+      "relativePath": "Skylines/dallas-summer.png",
+      "title": "Dallas Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d973cd0002c6f41644817f2545b45d134da11ec8efa6640416f0a06d5a0fc73c"
+    },
+    {
+      "cityId": "dallas",
+      "city": "Dallas",
+      "season": "winter",
+      "relativePath": "Skylines/dallas-winter.png",
+      "title": "Dallas Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "5bb3c2868a43c6f9fcaa58fa3b2bad7f9ae227e0d1343864335537e26b8a2c53"
+    },
+    {
       "cityId": "damascus",
       "city": "Damascus",
       "season": "summer",
@@ -792,6 +1080,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "e730f3f42774baaa81e33cadc5f7969f451b3df52e3fbedc32a34448668f16f0"
+    },
+    {
+      "cityId": "darwin",
+      "city": "Darwin",
+      "season": "summer",
+      "relativePath": "Skylines/darwin-summer.png",
+      "title": "Darwin Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "6755eb1c01283ca136cc50dc8211b6ffc4cafbb1cbb76f2141686e3a5fb9eb6d"
+    },
+    {
+      "cityId": "darwin",
+      "city": "Darwin",
+      "season": "winter",
+      "relativePath": "Skylines/darwin-winter.png",
+      "title": "Darwin Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "15ffa0ba97fe866eb1b453a1e5b93bf9f38b7b8aaec32075738f5edf45031598"
     },
     {
       "cityId": "dhaka",
@@ -840,6 +1152,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "6a1505415a039fab7690ceff8cd4c764025821b9de6bf4ba39ce5ba7d76bdefd"
+    },
+    {
+      "cityId": "gold-coast",
+      "city": "Gold Coast",
+      "season": "summer",
+      "relativePath": "Skylines/gold-coast-summer.png",
+      "title": "Gold Coast Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "7c56b8a71144ec78377d9f62c2ec0443e0fdca94d2551af436108d16e960d5f1"
+    },
+    {
+      "cityId": "gold-coast",
+      "city": "Gold Coast",
+      "season": "winter",
+      "relativePath": "Skylines/gold-coast-winter.png",
+      "title": "Gold Coast Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "8da13e5d1513b4323ad5cb56630d3ad51f65d0f867d432e98eb0c68d490fdc3a"
     },
     {
       "cityId": "guatemala-city",
@@ -938,6 +1274,30 @@
       "sha256": "2c226d6a6326e4c421f90b6f74340e5ef589402c34d3aebb4a1fecfe030b3dc2"
     },
     {
+      "cityId": "helsinki",
+      "city": "Helsinki",
+      "season": "summer",
+      "relativePath": "Skylines/helsinki-summer.png",
+      "title": "Helsinki Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "2e480b5e325d46aba6765332d7dbc21844961f13e0ba702092ee84fa880f766f"
+    },
+    {
+      "cityId": "helsinki",
+      "city": "Helsinki",
+      "season": "winter",
+      "relativePath": "Skylines/helsinki-winter.png",
+      "title": "Helsinki Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d04a52b4af05eb1f4083b5455dd0a8577434e4e61994f3ca4050a823789ba46c"
+    },
+    {
       "cityId": "ho-chi-minh-city",
       "city": "Ho Chi Minh City",
       "season": "summer",
@@ -962,6 +1322,30 @@
       "sha256": "3d03ea0d8600222c141c99d666df046832899f9d19c5fd2c98844fc5f5c893b7"
     },
     {
+      "cityId": "hobart",
+      "city": "Hobart",
+      "season": "summer",
+      "relativePath": "Skylines/hobart-summer.png",
+      "title": "Hobart Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "18d64c064c636dcf4116d82775b2a7f6fd7da179f958444addf4b07789e97e3e"
+    },
+    {
+      "cityId": "hobart",
+      "city": "Hobart",
+      "season": "winter",
+      "relativePath": "Skylines/hobart-winter.png",
+      "title": "Hobart Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "23596b300af2fead572044b6972822312772d05311fff9265068c92863a04014"
+    },
+    {
       "cityId": "hong-kong",
       "city": "Hong Kong",
       "season": "summer",
@@ -984,6 +1368,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "0b687d8ade820daa1984001e3f835dcb78a17cc1597311be2b75b1a98a3b8e49"
+    },
+    {
+      "cityId": "houston",
+      "city": "Houston",
+      "season": "summer",
+      "relativePath": "Skylines/houston-summer.png",
+      "title": "Houston Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "9582a630903278dfa85e226a185e6d3e4f49c7c8b2a5ab1fd293996a03c7e522"
+    },
+    {
+      "cityId": "houston",
+      "city": "Houston",
+      "season": "winter",
+      "relativePath": "Skylines/houston-winter.png",
+      "title": "Houston Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "a9163a9eca63854ccf8519fff67fae59a81e173d9d2949dbc8adf1665839f7ec"
     },
     {
       "cityId": "jakarta",
@@ -1082,6 +1490,30 @@
       "sha256": "738565dfa887fa567a0b748f25f15526c87cdba550380b94d62cd1171fa8bc62"
     },
     {
+      "cityId": "kazan",
+      "city": "Kazan",
+      "season": "summer",
+      "relativePath": "Skylines/kazan-summer.png",
+      "title": "Kazan Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "641b2b516bef6394f10c6218848d3643722648ea4ee19d4528d5a4e79e8a91d8"
+    },
+    {
+      "cityId": "kazan",
+      "city": "Kazan",
+      "season": "winter",
+      "relativePath": "Skylines/kazan-winter.png",
+      "title": "Kazan Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "01806c217b5c47c3086d66215be32e4d5e530fbaa202f6f39ed16213b02e9a17"
+    },
+    {
       "cityId": "khartoum",
       "city": "Khartoum",
       "season": "summer",
@@ -1176,6 +1608,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "a7312d297189274065b9a8f212bafebd7e838aaa6752522da92b2cc3b86a3bad"
+    },
+    {
+      "cityId": "krasnoyarsk",
+      "city": "Krasnoyarsk",
+      "season": "summer",
+      "relativePath": "Skylines/krasnoyarsk-summer.png",
+      "title": "Krasnoyarsk Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "8f683c2b5a9e716d4d0d553dc7890a43c2e92a16862de748a627d1d7241f566a"
+    },
+    {
+      "cityId": "krasnoyarsk",
+      "city": "Krasnoyarsk",
+      "season": "winter",
+      "relativePath": "Skylines/krasnoyarsk-winter.png",
+      "title": "Krasnoyarsk Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "7f31e617f507123c63f0f3db1baf8e7836eb6c3c7666f5138383e648ed5aea5e"
     },
     {
       "cityId": "kuala-lumpur",
@@ -1274,6 +1730,54 @@
       "sha256": "3c489297405d2d3f4a32fea92e0c38f4ec9f286ad4b81d8feca08cd27db59b78"
     },
     {
+      "cityId": "lisbon",
+      "city": "Lisbon",
+      "season": "summer",
+      "relativePath": "Skylines/lisbon-summer.png",
+      "title": "Lisbon Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "439390c6f3120d13996ba75fb483ad00e4c6cd5f8a00e67411cedf35fe68883f"
+    },
+    {
+      "cityId": "lisbon",
+      "city": "Lisbon",
+      "season": "winter",
+      "relativePath": "Skylines/lisbon-winter.png",
+      "title": "Lisbon Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "7419c4800903bb2ef2531cdc4cfef2e364798675d844dda1c0af516c720870a0"
+    },
+    {
+      "cityId": "ljubljana",
+      "city": "Ljubljana",
+      "season": "summer",
+      "relativePath": "Skylines/ljubljana-summer.png",
+      "title": "Ljubljana Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "57770e3077cce7f6b67b8c7342cc61181df5f9c3b419d5ebd424fe41dbc3d176"
+    },
+    {
+      "cityId": "ljubljana",
+      "city": "Ljubljana",
+      "season": "winter",
+      "relativePath": "Skylines/ljubljana-winter.png",
+      "title": "Ljubljana Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "025eb41d8abd93465ee245c8b975635b074b55f873a7b6c0ffb0ee2619b0cf82"
+    },
+    {
       "cityId": "lome",
       "city": "Lomé",
       "season": "summer",
@@ -1322,6 +1826,30 @@
       "sha256": "36067ab7ba244ff9285efe40fa564324acb3732753b472c1b2cf14cca34e881d"
     },
     {
+      "cityId": "los-angeles",
+      "city": "Los Angeles",
+      "season": "summer",
+      "relativePath": "Skylines/los-angeles-summer.png",
+      "title": "Los Angeles Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "0335653d0c174b335b01a40dfcff0c2336f4acb14aca7ee614ec4fc5dbcb8a4f"
+    },
+    {
+      "cityId": "los-angeles",
+      "city": "Los Angeles",
+      "season": "winter",
+      "relativePath": "Skylines/los-angeles-winter.png",
+      "title": "Los Angeles Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "29a41303ba9537d4a6c4dedc2ddda1a40ad2f10b0ab4b8ba84bc92bc531b964e"
+    },
+    {
       "cityId": "luanda",
       "city": "Luanda",
       "season": "summer",
@@ -1368,6 +1896,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "45af1251c4ef7175045538916fb2739df07bd86c13ad4f6517b912bda43c3814"
+    },
+    {
+      "cityId": "luxembourg",
+      "city": "Luxembourg",
+      "season": "summer",
+      "relativePath": "Skylines/luxembourg-summer.png",
+      "title": "Luxembourg Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "13326ba5ac9617e94709d74604bb614fc7f98130ddd3dc0f1c829be080ecea90"
+    },
+    {
+      "cityId": "luxembourg",
+      "city": "Luxembourg",
+      "season": "winter",
+      "relativePath": "Skylines/luxembourg-winter.png",
+      "title": "Luxembourg Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "b7687a6b2d75d016e2d85993e267d265858b6ea8f49013f9a373b05555623fc3"
     },
     {
       "cityId": "madrid",
@@ -1466,6 +2018,30 @@
       "sha256": "b3da76a1921a13b7ac6e720a9ac2978569888831e87baa9e6df69dc0845434d5"
     },
     {
+      "cityId": "melbourne",
+      "city": "Melbourne",
+      "season": "summer",
+      "relativePath": "Skylines/melbourne-summer.png",
+      "title": "Melbourne Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "580afbfa40653713de3b6b57063569085cc3c205821340e7a8925a9c99acff0f"
+    },
+    {
+      "cityId": "melbourne",
+      "city": "Melbourne",
+      "season": "winter",
+      "relativePath": "Skylines/melbourne-winter.png",
+      "title": "Melbourne Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d2f711b545eadab94a8ac4e9796ed82f1a08b6a3c2123293620011bd9b08b6f4"
+    },
+    {
       "cityId": "mexico-city",
       "city": "Mexico City",
       "season": "summer",
@@ -1536,6 +2112,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "8bba630f01adffd28a12cd5225a47f8a6f05b40bfc134cc0b028990bccb7743d"
+    },
+    {
+      "cityId": "monaco",
+      "city": "Monaco",
+      "season": "summer",
+      "relativePath": "Skylines/monaco-summer.png",
+      "title": "Monaco Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "8108a9c65a3d86eb8298a8c177b7a2cf3eb791d00ee657837e679e39ef98e081"
+    },
+    {
+      "cityId": "monaco",
+      "city": "Monaco",
+      "season": "winter",
+      "relativePath": "Skylines/monaco-winter.png",
+      "title": "Monaco Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "b2afa1fc24b8acd1319be4f0cb30b5bf7e6bfcda056d2f3489c850d09e411414"
     },
     {
       "cityId": "monrovia",
@@ -1610,6 +2210,30 @@
       "sha256": "ca29c28c5bd2dbef3304b5622c358a4b281a59ecaad937d6511dcb98af99120c"
     },
     {
+      "cityId": "mumbai",
+      "city": "Mumbai",
+      "season": "summer",
+      "relativePath": "Skylines/mumbai-summer.png",
+      "title": "Mumbai Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "deaee34febca8a02bed368b971f53cf944513c8b2d7ffb54878e4ea11034b6be"
+    },
+    {
+      "cityId": "mumbai",
+      "city": "Mumbai",
+      "season": "winter",
+      "relativePath": "Skylines/mumbai-winter.png",
+      "title": "Mumbai Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "3c0a28eb799aebef6e93111bf02945ff82d97552565287e87ea4d77366492de7"
+    },
+    {
       "cityId": "n-djamena",
       "city": "N'Djamena",
       "season": "summer",
@@ -1682,6 +2306,54 @@
       "sha256": "8cde2337aaa97bf03353ad6c933e267fdcf4c061b52a23687a9faf10fad3675e"
     },
     {
+      "cityId": "new-york",
+      "city": "New York",
+      "season": "summer",
+      "relativePath": "Skylines/new-york-summer.png",
+      "title": "New York Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "153d1b1a2855cf748913d233c19b20fe93157be62cf2bf28412b01742048fb83"
+    },
+    {
+      "cityId": "new-york",
+      "city": "New York",
+      "season": "winter",
+      "relativePath": "Skylines/new-york-winter.png",
+      "title": "New York Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "228417919c525953429b3fdf820855e1dcd2519c4536813783119b15bb99eab8"
+    },
+    {
+      "cityId": "newcastle-australia",
+      "city": "Newcastle",
+      "season": "summer",
+      "relativePath": "Skylines/newcastle-australia-summer.png",
+      "title": "Newcastle Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "e380ff48be4a44cf1980cfe94cc4662e72776b6dcb421e1425a38cf5fe401743"
+    },
+    {
+      "cityId": "newcastle-australia",
+      "city": "Newcastle",
+      "season": "winter",
+      "relativePath": "Skylines/newcastle-australia-winter.png",
+      "title": "Newcastle Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "868b84cba40fe631855c456fc3a973116a19e4de27531a97e80e63ff91caf5b8"
+    },
+    {
       "cityId": "niamey",
       "city": "Niamey",
       "season": "summer",
@@ -1706,6 +2378,30 @@
       "sha256": "76cdadb7ec138d6a3aab52277bfeae71d5e47d528b6bf573a307f6ffa6bf7a02"
     },
     {
+      "cityId": "nizhny-novgorod",
+      "city": "Nizhniy Novgorod",
+      "season": "summer",
+      "relativePath": "Skylines/nizhny-novgorod-summer.png",
+      "title": "Nizhniy Novgorod Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "5b616b22da55ae5cc1542a0efd27c06cd3a8500d97852fddc4bbcaefbca76af6"
+    },
+    {
+      "cityId": "nizhny-novgorod",
+      "city": "Nizhniy Novgorod",
+      "season": "winter",
+      "relativePath": "Skylines/nizhny-novgorod-winter.png",
+      "title": "Nizhniy Novgorod Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "92d0d0ec19f1a9125bffef334ce537f1c3a299400a0560b7829620a091049133"
+    },
+    {
       "cityId": "nouakchott",
       "city": "Nouakchott",
       "season": "summer",
@@ -1728,6 +2424,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "afff806cd9edcca39865f4078e3e60655340dfe55c1ea37ec9ade08930c2b1f3"
+    },
+    {
+      "cityId": "novosibirsk",
+      "city": "Novosibirsk",
+      "season": "summer",
+      "relativePath": "Skylines/novosibirsk-summer.png",
+      "title": "Novosibirsk Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "7fd72522378192cdd2bd37c53b2672675eb32f9e02e7a83c95b2b1027413fdf5"
+    },
+    {
+      "cityId": "novosibirsk",
+      "city": "Novosibirsk",
+      "season": "winter",
+      "relativePath": "Skylines/novosibirsk-winter.png",
+      "title": "Novosibirsk Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "94f422af948ee8b2bf8e6ff4871a4bd59c5ce69ca2d454b257f201389ef15e03"
     },
     {
       "cityId": "oslo",
@@ -1826,6 +2546,54 @@
       "sha256": "5c66a553151cf6ca968a9b05591a05f5836026c01a7ebb602718e5b761109282"
     },
     {
+      "cityId": "perth",
+      "city": "Perth",
+      "season": "summer",
+      "relativePath": "Skylines/perth-summer.png",
+      "title": "Perth Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "58f6f304389c6868c93150ffa278fee35d13221f0593c4eccb33deeaca8b43bb"
+    },
+    {
+      "cityId": "perth",
+      "city": "Perth",
+      "season": "winter",
+      "relativePath": "Skylines/perth-winter.png",
+      "title": "Perth Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "7e7255669b5ee0543dd890597eb5c2d36fd751d04f069fc2a16d6e0bc1834bd2"
+    },
+    {
+      "cityId": "philadelphia",
+      "city": "Philadelphia",
+      "season": "summer",
+      "relativePath": "Skylines/philadelphia-summer.png",
+      "title": "Philadelphia Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "21c242faa4c486f214badf4449023396d210c3c9c24978bb3af67669dff94415"
+    },
+    {
+      "cityId": "philadelphia",
+      "city": "Philadelphia",
+      "season": "winter",
+      "relativePath": "Skylines/philadelphia-winter.png",
+      "title": "Philadelphia Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "05c16a64fa3993c6f875c15f8b3a588ed512919ada526b6b8d7acfae085cd151"
+    },
+    {
       "cityId": "phnom-penh",
       "city": "Phnom Penh",
       "season": "summer",
@@ -1848,6 +2616,54 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "b51b9af3740228646724d6f556211f1a0dbf42f76d98b5de42aa3463db25f6a0"
+    },
+    {
+      "cityId": "phoenix",
+      "city": "Phoenix",
+      "season": "summer",
+      "relativePath": "Skylines/phoenix-summer.png",
+      "title": "Phoenix Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "978399bc31327bf35489c795b52882c36b5c83141efd00824564523bfa49dcc3"
+    },
+    {
+      "cityId": "phoenix",
+      "city": "Phoenix",
+      "season": "winter",
+      "relativePath": "Skylines/phoenix-winter.png",
+      "title": "Phoenix Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d14c32cddedb726ebe49ccb8f30da624f7d3496f92b7a7506d6919cc9bd447d1"
+    },
+    {
+      "cityId": "podgorica",
+      "city": "Podgorica",
+      "season": "summer",
+      "relativePath": "Skylines/podgorica-summer.png",
+      "title": "Podgorica Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "5c075c4012702874e34da96df0708ce08ddea3a588fbb482fcecd6952bba779c"
+    },
+    {
+      "cityId": "podgorica",
+      "city": "Podgorica",
+      "season": "winter",
+      "relativePath": "Skylines/podgorica-winter.png",
+      "title": "Podgorica Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "2d07774d93de3bd63c0baa278145b10dc0e689bb4119f39f07de673cfdcd78d7"
     },
     {
       "cityId": "port-au-prince",
@@ -1994,6 +2810,54 @@
       "sha256": "7b1d01bc750a73e5962a86d86c573fe67724e2315cc07c41176dd28188285c31"
     },
     {
+      "cityId": "reykjavik",
+      "city": "Reykjavík",
+      "season": "summer",
+      "relativePath": "Skylines/reykjavik-summer.png",
+      "title": "Reykjavík Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d2e4a7109096a9f39c16983937e169a9a5a330e94989237da264caadbea78c5b"
+    },
+    {
+      "cityId": "reykjavik",
+      "city": "Reykjavík",
+      "season": "winter",
+      "relativePath": "Skylines/reykjavik-winter.png",
+      "title": "Reykjavík Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d2c946db40025797917575314a92ce2e5b79cda5e7ee14c8b59fd25a25c5f6c3"
+    },
+    {
+      "cityId": "riga",
+      "city": "Riga",
+      "season": "summer",
+      "relativePath": "Skylines/riga-summer.png",
+      "title": "Riga Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "90f2da5a517b14c00e1186e0ff7db6c84815b4bfd45f1748c7d2a2fb1e2ed23a"
+    },
+    {
+      "cityId": "riga",
+      "city": "Riga",
+      "season": "winter",
+      "relativePath": "Skylines/riga-winter.png",
+      "title": "Riga Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "4605e636a76af844406670756228acb90ddb3e0d3812f12bc93b5362e4a45776"
+    },
+    {
       "cityId": "riyadh",
       "city": "Riyadh",
       "season": "summer",
@@ -2040,6 +2904,150 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "dd0636ab9c4d221a89e98e845bbe0792a23a02db8f141c383c10a80cd060f9b8"
+    },
+    {
+      "cityId": "saint-petersburg",
+      "city": "Saint Petersburg",
+      "season": "summer",
+      "relativePath": "Skylines/saint-petersburg-summer.png",
+      "title": "Saint Petersburg Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "93e3685cc35859a3fb26da2ce661d1a63c5b224ff77bbf2918ff12a288d07ada"
+    },
+    {
+      "cityId": "saint-petersburg",
+      "city": "Saint Petersburg",
+      "season": "winter",
+      "relativePath": "Skylines/saint-petersburg-winter.png",
+      "title": "Saint Petersburg Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "e296baa1fa1ab59e4cc23f6d09235fa71b2dfbffe4eee22877f6dd4a155ed636"
+    },
+    {
+      "cityId": "samara",
+      "city": "Samara",
+      "season": "summer",
+      "relativePath": "Skylines/samara-summer.png",
+      "title": "Samara Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "2509567d78f91674865de5963ea214a15eca449d8ceca3f12d956b5fef180dae"
+    },
+    {
+      "cityId": "samara",
+      "city": "Samara",
+      "season": "winter",
+      "relativePath": "Skylines/samara-winter.png",
+      "title": "Samara Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "771f6b1a1f4f193ee4ef0eee7a44e0e99b0fb90f6a34d6fbcdba258673ebcac0"
+    },
+    {
+      "cityId": "san-antonio",
+      "city": "San Antonio",
+      "season": "summer",
+      "relativePath": "Skylines/san-antonio-summer.png",
+      "title": "San Antonio Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "99cc3fbd572443b364426b805ad84a0ba637c5c37e84706a70a7f992d7a8a323"
+    },
+    {
+      "cityId": "san-antonio",
+      "city": "San Antonio",
+      "season": "winter",
+      "relativePath": "Skylines/san-antonio-winter.png",
+      "title": "San Antonio Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "5c53a21d012f2a3083d1327eca0924da85835c52a29dcc129d6238500d5fcd0a"
+    },
+    {
+      "cityId": "san-diego",
+      "city": "San Diego",
+      "season": "summer",
+      "relativePath": "Skylines/san-diego-summer.png",
+      "title": "San Diego Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "1098358373b9b204c63fdef64604324f890cdf068d545e00f09a97fed3909940"
+    },
+    {
+      "cityId": "san-diego",
+      "city": "San Diego",
+      "season": "winter",
+      "relativePath": "Skylines/san-diego-winter.png",
+      "title": "San Diego Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "8bd918d4412aaa8730ab5e244a02bd7e293af1031bbdfd076e72b1d1706d9eef"
+    },
+    {
+      "cityId": "san-jose",
+      "city": "San Jose",
+      "season": "summer",
+      "relativePath": "Skylines/san-jose-summer.png",
+      "title": "San Jose Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "66bdf10bb5f1259711047b3aebd827c61ef8019eb51bb89841e463713696bcbb"
+    },
+    {
+      "cityId": "san-jose",
+      "city": "San Jose",
+      "season": "winter",
+      "relativePath": "Skylines/san-jose-winter.png",
+      "title": "San Jose Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "93943528cfb75a2b12edfc76a956b83479bf1f0725e66fd0748dfd5aac8e992a"
+    },
+    {
+      "cityId": "san-marino",
+      "city": "San Marino",
+      "season": "summer",
+      "relativePath": "Skylines/san-marino-summer.png",
+      "title": "San Marino Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "d0f1019ffa1055fce3e8ff61db488ce26421fcc614c6eddcb1db44a4dc710b5f"
+    },
+    {
+      "cityId": "san-marino",
+      "city": "San Marino",
+      "season": "winter",
+      "relativePath": "Skylines/san-marino-winter.png",
+      "title": "San Marino Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "1ad57bb8dd9cac40beefaedcb5e46fc39be29ad17399f845fed6b10d4d890491"
     },
     {
       "cityId": "sanaa",
@@ -2114,6 +3122,30 @@
       "sha256": "246129d88f6f4e9835e5d678ccaab80e538ede9dbcde7262cc1e5ce47e7ff9e1"
     },
     {
+      "cityId": "sarajevo",
+      "city": "Sarajevo",
+      "season": "summer",
+      "relativePath": "Skylines/sarajevo-summer.png",
+      "title": "Sarajevo Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "25b2d75d73ec91b33ae1ca53c98424c06e82c60c288dbbeec2160bd8ef261034"
+    },
+    {
+      "cityId": "sarajevo",
+      "city": "Sarajevo",
+      "season": "winter",
+      "relativePath": "Skylines/sarajevo-winter.png",
+      "title": "Sarajevo Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "f1b9ba13f399ad01ac87804b06c31aae1efe0fddad3f9fb213dc0e3a3eb68973"
+    },
+    {
       "cityId": "seoul",
       "city": "Seoul",
       "season": "summer",
@@ -2160,6 +3192,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "8eeaca00e2d140df42e8c27f74caffd32ffbca14e39445ac7b6654a203aba5d7"
+    },
+    {
+      "cityId": "skopje",
+      "city": "Skopje",
+      "season": "summer",
+      "relativePath": "Skylines/skopje-summer.png",
+      "title": "Skopje Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "2e136114c8205699c74c2ef89be9df8d35dd6127a370a58d5dd7e28098dab9f3"
+    },
+    {
+      "cityId": "skopje",
+      "city": "Skopje",
+      "season": "winter",
+      "relativePath": "Skylines/skopje-winter.png",
+      "title": "Skopje Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "07bf5fbf29ed792e452e212c3e33436ddedfbaeb4cb396d7af461e6ef588d401"
     },
     {
       "cityId": "sofia",
@@ -2210,6 +3266,30 @@
       "sha256": "16494739c0b327db871ec9fb1954c1d52a34e3f73d1b4bdd9593d8140bdbdb1b"
     },
     {
+      "cityId": "sydney",
+      "city": "Sydney",
+      "season": "summer",
+      "relativePath": "Skylines/sydney-summer.png",
+      "title": "Sydney Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "f182cb171201a3635c9a67c890cbdd5e86582f8c8327bd7fd40db3763e4c6c66"
+    },
+    {
+      "cityId": "sydney",
+      "city": "Sydney",
+      "season": "winter",
+      "relativePath": "Skylines/sydney-winter.png",
+      "title": "Sydney Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "40f029b0a47e7a7f2db45a2b2947c282b1d9384cb81aaf0d622a0916c128d6a9"
+    },
+    {
       "cityId": "taipei",
       "city": "Taipei",
       "season": "summer",
@@ -2232,6 +3312,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "48bb356d74a95080619733e879c195bba2598629e49da9752aa31f12a5306f57"
+    },
+    {
+      "cityId": "tallinn",
+      "city": "Tallinn",
+      "season": "summer",
+      "relativePath": "Skylines/tallinn-summer.png",
+      "title": "Tallinn Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "24eea47e3595a8e6545bdc44e129399c8d6c0a6f8b339392da6c77a59d1bbd3a"
+    },
+    {
+      "cityId": "tallinn",
+      "city": "Tallinn",
+      "season": "winter",
+      "relativePath": "Skylines/tallinn-winter.png",
+      "title": "Tallinn Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "4d8770d4d6ec5312a4cd80c933310eaf4deb8e2ad4f88652b8d8ed54ed047829"
     },
     {
       "cityId": "tashkent",
@@ -2306,6 +3410,30 @@
       "sha256": "38738b3da0a4a16ce0c8da7bc79b6353b603405c6a5061ac247763972d1e53ac"
     },
     {
+      "cityId": "tirana",
+      "city": "Tirana",
+      "season": "summer",
+      "relativePath": "Skylines/tirana-summer.png",
+      "title": "Tirana Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "5e1cf0d33ca289490aad2cd6f62d6b536d8662953a6e93f98c922d6ad0f6f513"
+    },
+    {
+      "cityId": "tirana",
+      "city": "Tirana",
+      "season": "winter",
+      "relativePath": "Skylines/tirana-winter.png",
+      "title": "Tirana Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "386882421c57b11f9c9097fa4e6a8fc4a458239de1e55f5e459478dba92bb25b"
+    },
+    {
       "cityId": "tokyo",
       "city": "Tokyo",
       "season": "summer",
@@ -2328,6 +3456,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "537294c6809c565325d58f99a986021606404c62b4f2c49ed3518d0855b157aa"
+    },
+    {
+      "cityId": "toronto",
+      "city": "Toronto",
+      "season": "summer",
+      "relativePath": "Skylines/toronto-summer.png",
+      "title": "Toronto Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "a11c72f3e60013cb82aa97532b8d6892323929242a13d5e870fc08ed0893a6fe"
+    },
+    {
+      "cityId": "toronto",
+      "city": "Toronto",
+      "season": "winter",
+      "relativePath": "Skylines/toronto-winter.png",
+      "title": "Toronto Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "736d0df8bbd08bd60e4dfdab997d54c88df908709a4919c140fb68778a2fbfdd"
     },
     {
       "cityId": "tripoli",
@@ -2354,6 +3506,102 @@
       "sha256": "411a466cb4f1f50c1a9369b4807613b789665c62b0727b2b6f84e5e675e3e482"
     },
     {
+      "cityId": "ufa",
+      "city": "Ufa",
+      "season": "summer",
+      "relativePath": "Skylines/ufa-summer.png",
+      "title": "Ufa Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "dae212382e5d529df727a6419e9b2edc2a9ba5476641bd6b84d3d6248403d359"
+    },
+    {
+      "cityId": "ufa",
+      "city": "Ufa",
+      "season": "winter",
+      "relativePath": "Skylines/ufa-winter.png",
+      "title": "Ufa Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "069522fa47ef03ad3e7d51bdebdfbd8de748f866d026084f8468dab387bd8503"
+    },
+    {
+      "cityId": "vaduz",
+      "city": "Vaduz",
+      "season": "summer",
+      "relativePath": "Skylines/vaduz-summer.png",
+      "title": "Vaduz Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "3bc90554279321b981f6d01afbdb6141c49425db63f44be9ae6a5c8c57f21f1c"
+    },
+    {
+      "cityId": "vaduz",
+      "city": "Vaduz",
+      "season": "winter",
+      "relativePath": "Skylines/vaduz-winter.png",
+      "title": "Vaduz Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "07ee46bf7543ea2f32d820b3887beaff50c6471a2c2de5ddffa1ffada25770e1"
+    },
+    {
+      "cityId": "valletta",
+      "city": "Valletta",
+      "season": "summer",
+      "relativePath": "Skylines/valletta-summer.png",
+      "title": "Valletta Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "951ac4952169b51c4dd536155d9e260c0bb69ffc88b7d8c3ce713c34eeac191f"
+    },
+    {
+      "cityId": "valletta",
+      "city": "Valletta",
+      "season": "winter",
+      "relativePath": "Skylines/valletta-winter.png",
+      "title": "Valletta Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "de62952bcf7bccfb94b57102dfb5af098133e8f9972b81cb57b029f5ec330b9d"
+    },
+    {
+      "cityId": "vatican-city",
+      "city": "Vatican City",
+      "season": "summer",
+      "relativePath": "Skylines/vatican-city-summer.png",
+      "title": "Vatican City Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "baedefc6d5b4f55ab74e7e24b5939695c3689acde0dc9f10600c3e3a63c117d0"
+    },
+    {
+      "cityId": "vatican-city",
+      "city": "Vatican City",
+      "season": "winter",
+      "relativePath": "Skylines/vatican-city-winter.png",
+      "title": "Vatican City Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "90ff4fc0d7cdfe0ef45d2ba006264abef96cc8efc0152c8815e576dff033ff31"
+    },
+    {
       "cityId": "vienna",
       "city": "Vienna",
       "season": "summer",
@@ -2376,6 +3624,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "410e60a35adbd1a2c65704b3a1a2e24cb1db37867446d6076ccf24abd76d4e83"
+    },
+    {
+      "cityId": "vilnius",
+      "city": "Vilnius",
+      "season": "summer",
+      "relativePath": "Skylines/vilnius-summer.png",
+      "title": "Vilnius Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "562c6f06f94e6a43e915f754908d2bc1731cd1ecace884e46f9343feea978205"
+    },
+    {
+      "cityId": "vilnius",
+      "city": "Vilnius",
+      "season": "winter",
+      "relativePath": "Skylines/vilnius-winter.png",
+      "title": "Vilnius Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "f25fb973b5edb476f87329d9c6811a0c9c192f5d34271bc841179643b8467065"
     },
     {
       "cityId": "warsaw",
@@ -2426,6 +3698,30 @@
       "sha256": "59cc57d03af951699a5a366e866fd1cc7f5f967d09789309874c49d4540668b4"
     },
     {
+      "cityId": "yekaterinburg",
+      "city": "Yekaterinburg",
+      "season": "summer",
+      "relativePath": "Skylines/yekaterinburg-summer.png",
+      "title": "Yekaterinburg Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "f0bb50f29740d6ffa63a08885b3b069f471ba807d19baa65d45b1358215e439c"
+    },
+    {
+      "cityId": "yekaterinburg",
+      "city": "Yekaterinburg",
+      "season": "winter",
+      "relativePath": "Skylines/yekaterinburg-winter.png",
+      "title": "Yekaterinburg Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "af11d72288be5d82a96c1fc5cbebfaa96c810f7a3ca033811c36eba2b9ef98e9"
+    },
+    {
       "cityId": "yerevan",
       "city": "Yerevan",
       "season": "summer",
@@ -2448,6 +3744,30 @@
       "license": "TrackMeUp project artwork - public publication authorized",
       "licenseUrl": "",
       "sha256": "23fe77ea056bf10909066d8bc9a10cb067fde5c0d2c10b80a02bdb3b020df959"
+    },
+    {
+      "cityId": "zagreb",
+      "city": "Zagreb",
+      "season": "summer",
+      "relativePath": "Skylines/zagreb-summer.png",
+      "title": "Zagreb Urban Wash - summer",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "c1264d1b6826fa0f81784acba05b1e3dfad1f709f79d766344fd73fe7189a7eb"
+    },
+    {
+      "cityId": "zagreb",
+      "city": "Zagreb",
+      "season": "winter",
+      "relativePath": "Skylines/zagreb-winter.png",
+      "title": "Zagreb Urban Wash - winter",
+      "author": "TrackMeUp",
+      "sourceUrl": "",
+      "license": "TrackMeUp project artwork - public publication authorized",
+      "licenseUrl": "",
+      "sha256": "fbdd1a6c22163ab4aae9b2dc0d399b22acd59fa32aea43ae27cc1b655306d556"
     }
   ],
   "sourceRuntimeTransformation": "Scaled and center-cropped to 1280x720 alpha WebP with FFmpeg/libwebp quality 82, compression level 4",

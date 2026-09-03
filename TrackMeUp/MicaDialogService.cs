@@ -1,147 +1,38 @@
 // SPDX-License-Identifier: MIT
 
 using Microsoft.UI;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using System.Diagnostics;
 using TrackMeUp.Application;
-using TrackMeUp.Controls;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
-/// <summary>Serializes native system messages and dedicated rich windows while keeping views passive.</summary>
+/// <summary>Serializes standard WinUI dialogs and dedicated rich windows while keeping views passive.</summary>
 internal sealed class MicaDialogService
 {
-    private static readonly TimeSpan BannerProgressInterval = TimeSpan.FromMilliseconds(50);
-    private readonly SemaphoreSlim _queue = new(1, 1);
-    private readonly Dictionary<TimedInfoBar, BannerCountdown> _bannerCountdowns = [];
+    private readonly DialogSessionQueue _queue = new();
     private Window? _activeWindow;
-    private bool _isShuttingDown;
-    private TimeSpan _defaultBannerTimeout = TimeSpan.FromSeconds(10);
-    private long _nextBannerGeneration;
+    private ContentDialog? _activeContentDialog;
 
-    /// <summary>Gets or sets the timeout used when a banner call does not provide an override.</summary>
-    internal TimeSpan DefaultBannerTimeout
+    /// <summary>Gets the service that shows and hides reusable toast UI components.</summary>
+    internal ToastNotificationService Notifications { get; } = new();
+
+    /// <summary>Shows one queued standard WinUI acknowledgement dialog.</summary>
+    internal async Task ShowInformativeAsync(Window owner, DialogRequest request)
     {
-        get => _defaultBannerTimeout;
-        set => _defaultBannerTimeout = ValidateBannerTimeout(value, nameof(value));
+        ValidateDialogRequest(request, requiresCloseButton: false);
+        _ = await RunContentDialogSessionAsync(owner, request, ContentDialogButton.Primary);
     }
 
-    /// <summary>Displays an informational banner in an existing passive host.</summary>
-    internal void ShowInfoBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
-        ShowBanner(host, title, message, InfoBarSeverity.Informational, timeout);
-
-    /// <summary>Displays a success banner in an existing passive host.</summary>
-    internal void ShowSuccessBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
-        ShowBanner(host, title, message, InfoBarSeverity.Success, timeout);
-
-    /// <summary>Displays a warning banner in an existing passive host.</summary>
-    internal void ShowWarningBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
-        ShowBanner(host, title, message, InfoBarSeverity.Warning, timeout);
-
-    /// <summary>Displays an error banner in an existing passive host.</summary>
-    internal void ShowErrorBanner(TimedInfoBar host, string title, string message, TimeSpan? timeout = null) =>
-        ShowBanner(host, title, message, InfoBarSeverity.Error, timeout);
-
-    private void ShowBanner(TimedInfoBar host, string title, string message, InfoBarSeverity severity, TimeSpan? timeout)
-    {
-        ArgumentNullException.ThrowIfNull(host);
-        if (!host.DispatcherQueue.HasThreadAccess)
-        {
-            // Banner state is UI-thread owned; cross-thread calls fail fast because there is no safe visual fallback.
-            throw new InvalidOperationException("Banners must be shown from their host UI thread.");
-        }
-
-        var duration = ValidateBannerTimeout(timeout ?? DefaultBannerTimeout, nameof(timeout));
-        StopBannerCountdown(host);
-        host.Dismissed -= BannerHost_Dismissed;
-        host.Dismissed += BannerHost_Dismissed;
-        host.Present(title, message, severity);
-
-        var timer = host.DispatcherQueue.CreateTimer();
-        timer.Interval = BannerProgressInterval;
-        timer.IsRepeating = true;
-        var generation = ++_nextBannerGeneration;
-        _bannerCountdowns[host] = new BannerCountdown(timer, Stopwatch.GetTimestamp(), duration, generation);
-        timer.Tick += (_, _) => UpdateBannerCountdown(host, generation);
-        timer.Start();
-    }
-
-    private void UpdateBannerCountdown(TimedInfoBar host, long generation)
-    {
-        if (!_bannerCountdowns.TryGetValue(host, out var countdown) || countdown.Generation != generation)
-        {
-            return;
-        }
-
-        // Monotonic elapsed time ignores wall-clock corrections; replaced generations make queued ticks no-ops.
-        var elapsed = Stopwatch.GetElapsedTime(countdown.StartedTimestamp);
-        var remainingRatio = Math.Clamp(1d - (elapsed.TotalMilliseconds / countdown.Duration.TotalMilliseconds), 0d, 1d);
-        host.CountdownIndicator.Value = host.CountdownIndicator.Maximum * remainingRatio;
-        if (remainingRatio > 0d)
-        {
-            return;
-        }
-
-        StopBannerCountdown(host);
-        host.Dismiss();
-    }
-
-    private void BannerHost_Dismissed(object? sender, EventArgs e)
-    {
-        if (sender is TimedInfoBar host)
-        {
-            StopBannerCountdown(host);
-        }
-    }
-
-    private void StopBannerCountdown(TimedInfoBar host)
-    {
-        if (_bannerCountdowns.Remove(host, out var countdown))
-        {
-            countdown.Timer.Stop();
-        }
-    }
-
-    private static TimeSpan ValidateBannerTimeout(TimeSpan timeout, string parameterName)
-    {
-        if (timeout <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(parameterName, timeout, "Banner timeout must be greater than zero.");
-        }
-
-        return timeout;
-    }
-
-    private sealed record BannerCountdown(
-        DispatcherQueueTimer Timer,
-        long StartedTimestamp,
-        TimeSpan Duration,
-        long Generation);
-
-    /// <summary>Shows one queued owner-modal Windows message with the native localized OK action.</summary>
-    internal async Task ShowInformativeAsync(Window owner, SystemMessageBoxRequest request)
-    {
-        ValidateSystemMessageRequest(request);
-        _ = await RunSystemMessageSessionAsync(owner, false, ownerHandle =>
-        {
-            WindowInteropService.ShowInformativeMessage(ownerHandle, request);
-            return true;
-        });
-    }
-
-    /// <summary>Shows one queued owner-modal Windows confirmation with native localized actions.</summary>
+    /// <summary>Shows one queued standard WinUI OK/Cancel confirmation.</summary>
     /// <returns><see langword="true"/> only when the user explicitly chooses OK; dismissal safely cancels.</returns>
-    internal async Task<bool> ConfirmAsync(Window owner, SystemMessageBoxRequest request)
+    internal async Task<bool> ConfirmAsync(Window owner, DialogRequest request)
     {
-        ValidateSystemMessageRequest(request);
-        return await RunSystemMessageSessionAsync(
-            owner,
-            false,
-            ownerHandle => WindowInteropService.ShowConfirmationMessage(ownerHandle, request));
+        ValidateDialogRequest(request, requiresCloseButton: true);
+        return await RunContentDialogSessionAsync(owner, request, ContentDialogButton.Close) == ContentDialogResult.Primary;
     }
 
     /// <summary>Shows provider-specific pricing and locally estimated costs in the shared acrylic dialog queue.</summary>
@@ -175,7 +66,7 @@ internal sealed class MicaDialogService
         {
             var dialog = new ActivityCalendarDialogWindow(application, theme, strings, ownerAppWindow, ownerHandle);
             var result = await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
-            if (result is null || _isShuttingDown)
+            if (result is null || _queue.IsShuttingDown)
             {
                 return null;
             }
@@ -207,8 +98,8 @@ internal sealed class MicaDialogService
         });
     }
 
-    /// <summary>Shows the searchable world-clock catalog and returns one selected city identifier.</summary>
-    internal async Task<string?> ShowWorldClockCityPickerAsync(
+    /// <summary>Shows the searchable world-clock catalog and reports whether it added at least one city.</summary>
+    internal async Task<bool> ShowWorldClockCityPickerAsync(
         ITrackMeUpApplication application,
         Window owner,
         IReadOnlyList<WorldClockCitySummary> cities,
@@ -218,7 +109,7 @@ internal sealed class MicaDialogService
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(cities);
         ArgumentNullException.ThrowIfNull(strings);
-        return await RunModalSessionAsync<string?>(owner, null, async (ownerAppWindow, ownerHandle) =>
+        return await RunModalSessionAsync(owner, false, async (ownerAppWindow, ownerHandle) =>
         {
             var dialog = new WorldClockCityPickerDialogWindow(
                 application,
@@ -226,7 +117,8 @@ internal sealed class MicaDialogService
                 theme,
                 strings,
                 ownerAppWindow,
-                ownerHandle);
+                ownerHandle,
+                Notifications);
             return await ShowDialogWindowAsync(
                 dialog,
                 dialog.WindowHandle,
@@ -273,32 +165,25 @@ internal sealed class MicaDialogService
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(strings);
-        await _queue.WaitAsync();
-        try
+        using var session = await _queue.EnterAsync();
+        if (session is null || _queue.IsShuttingDown)
         {
-            if (_isShuttingDown)
-            {
-                return OperationResult<ScreenshotStorageMigrationResult>.Failure(
-                    "operation.cancelled",
-                    "ScreenshotStorageMigrationFailed");
-            }
+            return OperationResult<ScreenshotStorageMigrationResult>.Failure(
+                "operation.cancelled",
+                "ScreenshotStorageMigrationFailed");
+        }
 
-            var dialog = new ScreenshotStorageMigrationDialogWindow(
-                application,
-                theme,
-                strings,
-                ownerAppWindow: null,
-                ownerHandle: IntPtr.Zero);
-            return await ShowDialogWindowAsync(
-                dialog,
-                dialog.WindowHandle,
-                dialog.ShowAsync,
-                dialog.DisposePlacement);
-        }
-        finally
-        {
-            _queue.Release();
-        }
+        var dialog = new ScreenshotStorageMigrationDialogWindow(
+            application,
+            theme,
+            strings,
+            ownerAppWindow: null,
+            ownerHandle: IntPtr.Zero);
+        return await ShowDialogWindowAsync(
+            dialog,
+            dialog.WindowHandle,
+            dialog.ShowAsync,
+            dialog.DisposePlacement);
     }
 
     /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
@@ -316,57 +201,81 @@ internal sealed class MicaDialogService
         });
     }
 
-    /// <summary>Stops new modal work and closes the current dedicated rich window during shutdown.</summary>
+    /// <summary>Cancels queued requests and closes active WinUI dialogs, rich windows, and toasts during shutdown.</summary>
     internal void CloseActive()
     {
-        _isShuttingDown = true;
-        if (_activeWindow is ScreenshotStorageMigrationDialogWindow migrationWindow)
-        {
-            migrationWindow.CloseForShutdown();
-            return;
-        }
-
-        _activeWindow?.Close();
+        _queue.Shutdown();
+        _activeContentDialog?.Hide();
+        CloseActiveWindow();
+        Notifications.HideAll();
     }
 
-    private async Task<TResult> RunSystemMessageSessionAsync<TResult>(
-        Window owner,
-        TResult shutdownResult,
-        Func<IntPtr, TResult> show)
+    private void CloseActiveWindow()
     {
-        ArgumentNullException.ThrowIfNull(owner);
-        ArgumentNullException.ThrowIfNull(show);
-        if (!owner.DispatcherQueue.HasThreadAccess)
+        switch (_activeWindow)
         {
-            throw new InvalidOperationException("Windows system messages must be shown from their owner UI thread.");
+            case ScreenshotStorageMigrationDialogWindow migrationWindow:
+                migrationWindow.CloseForShutdown();
+                break;
+            case WorldClockCityPickerDialogWindow pickerWindow:
+                pickerWindow.CloseForShutdown();
+                break;
+            default:
+                _activeWindow?.Close();
+                break;
+        }
+    }
+
+    private async Task<ContentDialogResult> RunContentDialogSessionAsync(
+        Window owner,
+        DialogRequest request,
+        ContentDialogButton defaultButton)
+    {
+        ValidateOwnerThread(owner);
+        using var ownerLifetime = new CancellationTokenSource();
+        ContentDialog? dialog = null;
+        void OwnerClosed(object sender, WindowEventArgs args)
+        {
+            ownerLifetime.Cancel();
+            dialog?.Hide();
         }
 
-        await _queue.WaitAsync();
-        IReadOnlyList<IntPtr>? disabledPeerWindows = null;
+        owner.Closed += OwnerClosed;
         try
         {
-            if (_isShuttingDown)
+            using var session = await _queue.EnterAsync(ownerLifetime.Token);
+            if (session is null || _queue.IsShuttingDown || ownerLifetime.IsCancellationRequested)
             {
-                return shutdownResult;
+                return ContentDialogResult.None;
             }
 
-            if (!owner.DispatcherQueue.HasThreadAccess)
+            ValidateOwnerThread(owner);
+            if (owner.Content is not FrameworkElement { XamlRoot: { } xamlRoot } ownerContent)
             {
-                throw new InvalidOperationException("Windows system messages must be shown from their owner UI thread.");
+                // A standard ContentDialog has no valid visual root before its owner content is loaded.
+                throw new InvalidOperationException("Content dialogs require a loaded owner XamlRoot.");
             }
 
-            var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-            disabledPeerWindows = WindowInteropService.DisableCurrentThreadPeerWindows(ownerHandle);
-            return show(ownerHandle);
+            dialog = CreateContentDialog(xamlRoot, ownerContent, request, defaultButton);
+            _activeContentDialog = dialog;
+            try
+            {
+                // ContentDialog is an overlay: restore a hidden tray owner so the request is reachable.
+                owner.Activate();
+                var result = await dialog.ShowAsync();
+                return _queue.IsShuttingDown || ownerLifetime.IsCancellationRequested
+                    ? ContentDialogResult.None
+                    : result;
+            }
+            finally
+            {
+                _activeContentDialog = null;
+                dialog = null;
+            }
         }
         finally
         {
-            if (disabledPeerWindows is not null)
-            {
-                WindowInteropService.RestoreWindows(disabledPeerWindows);
-            }
-
-            _queue.Release();
+            owner.Closed -= OwnerClosed;
         }
     }
 
@@ -387,36 +296,57 @@ internal sealed class MicaDialogService
         TResult shutdownResult,
         Func<AppWindow, IntPtr, Task<TResult>> showAsync)
     {
-        ArgumentNullException.ThrowIfNull(owner);
+        ValidateOwnerThread(owner);
         ArgumentNullException.ThrowIfNull(showAsync);
-        await _queue.WaitAsync();
-        var ownerContent = owner.Content as UIElement;
-        var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
+        using var ownerLifetime = new CancellationTokenSource();
+        var presenting = false;
+        void OwnerClosed(object sender, WindowEventArgs args)
+        {
+            ownerLifetime.Cancel();
+            if (presenting)
+            {
+                CloseActiveWindow();
+            }
+        }
+
+        owner.Closed += OwnerClosed;
         try
         {
-            if (_isShuttingDown)
+            using var session = await _queue.EnterAsync(ownerLifetime.Token);
+            if (session is null || _queue.IsShuttingDown || ownerLifetime.IsCancellationRequested)
             {
                 return shutdownResult;
             }
 
-            if (ownerContent is not null)
+            ValidateOwnerThread(owner);
+            var ownerContent = owner.Content as UIElement;
+            var ownerWasInteractive = ownerContent?.IsHitTestVisible ?? false;
+            presenting = true;
+            try
             {
-                ownerContent.IsHitTestVisible = false;
-            }
+                if (ownerContent is not null)
+                {
+                    ownerContent.IsHitTestVisible = false;
+                }
 
-            var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
-            var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
-            var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
-            return await showAsync(ownerAppWindow, ownerHandle);
+                var ownerHandle = WinRT.Interop.WindowNative.GetWindowHandle(owner);
+                var ownerWindowId = Win32Interop.GetWindowIdFromWindow(ownerHandle);
+                var ownerAppWindow = AppWindow.GetFromWindowId(ownerWindowId);
+                var result = await showAsync(ownerAppWindow, ownerHandle);
+                return _queue.IsShuttingDown || ownerLifetime.IsCancellationRequested ? shutdownResult : result;
+            }
+            finally
+            {
+                presenting = false;
+                if (!ownerLifetime.IsCancellationRequested && ownerContent is not null)
+                {
+                    ownerContent.IsHitTestVisible = ownerWasInteractive;
+                }
+            }
         }
         finally
         {
-            if (ownerContent is not null)
-            {
-                ownerContent.IsHitTestVisible = ownerWasInteractive;
-            }
-
-            _queue.Release();
+            owner.Closed -= OwnerClosed;
         }
     }
 
@@ -466,13 +396,42 @@ internal sealed class MicaDialogService
         }
     }
 
-    private static void ValidateSystemMessageRequest(SystemMessageBoxRequest request)
+    private static ContentDialog CreateContentDialog(
+        XamlRoot xamlRoot,
+        FrameworkElement ownerContent,
+        DialogRequest request,
+        ContentDialogButton defaultButton) =>
+        new()
+        {
+            XamlRoot = xamlRoot,
+            RequestedTheme = ownerContent.ActualTheme,
+            Language = ownerContent.Language,
+            Title = request.Title,
+            Content = request.Message,
+            PrimaryButtonText = request.PrimaryButtonText,
+            CloseButtonText = request.CloseButtonText,
+            DefaultButton = defaultButton
+        };
+
+    private static void ValidateOwnerThread(Window owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        if (!owner.DispatcherQueue.HasThreadAccess)
+        {
+            // Dialog windows share their owner's dispatcher; no background-thread UI fallback is supported.
+            throw new InvalidOperationException("Dialogs must be controlled from their owner UI thread.");
+        }
+    }
+
+    private static void ValidateDialogRequest(DialogRequest request, bool requiresCloseButton)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Title) ||
-            string.IsNullOrWhiteSpace(request.Message))
+            string.IsNullOrWhiteSpace(request.Message) ||
+            string.IsNullOrWhiteSpace(request.PrimaryButtonText) ||
+            (requiresCloseButton && string.IsNullOrWhiteSpace(request.CloseButtonText)))
         {
-            throw new ArgumentException("System message title and message are required.", nameof(request));
+            throw new ArgumentException("Dialog title, message, and required button labels must be supplied.", nameof(request));
         }
     }
 

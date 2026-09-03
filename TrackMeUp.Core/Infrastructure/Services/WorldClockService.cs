@@ -190,7 +190,7 @@ public sealed class WorldClockService : IDisposable
         _currentWeather = new WorldClockWeatherService(weatherProvider, _timeProvider, logger);
     }
 
-    /// <summary>Gets the distributed 100-capital catalog plus the approved local city.</summary>
+    /// <summary>Gets every approved city in the distributed world-clock catalog.</summary>
     public WorldClockCityCatalog GetCatalog()
     {
         var cities = LoadCities().Values
@@ -460,9 +460,9 @@ public sealed class WorldClockService : IDisposable
             }
         }
 
-        if (result.Values.Count(static city => city.IsCapital) != 100 || result.Count != 101)
+        if (result.Count == 0 || !result.ContainsKey("ho-chi-minh-city"))
         {
-            throw new InvalidDataException("The distributed world-clock catalog must contain 100 capitals plus one local city.");
+            throw new InvalidDataException("The distributed world-clock catalog must contain its approved local city.");
         }
 
         _cities = result;

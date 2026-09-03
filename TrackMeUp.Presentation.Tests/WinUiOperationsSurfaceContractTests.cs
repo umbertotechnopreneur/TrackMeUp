@@ -53,7 +53,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
-        Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar" && HasName(element, "OperationBanner"));
+        Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar");
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true);
         Assert.Contains(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
         Assert.Contains(operations.Descendants(), element => HasName(element, "SystemDisksList"));
@@ -240,56 +240,66 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain("result.Code", pluginSource, StringComparison.Ordinal);
     }
 
-    /// <summary>Guards the shared overlay, neutral single-layer Acrylic material, severity semantics, and configurable timeout.</summary>
+    /// <summary>Guards the shared opaque overlay, contained timeout indicator, severity semantics, and configurable timeout.</summary>
     [Fact]
-    public void CentralBanners_UseOneTimedAcrylicOverlay()
+    public void CentralBanners_UseOneTimedOpaqueOverlay()
     {
         var app = XDocument.Load(RepositoryFile("TrackMeUp", "App.xaml"));
         var mainWindow = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
         var banner = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "TimedInfoBar.xaml"));
         var screenshotWindow = XDocument.Load(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml"));
-        var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
+        var toastService = File.ReadAllText(RepositoryFile("TrackMeUp", "ToastNotificationService.cs"));
         var bannerSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "TimedInfoBar.xaml.cs"));
         var operationsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
         var mainWindowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var screenshotSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
 
-        var overlay = operations.Descendants().Single(element => element.Name.LocalName == "TimedInfoBar");
-        Assert.True(HasName(overlay, "OperationBanner"));
+        var overlay = mainWindow.Descendants().Single(element => HasName(element, "MainNotificationBanner"));
         Assert.Equal("Top", overlay.Attribute("VerticalAlignment")?.Value);
         Assert.Equal("100", overlay.Attributes().Single(attribute => attribute.Name.LocalName == "Canvas.ZIndex").Value);
-        Assert.True(overlay.Parent is { } parent && HasName(parent, "RootLayout"));
+        Assert.True(overlay.Parent is { } parent && HasName(parent, "RootGrid"));
+        Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar");
+        Assert.Contains("operations.Initialize(_application, _dialogs, this, MainNotificationBanner);", mainWindowSource, StringComparison.Ordinal);
+        Assert.Contains("_notificationHost = notificationHost ??", operationsSource, StringComparison.Ordinal);
         Assert.All(operations.Descendants().Where(element => element.Name.LocalName == "ScrollViewer"),
             scrollViewer => Assert.DoesNotContain(scrollViewer.Attributes(), attribute => attribute.Name.LocalName == "Grid.Row"));
 
         Assert.Single(banner.Descendants(), element => element.Name.LocalName == "InfoBar");
         var infoBar = banner.Descendants().Single(element => element.Name.LocalName == "InfoBar");
         var bannerSurface = banner.Descendants().Single(element => HasName(element, "BannerSurface"));
+        var bannerFrame = banner.Descendants().Single(element => HasName(element, "BannerFrame"));
+        var countdownTrack = banner.Descendants().Single(element => HasName(element, "CountdownTrack"));
         var progress = banner.Descendants().Single(element => element.Name.LocalName == "ProgressBar");
         Assert.Equal("620", banner.Root?.Attribute("MaxWidth")?.Value);
         Assert.Equal("Stretch", banner.Root?.Attribute("HorizontalAlignment")?.Value);
         Assert.Equal("Top", banner.Root?.Attribute("VerticalContentAlignment")?.Value);
-        Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "Border");
+        Assert.Equal("620", bannerSurface.Attribute("MaxWidth")?.Value);
+        Assert.Equal("Stretch", bannerSurface.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("{ThemeResource ToastBorderBrush}", bannerFrame.Attribute("BorderBrush")?.Value);
+        Assert.Equal("1", bannerFrame.Attribute("BorderThickness")?.Value);
+        Assert.Equal("16", bannerFrame.Attribute("CornerRadius")?.Value);
         Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "InfoBar.Resources");
-        Assert.Equal("14", infoBar.Attribute("CornerRadius")?.Value);
+        Assert.Equal("15", infoBar.Attribute("CornerRadius")?.Value);
         Assert.Equal("82", infoBar.Attribute("MinHeight")?.Value);
-        Assert.Equal("6,4,6,10", infoBar.Attribute("Padding")?.Value);
+        Assert.Equal("6,4,6,14", infoBar.Attribute("Padding")?.Value);
         Assert.DoesNotContain(banner.Descendants(), element => HasName(element, "FrostedVeil"));
         Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName.Contains("GradientBrush", StringComparison.Ordinal));
         Assert.Null(infoBar.Attribute("Background"));
         Assert.Null(infoBar.Attribute("BorderBrush"));
-        Assert.Null(infoBar.Attribute("BorderThickness"));
+        Assert.Equal("0", infoBar.Attribute("BorderThickness")?.Value);
         Assert.Null(infoBar.Attribute("Foreground"));
         Assert.Equal("Polite", infoBar.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.LiveSetting").Value);
         Assert.Equal("True", infoBar.Attribute("IsClosable")?.Value);
         Assert.Equal("BannerInfoBar_Closing", infoBar.Attribute("Closing")?.Value);
         Assert.Equal("0", bannerSurface.Attribute("Opacity")?.Value);
         Assert.Equal("Top", bannerSurface.Attribute("VerticalAlignment")?.Value);
-        Assert.Equal("2", progress.Attribute("Height")?.Value);
-        Assert.Equal("16,0,16,8", progress.Attribute("Margin")?.Value);
-        Assert.Equal("{ThemeResource DividerStrokeColorDefaultBrush}", progress.Attribute("Background")?.Value);
-        Assert.Equal("{ThemeResource TextFillColorSecondaryBrush}", progress.Attribute("Foreground")?.Value);
+        Assert.Equal("18,0,18,9", countdownTrack.Attribute("Margin")?.Value);
+        Assert.Equal("{ThemeResource ToastCountdownTrackBrush}", countdownTrack.Attribute("Background")?.Value);
+        Assert.Equal("Bottom", countdownTrack.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("3", progress.Attribute("Height")?.Value);
+        Assert.Equal("Transparent", progress.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource ToastCountdownForegroundBrush}", progress.Attribute("Foreground")?.Value);
         Assert.Equal("Raw", progress.Attributes().Single(attribute => attribute.Name.LocalName == "AutomationProperties.AccessibilityView").Value);
         Assert.DoesNotContain(banner.Descendants().Attributes(), attribute =>
             attribute.Value.StartsWith('#'));
@@ -298,21 +308,23 @@ public sealed class WinUiOperationsSurfaceContractTests
             HasKey(element, "TimedInfoBarGlassBorderBrush") ||
             HasKey(element, "TimedInfoBarGlassVeilBrush"));
 
-        Assert.Contains("TimeSpan.FromSeconds(10)", service, StringComparison.Ordinal);
-        Assert.Contains("TimeSpan? timeout = null", service, StringComparison.Ordinal);
-        Assert.Contains("ValidateBannerTimeout", service, StringComparison.Ordinal);
-        Assert.Contains("DispatcherQueueTimer", service, StringComparison.Ordinal);
-        Assert.Contains("Stopwatch.GetElapsedTime", service, StringComparison.Ordinal);
-        Assert.Contains("host.DispatcherQueue.HasThreadAccess", service, StringComparison.Ordinal);
-        Assert.Contains("host.Dismissed", service, StringComparison.Ordinal);
-        Assert.Contains("countdown.Generation != generation", service, StringComparison.Ordinal);
-        Assert.Contains("TimeSpan.FromMilliseconds(80)", bannerSource, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromSeconds(10)", toastService, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan? timeout = null", toastService, StringComparison.Ordinal);
+        Assert.Contains("ValidateTimeout", toastService, StringComparison.Ordinal);
+        Assert.Contains("DispatcherQueueTimer", toastService, StringComparison.Ordinal);
+        Assert.Contains("Stopwatch.GetElapsedTime", toastService, StringComparison.Ordinal);
+        Assert.Contains("host.DispatcherQueue.HasThreadAccess", toastService, StringComparison.Ordinal);
+        Assert.Contains("host.Dismissed", toastService, StringComparison.Ordinal);
+        Assert.Contains("countdown.Timer.Tick -= countdown.Tick;", toastService, StringComparison.Ordinal);
+        Assert.Contains("ValidateHostThread(host);", toastService, StringComparison.Ordinal);
+        Assert.Contains("countdown.Generation != generation", toastService, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromMilliseconds(50)", toastService, StringComparison.Ordinal);
         Assert.Contains("private const float BannerElevation = 18f;", bannerSource, StringComparison.Ordinal);
         Assert.Contains("BannerInfoBar.Severity = severity;", bannerSource, StringComparison.Ordinal);
-        Assert.Contains("InfoBarSeverity.Informational", service, StringComparison.Ordinal);
-        Assert.Contains("InfoBarSeverity.Success", service, StringComparison.Ordinal);
-        Assert.Contains("InfoBarSeverity.Warning", service, StringComparison.Ordinal);
-        Assert.Contains("InfoBarSeverity.Error", service, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Informational", toastService, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Success", toastService, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Warning", toastService, StringComparison.Ordinal);
+        Assert.Contains("InfoBarSeverity.Error", toastService, StringComparison.Ordinal);
         Assert.Contains("args.Cancel = true;", bannerSource, StringComparison.Ordinal);
         Assert.Contains("new UISettings().AnimationsEnabled", bannerSource, StringComparison.Ordinal);
         Assert.Contains("_transitionGeneration", bannerSource, StringComparison.Ordinal);
@@ -327,9 +339,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("IsFrameAnalysisNotification(notification)", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains("\"Notification.AiAnalysisFailed.Title\" or", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains("\"Notification.AiDailyLimitReached.Title\";", mainWindowSource, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowErrorBanner(MainNotificationBanner, title, message);", mainWindowSource, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowSuccessBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowErrorBanner(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowError(MainNotificationBanner, title, message);", mainWindowSource, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowSuccess(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowError(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
         Assert.Equal(6, CountOccurrences(operationsSource, "OwnerWindow, OperationBanner"));
     }
 
@@ -478,7 +490,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml.cs"));
 
         Assert.Contains("Dialogs.ConfirmAsync(", source, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxRequest.Confirmation(", source, StringComparison.Ordinal);
+        Assert.Contains("DialogRequest.Confirmation(", source, StringComparison.Ordinal);
         Assert.Contains("if (!confirmed)", source, StringComparison.Ordinal);
         Assert.Contains("new RetentionRequest(Execute: true, Confirmed: true)", source, StringComparison.Ordinal);
     }
@@ -494,7 +506,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Equal("AtomicNukeButton_Click", button.Attribute("Click")?.Value);
         Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.AtomicNuke.Description");
         Assert.Equal(2, CountOccurrences(source, "Dialogs.ConfirmAsync("));
-        Assert.Equal(2, CountOccurrences(source, "SystemMessageBoxRequest.Confirmation("));
+        Assert.Equal(2, CountOccurrences(source, "DialogRequest.Confirmation("));
         Assert.Contains("new AtomicResetRequest(firstConfirmation, finalConfirmation)", source, StringComparison.Ordinal);
         Assert.Contains("PrepareAtomicResetAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Directory.Delete", source, StringComparison.Ordinal);
@@ -503,7 +515,7 @@ public sealed class WinUiOperationsSurfaceContractTests
 
     /// <summary>Prevents view code from bypassing the single queued dialog engine.</summary>
     [Fact]
-    public void WindowViews_DoNotConstructAdHocSystemOrContentDialogs()
+    public void WindowViews_UseOnlyTheDedicatedStandardDialogService()
     {
         var trackMeUpDirectory = Path.GetDirectoryName(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"))!;
         var sources = Directory.EnumerateFiles(trackMeUpDirectory, "*.cs", SearchOption.AllDirectories)
@@ -513,16 +525,19 @@ public sealed class WinUiOperationsSurfaceContractTests
         foreach (var path in sources)
         {
             var source = File.ReadAllText(path);
-            Assert.DoesNotContain("new ContentDialog", source, StringComparison.Ordinal);
+            if (!path.EndsWith("MicaDialogService.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                Assert.DoesNotContain("new ContentDialog", source, StringComparison.Ordinal);
+            }
             Assert.DoesNotContain("MessageBox.Show", source, StringComparison.Ordinal);
             Assert.DoesNotContain("new MessageDialog", source, StringComparison.Ordinal);
             Assert.DoesNotContain("MessageBoxW", source, StringComparison.Ordinal);
         }
     }
 
-    /// <summary>Guards the queued native-message contract while retaining dedicated rich windows.</summary>
+    /// <summary>Guards the queued standard WinUI dialog contract while retaining dedicated rich windows.</summary>
     [Fact]
-    public void DialogEngine_QueuesNativeMessagesAndKeepsRichWindowsDedicated()
+    public void DialogEngine_QueuesContentDialogsAndKeepsRichWindowsDedicated()
     {
         var service = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
         var interop = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "WindowInteropService.cs"));
@@ -533,37 +548,38 @@ public sealed class WinUiOperationsSurfaceContractTests
         var schedule = File.ReadAllText(RepositoryFile("TrackMeUp", "ScheduleWindow.xaml.cs"));
         var projectDirectory = Path.GetDirectoryName(RepositoryFile("TrackMeUp", "MicaDialogService.cs"))!;
 
-        Assert.Contains("SemaphoreSlim", service, StringComparison.Ordinal);
-        Assert.Contains("RunSystemMessageSessionAsync", service, StringComparison.Ordinal);
+        Assert.Contains("DialogSessionQueue", service, StringComparison.Ordinal);
+        Assert.Contains("_queue.EnterAsync(ownerLifetime.Token)", service, StringComparison.Ordinal);
+        Assert.Contains("_queue.Shutdown();", service, StringComparison.Ordinal);
+        Assert.Contains("_activeContentDialog?.Hide();", service, StringComparison.Ordinal);
+        Assert.Contains("Notifications.HideAll();", service, StringComparison.Ordinal);
+        Assert.Contains("owner.Closed += OwnerClosed;", service, StringComparison.Ordinal);
+        Assert.Contains("owner.Closed -= OwnerClosed;", service, StringComparison.Ordinal);
+        Assert.Contains("RequestedTheme = ownerContent.ActualTheme", service, StringComparison.Ordinal);
+        Assert.Contains("Language = ownerContent.Language", service, StringComparison.Ordinal);
+        Assert.Contains("RunContentDialogSessionAsync", service, StringComparison.Ordinal);
         Assert.Contains("owner.DispatcherQueue.HasThreadAccess", service, StringComparison.Ordinal);
-        Assert.Contains("WinRT.Interop.WindowNative.GetWindowHandle(owner)", service, StringComparison.Ordinal);
-        Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(ownerHandle)", service, StringComparison.Ordinal);
+        Assert.Contains("Content dialogs require a loaded owner XamlRoot", service, StringComparison.Ordinal);
+        Assert.Contains("XamlRoot = xamlRoot", service, StringComparison.Ordinal);
+        Assert.Contains("PrimaryButtonText = request.PrimaryButtonText", service, StringComparison.Ordinal);
+        Assert.Contains("CloseButtonText = request.CloseButtonText", service, StringComparison.Ordinal);
+        Assert.Contains("ContentDialogResult.Primary", service, StringComparison.Ordinal);
+        Assert.Contains("ValidateDialogRequest", service, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.DisableCurrentThreadPeerWindows(dialogHandle)", service, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.RestoreWindows(disabledPeerWindows)", service, StringComparison.Ordinal);
-        Assert.Contains("WindowInteropService.ShowInformativeMessage(ownerHandle, request)", service, StringComparison.Ordinal);
-        Assert.Contains("WindowInteropService.ShowConfirmationMessage(ownerHandle, request)", service, StringComparison.Ordinal);
         Assert.DoesNotContain("ShowSystemWarningAsync", service, StringComparison.Ordinal);
         Assert.DoesNotContain("MicaDialogRequest", service, StringComparison.Ordinal);
         Assert.DoesNotContain("MicaDialogWindow", service, StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(projectDirectory, "MicaDialogWindow.xaml")));
         Assert.False(File.Exists(Path.Combine(projectDirectory, "MicaDialogWindow.xaml.cs")));
-        Assert.Contains("public enum SystemMessageBoxSeverity", interop, StringComparison.Ordinal);
-        Assert.Contains("public sealed record SystemMessageBoxRequest", interop, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxSeverity.Information", interop, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxSeverity.Warning", interop, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxSeverity.Error", interop, StringComparison.Ordinal);
         Assert.Contains("EnumThreadWindows", interop, StringComparison.Ordinal);
         Assert.Contains("EnableWindow(windowHandle, false)", interop, StringComparison.Ordinal);
         Assert.Contains("EnableWindow(windowHandle, true)", interop, StringComparison.Ordinal);
-        Assert.Contains("MessageBoxW", interop, StringComparison.Ordinal);
-        Assert.Contains("MbOk | SeverityFlag(request.Severity) | MbSetForeground | MbTopMost", interop, StringComparison.Ordinal);
-        Assert.Contains("MbOkCancel | MbDefaultButton2 | SeverityFlag(request.Severity) | MbSetForeground | MbTopMost", interop, StringComparison.Ordinal);
-        Assert.Contains("IdOk => true", interop, StringComparison.Ordinal);
-        Assert.Contains("IdCancel => false", interop, StringComparison.Ordinal);
-        Assert.Contains("_ => false", interop, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxRequest.Informative(", main, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxRequest.Informative(", app, StringComparison.Ordinal);
-        Assert.Contains("SystemMessageBoxRequest.Confirmation(", schedule, StringComparison.Ordinal);
+        Assert.DoesNotContain("MessageBoxW", interop, StringComparison.Ordinal);
+        Assert.DoesNotContain("SystemMessageBox", interop, StringComparison.Ordinal);
+        Assert.Contains("DialogRequest.Informative(", main, StringComparison.Ordinal);
+        Assert.Contains("DialogRequest.Informative(", app, StringComparison.Ordinal);
+        Assert.Contains("DialogRequest.Confirmation(", schedule, StringComparison.Ordinal);
         Assert.DoesNotContain("MicaDialogRequest", main, StringComparison.Ordinal);
         Assert.DoesNotContain("MicaDialogRequest", app, StringComparison.Ordinal);
         Assert.DoesNotContain("MicaDialogRequest", schedule, StringComparison.Ordinal);
@@ -573,6 +589,10 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("DrainApplicationNotificationsAsync", main, StringComparison.Ordinal);
         Assert.Contains("Enabled: true, HasKey: false", main, StringComparison.Ordinal);
         Assert.Contains("private readonly MicaDialogService _dialogs = new();", app, StringComparison.Ordinal);
+        var screenshot = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        Assert.DoesNotContain("MicaDialogService _dialogs = new()", screenshot, StringComparison.Ordinal);
+        Assert.Contains("_dialogs = dialogs ??", screenshot, StringComparison.Ordinal);
+        Assert.Equal(3, CountOccurrences(app, "new ScreenshotWindow(application, _dialogs,"));
         Assert.Contains("_dialogs.ConfirmAsync(", schedule, StringComparison.Ordinal);
         Assert.Contains("ShowAiConnectionTestAsync", service, StringComparison.Ordinal);
         Assert.Contains("new AiConnectionTestDialogWindow", service, StringComparison.Ordinal);
@@ -591,6 +611,30 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains(connectionDialogXaml.Descendants(), element => element.Attribute("Tag")?.Value == "AiConnectionTest.Eyebrow");
         Assert.Contains(connectionDialogXaml.Descendants(), element => element.Attribute("Tag")?.Value == "AiConnectionTest.Console");
         Assert.Contains(connectionDialogXaml.Descendants(), element => element.Attribute("Tag")?.Value == "AiConnectionTest.Cancel");
+    }
+
+    /// <summary>Opacity never applies to the shared notification overlay or its ancestors.</summary>
+    [Theory]
+    [InlineData("MainWindow", "MainNotificationBanner", "MainWindowOpacityPercent")]
+    [InlineData("WorldClockWindow", "WorldClockNotificationBanner", "WorldClockWindowOpacityPercent")]
+    public void WindowOpacity_ExcludesTheSharedNotificationLayer(string windowName, string bannerName, string opacitySetting)
+    {
+        var window = XDocument.Load(RepositoryFile("TrackMeUp", windowName + ".xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", windowName + ".xaml.cs"));
+        var root = window.Descendants().Single(element => HasName(element, "RootGrid"));
+        var content = root.Elements().Single(element => HasName(element, "WindowContent"));
+        var banner = root.Elements().Single(element => HasName(element, bannerName));
+
+        Assert.Same(root, banner.Parent);
+        Assert.DoesNotContain(content.Descendants(), element => element.Name.LocalName == "TimedInfoBar");
+        Assert.Null(root.Attribute("Opacity"));
+        Assert.DoesNotContain("RootGrid.Opacity =", source, StringComparison.Ordinal);
+        Assert.Contains($"WindowContent.Opacity = settings.{opacitySetting} / 100d;", source, StringComparison.Ordinal);
+        Assert.Equal("2", content.Attribute("Grid.RowSpan")?.Value);
+        var outerRows = root.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions");
+        var contentRows = content.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions");
+        Assert.Equal(outerRows.Elements().Select(row => row.Attribute("Height")?.Value),
+            contentRows.Elements().Select(row => row.Attribute("Height")?.Value));
     }
 
     private static bool HasName(XElement element, string value)

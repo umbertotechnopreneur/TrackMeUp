@@ -87,9 +87,11 @@ public sealed partial class RetentionOperationsControl : UserControl
             RenderRetentionPreview(preview, executed: false);
             var confirmed = await Context.Dialogs.ConfirmAsync(
                 Context.OwnerWindow,
-                SystemMessageBoxRequest.Confirmation(
+                DialogRequest.Confirmation(
                     _strings.Translate("Operations.Retention.Confirm.Title"),
-                    _strings.Format("Operations.Retention.Confirm.Message", preview.FileCount, FormatBytes(preview.TotalBytes))));
+                    _strings.Format("Operations.Retention.Confirm.Message", preview.FileCount, FormatBytes(preview.TotalBytes)),
+                    _strings.Translate("Dialog.Ok"),
+                    _strings.Translate("Dialog.Cancel")));
             if (!confirmed)
             {
                 Context.ShowStatus(

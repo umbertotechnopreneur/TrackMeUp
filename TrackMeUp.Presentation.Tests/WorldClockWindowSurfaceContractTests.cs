@@ -221,7 +221,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("WindowStateKeys.WorldClocks", source, StringComparison.Ordinal);
         Assert.Contains("GetWorldClocksAsync", source, StringComparison.Ordinal);
         Assert.Contains("ConvertWorldClocksAsync", source, StringComparison.Ordinal);
-        Assert.Contains("AddWorldClockAsync", source, StringComparison.Ordinal);
+        Assert.Contains("ShowWorldClockCityPickerAsync", source, StringComparison.Ordinal);
         Assert.Contains("RemoveWorldClockAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.", source, StringComparison.Ordinal);
@@ -345,7 +345,7 @@ public sealed class WorldClockWindowSurfaceContractTests
 
         Assert.Contains("_window.ShowWorldClockOpenFailure();", appSource, StringComparison.Ordinal);
         Assert.Contains("internal void ShowWorldClockOpenFailure()", mainSource, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowWarningBanner(", mainSource, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowWarning(", mainSource, StringComparison.Ordinal);
         Assert.Contains("T(\"WorldClock.OpenFailed\")", mainSource, StringComparison.Ordinal);
         Assert.Equal(10, catalogs.Length);
         Assert.All(catalogs, catalog =>
@@ -530,7 +530,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("\"configuration-required\" when status.ReasonCode == \"invalid-api-key\" => null", source, StringComparison.Ordinal);
         Assert.Contains("\"partial\" => \"WorldClock.WeatherStatus.Partial\"", source, StringComparison.Ordinal);
         Assert.Contains("\"unavailable\" => \"WorldClock.WeatherStatus.Unavailable\"", source, StringComparison.Ordinal);
-        Assert.Contains("_dialogs.ShowWarningBanner(", source, StringComparison.Ordinal);
+        Assert.Contains("_dialogs.Notifications.ShowWarning(", source, StringComparison.Ordinal);
         Assert.Contains("(\"available\", _) => (\"WorldClock.Options.Weather.ApiKeyStatus.Ready\", \"WeatherStatusReady\")", optionsSource, StringComparison.Ordinal);
         Assert.Contains("(\"WorldClock.Options.Weather.ApiKeyStatus.Missing\", \"WeatherStatusNeedsAttention\")", optionsSource, StringComparison.Ordinal);
         Assert.Contains("(\"WorldClock.Options.Weather.ApiKeyStatus.Invalid\", \"WeatherStatusInvalid\")", optionsSource, StringComparison.Ordinal);
@@ -713,8 +713,37 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Equal("True", comboBox.Attribute("IsTextSearchEnabled")?.Value);
         Assert.Equal("CityComboBox_SelectionChanged", comboBox.Attribute("SelectionChanged")?.Value);
         Assert.Contains("CityComboBox.ItemsSource = _options;", source, StringComparison.Ordinal);
+        Assert.Contains(picker.Descendants(), element => HasName(element, "AddAnotherButton") && element.Attribute("Click")?.Value == "AddAnotherButton_Click");
+        Assert.Contains(picker.Descendants(), element => HasName(element, "PickerNotificationBanner"));
+        Assert.Contains("await _application.AddWorldClockAsync(option.Id, _lifetimeCancellation.Token);", source, StringComparison.Ordinal);
+        Assert.Contains("_notifications.ShowSuccess(", source, StringComparison.Ordinal);
+        Assert.Contains("WorldClock.AddedTitle", source, StringComparison.Ordinal);
+        Assert.Contains("await AddSelectedCityAsync(closeWhenAdded: false);", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.WorldClockCityPicker", source, StringComparison.Ordinal);
-        Assert.Contains("await _placement.TrySaveForCloseAsync(CancellationToken.None);", source, StringComparison.Ordinal);
+        Assert.Contains("await _placement.TrySaveForCloseAsync(_lifetimeCancellation.Token);", source, StringComparison.Ordinal);
+        Assert.Contains("if (IsClosing || _isAdding)", source, StringComparison.Ordinal);
+        Assert.Contains("CancelButton.IsEnabled = canInteract;", source, StringComparison.Ordinal);
+        Assert.Contains("CityComboBox.IsEnabled = canInteract;", source, StringComparison.Ordinal);
+        Assert.Contains("if (_allowClose)", source, StringComparison.Ordinal);
+        Assert.Contains("internal void CloseForShutdown()", source, StringComparison.Ordinal);
+        Assert.Contains("_lifetimeCancellation.Cancel();", source, StringComparison.Ordinal);
+        Assert.Contains("if (!IsClosing)", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Routine clock refreshes do not shorten action feedback or replay an unchanged warning.</summary>
+    [Fact]
+    public void SnapshotRefresh_DoesNotDismissActionToastsOrRepeatUnchangedWeatherWarnings()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var start = source.IndexOf("private void ApplySnapshot(", StringComparison.Ordinal);
+        var end = source.IndexOf("private void UpdateWeatherStatus(", start, StringComparison.Ordinal);
+        var applySnapshot = source[start..end];
+
+        Assert.DoesNotContain(".Dismiss()", applySnapshot, StringComparison.Ordinal);
+        Assert.DoesNotContain("Notifications.Hide", applySnapshot, StringComparison.Ordinal);
+        Assert.DoesNotContain("WorldClockNotificationBanner.Dismiss()", source, StringComparison.Ordinal);
+        Assert.Contains("if (messageKey == _lastWeatherMessageKey)", source, StringComparison.Ordinal);
+        Assert.Contains("_lastWeatherMessageKey = messageKey;", source, StringComparison.Ordinal);
     }
 
     [Fact]

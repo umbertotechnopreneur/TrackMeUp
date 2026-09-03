@@ -10,36 +10,50 @@
     Visibility="Collapsed">
     <Grid
         x:Name="BannerSurface"
+        MaxWidth="620"
         Opacity="0"
+        HorizontalAlignment="Stretch"
         VerticalAlignment="Top">
         <Grid.Shadow>
             <ThemeShadow />
         </Grid.Shadow>
-        <InfoBar
-            x:Name="BannerInfoBar"
-            AutomationProperties.LiveSetting="Polite"
-            Closing="BannerInfoBar_Closing"
-            CornerRadius="14"
-            IsClosable="True"
-            IsOpen="False"
-            MinHeight="82"
-            Padding="6,4,6,10"
-            local:InfoBarElevationBehavior.IsEnabled="False" />
-        <ProgressBar
-            x:Name="CountdownProgress"
-            Canvas.ZIndex="1"
-            Height="2"
-            Margin="16,0,16,8"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Bottom"
-            AutomationProperties.AccessibilityView="Raw"
-            Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-            CornerRadius="1"
-            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            IsHitTestVisible="False"
-            Maximum="100"
-            Minimum="0"
-            Opacity="0.72"
-            Value="0" />
+        <Border
+            x:Name="BannerFrame"
+            BorderBrush="{ThemeResource ToastBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="16">
+            <Grid>
+                <InfoBar
+                    x:Name="BannerInfoBar"
+                    AutomationProperties.LiveSetting="Polite"
+                    BorderThickness="0"
+                    Closing="BannerInfoBar_Closing"
+                    CornerRadius="15"
+                    IsClosable="True"
+                    IsOpen="False"
+                    MinHeight="82"
+                    Padding="6,4,6,14"
+                    local:InfoBarElevationBehavior.IsEnabled="False" />
+                <Border
+                    x:Name="CountdownTrack"
+                    Margin="18,0,18,9"
+                    VerticalAlignment="Bottom"
+                    Background="{ThemeResource ToastCountdownTrackBrush}"
+                    CornerRadius="2"
+                    IsHitTestVisible="False">
+                    <ProgressBar
+                        x:Name="CountdownProgress"
+                        Height="3"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.AccessibilityView="Raw"
+                        Background="Transparent"
+                        CornerRadius="2"
+                        Foreground="{ThemeResource ToastCountdownForegroundBrush}"
+                        Maximum="100"
+                        Minimum="0"
+                        Value="0" />
+                </Border>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

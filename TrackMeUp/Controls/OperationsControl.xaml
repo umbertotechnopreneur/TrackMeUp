@@ -253,12 +253,6 @@
             </Grid>
         </ScrollViewer>
 
-        <controls:TimedInfoBar
-            x:Name="OperationBanner"
-            Canvas.ZIndex="100"
-            Margin="0,0,18,0"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Top" />
         <ProgressRing
             x:Name="OperationProgress"
             Canvas.ZIndex="101"
