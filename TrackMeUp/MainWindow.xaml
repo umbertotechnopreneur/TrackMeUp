@@ -24,14 +24,47 @@
                 <RowDefinition Height="48" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <Image
-                x:Name="PlayerBackgroundImage"
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="NarrowPlayer">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="0" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="AiMonthlySpendPanel.(Grid.Row)" Value="1" />
+                            <Setter Target="AiMonthlySpendPanel.(Grid.Column)" Value="0" />
+                            <Setter Target="AiMonthlySpendPanel.(Grid.ColumnSpan)" Value="3" />
+                            <Setter Target="AiMonthlySpendPanel.Margin" Value="0,8,0,0" />
+                            <Setter Target="AiMonthlySpendPanel.HorizontalAlignment" Value="Left" />
+                            <Setter Target="ActiveMetricPanel.(Grid.Row)" Value="1" />
+                            <Setter Target="ActiveMetricPanel.(Grid.Column)" Value="0" />
+                            <Setter Target="ActiveMetricPanel.(Grid.ColumnSpan)" Value="5" />
+                            <Setter Target="ActiveMetricPanel.HorizontalAlignment" Value="Left" />
+                            <Setter Target="ActiveMetricPanel.Margin" Value="0,6,0,0" />
+                            <Setter Target="ClickMetricPanel.HorizontalAlignment" Value="Right" />
+                            <Setter Target="ActiveMetricColumn.Width" Value="0" />
+                            <Setter Target="ActiveMetricSeparatorColumn.Width" Value="0" />
+                            <Setter Target="ActiveMetricSeparator.Visibility" Value="Collapsed" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="WidePlayer">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="620" />
+                        </VisualState.StateTriggers>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <!-- A background brush paints the arranged bounds without contributing the bitmap's natural size. -->
+            <Border
+                x:Name="PlayerBackgroundSurface"
                 Grid.RowSpan="2"
                 AutomationProperties.AccessibilityView="Raw"
                 IsHitTestVisible="False"
-                Opacity="0.1"
-                Source="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png"
-                Stretch="UniformToFill" />
+                Opacity="0.1">
+                <Border.Background>
+                    <ImageBrush ImageSource="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png" Stretch="UniformToFill" />
+                </Border.Background>
+            </Border>
             <Grid
                 x:Name="DragRegion"
                 Height="48">
@@ -285,9 +318,10 @@
                 </Border.Resources>
                 <Grid>
                     <ScrollViewer
+                        HorizontalContentAlignment="Stretch"
                         HorizontalScrollBarVisibility="Disabled"
                         HorizontalScrollMode="Disabled"
-                        VerticalScrollBarVisibility="Hidden"
+                        VerticalScrollBarVisibility="Auto"
                         VerticalScrollMode="Enabled">
                         <Grid Padding="0,0,6,0" RowSpacing="6">
                             <Grid.RowDefinitions>
@@ -557,6 +591,10 @@
                             </Grid>
 
                             <Grid Grid.Row="1" Margin="0,2,0,1" ColumnSpacing="14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*" />
@@ -739,12 +777,16 @@
                         <StackPanel Grid.Row="1" Spacing="6">
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                             <Grid Margin="0,3,4,1" ColumnSpacing="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="1" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="1" />
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition x:Name="ActiveMetricSeparatorColumn" Width="1" />
+                                    <ColumnDefinition x:Name="ActiveMetricColumn" Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource PlayerInputBrush}" Glyph="&#xE765;" />
@@ -754,15 +796,15 @@
                                     </StackPanel>
                                 </StackPanel>
                                 <Rectangle Grid.Column="1" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />
-                                <StackPanel Grid.Column="2" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                                <StackPanel x:Name="ClickMetricPanel" Grid.Column="2" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
                                     <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource PlayerAccentTextBrush}" Glyph="&#xE962;" />
                                     <StackPanel>
                                         <TextBlock Tag="ClicksLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="CLICKS" />
                                         <TextBlock x:Name="ClickCountText" FontSize="19" FontWeight="SemiBold" Foreground="{ThemeResource PlayerAccentTextBrush}" Text="0" />
                                     </StackPanel>
                                 </StackPanel>
-                                <Rectangle Grid.Column="3" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />
-                                <StackPanel Grid.Column="4" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                                <Rectangle x:Name="ActiveMetricSeparator" Grid.Column="3" Width="1" Height="30" VerticalAlignment="Center" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.55" />
+                                <StackPanel x:Name="ActiveMetricPanel" Grid.Column="4" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
                                     <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Glyph="&#xE823;" />
                                     <StackPanel>
                                         <TextBlock Tag="ActiveLabel" CharacterSpacing="80" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="ACTIVE" />
@@ -847,6 +889,7 @@
                                         VerticalAlignment="Center"
                                         FontSize="10"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        TextWrapping="Wrap"
                                         Text="Last 30 minutes · 1 minute bars" />
                                     <TextBlock
                                         x:Name="ActivityScoreTelemetryText"
