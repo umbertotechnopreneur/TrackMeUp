@@ -26,6 +26,17 @@ The technical `winter` id does not force European winter imagery. Tropical and e
 
 The 50-city expansion was generated with the built-in image-generation workflow, one independent call for each city-season pair. It completes the geographic-European capital coverage and adds ten supported cities each for the United States, Australia, and Russia. The selected outputs remain bound to their per-file hashes in the generation manifest; rejected variants were not copied into `masters-v1/`.
 
+## 2026-09-04 catalog expansion
+
+The 33-city expansion adds Ferrara, Domegge di Cadore, and Bologna, ten further
+European cities, and twenty South American cities. Every summer/winter master
+was generated independently with the built-in image-generation workflow from
+the shared Urban Wash template and city-specific landmark, palette, and
+climate cues. No third-party image inputs were supplied. The selected outputs
+were visually reviewed for recognizable landmarks, seasonally plausible
+treatment, transparent edges, and the quiet celestial-orb safe area before
+their checksums were bound into the generation manifest.
+
 ## Selection and validation
 
 - Selected masters are stored under `masters-v1/` as `<city-id>-<season>.png`.

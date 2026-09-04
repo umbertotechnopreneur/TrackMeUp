@@ -23,6 +23,7 @@ RUNTIME_SCHEMA_VERSION = 1
 PACKAGED_SCHEMA_VERSION = 1
 STYLE_ID = "urban-wash-v1"
 SKYLINE_DIRECTORY_NAME = "Skylines"
+RUNTIME_DIRECTORY_NAME = "runtime-v4"
 PACKAGED_MANIFEST_NAME = "PACKAGED-ASSET-MANIFEST.json"
 PACKAGED_TRANSFORMATION = (
     "Decoded the reviewed 1280x720 alpha WebP runtime derivative and encoded a "
@@ -696,8 +697,8 @@ def write_attribution_files(
     attribution = {
         "schemaVersion": 3,
         "cityData": {
-            "source": "GeoNames cities15000",
-            "url": "https://download.geonames.org/export/dump/cities15000.zip",
+            "source": "GeoNames cities500",
+            "url": "https://download.geonames.org/export/dump/cities500.zip",
             "license": "CC BY 4.0",
             "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         },
@@ -724,12 +725,16 @@ def write_attribution_files(
         "transformation": packaged_manifest["transformation"],
         "toolchain": packaged_manifest["toolchain"],
     }
-    json_path.write_text(json.dumps(attribution, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    json_path.write_text(
+        json.dumps(attribution, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
     lines = [
         "# World clock data and skyline attribution",
         "",
-        "City coordinates, population, and IANA time zones are derived from GeoNames `cities15000`,",
+        "City coordinates, population, and IANA time zones are derived from GeoNames `cities500`,",
         "licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).",
         "",
         "The seasonal skyline images are TrackMeUp-directed Urban Wash watercolor artwork.",
@@ -754,7 +759,7 @@ def write_attribution_files(
         lines.append(
             f"| {asset['city']} | {asset['season']} | `{asset['relativePath']}` | `{asset['sha256']}` |"
         )
-    markdown_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    markdown_path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_packaged_provenance(
@@ -788,7 +793,7 @@ def write_packaged_provenance(
         "authorization does not place the artwork under the repository MIT license. The checksums",
         "in the attribution and packaged manifest bind this record to the exact published files.",
     ]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def write_asset_map(path: Path, city_count: int, asset_count: int) -> None:
@@ -809,14 +814,14 @@ def write_asset_map(path: Path, city_count: int, asset_count: int) -> None:
         "## Repository-only masters and build output",
         "",
         f"- `design/world-clocks/watercolor/masters-v1/`: {asset_count} original transparent PNG city masters.",
-        f"- `design/world-clocks/watercolor/runtime-v3/`: {asset_count} converted alpha WebP files plus the intermediate runtime manifest; these files are not loaded by WinUI.",
+        f"- `design/world-clocks/watercolor/{RUNTIME_DIRECTORY_NAME}/`: {asset_count} converted alpha WebP files plus the intermediate runtime manifest; these files are not loaded by WinUI.",
         f"- `design/world-clocks/watercolor/generation-manifest-v1.json`: the {city_count}-city, two-season generation contract.",
         "- `design/world-clocks/watercolor/GENERATION_RULES.md` and `PROVENANCE.md`: prompt and review records.",
         "",
         "Overlay PNGs are currently both the selected generated originals and the packaged runtime files;",
         "they are not duplicated into the city master or WebP directories.",
     ]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def verify_staged_product(
@@ -988,7 +993,9 @@ def build_staged_product(
     )
     packaged_manifest_path = staged_root / PACKAGED_MANIFEST_NAME
     packaged_manifest_path.write_text(
-        json.dumps(packaged_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(packaged_manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     packaged_manifest_hash = sha256(packaged_manifest_path)
 
@@ -1203,7 +1210,11 @@ def main() -> None:
     parser.add_argument(
         "--runtime",
         type=Path,
-        default=repository_root / "design" / "world-clocks" / "watercolor" / "runtime-v3",
+        default=repository_root
+        / "design"
+        / "world-clocks"
+        / "watercolor"
+        / RUNTIME_DIRECTORY_NAME,
     )
     parser.add_argument(
         "--generation-manifest",

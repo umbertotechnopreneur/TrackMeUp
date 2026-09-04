@@ -77,6 +77,16 @@ public sealed class WorldClockSelectionMutationTests
                 ["ho-chi-minh-city", "tokyo"],
                 store.LoadSettings().WorldClockCityIds);
 
+            var moved = await application.MoveWorldClockAsync(
+                "tokyo",
+                WorldClockMoveDirection.Up,
+                CancellationToken.None);
+
+            Assert.True(moved.Succeeded);
+            Assert.Equal(["tokyo", "ho-chi-minh-city"], moved.Value?.CityIds);
+            Assert.Equal(0, provider.CallCount);
+            Assert.Equal(["tokyo", "ho-chi-minh-city"], store.LoadSettings().WorldClockCityIds);
+
             var converted = await application.ConvertWorldClocksAsync(
                 new WorldClockConversionRequest(
                     "ho-chi-minh-city",

@@ -77,6 +77,37 @@ public sealed class WorldClockApplicationServiceTests
         Assert.Empty(settings.Value.WorldClockCityIds ?? []);
     }
 
+    /// <summary>Ensures adjacent moves persist their exact order and reject unavailable directions.</summary>
+    [Fact]
+    public void MoveValidated_ReordersAdjacentClocksAndRejectsUnavailableMoves()
+    {
+        var settings = new SettingsSnapshot(new AppSettings(WorldClockCityIds: ["london", "paris", "tokyo"]));
+        var persisted = new List<AppSettings>();
+        using var service = CreateService(settings, persisted.Add);
+        var parisId = service.NormalizeAndValidateCityId(" PARIS ");
+
+        var movedUp = service.MoveValidated(parisId, WorldClockMoveDirection.Up);
+        var unavailable = service.MoveValidated(parisId, WorldClockMoveDirection.Up);
+        var movedDown = service.MoveValidated(parisId, WorldClockMoveDirection.Down);
+        var missing = service.MoveValidated(
+            service.NormalizeAndValidateCityId("rome"),
+            WorldClockMoveDirection.Up);
+
+        Assert.True(movedUp.Succeeded);
+        Assert.Equal(["paris", "london", "tokyo"], movedUp.Value?.CityIds);
+        Assert.False(unavailable.Succeeded);
+        Assert.Equal("world_clocks.move_unavailable", unavailable.Code);
+        Assert.Equal("direction", Assert.Single(unavailable.Issues).Field);
+        Assert.True(movedDown.Succeeded);
+        Assert.Equal(["london", "paris", "tokyo"], movedDown.Value?.CityIds);
+        Assert.False(missing.Succeeded);
+        Assert.Equal("world_clocks.not_found", missing.Code);
+        Assert.Equal(2, persisted.Count);
+        Assert.Equal(["london", "paris", "tokyo"], settings.Value.WorldClockCityIds);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            service.MoveValidated(parisId, WorldClockMoveDirection.Unspecified));
+    }
+
     /// <summary>Ensures conversion failures identify the request field that needs correction.</summary>
     [Fact]
     public void Convert_MapsReferenceAndCivilTimeFailuresToTheirRequestFields()

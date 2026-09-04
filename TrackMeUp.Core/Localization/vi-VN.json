@@ -945,6 +945,7 @@
   "WorldClock.Reference": "THAM CHIẾU", "WorldClock.LocalTime": "GIỜ ĐỊA PHƯƠNG", "WorldClock.OffsetFromReference": "{0} giờ", "WorldClock.SetReference": "Dùng {0} làm tham chiếu", "WorldClock.PreviousDay": "Ngày trước", "WorldClock.NextDay": "Ngày sau",
   "WorldClock.Loading": "Đang tải dữ liệu…", "WorldClock.Empty.Title": "Chưa có đồng hồ", "WorldClock.Empty.Description": "Dùng + để chọn một thành phố từ danh mục cục bộ.", "WorldClock.PlacementFailed": "Không thể lưu vị trí cửa sổ.",
   "WorldClock.Day": "Ban ngày", "WorldClock.Night": "Ban đêm", "WorldClock.Remove": "Xóa {0}",
+  "WorldClock.MoveUp": "Di chuyển {0} lên", "WorldClock.MoveDown": "Di chuyển {0} xuống",
   "WorldClock.Sunrise": "Mọc {0}", "WorldClock.Sunset": "Lặn {0}", "WorldClock.SunriseLabel": "Bình minh", "WorldClock.SunsetLabel": "Hoàng hôn", "WorldClock.DaylightDuration": "Tổng thời gian ban ngày · {0}", "WorldClock.NoEvent": "—",
   "WorldClock.WeatherTemperature": "{0:0} °C", "WorldClock.WeatherNoData": "Thời tiết không khả dụng", "WorldClock.WeatherCondition.clear": "Trời quang", "WorldClock.WeatherCondition.cloudy": "Nhiều mây", "WorldClock.WeatherCondition.rain": "Mưa", "WorldClock.WeatherCondition.snow": "Tuyết", "WorldClock.WeatherCondition.mixed-precipitation": "Mưa tuyết", "WorldClock.WeatherCondition.fog": "Sương mù", "WorldClock.WeatherCondition.lightning": "Dông", "WorldClock.WeatherCondition.unknown": "Điều kiện khác",
   "WorldClock.MoonPhase.New": "Trăng non", "WorldClock.MoonPhase.WaxingCrescent": "Trăng lưỡi liềm đầu tháng", "WorldClock.MoonPhase.FirstQuarter": "Bán nguyệt đầu tháng", "WorldClock.MoonPhase.WaxingGibbous": "Trăng khuyết đầu tháng", "WorldClock.MoonPhase.Full": "Trăng tròn", "WorldClock.MoonPhase.WaningGibbous": "Trăng khuyết cuối tháng", "WorldClock.MoonPhase.LastQuarter": "Bán nguyệt cuối tháng", "WorldClock.MoonPhase.WaningCrescent": "Trăng lưỡi liềm cuối tháng", "WorldClock.MoonPhase.Summary": "{0} · được chiếu sáng {1:0}%",
@@ -956,6 +957,7 @@
   "WorldClock.RemovedTitle": "Đã xóa đồng hồ", "WorldClock.RemovedMessage": "Đã xóa {0}.",
   "WorldClocksMinimumReached": "Giữ ít nhất một đồng hồ.", "WorldClocksMaximumReached": "Bạn chỉ có thể hiển thị tối đa 12 đồng hồ.",
   "WorldClocksNotFound": "Không tìm thấy đồng hồ đã chọn.", "WorldClocksDuplicate": "Thành phố này đã hiển thị.",
+  "WorldClocksMoveUnavailable": "Không thể di chuyển đồng hồ này thêm theo hướng đó.",
   "WorldClocksReferenceNotSelected": "Chọn một thành phố đang hiển thị làm tham chiếu.", "WorldClocksLocalTimeInvalid": "Giờ địa phương đó không tồn tại vì đồng hồ chuyển tới.",
   "WorldClocksLocalTimeAmbiguous": "Giờ địa phương đó xuất hiện hai lần vì đồng hồ chuyển lùi.", "WorldClocksConverted": "Đã chuyển đổi đồng hồ thế giới."
 }

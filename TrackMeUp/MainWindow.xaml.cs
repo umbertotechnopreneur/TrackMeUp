@@ -181,7 +181,8 @@ public sealed partial class MainWindow : Window
                 TitleBarMoreButton,
                 TitleBarSearchButton,
                 TitleBarReportButton,
-                TitleBarMinimizeToTrayButton
+                TitleBarMinimizeToTrayButton,
+                TitleBarCloseButton
             ]);
         _placement = new WindowPlacementService(
             application,
@@ -199,6 +200,7 @@ public sealed partial class MainWindow : Window
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
+            presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
         }
         ApplyBorderlessPlayerWindow();
         ResizeForLogicalContent(_layoutState.LogicalHeight);
@@ -724,6 +726,8 @@ public sealed partial class MainWindow : Window
 
         ShowPlayer();
     }
+
+    private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
@@ -1267,6 +1271,7 @@ public sealed partial class MainWindow : Window
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
+        PlayerBackgroundImage.Visibility = Visibility.Collapsed;
         WorldClockButton.Visibility = Visibility.Collapsed;
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
@@ -1289,6 +1294,7 @@ public sealed partial class MainWindow : Window
     {
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
+        PlayerBackgroundImage.Visibility = Visibility.Visible;
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
         WorldClockButton.Visibility = Visibility.Visible;
@@ -1802,6 +1808,7 @@ public sealed partial class MainWindow : Window
         SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
         SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
         SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
+        SetIconButtonLabel(TitleBarCloseButton, "Tray.CloseApplication");
         SetIconButtonLabel(WorldClockButton, "WorldClock.OpenWindow");
         SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
         SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");

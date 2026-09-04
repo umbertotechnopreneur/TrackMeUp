@@ -945,6 +945,7 @@
   "WorldClock.Reference": "기준", "WorldClock.LocalTime": "현지 시간", "WorldClock.OffsetFromReference": "{0}시간", "WorldClock.SetReference": "{0}을(를) 기준으로 사용", "WorldClock.PreviousDay": "전날", "WorldClock.NextDay": "다음 날",
   "WorldClock.Loading": "데이터 로드 중…", "WorldClock.Empty.Title": "아직 시계가 없습니다", "WorldClock.Empty.Description": "+를 사용하여 로컬 카탈로그에서 도시를 선택하세요.", "WorldClock.PlacementFailed": "창 위치를 저장할 수 없습니다.",
   "WorldClock.Day": "낮", "WorldClock.Night": "밤", "WorldClock.Remove": "{0} 제거",
+  "WorldClock.MoveUp": "{0} 위로 이동", "WorldClock.MoveDown": "{0} 아래로 이동",
   "WorldClock.Sunrise": "일출 {0}", "WorldClock.Sunset": "일몰 {0}", "WorldClock.SunriseLabel": "일출", "WorldClock.SunsetLabel": "일몰", "WorldClock.DaylightDuration": "총 일조 시간 · {0}", "WorldClock.NoEvent": "—",
   "WorldClock.WeatherTemperature": "{0:0} °C", "WorldClock.WeatherNoData": "날씨를 사용할 수 없음", "WorldClock.WeatherCondition.clear": "맑음", "WorldClock.WeatherCondition.cloudy": "흐림", "WorldClock.WeatherCondition.rain": "비", "WorldClock.WeatherCondition.snow": "눈", "WorldClock.WeatherCondition.mixed-precipitation": "비와 눈", "WorldClock.WeatherCondition.fog": "안개", "WorldClock.WeatherCondition.lightning": "뇌우", "WorldClock.WeatherCondition.unknown": "기타 날씨",
   "WorldClock.MoonPhase.New": "신월", "WorldClock.MoonPhase.WaxingCrescent": "초승달", "WorldClock.MoonPhase.FirstQuarter": "상현달", "WorldClock.MoonPhase.WaxingGibbous": "차오르는 달", "WorldClock.MoonPhase.Full": "보름달", "WorldClock.MoonPhase.WaningGibbous": "기우는 달", "WorldClock.MoonPhase.LastQuarter": "하현달", "WorldClock.MoonPhase.WaningCrescent": "그믐달", "WorldClock.MoonPhase.Summary": "{0} · {1:0}% 밝음",
@@ -956,6 +957,7 @@
   "WorldClock.RemovedTitle": "시계 제거됨", "WorldClock.RemovedMessage": "{0}이(가) 제거되었습니다.",
   "WorldClocksMinimumReached": "시계를 하나 이상 유지하세요.", "WorldClocksMaximumReached": "최대 12개 시계만 표시할 수 있습니다.",
   "WorldClocksNotFound": "선택한 시계를 찾을 수 없습니다.", "WorldClocksDuplicate": "이 도시는 이미 표시되어 있습니다.",
+  "WorldClocksMoveUnavailable": "이 시계는 해당 방향으로 더 이동할 수 없습니다.",
   "WorldClocksReferenceNotSelected": "표시된 도시 중 하나를 기준으로 선택하세요.", "WorldClocksLocalTimeInvalid": "시계가 앞으로 이동하여 해당 현지 시간이 존재하지 않습니다.",
   "WorldClocksLocalTimeAmbiguous": "시계가 뒤로 이동하여 해당 현지 시간이 두 번 발생합니다.", "WorldClocksConverted": "세계 시계를 변환했습니다."
 }

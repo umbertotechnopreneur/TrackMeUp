@@ -2204,6 +2204,18 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             cancellationToken);
 
     /// <inheritdoc />
+    public Task<OperationResult<WorldClockSelectionState>> MoveWorldClockAsync(
+        string cityId,
+        WorldClockMoveDirection direction,
+        CancellationToken cancellationToken)
+    {
+        var normalizedId = _worldClockOperations.NormalizeAndValidateCityId(cityId);
+        return MutateAsync(
+            () => Task.FromResult(_worldClockOperations.MoveValidated(normalizedId, direction)),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(
         string secret,
         CancellationToken cancellationToken) => MutateVisualStateAsync(

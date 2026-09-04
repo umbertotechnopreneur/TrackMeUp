@@ -383,6 +383,7 @@ public sealed class CliRouterTests
         public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => Unsupported<WorldClockCityCatalog>();
         public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
         public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
+        public Task<OperationResult<WorldClockSelectionState>> MoveWorldClockAsync(string cityId, WorldClockMoveDirection direction, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
         public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken) => Unsupported<string>();
 
         public Task<OperationResult<RuntimeHealth>> GetRuntimeHealthAsync(CancellationToken cancellationToken)

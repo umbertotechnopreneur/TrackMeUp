@@ -24,6 +24,14 @@
                 <RowDefinition Height="48" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
+            <Image
+                x:Name="PlayerBackgroundImage"
+                Grid.RowSpan="2"
+                AutomationProperties.AccessibilityView="Raw"
+                IsHitTestVisible="False"
+                Opacity="0.1"
+                Source="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png"
+                Stretch="UniformToFill" />
             <Grid
                 x:Name="DragRegion"
                 Height="48">
@@ -37,7 +45,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition x:Name="TitleBarSystemButtonGapColumn" Width="12" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
                 </Grid.ColumnDefinitions>
                 <Button
@@ -145,6 +153,21 @@
                         FontFamily="Segoe Fluent Icons"
                         FontSize="17"
                         Glyph="&#xE921;" />
+                </Button>
+                <Button
+                    x:Name="TitleBarCloseButton"
+                    Grid.Column="9"
+                    Width="48"
+                    AutomationProperties.Name="Close app"
+                    Click="TitleBarCloseButton_Click"
+                    Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
+                    Tag="Tray.CloseApplication"
+                    ToolTipService.ToolTip="Close app">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="16"
+                        Glyph="&#xE8BB;" />
                 </Button>
             </Grid>
 
@@ -261,18 +284,6 @@
                     </ResourceDictionary>
                 </Border.Resources>
                 <Grid>
-                    <Grid
-                        Height="270"
-                        VerticalAlignment="Bottom"
-                        AutomationProperties.AccessibilityView="Raw"
-                        IsHitTestVisible="False">
-                        <Image
-                            Margin="-24,0,-24,-10"
-                            Opacity="0.1"
-                            VerticalAlignment="Bottom"
-                            Source="ms-appx:///Assets/WorldClocks/Skylines/ho-chi-minh-city-summer.png"
-                            Stretch="UniformToFill" />
-                    </Grid>
                     <ScrollViewer
                         HorizontalScrollBarVisibility="Disabled"
                         HorizontalScrollMode="Disabled"

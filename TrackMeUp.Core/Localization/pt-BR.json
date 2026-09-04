@@ -945,6 +945,7 @@
   "WorldClock.Reference": "REFERÊNCIA", "WorldClock.LocalTime": "HORA LOCAL", "WorldClock.OffsetFromReference": "{0} h", "WorldClock.SetReference": "Usar {0} como referência", "WorldClock.PreviousDay": "Dia anterior", "WorldClock.NextDay": "Dia seguinte",
   "WorldClock.Loading": "Carregando dados…", "WorldClock.Empty.Title": "Ainda não há relógios", "WorldClock.Empty.Description": "Use + para escolher uma cidade no catálogo local.", "WorldClock.PlacementFailed": "Não foi possível salvar a posição da janela.",
   "WorldClock.Day": "Dia", "WorldClock.Night": "Noite", "WorldClock.Remove": "Remover {0}",
+  "WorldClock.MoveUp": "Mover {0} para cima", "WorldClock.MoveDown": "Mover {0} para baixo",
   "WorldClock.Sunrise": "Nasce {0}", "WorldClock.Sunset": "Se põe {0}", "WorldClock.SunriseLabel": "Nascer do sol", "WorldClock.SunsetLabel": "Pôr do sol", "WorldClock.DaylightDuration": "Luz total · {0}", "WorldClock.NoEvent": "—",
   "WorldClock.WeatherTemperature": "{0:0} °C", "WorldClock.WeatherNoData": "Clima indisponível", "WorldClock.WeatherCondition.clear": "Céu limpo", "WorldClock.WeatherCondition.cloudy": "Nublado", "WorldClock.WeatherCondition.rain": "Chuva", "WorldClock.WeatherCondition.snow": "Neve", "WorldClock.WeatherCondition.mixed-precipitation": "Precipitação mista", "WorldClock.WeatherCondition.fog": "Neblina", "WorldClock.WeatherCondition.lightning": "Trovoadas", "WorldClock.WeatherCondition.unknown": "Outras condições",
   "WorldClock.MoonPhase.New": "Lua nova", "WorldClock.MoonPhase.WaxingCrescent": "Lua crescente", "WorldClock.MoonPhase.FirstQuarter": "Quarto crescente", "WorldClock.MoonPhase.WaxingGibbous": "Gibosa crescente", "WorldClock.MoonPhase.Full": "Lua cheia", "WorldClock.MoonPhase.WaningGibbous": "Gibosa minguante", "WorldClock.MoonPhase.LastQuarter": "Quarto minguante", "WorldClock.MoonPhase.WaningCrescent": "Lua minguante", "WorldClock.MoonPhase.Summary": "{0} · {1:0}% iluminada",
@@ -956,6 +957,7 @@
   "WorldClock.RemovedTitle": "Relógio removido", "WorldClock.RemovedMessage": "{0} foi removida.",
   "WorldClocksMinimumReached": "Mantenha pelo menos um relógio.", "WorldClocksMaximumReached": "Você pode mostrar no máximo 12 relógios.",
   "WorldClocksNotFound": "O relógio selecionado não foi encontrado.", "WorldClocksDuplicate": "Esta cidade já está visível.",
+  "WorldClocksMoveUnavailable": "Este relógio não pode ser movido mais nessa direção.",
   "WorldClocksReferenceNotSelected": "Escolha uma cidade visível como referência.", "WorldClocksLocalTimeInvalid": "Esse horário local não existe porque o relógio avança.",
   "WorldClocksLocalTimeAmbiguous": "Esse horário local ocorre duas vezes porque o relógio recua.", "WorldClocksConverted": "Relógios mundiais convertidos."
 }

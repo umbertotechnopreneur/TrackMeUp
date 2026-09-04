@@ -585,6 +585,14 @@ public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> 
 /// <summary>Contains the persisted world-clock identifiers after a successful selection mutation.</summary>
 public sealed record WorldClockSelectionState(IReadOnlyList<string> CityIds, int MaximumClocks);
 
+/// <summary>Identifies the adjacent direction used to reorder a selected world clock.</summary>
+public enum WorldClockMoveDirection
+{
+    Unspecified = 0,
+    Up = 1,
+    Down = 2
+}
+
 /// <summary>Describes decorative local-time layers and any source-backed weather layers for one clock.</summary>
 public sealed record WorldClockAtmosphere(
     string Phase,
@@ -689,6 +697,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Removes one city from the persisted world-clock selection.</summary>
     Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
+
+    /// <summary>Moves one city by one position in the persisted world-clock selection.</summary>
+    Task<OperationResult<WorldClockSelectionState>> MoveWorldClockAsync(
+        string cityId,
+        WorldClockMoveDirection direction,
+        CancellationToken cancellationToken);
 
     /// <summary>Stores the current-weather API key only in its fixed Windows environment variable.</summary>
     Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken);

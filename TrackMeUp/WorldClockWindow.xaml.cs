@@ -249,6 +249,8 @@ public sealed partial class WorldClockWindow : Window
         options.AddRequested += OptionsControl_AddRequested;
         options.ReferenceRequested += OptionsControl_ReferenceRequested;
         options.RemoveRequested += OptionsControl_RemoveRequested;
+        options.MoveUpRequested += OptionsControl_MoveUpRequested;
+        options.MoveDownRequested += OptionsControl_MoveDownRequested;
         options.AlwaysOnTopChanged += OptionsControl_AlwaysOnTopChanged;
         options.SettingsSaved += OptionsControl_SettingsSaved;
         options.WarningRequested += OptionsControl_WarningRequested;
@@ -288,6 +290,12 @@ public sealed partial class WorldClockWindow : Window
 
     private async void OptionsControl_RemoveRequested(object? sender, WorldClockCityEventArgs e) =>
         await RemoveCityAsync(e);
+
+    private async void OptionsControl_MoveUpRequested(object? sender, WorldClockCityEventArgs e) =>
+        await MoveCityAsync(e, WorldClockMoveDirection.Up);
+
+    private async void OptionsControl_MoveDownRequested(object? sender, WorldClockCityEventArgs e) =>
+        await MoveCityAsync(e, WorldClockMoveDirection.Down);
 
     private void OptionsControl_AlwaysOnTopChanged(bool alwaysOnTop)
     {
@@ -1161,6 +1169,47 @@ public sealed partial class WorldClockWindow : Window
         }
     }
 
+    private async Task MoveCityAsync(WorldClockCityEventArgs e, WorldClockMoveDirection direction)
+    {
+        try
+        {
+            if (!_isLive && !_customProjectionValid)
+            {
+                ShowFailure(_lastConversionErrorKey ?? "WorldClock.CatalogUnavailable");
+                return;
+            }
+
+            Interlocked.Increment(ref _requestVersion);
+            var result = await _application.MoveWorldClockAsync(e.CityId, direction, _lifetimeCancellation.Token);
+            if (IsClosing)
+            {
+                return;
+            }
+
+            Interlocked.Increment(ref _requestVersion);
+            if (!result.Succeeded || result.Value is null)
+            {
+                ShowFailure(result.MessageKey);
+                return;
+            }
+
+            _ = _isLive
+                ? await RefreshCurrentAsync()
+                : await ConvertFromControlsAsync();
+        }
+        catch (OperationCanceledException) when (IsClosing)
+        {
+            // Closing the detached surface cancels the optional reorder mutation.
+        }
+        catch (Exception)
+        {
+            if (!IsClosing)
+            {
+                ShowFailure("WorldClock.CatalogUnavailable");
+            }
+        }
+    }
+
     private void ShowFailure(string messageKey)
     {
         if (!IsClosing)
@@ -1336,6 +1385,8 @@ public sealed partial class WorldClockWindow : Window
             _optionsControl.AddRequested -= OptionsControl_AddRequested;
             _optionsControl.ReferenceRequested -= OptionsControl_ReferenceRequested;
             _optionsControl.RemoveRequested -= OptionsControl_RemoveRequested;
+            _optionsControl.MoveUpRequested -= OptionsControl_MoveUpRequested;
+            _optionsControl.MoveDownRequested -= OptionsControl_MoveDownRequested;
             _optionsControl.AlwaysOnTopChanged -= OptionsControl_AlwaysOnTopChanged;
             _optionsControl.SettingsSaved -= OptionsControl_SettingsSaved;
             _optionsControl.WarningRequested -= OptionsControl_WarningRequested;

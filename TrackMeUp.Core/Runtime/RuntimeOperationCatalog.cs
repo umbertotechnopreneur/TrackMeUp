@@ -28,6 +28,8 @@ internal enum RuntimeOperation
     WorldClocksAddV3,
     [RuntimeOperationWireName("world_clocks.remove.v3")]
     WorldClocksRemoveV3,
+    [RuntimeOperationWireName("world_clocks.move.v1")]
+    WorldClocksMoveV1,
     [RuntimeOperationWireName("world_clocks.weather.key.set.v2")]
     WorldClocksWeatherKeySetV2,
     [RuntimeOperationWireName("session.last")]
