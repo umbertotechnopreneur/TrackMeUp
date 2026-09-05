@@ -215,7 +215,7 @@
                 Grid.Row="3"
                 Grid.ColumnSpan="2"
                 Margin="0,8,0,0"
-                MaxWidth="304"
+                MaxWidth="256"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"
                 AutomationProperties.AccessibilityView="Raw">
