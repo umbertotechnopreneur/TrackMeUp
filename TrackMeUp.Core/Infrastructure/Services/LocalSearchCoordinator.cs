@@ -3,6 +3,8 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using TrackMeUp.Application;
 using TrackMeUp.Search;
 
@@ -15,24 +17,66 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     private readonly LocalStore _store;
     private readonly ILocalSearchService _search;
     private readonly SemaphoreSlim _indexGate = new(1, 1);
+    private readonly SettingsSnapshot _settings;
+    private readonly ILogger _logger;
+    private readonly CancellationTokenSource _shutdown = new();
+    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Task? _worker;
+    private Exception? _failure;
     private bool _disposed;
 
     /// <summary>Creates the runtime-owned local search coordinator.</summary>
-    internal LocalSearchCoordinator(LocalStore store, ILocalSearchService search)
+    internal LocalSearchCoordinator(LocalStore store, ILocalSearchService search, SettingsSnapshot? settings = null, ILogger? logger = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _search = search ?? throw new ArgumentNullException(nameof(search));
+        _settings = settings ?? new SettingsSnapshot(store.LoadSettings());
+        _logger = logger ?? NullLogger.Instance;
+        if (search.CommittedSourceRevision > 0) _ready.TrySetResult();
     }
 
-    /// <summary>Ensures current durable data is indexed, then executes a ranked local query.</summary>
+    /// <summary>Starts the single owned updater after application initialization and deletion recovery.</summary>
+    internal void Start()
+    {
+        ThrowIfDisposed();
+        if (_worker is not null) throw new InvalidOperationException("The search updater is already started.");
+        _worker = Task.Run(() => RunUpdaterAsync(_shutdown.Token));
+    }
+
+    private async Task RunUpdaterAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        do
+        {
+            try
+            {
+                // A failed projection is surfaced to queries and requires an explicit rebuild;
+                // retrying invalid data every second would conceal the fault and consume I/O.
+                if (Volatile.Read(ref _failure) is null)
+                    await SynchronizeAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return; }
+            catch (Exception exception)
+            {
+                _logger.LogError("Background search index update failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            }
+
+            try
+            {
+                if (!await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return; }
+        } while (true);
+    }
+
+    /// <summary>Queries the last committed snapshot; only first-time initialization can delay a read.</summary>
     internal Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ThrowIfDisposed();
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Store inspection, index refresh, and Lucene reads contain synchronous work. Enter the
-        // thread pool before any of it can continue inline on a WinUI dispatcher.
+        // Lucene reads are synchronous. Enter the pool before any work can run on a WinUI dispatcher.
         return Task.Run(() => SearchCoreAsync(request, cancellationToken), cancellationToken);
     }
 
@@ -40,8 +84,11 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         SearchRequest request,
         CancellationToken cancellationToken)
     {
-        await EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
-        var settings = _store.LoadSettings();
+        if (_worker is null && !_ready.Task.IsCompleted)
+            throw new InvalidOperationException("Start or synchronize the search index before querying it.");
+        await _ready.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        ThrowIfIndexingFailed();
+        var settings = _settings.Value;
         var query = request with
         {
             QueryLanguage = string.IsNullOrWhiteSpace(request.QueryLanguage)
@@ -50,29 +97,9 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             EnableSynonyms = settings.SearchSynonymsEnabled,
             EnableFuzzyMatching = settings.SearchTypoToleranceEnabled
         };
-        return await _search.SearchAsync(query, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>Ensures current durable data is indexed, then returns local query suggestions.</summary>
-    internal Task<IReadOnlyList<SearchSuggestion>> SuggestAsync(
-        SearchSuggestionRequest request,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ThrowIfDisposed();
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Suggestions share the same synchronous index-refresh path and must never run inline
-        // on the caller's dispatcher, even when every semaphore is immediately available.
-        return Task.Run(() => SuggestCoreAsync(request, cancellationToken), cancellationToken);
-    }
-
-    private async Task<IReadOnlyList<SearchSuggestion>> SuggestCoreAsync(
-        SearchSuggestionRequest request,
-        CancellationToken cancellationToken)
-    {
-        await EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
-        return await _search.SuggestAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await _search.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+        ThrowIfIndexingFailed();
+        return response;
     }
 
     /// <summary>Replaces the complete derived index and returns the number of indexed documents.</summary>
@@ -82,7 +109,21 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         await _indexGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            var count = await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            Volatile.Write(ref _failure, null);
+            _ready.TrySetResult();
+            return count;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Explicitly cancelling a manual rebuild preserves the previous committed snapshot.
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Volatile.Write(ref _failure, exception);
+            _ready.TrySetResult();
+            throw;
         }
         finally
         {
@@ -99,22 +140,21 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         }
 
         _disposed = true;
-        await _search.DisposeAsync().ConfigureAwait(false);
-        _indexGate.Dispose();
+        _shutdown.Cancel();
+        if (_worker is not null) await _worker.ConfigureAwait(false);
+        _ready.TrySetCanceled();
+        await _indexGate.WaitAsync().ConfigureAwait(false);
+        try { await _search.DisposeAsync().ConfigureAwait(false); }
+        finally { _indexGate.Release(); }
+        _shutdown.Dispose();
     }
 
     private async Task EnsureCurrentAsync(CancellationToken cancellationToken)
     {
-        var sourceRevision = _store.GetSearchSourceRevision();
-        if (sourceRevision == _search.CommittedSourceRevision)
-        {
-            return;
-        }
-
         await _indexGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            sourceRevision = _store.GetSearchSourceRevision();
+            var sourceRevision = _store.GetSearchSourceRevision();
             var committedRevision = _search.CommittedSourceRevision;
             if (sourceRevision == committedRevision)
             {
@@ -127,22 +167,41 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                 return;
             }
 
-            var changes = _store.LoadSearchSourceChanges(committedRevision, MaximumIncrementalChanges + 1);
-            if (!CanReplayIncrementally(changes, committedRevision, sourceRevision))
+            // Drain bounded batches through this captured revision. Large ordinary backlogs do
+            // not trigger a full rebuild, and concurrent new writes cannot move our checkpoint.
+            while (committedRevision < sourceRevision)
             {
-                _ = await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
+                var changes = _store.LoadSearchSourceChanges(committedRevision, MaximumIncrementalChanges)
+                    .TakeWhile(change => change.Revision <= sourceRevision).ToArray();
+                if (!CanReplayIncrementally(changes, committedRevision, sourceRevision))
+                {
+                    _ = await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
 
-            var mutations = BuildIncrementalMutations(changes, cancellationToken);
-            if (mutations is null)
+                var mutations = BuildIncrementalMutations(changes, cancellationToken);
+                if (mutations is null)
+                {
+                    _ = await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                var batchRevision = changes[^1].Revision;
+                await _search.ApplyBatchAsync(mutations, batchRevision, cancellationToken).ConfigureAwait(false);
+                _store.PruneSearchSourceChanges(batchRevision);
+                committedRevision = batchRevision;
+            }
+        }
+        catch (Exception exception)
+        {
+            // Publish failures under the same gate as successful rebuilds: a delayed worker
+            // continuation must not overwrite recovery with an older failure.
+            if (!_shutdown.IsCancellationRequested)
             {
-                _ = await RebuildCurrentSnapshotAsync(cancellationToken).ConfigureAwait(false);
-                return;
+                Volatile.Write(ref _failure, exception);
+                _ready.TrySetResult();
             }
-
-            await _search.ApplyBatchAsync(mutations, sourceRevision, cancellationToken).ConfigureAwait(false);
-            _store.PruneSearchSourceChanges(sourceRevision);
+            throw;
         }
         finally
         {
@@ -151,8 +210,18 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
     }
 
     /// <summary>Commits pending source deletions before a destructive operation can report success.</summary>
-    internal Task SynchronizeAsync(CancellationToken cancellationToken) =>
-        Task.Run(() => EnsureCurrentAsync(cancellationToken), cancellationToken);
+    internal Task SynchronizeAsync(CancellationToken cancellationToken) => Task.Run(async () =>
+    {
+        ThrowIfDisposed();
+        await EnsureCurrentAsync(cancellationToken).ConfigureAwait(false);
+        _ready.TrySetResult();
+    });
+
+    private void ThrowIfIndexingFailed()
+    {
+        if (Volatile.Read(ref _failure) is { } failure)
+            throw new InvalidOperationException("Search indexing failed. Rebuild the local index to recover.", failure);
+    }
 
     private async Task<int> RebuildCurrentSnapshotAsync(CancellationToken cancellationToken)
     {
@@ -183,7 +252,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
             }
         }
 
-        return changes[^1].Revision == sourceRevision
+        return changes[^1].Revision <= sourceRevision
             && changes.All(change => !string.Equals(change.Kind, "rebuild", StringComparison.Ordinal));
     }
 
@@ -191,7 +260,17 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         IReadOnlyList<SearchSourceChange> changes,
         CancellationToken cancellationToken)
     {
-        var settings = _store.LoadSettings();
+        // Capture deletion lacks its former artifact identities and explicitly requires a rebuild.
+        if (changes.Any(change => change.Kind == "capture" && change.Operation == "delete")) return null;
+        var latestChanges = changes.GroupBy(change => (change.Kind, change.EntityId))
+            .Select(group => group.Last()).OrderBy(change => change.Revision).ToArray();
+        var captureIds = latestChanges.Where(change => change.Kind is "capture" or "screenshot")
+            .Select(change => change.Kind == "capture" ? change.EntityId : LocalStore.TryGetCaptureId(change.EntityId))
+            .Where(id => id is not null).Cast<string>().Distinct(StringComparer.Ordinal).ToArray();
+        var gallery = _store.GetScreenshotGalleryItemsForCaptures(captureIds, cancellationToken);
+        var galleryByIdentity = gallery.ToDictionary(item => ScreenshotIdentity(item.Path), StringComparer.OrdinalIgnoreCase);
+        var galleryByCapture = gallery.ToLookup(item => LocalStore.TryGetCaptureId(ScreenshotIdentity(item.Path)), StringComparer.Ordinal);
+        var settings = _settings.Value;
         var defaultLanguage = ResolveDefaultLanguage(settings);
         var installationProfiles = _store.GetInstallationProfiles()
             .ToDictionary(profile => profile.InstallationId, StringComparer.Ordinal);
@@ -203,7 +282,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
         var mutations = new Dictionary<string, SearchIndexMutation>(StringComparer.Ordinal);
         void Set(SearchIndexMutation mutation) => mutations[mutation.Id] = mutation;
 
-        foreach (var change in changes)
+        foreach (var change in latestChanges)
         {
             cancellationToken.ThrowIfCancellationRequested();
             switch (change.Kind)
@@ -257,8 +336,7 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                     // A text or telemetry delete does not imply that the retained image disappeared.
                     // Re-read the authoritative artifact state for every mutation so analysis-only
                     // deletion replaces the searchable document instead of removing it.
-                    var current = _store.GetScreenshotGalleryItem(change.EntityId, cancellationToken);
-                    if (current is not null)
+                    if (galleryByIdentity.TryGetValue(change.EntityId, out var current))
                     {
                         Set(SearchIndexMutation.Upsert(BuildScreenshotDocument(current, defaultLanguage)));
                     }
@@ -277,8 +355,9 @@ internal sealed class LocalSearchCoordinator : IAsyncDisposable
                         return null;
                     }
 
-                    foreach (var item in _store.GetScreenshotGalleryItemsForCapture(change.EntityId, cancellationToken))
+                    foreach (var item in galleryByCapture[change.EntityId])
                     {
+                        Set(SearchIndexMutation.Delete($"screenshot-text:{ScreenshotIdentity(item.Path)}"));
                         Set(SearchIndexMutation.Upsert(BuildScreenshotDocument(item, defaultLanguage)));
                     }
 

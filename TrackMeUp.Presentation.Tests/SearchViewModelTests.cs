@@ -119,33 +119,6 @@ public sealed class SearchViewModelTests
         Assert.Equal(23, viewModel.TotalCount);
     }
 
-    [Fact]
-    public async Task SuggestAsync_ProjectsCleanMarkdownFreeTextAndWeightedConfidence()
-    {
-        var application = DispatchProxy.Create<ITrackMeUpApplication, SearchApplicationProxy>();
-        var proxy = (SearchApplicationProxy)(object)application;
-        var viewModel = CreateViewModel(application);
-
-        var result = await viewModel.SuggestAsync("spo", CancellationToken.None);
-
-        Assert.True(result.Succeeded);
-        Assert.Equal("spo", proxy.SuggestionRequest?.Text);
-        Assert.Equal(SearchViewModel.MaximumSuggestions, proxy.SuggestionRequest?.Limit);
-        Assert.Collection(
-            result.Value!,
-            suggestion =>
-            {
-                Assert.Equal("Spotify", suggestion.Text);
-                Assert.Equal(99, suggestion.ConfidencePercent);
-            },
-            suggestion =>
-            {
-                Assert.Equal("The user is listening to Spotify while reviewing liked songs.", suggestion.Text);
-                Assert.InRange(suggestion.ConfidencePercent, 55, 98);
-            });
-        Assert.All(result.Value!, suggestion => Assert.DoesNotContain("#", suggestion.Text, StringComparison.Ordinal));
-    }
-
     private static SearchViewModel CreateViewModel(ITrackMeUpApplication application) =>
         new(application, "LOCALIZED MATCH", FormatClickCount);
 
@@ -163,8 +136,6 @@ public sealed class SearchViewModelTests
         public CancellationTokenSource? CancelOnSearch { get; set; }
 
         public SearchRequest? Request { get; private set; }
-
-        public SearchSuggestionRequest? SuggestionRequest { get; private set; }
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
@@ -241,23 +212,6 @@ public sealed class SearchViewModelTests
                     response));
             }
 
-            if (targetMethod?.Name == nameof(ITrackMeUpApplication.GetSearchSuggestionsAsync))
-            {
-                SuggestionRequest = Assert.IsType<SearchSuggestionRequest>(args![0]);
-                IReadOnlyList<SearchSuggestion> suggestions =
-                [
-                    new SearchSuggestion { Text = "Spotify", Weight = 8 },
-                    new SearchSuggestion
-                    {
-                        Text = "## Activity\n\nThe user is listening to **Spotify** while reviewing [liked songs](https://example.test/private).",
-                        Weight = 2
-                    }
-                ];
-                return Task.FromResult(OperationResult<IReadOnlyList<SearchSuggestion>>.Success(
-                    "search.suggestions.completed",
-                    "SearchSuggestionsCompleted",
-                    suggestions));
-            }
 
             throw new NotSupportedException(targetMethod?.Name);
         }

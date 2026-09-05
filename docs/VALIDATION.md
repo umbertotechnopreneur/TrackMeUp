@@ -63,11 +63,11 @@ Use these checks for behavior and visual acceptance after changing the correspon
 - Move the pointer to each connected monitor and repeat the shortcut. The compact window must be centered in the pointer's monitor work area, use at most 64% of its width, and never exceed 960 logical pixels.
 - Confirm that the window cannot be resized, minimized, or maximized, and that clicking outside closes it.
 
-### Suggestions and loading
+### Search loading and freshness
 
-- Enter at least three characters. Suggestions must use compact single-line rows with a coral marker, Markdown-free text, and a weighted confidence badge.
-- Type rapidly while suggestions and results update, then move the pointer across the window. The UI must remain responsive while index refresh and Lucene work execute in the background.
-- A thin pulsing coral-gold-violet-blue-cyan glow must remain directly below the query box until every overlapping suggestion or search request has completed or been cancelled. It must fade over 48 logical pixels at both ends and blend into the Acrylic surface without visible cuts.
+- Enter at least three characters. Search starts after a 250 ms pause with no suggestion popup; Enter submits immediately.
+- Type rapidly while the background index updater is busy. Queries use the last completed snapshot and must not wait for new-source projection or an index rebuild. Newly captured content becomes searchable after the next update completes; the worker checks for changes once per second. Initial creation of an empty index is the only readiness wait.
+- The static gradient stays below the query field and a native progress ring appears while a query without results is pending. Cancelled queries must not replace newer results.
 
 ### Results
 
@@ -83,9 +83,10 @@ Use these checks for behavior and visual acceptance after changing the correspon
 ### Commands and index rebuild
 
 - Open the application menu and confirm that the primary actions show their `Ctrl+Shift+...` shortcuts and invoke the same commands as their menu items.
-- From Search and OCR settings, open Rebuild search indexes. Confirm that the full Acrylic window starts indeterminate progress for both results and suggestions.
-- Confirm that Cancel stops the operation safely and that the previous committed indexes remain usable after cancellation or failure.
+- From Search and OCR settings, open Rebuild search index. Confirm that the Mica window shows indeterminate progress for one local search index, without a suggestions section.
+- Confirm that Cancel stops the operation safely and that the previous committed index remains usable. An indexing failure must be reported explicitly; a successful manual rebuild restores queries and background updates.
 - Confirm that successful completion reports the indexed document count.
+- Run deletion or retention during indexing and confirm removed content is absent from queries after the operation completes, including after restart. Close the app during a slow update and confirm the updater stops before the index is disposed.
 
 ## Atomic nuke
 

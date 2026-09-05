@@ -196,6 +196,15 @@
                     TextAlignment="Center"
                     TextWrapping="Wrap"
                     Visibility="Collapsed" />
+                <TextBlock
+                    x:Name="DaylightSavingText"
+                    Margin="0,4,0,0"
+                    HorizontalAlignment="Center"
+                    FontSize="11"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap"
+                    Visibility="Collapsed" />
             </StackPanel>
 
             <TextBlock

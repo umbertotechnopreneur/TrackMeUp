@@ -406,7 +406,6 @@ public sealed class CliRouterTests
         public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => Unsupported<LastSessionState?>();
         public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => Unsupported<DailySummary>();
         public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) => Unsupported<SearchResponse>();
-        public Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) => Unsupported<IReadOnlyList<SearchSuggestion>>();
         public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) => Unsupported<SearchAvailability>();
         public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();

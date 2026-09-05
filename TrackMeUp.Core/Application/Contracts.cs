@@ -616,12 +616,16 @@ public sealed record WorldClockWeatherStatus(
     bool IsProviderConfigured);
 
 /// <summary>Contains one locally calculated city clock and its celestial events.</summary>
+/// <param name="IsDaylightSavingTime">Whether the projected instant is in daylight saving time, independently of sunrise/sunset.</param>
+/// <param name="DaylightSavingEndsAt">First instant after active DST ends, using the city's new offset; null when inactive or no future end is defined by installed rules.</param>
 public sealed record WorldClockItem(
     string CityId,
     string CityName,
     string CountryCode,
     string TimeZoneId,
     DateTimeOffset LocalTime,
+    bool IsDaylightSavingTime,
+    DateTimeOffset? DaylightSavingEndsAt,
     bool IsDaylight,
     DateTimeOffset? Sunrise,
     DateTimeOffset? Sunset,
@@ -715,9 +719,6 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Searches every locally available activity, screenshot, OCR, and AI text field.</summary>
     Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken);
-
-    /// <summary>Returns type-ahead suggestions from the separate local suggestion index.</summary>
-    Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken);
 
     /// <summary>Gets the retained snapshot counts and local text-reading availability before search opens.</summary>
     Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken);

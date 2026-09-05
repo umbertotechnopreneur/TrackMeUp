@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-using System.Collections.Immutable;
-
 namespace TrackMeUp.Search;
 
 /// <summary>
@@ -13,7 +11,7 @@ public interface ILocalSearchService : IAsyncDisposable
     long CommittedSourceRevision { get; }
 
     /// <summary>
-    /// Applies ordered upserts and deletes with one Lucene commit and invalidates suggestions for lazy repair.
+    /// Applies ordered upserts and deletes with one Lucene commit and publishes the committed snapshot.
     /// </summary>
     /// <param name="mutations">The stable-document mutations to apply.</param>
     /// <param name="sourceRevision">The durable source revision represented after the batch commits.</param>
@@ -40,10 +38,5 @@ public interface ILocalSearchService : IAsyncDisposable
     /// <returns>The matching page and total count.</returns>
     Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns prefix suggestions from the separate, incrementally maintained suggestion index.
-    /// </summary>
-    /// <param name="request">The partial query and result limit.</param>
-    /// <param name="cancellationToken">A token observed before the synchronous Lucene read begins.</param>
-    Task<ImmutableArray<SearchSuggestion>> SuggestAsync(SearchSuggestionRequest request, CancellationToken cancellationToken = default);
+
 }

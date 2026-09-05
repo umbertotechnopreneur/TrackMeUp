@@ -372,6 +372,8 @@ public sealed class RuntimeProtocolTests
         Assert.True(result.Succeeded);
         var clock = Assert.Single(result.Value!.Clocks);
         Assert.Equal("london", clock.CityId);
+        Assert.True(clock.IsDaylightSavingTime);
+        Assert.Equal(new DateTimeOffset(2026, 10, 25, 1, 0, 0, TimeSpan.Zero), clock.DaylightSavingEndsAt);
         Assert.Null(clock.Weather);
         Assert.Equal("unavailable", result.Value.WeatherStatus.State);
         Assert.Equal("request-failed", result.Value.WeatherStatus.ReasonCode);
@@ -884,6 +886,8 @@ public sealed class RuntimeProtocolTests
                         "GB",
                         "GMT Standard Time",
                         instant,
+                        true,
+                        new DateTimeOffset(2026, 10, 25, 1, 0, 0, TimeSpan.Zero),
                         true,
                         instant.AddHours(-6),
                         instant.AddHours(6),

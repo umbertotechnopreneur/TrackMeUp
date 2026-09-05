@@ -38,8 +38,6 @@ internal enum RuntimeOperation
     SessionToday,
     [RuntimeOperationWireName("search.query.v1")]
     SearchQueryV1,
-    [RuntimeOperationWireName("search.suggest.v2")]
-    SearchSuggestV2,
     [RuntimeOperationWireName("search.availability.v1")]
     SearchAvailabilityV1,
     [RuntimeOperationWireName("search.rebuild.v1")]

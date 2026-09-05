@@ -232,24 +232,6 @@ internal static class SearchValidation
         return limit;
     }
 
-    internal static int ValidateSuggestionRequest(SearchSuggestionRequest request, SearchOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.Text);
-        ValidateLength(request.Text, nameof(request.Text), options);
-        if (request.Text.Trim().Length < 3)
-        {
-            throw new ArgumentException("Suggestion text must contain at least three characters.", nameof(request));
-        }
-
-        if (request.Limit is < 1 or > 20)
-        {
-            throw new ArgumentOutOfRangeException(nameof(request), "Suggestion limit must be between one and twenty.");
-        }
-
-        return request.Limit;
-    }
-
     internal static bool FitsIndexedTerm(string value) =>
         Encoding.UTF8.GetByteCount(value) <= MaxIndexedTermUtf8Bytes;
 

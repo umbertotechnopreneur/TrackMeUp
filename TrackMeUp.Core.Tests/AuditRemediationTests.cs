@@ -157,7 +157,6 @@ public sealed class AuditRemediationTests : IDisposable
         }
         await using var search = new LocalSearchService(new SearchOptions { IndexRootPath = store.SearchIndexRootDirectory });
         Assert.Empty((await search.SearchAsync(new SearchRequest { Text = "syntheticconfidential" })).Hits);
-        Assert.Empty(await search.SuggestAsync(new SearchSuggestionRequest { Text = "syntheticconfidential" }));
     }
 
     [Fact]

@@ -254,9 +254,6 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
         SendAsync<SearchResponse>(RuntimeOperation.SearchQueryV1, request, cancellationToken, SearchTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) =>
-        SendAsync<IReadOnlyList<SearchSuggestion>>(RuntimeOperation.SearchSuggestV2, request, cancellationToken, SearchTimeout);
-    /// <inheritdoc />
     public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) =>
         SendAsync<SearchAvailability>(RuntimeOperation.SearchAvailabilityV1, null, cancellationToken, SearchTimeout);
     /// <inheritdoc />

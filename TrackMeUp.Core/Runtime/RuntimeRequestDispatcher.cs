@@ -57,7 +57,6 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.SessionLast => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 RuntimeOperation.SessionToday => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 RuntimeOperation.SearchQueryV1 => await DispatchSearchAsync(request, cancellationToken),
-                RuntimeOperation.SearchSuggestV2 => await DispatchSearchSuggestionsAsync(request, cancellationToken),
                 RuntimeOperation.SearchAvailabilityV1 => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
                 RuntimeOperation.SearchRebuildV1 => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
                 RuntimeOperation.SystemSnapshot => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
@@ -197,16 +196,6 @@ internal sealed class RuntimeRequestDispatcher
         return searchRequest is null
             ? Failure(request, "search.query.invalid", "SearchQueryInvalid")
             : ToResponse(request, await _application.SearchAsync(searchRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchSearchSuggestionsAsync(
-        RuntimeRequestEnvelope request,
-        CancellationToken cancellationToken)
-    {
-        var suggestionRequest = Read<SearchSuggestionRequest>(request.Payload);
-        return suggestionRequest is null
-            ? Failure(request, "search.suggestions.invalid", "SearchQueryInvalid")
-            : ToResponse(request, await _application.GetSearchSuggestionsAsync(suggestionRequest, cancellationToken));
     }
 
     private async Task<RuntimeResponseEnvelope> DispatchScreenshotCaptureAsync(

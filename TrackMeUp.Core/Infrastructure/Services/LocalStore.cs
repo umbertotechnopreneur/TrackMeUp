@@ -592,19 +592,29 @@ public sealed class LocalStore
         CancellationToken cancellationToken) =>
         _activity.LoadScreenshotTextSnapshotsForCapture(captureId, cancellationToken);
 
-    /// <summary>Loads only the capture day needed to refresh one screenshot capture in the derived index.</summary>
-    internal IReadOnlyList<ScreenshotGalleryItem> GetScreenshotGalleryItemsForCapture(string captureId, CancellationToken cancellationToken)
+    /// <summary>Projects requested captures together, scanning each affected day once and loading only their metadata.</summary>
+    internal IReadOnlyList<ScreenshotGalleryItem> GetScreenshotGalleryItemsForCaptures(
+        IReadOnlyCollection<string> captureIds, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
-        var provenance = _activity.LoadScreenshotCaptures([captureId]);
-        if (!provenance.TryGetValue(captureId, out var capture))
+        ArgumentNullException.ThrowIfNull(captureIds);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (captureIds.Count == 0) return [];
+        foreach (var captureId in captureIds) ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
+        var provenance = _activity.LoadScreenshotCaptures(captureIds);
+        var items = new List<ScreenshotGalleryItem>();
+        _screenshotProjectionGate.Wait(cancellationToken);
+        try
         {
-            return [];
+            // A missing capture is a deleted source. Filter before deserializing OCR or reading
+            // activity intervals so unrelated screenshots cannot multiply each index update.
+            foreach (var day in provenance.Values.GroupBy(capture => DateOnly.FromDateTime(capture.CapturedAt.LocalDateTime)))
+            {
+                var selected = day.Select(capture => capture.CaptureId).ToHashSet(StringComparer.Ordinal);
+                items.AddRange(GetScreenshotGalleryCore(day.Key, cancellationToken, selected).Items);
+            }
         }
-
-        return GetScreenshotGallery(DateOnly.FromDateTime(capture.CapturedAt.LocalDateTime), cancellationToken).Items
-            .Where(item => string.Equals(TryGetCaptureId(ScreenshotIdentity(item.Path)), captureId, StringComparison.Ordinal))
-            .ToArray();
+        finally { _screenshotProjectionGate.Release(); }
+        return items;
     }
 
     /// <summary>
@@ -658,20 +668,6 @@ public sealed class LocalStore
         }
 
         return timestamps;
-    }
-
-    /// <summary>Loads one current gallery projection by stable screenshot artifact identity.</summary>
-    internal ScreenshotGalleryItem? GetScreenshotGalleryItem(string artifactIdentity, CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(artifactIdentity);
-        var captureId = TryGetCaptureId(artifactIdentity);
-        if (captureId is null)
-        {
-            return null;
-        }
-
-        return GetScreenshotGalleryItemsForCapture(captureId, cancellationToken)
-            .SingleOrDefault(item => string.Equals(ScreenshotIdentity(item.Path), artifactIdentity, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Loads one OCR snapshot by its already-normalized stable artifact identity.</summary>
@@ -935,7 +931,7 @@ public sealed class LocalStore
         }
     }
 
-    private ScreenshotGallery GetScreenshotGalleryCore(DateOnly date, CancellationToken cancellationToken)
+    private ScreenshotGallery GetScreenshotGalleryCore(DateOnly date, CancellationToken cancellationToken, IReadOnlySet<string>? captureFilter = null)
     {
         var settings = LoadSettings();
         var directory = string.IsNullOrWhiteSpace(settings.ScreenshotDirectory)
@@ -951,6 +947,9 @@ public sealed class LocalStore
         foreach (var path in ScreenshotStorageLayout.EnumerateOwnedArtifactsInDirectory(dayDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (captureFilter is not null
+                && !captureFilter.Contains(TryGetCaptureId(ScreenshotIdentity(Path.GetFileName(path))) ?? string.Empty))
+                continue;
             var file = new FileInfo(path);
             files.Add(file);
         }
@@ -1328,7 +1327,8 @@ public sealed class LocalStore
         return retainedByIdentity;
     }
 
-    private static string? TryGetCaptureId(string artifactIdentity)
+    /// <summary>Extracts the capture identity shared by retained artifacts and search-source changes.</summary>
+    internal static string? TryGetCaptureId(string artifactIdentity)
     {
         var separator = artifactIdentity.IndexOf('_', StringComparison.Ordinal);
         if (separator <= 0)

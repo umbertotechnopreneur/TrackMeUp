@@ -225,7 +225,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             screenshotTextLogger);
         _search = new LocalSearchCoordinator(
             store,
-            localSearch ?? new LocalSearchService(new SearchOptions { IndexRootPath = store.SearchIndexRootDirectory }));
+            localSearch ?? new LocalSearchService(new SearchOptions { IndexRootPath = store.SearchIndexRootDirectory }),
+            _settingsSnapshot,
+            logger);
         _screenshotDeletions = new ScreenshotDeletionJournal(store);
         RecoverScreenshotDeletionsAsync(CancellationToken.None).GetAwaiter().GetResult();
         _startup = startup;
@@ -258,6 +260,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _runtimeTimerTask = startScheduledSnapshotTimer
             ? RunRuntimeTimerLoopAsync(_runtimeTimerCancellation.Token)
             : Task.CompletedTask;
+        _search.Start();
         _logger.LogInformation("Application facade initialized.");
     }
 
@@ -275,7 +278,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "tracking.health.v1", "sessions", "system", "screenshots", "screenshots.image.v1", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.analysis.delete.v1", "screenshots.storage-migration.v1", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.suggest.v2", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "tracking.health.v1", "sessions", "system", "screenshots", "screenshots.image.v1", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.analysis.delete.v1", "screenshots.storage-migration.v1", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
             _tracking.RuntimeHealth,
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
@@ -797,37 +800,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             _logger.LogWarning("Local search failed. ExceptionType={ExceptionType}", exception.GetType().Name);
             return OperationResult<SearchResponse>.Failure("search.failed", "SearchFailed");
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(
-        SearchSuggestionRequest request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var suggestions = await _search.SuggestAsync(request, cancellationToken).ConfigureAwait(false);
-            return OperationResult<IReadOnlyList<SearchSuggestion>>.Success(
-                "search.suggestions.completed",
-                "SearchSuggestionsCompleted",
-                suggestions);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (ArgumentException)
-        {
-            return OperationResult<IReadOnlyList<SearchSuggestion>>.Failure(
-                "search.suggestions.invalid",
-                "SearchQueryInvalid",
-                new ValidationIssue("query", "invalid", "SearchQueryInvalid"));
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning("Local search suggestions failed. ExceptionType={ExceptionType}", exception.GetType().Name);
-            return OperationResult<IReadOnlyList<SearchSuggestion>>.Failure("search.suggestions.failed", "SearchFailed");
         }
     }
 

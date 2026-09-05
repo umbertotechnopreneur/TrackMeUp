@@ -20,6 +20,27 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class WorldClockServiceTests
 {
+    /// <summary>Projects independent DST state and each active city's own end date through the shared snapshot.</summary>
+    [Fact]
+    public void Snapshot_ReportsDaylightSavingForEverySelectedClock()
+    {
+        using var service = new WorldClockService(
+            RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "world-clocks.sqlite3"));
+
+        var snapshot = service.BuildSnapshot(
+            ["ho-chi-minh-city", "rome", "new-york", "sydney"],
+            new DateTimeOffset(2026, 9, 5, 12, 0, 0, TimeSpan.Zero));
+
+        Assert.False(snapshot.Clocks[0].IsDaylightSavingTime);
+        Assert.Null(snapshot.Clocks[0].DaylightSavingEndsAt);
+        Assert.True(snapshot.Clocks[1].IsDaylightSavingTime);
+        Assert.Equal(new DateTimeOffset(2026, 10, 25, 1, 0, 0, TimeSpan.Zero), snapshot.Clocks[1].DaylightSavingEndsAt);
+        Assert.True(snapshot.Clocks[2].IsDaylightSavingTime);
+        Assert.Equal(new DateTimeOffset(2026, 11, 1, 6, 0, 0, TimeSpan.Zero), snapshot.Clocks[2].DaylightSavingEndsAt);
+        Assert.False(snapshot.Clocks[3].IsDaylightSavingTime);
+        Assert.Null(snapshot.Clocks[3].DaylightSavingEndsAt);
+    }
+
     [Fact]
     public void Catalog_ContainsRequiredLocalCityAndApprovedAdditionalCities()
     {

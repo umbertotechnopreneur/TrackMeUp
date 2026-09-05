@@ -99,6 +99,7 @@ public sealed partial class SearchWindow : Window
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, CompactLogicalHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
+        Activated += SearchWindow_Activated;
         Closed += SearchWindow_Closed;
     }
 
@@ -152,7 +153,7 @@ public sealed partial class SearchWindow : Window
         }
 
         ResizeForCurrentState();
-        CenterQueryText();
+        ConfigureQueryInput();
         FocusQuery();
     }
 
@@ -253,7 +254,7 @@ public sealed partial class SearchWindow : Window
         _activeSearchOperationCount++;
         if (wasIdle)
         {
-            SearchActivityGlow.Opacity = 1d;
+            SearchActivityGlow.SetSearching(true);
             UpdateResultState(_hasExecutedQuery);
         }
     }
@@ -268,16 +269,21 @@ public sealed partial class SearchWindow : Window
         _activeSearchOperationCount--;
         if (_activeSearchOperationCount == 0)
         {
-            SearchActivityGlow.Opacity = 0.72d;
+            SearchActivityGlow.SetSearching(false);
             UpdateResultState(_hasExecutedQuery);
         }
     }
 
     private void UpdateResultState(bool hasExecutedQuery)
     {
+        if (_closing)
+        {
+            return; // Canceled queries may finish after the native window has closed.
+        }
+
         _hasExecutedQuery = hasExecutedQuery;
         var hasResults = _viewModel.Results.Count > 0;
-        var isSearchingWithoutResults = _activeSearchOperationCount > 0 && !hasResults;
+        var isSearching = _activeSearchOperationCount > 0;
         ResultsSurface.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
         var countKey = _viewModel.TotalCount > _viewModel.Results.Count
             ? "Search.Results.Limited"
@@ -286,29 +292,40 @@ public sealed partial class SearchWindow : Window
             _viewModel.Results.Count, _viewModel.TotalCount);
         SearchResultsList.SelectedItem = _viewModel.SelectedResult;
         RenderSelectedPreview();
-        EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults && !isSearchingWithoutResults && !SearchInfoBar.IsOpen
+        EmptyStatePanel.Visibility = hasExecutedQuery && !hasResults && !isSearching && !SearchInfoBar.IsOpen
             ? Visibility.Visible
             : Visibility.Collapsed;
-        SearchActivityStatus.Visibility = isSearchingWithoutResults ? Visibility.Visible : Visibility.Collapsed;
+        SearchActivityStatus.Visibility = isSearching ? Visibility.Visible : Visibility.Collapsed;
+        SearchActivityProgressRing.IsActive = isSearching;
+        SearchStatusRow.Visibility = isSearching || EmptyStatePanel.Visibility == Visibility.Visible
+            ? Visibility.Visible : Visibility.Collapsed;
         ResizeForCurrentState();
     }
 
     private void ResizeForCurrentState()
     {
+        if (_closing)
+        {
+            return;
+        }
+
         var resultCount = _viewModel.Results.Count;
         var width = RootGrid.ActualWidth > 0d ? RootGrid.ActualWidth : LogicalWindowWidth;
         var measureSize = new Windows.Foundation.Size(width, double.PositiveInfinity);
         SearchQueryHost.Measure(measureSize);
         SearchFooter.Measure(measureSize);
         SearchInfoBar.Measure(measureSize);
-        SearchActivityStatus.Measure(measureSize);
-        EmptyStatePanel.Measure(measureSize);
-        var chromeHeight = 40d + SearchQueryHost.DesiredSize.Height + SearchFooter.DesiredSize.Height + SearchInfoBar.DesiredSize.Height;
+        SearchStatusRow.Measure(measureSize);
+        var chromeHeight = 40d + SearchQueryHost.DesiredSize.Height + SearchFooter.DesiredSize.Height
+            + SearchInfoBar.DesiredSize.Height + SearchStatusRow.DesiredSize.Height;
         var previewHeight = width < StackedPreviewWidth ? 420d : 280d;
         var logicalHeight = resultCount > 0
             ? checked((int)Math.Ceiling(chromeHeight + Math.Max(previewHeight, Math.Min(6, resultCount) * ResultLogicalHeight)))
-            : checked((int)Math.Ceiling(Math.Max(CompactLogicalHeight,
-                chromeHeight + Math.Max(SearchActivityStatus.DesiredSize.Height, EmptyStatePanel.DesiredSize.Height))));
+            : checked((int)Math.Ceiling(Math.Max(CompactLogicalHeight, chromeHeight)));
+        // XAML measures client content, while placement resizes the outer window. Reserve its native frame too.
+        var scale = RootGrid.XamlRoot?.RasterizationScale ?? 1d;
+        var frameHeight = Math.Max(0, _appWindow.Size.Height - _appWindow.ClientSize.Height) / scale;
+        logicalHeight += checked((int)Math.Ceiling(frameHeight));
         _placement.ResizeAndCenterOnCursorDisplay(
             RootGrid,
             CursorDisplayWidthRatio,
@@ -367,20 +384,27 @@ public sealed partial class SearchWindow : Window
         Grid.SetColumn(PreviewPane, stacked ? 0 : 1);
         Grid.SetRow(PreviewPane, stacked ? 1 : 0);
         PreviewPane.BorderThickness = stacked ? new Thickness(0, 1, 0, 0) : new Thickness(1, 0, 0, 0);
+        if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) >= 0.5d)
+        {
+            // Re-measure wrapped status/footer text after placement selects a different monitor width.
+            DispatcherQueue.TryEnqueue(ResizeForCurrentState);
+        }
     }
 
     private void QueryBox_GotFocus(object sender, RoutedEventArgs e)
     {
-        CenterQueryText();
+        ConfigureQueryInput();
         SelectAllQueryText();
     }
 
-    private void CenterQueryText()
+    private void ConfigureQueryInput()
     {
         if (FindDescendant<TextBox>(QueryBox) is { } textBox)
         {
             textBox.VerticalContentAlignment = VerticalAlignment.Center;
             textBox.Padding = new Thickness(textBox.Padding.Left, 0, textBox.Padding.Right, 0);
+            textBox.IsTextPredictionEnabled = false;
+            textBox.IsSpellCheckEnabled = false;
         }
     }
 
@@ -437,9 +461,15 @@ public sealed partial class SearchWindow : Window
         }
     }
 
+    private void SearchWindow_Activated(object sender, WindowActivatedEventArgs args) =>
+        SearchActivityGlow.SetMotionEnabled(args.WindowActivationState != WindowActivationState.Deactivated);
+
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        Activated -= SearchWindow_Activated;
+        SearchActivityGlow.SetMotionEnabled(false);
+        SearchActivityProgressRing.IsActive = false;
         SearchActivityGlow.Visibility = Visibility.Collapsed;
         SearchActivityStatus.Visibility = Visibility.Collapsed;
         _lifetimeCancellation.Cancel();
