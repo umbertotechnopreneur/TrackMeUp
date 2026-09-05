@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+using System;
 using TrackMeUp.Presentation;
 using Xunit;
 
@@ -7,6 +8,51 @@ namespace TrackMeUp.Presentation.Tests;
 
 public sealed class MainWindowLayoutStateTests
 {
+    /// <summary>Checks that content updates and surface changes do not overwrite the user's viewport.</summary>
+    [Fact]
+    public void ManualViewport_SurvivesContentChangesAndSurfaceSwitches()
+    {
+        var state = new MainWindowLayoutState();
+        state.RecordManualSize(510, 390);
+        state.RecordMeasuredHeight(1600);
+        Assert.Equal(510, state.ResolveLogicalWidth(1200, 576));
+        Assert.Equal(390, state.ResolveLogicalHeight(900, 20));
+
+        state.ShowSurface(MainWindowSurface.Options);
+        Assert.Equal(760, state.ResolveLogicalWidth(1200, 760));
+        state.RecordManualSize(820, 630);
+        Assert.Equal(630, state.ResolveLogicalHeight(900, 20));
+
+        state.ShowSurface(MainWindowSurface.Player);
+        Assert.Equal(510, state.ResolveLogicalWidth(1200, 576));
+        Assert.Equal(390, state.ResolveLogicalHeight(900, 20));
+    }
+
+    /// <summary>Checks that a smaller display constrains bounds without losing the preferred viewport.</summary>
+    [Fact]
+    public void ManualViewport_ClampsToTheDisplayAndRecoversWhenSpaceReturns()
+    {
+        var state = new MainWindowLayoutState();
+        state.RecordManualSize(820, 630);
+        Assert.Equal(500, state.ResolveLogicalWidth(500.8, 576));
+        Assert.Equal(400, state.ResolveLogicalHeight(400.9, 20));
+        Assert.Equal(820, state.ResolveLogicalWidth(1200, 576));
+        Assert.Equal(630, state.ResolveLogicalHeight(900, 20));
+    }
+
+    /// <summary>Checks that invalid window geometry fails before replacing the last valid size.</summary>
+    [Fact]
+    public void ManualViewport_RejectsInvalidGeometry()
+    {
+        var state = new MainWindowLayoutState();
+        state.RecordManualSize(510, 390);
+        Assert.Throws<ArgumentOutOfRangeException>(() => state.RecordManualSize(double.NaN, 390));
+        Assert.Throws<ArgumentOutOfRangeException>(() => state.RecordManualSize(510, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => state.ResolveLogicalWidth(double.PositiveInfinity, 576));
+        Assert.Equal(510, state.ResolveLogicalWidth(1200, 576));
+        Assert.Equal(390, state.ResolveLogicalHeight(900, 20));
+    }
+
     [Fact]
     public void State_TracksAllPlayerSectionsWithoutResettingThemWhenChangingSurface()
     {

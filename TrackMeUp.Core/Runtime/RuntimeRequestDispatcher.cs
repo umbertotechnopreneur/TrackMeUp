@@ -52,11 +52,11 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.WorldClocksCatalogV1 => ToResponse(request, await _application.GetWorldClockCityCatalogAsync(cancellationToken)),
                 RuntimeOperation.WorldClocksAddV3 => ToResponse(request, await _application.AddWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
                 RuntimeOperation.WorldClocksRemoveV3 => ToResponse(request, await _application.RemoveWorldClockAsync(ReadString(request.Payload, "cityId"), cancellationToken)),
+                RuntimeOperation.WorldClocksMoveV1 => ToResponse(request, await DispatchWorldClockMoveAsync(request, cancellationToken)),
                 RuntimeOperation.WorldClocksWeatherKeySetV2 => ToResponse(request, await _application.SetWorldClockWeatherKeyAsync(ReadString(request.Payload, "secret"), cancellationToken)),
                 RuntimeOperation.SessionLast => ToResponse(request, await _application.GetLastSessionAsync(cancellationToken)),
                 RuntimeOperation.SessionToday => ToResponse(request, await _application.GetTodaySummaryAsync(cancellationToken)),
                 RuntimeOperation.SearchQueryV1 => await DispatchSearchAsync(request, cancellationToken),
-                RuntimeOperation.SearchSuggestV2 => await DispatchSearchSuggestionsAsync(request, cancellationToken),
                 RuntimeOperation.SearchAvailabilityV1 => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
                 RuntimeOperation.SearchRebuildV1 => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
                 RuntimeOperation.SystemSnapshot => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
@@ -198,16 +198,6 @@ internal sealed class RuntimeRequestDispatcher
             : ToResponse(request, await _application.SearchAsync(searchRequest, cancellationToken));
     }
 
-    private async Task<RuntimeResponseEnvelope> DispatchSearchSuggestionsAsync(
-        RuntimeRequestEnvelope request,
-        CancellationToken cancellationToken)
-    {
-        var suggestionRequest = Read<SearchSuggestionRequest>(request.Payload);
-        return suggestionRequest is null
-            ? Failure(request, "search.suggestions.invalid", "SearchQueryInvalid")
-            : ToResponse(request, await _application.GetSearchSuggestionsAsync(suggestionRequest, cancellationToken));
-    }
-
     private async Task<RuntimeResponseEnvelope> DispatchScreenshotCaptureAsync(
         RuntimeRequestEnvelope request,
         CancellationToken cancellationToken)
@@ -262,6 +252,15 @@ internal sealed class RuntimeRequestDispatcher
         }
 
         return ToResponse(request, await _application.GetReportAsync(query, cancellationToken));
+    }
+
+    private async Task<OperationResult<WorldClockSelectionState>> DispatchWorldClockMoveAsync(
+        RuntimeRequestEnvelope request,
+        CancellationToken cancellationToken)
+    {
+        var move = Read<WorldClockMoveRequest>(request.Payload)
+            ?? throw new InvalidDataException("A world-clock move request is required.");
+        return await _application.MoveWorldClockAsync(move.CityId, move.Direction, cancellationToken);
     }
 
     private static RuntimeResponseEnvelope Failure(

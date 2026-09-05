@@ -585,6 +585,14 @@ public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> 
 /// <summary>Contains the persisted world-clock identifiers after a successful selection mutation.</summary>
 public sealed record WorldClockSelectionState(IReadOnlyList<string> CityIds, int MaximumClocks);
 
+/// <summary>Identifies the adjacent direction used to reorder a selected world clock.</summary>
+public enum WorldClockMoveDirection
+{
+    Unspecified = 0,
+    Up = 1,
+    Down = 2
+}
+
 /// <summary>Describes decorative local-time layers and any source-backed weather layers for one clock.</summary>
 public sealed record WorldClockAtmosphere(
     string Phase,
@@ -608,12 +616,16 @@ public sealed record WorldClockWeatherStatus(
     bool IsProviderConfigured);
 
 /// <summary>Contains one locally calculated city clock and its celestial events.</summary>
+/// <param name="IsDaylightSavingTime">Whether the projected instant is in daylight saving time, independently of sunrise/sunset.</param>
+/// <param name="DaylightSavingEndsAt">First instant after active DST ends, using the city's new offset; null when inactive or no future end is defined by installed rules.</param>
 public sealed record WorldClockItem(
     string CityId,
     string CityName,
     string CountryCode,
     string TimeZoneId,
     DateTimeOffset LocalTime,
+    bool IsDaylightSavingTime,
+    DateTimeOffset? DaylightSavingEndsAt,
     bool IsDaylight,
     DateTimeOffset? Sunrise,
     DateTimeOffset? Sunset,
@@ -690,6 +702,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Removes one city from the persisted world-clock selection.</summary>
     Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken);
 
+    /// <summary>Moves one city by one position in the persisted world-clock selection.</summary>
+    Task<OperationResult<WorldClockSelectionState>> MoveWorldClockAsync(
+        string cityId,
+        WorldClockMoveDirection direction,
+        CancellationToken cancellationToken);
+
     /// <summary>Stores the current-weather API key only in its fixed Windows environment variable.</summary>
     Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken);
 
@@ -701,9 +719,6 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Searches every locally available activity, screenshot, OCR, and AI text field.</summary>
     Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken);
-
-    /// <summary>Returns type-ahead suggestions from the separate local suggestion index.</summary>
-    Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken);
 
     /// <summary>Gets the retained snapshot counts and local text-reading availability before search opens.</summary>
     Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken);

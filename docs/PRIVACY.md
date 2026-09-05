@@ -106,7 +106,7 @@ The following are the direct product and build packages relevant to data behavio
 | `Microsoft.WindowsAppSDK` | 2.3.1 | Windows desktop UI and platform integration. |
 | `Microsoft.Windows.SDK.BuildTools` | 10.0.28000.2526 | Windows build-time APIs and metadata. |
 | `Microsoft.Extensions.DependencyInjection` / logging packages | 10.0.10 | Application wiring and logging abstractions; no product analytics. |
-| `Lucene.Net`, `Lucene.Net.Analysis.Common` | 4.8.0-beta00018 | Local full-text indexing, analysis, and suggestions; no network service. |
+| `Lucene.Net`, `Lucene.Net.Analysis.Common` | 4.8.0-beta00018 | Local full-text indexing and analysis; no network service. |
 
 ### CLI and reports
 
@@ -159,9 +159,9 @@ TrackMeUp exposes a read-only retention preview before deletion. A confirmed ret
 
 The default local retention period is 30 days for activity data and 30 days for retained screenshots. Settings can change those periods, including setting them to zero. Temporary screenshots are cleaned after analysis when retention is disabled, or when a manual capture is deleted during its player deletion window.
 
-Local OCR expires under data retention using its extraction timestamp, even after its image has been removed; screenshot interval telemetry expires using capture time. The preview includes these database records. Screenshot deletion records a local pending-deletion intent before removing files. Failures remain retryable, and pending operations are completed on the next runtime startup; paths must still validate under the configured screenshot root. A completed deletion/retention operation has also committed changes to the searchable index and suggestions. These are logical deletions, not promises of forensic erasure from SQLite pages, Lucene segments, backups, or storage media.
+Local OCR expires under data retention using its extraction timestamp, even after its image has been removed; screenshot interval telemetry expires using capture time. The preview includes these database records. Screenshot deletion records a local pending-deletion intent before removing files. Failures remain retryable, and pending operations are completed on the next runtime startup; paths must still validate under the configured screenshot root. A completed deletion/retention operation has also committed and published changes to the searchable index. These are logical deletions, not promises of forensic erasure from SQLite pages, Lucene segments, backups, or storage media.
 
-Search and suggestions share one versioned local index and one commit. The obsolete separate suggestion index and previous search schema are discarded on upgrade and rebuilt from current local sources. Same-user IPC accepts at most four concurrent requests, with a five-second deadline for each initial frame and response write; incomplete input buffers are bounded to 64 MiB in aggregate. This does not grant access to other Windows users or remote clients.
+Search uses one versioned local index containing source documents only. The suggestion API and projection have been removed; obsolete derived indexes are discarded on upgrade and rebuilt from current local sources as `lucene-v4`. One runtime-owned updater checks for changes once per second. Queries reuse the last completed snapshot; deletion and retention explicitly synchronize and publish before reporting success. Indexing failures are reported and require a successful manual rebuild. Same-user IPC accepts at most four concurrent requests, with a five-second deadline for each initial frame and response write; incomplete input buffers are bounded to 64 MiB in aggregate. This does not grant access to other Windows users or remote clients.
 
 The separately confirmed atomic reset removes the current installation's
 validated TrackMeUp application-data directory and TrackMeUp-owned screenshot

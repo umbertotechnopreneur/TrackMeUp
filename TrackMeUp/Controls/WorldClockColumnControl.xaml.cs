@@ -124,6 +124,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             : strings.Format("WorldClock.OffsetFromReference", FormatOffset(clock.LocalTime.Offset - referenceClock.LocalTime.Offset));
         DateRelationText.Text = DateRelation(clock.LocalTime.Date, referenceClock.LocalTime.Date, strings);
         DateRelationText.Visibility = string.IsNullOrEmpty(DateRelationText.Text) ? Visibility.Collapsed : Visibility.Visible;
+        var daylightSavingSummary = ApplyDaylightSaving(clock, strings);
 
         ApplySkyline(clock.SkylineAssetPath);
         _backdropAssetPaths = ApplyLayers(
@@ -158,6 +159,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             OffsetText.Text,
             DateRelationText.Text,
             DayStateText.Text,
+            daylightSavingSummary,
             moonPhaseSummary,
             weatherSummary,
             sunriseSummary,
@@ -217,6 +219,9 @@ public sealed partial class WorldClockColumnControl : UserControl
         OffsetText.TextAlignment = expanded ? TextAlignment.Center : TextAlignment.Left;
         DateRelationText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Left;
         DateRelationText.TextAlignment = expanded ? TextAlignment.Center : TextAlignment.Left;
+        DaylightSavingText.HorizontalAlignment = expanded ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        DaylightSavingText.TextAlignment = expanded ? TextAlignment.Center : TextAlignment.Left;
+        DaylightSavingText.Visibility = detail != WorldClockDetailLevel.Essential ? Visibility.Visible : Visibility.Collapsed;
         // Day changes remain visible even in the smallest comparison.
         DateRelationText.Visibility = string.IsNullOrEmpty(DateRelationText.Text) ? Visibility.Collapsed : Visibility.Visible;
         DayStateText.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
@@ -238,6 +243,26 @@ public sealed partial class WorldClockColumnControl : UserControl
             && !string.IsNullOrEmpty(CompactDaylightDurationText.Text) ? Visibility.Visible : Visibility.Collapsed;
         CompactTimeZoneText.Visibility = !expanded && !string.IsNullOrEmpty(CompactTimeZoneText.Text)
             ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string ApplyDaylightSaving(WorldClockItem clock, LocalizationService strings)
+    {
+        var summary = clock.IsDaylightSavingTime
+            ? clock.DaylightSavingEndsAt is { } end
+                ? strings.Format("WorldClock.DstActiveUntil", end.ToString("d MMM yyyy", strings.Culture))
+                : strings.Translate("WorldClock.DstActiveEndUnknown")
+            : strings.Translate("WorldClock.DstInactive");
+        DaylightSavingText.Text = summary;
+        if (clock.IsDaylightSavingTime && clock.DaylightSavingEndsAt is { } transition)
+        {
+            summary = strings.Format("WorldClock.DstActiveUntil",
+                $"{transition.ToString("f", strings.Culture)} (UTC{FormatOffset(transition.Offset)})");
+        }
+
+        ToolTipService.SetToolTip(DaylightSavingText, summary);
+        ToolTipService.SetToolTip(LocalTimeText, summary);
+        AutomationProperties.SetName(DaylightSavingText, summary);
+        return summary;
     }
 
     private string ApplyMoonPhase(

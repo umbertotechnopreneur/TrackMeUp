@@ -330,6 +330,8 @@ public sealed class WorldClockService : IDisposable
                 city.CountryCode,
                 city.TimeZoneId,
                 localTime,
+                timeZone.IsDaylightSavingTime(utcInstant),
+                WorldClockDaylightSaving.FindEnd(timeZone, utcInstant),
                 isDaylight,
                 events.Sunrise,
                 events.Sunset,

@@ -13,6 +13,78 @@ namespace TrackMeUp.Search.Tests;
 
 public sealed class LocalSearchServiceTests
 {
+    /// <summary>Queries keep reading the committed snapshot while the next index is built.</summary>
+    [Fact]
+    public async Task SearchAsync_ReadsCommittedSnapshotDuringBlockedRebuild()
+    {
+        await using var harness = new SearchHarness();
+        await harness.Service.RebuildAsync([CreateDocument("old") with { Context = "committedmarker" }], 1);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        IEnumerable<SearchDocument> BlockedDocuments()
+        {
+            yield return CreateDocument("new") with { Context = "replacementmarker" };
+            entered.SetResult();
+            release.Task.GetAwaiter().GetResult();
+        }
+
+        var rebuild = Task.Run(() => harness.Service.RebuildAsync(BlockedDocuments(), 2));
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var reads = Enumerable.Range(0, 8).Select(_ => Task.Run(() => harness.Service.SearchAsync(
+                new SearchRequest { Text = "committedmarker" })));
+            var responses = await Task.WhenAll(reads).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.All(responses, response => Assert.Equal("old", Assert.Single(response.Hits).Document.Id));
+            Assert.Equal(1, harness.Service.CommittedSourceRevision);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await rebuild.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        Assert.Empty((await harness.Service.SearchAsync(new SearchRequest { Text = "committedmarker" })).Hits);
+        Assert.Equal("new", Assert.Single((await harness.Service.SearchAsync(new SearchRequest { Text = "replacementmarker" })).Hits).Document.Id);
+    }
+
+    /// <summary>Rollback keeps the shared reader usable and later commits publish normally.</summary>
+    [Fact]
+    public async Task FailedRebuild_PreservesSharedReaderAndAllowsNextCommit()
+    {
+        await using var harness = new SearchHarness();
+        var original = CreateDocument("original") with { Context = "originalmarker" };
+        await harness.Service.RebuildAsync([original], 1);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => harness.Service.RebuildAsync([original, original], 2));
+        Assert.Equal("original", Assert.Single((await harness.Service.SearchAsync(new SearchRequest { Text = "originalmarker" })).Hits).Document.Id);
+        await harness.Service.ApplyBatchAsync([SearchIndexMutation.Delete("original")], 2);
+        Assert.Empty((await harness.Service.SearchAsync(new SearchRequest { Text = "originalmarker" })).Hits);
+    }
+
+    /// <summary>The explicit v4 migration removes the old derived suggestion index and writes only source documents.</summary>
+    [Fact]
+    public async Task SourceOnlySchema_DiscardsOldDerivedIndexAndContainsNoSuggestionDocuments()
+    {
+        var root = SearchHarness.CreateRoot();
+        try
+        {
+            var oldIndex = Path.Combine(root, "lucene-v3");
+            Directory.CreateDirectory(oldIndex);
+            File.WriteAllText(Path.Combine(oldIndex, "synthetic-suggestion.txt"), "obsolete test data");
+            await using var service = new LocalSearchService(new SearchOptions { IndexRootPath = root });
+            await service.RebuildAsync([CreateDocument("one"), CreateDocument("two")], 1);
+
+            Assert.False(Directory.Exists(oldIndex));
+            Assert.Equal(4, LocalSearchService.IndexSchemaVersion);
+            using var directory = FSDirectory.Open(new DirectoryInfo(service.IndexPath));
+            using var reader = DirectoryReader.Open(directory);
+            Assert.Equal(2, reader.NumDocs);
+            Assert.All(Enumerable.Range(0, reader.MaxDoc), id => Assert.Null(reader.Document(id).Get("suggestion_text")));
+        }
+        finally { SearchHarness.DeleteRoot(root); }
+    }
+
     [Fact]
     public async Task ApplyBatchAsync_AppliesOrderedUpsertsAndDeletes()
     {
@@ -99,112 +171,6 @@ public sealed class LocalSearchServiceTests
         {
             SearchHarness.DeleteRoot(root);
         }
-    }
-
-    [Fact]
-    public void IndexSchema_IsVersionedForAtomicSuggestions()
-    {
-        Assert.Equal(3, LocalSearchService.IndexSchemaVersion);
-        Assert.Equal("lucene-v3", LocalSearchService.IndexDirectoryName);
-    }
-
-    [Fact]
-    public async Task SuggestAsync_UsesTokenInfixForThreeCharacterQueries()
-    {
-        await using var harness = new SearchHarness();
-        await harness.RebuildAsync(
-        [
-            CreateDocument("suggestion-one") with
-            {
-                Application = "Visual Studio Code",
-                WindowTitle = "SearchWindow.xaml",
-                OcrRawText = "Planning the next release"
-            },
-            CreateDocument("suggestion-two") with
-            {
-                Application = "Microsoft Teams",
-                WindowTitle = "Release planning"
-            }
-        ]);
-
-        var suggestions = await harness.Service.SuggestAsync(new SearchSuggestionRequest
-        {
-            Text = "vis",
-            Limit = 8
-        });
-
-        Assert.Contains(suggestions, suggestion =>
-            string.Equals(suggestion.Text, "Visual Studio Code", StringComparison.OrdinalIgnoreCase)
-            && suggestion.Weight > 0);
-        await Assert.ThrowsAsync<ArgumentException>(() => harness.Service.SuggestAsync(new SearchSuggestionRequest
-        {
-            Text = "vi",
-            Limit = 8
-        }));
-    }
-
-    [Fact]
-    public async Task Suggestions_AreCommittedWithSourceDeletionsBeforeAnyLookup()
-    {
-        var root = SearchHarness.CreateRoot();
-        var options = new SearchOptions { IndexRootPath = root };
-        try
-        {
-            await using (var first = new LocalSearchService(options))
-            {
-                await first.ApplyBatchAsync(
-                    [SearchIndexMutation.Upsert(CreateDocument("old") with { Application = "Private Workspace" })], 1);
-                await first.ApplyBatchAsync(
-                    [SearchIndexMutation.Delete("old"),
-                     SearchIndexMutation.Upsert(CreateDocument("current") with { Application = "Modern Workspace" })], 2);
-            }
-            await using (var second = new LocalSearchService(options))
-            {
-                Assert.Empty(await second.SuggestAsync(new SearchSuggestionRequest { Text = "private" }));
-                Assert.Contains(await second.SuggestAsync(new SearchSuggestionRequest { Text = "mod" }),
-                    item => item.Text == "Modern Workspace");
-                using var directory = FSDirectory.Open(new DirectoryInfo(second.IndexPath));
-                using var reader = DirectoryReader.Open(directory);
-                var hits = new Lucene.Net.Search.IndexSearcher(reader).Search(
-                    new Lucene.Net.Search.TermQuery(new Term("suggestion_text", "private")), 10);
-                Assert.Equal(0, hits.TotalHits);
-            }
-        }
-        finally { SearchHarness.DeleteRoot(root); }
-    }
-
-    [Fact]
-    public async Task Suggestions_IncrementReferenceCountsAndRollbackWithFailedRebuild()
-    {
-        await using var harness = new SearchHarness();
-        var first = CreateDocument("one") with { Application = "Shared Workspace" };
-        var second = CreateDocument("two") with { Application = "Shared Workspace" };
-        await harness.Service.RebuildAsync([first, second], 1);
-        Assert.Equal(2, Assert.Single(await harness.Service.SuggestAsync(
-            new SearchSuggestionRequest { Text = "shared" })).Weight);
-        await harness.Service.ApplyBatchAsync([SearchIndexMutation.Delete("one")], 2);
-        Assert.Equal(1, Assert.Single(await harness.Service.SuggestAsync(
-            new SearchSuggestionRequest { Text = "shared" })).Weight);
-        await Assert.ThrowsAsync<ArgumentException>(() => harness.Service.RebuildAsync([first, first], 3));
-        Assert.Equal(1, Assert.Single(await harness.Service.SuggestAsync(
-            new SearchSuggestionRequest { Text = "shared" })).Weight);
-        await harness.Service.ApplyBatchAsync([SearchIndexMutation.Delete("two")], 3);
-        Assert.Empty(await harness.Service.SuggestAsync(new SearchSuggestionRequest { Text = "shared" }));
-    }
-
-    [Fact]
-    public async Task SuggestionLookup_DoesNotWriteOrRebuildAfterOneSourceChange()
-    {
-        await using var harness = new SearchHarness();
-        await harness.Service.RebuildAsync(Enumerable.Range(0, 5000).Select(i =>
-            CreateDocument(i.ToString()) with { Context = $"Workspace item {i}" }), 1);
-        await harness.Service.ApplyBatchAsync(
-            [SearchIndexMutation.Upsert(CreateDocument("new") with { Context = "Workspace new" })], 2);
-        var before = Directory.GetFiles(harness.Service.IndexPath).ToDictionary(path => path, File.GetLastWriteTimeUtc);
-        Assert.NotEmpty(await harness.Service.SuggestAsync(new SearchSuggestionRequest { Text = "workspace" }));
-        var after = Directory.GetFiles(harness.Service.IndexPath).ToDictionary(path => path, File.GetLastWriteTimeUtc);
-        Assert.Equal(before.OrderBy(pair => pair.Key), after.OrderBy(pair => pair.Key));
-        Assert.Equal(2, harness.Service.CommittedSourceRevision);
     }
 
     [Fact]

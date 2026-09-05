@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "styleId": "urban-wash-v1",
-  "assetCountExpected": 312,
+  "assetCountExpected": 378,
   "promptBase": "Panoramic hand-painted architectural watercolor for a light WinUI world-clock column; exact 16:9 landscape; airy travel-sketch quality; restrained graphite underdrawing; broad translucent pigment masses; softly feathered edges; recognizable but not photographic. Keep the central area quiet for a large circular UI overlay, with the urban mass mostly in the lower 65% and the primary landmark on a lateral third. Real RGBA transparency outside the skyline; no sky, paper rectangle, checkerboard, border, text, people, vehicles, flags, logos, sun, moon, weather icon, signature, or watermark.",
   "seasonalModes": {
     "true-winter": "Distinct cold-season treatment; snow or frost only where climatologically plausible.",
@@ -2202,6 +2202,468 @@
       "winterPalette": "cooler muted watercolor tones with locally plausible seasonal texture",
       "winterCues": "seasonally plausible low light; never add falling snow unless appropriate",
       "uncertain": false
+    },
+    {
+      "cityId": "ferrara",
+      "displayName": "Ferrara",
+      "landmarks": [
+        "Castello Estense with its four towers and moat",
+        "Ferrara Cathedral bell tower, restrained Renaissance terracotta rooftops and authentic Po Valley vegetation"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm terracotta, sunlit brick, muted ochre, soft sage and restrained summer green",
+      "summerCues": "warm Po Valley light and full restrained foliage",
+      "winterPalette": "cool terracotta, damp brick, silver-blue water, muted olive and pale winter gray",
+      "winterCues": "bare deciduous trees, cool mist over the moat, muted brick and no heavy snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "domegge-di-cadore",
+      "displayName": "Domegge di Cadore",
+      "landmarks": [
+        "the bell tower of San Giorgio",
+        "the Centro Cadore lakefront beneath the Marmarole and Dolomite peaks"
+      ],
+      "seasonalMode": "true-winter",
+      "summerPalette": "Dolomite limestone, lake turquoise, larch green, warm village ochre and restrained alpine meadow tones",
+      "summerCues": "clear alpine summer light, green slopes and open water",
+      "winterPalette": "snow white, cool Dolomite gray, muted spruce, frozen blue and warm restrained village stone",
+      "winterCues": "snow on mountains and village roofs, bare larches, evergreen spruces and pale low-angle light; no active snowfall",
+      "uncertain": false
+    },
+    {
+      "cityId": "bologna",
+      "displayName": "Bologna",
+      "landmarks": [
+        "the Asinelli and Garisenda Two Towers",
+        "Basilica of San Petronio, red arcaded rooftops and authentic Emilia-Romagna vegetation"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "Bologna red, warm terracotta, golden ochre, muted sage and restrained summer green",
+      "summerCues": "warm Emilia-Romagna light and full restrained foliage",
+      "winterPalette": "cool brick red, muted umber, slate blue, damp stone and pale winter gray",
+      "winterCues": "bare deciduous trees, damp portico stone, cool low light and at most rare roof-edge frost",
+      "uncertain": false
+    },
+    {
+      "cityId": "barcelona",
+      "displayName": "Barcelona",
+      "landmarks": [
+        "Sagrada Família",
+        "a restrained Montjuïc and Eixample roofline with Mediterranean vegetation"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, muted terracotta, Mediterranean blue, olive and restrained palm green",
+      "summerCues": "bright dry Mediterranean summer light and full evergreen vegetation",
+      "winterPalette": "cool limestone, soft slate blue, muted umber and subdued evergreen green",
+      "winterCues": "softer low winter light, damp stone and unchanged Mediterranean evergreens; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "florence",
+      "displayName": "Florence",
+      "landmarks": [
+        "the Cathedral of Santa Maria del Fiore and Giotto's Campanile",
+        "Palazzo Vecchio above restrained terracotta roofs and Tuscan vegetation"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm terracotta, pale marble, ochre, cypress green and muted Arno blue",
+      "summerCues": "golden Tuscan summer light with full cypress and deciduous foliage",
+      "winterPalette": "cool marble, muted terracotta, slate blue, olive and pale umber",
+      "winterCues": "bare deciduous branches, evergreen cypresses retained, damp roofs and no heavy snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "porto",
+      "displayName": "Porto",
+      "landmarks": [
+        "Dom Luís I Bridge",
+        "Ribeira's tiled riverfront and Clérigos Tower"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "sunlit granite, muted azulejo blue, terracotta, Douro blue and restrained green",
+      "summerCues": "clear Atlantic summer light and lively but restrained riverfront color",
+      "winterPalette": "cool granite, rain blue, muted tile cyan, soft umber and subdued green",
+      "winterCues": "damp stone, cooler Atlantic haze and sparse deciduous foliage; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "seville",
+      "displayName": "Seville",
+      "landmarks": [
+        "the Giralda",
+        "Seville Cathedral and restrained orange-tree rooftops"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm sandstone, burnt sienna, muted orange, olive and pale turquoise",
+      "summerCues": "dry Andalusian summer light, evergreen orange trees and heat-softened distant edges",
+      "winterPalette": "cool sandstone, soft ochre, muted olive and pale blue-gray",
+      "winterCues": "gentler low sun, greener vegetation and damp stone; no frost or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "lyon",
+      "displayName": "Lyon",
+      "landmarks": [
+        "Basilica of Notre-Dame de Fourvière",
+        "the Saône riverfront and Vieux Lyon roofs"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, terracotta, river blue, muted sage and leafy green",
+      "summerCues": "full riverbank foliage and clear warm continental light",
+      "winterPalette": "cool limestone, slate river blue, muted umber and gray-violet",
+      "winterCues": "bare riverbank trees, damp roofs and pale low sun; little or no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "munich",
+      "displayName": "Munich",
+      "landmarks": [
+        "Frauenkirche's twin domes",
+        "the New Town Hall and restrained distant Alps"
+      ],
+      "seasonalMode": "true-winter",
+      "summerPalette": "warm limestone, copper green, Bavarian blue, muted roof red and fresh foliage",
+      "summerCues": "full deciduous foliage and clear continental summer light",
+      "winterPalette": "snow white, slate blue, cool limestone, muted copper and pale umber",
+      "winterCues": "bare trees, restrained settled snow and soft low-angle light; no active snowfall",
+      "uncertain": false
+    },
+    {
+      "cityId": "krakow",
+      "displayName": "Kraków",
+      "landmarks": [
+        "Wawel Castle",
+        "St. Mary's Basilica and the restrained Old Town roofline"
+      ],
+      "seasonalMode": "true-winter",
+      "summerPalette": "warm limestone, brick red, copper green, Vistula blue and leafy green",
+      "summerCues": "full riverbank foliage and luminous Central European summer light",
+      "winterPalette": "snow white, slate blue, cool stone, muted brick and gray-violet",
+      "winterCues": "bare trees, restrained snow on roofs and embankment, pale low light; no falling snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "edinburgh",
+      "displayName": "Edinburgh",
+      "landmarks": [
+        "Edinburgh Castle on Castle Rock",
+        "the Scott Monument and restrained Old Town ridge"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm gray stone, heather violet, muted green and pale northern blue",
+      "summerCues": "fresh green slopes and clear soft northern summer light",
+      "winterPalette": "cool basalt gray, slate blue, muted heather and damp umber",
+      "winterCues": "bare deciduous trees, damp stone and low overcast light; at most rare frost, no heavy snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "brno",
+      "displayName": "Brno",
+      "landmarks": [
+        "Špilberk Castle",
+        "the Cathedral of St. Peter and Paul above restrained Moravian roofs"
+      ],
+      "seasonalMode": "true-winter",
+      "summerPalette": "warm stone, roof red, muted gold, leafy green and pale blue",
+      "summerCues": "full hillside foliage and clear Moravian summer light",
+      "winterPalette": "snow white, cool stone, slate blue, muted brick and pale umber",
+      "winterCues": "bare trees, restrained settled snow and low winter light; no active snowfall",
+      "uncertain": false
+    },
+    {
+      "cityId": "bruges",
+      "displayName": "Bruges",
+      "landmarks": [
+        "the Belfry of Bruges",
+        "stepped-gable canal houses and restrained waterside vegetation"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm brick, sandstone, canal blue, muted green and soft flower accents",
+      "summerCues": "leafy canal edges and gentle northern summer light",
+      "winterPalette": "cool brick, slate canal blue, damp stone, muted umber and gray-green",
+      "winterCues": "bare canal trees, damp masonry and pale low light; little or no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "sao-paulo",
+      "displayName": "São Paulo",
+      "landmarks": [
+        "the Altino Arantes tower",
+        "the Copan building within a restrained dense high-rise skyline"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "humid blue-gray, warm concrete, jacaranda green, muted terracotta and soft violet",
+      "summerCues": "lush southern-summer vegetation, humid light and rain-season softness without painted rain",
+      "winterPalette": "clear pale blue, cool concrete, straw green and muted umber",
+      "winterCues": "drier southern-winter air, lower sun and slightly subdued vegetation; no cold-weather snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "rio-de-janeiro",
+      "displayName": "Rio de Janeiro",
+      "landmarks": [
+        "Christ the Redeemer on Corcovado",
+        "Sugarloaf Mountain and the Guanabara Bay shoreline"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "lush tropical green, granite gray, Guanabara blue, warm sand and muted coral",
+      "summerCues": "humid lush southern summer with softened distant mountains and full tropical vegetation",
+      "winterPalette": "clear cobalt blue, cool granite, muted green and pale sand",
+      "winterCues": "drier southern-winter clarity, crisp mountain edges and unchanged tropical vegetation",
+      "uncertain": false
+    },
+    {
+      "cityId": "salvador",
+      "displayName": "Salvador",
+      "landmarks": [
+        "Elevador Lacerda",
+        "Pelourinho's colorful colonial roofline above All Saints Bay"
+      ],
+      "seasonalMode": "palette-only",
+      "summerPalette": "warm ochre, muted colonial coral, bay turquoise, palm green and sunlit cream",
+      "summerCues": "hot bright southern-summer light with stable tropical vegetation",
+      "winterPalette": "cooler cream, rain-washed blue, muted coral and deep tropical green",
+      "winterCues": "softer humid southern-winter light and rain-washed masonry; no cold cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "recife",
+      "displayName": "Recife",
+      "landmarks": [
+        "Recife Antigo's Marco Zero waterfront",
+        "the Francisco Brennand sculpture column and restrained bridges over the Capibaribe"
+      ],
+      "seasonalMode": "palette-only",
+      "summerPalette": "warm cream, muted coral, estuary blue, palm green and sunlit ochre",
+      "summerCues": "bright hot southern-summer light and clear waterfront edges",
+      "winterPalette": "cool blue-gray, rain-washed cream, muted terracotta and lush deep green",
+      "winterCues": "humid southern-winter softness and fuller tropical vegetation; no cold cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "fortaleza",
+      "displayName": "Fortaleza",
+      "landmarks": [
+        "the Beira-Mar high-rise shoreline",
+        "Ponte dos Ingleses and restrained coastal palms"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "humid turquoise, warm sand, muted concrete, palm green and soft coral",
+      "summerCues": "wetter-season haze and lush coastal vegetation without painted rain",
+      "winterPalette": "clear Atlantic blue, pale sand, cool concrete and restrained dry-season green",
+      "winterCues": "drier southern-winter clarity, crisp shoreline and unchanged tropical palms",
+      "uncertain": false
+    },
+    {
+      "cityId": "manaus",
+      "displayName": "Manaus",
+      "landmarks": [
+        "the Amazonas Theatre",
+        "a restrained Rio Negro waterfront framed by authentic rainforest vegetation"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "deep rainforest green, humid blue-gray, warm ochre, river brown and muted coral",
+      "summerCues": "lush high-water-season vegetation and humid softness without painted rain",
+      "winterPalette": "clearer river blue, sun-warmed ochre, muted green and dry-season gold",
+      "winterCues": "lower-water dry-season clarity while preserving dense tropical vegetation; no cold cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "belem",
+      "displayName": "Belém",
+      "landmarks": [
+        "Ver-o-Peso market's iron towers",
+        "the Guajará Bay waterfront and restrained tropical vegetation"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "humid blue-gray, muted iron green, warm ochre, river brown and lush tropical green",
+      "summerCues": "rain-season softness and saturated vegetation without painted rain",
+      "winterPalette": "clear pale blue, sunlit cream, restrained green and warm river umber",
+      "winterCues": "slightly drier-season clarity with unchanged tropical vegetation; no cold cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "curitiba",
+      "displayName": "Curitiba",
+      "landmarks": [
+        "the Botanical Garden glasshouse",
+        "distinctive Paraná araucaria trees and a restrained low city skyline"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "glasshouse pale green, garden emerald, warm stone, soft blue and muted flower color",
+      "summerCues": "lush southern-summer gardens and bright subtropical light",
+      "winterPalette": "cool glass blue, muted green, pale stone and gray-violet",
+      "winterCues": "cooler southern-winter light, sparse deciduous foliage, araucarias retained and at most light frost; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "porto-alegre",
+      "displayName": "Porto Alegre",
+      "landmarks": [
+        "the Usina do Gasômetro chimney",
+        "the Guaíba waterfront and restrained downtown skyline"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm brick, Guaíba blue, leafy green, muted concrete and sunset-free soft ochre",
+      "summerCues": "full southern-summer foliage and warm clear waterfront light",
+      "winterPalette": "cool brick, slate water blue, muted umber and gray-green",
+      "winterCues": "bare deciduous branches, cool damp southern-winter light and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "medellin",
+      "displayName": "Medellín",
+      "landmarks": [
+        "the Aburrá Valley skyline",
+        "Pueblito Paisa on Nutibara Hill and restrained cable-car lines"
+      ],
+      "seasonalMode": "palette-only",
+      "summerPalette": "Andean green, warm brick, humid blue-gray, muted concrete and soft flower accents",
+      "summerCues": "lush evergreen valley vegetation and bright highland light",
+      "winterPalette": "cooler blue-green, muted brick, misty gray and deep evergreen",
+      "winterCues": "subtle humid highland softness while preserving evergreen vegetation; no cold or snow cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "cali",
+      "displayName": "Cali",
+      "landmarks": [
+        "Cristo Rey above the city",
+        "Torre de Cali and the restrained western Cordillera skyline"
+      ],
+      "seasonalMode": "palette-only",
+      "summerPalette": "tropical green, warm concrete, pale mountain blue, muted terracotta and soft ochre",
+      "summerCues": "bright warm valley light and full tropical vegetation",
+      "winterPalette": "cooler blue-gray, deep green, muted concrete and soft umber",
+      "winterCues": "slightly softer humid valley atmosphere with unchanged tropical vegetation; no cold cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "cartagena",
+      "displayName": "Cartagena",
+      "landmarks": [
+        "the Clock Tower Gate of the walled city",
+        "San Felipe de Barajas Castle and restrained Caribbean palms"
+      ],
+      "seasonalMode": "palette-only",
+      "summerPalette": "warm colonial ochre, muted coral, Caribbean turquoise, limestone and palm green",
+      "summerCues": "bright tropical light and stable coastal vegetation",
+      "winterPalette": "softer turquoise, cool limestone, muted ochre and deep palm green",
+      "winterCues": "subtly cooler trade-wind clarity with unchanged tropical architecture and vegetation; no cold cues",
+      "uncertain": false
+    },
+    {
+      "cityId": "cusco",
+      "displayName": "Cusco",
+      "landmarks": [
+        "Cusco Cathedral and the Church of the Society of Jesus at Plaza de Armas",
+        "Inca stone terraces beneath restrained Andean slopes"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rain-washed terracotta, Andean green, warm stone, cloud blue-gray and muted gold",
+      "summerCues": "lush southern-summer wet-season slopes and humid high-altitude softness without painted rain",
+      "winterPalette": "clear cobalt blue, dry ochre, cool stone, straw gold and muted green",
+      "winterCues": "crisp dry southern-winter air, sparse highland vegetation and no city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "arequipa",
+      "displayName": "Arequipa",
+      "landmarks": [
+        "the Basilica Cathedral of Arequipa",
+        "El Misti volcano above restrained white sillar roofs"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rain-softened sillar white, muted terracotta, Andean green, cloud blue-gray and volcanic umber",
+      "summerCues": "southern-summer wet-season softness with greener foothills and no painted rain",
+      "winterPalette": "crisp sillar white, cobalt blue, dry ochre, volcanic gray and straw green",
+      "winterCues": "clear dry southern-winter air, sharp volcano profile and no city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "la-paz",
+      "displayName": "La Paz",
+      "landmarks": [
+        "the city bowl beneath snowcapped Illimani",
+        "a restrained Mi Teleférico cable-car line and San Francisco Basilica"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rain-washed brick, Andean green, cloud blue-gray, muted ochre and snow white on distant Illimani",
+      "summerCues": "southern-summer wet-season softness and greener highland slopes without painted rain",
+      "winterPalette": "clear high-altitude blue, dry brick, straw gold, cool stone and snow white on distant Illimani",
+      "winterCues": "crisp dry southern-winter air, sparse slopes and strong mountain clarity; no active snowfall",
+      "uncertain": false
+    },
+    {
+      "cityId": "sucre",
+      "displayName": "Sucre",
+      "landmarks": [
+        "the Metropolitan Cathedral and Casa de la Libertad",
+        "Sucre's white colonial roofs against restrained Andean hills"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "rain-washed white, terracotta, Andean green, cloud blue-gray and muted flower accents",
+      "summerCues": "greener southern-summer hills and humid highland softness without painted rain",
+      "winterPalette": "crisp colonial white, cobalt blue, dry ochre, muted terracotta and straw green",
+      "winterCues": "clear dry southern-winter air, subdued vegetation and no city snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "cordoba-argentina",
+      "displayName": "Córdoba",
+      "landmarks": [
+        "Córdoba Cathedral's twin towers and dome",
+        "the Jesuit Block and restrained red-tile city roofs"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm cream, terracotta, jacaranda green, muted violet and pale blue",
+      "summerCues": "full southern-summer foliage and warm continental light",
+      "winterPalette": "cool cream, muted terracotta, slate blue, soft umber and gray-green",
+      "winterCues": "bare deciduous trees, clear low southern-winter sun and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "rosario",
+      "displayName": "Rosario",
+      "landmarks": [
+        "the National Flag Memorial",
+        "the Paraná riverfront and restrained central skyline"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm limestone, Paraná blue, leafy green, muted concrete and soft ochre",
+      "summerCues": "lush southern-summer riverfront foliage and humid warm light",
+      "winterPalette": "cool limestone, slate river blue, muted umber and pale gray-green",
+      "winterCues": "bare deciduous trees, clearer low southern-winter light and no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "mendoza",
+      "displayName": "Mendoza",
+      "landmarks": [
+        "the Army of the Andes monument on Cerro de la Gloria",
+        "a restrained tree-lined low city beneath the Andes"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "dry ochre, leafy irrigation green, warm stone, high-altitude blue and distant mountain gray",
+      "summerCues": "full southern-summer plane-tree foliage, dry foothills and bright highland light",
+      "winterPalette": "cool ochre, bare branch umber, slate blue, muted green and snow white on distant Andes",
+      "winterCues": "bare city trees, crisp dry southern-winter air and snow only on the distant Andes",
+      "uncertain": false
+    },
+    {
+      "cityId": "valparaiso",
+      "displayName": "Valparaíso",
+      "landmarks": [
+        "the colorful houses and historic ascensores of Cerro Alegre",
+        "the restrained port and bay amphitheater"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "muted coastal coral, ochre, Pacific blue, dry hillside green and warm cream",
+      "summerCues": "clear dry southern-summer coastal light and restrained colorful hillsides",
+      "winterPalette": "cool Pacific blue, rain-washed coral, muted ochre, gray-green and damp cream",
+      "winterCues": "softer wetter southern-winter atmosphere, greener slopes and no snow",
+      "uncertain": false
     }
   ],
   "additionalCatalogCities": [
@@ -2919,6 +3381,435 @@
       "timeZoneId": "Asia/Yekaterinburg",
       "isCapital": false,
       "hemisphere": "north"
+    },
+    {
+      "cityId": "ferrara",
+      "geonameId": 3177090,
+      "name": "Ferrara",
+      "countryCode": "IT",
+      "countryName": "Italy",
+      "latitude": 44.83804,
+      "longitude": 11.62057,
+      "population": 132009,
+      "timeZoneId": "Europe/Rome",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "domegge-di-cadore",
+      "geonameId": 3177539,
+      "name": "Domegge di Cadore",
+      "countryCode": "IT",
+      "countryName": "Italy",
+      "latitude": 46.45666,
+      "longitude": 12.40724,
+      "population": 2548,
+      "timeZoneId": "Europe/Rome",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "bologna",
+      "geonameId": 3181928,
+      "name": "Bologna",
+      "countryCode": "IT",
+      "countryName": "Italy",
+      "latitude": 44.49381,
+      "longitude": 11.33875,
+      "population": 394843,
+      "timeZoneId": "Europe/Rome",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "barcelona",
+      "geonameId": 3128760,
+      "name": "Barcelona",
+      "countryCode": "ES",
+      "countryName": "Spain",
+      "latitude": 41.38879,
+      "longitude": 2.15899,
+      "population": 1686208,
+      "timeZoneId": "Europe/Madrid",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "florence",
+      "geonameId": 3176959,
+      "name": "Florence",
+      "countryCode": "IT",
+      "countryName": "Italy",
+      "latitude": 43.77925,
+      "longitude": 11.24626,
+      "population": 367150,
+      "timeZoneId": "Europe/Rome",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "porto",
+      "geonameId": 2735943,
+      "name": "Porto",
+      "countryCode": "PT",
+      "countryName": "Portugal",
+      "latitude": 41.1485,
+      "longitude": -8.61097,
+      "population": 252687,
+      "timeZoneId": "Europe/Lisbon",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "seville",
+      "geonameId": 2510911,
+      "name": "Sevilla",
+      "countryCode": "ES",
+      "countryName": "Spain",
+      "latitude": 37.38283,
+      "longitude": -5.97317,
+      "population": 686741,
+      "timeZoneId": "Europe/Madrid",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "lyon",
+      "geonameId": 2996944,
+      "name": "Lyon",
+      "countryCode": "FR",
+      "countryName": "France",
+      "latitude": 45.74906,
+      "longitude": 4.84789,
+      "population": 520774,
+      "timeZoneId": "Europe/Paris",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "munich",
+      "geonameId": 2867714,
+      "name": "Munich",
+      "countryCode": "DE",
+      "countryName": "Germany",
+      "latitude": 48.13743,
+      "longitude": 11.57549,
+      "population": 1505005,
+      "timeZoneId": "Europe/Berlin",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "krakow",
+      "geonameId": 3094802,
+      "name": "Kraków",
+      "countryCode": "PL",
+      "countryName": "Poland",
+      "latitude": 50.06143,
+      "longitude": 19.93658,
+      "population": 816614,
+      "timeZoneId": "Europe/Warsaw",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "edinburgh",
+      "geonameId": 2650225,
+      "name": "Edinburgh",
+      "countryCode": "GB",
+      "countryName": "United Kingdom",
+      "latitude": 55.95206,
+      "longitude": -3.19648,
+      "population": 514990,
+      "timeZoneId": "Europe/London",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "brno",
+      "geonameId": 3078610,
+      "name": "Brno",
+      "countryCode": "CZ",
+      "countryName": "Czechia",
+      "latitude": 49.19522,
+      "longitude": 16.60796,
+      "population": 379466,
+      "timeZoneId": "Europe/Prague",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "bruges",
+      "geonameId": 2800931,
+      "name": "Brugge",
+      "countryCode": "BE",
+      "countryName": "Belgium",
+      "latitude": 51.20892,
+      "longitude": 3.22424,
+      "population": 118509,
+      "timeZoneId": "Europe/Brussels",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "sao-paulo",
+      "geonameId": 3448439,
+      "name": "São Paulo",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -23.5475,
+      "longitude": -46.63611,
+      "population": 12400232,
+      "timeZoneId": "America/Sao_Paulo",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "rio-de-janeiro",
+      "geonameId": 3451190,
+      "name": "Rio de Janeiro",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -22.90642,
+      "longitude": -43.18223,
+      "population": 6747815,
+      "timeZoneId": "America/Sao_Paulo",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "salvador",
+      "geonameId": 3450554,
+      "name": "Salvador",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -12.97563,
+      "longitude": -38.49096,
+      "population": 2711840,
+      "timeZoneId": "America/Bahia",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "recife",
+      "geonameId": 3390760,
+      "name": "Recife",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -8.05389,
+      "longitude": -34.88111,
+      "population": 1653461,
+      "timeZoneId": "America/Recife",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "fortaleza",
+      "geonameId": 3399415,
+      "name": "Fortaleza",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -3.71722,
+      "longitude": -38.54306,
+      "population": 2400000,
+      "timeZoneId": "America/Fortaleza",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "manaus",
+      "geonameId": 3663517,
+      "name": "Manaus",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -3.10194,
+      "longitude": -60.025,
+      "population": 2219580,
+      "timeZoneId": "America/Manaus",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "belem",
+      "geonameId": 3405870,
+      "name": "Belém",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -1.45583,
+      "longitude": -48.50444,
+      "population": 1499641,
+      "timeZoneId": "America/Belem",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "curitiba",
+      "geonameId": 3464975,
+      "name": "Curitiba",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -25.42778,
+      "longitude": -49.27306,
+      "population": 1948626,
+      "timeZoneId": "America/Sao_Paulo",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "porto-alegre",
+      "geonameId": 3452925,
+      "name": "Porto Alegre",
+      "countryCode": "BR",
+      "countryName": "Brazil",
+      "latitude": -30.03283,
+      "longitude": -51.23019,
+      "population": 1488252,
+      "timeZoneId": "America/Sao_Paulo",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "medellin",
+      "geonameId": 3674962,
+      "name": "Medellín",
+      "countryCode": "CO",
+      "countryName": "Colombia",
+      "latitude": 6.245,
+      "longitude": -75.57151,
+      "population": 1999979,
+      "timeZoneId": "America/Bogota",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "cali",
+      "geonameId": 3687925,
+      "name": "Cali",
+      "countryCode": "CO",
+      "countryName": "Colombia",
+      "latitude": 3.43054,
+      "longitude": -76.5199,
+      "population": 2392877,
+      "timeZoneId": "America/Bogota",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "cartagena",
+      "geonameId": 3687238,
+      "name": "Cartagena",
+      "countryCode": "CO",
+      "countryName": "Colombia",
+      "latitude": 10.39817,
+      "longitude": -75.49328,
+      "population": 914552,
+      "timeZoneId": "America/Bogota",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "cusco",
+      "geonameId": 3941584,
+      "name": "Cusco",
+      "countryCode": "PE",
+      "countryName": "Peru",
+      "latitude": -13.53188,
+      "longitude": -71.96701,
+      "population": 428450,
+      "timeZoneId": "America/Lima",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "arequipa",
+      "geonameId": 3947322,
+      "name": "Arequipa",
+      "countryCode": "PE",
+      "countryName": "Peru",
+      "latitude": -16.39899,
+      "longitude": -71.53747,
+      "population": 1195700,
+      "timeZoneId": "America/Lima",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "la-paz",
+      "geonameId": 3911925,
+      "name": "La Paz",
+      "countryCode": "BO",
+      "countryName": "Bolivia",
+      "latitude": -16.5,
+      "longitude": -68.15,
+      "population": 2004652,
+      "timeZoneId": "America/La_Paz",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "sucre",
+      "geonameId": 3903987,
+      "name": "Sucre",
+      "countryCode": "BO",
+      "countryName": "Bolivia",
+      "latitude": -19.03332,
+      "longitude": -65.26274,
+      "population": 224838,
+      "timeZoneId": "America/La_Paz",
+      "isCapital": true,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "cordoba-argentina",
+      "geonameId": 3860259,
+      "name": "Córdoba",
+      "countryCode": "AR",
+      "countryName": "Argentina",
+      "latitude": -31.40648,
+      "longitude": -64.18853,
+      "population": 2106734,
+      "timeZoneId": "America/Argentina/Cordoba",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "rosario",
+      "geonameId": 3838583,
+      "name": "Rosario",
+      "countryCode": "AR",
+      "countryName": "Argentina",
+      "latitude": -32.94682,
+      "longitude": -60.63932,
+      "population": 948312,
+      "timeZoneId": "America/Argentina/Cordoba",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "mendoza",
+      "geonameId": 3844421,
+      "name": "Mendoza",
+      "countryCode": "AR",
+      "countryName": "Argentina",
+      "latitude": -32.88946,
+      "longitude": -68.84582,
+      "population": 114893,
+      "timeZoneId": "America/Argentina/Mendoza",
+      "isCapital": false,
+      "hemisphere": "south"
+    },
+    {
+      "cityId": "valparaiso",
+      "geonameId": 3868626,
+      "name": "Valparaíso",
+      "countryCode": "CL",
+      "countryName": "Chile",
+      "latitude": -33.036,
+      "longitude": -71.62963,
+      "population": 282448,
+      "timeZoneId": "America/Santiago",
+      "isCapital": false,
+      "hemisphere": "south"
     }
   ],
   "reviewedMasters": [
@@ -4793,6 +5684,402 @@
       "season": "winter",
       "fileName": "ufa-winter.png",
       "sha256": "08994762eff92293db1151bbe76dc11ea9f1f9ed3f5c3c79f63539bc0430bb3a"
+    },
+    {
+      "cityId": "ferrara",
+      "season": "summer",
+      "fileName": "ferrara-summer.png",
+      "sha256": "e72d24141bebb7fd4d607f9cbbf2b4a8a0cc4320765fcd5b9f331fb5dd696590"
+    },
+    {
+      "cityId": "ferrara",
+      "season": "winter",
+      "fileName": "ferrara-winter.png",
+      "sha256": "44184d6e10e18679988fa4b9cc84854862a22a50577ee762df205dc0ead49c81"
+    },
+    {
+      "cityId": "domegge-di-cadore",
+      "season": "summer",
+      "fileName": "domegge-di-cadore-summer.png",
+      "sha256": "828f9582a654f9954f7550ed0699cc3d90f46f894b85c9df3b40bea51bb52737"
+    },
+    {
+      "cityId": "domegge-di-cadore",
+      "season": "winter",
+      "fileName": "domegge-di-cadore-winter.png",
+      "sha256": "0458f26f96f1a30205555faf3a9d2adf1d6d9dd1037f23d0de1d9a3c814512b4"
+    },
+    {
+      "cityId": "bologna",
+      "season": "summer",
+      "fileName": "bologna-summer.png",
+      "sha256": "9c739bb2e379034b4ba084560de0adf7333717b53ed6b8c041737f86c3a21708"
+    },
+    {
+      "cityId": "bologna",
+      "season": "winter",
+      "fileName": "bologna-winter.png",
+      "sha256": "e9844948e365eff10ba8ec856bc9bb6db62540e8db6bce89c46dc9a90317b88a"
+    },
+    {
+      "cityId": "barcelona",
+      "season": "summer",
+      "fileName": "barcelona-summer.png",
+      "sha256": "ddc287744ae75bc3fba8c7c5337d15956d61e2041cb27b0e19f872ed580dd836"
+    },
+    {
+      "cityId": "barcelona",
+      "season": "winter",
+      "fileName": "barcelona-winter.png",
+      "sha256": "c3b8cd2c64ab02969885000bfe7c2fab82e4be56cbad91c8455fb465c3d8f35a"
+    },
+    {
+      "cityId": "florence",
+      "season": "summer",
+      "fileName": "florence-summer.png",
+      "sha256": "3175d90ea346970c4e2e80b0022f89b93bbca16cac155a8130e86476897bfa28"
+    },
+    {
+      "cityId": "florence",
+      "season": "winter",
+      "fileName": "florence-winter.png",
+      "sha256": "676f08df48e7b8fc4976285531292f08ae6023504ada1e28abd107c76e2fbd46"
+    },
+    {
+      "cityId": "porto",
+      "season": "summer",
+      "fileName": "porto-summer.png",
+      "sha256": "65cd5b3d538680608979cc58f9451b0dcdbd89819b58f907d06b44dfcb05a920"
+    },
+    {
+      "cityId": "porto",
+      "season": "winter",
+      "fileName": "porto-winter.png",
+      "sha256": "fe04ed8a91bb3b75fd6521c24e4397af7289157d6b924d8e571d7ec8716f7edb"
+    },
+    {
+      "cityId": "seville",
+      "season": "summer",
+      "fileName": "seville-summer.png",
+      "sha256": "5ebe3c43fc2aff88f66b43c0e174936be36dfc0e550cbfad6d792338f63a60a3"
+    },
+    {
+      "cityId": "seville",
+      "season": "winter",
+      "fileName": "seville-winter.png",
+      "sha256": "08016f618b52dbbbdcb12a3033ddedf029b53c019a3da450bc9c1e803f4e9adf"
+    },
+    {
+      "cityId": "lyon",
+      "season": "summer",
+      "fileName": "lyon-summer.png",
+      "sha256": "43640663746b5507ab474f01619fa8cf5cf42b2e45a6ddd755f70a60d9bb8b1a"
+    },
+    {
+      "cityId": "lyon",
+      "season": "winter",
+      "fileName": "lyon-winter.png",
+      "sha256": "3f279ec97c5b32a13a448dff51fa34df5413412032640e39e0a56c15ba6b44ec"
+    },
+    {
+      "cityId": "munich",
+      "season": "summer",
+      "fileName": "munich-summer.png",
+      "sha256": "5f5d15c210e6a4c6dd4d8dd92cab3fda60ba9e8dced7138068d322dac397059d"
+    },
+    {
+      "cityId": "munich",
+      "season": "winter",
+      "fileName": "munich-winter.png",
+      "sha256": "938cdb4635f4c891ef5481d2b34bd36bd13e3099c8c79d472eebfc113b365372"
+    },
+    {
+      "cityId": "krakow",
+      "season": "summer",
+      "fileName": "krakow-summer.png",
+      "sha256": "2c67344532dd9a18bcd66a56634efeffd6677eea76ea1cd8968ccfab70ee52b6"
+    },
+    {
+      "cityId": "krakow",
+      "season": "winter",
+      "fileName": "krakow-winter.png",
+      "sha256": "76c92cae8f5423890afe9c6f941a98ed465c447528eb8323b9a93851a9a25086"
+    },
+    {
+      "cityId": "edinburgh",
+      "season": "summer",
+      "fileName": "edinburgh-summer.png",
+      "sha256": "24ed94c0a851cb8064975394d9ab6763da7c4bf70b75f92272e73418f2fb9d84"
+    },
+    {
+      "cityId": "edinburgh",
+      "season": "winter",
+      "fileName": "edinburgh-winter.png",
+      "sha256": "f33ee45ff1257e0ff4081ca4692a72dd7f4d2dfb3aa70612abe09c9ae7994505"
+    },
+    {
+      "cityId": "brno",
+      "season": "summer",
+      "fileName": "brno-summer.png",
+      "sha256": "b6245b19e18a23918e721726c44a07ad940b46795a43fcf35d75fcaa7a00fbda"
+    },
+    {
+      "cityId": "brno",
+      "season": "winter",
+      "fileName": "brno-winter.png",
+      "sha256": "57b298afdce8b4aa222422e3ffad7bcc3830680c1251c5fd5c422b7551958bda"
+    },
+    {
+      "cityId": "bruges",
+      "season": "summer",
+      "fileName": "bruges-summer.png",
+      "sha256": "907b43edcd312af18906abcf29f841d4b6ae71e0dc3716ecb0c0e7fce8ec0aef"
+    },
+    {
+      "cityId": "bruges",
+      "season": "winter",
+      "fileName": "bruges-winter.png",
+      "sha256": "44d0040c31595364f65ff105d4a02ad805ad4417c8b0be1abef4d0fee4406cb3"
+    },
+    {
+      "cityId": "sao-paulo",
+      "season": "summer",
+      "fileName": "sao-paulo-summer.png",
+      "sha256": "e8c06e4015836b7c960908776109869d8d8eaeb2da564c3aba3e89d21a553742"
+    },
+    {
+      "cityId": "sao-paulo",
+      "season": "winter",
+      "fileName": "sao-paulo-winter.png",
+      "sha256": "9bac5d779369e2368bc1224ab0e5340c5ce42e305ad2d527142efa6d8676577e"
+    },
+    {
+      "cityId": "rio-de-janeiro",
+      "season": "summer",
+      "fileName": "rio-de-janeiro-summer.png",
+      "sha256": "7e7c716905781c6793f0412ec30748326f5080565f610778409a4235811505e1"
+    },
+    {
+      "cityId": "rio-de-janeiro",
+      "season": "winter",
+      "fileName": "rio-de-janeiro-winter.png",
+      "sha256": "bc5fba6f45436f7b3016193dad669be45a2b3b2204242d1efe8e7d6d040bbfec"
+    },
+    {
+      "cityId": "salvador",
+      "season": "summer",
+      "fileName": "salvador-summer.png",
+      "sha256": "8a67de305fcde0b5245b5d03967f83507943d6578b5e0b313a4131c24b32029a"
+    },
+    {
+      "cityId": "salvador",
+      "season": "winter",
+      "fileName": "salvador-winter.png",
+      "sha256": "ab04d15c0822043eb48bb7a0ea180f08aa484d296dfee7970d43f74964b566cd"
+    },
+    {
+      "cityId": "recife",
+      "season": "summer",
+      "fileName": "recife-summer.png",
+      "sha256": "86993164fa1a4a581df420a9e56d5f26f15fe3dbbef956ca6a74d6a1e21caf9d"
+    },
+    {
+      "cityId": "recife",
+      "season": "winter",
+      "fileName": "recife-winter.png",
+      "sha256": "ac5b773af1711ed9a92158e6db0bc163a011ad1d696d20384e8b20a371e7c52d"
+    },
+    {
+      "cityId": "fortaleza",
+      "season": "summer",
+      "fileName": "fortaleza-summer.png",
+      "sha256": "0f65097ac3f22eac918da2ea58afdff9bf0d2ac21476dc8089991bcf9b22fc5f"
+    },
+    {
+      "cityId": "fortaleza",
+      "season": "winter",
+      "fileName": "fortaleza-winter.png",
+      "sha256": "e99fb5b616727cc98b10c79a4cf22a542b55e18c9d03f7efd7459bb3f057056b"
+    },
+    {
+      "cityId": "manaus",
+      "season": "summer",
+      "fileName": "manaus-summer.png",
+      "sha256": "3cc3f5fa8a5d2cbb89071863635c0c67329772db4301006513f15f904661cc8f"
+    },
+    {
+      "cityId": "manaus",
+      "season": "winter",
+      "fileName": "manaus-winter.png",
+      "sha256": "e04f30c337f921343afa27011934bc64cf21a3175a327f0212efd3e90faae8ac"
+    },
+    {
+      "cityId": "belem",
+      "season": "summer",
+      "fileName": "belem-summer.png",
+      "sha256": "588ea553ac47639b7c0b2bf8abbf7228cd0a8a3d48c29654c4942d9be1d81c71"
+    },
+    {
+      "cityId": "belem",
+      "season": "winter",
+      "fileName": "belem-winter.png",
+      "sha256": "90062cd79e9dcd21b76febf172b82ade5f9d1949149e582bde1037cba3230780"
+    },
+    {
+      "cityId": "curitiba",
+      "season": "summer",
+      "fileName": "curitiba-summer.png",
+      "sha256": "39327d8b98f45a53da7396a8ad35c347798e6efdd74ddd4f7e3fde068d3ce1da"
+    },
+    {
+      "cityId": "curitiba",
+      "season": "winter",
+      "fileName": "curitiba-winter.png",
+      "sha256": "2a2eb1dde51a055631f552414187ac1c0ca75cfcce9fd34612f2bba2f684d1f4"
+    },
+    {
+      "cityId": "porto-alegre",
+      "season": "summer",
+      "fileName": "porto-alegre-summer.png",
+      "sha256": "c39c41fd78edbdfba794b0dbd8c18873c5a68d310624910e505e9f96e4e34a81"
+    },
+    {
+      "cityId": "porto-alegre",
+      "season": "winter",
+      "fileName": "porto-alegre-winter.png",
+      "sha256": "b57783ec7c923243a8abe0bc068740b30bba5fe790d19d009251018731d90857"
+    },
+    {
+      "cityId": "medellin",
+      "season": "summer",
+      "fileName": "medellin-summer.png",
+      "sha256": "aeb9d497fca2754acb5c457ed63963f2d0463e37ad6f859d516463a3432374e3"
+    },
+    {
+      "cityId": "medellin",
+      "season": "winter",
+      "fileName": "medellin-winter.png",
+      "sha256": "6662613c2ec3c51897c6552daddc51233993a769b2750e609aa9fc6e5f52faf1"
+    },
+    {
+      "cityId": "cali",
+      "season": "summer",
+      "fileName": "cali-summer.png",
+      "sha256": "9a827e06a73317b30f3b220f263a64a9ac9d02e0436016d1e4ccff113b751eb5"
+    },
+    {
+      "cityId": "cali",
+      "season": "winter",
+      "fileName": "cali-winter.png",
+      "sha256": "95c57957cee786a7155d874c822fce83e1bd4ce4eb0a86ea1e83d85335e13d99"
+    },
+    {
+      "cityId": "cartagena",
+      "season": "summer",
+      "fileName": "cartagena-summer.png",
+      "sha256": "76a390508bf38e06f0b08ff8a1032c5ef25aaa66752833fe416e8a7054e1091a"
+    },
+    {
+      "cityId": "cartagena",
+      "season": "winter",
+      "fileName": "cartagena-winter.png",
+      "sha256": "55fde5c256ecd05d92fff6622e23e19274e58909d4cd7cde90f0be9fe8128ddb"
+    },
+    {
+      "cityId": "cusco",
+      "season": "summer",
+      "fileName": "cusco-summer.png",
+      "sha256": "c0facec7f51c984999099296acd920cdbe2d1a53f224db5a9ec3bbe634065090"
+    },
+    {
+      "cityId": "cusco",
+      "season": "winter",
+      "fileName": "cusco-winter.png",
+      "sha256": "8f6edca1f57da75207648f2f1154c262a6cc72fb4f08effac5cf98289dbeef75"
+    },
+    {
+      "cityId": "arequipa",
+      "season": "summer",
+      "fileName": "arequipa-summer.png",
+      "sha256": "e635fa298db31f4a8165acac4fc9e6c10670ee19ceb6567d434c6c2693148be3"
+    },
+    {
+      "cityId": "arequipa",
+      "season": "winter",
+      "fileName": "arequipa-winter.png",
+      "sha256": "f006392466df842613a83dc0b0f248d9ecb78d81d5c6062e7af7a27321c4b1b0"
+    },
+    {
+      "cityId": "la-paz",
+      "season": "summer",
+      "fileName": "la-paz-summer.png",
+      "sha256": "d351905d6368cc47d64192411c5aaffe834a35a41e4970f3d82d99f3e4f71a78"
+    },
+    {
+      "cityId": "la-paz",
+      "season": "winter",
+      "fileName": "la-paz-winter.png",
+      "sha256": "c6827d94ba7c72710935e61a855bd66c426adf2735634eb16755f17efb63e33b"
+    },
+    {
+      "cityId": "sucre",
+      "season": "summer",
+      "fileName": "sucre-summer.png",
+      "sha256": "8b91610483799e3134b0f7d4898056b4c0df29e84c905dc84ea74a1d6908a692"
+    },
+    {
+      "cityId": "sucre",
+      "season": "winter",
+      "fileName": "sucre-winter.png",
+      "sha256": "01c4c16f5feb658b3c1aa8bc665b2d59cda914c78a4a944ab9ee022333146a86"
+    },
+    {
+      "cityId": "cordoba-argentina",
+      "season": "summer",
+      "fileName": "cordoba-argentina-summer.png",
+      "sha256": "fbeb5e3ef58436128eb9f5ec53fcd54dcb68a1b03bd6d4f24c425f3da4679df0"
+    },
+    {
+      "cityId": "cordoba-argentina",
+      "season": "winter",
+      "fileName": "cordoba-argentina-winter.png",
+      "sha256": "6b4bdceb626389e82afeb45f1b676ad37f43e399f8a84332198c1ae234a610c8"
+    },
+    {
+      "cityId": "rosario",
+      "season": "summer",
+      "fileName": "rosario-summer.png",
+      "sha256": "70a0645d35b2dbdcd934064019a136a84196198b7621319362391f0204d672ab"
+    },
+    {
+      "cityId": "rosario",
+      "season": "winter",
+      "fileName": "rosario-winter.png",
+      "sha256": "f1290058c5fc753461a8b55acb076b8f0648fb56a6dcc1243f84b114325ce738"
+    },
+    {
+      "cityId": "mendoza",
+      "season": "summer",
+      "fileName": "mendoza-summer.png",
+      "sha256": "c9c0989c4ca2613ddfc9697dada551e08b744f052c4d3e942b12008c62165367"
+    },
+    {
+      "cityId": "mendoza",
+      "season": "winter",
+      "fileName": "mendoza-winter.png",
+      "sha256": "1c9a5b95f2396151594668651bb84ec9fbbdcb6e85f5454f02b40d59914d86ef"
+    },
+    {
+      "cityId": "valparaiso",
+      "season": "summer",
+      "fileName": "valparaiso-summer.png",
+      "sha256": "045ef5dc9c64b282065e3329d00bad1611ec22bb8ea7411a946da82a9c30b3bb"
+    },
+    {
+      "cityId": "valparaiso",
+      "season": "winter",
+      "fileName": "valparaiso-winter.png",
+      "sha256": "961ff7ddada2d78b6113f5ca09f7781e4c59b1d394c7ff3db5f5aea600ea219e"
     }
   ]
 }

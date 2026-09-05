@@ -42,8 +42,6 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="1" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="1" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -75,7 +73,7 @@
                         HorizontalAlignment="Left"
                         FontSize="14"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="TrackMeUp is refreshing the two local indexes used by search. Your activity data stays on this PC."
+                        Text="TrackMeUp is refreshing the local index used by search. Your activity data stays on this PC."
                         TextWrapping="Wrap" />
                 </StackPanel>
             </Grid>
@@ -130,51 +128,7 @@
                     IsIndeterminate="True" />
             </Grid>
 
-            <Rectangle Grid.Row="4" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-            <Grid Grid.Row="5" ColumnSpacing="16" RowSpacing="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <FontIcon
-                    VerticalAlignment="Center"
-                    AutomationProperties.AccessibilityView="Raw"
-                    FontFamily="Segoe Fluent Icons"
-                    FontSize="22"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Glyph="&#xEA80;" />
-                <StackPanel Grid.Column="1" Spacing="2">
-                    <TextBlock Tag="SearchIndex.Suggestions.Title" FontSize="16" FontWeight="SemiBold" Text="Search suggestions" />
-                    <TextBlock
-                        Tag="SearchIndex.Suggestions.Description"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="Local type-ahead suggestions while you enter a query"
-                        TextWrapping="Wrap" />
-                </StackPanel>
-                <TextBlock
-                    x:Name="SuggestionsStateText"
-                    Grid.Column="2"
-                    VerticalAlignment="Center"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    Text="Indexing" />
-                <ProgressBar
-                    x:Name="SuggestionsProgressBar"
-                    Grid.Row="1"
-                    Grid.Column="1"
-                    Grid.ColumnSpan="2"
-                    Height="3"
-                    IsIndeterminate="True" />
-            </Grid>
-
-            <Grid Grid.Row="7" ColumnSpacing="20">
+            <Grid Grid.Row="5" ColumnSpacing="20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />

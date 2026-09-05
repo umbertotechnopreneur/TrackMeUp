@@ -63,6 +63,8 @@ public sealed partial class MainWindow : Window
     private string _position = FlyoutPositions.BottomCenter;
     private bool _hasAppliedSettings;
     private bool _mainPlacementRestored;
+    private bool _windowSizingReady;
+    private SizeInt32 _requestedWindowSize;
     private AppSettings? _menuSettings;
     private AboutWindow? _aboutWindow;
     private ScheduleWindow? _scheduleWindow;
@@ -181,7 +183,8 @@ public sealed partial class MainWindow : Window
                 TitleBarMoreButton,
                 TitleBarSearchButton,
                 TitleBarReportButton,
-                TitleBarMinimizeToTrayButton
+                TitleBarMinimizeToTrayButton,
+                TitleBarCloseButton
             ]);
         _placement = new WindowPlacementService(
             application,
@@ -196,9 +199,10 @@ public sealed partial class MainWindow : Window
         _appWindow.Closing += AppWindow_Closing;
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsResizable = false;
+            presenter.IsResizable = true;
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
+            presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
         }
         ApplyBorderlessPlayerWindow();
         ResizeForLogicalContent(_layoutState.LogicalHeight);
@@ -724,6 +728,8 @@ public sealed partial class MainWindow : Window
 
         ShowPlayer();
     }
+
+    private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
@@ -1267,6 +1273,7 @@ public sealed partial class MainWindow : Window
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
         PlayerPanel.Visibility = Visibility.Collapsed;
+        PlayerBackgroundSurface.Visibility = Visibility.Collapsed;
         WorldClockButton.Visibility = Visibility.Collapsed;
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
@@ -1289,6 +1296,7 @@ public sealed partial class MainWindow : Window
     {
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
+        PlayerBackgroundSurface.Visibility = Visibility.Visible;
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
         WorldClockButton.Visibility = Visibility.Visible;
@@ -1802,6 +1810,7 @@ public sealed partial class MainWindow : Window
         SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
         SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
         SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
+        SetIconButtonLabel(TitleBarCloseButton, "Tray.CloseApplication");
         SetIconButtonLabel(WorldClockButton, "WorldClock.OpenWindow");
         SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
         SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
@@ -2017,9 +2026,16 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        if (_mainPlacementRestored)
+        {
+            var scale = RootGrid.XamlRoot!.RasterizationScale;
+            _layoutState.RecordManualSize(_appWindow.Size.Width / scale, _appWindow.Size.Height / scale);
+        }
+
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         _currentWorkArea = CurrentWorkArea();
+        _windowSizingReady = true;
         _lifecycle.SignalLoaded();
         FadeIn(PlayerPanel);
     }
@@ -2039,6 +2055,18 @@ public sealed partial class MainWindow : Window
     /// <summary>Reapplies the smart height limit when the flyout crosses onto another display.</summary>
     private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        if (args.DidSizeChange && _windowSizingReady)
+        {
+            if (sender.Size.Width != _requestedWindowSize.Width || sender.Size.Height != _requestedWindowSize.Height)
+            {
+                var scale = RootGrid.XamlRoot!.RasterizationScale;
+                _windowResizeAnimationTimer.Stop();
+                _layoutState.RecordManualSize(sender.Size.Width / scale, sender.Size.Height / scale);
+            }
+
+            _titleBar.QueueLayoutUpdate();
+        }
+
         if (args.DidVisibilityChange)
         {
             UpdateDashboardSubscriptionForVisibility();
@@ -2114,7 +2142,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Converts the compact surface size from WinUI DIPs to the physical pixels required by AppWindow.</summary>
     private void ResizeForLogicalContent(int logicalHeight)
     {
-        _appWindow.Resize(GetPhysicalWindowSize(logicalHeight));
+        ApplyWindowSize(GetPhysicalWindowSize(logicalHeight));
         _titleBar.QueueLayoutUpdate();
     }
 
@@ -2125,7 +2153,7 @@ public sealed partial class MainWindow : Window
         _windowResizeAnimationTargetSize = GetPhysicalWindowSize(logicalHeight);
         if (_windowResizeAnimationStartSize.Height == _windowResizeAnimationTargetSize.Height)
         {
-            _appWindow.Resize(_windowResizeAnimationTargetSize);
+            ApplyWindowSize(_windowResizeAnimationTargetSize);
             _titleBar.QueueLayoutUpdate();
             return;
         }
@@ -2143,13 +2171,20 @@ public sealed partial class MainWindow : Window
         var height = (int)Math.Round(
             _windowResizeAnimationStartSize.Height
             + ((_windowResizeAnimationTargetSize.Height - _windowResizeAnimationStartSize.Height) * easedProgress));
-        _appWindow.Resize(new SizeInt32(_windowResizeAnimationTargetSize.Width, height));
+        ApplyWindowSize(new SizeInt32(_windowResizeAnimationTargetSize.Width, height));
 
         if (progress >= 1d)
         {
             _windowResizeAnimationTimer.Stop();
             _titleBar.QueueLayoutUpdate();
         }
+    }
+
+    /// <summary>Marks application-driven bounds so their native notification cannot replace a user's preferred size.</summary>
+    private void ApplyWindowSize(SizeInt32 size)
+    {
+        _requestedWindowSize = size;
+        _appWindow.Resize(size);
     }
 
     /// <summary>Calculates the physical AppWindow size for one logical content height.</summary>
@@ -2170,9 +2205,18 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Keeps the live player compact while giving layered options and operations enough room to reflow.</summary>
-    private int CurrentLogicalWindowWidth => _layoutState.Surface == MainWindowSurface.Player
-        ? LogicalWindowWidth
-        : LogicalExpandedWindowWidth;
+    private int CurrentLogicalWindowWidth
+    {
+        get
+        {
+            var scale = RootGrid.XamlRoot?.RasterizationScale ?? _rasterizationScale;
+            var availableWidth = Math.Max(1d, CurrentWorkArea().Width / scale - LogicalScreenMargin * 2);
+            var preferredWidth = _layoutState.Surface == MainWindowSurface.Player
+                ? LogicalWindowWidth
+                : LogicalExpandedWindowWidth;
+            return _layoutState.ResolveLogicalWidth(availableWidth, preferredWidth);
+        }
+    }
 
     /// <summary>Places the player at the selected visual anchor.</summary>
     private void ApplyFlyoutPosition(string position)

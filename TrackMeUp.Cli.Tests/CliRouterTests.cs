@@ -383,6 +383,7 @@ public sealed class CliRouterTests
         public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => Unsupported<WorldClockCityCatalog>();
         public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
         public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
+        public Task<OperationResult<WorldClockSelectionState>> MoveWorldClockAsync(string cityId, WorldClockMoveDirection direction, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
         public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken) => Unsupported<string>();
 
         public Task<OperationResult<RuntimeHealth>> GetRuntimeHealthAsync(CancellationToken cancellationToken)
@@ -405,7 +406,6 @@ public sealed class CliRouterTests
         public Task<OperationResult<LastSessionState?>> GetLastSessionAsync(CancellationToken cancellationToken) => Unsupported<LastSessionState?>();
         public Task<OperationResult<DailySummary>> GetTodaySummaryAsync(CancellationToken cancellationToken) => Unsupported<DailySummary>();
         public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) => Unsupported<SearchResponse>();
-        public Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) => Unsupported<IReadOnlyList<SearchSuggestion>>();
         public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) => Unsupported<SearchAvailability>();
         public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();

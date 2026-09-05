@@ -20,6 +20,8 @@ public sealed class SearchSurfaceContractTests
         var queryBox = window.Descendants().Single(element => HasName(element, "QueryBox"));
         var glow = window.Descendants().Single(element => HasName(element, "SearchActivityGlow"));
         var activity = window.Descendants().Single(element => HasName(element, "SearchActivityStatus"));
+        var statusRow = window.Descendants().Single(element => HasName(element, "SearchStatusRow"));
+        var root = window.Descendants().Single(element => HasName(element, "RootGrid"));
         var footer = window.Descendants().Single(element => HasName(element, "SearchFooter"));
         var f3Shortcut = mainWindow.Descendants().Single(element =>
             element.Name.LocalName == "KeyboardAccelerator" && element.Attribute("Key")?.Value == "F3");
@@ -29,13 +31,20 @@ public sealed class SearchSurfaceContractTests
         Assert.Equal("48", queryBox.Attribute("MinHeight")?.Value);
         Assert.Equal("Center", queryBox.Attribute("VerticalContentAlignment")?.Value);
         Assert.DoesNotContain(window.Descendants(), element => element.Name.LocalName == "AutoSuggestBox.ItemTemplate");
-        Assert.Equal("3", glow.Attribute("Height")?.Value);
+        Assert.Equal("SearchActivityLine", glow.Name.LocalName);
+        Assert.Equal("2", glow.Attribute("Height")?.Value);
         Assert.Null(glow.Attribute("Visibility"));
-        Assert.Equal(3, glow.Descendants().Count(element => element.Name.LocalName == "GradientStop"));
         Assert.Null(glow.Attribute("SizeChanged"));
+        Assert.Equal("Raw", glow.Attribute("AutomationProperties.AccessibilityView")?.Value);
+        // Feedback must own an Auto row rather than compete with the star-sized result viewport.
+        Assert.Same(statusRow, activity.Parent);
+        Assert.Same(statusRow, window.Descendants().Single(element => HasName(element, "EmptyStatePanel")).Parent);
+        var statusIndex = int.Parse(statusRow.Attribute("Grid.Row")!.Value);
+        var rows = root.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().ToArray();
+        Assert.Equal("Auto", rows[statusIndex].Attribute("Height")?.Value);
         Assert.Contains(activity.Descendants(), element => element.Name.LocalName == "ProgressRing");
         Assert.Contains(activity.Descendants(), element => element.Attribute("AutomationProperties.LiveSetting")?.Value == "Polite");
-        Assert.Equal("4", footer.Attribute("Grid.Row")?.Value);
+        Assert.Equal("5", footer.Attribute("Grid.Row")?.Value);
         Assert.Contains(footer.Descendants(), element => HasName(element, "SearchAvailabilityText"));
         Assert.Contains(footer.Descendants(), element => HasName(element, "TextReadingStatusText"));
         Assert.DoesNotContain("IsAlwaysOnTop", windowSource, StringComparison.Ordinal);
@@ -49,6 +58,8 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("TimeSpan.FromMilliseconds(250)", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("SuggestAsync", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ElementCompositionPreview", windowSource, StringComparison.Ordinal);
+        Assert.Contains("textBox.IsTextPredictionEnabled = false;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_appWindow.ClientSize.Height", windowSource, StringComparison.Ordinal);
         Assert.Equal(2, windowSource.Split("BeginSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, windowSource.Split("EndSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.Contains("public const int MaximumResults = 20;", viewModelSource, StringComparison.Ordinal);
@@ -128,13 +139,12 @@ public sealed class SearchSurfaceContractTests
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var root = window.Descendants().Single(element => HasName(element, "RootGrid"));
         var resultsProgress = window.Descendants().Single(element => HasName(element, "ResultsProgressBar"));
-        var suggestionsProgress = window.Descendants().Single(element => HasName(element, "SuggestionsProgressBar"));
 
         var backdrop = window.Descendants().Single(element => element.Name.LocalName == "MicaBackdrop");
         Assert.Equal("BaseAlt", backdrop.Attribute("Kind")?.Value);
         Assert.Equal("Transparent", root.Attribute("Background")?.Value);
         Assert.Equal("True", resultsProgress.Attribute("IsIndeterminate")?.Value);
-        Assert.Equal("True", suggestionsProgress.Attribute("IsIndeterminate")?.Value);
+        Assert.DoesNotContain(window.Descendants(), element => HasName(element, "SuggestionsProgressBar"));
         Assert.Contains(window.Descendants(), element => HasName(element, "CancelOrCloseButton"));
         Assert.Contains("_application.RebuildSearchIndexAsync", source, StringComparison.Ordinal);
         Assert.Contains("DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, RunIndexingFromVisibleWindow)", source, StringComparison.Ordinal);

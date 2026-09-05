@@ -125,6 +125,43 @@ internal sealed class WorldClockApplicationService : IDisposable
             new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks));
     }
 
+    internal OperationResult<WorldClockSelectionState> MoveValidated(
+        string normalizedId,
+        WorldClockMoveDirection direction)
+    {
+        var offset = direction switch
+        {
+            WorldClockMoveDirection.Up => -1,
+            WorldClockMoveDirection.Down => 1,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "A world-clock move direction is required.")
+        };
+        var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).ToList();
+        var currentIndex = selection.IndexOf(normalizedId);
+        if (currentIndex < 0)
+        {
+            return OperationResult<WorldClockSelectionState>.Failure(
+                "world_clocks.not_found",
+                "WorldClocksNotFound",
+                new ValidationIssue("cityId", "not_found", "WorldClocksNotFound"));
+        }
+
+        var targetIndex = currentIndex + offset;
+        if (targetIndex < 0 || targetIndex >= selection.Count)
+        {
+            return OperationResult<WorldClockSelectionState>.Failure(
+                "world_clocks.move_unavailable",
+                "WorldClocksMoveUnavailable",
+                new ValidationIssue("direction", "move_unavailable", "WorldClocksMoveUnavailable"));
+        }
+
+        (selection[currentIndex], selection[targetIndex]) = (selection[targetIndex], selection[currentIndex]);
+        _persistSettings(_settingsSnapshot.Value with { WorldClockCityIds = selection });
+        return OperationResult<WorldClockSelectionState>.Success(
+            "world_clocks.moved",
+            "WorldClocksMoved",
+            new WorldClockSelectionState(selection.ToArray(), WorldClockSelection.MaximumClocks));
+    }
+
     internal async Task<OperationResult<string>> SetWeatherKeyAsync(
         string secret,
         CancellationToken cancellationToken)

@@ -154,8 +154,18 @@ internal sealed class CustomTitleBarController : IDisposable
 
         AttachXamlRoot(xamlRoot);
         var scale = Math.Max(0.1d, xamlRoot.RasterizationScale);
-        _leftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
-        _rightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
+        if (_appWindow.Presenter is OverlappedPresenter { HasTitleBar: false })
+        {
+            // The borderless player owns its caption buttons in XAML and reserves no native caption area.
+            // Native caption insets are not valid layout inputs after the system title bar is removed.
+            _leftInsetColumn.Width = new GridLength(0);
+            _rightInsetColumn.Width = new GridLength(0);
+        }
+        else
+        {
+            _leftInsetColumn.Width = new GridLength(_appWindow.TitleBar.LeftInset / scale);
+            _rightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
+        }
 
         var passthroughRects = _interactiveElements()
             .Where(static element =>

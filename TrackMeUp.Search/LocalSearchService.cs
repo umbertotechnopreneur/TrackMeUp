@@ -3,7 +3,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
-using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
@@ -24,18 +23,19 @@ public sealed class LocalSearchService : ILocalSearchService
     private readonly LanguageAnalyzerCatalog _analyzers;
     private readonly SynonymCatalog _synonyms;
     private readonly FSDirectory _directory;
-    private readonly StandardAnalyzer _suggestionAnalyzer;
+    private readonly SearcherManager _searchers;
+    private readonly ReaderWriterLockSlim _readerGate = new();
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private IndexWriter _writer;
-    private Exception? _fault;
+    private volatile Exception? _fault;
     private long _committedSourceRevision;
     private int _disposeStarted;
 
     /// <summary>Gets the current on-disk index schema version.</summary>
-    public const int IndexSchemaVersion = 3;
+    public const int IndexSchemaVersion = 4;
 
     /// <summary>Gets the versioned directory name created below <see cref="SearchOptions.IndexRootPath"/>.</summary>
-    public const string IndexDirectoryName = "lucene-v3";
+    public const string IndexDirectoryName = "lucene-v4";
 
     /// <summary>
     /// Initializes a local search service and exclusively opens its Lucene writer.
@@ -50,7 +50,7 @@ public sealed class LocalSearchService : ILocalSearchService
 
         LanguageAnalyzerCatalog? analyzers = null;
         FSDirectory? directory = null;
-        StandardAnalyzer? suggestionAnalyzer = null;
+        SearcherManager? searchers = null;
         IndexWriter? writer = null;
         try
         {
@@ -75,14 +75,15 @@ public sealed class LocalSearchService : ILocalSearchService
             _writer = writer;
             _synonyms = new SynonymCatalog(options);
 
-            suggestionAnalyzer = new StandardAnalyzer(Version);
-            _suggestionAnalyzer = suggestionAnalyzer;
+            // Readers see explicit commits only, including after writer rollback/recovery.
+            searchers = new SearcherManager(directory, null);
+            _searchers = searchers;
         }
         catch
         {
+            searchers?.Dispose();
             writer?.Rollback();
             directory?.Dispose();
-            suggestionAnalyzer?.Dispose();
             analyzers?.Dispose();
             _operationGate.Dispose();
             throw;
@@ -147,10 +148,8 @@ public sealed class LocalSearchService : ILocalSearchService
             }
 
             var uniqueChanges = prepared.GroupBy(change => change.Id, StringComparer.Ordinal).Select(group => group.Last()).ToList();
-            using var reader = DirectoryReader.Open(_directory);
             CommitWrite(() =>
             {
-                SuggestionProjection.Update(_writer, new IndexSearcher(reader), uniqueChanges);
                 foreach (var mutation in uniqueChanges)
                 {
                     var term = new Term(SearchFields.IdKey, mutation.Id);
@@ -199,7 +198,6 @@ public sealed class LocalSearchService : ILocalSearchService
             {
                 _writer.DeleteAll();
                 var identifiers = new HashSet<string>(StringComparer.Ordinal);
-                var suggestions = new Dictionary<string, SuggestionProjection.Entry>(StringComparer.Ordinal);
                 foreach (var document in documents)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -215,12 +213,7 @@ public sealed class LocalSearchService : ILocalSearchService
                     // every Lucene document was the largest avoidable allocation during a full
                     // OCR index rebuild.
                     _writer.AddDocument(SearchDocumentMapper.ToLucene(document));
-                    foreach (var (key, entry) in SuggestionProjection.Entries([document]))
-                        suggestions[key] = suggestions.TryGetValue(key, out var previous)
-                            ? previous with { Weight = checked(previous.Weight + entry.Weight) } : entry;
                 }
-                foreach (var (key, entry) in suggestions)
-                    _writer.AddDocument(SuggestionProjection.ToDocument(key, entry));
             }, sourceRevision);
         }
         finally
@@ -230,66 +223,55 @@ public sealed class LocalSearchService : ILocalSearchService
     }
 
     /// <inheritdoc />
-    public async Task<SearchResponse> SearchAsync(
+    public Task<SearchResponse> SearchAsync(
         SearchRequest request,
         CancellationToken cancellationToken = default)
     {
         var limit = SearchValidation.ValidateRequest(request, _options);
 
-        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        ThrowIfUnavailable();
+        // Concurrent reads reuse one committed snapshot. Only publication/disposal needs the
+        // write lock, so preparing and committing an index batch does not queue queries behind it.
+        _readerGate.EnterReadLock();
         try
         {
             ThrowIfUnavailable();
             cancellationToken.ThrowIfCancellationRequested();
 
-            var query = SuggestionProjection.SourcesOnly(new SearchQueryBuilder(_options, _analyzers, _synonyms).Build(request));
-            using var reader = DirectoryReader.Open(_directory);
-            var searcher = new IndexSearcher(reader);
-            var topDocuments = searcher.Search(query, checked(request.Offset + limit));
-            var hits = ImmutableArray.CreateBuilder<SearchHit>(Math.Min(limit, topDocuments.ScoreDocs.Length));
-
-            foreach (var scoreDocument in topDocuments.ScoreDocs.Skip(request.Offset).Take(limit))
+            var query = new SearchQueryBuilder(_options, _analyzers, _synonyms).Build(request);
+            var searcher = _searchers.Acquire();
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var document = SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc));
-                hits.Add(new SearchHit
+                var topDocuments = searcher.Search(query, checked(request.Offset + limit));
+                var hits = ImmutableArray.CreateBuilder<SearchHit>(Math.Min(limit, topDocuments.ScoreDocs.Length));
+
+                foreach (var scoreDocument in topDocuments.ScoreDocs.Skip(request.Offset).Take(limit))
                 {
-                    Document = request.IncludeTextContent ? document : WithoutTextContent(document),
-                    Score = scoreDocument.Score,
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var document = SearchDocumentMapper.FromLucene(searcher.Doc(scoreDocument.Doc));
+                    hits.Add(new SearchHit
+                    {
+                        Document = request.IncludeTextContent ? document : WithoutTextContent(document),
+                        Score = scoreDocument.Score,
+                    });
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                return Task.FromResult(new SearchResponse
+                {
+                    Hits = hits.MoveToImmutable(),
+                    TotalCount = topDocuments.TotalHits,
+                    Offset = request.Offset,
                 });
             }
-
-            return new SearchResponse
+            finally
             {
-                Hits = hits.MoveToImmutable(),
-                TotalCount = topDocuments.TotalHits,
-                Offset = request.Offset,
-            };
+                _searchers.Release(searcher);
+            }
         }
         finally
         {
-            _operationGate.Release();
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<ImmutableArray<SearchSuggestion>> SuggestAsync(
-        SearchSuggestionRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var limit = SearchValidation.ValidateSuggestionRequest(request, _options);
-
-        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            ThrowIfUnavailable();
-            cancellationToken.ThrowIfCancellationRequested();
-            using var reader = DirectoryReader.Open(_directory);
-            return SuggestionProjection.Lookup(new IndexSearcher(reader), _suggestionAnalyzer, request.Text, limit).ToImmutableArray();
-        }
-        finally
-        {
-            _operationGate.Release();
+            _readerGate.ExitReadLock();
         }
     }
 
@@ -305,15 +287,17 @@ public sealed class LocalSearchService : ILocalSearchService
         }
 
         await _operationGate.WaitAsync().ConfigureAwait(false);
+        _readerGate.EnterWriteLock();
         try
         {
+            _searchers.Dispose();
             _writer.Dispose();
             _directory.Dispose();
-            _suggestionAnalyzer.Dispose();
             _analyzers.Dispose();
         }
         finally
         {
+            _readerGate.ExitWriteLock();
             _operationGate.Release();
             GC.SuppressFinalize(this);
         }
@@ -376,7 +360,7 @@ public sealed class LocalSearchService : ILocalSearchService
     private static void RemoveSupersededIndexes(string rootPath)
     {
         // Explicit migration: old derived indexes are discarded, never read as a compatibility fallback.
-        foreach (var name in new[] { "lucene-v2", "suggestions-v1", "suggestions-v1.revision", "suggestions-v1.revision.tmp" })
+        foreach (var name in new[] { "lucene-v2", "lucene-v3", "suggestions-v1", "suggestions-v1.revision", "suggestions-v1.revision.tmp" })
         {
             var path = Path.GetFullPath(Path.Combine(rootPath, name));
             var prefix = Path.GetFullPath(rootPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
@@ -396,7 +380,6 @@ public sealed class LocalSearchService : ILocalSearchService
         {
             mutation();
             StampAndCommit(_writer, sourceRevision);
-            Interlocked.Exchange(ref _committedSourceRevision, sourceRevision);
         }
         catch (Exception operationException)
         {
@@ -417,6 +400,25 @@ public sealed class LocalSearchService : ILocalSearchService
 
             ExceptionDispatchInfo.Capture(operationException).Throw();
             throw;
+        }
+
+        _readerGate.EnterWriteLock();
+        try
+        {
+            // Publishing waits for old readers to finish. Once a deletion synchronizes, no
+            // subsequent query can acquire a snapshot that still contains deleted documents.
+            _searchers.MaybeRefreshBlocking();
+            Interlocked.Exchange(ref _committedSourceRevision, sourceRevision);
+        }
+        catch (Exception exception)
+        {
+            // A committed write with failed reader publication must never serve a stale snapshot.
+            _fault = exception;
+            throw;
+        }
+        finally
+        {
+            _readerGate.ExitWriteLock();
         }
     }
 

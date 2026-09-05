@@ -372,6 +372,8 @@ public sealed class RuntimeProtocolTests
         Assert.True(result.Succeeded);
         var clock = Assert.Single(result.Value!.Clocks);
         Assert.Equal("london", clock.CityId);
+        Assert.True(clock.IsDaylightSavingTime);
+        Assert.Equal(new DateTimeOffset(2026, 10, 25, 1, 0, 0, TimeSpan.Zero), clock.DaylightSavingEndsAt);
         Assert.Null(clock.Weather);
         Assert.Equal("unavailable", result.Value.WeatherStatus.State);
         Assert.Equal("request-failed", result.Value.WeatherStatus.ReasonCode);
@@ -395,6 +397,27 @@ public sealed class RuntimeProtocolTests
         Assert.Equal("TRACKMEUP_OPENWEATHER_API_KEY", result.Value);
         Assert.Equal(secret, proxy.Secret);
         Assert.DoesNotContain(secret, JsonSerializer.Serialize(result), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task WorldClockMove_RoundTripsCityAndDirectionThroughTheRuntimeFacade()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, WorldClockMoveRuntimeProxy>();
+        var proxy = Assert.IsAssignableFrom<WorldClockMoveRuntimeProxy>(application);
+        var installationId = $"world-clock-move-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installationId);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installationId, TimeSpan.FromSeconds(3));
+
+        var result = await client.MoveWorldClockAsync(
+            "tokyo",
+            WorldClockMoveDirection.Down,
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("tokyo", proxy.CityId);
+        Assert.Equal(WorldClockMoveDirection.Down, proxy.Direction);
+        Assert.Equal(["london", "tokyo"], result.Value?.CityIds);
     }
 
     [Fact]
@@ -864,6 +887,8 @@ public sealed class RuntimeProtocolTests
                         "GMT Standard Time",
                         instant,
                         true,
+                        new DateTimeOffset(2026, 10, 25, 1, 0, 0, TimeSpan.Zero),
+                        true,
                         instant.AddHours(-6),
                         instant.AddHours(6),
                         180d,
@@ -910,6 +935,38 @@ public sealed class RuntimeProtocolTests
                 "world_clocks.weather.key.stored",
                 "WorldClockWeatherKeyStored",
                 "TRACKMEUP_OPENWEATHER_API_KEY"));
+        }
+    }
+
+    public class WorldClockMoveRuntimeProxy : DispatchProxy
+    {
+        public string? CityId { get; private set; }
+
+        public WorldClockMoveDirection Direction { get; private set; }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            return targetMethod?.Name switch
+            {
+                nameof(ITrackMeUpApplication.MoveWorldClockAsync) => MoveClock(
+                    (string)args![0]!,
+                    (WorldClockMoveDirection)args[1]!),
+                nameof(IAsyncDisposable.DisposeAsync) => ValueTask.CompletedTask,
+                "add_RuntimeStateChanged" or "remove_RuntimeStateChanged" => null,
+                _ => throw new NotSupportedException(targetMethod?.Name)
+            };
+        }
+
+        private Task<OperationResult<WorldClockSelectionState>> MoveClock(
+            string cityId,
+            WorldClockMoveDirection direction)
+        {
+            CityId = cityId;
+            Direction = direction;
+            return Task.FromResult(OperationResult<WorldClockSelectionState>.Success(
+                "world_clocks.moved",
+                "WorldClocksMoved",
+                new WorldClockSelectionState(["london", "tokyo"], WorldClockSelection.MaximumClocks)));
         }
     }
 

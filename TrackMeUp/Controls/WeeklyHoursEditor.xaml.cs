@@ -182,12 +182,21 @@ public sealed partial class WeeklyHoursEditor : UserControl
             return;
         }
 
+        // ToggleButton captures pointer input before this handled-events-too parent handler runs.
+        // Transfer that capture now so the editor receives the full drag and owns pointer release.
+        slot.ReleasePointerCapture(e.Pointer);
+        if (!DaysHost.CapturePointer(e.Pointer))
+        {
+            return;
+        }
+
         _dragPointerId = e.Pointer.PointerId;
         _dragStartPosition = point.Position;
         _lastDragDayIndex = dayIndex;
         _lastDragSlotIndex = slotIndex;
         _dragSelectionValue = !(slot.IsChecked == true);
         _isDragging = false;
+        e.Handled = true;
     }
 
     private void DaysHost_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -221,11 +230,6 @@ public sealed partial class WeeklyHoursEditor : UserControl
                 return;
             }
 
-            if (!DaysHost.CapturePointer(e.Pointer))
-            {
-                return;
-            }
-
             _isDragging = true;
             _daySlots[Days[_lastDragDayIndex]][_lastDragSlotIndex].IsChecked = _dragSelectionValue.Value;
         }
@@ -245,13 +249,14 @@ public sealed partial class WeeklyHoursEditor : UserControl
             return;
         }
 
-        if (_isDragging)
+        if (!_isDragging && _dragSelectionValue.HasValue)
         {
-            DaysHost.ReleasePointerCapture(e.Pointer);
-            e.Handled = true;
+            _daySlots[Days[_lastDragDayIndex]][_lastDragSlotIndex].IsChecked = _dragSelectionValue.Value;
         }
 
+        e.Handled = true;
         ClearDragGesture();
+        DaysHost.ReleasePointerCapture(e.Pointer);
     }
 
     private void DaysHost_PointerCanceled(object sender, PointerRoutedEventArgs e)
@@ -264,7 +269,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
 
     private void DaysHost_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
-        if (_dragPointerId == e.Pointer.PointerId)
+        if (ReferenceEquals(e.OriginalSource, DaysHost) && _dragPointerId == e.Pointer.PointerId)
         {
             ClearDragGesture();
         }

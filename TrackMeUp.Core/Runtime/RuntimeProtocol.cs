@@ -96,3 +96,6 @@ public sealed record RuntimeResponseEnvelope(
     string MessageKey,
     object? Payload,
     IReadOnlyList<ValidationIssue> Issues);
+
+/// <summary>Carries one validated world-clock reorder request over the same-user runtime protocol.</summary>
+internal sealed record WorldClockMoveRequest(string CityId, WorldClockMoveDirection Direction);

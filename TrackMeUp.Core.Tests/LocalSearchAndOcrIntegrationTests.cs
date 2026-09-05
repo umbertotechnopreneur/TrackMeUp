@@ -19,8 +19,132 @@ namespace TrackMeUp.Core.Tests;
 [Collection(ProcessEnvironmentCollection.Name)]
 public sealed class LocalSearchAndOcrIntegrationTests
 {
+    /// <summary>New source data is indexed by the worker without making reads wait for its batch.</summary>
     [Fact]
-    public async Task SearchCoordinator_QueuesSearchAndSuggestionsBeforeSynchronousIndexWork()
+    public async Task BackgroundIndexing_DoesNotBlockQueriesAndStopsWithCoordinator()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var service = new ThreadRecordingSearchService
+            {
+                BatchAction = async cancellationToken =>
+                {
+                    entered.TrySetResult();
+                    try { await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken); }
+                    finally { stopped.TrySetResult(); }
+                }
+            };
+            await using (var coordinator = new LocalSearchCoordinator(store, service))
+            {
+                await coordinator.SynchronizeAsync(CancellationToken.None);
+                store.AppendSample(new ActivitySample(DateTimeOffset.Now, 1, "active", "test", "Test",
+                    "newmarker", "Search", store.LoadSettings().InstallationId, 0, 0));
+                coordinator.Start();
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+                await coordinator.SearchAsync(new SearchRequest { Text = "existing" }, CancellationToken.None)
+                    .WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Equal(1, service.SearchCount);
+                Assert.False(stopped.Task.IsCompleted);
+            }
+
+            Assert.True(stopped.Task.IsCompletedSuccessfully);
+            Assert.True(service.Disposed);
+        }
+        finally { DeleteDataDirectory(dataDirectory); }
+    }
+
+    /// <summary>Background projection faults fail queries explicitly until a successful manual rebuild.</summary>
+    [Fact]
+    public async Task BackgroundIndexing_FailureIsVisibleAndExplicitRebuildRecovers()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var service = new ThreadRecordingSearchService
+            {
+                RebuildAction = () => throw new InvalidDataException("Synthetic source failure")
+            };
+            await using var coordinator = new LocalSearchCoordinator(CreateStore(dataDirectory), service);
+            coordinator.Start();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => coordinator.SearchAsync(
+                new SearchRequest { Text = "example" }, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10)));
+            service.RebuildAction = null;
+            await coordinator.RebuildAsync(CancellationToken.None);
+            await coordinator.SearchAsync(new SearchRequest { Text = "example" }, CancellationToken.None);
+            Assert.Equal(1, service.SearchCount);
+        }
+        finally { DeleteDataDirectory(dataDirectory); }
+    }
+
+    /// <summary>A backlog exceeding the batch size is drained incrementally instead of rebuilding all sources.</summary>
+    [Fact]
+    public async Task Synchronize_LargeBacklogUsesBoundedIncrementalBatches()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var service = new ThreadRecordingSearchService();
+            await using var coordinator = new LocalSearchCoordinator(store, service);
+            await coordinator.SynchronizeAsync(CancellationToken.None);
+            var installationId = store.LoadSettings().InstallationId;
+            var now = DateTimeOffset.Now;
+            for (var i = 0; i < 2_001; i++)
+                store.AppendSample(new ActivitySample(now.AddTicks(i), 1, "active", "test", "Test",
+                    "backlog marker", "Search", installationId, 0, 0));
+
+            await coordinator.SynchronizeAsync(CancellationToken.None);
+
+            Assert.Equal(1, service.RebuildCount);
+            Assert.Equal(2, service.BatchCount);
+            Assert.Single(service.LastBatch);
+            Assert.Equal(store.GetSearchSourceRevision(), service.CommittedSourceRevision);
+        }
+        finally { DeleteDataDirectory(dataDirectory); }
+    }
+
+    /// <summary>Refreshing requested captures does not deserialize unrelated OCR from the same day.</summary>
+    [Fact]
+    public void ScreenshotBatch_ReadsOnlyRequestedCaptureMetadata()
+    {
+        var dataDirectory = CreateDataDirectory();
+        try
+        {
+            var store = CreateStore(dataDirectory);
+            var settings = store.LoadSettings();
+            var now = DateTimeOffset.Now;
+            var requested = CreateOwnedScreenshot(settings.ScreenshotDirectory!, 'a', now);
+            var unrelated = CreateOwnedScreenshot(settings.ScreenshotDirectory!, 'b', now);
+            foreach (var (path, id) in new[] { (requested, new string('a', 32)), (unrelated, new string('b', 32)) })
+            {
+                store.RegisterScreenshotCapture(id, settings.InstallationId, now, ScreenshotCaptureOrigins.Manual);
+                store.UpsertScreenshotTextSnapshot(id, CreateTextSnapshot(path, "synthetic OCR"));
+            }
+            using (var connection = new SqliteConnection($"Data Source={Path.Combine(dataDirectory, "activity.sqlite3")};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE screenshot_text_snapshots SET snapshot_json = 'invalid-json' WHERE artifact_identity = $identity;";
+                command.Parameters.AddWithValue("$identity", Path.GetFileNameWithoutExtension(unrelated));
+                Assert.Equal(1, command.ExecuteNonQuery());
+            }
+
+            var items = store.GetScreenshotGalleryItemsForCaptures([new string('a', 32)], CancellationToken.None);
+
+            Assert.Equal(requested, Assert.Single(items).Path);
+            Assert.Equal("synthetic OCR", items[0].TextSnapshot!.Ocr.RawText);
+        }
+        finally { DeleteDataDirectory(dataDirectory); }
+    }
+
+    [Fact]
+    public async Task SearchCoordinator_QueuesSearchBeforeSynchronousLuceneWork()
     {
         var dataDirectory = CreateDataDirectory();
         try
@@ -28,15 +152,11 @@ public sealed class LocalSearchAndOcrIntegrationTests
             var service = new ThreadRecordingSearchService();
             await using var coordinator = new LocalSearchCoordinator(CreateStore(dataDirectory), service);
 
-            var searchCallerThread = RunOnDedicatedThread(() => coordinator.SearchAsync(
+            var searchCallerThread = RunOnDedicatedThread(() => SearchCurrentAsync(coordinator,
                 new SearchRequest { Text = "snapshot" },
-                CancellationToken.None));
-            var suggestionCallerThread = RunOnDedicatedThread(() => coordinator.SuggestAsync(
-                new SearchSuggestionRequest { Text = "sna" },
                 CancellationToken.None));
 
             Assert.NotEqual(searchCallerThread, service.SearchThreadId);
-            Assert.NotEqual(suggestionCallerThread, service.SuggestionThreadId);
         }
         finally
         {
@@ -67,7 +187,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             };
             await using var coordinator = new LocalSearchCoordinator(store, service);
 
-            _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
+            _ = await SearchCurrentAsync(coordinator, new SearchRequest { Text = "tracking" }, CancellationToken.None);
             store.AppendSample(new ActivitySample(
                 DateTimeOffset.UtcNow.AddSeconds(1),
                 1,
@@ -79,8 +199,8 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 store.LoadSettings().InstallationId,
                 0,
                 0));
-            _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
-            _ = await coordinator.SearchAsync(new SearchRequest { Text = "tracking" }, CancellationToken.None);
+            _ = await SearchCurrentAsync(coordinator, new SearchRequest { Text = "tracking" }, CancellationToken.None);
+            _ = await SearchCurrentAsync(coordinator, new SearchRequest { Text = "tracking" }, CancellationToken.None);
 
             Assert.Equal(1, service.RebuildCount);
             Assert.Equal(1, service.BatchCount);
@@ -283,12 +403,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
                     IndexRootPath = Path.Combine(dataDirectory, "test-search")
                 }));
             var indexed = await coordinator.RebuildAsync(CancellationToken.None);
-            var activity = await coordinator.SearchAsync(new SearchRequest
+            var activity = await SearchCurrentAsync(coordinator, new SearchRequest
             {
                 Text = "roadmop",
                 QueryLanguage = "en"
             }, CancellationToken.None);
-            var screenshot = await coordinator.SearchAsync(new SearchRequest
+            var screenshot = await SearchCurrentAsync(coordinator, new SearchRequest
             {
                 Text = "fattura",
                 QueryLanguage = "it"
@@ -338,7 +458,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 {
                     IndexRootPath = Path.Combine(dataDirectory, "test-search")
                 }));
-            var response = await coordinator.SearchAsync(new SearchRequest
+            var response = await SearchCurrentAsync(coordinator, new SearchRequest
             {
                 Text = "preventivo",
                 QueryLanguage = "it"
@@ -381,6 +501,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 0,
                 0));
 
+            var settings = new SettingsSnapshot(store.LoadSettings());
             await using var coordinator = new LocalSearchCoordinator(
                 store,
                 new LocalSearchService(new SearchOptions
@@ -394,12 +515,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
                             Terms = ["computer", "pc"]
                         }
                     ]
-                }));
+                }), settings);
 
-            Assert.Empty((await coordinator.SearchAsync(
+            Assert.Empty((await SearchCurrentAsync(coordinator,
                 new SearchRequest { Text = "pc" },
                 CancellationToken.None)).Hits);
-            Assert.Empty((await coordinator.SearchAsync(
+            Assert.Empty((await SearchCurrentAsync(coordinator,
                 new SearchRequest { Text = "fatturazone" },
                 CancellationToken.None)).Hits);
 
@@ -408,11 +529,12 @@ public sealed class LocalSearchAndOcrIntegrationTests
                 SearchSynonymsEnabled = true,
                 SearchTypoToleranceEnabled = true
             });
+            settings.Replace(store.LoadSettings());
 
-            Assert.NotEmpty((await coordinator.SearchAsync(
+            Assert.NotEmpty((await SearchCurrentAsync(coordinator,
                 new SearchRequest { Text = "pc" },
                 CancellationToken.None)).Hits);
-            Assert.NotEmpty((await coordinator.SearchAsync(
+            Assert.NotEmpty((await SearchCurrentAsync(coordinator,
                 new SearchRequest { Text = "fatturazone" },
                 CancellationToken.None)).Hits);
         }
@@ -526,6 +648,13 @@ public sealed class LocalSearchAndOcrIntegrationTests
             definition => Assert.False(definition.RequiresRestart));
     }
 
+    private static async Task<SearchResponse> SearchCurrentAsync(
+        LocalSearchCoordinator coordinator, SearchRequest request, CancellationToken cancellationToken)
+    {
+        await coordinator.SynchronizeAsync(cancellationToken);
+        return await coordinator.SearchAsync(request, cancellationToken);
+    }
+
     private static ScreenshotTextSnapshot CreateTextSnapshot(string screenshotPath, string rawText) => new(
         screenshotPath,
         new OcrRawSnapshot(
@@ -573,10 +702,10 @@ public sealed class LocalSearchAndOcrIntegrationTests
             store.UpsertScreenshotTextSnapshot(captureId, CreateTextSnapshot(screenshotPath, "temporary OCR text"));
             var service = new ThreadRecordingSearchService();
             await using var coordinator = new LocalSearchCoordinator(store, service);
-            _ = await coordinator.SearchAsync(new SearchRequest { Text = "temporary" }, CancellationToken.None);
+            _ = await SearchCurrentAsync(coordinator, new SearchRequest { Text = "temporary" }, CancellationToken.None);
 
             Assert.Equal(1, store.DeleteScreenshotTextSnapshot(screenshotPath));
-            _ = await coordinator.SearchAsync(new SearchRequest { Text = "desktop" }, CancellationToken.None);
+            _ = await SearchCurrentAsync(coordinator, new SearchRequest { Text = "desktop" }, CancellationToken.None);
 
             var imageMutation = Assert.Single(
                 service.LastBatch,
@@ -704,8 +833,8 @@ public sealed class LocalSearchAndOcrIntegrationTests
         public long CommittedSourceRevision { get; private set; }
 
         internal int SearchThreadId { get; private set; }
-
-        internal int SuggestionThreadId { get; private set; }
+        internal int SearchCount { get; private set; }
+        internal bool Disposed { get; private set; }
 
         internal int RebuildCount { get; private set; }
 
@@ -713,7 +842,8 @@ public sealed class LocalSearchAndOcrIntegrationTests
 
         internal IReadOnlyList<SearchIndexMutation> LastBatch { get; private set; } = [];
 
-        internal Action? RebuildAction { get; init; }
+        internal Action? RebuildAction { get; set; }
+        internal Func<CancellationToken, Task>? BatchAction { get; init; }
 
         public Task UpsertAsync(SearchDocument document, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
@@ -721,15 +851,16 @@ public sealed class LocalSearchAndOcrIntegrationTests
         public Task DeleteAsync(string id, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task ApplyBatchAsync(
+        public async Task ApplyBatchAsync(
             IReadOnlyCollection<SearchIndexMutation> mutations,
             long sourceRevision,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (BatchAction is not null) await BatchAction(cancellationToken);
             BatchCount++;
             LastBatch = mutations.ToArray();
-            return SetCommittedRevisionAsync(sourceRevision);
+            await SetCommittedRevisionAsync(sourceRevision);
         }
 
         public Task RebuildAsync(
@@ -757,6 +888,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             CancellationToken cancellationToken = default)
         {
             SearchThreadId = Environment.CurrentManagedThreadId;
+            SearchCount++;
             return Task.FromResult(new SearchResponse
             {
                 TotalCount = 0,
@@ -764,15 +896,11 @@ public sealed class LocalSearchAndOcrIntegrationTests
             });
         }
 
-        public Task<ImmutableArray<SearchSuggestion>> SuggestAsync(
-            SearchSuggestionRequest request,
-            CancellationToken cancellationToken = default)
+        public ValueTask DisposeAsync()
         {
-            SuggestionThreadId = Environment.CurrentManagedThreadId;
-            return Task.FromResult(ImmutableArray<SearchSuggestion>.Empty);
+            Disposed = true;
+            return ValueTask.CompletedTask;
         }
-
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         private Task SetCommittedRevisionAsync(long sourceRevision)
         {

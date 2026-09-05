@@ -524,12 +524,13 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("SetTitleBar(TitleBarDragRegion);", scheduleSource, StringComparison.Ordinal);
     }
 
+    /// <summary>Checks that the responsive player retains native user placement instead of recentering.</summary>
     [Fact]
-    public void MainWindow_IsFixedSizeAndRestoresUserPlacementWithoutAutomaticRecentering()
+    public void MainWindow_IsResizableAndRestoresUserPlacementWithoutAutomaticRecentering()
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
 
-        Assert.Contains("presenter.IsResizable = false;", source, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsResizable = true;", source, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", source, StringComparison.Ordinal);
         Assert.Contains("ResizeForLogicalContent(_layoutState.LogicalHeight);", source, StringComparison.Ordinal);
         Assert.Contains("ResizeForCurrentLayout(animate: false);", source, StringComparison.Ordinal);
@@ -629,6 +630,8 @@ public sealed class WinUiSurfaceContractTests
         var previewSurface = player.Descendants().Single(element => HasName(element, "ScreenshotPreviewSurface"));
         var screenshotStatus = player.Descendants().Single(element => HasName(element, "ScreenshotStatusText"));
         var openOverlay = player.Descendants().Single(element => HasName(element, "ScreenshotOpenOverlay"));
+        var backgroundSurface = player.Descendants().Single(element => HasName(element, "PlayerBackgroundSurface"));
+        var windowContent = player.Descendants().Single(element => HasName(element, "WindowContent"));
 
         Assert.Equal("Left", localTime.Attribute("HorizontalAlignment")?.Value);
         Assert.Equal("Right", utcTime.Attribute("HorizontalAlignment")?.Value);
@@ -652,6 +655,12 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("0", openOverlay.Attribute("Opacity")?.Value);
         Assert.Null(openOverlay.Attribute("BorderBrush"));
         Assert.Null(openOverlay.Attribute("BorderThickness"));
+        Assert.Same(windowContent, backgroundSurface.Parent);
+        Assert.Equal("Border", backgroundSurface.Name.LocalName);
+        Assert.Equal("2", backgroundSurface.Attribute("Grid.RowSpan")?.Value);
+        var backgroundBrush = Assert.Single(backgroundSurface.Descendants(), element => element.Name.LocalName == "ImageBrush");
+        Assert.Equal("UniformToFill", backgroundBrush.Attribute("Stretch")?.Value);
+        Assert.Null(backgroundSurface.Attribute("Margin"));
         Assert.Contains("LocalTimeText.Text = _strings.Format(\"Main.Time.Local\", state.LocalTime);", source, StringComparison.Ordinal);
         Assert.Contains("UtcTimeText.Text = _strings.Format(\"Main.Time.Utc\", state.UtcTime);", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
@@ -802,27 +811,37 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void Player_KeepsOnlyNativeCloseAndConfirmsTrackingSuspension()
+    public void Player_UsesBorderlessCustomCloseAndConfirmsTrackingSuspension()
     {
         var player = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
-        var systemButtonGap = player.Descendants().Single(element => HasName(element, "TitleBarSystemButtonGapColumn"));
         var dragRegion = player.Descendants().Single(element => HasName(element, "DragRegion"));
         var reportButton = player.Descendants().Single(element => HasName(element, "TitleBarReportButton"));
         var minimizeToTrayButton = player.Descendants().Single(element => HasName(element, "TitleBarMinimizeToTrayButton"));
+        var closeButton = player.Descendants().Single(element => HasName(element, "TitleBarCloseButton"));
         var closeStart = mainSource.IndexOf("private async void AppWindow_Closing", StringComparison.Ordinal);
         var closeEnd = mainSource.IndexOf("private static void FadeIn", closeStart, StringComparison.Ordinal);
         Assert.True(closeStart >= 0 && closeEnd > closeStart, "Main-window close lifecycle source contract was not found.");
         var closeSource = mainSource[closeStart..closeEnd];
 
-        Assert.Equal("12", systemButtonGap.Attribute("Width")?.Value);
         Assert.Null(dragRegion.Attribute("Grid.ColumnSpan"));
         Assert.Null(dragRegion.Attribute("Grid.Column"));
         Assert.Equal("Collapsed", reportButton.Attribute("Visibility")?.Value);
         Assert.Equal("Collapsed", minimizeToTrayButton.Attribute("Visibility")?.Value);
+        Assert.Equal("48", closeButton.Attribute("Width")?.Value);
+        Assert.Equal("Tray.CloseApplication", closeButton.Attribute("Tag")?.Value);
+        Assert.Equal("TitleBarCloseButton_Click", closeButton.Attribute("Click")?.Value);
+        Assert.Equal(
+            closeButton.Attribute("AutomationProperties.Name")?.Value,
+            closeButton.Attribute("ToolTipService.ToolTip")?.Value);
         Assert.Contains("presenter.IsMaximizable = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);", mainSource, StringComparison.Ordinal);
+        Assert.Contains("SetIconButtonLabel(TitleBarCloseButton, \"Tray.CloseApplication\");", mainSource, StringComparison.Ordinal);
+        Assert.Contains("private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();", mainSource, StringComparison.Ordinal);
+        Assert.Contains("PlayerBackgroundSurface.Visibility = Visibility.Collapsed;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("PlayerBackgroundSurface.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
         Assert.Contains("_appWindow.Closing += AppWindow_Closing;", mainSource, StringComparison.Ordinal);
         Assert.Contains("args.Cancel = true;", closeSource, StringComparison.Ordinal);
         Assert.Contains("_closeConfirmationInProgress", closeSource, StringComparison.Ordinal);

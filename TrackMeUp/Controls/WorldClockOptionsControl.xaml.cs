@@ -42,6 +42,12 @@ public sealed partial class WorldClockOptionsControl : UserControl
     /// <summary>Occurs when a city should be removed.</summary>
     public event EventHandler<WorldClockCityEventArgs>? RemoveRequested;
 
+    /// <summary>Occurs when a city should move one position toward the start of the list.</summary>
+    public event EventHandler<WorldClockCityEventArgs>? MoveUpRequested;
+
+    /// <summary>Occurs when a city should move one position toward the end of the list.</summary>
+    public event EventHandler<WorldClockCityEventArgs>? MoveDownRequested;
+
     /// <summary>Occurs when the native always-on-top presenter state should change.</summary>
     public event Action<bool>? AlwaysOnTopChanged;
 
@@ -350,6 +356,22 @@ public sealed partial class WorldClockOptionsControl : UserControl
         }
     }
 
+    private void MoveUpClockButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: WorldClockItem clock })
+        {
+            MoveUpRequested?.Invoke(this, new WorldClockCityEventArgs(clock.CityId, clock.CityName));
+        }
+    }
+
+    private void MoveDownClockButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: WorldClockItem clock })
+        {
+            MoveDownRequested?.Invoke(this, new WorldClockCityEventArgs(clock.CityId, clock.CityName));
+        }
+    }
+
     private void RenderCities(WorldClockSnapshot? snapshot, string? referenceCityId)
     {
         CitiesHost.Children.Clear();
@@ -363,8 +385,9 @@ public sealed partial class WorldClockOptionsControl : UserControl
         _updatingControls = true;
         try
         {
-            foreach (var clock in snapshot.Clocks)
+            for (var index = 0; index < snapshot.Clocks.Count; index++)
             {
+                var clock = snapshot.Clocks[index];
                 if (CitiesHost.Children.Count > 0)
                 {
                     CitiesHost.Children.Add(new Border
@@ -411,23 +434,35 @@ public sealed partial class WorldClockOptionsControl : UserControl
                 referenceButton.Checked += ReferenceRadioButton_Checked;
                 row.Children.Add(referenceButton);
 
-                var removeButton = new Button
+                var actions = new StackPanel
                 {
-                    Width = 40,
-                    Height = 40,
-                    Padding = new Thickness(0),
-                    Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    Content = new SymbolIcon(Symbol.Delete),
-                    Tag = clock,
-                    IsEnabled = true
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 0,
+                    VerticalAlignment = VerticalAlignment.Center
                 };
-                Grid.SetColumn(removeButton, 1);
-                var removeName = _strings.Format("WorldClock.Remove", clock.CityName);
-                AutomationProperties.SetName(removeButton, removeName);
-                ToolTipService.SetToolTip(removeButton, removeName);
-                removeButton.Click += RemoveClockButton_Click;
-                row.Children.Add(removeButton);
+                var moveUpButton = CreateCityActionButton(
+                    clock,
+                    "\uE70E",
+                    "WorldClock.MoveUp",
+                    index > 0,
+                    MoveUpClockButton_Click);
+                var moveDownButton = CreateCityActionButton(
+                    clock,
+                    "\uE70D",
+                    "WorldClock.MoveDown",
+                    index < snapshot.Clocks.Count - 1,
+                    MoveDownClockButton_Click);
+                var removeButton = CreateCityActionButton(
+                    clock,
+                    "\uE74D",
+                    "WorldClock.Remove",
+                    isEnabled: true,
+                    RemoveClockButton_Click);
+                actions.Children.Add(moveUpButton);
+                actions.Children.Add(moveDownButton);
+                actions.Children.Add(removeButton);
+                Grid.SetColumn(actions, 1);
+                row.Children.Add(actions);
                 CitiesHost.Children.Add(row);
             }
         }
@@ -438,6 +473,36 @@ public sealed partial class WorldClockOptionsControl : UserControl
 
         _canAddClock = snapshot.Clocks.Count < snapshot.MaximumClocks;
         AddClockButton.IsEnabled = !_busy && _canAddClock;
+    }
+
+    private Button CreateCityActionButton(
+        WorldClockItem clock,
+        string glyph,
+        string labelKey,
+        bool isEnabled,
+        RoutedEventHandler clickHandler)
+    {
+        var button = new Button
+        {
+            Width = 40,
+            Height = 40,
+            Padding = new Thickness(0),
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            Content = new FontIcon
+            {
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
+                FontSize = 15,
+                Glyph = glyph
+            },
+            Tag = clock,
+            IsEnabled = isEnabled
+        };
+        var label = _strings.Format(labelKey, clock.CityName);
+        AutomationProperties.SetName(button, label);
+        ToolTipService.SetToolTip(button, label);
+        button.Click += clickHandler;
+        return button;
     }
 
     private void ApplyWeatherStatus(WorldClockWeatherStatus? status)

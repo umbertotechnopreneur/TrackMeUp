@@ -503,14 +503,14 @@ public sealed class LocalizationServiceTests
         Assert.Equal("No matching snapshots", english.Translate("Search.NoResults"));
         Assert.Equal("Search indexing", english.Translate("SearchIndex.Title"));
         Assert.Equal("Search results", english.Translate("SearchIndex.Results.Title"));
-        Assert.Equal("Search suggestions", english.Translate("SearchIndex.Suggestions.Title"));
+        Assert.Equal("Search index ready", english.Translate("SearchIndex.Completed.Title"));
         Assert.Equal("Searching the local index", english.Translate("Search.Working"));
         Assert.Equal("Cancel", english.Translate("SearchIndex.Cancel"));
         Assert.Equal("Cerca nella cronologia", italian.Translate("Search.Title"));
         Assert.Equal("Nessuno snapshot corrispondente", italian.Translate("Search.NoResults"));
         Assert.Equal("Indicizzazione ricerca", italian.Translate("SearchIndex.Title"));
         Assert.Equal("Risultati di ricerca", italian.Translate("SearchIndex.Results.Title"));
-        Assert.Equal("Suggerimenti di ricerca", italian.Translate("SearchIndex.Suggestions.Title"));
+        Assert.Equal("Indice di ricerca pronto", italian.Translate("SearchIndex.Completed.Title"));
         Assert.Equal("Ricerca nell'indice locale", italian.Translate("Search.Working"));
         Assert.Equal("Annulla", italian.Translate("SearchIndex.Cancel"));
     }

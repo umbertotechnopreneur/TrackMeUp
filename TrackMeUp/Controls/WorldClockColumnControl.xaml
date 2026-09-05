@@ -196,6 +196,15 @@
                     TextAlignment="Center"
                     TextWrapping="Wrap"
                     Visibility="Collapsed" />
+                <TextBlock
+                    x:Name="DaylightSavingText"
+                    Margin="0,4,0,0"
+                    HorizontalAlignment="Center"
+                    FontSize="11"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap"
+                    Visibility="Collapsed" />
             </StackPanel>
 
             <TextBlock
@@ -215,7 +224,7 @@
                 Grid.Row="3"
                 Grid.ColumnSpan="2"
                 Margin="0,8,0,0"
-                MaxWidth="304"
+                MaxWidth="256"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"
                 AutomationProperties.AccessibilityView="Raw">

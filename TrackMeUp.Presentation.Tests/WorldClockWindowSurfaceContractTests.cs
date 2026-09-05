@@ -807,8 +807,39 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("ToolTipService.SetToolTip(button, label);", windowSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(referenceButton, referenceName);", optionsSource, StringComparison.Ordinal);
         Assert.Contains("ToolTipService.SetToolTip(referenceButton, referenceName);", optionsSource, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.SetName(removeButton, removeName);", optionsSource, StringComparison.Ordinal);
-        Assert.Contains("ToolTipService.SetToolTip(removeButton, removeName);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(button, label);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(button, label);", optionsSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ClockOptions_ExposeLocalizedBoundaryAwareMoveCommandsThroughTheApplicationFacade()
+    {
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml.cs"));
+        var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var catalogs = Directory.GetFiles(
+            RepositoryFile("TrackMeUp.Core", "Localization"),
+            "*.json",
+            SearchOption.TopDirectoryOnly);
+
+        Assert.Contains("public event EventHandler<WorldClockCityEventArgs>? MoveUpRequested;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler<WorldClockCityEventArgs>? MoveDownRequested;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("index > 0", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("index < snapshot.Clocks.Count - 1", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.SetName(button, label);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.SetToolTip(button, label);", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("WorldClockMoveDirection.Up", windowSource, StringComparison.Ordinal);
+        Assert.Contains("WorldClockMoveDirection.Down", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_application.MoveWorldClockAsync(e.CityId, direction", windowSource, StringComparison.Ordinal);
+        Assert.Contains("MoveUpRequested -= OptionsControl_MoveUpRequested;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("MoveDownRequested -= OptionsControl_MoveDownRequested;", windowSource, StringComparison.Ordinal);
+
+        Assert.All(catalogs, catalog =>
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(catalog));
+            Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("WorldClock.MoveUp").GetString()));
+            Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("WorldClock.MoveDown").GetString()));
+            Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("WorldClocksMoveUnavailable").GetString()));
+        });
     }
 
     [Fact]

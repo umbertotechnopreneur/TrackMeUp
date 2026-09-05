@@ -235,6 +235,15 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<WorldClockSelectionState>> RemoveWorldClockAsync(string cityId, CancellationToken cancellationToken) =>
         SendAsync<WorldClockSelectionState>(RuntimeOperation.WorldClocksRemoveV3, new { cityId }, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<WorldClockSelectionState>> MoveWorldClockAsync(
+        string cityId,
+        WorldClockMoveDirection direction,
+        CancellationToken cancellationToken) =>
+        SendAsync<WorldClockSelectionState>(
+            RuntimeOperation.WorldClocksMoveV1,
+            new WorldClockMoveRequest(cityId, direction),
+            cancellationToken);
+    /// <inheritdoc />
     public Task<OperationResult<string>> SetWorldClockWeatherKeyAsync(string secret, CancellationToken cancellationToken) =>
         SendAsync<string>(RuntimeOperation.WorldClocksWeatherKeySetV2, new { secret }, cancellationToken, WorldClockWeatherKeyTimeout);
     /// <inheritdoc />
@@ -244,9 +253,6 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<SearchResponse>> SearchAsync(SearchRequest request, CancellationToken cancellationToken) =>
         SendAsync<SearchResponse>(RuntimeOperation.SearchQueryV1, request, cancellationToken, SearchTimeout);
-    /// <inheritdoc />
-    public Task<OperationResult<IReadOnlyList<SearchSuggestion>>> GetSearchSuggestionsAsync(SearchSuggestionRequest request, CancellationToken cancellationToken) =>
-        SendAsync<IReadOnlyList<SearchSuggestion>>(RuntimeOperation.SearchSuggestV2, request, cancellationToken, SearchTimeout);
     /// <inheritdoc />
     public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) =>
         SendAsync<SearchAvailability>(RuntimeOperation.SearchAvailabilityV1, null, cancellationToken, SearchTimeout);

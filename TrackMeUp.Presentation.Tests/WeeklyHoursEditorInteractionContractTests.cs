@@ -24,7 +24,38 @@ public sealed class WeeklyHoursEditorInteractionContractTests
         Assert.Contains("UseSystemFocusVisuals", editor.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("IsHitTestVisible = false", source, StringComparison.Ordinal);
         Assert.Contains("PointerDeviceType.Touch", source, StringComparison.Ordinal);
+        Assert.Contains("slot.ReleasePointerCapture(e.Pointer)", source, StringComparison.Ordinal);
         Assert.Contains("DaysHost.CapturePointer(e.Pointer)", source, StringComparison.Ordinal);
+        Assert.True(
+            source.IndexOf("DaysHost.CapturePointer(e.Pointer)", StringComparison.Ordinal)
+            < source.IndexOf("private void DaysHost_PointerMoved", StringComparison.Ordinal));
+        Assert.Contains("if (!_isDragging && _dragSelectionValue.HasValue)", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Ensures the selection fill follows the combined states used by the WinUI ToggleButton runtime.</summary>
+    [Fact]
+    public void CellsUseTheWinUiToggleButtonCommonStateContract()
+    {
+        var editor = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml"));
+        var template = editor.Descendants().Single(element =>
+            element.Name.LocalName == "ControlTemplate"
+            && element.Attribute("TargetType")?.Value == "ToggleButton");
+        var stateGroup = template.Descendants().Single(element => element.Name.LocalName == "VisualStateGroup");
+        var stateNames = stateGroup.Elements()
+            .Where(element => element.Name.LocalName == "VisualState")
+            .Select(element => element.Attributes().Single(attribute => attribute.Name.LocalName == "Name").Value)
+            .ToArray();
+
+        Assert.Equal("CommonStates", stateGroup.Attributes().Single(attribute => attribute.Name.LocalName == "Name").Value);
+        Assert.Contains("Normal", stateNames);
+        Assert.Contains("PointerOver", stateNames);
+        Assert.Contains("Pressed", stateNames);
+        Assert.Contains("Disabled", stateNames);
+        Assert.Contains("Checked", stateNames);
+        Assert.Contains("CheckedPointerOver", stateNames);
+        Assert.Contains("CheckedPressed", stateNames);
+        Assert.Contains("CheckedDisabled", stateNames);
+        Assert.DoesNotContain("Unchecked", stateNames);
     }
 
     /// <summary>Ensures day columns stretch and drag hit testing reads their arranged widths.</summary>

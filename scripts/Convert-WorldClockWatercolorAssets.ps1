@@ -4,7 +4,7 @@ param(
     [string] $MasterRoot = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\masters-v1'),
 
     [Parameter()]
-    [string] $OutputRoot = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\runtime-v3'),
+    [string] $OutputRoot = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\runtime-v4'),
 
     [Parameter()]
     [string] $ManifestPath = (Join-Path $PSScriptRoot '..\design\world-clocks\watercolor\generation-manifest-v1.json'),
@@ -250,7 +250,11 @@ try {
     }
 
     $stagedManifestPath = Join-Path $stagingRoot 'runtime-asset-manifest.json'
-    $runtimeManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $stagedManifestPath -Encoding utf8NoBOM
+    $runtimeManifestJson = (($runtimeManifest | ConvertTo-Json -Depth 8) -replace "`r`n", "`n") + "`n"
+    [System.IO.File]::WriteAllText(
+        $stagedManifestPath,
+        $runtimeManifestJson,
+        [System.Text.UTF8Encoding]::new($false))
 
     $stagedItems = @(Get-ChildItem -LiteralPath $stagingRoot -File -Force)
     if ($stagedItems.Count -ne ($assets.Count + 1)) {

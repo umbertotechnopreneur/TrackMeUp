@@ -21,7 +21,7 @@ generation/review boundary in [`PROVENANCE.md`](PROVENANCE.md).
 
 ## Intermediate city WebP files
 
-- Current build directory: `design/world-clocks/watercolor/runtime-v3/`
+- Current build directory: `design/world-clocks/watercolor/runtime-v4/`
 - Contents: one alpha WebP file per reviewed city/season pair at 1280×720 plus
   `runtime-asset-manifest.json`.
 - Transformation: FFmpeg/libwebp quality 82, compression level 4, with decoded

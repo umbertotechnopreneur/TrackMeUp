@@ -202,10 +202,8 @@ internal sealed partial class SearchIndexingWindow : Window
         var completed = _state == IndexingWindowState.Completed;
         OverallProgressBar.IsIndeterminate = active;
         ResultsProgressBar.IsIndeterminate = active;
-        SuggestionsProgressBar.IsIndeterminate = active;
         OverallProgressBar.Value = completed ? 100 : 0;
         ResultsProgressBar.Value = completed ? 100 : 0;
-        SuggestionsProgressBar.Value = completed ? 100 : 0;
         CancelOrCloseButton.IsEnabled = _state != IndexingWindowState.Cancelling;
 
         var statusKey = _state switch
@@ -217,7 +215,6 @@ internal sealed partial class SearchIndexingWindow : Window
             _ => "SearchIndex.Status.Failed"
         };
         ResultsStateText.Text = T(statusKey);
-        SuggestionsStateText.Text = T(statusKey);
 
         switch (_state)
         {

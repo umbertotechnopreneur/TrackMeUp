@@ -7,6 +7,7 @@ TrackMeUp/Assets/WorldClocks/ThirdParty/OpenWeather/ow_logo.svg binary
 # These generated records bind SHA-256 of their exact bytes; never normalize their line endings.
 design/world-clocks/watercolor/generation-manifest-v1.json -text
 design/world-clocks/watercolor/runtime-v3/runtime-asset-manifest.json -text
+design/world-clocks/watercolor/runtime-v4/runtime-asset-manifest.json -text
 TrackMeUp/Assets/WorldClocks/SOURCE-MANIFEST.json -text
 TrackMeUp/Assets/WorldClocks/RUNTIME-ASSET-MANIFEST.json -text
 TrackMeUp/Assets/WorldClocks/PACKAGED-ASSET-MANIFEST.json -text

@@ -13,6 +13,7 @@
             <RowDefinition Height="40" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -24,20 +25,27 @@
             </Grid.ColumnDefinitions>
         </Grid>
 
-        <Grid x:Name="SearchQueryHost" Grid.Row="1" Margin="24,6,24,14">
+        <Grid x:Name="SearchQueryHost" Grid.Row="1" Margin="24,2,24,12">
             <AutoSuggestBox
                 x:Name="QueryBox"
                 MinHeight="48"
                 Tag="Search.Placeholder"
                 AutomationProperties.Name="Search snapshots"
-                CornerRadius="8"
-                FontSize="18"
+                CornerRadius="10"
+                FontSize="17"
                 GotFocus="QueryBox_GotFocus"
                 HorizontalContentAlignment="Stretch"
                 PlaceholderText="Search text in snapshots"
                 QuerySubmitted="QueryBox_QuerySubmitted"
                 TextChanged="QueryBox_TextChanged"
                 VerticalContentAlignment="Center">
+                <AutoSuggestBox.Resources>
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#B3FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#D9FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#E6FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#406F75B5" />
+                    <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+                </AutoSuggestBox.Resources>
                 <AutoSuggestBox.QueryIcon>
                     <SymbolIcon Symbol="Find" />
                 </AutoSuggestBox.QueryIcon>
@@ -45,22 +53,13 @@
                     <KeyboardAccelerator Key="F" Modifiers="Control" />
                 </AutoSuggestBox.KeyboardAccelerators>
             </AutoSuggestBox>
-            <Border
+            <controls:SearchActivityLine
                 x:Name="SearchActivityGlow"
-                Height="3"
-                Margin="10,0,10,-1"
+                Height="2"
+                Margin="12,0,12,0"
                 VerticalAlignment="Bottom"
                 IsHitTestVisible="False"
-                CornerRadius="2"
-                Opacity="0.72">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Offset="0" Color="#FFFF8C78" />
-                        <GradientStop Offset="0.5" Color="#FFA56EFF" />
-                        <GradientStop Offset="1" Color="#FF46D4C8" />
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
+                AutomationProperties.AccessibilityView="Raw" />
         </Grid>
 
         <InfoBar
@@ -71,7 +70,20 @@
             IsOpen="False"
             Severity="Error" />
 
-        <Grid Grid.Row="3">
+        <Grid x:Name="SearchStatusRow" Grid.Row="3" Margin="24,0,24,12" MinHeight="24" Visibility="Collapsed">
+            <Grid x:Name="EmptyStatePanel" ColumnSpacing="10" Visibility="Collapsed">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE721;" FontSize="16" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock Grid.Column="1" Tag="Search.NoResults" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="No matching snapshots" TextWrapping="WrapWholeWords" />
+            </Grid>
+            <Grid x:Name="SearchActivityStatus" ColumnSpacing="10" Visibility="Collapsed">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <ProgressRing x:Name="SearchActivityProgressRing" Width="18" Height="18" MinWidth="0" MinHeight="0" VerticalAlignment="Center" IsActive="False" IsHitTestVisible="False" />
+                <TextBlock Grid.Column="1" Tag="Search.Working" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Searching the local index" TextWrapping="WrapWholeWords" />
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="4">
             <Grid x:Name="ResultsSurface" Visibility="Collapsed">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="ResultsListColumn" Width="2*" />
@@ -186,30 +198,20 @@
                 </Grid>
             </Grid>
 
-            <Grid x:Name="EmptyStatePanel" Margin="28,4,28,12" VerticalAlignment="Top" ColumnSpacing="8" Visibility="Collapsed">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <Ellipse Width="6" Height="6" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" Fill="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TextBlock Grid.Column="1" Tag="Search.NoResults" FontSize="13" Text="No matching snapshots" TextWrapping="WrapWholeWords" />
-            </Grid>
-            <Grid x:Name="SearchActivityStatus" Margin="28,4,28,12" VerticalAlignment="Top" ColumnSpacing="8" Visibility="Collapsed">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <ProgressRing x:Name="SearchActivityProgressRing" Width="14" Height="14" IsActive="True" IsHitTestVisible="False" />
-                <TextBlock Grid.Column="1" Tag="Search.Working" AutomationProperties.LiveSetting="Polite" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Searching the local index" TextWrapping="WrapWholeWords" />
-            </Grid>
         </Grid>
 
         <Grid
             x:Name="SearchFooter"
-            Grid.Row="4"
-            Padding="24,12"
+            Grid.Row="5"
+            Padding="24,10"
             ColumnSpacing="16"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderBrush="#14000000"
             BorderThickness="0,1,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <TextBlock x:Name="SearchAvailabilityText" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="WrapWholeWords" />
             <Grid Grid.Column="1" HorizontalAlignment="Right" ColumnSpacing="8">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <Ellipse x:Name="TextReadingStatusDot" Width="8" Height="8" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" />
+                <Ellipse x:Name="TextReadingStatusDot" Width="6" Height="6" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw" />
                 <TextBlock x:Name="TextReadingStatusText" Grid.Column="1" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="WrapWholeWords" />
             </Grid>
         </Grid>
