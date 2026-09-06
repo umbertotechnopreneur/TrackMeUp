@@ -77,7 +77,7 @@
   "Activity.Keys": "tasti",
   "Activity.Telemetry.Empty": "CPU -- · GPU --",
   "Activity.Percent": "{0:N0}%",
-  "Activity.Telemetry": "CPU {0:N0}% · GPU {1}",
+  "Activity.Telemetry": "CPU {0} · GPU {1}",
   "Activity.Interval.Empty": "{0}: --",
   "Activity.Interval": "{0}: {1:N0} {2} · {3:N0} {4}",
   "ActivityCalendar.MenuTitle": "Cronologia attività",

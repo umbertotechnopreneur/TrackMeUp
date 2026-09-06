@@ -13,8 +13,8 @@ namespace TrackMeUp;
 /// <summary>Collects screenshot scheduling input in a detached themed window.</summary>
 public sealed partial class ScheduleWindow : Window
 {
-    private const int LogicalWindowWidth = 900;
-    private const int LogicalWindowHeight = 620;
+    private const int LogicalWindowWidth = 1180;
+    private const int LogicalWindowHeight = 760;
     private const int LogicalScreenMargin = 24;
     private readonly AppWindow _appWindow;
     private readonly CustomTitleBarController _titleBar;

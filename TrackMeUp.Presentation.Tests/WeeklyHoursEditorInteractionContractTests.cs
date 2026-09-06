@@ -58,34 +58,35 @@ public sealed class WeeklyHoursEditorInteractionContractTests
         Assert.DoesNotContain("Unchecked", stateNames);
     }
 
-    /// <summary>Ensures day columns stretch and drag hit testing reads their arranged widths.</summary>
+    /// <summary>Ensures day cards reflow and drag hit testing follows each arranged single-column hourly grid.</summary>
     [Fact]
-    public void DayColumnsAndDragMappingFollowTheArrangedWidth()
+    public void DayCardsAndDragMappingFollowTheResponsiveArrangedTimeline()
     {
         var editor = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml.cs"));
-        var dayHosts = editor.Descendants()
-            .Where(element => HasName(element, "DaysHeaderHost") || HasName(element, "DaysHost"))
-            .ToArray();
-
-        Assert.Equal(2, dayHosts.Length);
-        Assert.All(dayHosts, host =>
-        {
-            var widths = host.Descendants()
-                .Where(element => element.Name.LocalName == "ColumnDefinition")
-                .Select(element => element.Attribute("Width")?.Value)
-                .ToArray();
-            Assert.Equal("64", widths[0]);
-            Assert.Equal(7, widths.Skip(1).Count(width => width == "*"));
-        });
-        Assert.DoesNotContain("Width=\"736\"", editor.ToString(), StringComparison.Ordinal);
-        var scroller = editor.Descendants().Single(element => element.Name.LocalName == "ScrollViewer");
-        Assert.Equal("2", scroller.Attributes().Single(attribute => attribute.Name.LocalName == "Grid.Row").Value);
+        var scroller = editor.Descendants().Single(element => HasName(element, "DaysScrollViewer"));
+        var editorGrid = editor.Descendants().Single(element =>
+            element.Name.LocalName == "Grid"
+            && element.Elements().Any(child => child.Name.LocalName == "ScrollViewer" && HasName(child, "DaysScrollViewer")));
         Assert.Equal("Stretch", scroller.Attribute("HorizontalContentAlignment")?.Value);
+        Assert.Equal("Disabled", scroller.Attribute("HorizontalScrollMode")?.Value);
+        Assert.Equal("Top", scroller.Attribute("VerticalAlignment")?.Value);
         Assert.Null(scroller.Attribute("MaxHeight"));
+        Assert.Equal("Auto", editorGrid.Descendants().First(element => element.Name.LocalName == "RowDefinition").Attribute("Height")?.Value);
         Assert.DoesNotContain("DayColumnWidth", source, StringComparison.Ordinal);
-        Assert.Contains("ColumnDefinitions[candidateDayIndex + 1].ActualWidth", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SlotHeight", source, StringComparison.Ordinal);
+        Assert.Contains("HourRowHeight = 24d", source, StringComparison.Ordinal);
+        Assert.Contains("SlotGridColumns = 1", source, StringComparison.Ordinal);
+        Assert.Contains("SevenColumnBreakpoint = 780d", source, StringComparison.Ordinal);
+        Assert.Contains("FourColumnBreakpoint = 500d", source, StringComparison.Ordinal);
+        Assert.Contains("TwoColumnBreakpoint = 300d", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyResponsiveLayout", source, StringComparison.Ordinal);
+        Assert.Contains("Grid.SetColumn(card, dayIndex % columnCount)", source, StringComparison.Ordinal);
+        Assert.Contains("timeline.TransformToVisual(DaysHost)", source, StringComparison.Ordinal);
+        Assert.Contains("SlotsPerHour / SlotGridColumns", source, StringComparison.Ordinal);
         Assert.Contains("ApplyDragPath", source, StringComparison.Ordinal);
+        Assert.Contains(editor.Descendants(), element => HasKey(element, "ScheduleDayCardStyle"));
+        Assert.Contains(editor.Descendants(), element => HasKey(element, "ScheduleWeekendDayCardStyle"));
     }
 
     private static string RepositoryFile(params string[] segments)
@@ -102,4 +103,7 @@ public sealed class WeeklyHoursEditorInteractionContractTests
 
     private static bool HasName(XElement element, string name) =>
         element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == name);
+
+    private static bool HasKey(XElement element, string key) =>
+        element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == key);
 }

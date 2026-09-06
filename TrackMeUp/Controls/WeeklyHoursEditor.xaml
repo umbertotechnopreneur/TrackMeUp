@@ -7,18 +7,98 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ScheduleTimeAxisBrush" Color="#1C000000" />
-                    <SolidColorBrush x:Key="ScheduleWeekendColumnBrush" Color="#0EDB4B32" />
+                    <SolidColorBrush x:Key="ScheduleCardBackgroundBrush" Color="#08000000" />
+                    <SolidColorBrush x:Key="ScheduleCardBorderBrush" Color="#24000000" />
+                    <SolidColorBrush x:Key="ScheduleCellBorderBrush" Color="#26000000" />
+                    <SolidColorBrush x:Key="ScheduleCellHoverBrush" Color="#12000000" />
+                    <SolidColorBrush x:Key="ScheduleCellPressedBrush" Color="#1F000000" />
+                    <SolidColorBrush x:Key="ScheduleSummaryTextBrush" Color="#FF007C91" />
+                    <SolidColorBrush x:Key="ScheduleWeekendCardBackgroundBrush" Color="#0EDB4B32" />
+                    <SolidColorBrush x:Key="ScheduleWeekendCardBorderBrush" Color="#42B43B2C" />
+                    <SolidColorBrush x:Key="ScheduleWeekendTextBrush" Color="#FF9A3328" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="ScheduleTimeAxisBrush" Color="#2AFFFFFF" />
-                    <SolidColorBrush x:Key="ScheduleWeekendColumnBrush" Color="#16FF6B4F" />
+                    <SolidColorBrush x:Key="ScheduleCardBackgroundBrush" Color="#12FFFFFF" />
+                    <SolidColorBrush x:Key="ScheduleCardBorderBrush" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="ScheduleCellBorderBrush" Color="#2BFFFFFF" />
+                    <SolidColorBrush x:Key="ScheduleCellHoverBrush" Color="#16FFFFFF" />
+                    <SolidColorBrush x:Key="ScheduleCellPressedBrush" Color="#24FFFFFF" />
+                    <SolidColorBrush x:Key="ScheduleSummaryTextBrush" Color="#FF58D2E8" />
+                    <SolidColorBrush x:Key="ScheduleWeekendCardBackgroundBrush" Color="#16FF6B4F" />
+                    <SolidColorBrush x:Key="ScheduleWeekendCardBorderBrush" Color="#56FF7964" />
+                    <SolidColorBrush x:Key="ScheduleWeekendTextBrush" Color="#FFFF806C" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
-                    <StaticResource x:Key="ScheduleTimeAxisBrush" ResourceKey="SystemColorWindowTextColorBrush" />
-                    <SolidColorBrush x:Key="ScheduleWeekendColumnBrush" Color="Transparent" />
+                    <StaticResource x:Key="ScheduleCardBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ScheduleCardBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ScheduleCellBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ScheduleCellHoverBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="ScheduleCellPressedBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="ScheduleSummaryTextBrush" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="ScheduleWeekendCardBackgroundBrush" ResourceKey="SystemColorWindowColorBrush" />
+                    <StaticResource x:Key="ScheduleWeekendCardBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="ScheduleWeekendTextBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+
+            <Style x:Key="ScheduleDayCardStyle" TargetType="Border">
+                <Setter Property="Margin" Value="5" />
+                <Setter Property="Padding" Value="8,10,8,8" />
+                <Setter Property="Background" Value="{ThemeResource ScheduleCardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ScheduleCardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <Style
+                x:Key="ScheduleWeekendDayCardStyle"
+                BasedOn="{StaticResource ScheduleDayCardStyle}"
+                TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource ScheduleWeekendCardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ScheduleWeekendCardBorderBrush}" />
+            </Style>
+            <Style x:Key="ScheduleDayLabelStyle" TargetType="TextBlock">
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="TextAlignment" Value="Center" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="80" />
+            </Style>
+            <Style
+                x:Key="ScheduleWeekendDayLabelStyle"
+                BasedOn="{StaticResource ScheduleDayLabelStyle}"
+                TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource ScheduleWeekendTextBrush}" />
+            </Style>
+            <Style x:Key="ScheduleTimeLabelStyle" TargetType="TextBlock">
+                <Setter Property="Margin" Value="0,0,5,0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="FontSize" Value="9" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Style>
+            <Style x:Key="ScheduleSummaryFooterStyle" TargetType="Border">
+                <Setter Property="Margin" Value="-8,8,-8,-8" />
+                <Setter Property="Padding" Value="8,8" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ScheduleCardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+            </Style>
+            <Style
+                x:Key="ScheduleWeekendSummaryFooterStyle"
+                BasedOn="{StaticResource ScheduleSummaryFooterStyle}"
+                TargetType="Border">
+                <Setter Property="BorderBrush" Value="{ThemeResource ScheduleWeekendCardBorderBrush}" />
+            </Style>
+            <Style x:Key="ScheduleSummaryTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource ScheduleSummaryTextBrush}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+            <Style
+                x:Key="ScheduleWeekendSummaryTextStyle"
+                BasedOn="{StaticResource ScheduleSummaryTextStyle}"
+                TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource ScheduleWeekendTextBrush}" />
+            </Style>
             <Style x:Key="ScheduleSlotStyle" TargetType="ToggleButton">
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Margin" Value="0" />
@@ -34,14 +114,28 @@
                             <Grid Background="Transparent">
                                 <Border
                                     x:Name="SelectionIndicator"
-                                    Margin="2,1,2,0"
+                                    Margin="1"
                                     Background="Transparent"
+                                    BorderBrush="{ThemeResource ScheduleCellBorderBrush}"
+                                    BorderThickness="1"
                                     CornerRadius="2" />
                                 <VisualStateManager.VisualStateGroups>
                                     <VisualStateGroup x:Name="CommonStates">
                                         <VisualState x:Name="Normal" />
-                                        <VisualState x:Name="PointerOver" />
-                                        <VisualState x:Name="Pressed" />
+                                        <VisualState x:Name="PointerOver">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="SelectionIndicator" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ScheduleCellHoverBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <Storyboard>
+                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="SelectionIndicator" Storyboard.TargetProperty="Background">
+                                                    <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource ScheduleCellPressedBrush}" />
+                                                </ObjectAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualState>
                                         <VisualState x:Name="Disabled" />
                                         <VisualState x:Name="Checked">
                                             <Storyboard>
@@ -109,88 +203,32 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid RowSpacing="7">
+    <Grid MinHeight="0" RowSpacing="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Grid
-            x:Name="DaysHeaderHost"
-            Height="28"
-            HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="64" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <TextBlock
-                Margin="0,0,10,0"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                FontSize="10"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="00–24" />
-        </Grid>
-
-        <Border Grid.Row="1" Height="1" HorizontalAlignment="Stretch" Background="{ThemeResource ScheduleTimeAxisBrush}" />
 
         <ScrollViewer
-            Grid.Row="2"
+            x:Name="DaysScrollViewer"
+            MinHeight="0"
             HorizontalContentAlignment="Stretch"
             HorizontalScrollBarVisibility="Disabled"
             HorizontalScrollMode="Disabled"
+            VerticalAlignment="Top"
             VerticalScrollBarVisibility="Auto"
             VerticalScrollMode="Enabled">
             <Grid
-                x:Name="TimeGridHost"
-                HorizontalAlignment="Stretch">
-                <Grid IsHitTestVisible="False">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="64" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="1" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
-                    <Border Grid.Column="2" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
-                    <Border Grid.Column="3" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
-                    <Border Grid.Column="4" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
-                    <Border Grid.Column="5" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
-                    <Border Grid.Column="6" Background="{ThemeResource ScheduleWeekendColumnBrush}" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,0,0" />
-                    <Border Grid.Column="7" Background="{ThemeResource ScheduleWeekendColumnBrush}" BorderBrush="{ThemeResource ScheduleTimeAxisBrush}" BorderThickness="1,0,1,0" />
-                </Grid>
-                <Grid
-                    x:Name="DaysHost"
-                    HorizontalAlignment="Stretch"
-                    Background="Transparent">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="64" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                </Grid>
-            </Grid>
+                x:Name="DaysHost"
+                MinHeight="0"
+                HorizontalAlignment="Stretch"
+                Background="Transparent"
+                SizeChanged="DaysHost_SizeChanged" />
         </ScrollViewer>
 
         <TextBlock
-            Grid.Row="3"
-            Margin="64,0,0,0"
+            Grid.Row="1"
+            Margin="5,0"
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             Style="{StaticResource CaptionTextBlockStyle}"
             Tag="Schedule.Week.Instructions"
