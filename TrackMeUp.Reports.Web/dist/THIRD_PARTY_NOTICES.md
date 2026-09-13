@@ -7,7 +7,7 @@ This file is generated. Do not edit it manually.
 - Scope: the complete production dependency closure resolved for the tracked web report bundle; development-only tooling is excluded.
 - Platform-specific optional packages are excluded from the generated report distribution notices.
 
-Production packages: 29.
+Production packages: 30.
 
 | Package | Version | Declared license | Included files |
 | --- | --- | --- | --- |
@@ -26,6 +26,7 @@ Production packages: 29.
 | `@vue/runtime-dom` | `3.5.42` | `MIT` | `LICENSE` |
 | `@vue/server-renderer` | `3.5.42` | `MIT` | `LICENSE` |
 | `@vue/shared` | `3.5.42` | `MIT` | `LICENSE` |
+| `@vuetify/v0` | `1.2.1` | `MIT` | `LICENSE.md` |
 | `csstype` | `3.2.3` | `MIT` | `LICENSE` |
 | `echarts` | `6.1.0` | `Apache-2.0` | `LICENSE`, `NOTICE` |
 | `entities` | `7.0.1` | `BSD-2-Clause` | `LICENSE` |
@@ -37,8 +38,8 @@ Production packages: 29.
 | `source-map-js` | `1.2.1` | `BSD-3-Clause` | `LICENSE` |
 | `tslib` | `2.3.0` | `0BSD` | `LICENSE.txt` |
 | `vue` | `3.5.42` | `MIT` | `LICENSE` |
-| `vue-echarts` | `8.1.0` | `MIT` | `LICENSE` |
-| `vuetify` | `4.1.12` | `MIT` | `LICENSE.md` |
+| `vue-echarts` | `8.2.0` | `MIT` | `LICENSE` |
+| `vuetify` | `4.2.0` | `MIT` | `LICENSE.md` |
 | `zrender` | `6.1.0` | `BSD-3-Clause` | `LICENSE` |
 
 ## @babel/helper-string-parser 7.29.7
@@ -469,6 +470,36 @@ Declared license: `MIT`
 The MIT License (MIT)
 
 Copyright (c) 2018-present, Yuxi (Evan) You
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+## @vuetify/v0 1.2.1
+
+Declared license: `MIT`
+
+### LICENSE.md
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2016-now Vuetify, LLC
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -980,7 +1011,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## vue-echarts 8.1.0
+## vue-echarts 8.2.0
 
 Declared license: `MIT`
 
@@ -1010,7 +1041,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## vuetify 4.1.12
+## vuetify 4.2.0
 
 Declared license: `MIT`
 
