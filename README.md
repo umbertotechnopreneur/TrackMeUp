@@ -183,6 +183,8 @@ On Windows, `PackageMsix` and `CreateInstaller` sign the package automatically w
 
 ## Power users and contributors
 
+See the [practical CLI examples](docs/CLI_EXAMPLES.md) for status, tracking, local captures, reports, retention previews, and scriptable output.
+
 Installed-package CLI examples:
 
 ~~~powershell
@@ -244,7 +246,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
 ~~~
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [Windows contributor setup guide](docs/DEVELOPMENT.md) for a clean clone, prerequisites, x64 build/test commands, and troubleshooting. Use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
 
@@ -295,6 +297,8 @@ Privacy and runtime regression checks:
 
 - [Privacy and data flow](docs/PRIVACY.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Windows contributor setup and troubleshooting](docs/DEVELOPMENT.md)
+- [Practical CLI examples](docs/CLI_EXAMPLES.md)
 - [Manual validation guide](docs/VALIDATION.md)
 - [Public roadmap](ROADMAP.md)
 - [Project governance](GOVERNANCE.md)
