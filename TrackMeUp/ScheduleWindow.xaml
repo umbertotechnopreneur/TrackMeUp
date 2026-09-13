@@ -40,8 +40,9 @@
         <Grid
             x:Name="ScheduleBodyGrid"
             Grid.Row="1"
-            MaxWidth="1040"
-            Margin="24,14,40,12"
+            MinHeight="0"
+            MaxWidth="1240"
+            Margin="24,14,24,12"
             HorizontalAlignment="Stretch"
             RowSpacing="12">
             <Grid.RowDefinitions>
@@ -50,7 +51,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid x:Name="ScheduleHeaderGrid" ColumnSpacing="16" RowSpacing="10">
+            <Grid x:Name="ScheduleHeaderGrid" ColumnSpacing="18" RowSpacing="10">
                 <VisualStateManager.VisualStateGroups>
                     <VisualStateGroup x:Name="ScheduleWidthStates">
                         <VisualState x:Name="NarrowSchedule">
@@ -60,13 +61,25 @@
                         </VisualState>
                         <VisualState x:Name="WideSchedule">
                             <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="820" />
+                                <AdaptiveTrigger MinWindowWidth="920" />
                             </VisualState.StateTriggers>
                             <VisualState.Setters>
-                                <Setter Target="HeaderActionsColumn.Width" Value="Auto" />
-                                <Setter Target="HeaderActionsPanel.(Grid.Row)" Value="0" />
-                                <Setter Target="HeaderActionsPanel.(Grid.Column)" Value="2" />
-                                <Setter Target="HeaderActionsPanel.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="HeaderIntervalColumn.Width" Value="Auto" />
+                                <Setter Target="HeaderPresetColumn.Width" Value="Auto" />
+                                <Setter Target="HeaderDescriptionColumn.Width" Value="*" />
+                                <Setter Target="HeaderClearColumn.Width" Value="Auto" />
+                                <Setter Target="IntervalPanel.(Grid.Row)" Value="0" />
+                                <Setter Target="IntervalPanel.(Grid.Column)" Value="0" />
+                                <Setter Target="IntervalPanel.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="PresetPanel.(Grid.Row)" Value="0" />
+                                <Setter Target="PresetPanel.(Grid.Column)" Value="1" />
+                                <Setter Target="PresetPanel.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="WorkingHoursDescription.(Grid.Row)" Value="0" />
+                                <Setter Target="WorkingHoursDescription.(Grid.Column)" Value="2" />
+                                <Setter Target="WorkingHoursDescription.(Grid.ColumnSpan)" Value="1" />
+                                <Setter Target="ClearAllHoursButton.(Grid.Row)" Value="0" />
+                                <Setter Target="ClearAllHoursButton.(Grid.Column)" Value="3" />
+                                <Setter Target="ClearAllHoursButton.(Grid.ColumnSpan)" Value="1" />
                             </VisualState.Setters>
                         </VisualState>
                     </VisualStateGroup>
@@ -74,65 +87,71 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition x:Name="HeaderActionsColumn" Width="0" />
+                    <ColumnDefinition x:Name="HeaderIntervalColumn" Width="*" />
+                    <ColumnDefinition x:Name="HeaderPresetColumn" Width="*" />
+                    <ColumnDefinition x:Name="HeaderDescriptionColumn" Width="0" />
+                    <ColumnDefinition x:Name="HeaderClearColumn" Width="0" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Spacing="5">
+                <StackPanel x:Name="IntervalPanel" Grid.Row="0" Grid.Column="0" Spacing="5">
                     <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Tag="Schedule.Interval.Title" Text="Capture interval" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <NumberBox
                             x:Name="IntervalNumberBox"
-                            Width="120"
+                            MinWidth="160"
+                            HorizontalAlignment="Left"
                             Value="15"
                             Minimum="1"
                             Maximum="1440"
                             SmallChange="1"
                             LargeChange="5"
                             Tag="Schedule.Interval.Value"
-                            SpinButtonPlacementMode="Inline" />
+                            SpinButtonPlacementMode="Compact" />
                         <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="min" />
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <StackPanel x:Name="PresetPanel" Grid.Row="0" Grid.Column="1" Spacing="5">
                     <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Tag="Schedule.WorkingHours.Title" Text="Working hours" />
-                    <TextBlock
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Tag="Schedule.WorkingHours.Description"
-                        Text="Select the 15-minute periods when scheduled snapshots may run."
-                        TextWrapping="Wrap" />
-                </StackPanel>
-                <StackPanel
-                    x:Name="HeaderActionsPanel"
-                    Grid.Row="1"
-                    Grid.ColumnSpan="2"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal"
-                    Spacing="8">
                     <Button
                         x:Name="StandardWorkWeekButton"
-                        MinWidth="124"
+                        MinWidth="148"
+                        HorizontalAlignment="Left"
                         AutomationProperties.Name="Apply the 09:00-18:00 work week"
                         Click="StandardWorkWeekButton_Click"
                         Content="09:00-18:00"
                         Tag="Schedule.Preset.WorkWeek" />
-                    <Button
-                        x:Name="ClearAllHoursButton"
-                        MinWidth="108"
-                        AutomationProperties.Name="Clear all working hours"
-                        Click="ClearAllHoursButton_Click"
-                        Content="Clear all"
-                        Tag="Schedule.ClearAll" />
                 </StackPanel>
+                <TextBlock
+                    x:Name="WorkingHoursDescription"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="2"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Tag="Schedule.WorkingHours.Description"
+                    Text="Select the 15-minute periods when scheduled snapshots may run."
+                    TextWrapping="Wrap" />
+                <Button
+                    x:Name="ClearAllHoursButton"
+                    Grid.Row="2"
+                    Grid.Column="0"
+                    Grid.ColumnSpan="2"
+                    MinWidth="120"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Clear all working hours"
+                    Click="ClearAllHoursButton_Click"
+                    Content="Clear all"
+                    Tag="Schedule.ClearAll" />
             </Grid>
 
             <controls:WeeklyHoursEditor
                 x:Name="WorkingHoursEditor"
                 Grid.Row="1"
+                MinHeight="0"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch" />
 
@@ -148,7 +167,7 @@
         <Grid
             x:Name="ScheduleFooterGrid"
             Grid.Row="2"
-            Padding="24,13,40,18"
+            Padding="24,13,24,18"
             Background="Transparent"
             ColumnSpacing="8">
             <Grid.ColumnDefinitions>
@@ -159,17 +178,17 @@
             <Border
                 Grid.ColumnSpan="3"
                 Height="1"
-                Margin="-24,-13,-40,0"
+                Margin="-24,-13,-24,0"
                 VerticalAlignment="Top"
                 Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
             <Button Grid.Column="1" MinWidth="112" Click="CancelButton_Click" Content="Cancel" Tag="Schedule.Cancel" />
             <Button
                 Grid.Column="2"
                 MinWidth="112"
-                Click="StartButton_Click"
-                Content="Start"
+                Click="SaveButton_Click"
+                Content="Save"
                 Style="{StaticResource AccentButtonStyle}"
-                Tag="Schedule.Start" />
+                Tag="Schedule.Save" />
         </Grid>
     </Grid>
 </Window>

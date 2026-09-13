@@ -4,6 +4,7 @@ These instructions apply to all changes in this repository.
 
 - Read this file and `.github/copilot-instructions.md` before editing.
 - Keep changes scoped, minimal, and reviewable.
+- Enable the repository pre-commit formatter with `pwsh -NoProfile -File ./scripts/Install-GitHooks.ps1` once per clone. Before completing C# changes, run `pwsh -NoProfile -File ./scripts/Format-Code.ps1` and its `-Verify` mode; do not defer whitespace failures to CI or bypass the hook.
 - Be economical with verification: run checks primarily once the task is complete, not after every intermediate step. Repeat or add an earlier check only when it is needed to diagnose a failure, unblock the work, or prevent a risky mistake.
 - Keep product wording vendor-agnostic: user-facing shared AI features must say "AI provider" ("provider AI" in Italian). Name OpenAI, OpenRouter, Anthropic, or another vendor only when the UI refers to a selected provider or genuinely vendor-specific behavior such as its endpoint, model, or pricing.
 - This repository is pre-production: do not add backward-compatibility layers for superseded contracts, persisted artifacts, filenames, or APIs unless explicitly requested. Prefer the clean current design and make migrations explicit.

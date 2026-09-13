@@ -18,6 +18,27 @@ TrackMeUp is an open-source, local-first Windows product and is still evolving. 
 Use PowerShell 7.
 
 ```powershell
+pwsh -NoProfile -File ./scripts/Install-GitHooks.ps1
+```
+
+Install the repository hooks once per clone. Before every commit, the hook
+automatically fixes C# whitespace in the staged snapshot with the same formatter
+as CI. Fully staged working files receive the same fixes. Partially staged
+working files stay untouched, so unstaged edits cannot enter the commit.
+Changing a staged `.editorconfig` formats all indexed C# sources using the staged
+rules. Formatter failures stop the commit without bypassing the check.
+
+To format the current working files manually, or check them without editing:
+
+```powershell
+pwsh -NoProfile -File ./scripts/Format-Code.ps1
+pwsh -NoProfile -File ./scripts/Format-Code.ps1 -Verify
+```
+
+These whitespace-only commands do not require NuGet restore. CI runs the same
+verification before restoring dependencies; it never rewrites pushed commits.
+
+```powershell
 pwsh -NoProfile -Command "dotnet restore .\TrackMeUp.slnx"
 pwsh -NoProfile -Command "dotnet build .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
 pwsh -NoProfile -Command "dotnet test .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"

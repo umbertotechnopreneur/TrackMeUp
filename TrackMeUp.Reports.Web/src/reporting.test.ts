@@ -59,6 +59,15 @@ describe('locale-aware report formatting', () => {
 })
 
 describe('localized report-envelope validation', () => {
+  it('requires version 5 hourly scores and counters', () => {
+    const envelope = structuredClone(buildDevelopmentEnvelope()) as any
+    envelope.snapshot.contractVersion = 4
+    expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
+    envelope.snapshot.contractVersion = 5
+    delete envelope.snapshot.hourOfWeek[0].sampleCount
+    expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
+  })
+
   it('accepts every supported AI origin in the development fixture', () => {
     setReportLanguage('en-US')
     const envelope = structuredClone(buildDevelopmentEnvelope())

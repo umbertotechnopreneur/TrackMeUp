@@ -40,6 +40,10 @@ export interface ReportHourCell {
   trackedSeconds: number
   observationDays: number
   hasData: boolean
+  keyPresses: number
+  mouseClicks: number
+  sampleCount: number
+  activityScore: number | null
 }
 
 export interface ReportTrendBucket {
@@ -207,11 +211,15 @@ const isHourCell = (value: unknown): value is ReportHourCell => {
   return isIntegerInRange(value.dayOfWeek, 0, 6)
     && isIntegerInRange(value.hour, 0, 23)
     && typeof value.hasData === 'boolean'
+    && (value.hasData ? isIntegerInRange(value.activityScore, 0, 100) : value.activityScore === null)
     && hasNumericFields(value, [
       'activeSeconds',
       'idleSeconds',
       'trackedSeconds',
       'observationDays',
+      'keyPresses',
+      'mouseClicks',
+      'sampleCount',
     ])
 }
 
@@ -307,7 +315,7 @@ export function validateReportEnvelope(value: unknown): EnvelopeValidationResult
     return { error: tr('The report does not contain a valid snapshot.') }
   }
 
-  if (snapshot.contractVersion !== 4) {
+  if (snapshot.contractVersion !== 5) {
     return { error: tr('The report version is not compatible with this application.') }
   }
 
