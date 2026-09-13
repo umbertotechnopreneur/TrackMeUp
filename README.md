@@ -234,6 +234,8 @@ trackmeup.exe -cli /ai --help
 
 Repository automation:
 
+The `BuildReports` action uses Node.js 24.16.0 (the CI runtime). Install it before rebuilding the reports web assets.
+
 ~~~powershell
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
