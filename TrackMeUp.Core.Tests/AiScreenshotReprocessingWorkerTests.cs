@@ -369,7 +369,8 @@ public sealed class AiScreenshotReprocessingWorkerTests
             await using var application = CreateApplication(fixture.Store, analysis, refinement);
             var preview = await PreviewTodayAsync(application);
             var start = await application.StartAiScreenshotReprocessingAsync(preview.Value!.PlanId, CancellationToken.None);
-            await analysis.Entered.WaitAsync(TimeSpan.FromSeconds(5));
+            // Allow the shared CI timeout for scheduling and SQLite checkpoints around each gate handoff.
+            await analysis.Entered.WaitAsync(AsyncAssertionTimeout);
 
             var liveCapture = CreateUntrackedCapture(directory);
             var liveAnalysis = application.AnalyzeCapturedScreenshotAsync(
@@ -378,8 +379,8 @@ public sealed class AiScreenshotReprocessingWorkerTests
             Assert.False(refinement.Entered.IsCompleted);
 
             analysis.Release();
-            await refinement.Entered.WaitAsync(TimeSpan.FromSeconds(5));
-            var liveResult = await liveAnalysis.WaitAsync(TimeSpan.FromSeconds(5));
+            await refinement.Entered.WaitAsync(AsyncAssertionTimeout);
+            var liveResult = await liveAnalysis.WaitAsync(AsyncAssertionTimeout);
             Assert.True(liveResult.Succeeded);
             Assert.Equal(1, refinement.CallCount);
             Assert.Equal(1, analysis.LiveCallCount);
