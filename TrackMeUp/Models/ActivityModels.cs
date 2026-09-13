@@ -17,7 +17,12 @@ public sealed record ActivitySample(
     string InstallationId,
     long KeyPresses,
     long MouseClicks,
-    IReadOnlyDictionary<string, string>? Attributes = null);
+    IReadOnlyDictionary<string, string>? Attributes = null)
+{
+    /// <summary>Optional live 16×16 premultiplied BGRA icon; never serialized into activity history.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte[]? ApplicationIconPixels { get; init; }
+}
 
 /// <summary>Names the privacy-scoped attributes retained with local activity samples.</summary>
 public static class ActivityAttributeKeys
@@ -201,7 +206,11 @@ public sealed record DashboardState(
     TimeSpan? ScheduledSnapshotRemaining = null,
     PendingManualScreenshotState? PendingManualScreenshot = null,
     bool IsWithinActiveHours = true,
-    string SpanLabel = "");
+    string SpanLabel = "")
+{
+    /// <summary>Optional 16×16 premultiplied BGRA icon for the application in CurrentContext.</summary>
+    public byte[]? CurrentApplicationIconPixels { get; init; }
+}
 
 /// <summary>Describes a retained manual screenshot that can be deleted before deferred analysis begins.</summary>
 public sealed record PendingManualScreenshotState(string ScreenshotPath, DateTimeOffset ExpiresAt);

@@ -36,8 +36,7 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.Contains(dialog.Descendants(), element => HasName(element, "InstallationLegendItems"));
         var reprocess = dialog.Descendants().Single(element => HasName(element, "ReprocessAiButton"));
         Assert.Equal("ReprocessAiButton_Click", reprocess.Attribute("Click")?.Value);
-        var openGallery = dialog.Descendants().Single(element => HasName(element, "OpenGalleryButton"));
-        Assert.Equal("OpenGalleryButton_Click", openGallery.Attribute("Click")?.Value);
+        Assert.DoesNotContain(dialog.Descendants(), element => HasName(element, "OpenGalleryButton"));
         Assert.DoesNotContain(dialog.Descendants(), element => element.Name.LocalName is "WebView2" or "Frame");
 
         Assert.Contains("_application.GetReportAsync", source, StringComparison.Ordinal);
@@ -46,13 +45,15 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.True(
             source.IndexOf("TryApplySnapshot(result.Value)", StringComparison.Ordinal) <
             source.IndexOf("ActivityCalendarView.MinDate = ToCalendarDate(from)", StringComparison.Ordinal));
-        Assert.Contains("ExpectedReportContractVersion = 4", source, StringComparison.Ordinal);
+        Assert.Contains("ExpectedReportContractVersion = 5", source, StringComparison.Ordinal);
         Assert.Contains("cell.ActivityScore", source, StringComparison.Ordinal);
         Assert.Contains("cell.Installations", source, StringComparison.Ordinal);
         Assert.Contains("InstallationAppearance.CreateAccentBrush", source, StringComparison.Ordinal);
         Assert.Contains("InstallationAppearance.GetIconGlyph", source, StringComparison.Ordinal);
         Assert.Contains("BuildInstallationAccessibleLabel", source, StringComparison.Ordinal);
-        Assert.Contains("SetDensityColors", source, StringComparison.Ordinal);
+        Assert.Contains("args.Item.Background = GetActivityHeatBrush(score)", source, StringComparison.Ordinal);
+        Assert.Contains("args.Item.ClearValue(Control.BackgroundProperty)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetDensityColors", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.ActivityCalendar", source, StringComparison.Ordinal);
         Assert.Contains("ActivityCalendarDialogResult", source, StringComparison.Ordinal);
         Assert.Contains("new ActivityCalendarDialogResult(_selectedDate, ActivityCalendarAction.ReprocessDescriptions)", source, StringComparison.Ordinal);

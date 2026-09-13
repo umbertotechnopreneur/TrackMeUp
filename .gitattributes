@@ -1,6 +1,9 @@
 # Keep the tracked reports source and generated distribution byte-stable across Windows runners.
 TrackMeUp.Reports.Web/** text eol=lf
 
+# Git executes hooks as shell scripts; preserve their shebang on Windows.
+.githooks/* text eol=lf
+
 # Preserve the official third-party attribution mark byte-for-byte across checkout configurations.
 TrackMeUp/Assets/WorldClocks/ThirdParty/OpenWeather/ow_logo.svg binary
 
