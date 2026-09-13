@@ -121,7 +121,7 @@ public sealed class ActivityMonitorService : IDisposable
         try
         {
             // Capture failures from protected/transient OS state skip only this observation.
-            var window = ReadForegroundWindow();
+            var window = ReadForegroundWindow(out var windowHandle);
             var context = _providers.Resolve(window);
             var counts = _inputHooks.TakeCounts();
             var state = GetIdleSeconds() >= IdleThresholdSeconds ? "idle" : "active";
@@ -136,7 +136,10 @@ public sealed class ActivityMonitorService : IDisposable
 
             sample = new ActivitySample(DateTimeOffset.Now, SampleSeconds, state, window.ProcessName,
                 context.Application, context.Context, window.WindowTitle, _installationId, counts.Keys, counts.Clicks,
-                attributes.Count == 0 ? null : attributes);
+                attributes.Count == 0 ? null : attributes)
+            {
+                ApplicationIconPixels = WindowIconService.ReadPixels(windowHandle)
+            };
         }
         catch
         {
@@ -259,9 +262,9 @@ public sealed class ActivityMonitorService : IDisposable
     /// Reads foreground window title and process from OS APIs.
     /// </summary>
     /// <returns>Window metadata for enrichment of activity context.</returns>
-    private static ForegroundWindowInfo ReadForegroundWindow()
+    private static ForegroundWindowInfo ReadForegroundWindow(out nint handle)
     {
-        var handle = NativeMethods.GetForegroundWindow();
+        handle = NativeMethods.GetForegroundWindow();
         var title = new StringBuilder(1024);
         NativeMethods.GetWindowText(handle, title, title.Capacity);
         NativeMethods.GetWindowThreadProcessId(handle, out var processId);

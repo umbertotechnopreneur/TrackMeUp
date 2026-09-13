@@ -57,7 +57,10 @@ public sealed record ReportCalendarCell(
     IReadOnlyList<InstallationProfile>? Installations = null);
 
 /// <summary>Contains mean activity for one weekday-and-hour bucket across observed local dates.</summary>
-/// <remarks>The second counters are arithmetic means rounded to the nearest whole second; <see cref="ReportHourCell.ObservationDays"/> is their denominator.</remarks>
+/// <remarks>The second counters are arithmetic means rounded to the nearest whole second; <see cref="ReportHourCell.ObservationDays"/> is their denominator.
+/// Input and sample counters are totals across those dates. ActivityScore uses the total input and unioned observed duration.
+/// A query covering one Monday-to-Sunday week therefore returns exact counters for each local date and hour.
+/// Repeated daylight-saving hours are combined; skipped hours have no data.</remarks>
 public sealed record ReportHourCell(
     int DayOfWeek,
     int Hour,
@@ -65,7 +68,11 @@ public sealed record ReportHourCell(
     long IdleSeconds,
     long TrackedSeconds,
     int ObservationDays,
-    bool HasData);
+    bool HasData,
+    long KeyPresses,
+    long MouseClicks,
+    int SampleCount,
+    int? ActivityScore);
 
 /// <summary>Contains one chronological daily trend bucket.</summary>
 public sealed record ReportTrendBucket(

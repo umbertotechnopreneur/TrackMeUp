@@ -766,16 +766,31 @@
                                         Text="00:30"
                                         TextAlignment="Right" />
                                 </Grid>
-                                <TextBlock
-                                    x:Name="CurrentContextText"
-                                    Margin="0,3,0,0"
-                                    AutomationProperties.LiveSetting="Polite"
-                                    FontSize="12"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    MaxLines="1"
-                                    Text="Pronto a misurare il tuo tempo"
-                                    TextTrimming="CharacterEllipsis"
-                                    TextWrapping="Wrap" />
+                                <Grid Margin="0,3,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image
+                                        x:Name="CurrentApplicationIcon"
+                                        Width="16"
+                                        Height="16"
+                                        Margin="0,0,6,0"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.AccessibilityView="Raw"
+                                        Visibility="Collapsed" />
+                                    <TextBlock
+                                        x:Name="CurrentContextText"
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.LiveSetting="Polite"
+                                        FontSize="12"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        MaxLines="1"
+                                        Text="Pronto a misurare il tuo tempo"
+                                        TextTrimming="CharacterEllipsis"
+                                        TextWrapping="Wrap" />
+                                </Grid>
                             </StackPanel>
                             <StackPanel
                                 x:Name="AiMonthlySpendPanel"

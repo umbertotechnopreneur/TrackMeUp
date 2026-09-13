@@ -3,6 +3,7 @@
 #region Using directives
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
@@ -11,6 +12,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using Microsoft.UI.Xaml.Input;
 using TrackMeUp.Application;
@@ -1387,6 +1389,7 @@ public sealed partial class MainWindow : Window
                 ? T("StateIdleContext")
                 : state.CurrentContext;
         CurrentContextText.Text = FormatCurrentContext(currentContext);
+        RenderCurrentApplicationIcon(state.CurrentApplicationIconPixels);
         KeyCountText.Text = state.TotalKeyPresses.ToString("N0", _strings.Culture);
         ClickCountText.Text = state.TotalMouseClicks.ToString("N0", _strings.Culture);
         ActiveTimeText.Text = TimeSpan.FromSeconds(state.ActiveSeconds).ToString(@"hh\:mm\:ss");
@@ -1414,6 +1417,31 @@ public sealed partial class MainWindow : Window
         }
 
         UpdatePendingSnapshotDeleteUi(state.PendingManualScreenshot);
+    }
+
+    private void RenderCurrentApplicationIcon(byte[]? pixels)
+    {
+        if (pixels is null)
+        {
+            CurrentApplicationIcon.Source = null;
+            CurrentApplicationIcon.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (pixels.Length != 16 * 16 * 4)
+        {
+            throw new ArgumentException("Expected 16×16 premultiplied BGRA icon pixels.", nameof(pixels));
+        }
+
+        var bitmap = CurrentApplicationIcon.Source as WriteableBitmap ?? new WriteableBitmap(16, 16);
+        using (var stream = bitmap.PixelBuffer.AsStream())
+        {
+            stream.Write(pixels);
+        }
+
+        bitmap.Invalidate();
+        CurrentApplicationIcon.Source = bitmap;
+        CurrentApplicationIcon.Visibility = Visibility.Visible;
     }
 
     private static string FormatCurrentContext(string context)
