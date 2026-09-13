@@ -48,12 +48,16 @@ public sealed class WindowIconServiceTests
         pixels[3] = 255;
         var sample = new ActivitySample(DateTimeOffset.UtcNow, 5, "active", "test", "Test", "", "",
             "test-installation", 0, 0)
-        { ApplicationIconPixels = pixels };
+        {
+            ApplicationIconPixels = pixels
+        };
         Assert.DoesNotContain("ApplicationIconPixels", JsonSerializer.Serialize(sample));
 
         var dashboard = new DashboardState("RUNNING", "Test", 0, 0, 5, 0, true,
             sample.Timestamp, sample.Timestamp, sample.Timestamp)
-        { CurrentApplicationIconPixels = pixels };
+        {
+            CurrentApplicationIconPixels = pixels
+        };
         var restored = JsonSerializer.Deserialize<DashboardState>(JsonSerializer.Serialize(dashboard));
         Assert.Equal(pixels, restored!.CurrentApplicationIconPixels);
     }

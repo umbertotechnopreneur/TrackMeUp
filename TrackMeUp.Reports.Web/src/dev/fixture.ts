@@ -65,6 +65,10 @@ const hourOfWeek: ReportHourCell[] = Array.from({ length: 7 * 24 }, (_, index) =
     trackedSeconds: activeSeconds + idleSeconds,
     observationDays: hasData ? 2 : 0,
     hasData,
+    keyPresses: hasData ? 240 : 0,
+    mouseClicks: hasData ? 48 : 0,
+    sampleCount: hasData ? 12 : 0,
+    activityScore: hasData ? 52 : null,
   }
 })
 
@@ -137,7 +141,7 @@ export function buildDevelopmentEnvelope(): ReportEnvelope {
     type: 'report.snapshot',
     view: 'calendar',
     snapshot: {
-      contractVersion: 4,
+      contractVersion: 5,
       range: {
         from: '2026-07-23',
         toInclusive: '2026-08-05',

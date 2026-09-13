@@ -13,27 +13,23 @@ using Windows.Foundation;
 
 namespace TrackMeUp.Controls;
 
-/// <summary>Edits the weekly active-hours schedule with 15-minute selectable time blocks.</summary>
+/// <summary>Edits the complete weekly selection through two synchronized, scrollable half-day views.</summary>
 public sealed partial class WeeklyHoursEditor : UserControl
 {
     private const int SlotsPerDay = WeeklyHoursGridProjection.SlotsPerDay;
-    private const int HoursPerDay = 24;
-    private const int SlotsPerHour = SlotsPerDay / HoursPerDay;
-    private const int SlotGridColumns = 1;
-    private const double HourRowHeight = 24d;
+    private const int SlotsPerHour = 60 / WeeklyHoursGridProjection.MinutesPerSlot;
+    private const double SlotHeight = 24d;
+    private const double TimeAxisWidth = 56d;
     private const double DragMovementThreshold = 4d;
-    private const double SevenColumnBreakpoint = 780d;
-    private const double FourColumnBreakpoint = 500d;
-    private const double TwoColumnBreakpoint = 300d;
     private static IReadOnlyList<string> Days => ActiveHoursSchedule.Days;
     private readonly Dictionary<string, ToggleButton[]> _daySlots = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TextBlock> _dayLabels = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, TextBlock> _daySummaries = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, Border> _dayCards = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Grid> _dayTimelines = new(StringComparer.Ordinal);
     private readonly Dictionary<ToggleButton, string> _slotDays = new();
+    private readonly double[] _halfScrollOffsets = [6 * SlotsPerHour * SlotHeight, 0];
     private LocalizationService _strings = new("system");
-    private int _responsiveColumnCount;
+    private WeeklyHoursViewport _viewport = new(0);
+    private bool _updatingSelection;
     private uint? _dragPointerId;
     private Point _dragStartPosition;
     private int _lastDragDayIndex;
@@ -46,7 +42,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
     {
         InitializeComponent();
         BuildGrid();
-        ApplyResponsiveLayout(SevenColumnBreakpoint);
+        ApplyViewport();
         DaysHost.AddHandler(PointerPressedEvent, new PointerEventHandler(DaysHost_PointerPressed), true);
         DaysHost.AddHandler(PointerMovedEvent, new PointerEventHandler(DaysHost_PointerMoved), true);
         DaysHost.AddHandler(PointerReleasedEvent, new PointerEventHandler(DaysHost_PointerReleased), true);
@@ -54,7 +50,7 @@ public sealed partial class WeeklyHoursEditor : UserControl
         DaysHost.PointerCaptureLost += DaysHost_PointerCaptureLost;
     }
 
-    /// <summary>Applies the selected locale to instructions, weekday names, and slot accessibility labels.</summary>
+    /// <summary>Localizes view selectors, weekday names, instructions and slot accessibility labels.</summary>
     public void ApplyLanguage(string language)
     {
         _strings = new LocalizationService(language);
@@ -62,271 +58,173 @@ public sealed partial class WeeklyHoursEditor : UserControl
         UpdateLocalizedLabels();
     }
 
-    /// <summary>Loads a normalized working-hours schedule into the selectable grid.</summary>
+    /// <summary>Loads all 96 slots per day, including the half that is currently hidden.</summary>
     public void LoadSchedule(IReadOnlyList<ActiveHoursDay>? schedule)
     {
-        foreach (var dayName in Days)
+        SetSelection(dayIndex =>
         {
+            var dayName = Days[dayIndex];
             var day = schedule?.LastOrDefault(candidate => string.Equals(candidate.Day, dayName, StringComparison.OrdinalIgnoreCase))
                 ?? new ActiveHoursDay(dayName);
-            var selectedSlots = WeeklyHoursGridProjection.ToSlots(day);
-            for (var slot = 0; slot < SlotsPerDay; slot++)
-            {
-                _daySlots[dayName][slot].IsChecked = selectedSlots[slot];
-            }
-        }
-
+            return WeeklyHoursGridProjection.ToSlots(day);
+        });
         UpdateLocalizedLabels();
-        UpdateAllDaySummaries();
     }
 
-    /// <summary>Returns the current grid selection in the application's normalized schedule format.</summary>
-    public IReadOnlyList<ActiveHoursDay> GetSchedule()
-    {
-        return Days.Select(day => WeeklyHoursGridProjection.FromSlots(
-            day,
-            _daySlots[day].Select(static button => button.IsChecked == true).ToArray())).ToArray();
-    }
+    /// <summary>Returns both halves of every day in the application's normalized schedule format.</summary>
+    public IReadOnlyList<ActiveHoursDay> GetSchedule() =>
+        Days.Select(day => WeeklyHoursGridProjection.FromSlots(day, GetSelectedSlots(day))).ToArray();
 
-    /// <summary>Replaces the grid with a Monday-Friday 09:00-18:00 work week and clears weekends.</summary>
-    public void ApplyStandardWorkWeek()
+    /// <summary>Replaces both views with Monday-Friday 09:00-18:00 and clears weekends.</summary>
+    public void ApplyStandardWorkWeek() =>
+        SetSelection(dayIndex => Enumerable.Range(0, SlotsPerDay).Select(slot => dayIndex < 5 && slot is >= 36 and < 72).ToArray());
+
+    /// <summary>Clears every selected slot in both halves of the day.</summary>
+    public void ClearAll() => SetSelection(_ => new bool[SlotsPerDay]);
+
+    private void SetSelection(Func<int, bool[]> getSlots)
     {
-        for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
+        _updatingSelection = true;
+        try
         {
-            for (var slot = 0; slot < SlotsPerDay; slot++)
+            for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
             {
-                _daySlots[Days[dayIndex]][slot].IsChecked = dayIndex < 5 && slot is >= 36 and < 72;
+                var slots = getSlots(dayIndex);
+                for (var slot = 0; slot < SlotsPerDay; slot++)
+                {
+                    _daySlots[Days[dayIndex]][slot].IsChecked = slots[slot];
+                }
             }
         }
-
-        UpdateAllDaySummaries();
-    }
-
-    /// <summary>Clears every active-hours block in the editor.</summary>
-    public void ClearAll()
-    {
-        foreach (var slots in _daySlots.Values)
+        finally
         {
-            foreach (var slot in slots)
-            {
-                slot.IsChecked = false;
-            }
+            _updatingSelection = false;
         }
 
-        UpdateAllDaySummaries();
+        UpdateAllDayBands();
     }
 
     private void BuildGrid()
     {
-        var slotStyle = RequiredStyle("ScheduleSlotStyle");
-        var regularCardStyle = RequiredStyle("ScheduleDayCardStyle");
-        var weekendCardStyle = RequiredStyle("ScheduleWeekendDayCardStyle");
-        var regularDayLabelStyle = RequiredStyle("ScheduleDayLabelStyle");
-        var weekendDayLabelStyle = RequiredStyle("ScheduleWeekendDayLabelStyle");
-        var timeLabelStyle = RequiredStyle("ScheduleTimeLabelStyle");
-        var regularSummaryFooterStyle = RequiredStyle("ScheduleSummaryFooterStyle");
-        var weekendSummaryFooterStyle = RequiredStyle("ScheduleWeekendSummaryFooterStyle");
-        var regularSummaryTextStyle = RequiredStyle("ScheduleSummaryTextStyle");
-        var weekendSummaryTextStyle = RequiredStyle("ScheduleWeekendSummaryTextStyle");
-
+        DayHeaders.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TimeAxisWidth) });
+        DaysHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TimeAxisWidth) });
+        TimeAxis.Height = WeeklyHoursViewport.SlotCount * SlotHeight;
         for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
         {
+            DayHeaders.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            DaysHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var day = Days[dayIndex];
-            var isWeekend = dayIndex >= 5;
             var label = new TextBlock
             {
-                Style = isWeekend ? weekendDayLabelStyle : regularDayLabelStyle
+                Style = RequiredStyle(dayIndex >= 5 ? "ScheduleWeekendDayLabelStyle" : "ScheduleDayLabelStyle")
             };
-            var summary = new TextBlock
-            {
-                HorizontalAlignment = HorizontalAlignment.Center,
-                TextAlignment = TextAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Style = isWeekend ? weekendSummaryTextStyle : regularSummaryTextStyle,
-                Text = "—"
-            };
-            var timeline = BuildDayTimeline(day, slotStyle, timeLabelStyle);
-            var summaryFooter = new Border
-            {
-                Style = isWeekend ? weekendSummaryFooterStyle : regularSummaryFooterStyle,
-                Child = new StackPanel
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 6,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            FontFamily = new FontFamily("Segoe Fluent Icons"),
-                            FontSize = 12,
-                            Text = "\uE823",
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Style = isWeekend ? weekendSummaryTextStyle : regularSummaryTextStyle
-                        },
-                        summary
-                    }
-                }
-            };
-            var cardContent = new Grid
-            {
-                RowSpacing = 8,
-                Children =
-                {
-                    label,
-                    timeline,
-                    summaryFooter
-                }
-            };
-            cardContent.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            cardContent.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            cardContent.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            Grid.SetRow(timeline, 1);
-            Grid.SetRow(summaryFooter, 2);
-
-            var card = new Border
-            {
-                Style = isWeekend ? weekendCardStyle : regularCardStyle,
-                Child = cardContent
-            };
+            Grid.SetColumn(label, dayIndex + 1);
+            DayHeaders.Children.Add(label);
             _dayLabels.Add(day, label);
-            _daySummaries.Add(day, summary);
-            _dayCards.Add(day, card);
-            DaysHost.Children.Add(card);
-        }
-    }
 
-    private Grid BuildDayTimeline(string day, Style slotStyle, Style timeLabelStyle)
-    {
-        var timeAxis = new Grid
-        {
-            Width = 39,
-            Height = HoursPerDay * HourRowHeight,
-            VerticalAlignment = VerticalAlignment.Top
-        };
-        var timeline = new Grid
-        {
-            Height = HoursPerDay * HourRowHeight,
-            MinWidth = 32,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Top
-        };
-        _daySlots.Add(day, new ToggleButton[SlotsPerDay]);
-        _dayTimelines.Add(day, timeline);
-
-        for (var hour = 0; hour < HoursPerDay; hour++)
-        {
-            timeAxis.RowDefinitions.Add(new RowDefinition { Height = new GridLength(HourRowHeight) });
-            timeline.RowDefinitions.Add(new RowDefinition { Height = new GridLength(HourRowHeight) });
-            var hourGrid = new Grid();
-            for (var column = 0; column < SlotGridColumns; column++)
+            var timeline = new Grid
             {
-                hourGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                Height = WeeklyHoursViewport.SlotCount * SlotHeight,
+                VerticalAlignment = VerticalAlignment.Top,
+                Style = RequiredStyle(dayIndex >= 5 ? "ScheduleWeekendTimelineStyle" : "ScheduleTimelineStyle")
+            };
+            for (var row = 0; row < WeeklyHoursViewport.SlotCount; row++)
+            {
+                timeline.RowDefinitions.Add(new RowDefinition { Height = new GridLength(SlotHeight) });
             }
 
-            for (var row = 0; row < SlotsPerHour / SlotGridColumns; row++)
+            _dayTimelines.Add(day, timeline);
+            _daySlots.Add(day, new ToggleButton[SlotsPerDay]);
+            for (var slot = 0; slot < SlotsPerDay; slot++)
             {
-                hourGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            }
-
-            for (var quarter = 0; quarter < SlotsPerHour; quarter++)
-            {
-                var slot = (hour * SlotsPerHour) + quarter;
                 var button = new ToggleButton
                 {
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch,
-                    Padding = new Thickness(0),
-                    Margin = new Thickness(0),
-                    CornerRadius = new CornerRadius(0),
-                    Style = slotStyle,
+                    Style = RequiredStyle(slot % SlotsPerHour == 0 ? "ScheduleHourSlotStyle" : "ScheduleSlotStyle"),
                     Tag = slot
                 };
                 button.Checked += Slot_CheckedChanged;
                 button.Unchecked += Slot_CheckedChanged;
                 _daySlots[day][slot] = button;
                 _slotDays.Add(button, day);
-                Grid.SetColumn(button, quarter % SlotGridColumns);
-                Grid.SetRow(button, quarter / SlotGridColumns);
-                hourGrid.Children.Add(button);
+                Grid.SetRow(button, slot % WeeklyHoursViewport.SlotCount);
+                timeline.Children.Add(button);
             }
 
-            Grid.SetRow(hourGrid, hour);
-            timeline.Children.Add(hourGrid);
+            Grid.SetColumn(timeline, dayIndex + 1);
+            DaysHost.Children.Add(timeline);
         }
-
-        foreach (var hour in new[] { 0, 6, 12, 18 })
-        {
-            var timeLabel = new TextBlock
-            {
-                Style = timeLabelStyle,
-                Text = $"{hour:00}:00",
-                VerticalAlignment = VerticalAlignment.Top
-            };
-            Grid.SetRow(timeLabel, hour);
-            timeAxis.Children.Add(timeLabel);
-        }
-
-        var endLabel = new TextBlock
-        {
-            Style = timeLabelStyle,
-            Text = "24:00",
-            VerticalAlignment = VerticalAlignment.Bottom
-        };
-        Grid.SetRow(endLabel, HoursPerDay - 1);
-        timeAxis.Children.Add(endLabel);
-
-        var timelineHost = new Grid
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Children =
-            {
-                timeAxis,
-                timeline
-            }
-        };
-        timelineHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        timelineHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(timeline, 1);
-        return timelineHost;
     }
 
-    private void DaysHost_SizeChanged(object sender, SizeChangedEventArgs e) => ApplyResponsiveLayout(e.NewSize.Width);
+    private void MorningButton_Click(object sender, RoutedEventArgs e) => SwitchHalf(0);
 
-    private void ApplyResponsiveLayout(double availableWidth)
+    private void EveningButton_Click(object sender, RoutedEventArgs e) => SwitchHalf(1);
+
+    private void SwitchHalf(int half)
     {
-        var columnCount = availableWidth >= SevenColumnBreakpoint
-            ? 7
-            : availableWidth >= FourColumnBreakpoint
-                ? 4
-                : availableWidth >= TwoColumnBreakpoint
-                    ? 2
-                    : 1;
-        if (columnCount == _responsiveColumnCount)
+        var next = new WeeklyHoursViewport(half);
+        if (next.FirstSlot != _viewport.FirstSlot)
         {
-            return;
+            _halfScrollOffsets[_viewport.FirstSlot / WeeklyHoursViewport.SlotCount] = DaysScrollViewer.VerticalOffset;
+            ClearDragGesture();
+            DaysHost.ReleasePointerCaptures();
+            _viewport = next;
+            ApplyViewport();
+            RestoreViewOffset();
         }
 
-        _responsiveColumnCount = columnCount;
-        DaysHost.ColumnDefinitions.Clear();
-        DaysHost.RowDefinitions.Clear();
-        for (var column = 0; column < columnCount; column++)
+        // A half-day selector always has exactly one selected value.
+        MorningButton.IsChecked = half == 0;
+        EveningButton.IsChecked = half == 1;
+    }
+
+    private void ApplyViewport()
+    {
+        foreach (var slots in _daySlots.Values)
         {
-            DaysHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            for (var slot = 0; slot < SlotsPerDay; slot++)
+            {
+                slots[slot].Visibility = slot >= _viewport.FirstSlot && slot < _viewport.EndSlot
+                    ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
-        var rowCount = (int)Math.Ceiling(Days.Count / (double)columnCount);
-        for (var row = 0; row < rowCount; row++)
+        TimeAxis.Children.Clear();
+        for (var slot = _viewport.FirstSlot; slot <= _viewport.EndSlot; slot += SlotsPerHour)
         {
-            DaysHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var label = new TextBlock { Text = CreateSlotLabel(slot), Style = RequiredStyle("ScheduleTimeLabelStyle") };
+            Canvas.SetTop(label, (slot - _viewport.FirstSlot) * SlotHeight - 8);
+            Canvas.SetLeft(label, 2);
+            TimeAxis.Children.Add(label);
         }
 
-        for (var dayIndex = 0; dayIndex < Days.Count; dayIndex++)
+        UpdateAllDayBands();
+        UpdateVisibleRange();
+    }
+
+    private void DaysScrollViewer_Loaded(object sender, RoutedEventArgs e) => RestoreViewOffset();
+
+    private void RestoreViewOffset()
+    {
+        if (DaysScrollViewer.IsLoaded)
         {
-            var card = _dayCards[Days[dayIndex]];
-            Grid.SetColumn(card, dayIndex % columnCount);
-            Grid.SetRow(card, dayIndex / columnCount);
+            DaysScrollViewer.ChangeView(null, _halfScrollOffsets[_viewport.FirstSlot / WeeklyHoursViewport.SlotCount], null, true);
         }
+
+        UpdateVisibleRange();
+    }
+
+    private void DaysScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateVisibleRange();
+
+    private void DaysScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e) => UpdateVisibleRange();
+
+    private void UpdateVisibleRange()
+    {
+        var firstRow = Math.Clamp((int)Math.Floor(DaysScrollViewer.VerticalOffset / SlotHeight), 0, WeeklyHoursViewport.SlotCount - 1);
+        var lastRow = Math.Clamp((int)Math.Ceiling((DaysScrollViewer.VerticalOffset + DaysScrollViewer.ViewportHeight) / SlotHeight), firstRow + 1, WeeklyHoursViewport.SlotCount);
+        VisibleRangeText.Text = _strings.Format("Schedule.View.VisibleRange",
+            CreateSlotLabel(_viewport.FirstSlot + firstRow), CreateSlotLabel(_viewport.FirstSlot + lastRow));
     }
 
     private void DaysHost_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -509,16 +407,13 @@ public sealed partial class WeeklyHoursEditor : UserControl
             }
 
             dayIndex = candidateDayIndex;
-            var hourHeight = timeline.ActualHeight / HoursPerDay;
-            var hour = Math.Min(HoursPerDay - 1, (int)Math.Floor(relativeY / hourHeight));
-            var withinHourY = relativeY - (hour * hourHeight);
-            var segmentRow = Math.Min(
-                (SlotsPerHour / SlotGridColumns) - 1,
-                (int)Math.Floor(withinHourY / (hourHeight / (SlotsPerHour / SlotGridColumns))));
-            var segmentColumn = Math.Min(
-                SlotGridColumns - 1,
-                (int)Math.Floor(relativeX / (timeline.ActualWidth / SlotGridColumns)));
-            slotIndex = (hour * SlotsPerHour) + (segmentRow * SlotGridColumns) + segmentColumn;
+            var row = (int)Math.Floor(relativeY / SlotHeight);
+            if (row >= WeeklyHoursViewport.SlotCount)
+            {
+                continue;
+            }
+
+            slotIndex = _viewport.GetSlotIndex(row);
             slot = _daySlots[Days[dayIndex]][slotIndex];
             return true;
         }
@@ -528,9 +423,9 @@ public sealed partial class WeeklyHoursEditor : UserControl
 
     private void Slot_CheckedChanged(object sender, RoutedEventArgs e)
     {
-        if (sender is ToggleButton button && _slotDays.TryGetValue(button, out var day))
+        if (!_updatingSelection && sender is ToggleButton button && _slotDays.TryGetValue(button, out var day))
         {
-            UpdateDaySummary(day);
+            UpdateDayBands(day);
         }
     }
 
@@ -541,39 +436,56 @@ public sealed partial class WeeklyHoursEditor : UserControl
             var dayOfWeek = Enum.Parse<DayOfWeek>(day, ignoreCase: true);
             var dayName = _strings.Culture.DateTimeFormat.GetDayName(dayOfWeek);
             _dayLabels[day].Text = _strings.Culture.DateTimeFormat.GetAbbreviatedDayName(dayOfWeek)
-                .TrimEnd('.')
-                .ToUpper(_strings.Culture);
-            AutomationProperties.SetName(_dayCards[day], dayName);
+                .TrimEnd('.').ToUpper(_strings.Culture);
+            AutomationProperties.SetName(_dayTimelines[day], dayName);
             for (var slot = 0; slot < SlotsPerDay; slot++)
             {
-                AutomationProperties.SetName(
-                    _daySlots[day][slot],
-                    _strings.Format("Schedule.Slot.Accessible", dayName, CreateSlotLabel(slot), CreateSlotLabel(slot + 1)));
+                var name = _strings.Format("Schedule.Slot.Accessible", dayName, CreateSlotLabel(slot), CreateSlotLabel(slot + 1));
+                AutomationProperties.SetName(_daySlots[day][slot], name);
+                ToolTipService.SetToolTip(_daySlots[day][slot], name);
             }
-
-            UpdateDaySummary(day);
         }
+
+        SetViewAccessibility(MorningButton, "Schedule.View.Morning", "00:00–12:00");
+        SetViewAccessibility(EveningButton, "Schedule.View.Evening", "12:00–24:00");
+        UpdateVisibleRange();
     }
 
-    private void UpdateAllDaySummaries()
+    private void SetViewAccessibility(ToggleButton button, string key, string range)
+    {
+        var name = $"{_strings.Translate(key)} · {range}";
+        AutomationProperties.SetName(button, name);
+        ToolTipService.SetToolTip(button, name);
+    }
+
+    private bool[] GetSelectedSlots(string day) => _daySlots[day].Select(static button => button.IsChecked == true).ToArray();
+
+    private void UpdateAllDayBands()
     {
         foreach (var day in Days)
         {
-            UpdateDaySummary(day);
+            UpdateDayBands(day);
         }
     }
 
-    private void UpdateDaySummary(string day)
+    private void UpdateDayBands(string day)
     {
-        var schedule = WeeklyHoursGridProjection.FromSlots(
-            day,
-            _daySlots[day].Select(static button => button.IsChecked == true).ToArray());
-        var summary = string.IsNullOrEmpty(schedule.ActivePeriod)
-            ? "—"
-            : schedule.ActivePeriod.Replace("-", "–", StringComparison.Ordinal);
-        _daySummaries[day].Text = summary;
-        var dayName = _strings.Culture.DateTimeFormat.GetDayName(Enum.Parse<DayOfWeek>(day, ignoreCase: true));
-        AutomationProperties.SetName(_daySummaries[day], $"{dayName}: {summary}");
+        foreach (var button in _daySlots[day])
+        {
+            button.Content = null;
+        }
+
+        foreach (var band in _viewport.GetBands(GetSelectedSlots(day)))
+        {
+            var prefix = band.StartSlot < band.VisibleStartSlot ? "↑ " : string.Empty;
+            var suffix = band.EndSlot > band.VisibleEndSlot ? " ↓" : string.Empty;
+            _daySlots[day][band.VisibleStartSlot].Content = new TextBlock
+            {
+                Text = $"{prefix}{CreateSlotLabel(band.StartSlot)}–{CreateSlotLabel(band.EndSlot)}{suffix}",
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                FontSize = 12
+            };
+        }
     }
 
     private Style RequiredStyle(string key) => Resources[key] as Style

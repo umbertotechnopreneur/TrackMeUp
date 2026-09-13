@@ -508,17 +508,19 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain("ScheduleAtmosphere", schedule.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("Assets/WorldClocks/Skylines", schedule.ToString(), StringComparison.Ordinal);
         Assert.Equal(
-            "Inline",
+            "Compact",
             schedule.Descendants().Single(element => HasName(element, "IntervalNumberBox")).Attribute("SpinButtonPlacementMode")?.Value);
         Assert.DoesNotContain(weeklyHours.Descendants(), element => element.Name.LocalName == "Ellipse");
         Assert.DoesNotContain(weeklyHours.Descendants(), element => HasName(element, "GridInteractionSurface"));
         Assert.Contains(weeklyHours.Descendants(), element => HasName(element, "SelectionIndicator"));
-        Assert.Contains(weeklyHours.Descendants(), element => HasKey(element, "ScheduleDayCardStyle"));
-        Assert.Contains(weeklyHours.Descendants(), element => HasKey(element, "ScheduleWeekendDayCardStyle"));
+        Assert.Contains(weeklyHours.Descendants(), element => HasKey(element, "ScheduleTimelineStyle"));
+        Assert.Contains(weeklyHours.Descendants(), element => HasKey(element, "ScheduleWeekendTimelineStyle"));
         Assert.Contains("DaysHost.CapturePointer", weeklyHoursSource, StringComparison.Ordinal);
         Assert.Contains("DaysHost_PointerMoved", weeklyHoursSource, StringComparison.Ordinal);
         Assert.Contains("timeline.TransformToVisual(DaysHost)", weeklyHoursSource, StringComparison.Ordinal);
-        Assert.Contains("ApplyResponsiveLayout", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains("ApplyViewport", weeklyHoursSource, StringComparison.Ordinal);
+        Assert.Contains(schedule.Descendants(), element => element.Attribute("Tag")?.Value == "Schedule.Save");
+        Assert.DoesNotContain("Schedule.Start", schedule.ToString(), StringComparison.Ordinal);
         Assert.Contains("settingsResult.Value.ScreenshotIntervalMinutes", mainSource, StringComparison.Ordinal);
         Assert.Contains("ScheduleConfirmed += ScheduleWindow_ScheduleConfirmed", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ScheduleScreenshotDialog", mainSource, StringComparison.Ordinal);

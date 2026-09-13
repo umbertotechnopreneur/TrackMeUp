@@ -118,7 +118,7 @@ public sealed partial class ScheduleWindow : Window
         }
     }
 
-    private void StartButton_Click(object sender, RoutedEventArgs e)
+    private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         var intervalMinutes = (int)IntervalNumberBox.Value;
         ScheduleConfirmed?.Invoke(this, new ScheduleConfigurationEventArgs(intervalMinutes, WorkingHoursEditor.GetSchedule()));

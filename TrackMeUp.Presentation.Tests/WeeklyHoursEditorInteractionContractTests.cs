@@ -58,9 +58,9 @@ public sealed class WeeklyHoursEditorInteractionContractTests
         Assert.DoesNotContain("Unchecked", stateNames);
     }
 
-    /// <summary>Ensures day cards reflow and drag hit testing follows each arranged single-column hourly grid.</summary>
+    /// <summary>Ensures both half-day views share one bounded scroller and keep full-day slot identities.</summary>
     [Fact]
-    public void DayCardsAndDragMappingFollowTheResponsiveArrangedTimeline()
+    public void HalfDaysShareOneScrollerAndKeepTheWeekAligned()
     {
         var editor = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WeeklyHoursEditor.xaml.cs"));
@@ -70,23 +70,27 @@ public sealed class WeeklyHoursEditorInteractionContractTests
             && element.Elements().Any(child => child.Name.LocalName == "ScrollViewer" && HasName(child, "DaysScrollViewer")));
         Assert.Equal("Stretch", scroller.Attribute("HorizontalContentAlignment")?.Value);
         Assert.Equal("Disabled", scroller.Attribute("HorizontalScrollMode")?.Value);
-        Assert.Equal("Top", scroller.Attribute("VerticalAlignment")?.Value);
+        Assert.Equal("2", scroller.Attribute("Grid.Row")?.Value);
+        Assert.Equal("Visible", scroller.Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Null(scroller.Attribute("MaxHeight"));
-        Assert.Equal("Auto", editorGrid.Descendants().First(element => element.Name.LocalName == "RowDefinition").Attribute("Height")?.Value);
-        Assert.DoesNotContain("DayColumnWidth", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("SlotHeight", source, StringComparison.Ordinal);
-        Assert.Contains("HourRowHeight = 24d", source, StringComparison.Ordinal);
-        Assert.Contains("SlotGridColumns = 1", source, StringComparison.Ordinal);
-        Assert.Contains("SevenColumnBreakpoint = 780d", source, StringComparison.Ordinal);
-        Assert.Contains("FourColumnBreakpoint = 500d", source, StringComparison.Ordinal);
-        Assert.Contains("TwoColumnBreakpoint = 300d", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyResponsiveLayout", source, StringComparison.Ordinal);
-        Assert.Contains("Grid.SetColumn(card, dayIndex % columnCount)", source, StringComparison.Ordinal);
+        var rows = editorGrid.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().ToArray();
+        Assert.Equal("*", rows[2].Attribute("Height")?.Value);
+        Assert.Single(editor.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.Contains(editorGrid.Elements(), element => HasName(element, "DayHeaders"));
+        Assert.DoesNotContain(scroller.Descendants(), element => HasName(element, "DayHeaders"));
+        Assert.Contains(editor.Descendants(), element => HasName(element, "MorningButton"));
+        Assert.Contains(editor.Descendants(), element => HasName(element, "EveningButton"));
+        Assert.Contains("SlotHeight = 24d", source, StringComparison.Ordinal);
+        Assert.Contains("new ToggleButton[SlotsPerDay]", source, StringComparison.Ordinal);
+        Assert.Contains("Visibility.Visible : Visibility.Collapsed", source, StringComparison.Ordinal);
+        Assert.Contains("FromSlots(day, GetSelectedSlots(day))", source, StringComparison.Ordinal);
+        Assert.Contains("_viewport.GetSlotIndex(row)", source, StringComparison.Ordinal);
         Assert.Contains("timeline.TransformToVisual(DaysHost)", source, StringComparison.Ordinal);
-        Assert.Contains("SlotsPerHour / SlotGridColumns", source, StringComparison.Ordinal);
         Assert.Contains("ApplyDragPath", source, StringComparison.Ordinal);
-        Assert.Contains(editor.Descendants(), element => HasKey(element, "ScheduleDayCardStyle"));
-        Assert.Contains(editor.Descendants(), element => HasKey(element, "ScheduleWeekendDayCardStyle"));
+        Assert.DoesNotContain("ApplyResponsiveLayout", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(editor.Descendants(), element => HasKey(element, "ScheduleDayCardStyle"));
+        Assert.Contains(editor.Descendants(), element => HasKey(element, "ScheduleWeekendTimelineStyle"));
+        Assert.Contains("_viewport.GetBands(GetSelectedSlots(day))", source, StringComparison.Ordinal);
     }
 
     private static string RepositoryFile(params string[] segments)

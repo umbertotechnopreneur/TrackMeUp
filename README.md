@@ -104,6 +104,10 @@ These promotional product previews use synthetic demo data and show the English,
 
 The desktop experience is paired with a PowerShell-friendly CLI, so the same application behavior is available to people and automation without creating a second tracking runtime.
 
+### Native by design
+
+TrackMeUp is a native WinUI Windows application, not a web page wrapped in a desktop shell. We have a deliberate bias against WebView-first applications where no web surface is needed: an otherwise idle experience should not consume tens of megabytes of RAM merely to host a browser runtime. The core experience uses native Windows controls and platform APIs, keeping it responsive, lightweight, and straightforward to move between supported Windows installations. Local interactive reports remain a separate, on-demand surface; they do not require a resident WebView2 runtime.
+
 The desktop app, reports, and human-readable CLI output can follow the Windows language or use `en-US`, `it-IT`, `fr-FR`, `de-DE`, `es-ES`, `zh-Hans`, `vi-VN`, `ko-KR`, `pt-PT`, or `pt-BR`. European and Brazilian Portuguese use separate product catalogs.
 
 Display, search, and OCR languages are configured independently. Search supports every product locale; OCR offers only the corresponding Windows recognizer choices and requires the selected language pack to be installed. Vietnamese remains available for the interface and search but is not offered as a Windows OCR language.
@@ -240,8 +244,11 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 
+- [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: a malformed fully staged C# file must be corrected automatically, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
+
 Search interaction check:
 
+- [ ] Open Activity history: verify Calendar is the initial tab, all six month rows are visible or reachable by scrolling, and Week shows Monday–Sunday with all 24 hourly rows. Select cells using mouse and arrow keys; verify side metrics and the selected outline without losing the heat color. Navigate rapidly between weeks and tabs, retry a failed query, check recorded zero versus no data, future dates, and daylight-saving gaps/repeated hours. Resize on a 150% display and check the legend, details and Close remain reachable. Open the selected day’s screenshots.
 - [ ] Open local search, move focus to another window, and confirm it remains open without covering it. Enter at least three characters and confirm the local-index status and progress indicator appear until results are available, with no suggestion popup.
 - [ ] In local search, select results by mouse and keyboard and verify the side preview updates its title, source, time, provenance, and highlighted text. Open the selected capture with Open snapshot or Enter. Clear the query or return no results: the previous preview must disappear. With more than 20 matches, verify the displayed/total count is explicit.
 - [ ] At 200% text scaling, search status and footer remain visible. The input-edge gradient flows only while active; the field shows no text predictions.
@@ -250,8 +257,9 @@ Search interaction check:
 - [ ] Trigger informational, success, warning, and error feedback. Confirm every toast uses an opaque severity-colored surface and border, and its timeout bar stays inside the toast frame.
 - [ ] Set main-window and World Clocks opacity to 25%, including the Operations surface: toast text, fill, border, and countdown must remain fully opaque. Trigger a removal just before a minute boundary and verify the toast keeps its full timeout through the refresh.
 - [ ] Open a standard acknowledgement and a destructive confirmation. Confirm both are WinUI dialogs with localized `OK`/`Annulla` actions, and that dismissing a confirmation does not execute it.
-- [ ] Resize the screenshot schedule from its 620 × 480 DIP minimum to a maximized window, including 200% text scaling. Confirm the Mica surface remains unobscured, the header actions reflow, and the seven day cards move cleanly between 7, 4, 2, and 1 columns without hiding the fixed footer actions.
-- [ ] In every responsive schedule layout, select the 2×2 quarter-hour cells by mouse click, drag within one day and across adjacent days, and verify each day summary updates. Empty cells must show no dot; on touch, a tap selects one cell while a vertical swipe scrolls without changing the schedule.
+- [ ] Resize the screenshot schedule from its 620 × 480 DIP minimum to a maximized window, including 200% text scaling. Confirm Morning (00:00–12:00) and Evening (12:00–24:00) keep all seven days aligned on one time ruler, with 24-DIP quarter-hour rows, one shared vertical scrollbar, fixed day headers and visible Save/Cancel actions.
+- [ ] In the screenshot schedule, focus and edit capture intervals of 1, 15 and 1440 minutes. Confirm the native NumberBox keeps the complete value visible with its clear button, opens increment/decrement controls in a compact popup and remains readable at 200% text scaling.
+- [ ] Select and drag across quarters and adjacent days, including 11:45–12:15 and 23:45–24:00. Switch halves and back: selections, breaks, full-range labels and each half's scroll position must survive; a band crossing noon indicates its continuation. Touch swipes scroll without painting, while taps and keyboard Space toggle one slot. Save and reopen must preserve both halves; Cancel must discard edits, and the work-week preset/Clear all must affect both halves.
 - [ ] Queue dialogs from two windows, close the waiting owner, then dismiss the active dialog: the closed owner's request must not appear. Exit with a dialog open and check that dialogs, pending requests, and toast timers are cleared. Check that a tray-hidden owner is restored for a standard dialog and its selected theme is respected.
 - [ ] In World Clocks, choose a city and use **Aggiungi un altro**. Confirm the picker stays open, shows the `Orologio aggiunto` toast, removes that city from the choices, and accepts another addition; regular **Aggiungi orologio** should still close the picker.
 - [ ] In World Clocks options, move cities up and down. Confirm the first up arrow and last down arrow are disabled, the reference city stays selected, the clock columns update immediately, and the new order survives closing and reopening the app.

@@ -100,14 +100,15 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <NumberBox
                             x:Name="IntervalNumberBox"
-                            Width="128"
+                            MinWidth="160"
+                            HorizontalAlignment="Left"
                             Value="15"
                             Minimum="1"
                             Maximum="1440"
                             SmallChange="1"
                             LargeChange="5"
                             Tag="Schedule.Interval.Value"
-                            SpinButtonPlacementMode="Inline" />
+                            SpinButtonPlacementMode="Compact" />
                         <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="min" />
                     </StackPanel>
                 </StackPanel>
@@ -184,10 +185,10 @@
             <Button
                 Grid.Column="2"
                 MinWidth="112"
-                Click="StartButton_Click"
-                Content="Start"
+                Click="SaveButton_Click"
+                Content="Save"
                 Style="{StaticResource AccentButtonStyle}"
-                Tag="Schedule.Start" />
+                Tag="Schedule.Save" />
         </Grid>
     </Grid>
 </Window>

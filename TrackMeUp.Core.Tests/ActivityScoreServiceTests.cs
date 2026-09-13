@@ -65,9 +65,9 @@ public sealed class ActivityScoreServiceTests
     }
 
     [Fact]
-    public void CalculateDailyActivityScore_NormalizesDurableHistoryToOneHundredPoints()
+    public void CalculateHistoricalActivityScore_NormalizesDurableHistoryToOneHundredPoints()
     {
-        var score = ActivityScoreService.CalculateDailyActivityScore(
+        var score = ActivityScoreService.CalculateHistoricalActivityScore(
             keyPresses: 40,
             mouseClicks: 8,
             activeSeconds: 60,
@@ -78,14 +78,14 @@ public sealed class ActivityScoreServiceTests
     }
 
     [Fact]
-    public void CalculateDailyActivityScore_UsesOneMinuteFloorAndSaturatesAtOneHundred()
+    public void CalculateHistoricalActivityScore_UsesOneMinuteFloorAndSaturatesAtOneHundred()
     {
-        var shortObservedInterval = ActivityScoreService.CalculateDailyActivityScore(
+        var shortObservedInterval = ActivityScoreService.CalculateHistoricalActivityScore(
             keyPresses: 40,
             mouseClicks: 8,
             activeSeconds: 1,
             trackedSeconds: 1);
-        var saturated = ActivityScoreService.CalculateDailyActivityScore(
+        var saturated = ActivityScoreService.CalculateHistoricalActivityScore(
             keyPresses: 10_000,
             mouseClicks: 10_000,
             activeSeconds: 60,
@@ -96,9 +96,9 @@ public sealed class ActivityScoreServiceTests
     }
 
     [Fact]
-    public void CalculateDailyActivityScore_RecordedIdleWithoutInputIsZero()
+    public void CalculateHistoricalActivityScore_RecordedIdleWithoutInputIsZero()
     {
-        var score = ActivityScoreService.CalculateDailyActivityScore(
+        var score = ActivityScoreService.CalculateHistoricalActivityScore(
             keyPresses: 0,
             mouseClicks: 0,
             activeSeconds: 0,
