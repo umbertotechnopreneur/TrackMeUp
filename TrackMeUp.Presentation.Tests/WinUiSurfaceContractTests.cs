@@ -182,6 +182,7 @@ public sealed class WinUiSurfaceContractTests
         var dragRegion = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "DragRegion"));
         var playerPanel = player.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "PlayerPanel"));
         var menu = player.Descendants().Single(element => element.Name.LocalName == "MenuFlyout" && element.Attribute("Opened")?.Value == "MoreMenu_Opened");
+        var menuOwnerButton = menu.Ancestors().Single(element => HasName(element, "MoreButton"));
         var menuTags = menu
             .Descendants()
             .Where(element => element.Attribute("Tag") is not null)
@@ -213,6 +214,18 @@ public sealed class WinUiSurfaceContractTests
             element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE712");
         Assert.Equal("TopEdgeAlignedRight", menu.Attribute("Placement")?.Value);
         Assert.Equal("False", menu.Attribute("ShouldConstrainToRootBounds")?.Value);
+        var menuMinimumWidth = menuOwnerButton.Descendants().Single(element =>
+            element.Name.LocalName == "Double" &&
+            element.Attributes().Any(attribute => attribute.Name.LocalName == "Key" && attribute.Value == "MainMenuMinimumWidth"));
+        Assert.Equal("320", menuMinimumWidth.Value);
+        foreach (var targetType in new[] { "MenuFlyoutPresenter", "MenuFlyoutItem", "ToggleMenuFlyoutItem", "MenuFlyoutSubItem" })
+        {
+            var minimumWidthSetter = menuOwnerButton.Descendants()
+                .Where(element => element.Name.LocalName == "Style" && element.Attribute("TargetType")?.Value == targetType)
+                .SelectMany(style => style.Elements())
+                .Single(element => element.Name.LocalName == "Setter" && element.Attribute("Property")?.Value == "MinWidth");
+            Assert.Equal("{StaticResource MainMenuMinimumWidth}", minimumWidthSetter.Attribute("Value")?.Value);
+        }
         Assert.Equal("Horizontal", captureActions.Attribute("Orientation")?.Value);
         Assert.Equal("32", takeScreenshotButton.Attribute("Width")?.Value);
         Assert.Equal("Transparent", takeScreenshotButton.Attribute("Background")?.Value);
@@ -257,13 +270,21 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(MenuGlyph(player, "ScreenshotsMenuToggle"), element => element.Attribute("Glyph")?.Value == "\uE8B8");
         Assert.Contains(MenuGlyph(player, "QuickSetupMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE9D5");
         Assert.Contains(MenuGlyph(player, "OperationsMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE90F");
+        Assert.Contains(MenuGlyph(player, "ExportDataMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE898");
+        Assert.Contains(MenuGlyph(player, "ImportDataMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE896");
         Assert.Contains(MenuGlyph(player, "AiProviderMenu"), element => element.Attribute("Glyph")?.Value == "\uE99A");
         Assert.Contains(MenuGlyph(player, "OpenAiMenuToggle"), element => element.Attribute("Glyph")?.Value == "\uE9A3");
         Assert.Contains(MenuGlyph(player, "AiPricingMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8C7");
         Assert.Contains(MenuGlyph(player, "MinimizeToTrayMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE921");
         Assert.Equal(
-            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
+            ["Main.Menu.Activity", "Search.Title", "Reports.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.DataTransfer.Export", "Main.Menu.DataTransfer.Import", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
             menuTags);
+        Assert.Contains(player.Descendants().Single(element => HasName(element, "ExportDataMenuItem")).Ancestors(), element => HasName(element, "SettingsMenu"));
+        Assert.Contains(player.Descendants().Single(element => HasName(element, "ImportDataMenuItem")).Ancestors(), element => HasName(element, "SettingsMenu"));
+        Assert.Contains("Click=\"ExportDataMenuItem_Click\"", player.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Click=\"ImportDataMenuItem_Click\"", player.ToString(), StringComparison.Ordinal);
+        Assert.Contains("OperationsControl.StartInstallationArchiveExportAsync()", mainSource, StringComparison.Ordinal);
+        Assert.Contains("OperationsControl.StartInstallationArchiveImportAsync()", mainSource, StringComparison.Ordinal);
         Assert.Equal("Main.Menu.MinimizeToTray", minimizeToTrayMenuItem.Attribute("Tag")?.Value);
         Assert.Equal("MinimizeToTrayButton_Click", minimizeToTrayMenuItem.Attribute("Click")?.Value);
         Assert.Equal(

@@ -133,7 +133,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         ApplyProfiles(profiles, installationId);
     }
 
-    private async void ExportArchiveButton_Click(object sender, RoutedEventArgs e)
+    private async void ExportArchiveButton_Click(object sender, RoutedEventArgs e) => await StartExportAsync();
+
+    /// <summary>Collects an export destination and delegates archive creation to the application facade.</summary>
+    internal async Task StartExportAsync()
     {
         var destinationPath = await PickExportPathAsync();
         if (destinationPath is null)
@@ -165,7 +168,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         }
     }
 
-    private async void PreviewImportButton_Click(object sender, RoutedEventArgs e)
+    private async void PreviewImportButton_Click(object sender, RoutedEventArgs e) => await StartImportPreviewAsync();
+
+    /// <summary>Collects an archive path and delegates validation and preview to the application facade.</summary>
+    internal async Task StartImportPreviewAsync()
     {
         var archivePath = await PickImportPathAsync();
         if (archivePath is null)

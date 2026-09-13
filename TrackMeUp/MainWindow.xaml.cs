@@ -985,6 +985,34 @@ public sealed partial class MainWindow : Window
         ShowPanel(OperationsPanel, MainWindowSurface.Operations);
     }
 
+    /// <summary>Opens the installation-transfer surface and starts a local archive export.</summary>
+    private async void ExportDataMenuItem_Click(object sender, RoutedEventArgs e) =>
+        await ShowDataTransferAsync(startExport: true);
+
+    /// <summary>Opens the installation-transfer surface and starts an archive import preview.</summary>
+    private async void ImportDataMenuItem_Click(object sender, RoutedEventArgs e) =>
+        await ShowDataTransferAsync(startExport: false);
+
+    private async Task ShowDataTransferAsync(bool startExport)
+    {
+        MoreButton.Flyout.Hide();
+        if (!await TryEnsureOperationsAsync())
+        {
+            return;
+        }
+
+        _operationsReturnSurface = MainWindowSurface.Player;
+        OperationsControl.NavigateToInstallationTransfer(returnToOverview: false);
+        ShowPanel(OperationsPanel, MainWindowSurface.Operations);
+        if (startExport)
+        {
+            await OperationsControl.StartInstallationArchiveExportAsync();
+            return;
+        }
+
+        await OperationsControl.StartInstallationArchiveImportAsync();
+    }
+
     private async Task<bool> TryEnsureOperationsAsync()
     {
         try
@@ -1127,6 +1155,8 @@ public sealed partial class MainWindow : Window
         ActivityMenu.Text = T("Main.Menu.Activity");
         CaptureMenu.Text = T("Main.Menu.Capture");
         SettingsMenu.Text = T("Main.Menu.Settings");
+        ExportDataMenuItem.Text = T("Main.Menu.DataTransfer.Export");
+        ImportDataMenuItem.Text = T("Main.Menu.DataTransfer.Import");
         AiProviderMenu.Text = T("Main.Menu.AiProvider");
         SearchMenuItem.Text = T("Search.Title");
         ReportsMenuItem.Text = T("Reports.Title");
@@ -1154,6 +1184,8 @@ public sealed partial class MainWindow : Window
         ApplyMenuAccessibility(QuickSetupMenuItem, "QuickSetup.MenuTitle", "Main.Menu.QuickSetup.Tooltip");
         ApplyMenuAccessibility(OptionsMenuItem, "MenuTitleOptions", "Main.Menu.Options.Tooltip");
         ApplyMenuAccessibility(OperationsMenuItem, "Main.Menu.Operations", "Main.Menu.Operations.Tooltip");
+        ApplyMenuAccessibility(ExportDataMenuItem, "Main.Menu.DataTransfer.Export", "Main.Menu.DataTransfer.Export.Tooltip");
+        ApplyMenuAccessibility(ImportDataMenuItem, "Main.Menu.DataTransfer.Import", "Main.Menu.DataTransfer.Import.Tooltip");
         ApplyMenuAccessibility(AiProviderMenu, "Main.Menu.AiProvider", "Main.Menu.AiProvider.Tooltip");
         ApplyMenuAccessibility(OpenAiMenuToggle, "MenuToggleOpenAi", "Main.Menu.AiToggle.Tooltip");
         ApplyMenuAccessibility(AiPricingMenuItem, "AiPricing.MenuTitle", "Main.Menu.AiPricing.Tooltip");

@@ -116,8 +116,69 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
+    /// <summary>Restores the existing UI, or creates it when a headless runtime receives a redirected launch.</summary>
+    internal void HandleRedirectedActivation(AppActivationArguments activation)
+    {
+        ArgumentNullException.ThrowIfNull(activation);
+        if (!_dispatcherQueue.TryEnqueue(() => HandleRedirectedActivationOnUiThread(activation)))
+        {
+            // Dispatcher rejection means the registered process is already shutting down; no replacement runtime is started in parallel.
+            _logger.LogWarning("Redirected activation was ignored because the UI dispatcher is shutting down.");
+        }
+    }
+
+    private void HandleRedirectedActivationOnUiThread(AppActivationArguments activation)
+    {
+        var options = activation.Kind switch
+        {
+            ExtendedActivationKind.Launch when activation.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch =>
+                WindowsLaunchArguments.Parse(launch.Arguments, "TrackMeUp.exe"),
+            ExtendedActivationKind.StartupTask => StartupActivationPolicy.Apply(LaunchOptions.Parse([]), activation.Kind),
+            // Unsupported payloads cannot safely be replaced with an ordinary launch and its tracking defaults.
+            _ => throw new ArgumentException("Unsupported redirected TrackMeUp activation.", nameof(activation))
+        };
+
+        _logger.LogInformation("Redirected activation received. Mode={Mode} ActivationKind={ActivationKind}", options.Mode, activation.Kind);
+        switch (options.Mode)
+        {
+            case LaunchMode.Background:
+                // The registered process already owns startup; a duplicate headless request must not create a window.
+                return;
+            case LaunchMode.Reports:
+                if (_reportsOnly && _reportsWindow is null)
+                {
+                    // The original reports launch is still preparing storage; do not bypass its migration checks.
+                    return;
+                }
+
+                if (_window is null && !_reportsOnly)
+                {
+                    StartReports(options);
+                }
+                else
+                {
+                    ShowReportsWindow(StartOrConnectRuntime(), options.Theme);
+                }
+
+                return;
+            case LaunchMode.Ui:
+                // Promote the existing background/report process while preserving explicit pause, safe-mode, and UI options.
+                StartUi(options);
+                return;
+            default:
+                // Short-lived CLI modes are never redirected by Program and cannot execute inside the runtime owner.
+                throw new ArgumentException("Unsupported redirected TrackMeUp launch mode.", nameof(activation));
+        }
+    }
+
     private void StartUi(LaunchOptions options)
     {
+        if (_window is not null)
+        {
+            _window.ShowFlyout();
+            return;
+        }
+
         _reportsOnly = false;
         var application = StartOrConnectRuntime();
         _dashboardRefreshCoordinator = new DashboardRefreshCoordinator(application);
