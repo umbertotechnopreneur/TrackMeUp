@@ -244,7 +244,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 
-- [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: a malformed fully staged C# file must be corrected automatically, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
+- [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
 
 Search interaction check:
 

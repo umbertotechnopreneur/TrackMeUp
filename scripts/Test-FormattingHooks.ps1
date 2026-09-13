@@ -25,52 +25,79 @@ function Invoke-FixtureGit {
     return $result
 }
 
+function Get-FixtureBlobText {
+    param([string]$Path)
+    $start = [Diagnostics.ProcessStartInfo]::new('git')
+    $start.WorkingDirectory = $fixture
+    $start.UseShellExecute = $false
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = $utf8
+    foreach ($argument in @('show', ":$Path")) { $start.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    try {
+        # Read the blob without PowerShell's line splitting so CRLF and final-newline assertions inspect its actual text.
+        [void]$process.Start()
+        $outputTask = $process.StandardOutput.ReadToEndAsync()
+        $errorTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $output = $outputTask.GetAwaiter().GetResult()
+        $errorText = $errorTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0) { throw "Could not read the fixture index blob: $errorText" }
+        return $output
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
+function Assert-CSharpWhitespace {
+    param([string]$Text, [string]$Description)
+    Assert-Condition ($Text -match '(?m)^ {4}public int Value = 1;') "$Description does not use four-space indentation and C# token spacing."
+    Assert-Condition (-not $Text.Contains("`t")) "$Description still contains indentation tabs."
+    Assert-Condition (-not $Text.Contains("`r")) "$Description does not use LF line endings."
+    Assert-Condition ($Text.EndsWith("`n", [StringComparison]::Ordinal)) "$Description is missing its final newline."
+    Assert-Condition ($Text -notmatch '(?m)[ \t]+$') "$Description still contains trailing whitespace."
+}
+
 try {
     [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'scripts'))
     [void][IO.Directory]::CreateDirectory((Join-Path $fixture '.githooks'))
     [void][IO.Directory]::CreateDirectory((Join-Path $fixture 'space name'))
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Format-Code.ps1') -Destination (Join-Path $fixture 'scripts/Format-Code.ps1')
     Copy-Item -LiteralPath (Join-Path $repositoryRoot '.githooks/pre-commit') -Destination (Join-Path $fixture '.githooks/pre-commit')
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot '.gitattributes') -Destination (Join-Path $fixture '.gitattributes')
     Invoke-FixtureGit -Arguments @('init', '--quiet')
-    Invoke-FixtureGit -Arguments @('config', 'core.autocrlf', 'false')
+    Invoke-FixtureGit -Arguments @('config', 'core.autocrlf', 'true')
     Invoke-FixtureGit -Arguments @('config', 'core.hooksPath', '.githooks')
 
-    $rules = @'
-root = true
-[*.cs]
-indent_style = space
-indent_size = 4
-end_of_line = lf
-insert_final_newline = true
-csharp_new_line_before_open_brace = all
-csharp_preserve_single_line_blocks = false
-csharp_preserve_single_line_statements = false
-'@
+    $rules = [IO.File]::ReadAllText((Join-Path $repositoryRoot '.editorconfig'))
     $fullPath = Join-Path $fixture 'space name/Full à.cs'
     $partialPath = Join-Path $fixture 'Partial.cs'
-    $fullSource = "// SPDX-License-Identifier: MIT`npublic class Full{public int Value=1;}`n"
-    $partialSource = "// SPDX-License-Identifier: MIT`npublic class Partial{public int Value=1;}`n"
+    $fullSource = "// SPDX-License-Identifier: MIT`r`npublic class Full`r`n{  `r`n`tpublic int Value=1; `t`r`n}  "
+    $partialSource = "// SPDX-License-Identifier: MIT`r`npublic class Partial`r`n{  `r`n`tpublic int Value=1; `t`r`n}  "
     [IO.File]::WriteAllText((Join-Path $fixture '.editorconfig'), $rules, $utf8)
     [IO.File]::WriteAllText($fullPath, $fullSource, $utf8)
     [IO.File]::WriteAllText($partialPath, $partialSource, $utf8)
-    Invoke-FixtureGit -Arguments @('add', '--', '.editorconfig', 'space name/Full à.cs', 'Partial.cs')
+    Invoke-FixtureGit -Arguments @('add', '--', '.editorconfig', '.gitattributes', 'space name/Full à.cs', 'Partial.cs')
 
     # Both unstaged source edits and unstaged formatting rules must stay out of the index.
-    $unstagedSource = $partialSource + "// UNSTAGED_CHANGE`n"
+    $unstagedSource = $partialSource + "`r`n// UNSTAGED_CHANGE`r`n"
     [IO.File]::WriteAllText($partialPath, $unstagedSource, $utf8)
     [IO.File]::WriteAllText((Join-Path $fixture '.editorconfig'), $rules.Replace('indent_size = 4', 'indent_size = 8'), $utf8)
     $partialBefore = [Convert]::ToBase64String([IO.File]::ReadAllBytes($partialPath))
 
     Invoke-FixtureGit -Arguments @('hook', 'run', 'pre-commit')
     $fullAfter = [IO.File]::ReadAllText($fullPath)
-    $stagedFull = (Invoke-FixtureGit -Arguments @('show', ':space name/Full à.cs')) -join "`n"
-    $stagedPartial = (Invoke-FixtureGit -Arguments @('show', ':Partial.cs')) -join "`n"
-    Assert-Condition ($fullAfter -match '(?m)^ {4}public int Value = 1;') 'The fully staged file was not automatically formatted with the staged rules.'
-    Assert-Condition ($stagedFull -match '(?m)^ {4}public int Value = 1;') 'The index did not receive the fully staged formatting fix.'
-    Assert-Condition ($stagedPartial -match '(?m)^ {4}public int Value = 1;') 'The partial index blob was not formatted.'
+    $stagedFull = Get-FixtureBlobText -Path 'space name/Full à.cs'
+    $stagedPartial = Get-FixtureBlobText -Path 'Partial.cs'
+    Assert-CSharpWhitespace -Text $fullAfter -Description 'The fully staged working file'
+    Assert-CSharpWhitespace -Text $stagedFull -Description 'The fully staged index blob'
+    Assert-CSharpWhitespace -Text $stagedPartial -Description 'The partially staged index blob'
     Assert-Condition (-not $stagedPartial.Contains('UNSTAGED_CHANGE')) 'Unstaged content entered the index.'
     Assert-Condition ($partialBefore -ceq [Convert]::ToBase64String([IO.File]::ReadAllBytes($partialPath))) 'The partially staged working file changed.'
-    Write-Host 'PASS: automatic staging, partial staging, staged rules, spaces and Unicode filenames.'
+    Write-Host 'PASS: repository whitespace rules, LF/final newline, automatic/partial staging, staged rules, spaces and Unicode filenames.'
 
     $indexBefore = (Invoke-FixtureGit -Arguments @('ls-files', '--stage')) -join "`n"
     Invoke-FixtureGit -Arguments @('hook', 'run', 'pre-commit')
