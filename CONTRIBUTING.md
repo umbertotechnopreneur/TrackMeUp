@@ -28,6 +28,10 @@ working files stay untouched, so unstaged edits cannot enter the commit.
 Changing a staged `.editorconfig` formats all indexed C# sources using the staged
 rules. Formatter failures stop the commit without bypassing the check.
 
+C# sources use four spaces for indentation, LF line endings, a final newline,
+and no trailing whitespace. Git checkout and the formatter share these rules so
+local commits and CI validate the same text.
+
 To format the current working files manually, or check them without editing:
 
 ```powershell

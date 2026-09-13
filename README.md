@@ -246,7 +246,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform 
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
 
-- [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: a malformed fully staged C# file must be corrected automatically, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
+- [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
 
 Search interaction check:
 
@@ -259,6 +259,7 @@ Search interaction check:
 - [ ] Trigger informational, success, warning, and error feedback. Confirm every toast uses an opaque severity-colored surface and border, and its timeout bar stays inside the toast frame.
 - [ ] Set main-window and World Clocks opacity to 25%, including the Operations surface: toast text, fill, border, and countdown must remain fully opaque. Trigger a removal just before a minute boundary and verify the toast keeps its full timeout through the refresh.
 - [ ] Open a standard acknowledgement and a destructive confirmation. Confirm both are WinUI dialogs with localized `OK`/`Annulla` actions, and that dismissing a confirmation does not execute it.
+- [ ] Open the main menu and use both import/export commands under App settings. Confirm the main flyout and every submenu retain the shared 320 DIP minimum width at 100–200% display scaling; export opens the `.tmuarchive` destination picker, import opens the archive picker and preview, cancelling either picker changes no data, and a confirmed merge preserves the originating installation labels while skipping duplicate records.
 - [ ] Resize the screenshot schedule from its 620 × 480 DIP minimum to a maximized window, including 200% text scaling. Confirm Morning (00:00–12:00) and Evening (12:00–24:00) keep all seven days aligned on one time ruler, with 24-DIP quarter-hour rows, one shared vertical scrollbar, fixed day headers and visible Save/Cancel actions.
 - [ ] In the screenshot schedule, focus and edit capture intervals of 1, 15 and 1440 minutes. Confirm the native NumberBox keeps the complete value visible with its clear button, opens increment/decrement controls in a compact popup and remains readable at 200% text scaling.
 - [ ] Select and drag across quarters and adjacent days, including 11:45–12:15 and 23:45–24:00. Switch halves and back: selections, breaks, full-range labels and each half's scroll position must survive; a band crossing noon indicates its continuation. Touch swipes scroll without painting, while taps and keyboard Space toggle one slot. Save and reopen must preserve both halves; Cancel must discard edits, and the work-week preset/Clear all must affect both halves.
@@ -281,6 +282,8 @@ Search interaction check:
 
 Privacy and runtime regression checks:
 
+- [ ] Launch TrackMeUp twice from Start or its shortcut, including once while the player is hidden in the notification area. Confirm only one long-lived `TrackMeUp.exe` remains and the existing player is restored. Start the runtime through the CLI first, then launch the player and confirm the background owner becomes the UI process instead of leaving two processes running.
+- [ ] With an instance running, launch `reports --theme dark`, a normal player launch, and `--background`: confirm each retains its requested surface and duplicate background launches stay headless. Promote a background instance with `--paused` or `--safe-mode` and verify automatic tracking stays disabled; invalid redirected arguments must fail before activation.
 - [ ] Exclude a synthetic process/title/context and verify no activity is stored; disable each detail provider and verify titles/attributes are absent.
 - [ ] With an excluded window on another monitor, verify the entire screenshot is blocked. Use only synthetic content for this manual Windows check.
 - [ ] Interrupt screenshot deletion after file removal, retry/restart, and verify OCR and active search documents disappear. Retention must also expire OCR whose image is already absent.

@@ -190,7 +190,13 @@ public sealed partial class OperationsControl : UserControl
     private void OpenInstallationTransferLink_Click(object sender, RoutedEventArgs e)
     {
         _lastLandingLink = sender as Control;
-        _returnToOverviewOnBack = true;
+        NavigateToInstallationTransfer(returnToOverview: true);
+    }
+
+    /// <summary>Shows installation identity and archive transfer tools without changing local data.</summary>
+    internal void NavigateToInstallationTransfer(bool returnToOverview)
+    {
+        _returnToOverviewOnBack = returnToOverview;
         OperationsScroll.Visibility = Visibility.Collapsed;
         DetailScroll.Visibility = Visibility.Visible;
         HideDetailSections();
@@ -200,6 +206,14 @@ public sealed partial class OperationsControl : UserControl
         NotifyLayoutChanged();
         _ = section.LoadAsync();
     }
+
+    /// <summary>Starts the export picker on the visible installation-transfer surface.</summary>
+    internal Task StartInstallationArchiveExportAsync() =>
+        EnsureInstallationTransferSection().StartExportAsync();
+
+    /// <summary>Starts the import picker and safe archive preview on the visible installation-transfer surface.</summary>
+    internal Task StartInstallationArchiveImportAsync() =>
+        EnsureInstallationTransferSection().StartImportPreviewAsync();
 
     private async void AtomicNukeButton_Click(object sender, RoutedEventArgs e)
     {
