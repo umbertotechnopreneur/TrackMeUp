@@ -70,6 +70,8 @@
                 Grid.Column="2"
                 Width="48"
                 Height="44"
+                AutomationProperties.Name="Close"
+                ToolTipService.ToolTip="Close"
                 Click="CloseButton_Click"
                 Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}">
                 <FontIcon
@@ -152,9 +154,9 @@
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                             <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Button x:Name="PreviousWeekButton" Click="PreviousWeekButton_Click"><FontIcon Glyph="&#xE76B;" FontSize="12" /></Button>
+                                <Button x:Name="PreviousWeekButton" AutomationProperties.Name="Previous week" ToolTipService.ToolTip="Previous week" Click="PreviousWeekButton_Click"><FontIcon Glyph="&#xE76B;" FontSize="12" /></Button>
                                 <TextBlock x:Name="WeekRangeText" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="SemiBold" TextWrapping="WrapWholeWords" />
-                                <Button x:Name="NextWeekButton" Grid.Column="2" Click="NextWeekButton_Click"><FontIcon Glyph="&#xE76C;" FontSize="12" /></Button>
+                                <Button x:Name="NextWeekButton" Grid.Column="2" AutomationProperties.Name="Next week" ToolTipService.ToolTip="Next week" Click="NextWeekButton_Click"><FontIcon Glyph="&#xE76C;" FontSize="12" /></Button>
                                 <Button x:Name="CurrentWeekButton" Grid.Column="3" Click="CurrentWeekButton_Click" />
                             </Grid>
                             <controls:ActivityWeekHeatmap x:Name="WeekHeatmap" Grid.Row="1" />
