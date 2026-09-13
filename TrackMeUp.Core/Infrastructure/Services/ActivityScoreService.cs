@@ -172,9 +172,9 @@ public sealed class ActivityScoreService
     }
 
     /// <summary>
-    /// Calculates a normalized 0-100 score for one local day using only durable activity-history counters.
+    /// Calculates a normalized 0-100 score for a historical time bucket using only durable activity-history counters.
     /// </summary>
-    internal static int CalculateDailyActivityScore(
+    internal static int CalculateHistoricalActivityScore(
         long keyPresses,
         long mouseClicks,
         double activeSeconds,

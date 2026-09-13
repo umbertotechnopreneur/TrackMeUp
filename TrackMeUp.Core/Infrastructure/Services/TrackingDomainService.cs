@@ -134,7 +134,10 @@ public sealed class TrackingDomainService : IDisposable
             utcNow,
             activity.Trend,
             ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
-            SpanLabel: settings.SpanLabel);
+            SpanLabel: settings.SpanLabel)
+        {
+            CurrentApplicationIconPixels = sample?.State == "active" ? sample.ApplicationIconPixels : null
+        };
     }
 
     /// <summary>
@@ -244,7 +247,10 @@ public sealed class TrackingDomainService : IDisposable
             utcNow,
             activity.Trend,
             ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
-            SpanLabel: settings.SpanLabel);
+            SpanLabel: settings.SpanLabel)
+        {
+            CurrentApplicationIconPixels = sample.State == "active" ? sample.ApplicationIconPixels : null
+        };
     }
 
     private DashboardActivityProjection LoadDashboardActivityProjection(DateTimeOffset utcNow)

@@ -10,7 +10,7 @@ public sealed class ReportAggregationService
     /// <summary>Gets the maximum inclusive local-date range accepted by a report query.</summary>
     public const int MaximumRangeDays = 366;
 
-    private const int ContractVersion = 4;
+    private const int ContractVersion = 5;
     private const int DefaultApplicationLimit = 12;
     private readonly LocalStore _store;
 
@@ -257,6 +257,7 @@ public sealed class ReportAggregationService
             var keyPresses = AllocateCount(includedKeyPresses, segments, includedDurationTicks);
             var mouseClicks = AllocateCount(includedMouseClicks, segments, includedDurationTicks);
             var sampleDates = new HashSet<DateOnly>();
+            var sampleHours = new HashSet<(int DayOfWeek, int Hour)>();
             var isActive = string.Equals(sample.State, "active", StringComparison.OrdinalIgnoreCase);
 
             for (var index = 0; index < segments.Count; index++)
@@ -278,6 +279,12 @@ public sealed class ReportAggregationService
                 var hour = _hours[(segment.Bucket.DayOfWeek, segment.Bucket.Hour)];
                 hour.TrackedIntervals.Add(segment.StartTicks, segment.EndTicks);
                 hour.ObservationDates.Add(segment.Bucket.Date);
+                hour.KeyPresses += keyPresses[index];
+                hour.MouseClicks += mouseClicks[index];
+                if (sampleHours.Add((segment.Bucket.DayOfWeek, segment.Bucket.Hour)))
+                {
+                    hour.SampleCount++;
+                }
                 if (isActive)
                 {
                     hour.ActiveIntervals.Add(segment.StartTicks, segment.EndTicks);
@@ -512,7 +519,7 @@ public sealed class ReportAggregationService
             var activeSeconds = Math.Min(trackedSeconds, activeTicks / TimeSpan.TicksPerSecond);
             var idleSeconds = trackedSeconds - activeSeconds;
             int? activityScore = hasData
-                ? ActivityScoreService.CalculateDailyActivityScore(
+                ? ActivityScoreService.CalculateHistoricalActivityScore(
                     KeyPresses,
                     MouseClicks,
                     activeTicks / (double)TimeSpan.TicksPerSecond,
@@ -538,6 +545,9 @@ public sealed class ReportAggregationService
 
     private sealed class HourAccumulator
     {
+        internal long KeyPresses { get; set; }
+        internal long MouseClicks { get; set; }
+        internal int SampleCount { get; set; }
         internal OrderedIntervalUnionAccumulator ActiveIntervals { get; } = new();
         internal OrderedIntervalUnionAccumulator TrackedIntervals { get; } = new();
         internal HashSet<DateOnly> ObservationDates { get; } = [];
@@ -560,7 +570,16 @@ public sealed class ReportAggregationService
                 trackedSeconds - activeSeconds,
                 trackedSeconds,
                 ObservationDates.Count,
-                ObservationDates.Count > 0);
+                ObservationDates.Count > 0,
+                KeyPresses,
+                MouseClicks,
+                SampleCount,
+                ObservationDates.Count > 0
+                    ? ActivityScoreService.CalculateHistoricalActivityScore(
+                        KeyPresses, MouseClicks,
+                        activeTicks / (double)TimeSpan.TicksPerSecond,
+                        trackedTicks / (double)TimeSpan.TicksPerSecond)
+                    : null);
         }
 
         private long MeanSeconds(long ticks) => ObservationDates.Count == 0

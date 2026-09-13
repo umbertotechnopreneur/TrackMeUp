@@ -10,9 +10,9 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 using Windows.System;
-using Windows.UI;
 
 namespace TrackMeUp;
 
@@ -37,9 +37,9 @@ internal sealed record ActivityCalendarInstallationLegendItem(
 /// <summary>Shows a native rolling activity calendar backed only by aggregate application-layer report data.</summary>
 internal sealed partial class ActivityCalendarDialogWindow : Window
 {
-    private const int ExpectedReportContractVersion = 4;
-    private const int LogicalWidth = 920;
-    private const int LogicalHeight = 660;
+    private const int ExpectedReportContractVersion = 5;
+    private const int LogicalWidth = 1080;
+    private const int LogicalHeight = 820;
     private const int LogicalScreenMargin = 24;
     private readonly TaskCompletionSource<ActivityCalendarDialogResult?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -55,6 +55,13 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private ActivityCalendarDialogResult? _result;
     private bool _isCompleting;
     private bool _isLoaded;
+    private bool _calendarReady;
+    private DateOnly _firstDate;
+    private DateOnly _lastDate;
+    private DateOnly _weekStart;
+    private int? _selectedHour;
+    private CancellationTokenSource? _weekCancellation;
+    private IReadOnlyList<ActivityWeekCell>? _weekCells;
 
     /// <summary>Creates a passive calendar dialog that obtains daily aggregates through the application facade.</summary>
     internal ActivityCalendarDialogWindow(
@@ -72,6 +79,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         Title = T("ActivityCalendar.Title");
         RootGrid.RequestedTheme = theme;
         RootGrid.Language = _strings.Language;
+        ActivityCalendarView.Language = _strings.Language;
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_windowHandle));
         _titleBar = new CustomTitleBarController(
@@ -81,7 +89,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
             TitleDragRegion,
             TitleBarLeftInsetColumn,
             TitleBarRightInsetColumn,
-            static () => Array.Empty<FrameworkElement>(),
+            () => new FrameworkElement[] { TitleBarCloseButton },
             useTallTitleBar: false);
         _placement = new WindowPlacementService(
             application,
@@ -95,13 +103,15 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsResizable = false;
+            presenter.IsResizable = true;
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
             presenter.SetBorderAndTitleBar(hasBorder: true, hasTitleBar: false);
         }
 
         ApplyLocalizedContent();
+        WeekHeatmap.CellSelected += UpdateSelectedHour;
+        WeekHeatmap.CellInvoked += async cell => await OpenScreenshotsAsync(cell.Date);
         Closed += ActivityCalendarDialogWindow_Closed;
     }
 
@@ -226,12 +236,16 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
     private void ShowCalendar(DateOnly from, DateOnly today)
     {
-        // Apply the range only after the report map exists so newly realized day items receive deterministic markers.
+        _firstDate = from;
+        _lastDate = today;
+        // Apply the range only after the report map exists so newly realized day items receive their heat colors.
         ActivityCalendarView.MinDate = ToCalendarDate(from);
-        ActivityCalendarView.MaxDate = ToCalendarDate(today);
+        // Let the native month viewport display the current month in full; future days remain blacked out.
+        ActivityCalendarView.MaxDate = ToCalendarDate(new DateOnly(today.Year, today.Month, 1).AddMonths(2).AddDays(-1));
         LoadingRing.IsActive = false;
         StatusPanel.Visibility = Visibility.Collapsed;
         CalendarPanel.Visibility = Visibility.Visible;
+        ActivityTabs.Visibility = Visibility.Visible;
         DayDetailsBorder.Visibility = Visibility.Visible;
         CalendarLegendText.Text = _recordedDays.Count == 0
             ? T("ActivityCalendar.Empty")
@@ -245,16 +259,171 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         ActivityCalendarView.SelectedDates.Add(calendarDate);
         ActivityCalendarView.SetDisplayDate(calendarDate);
         UpdateSelectedDay(selectedDate);
+        _weekStart = ActivityWeekProjection.MondayOf(selectedDate);
+        _calendarReady = true;
+    }
+
+    private async void ActivityTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_calendarReady) return;
+        if (ReferenceEquals(ActivityTabs.SelectedItem, WeekTab))
+        {
+            _weekStart = ActivityWeekProjection.MondayOf(_selectedDate);
+            await LoadWeekAsync();
+        }
+        else
+        {
+            _weekCancellation?.Cancel();
+            ActivityCalendarView.SelectedDates.Clear();
+            ActivityCalendarView.SelectedDates.Add(ToCalendarDate(_selectedDate));
+            ActivityCalendarView.SetDisplayDate(ToCalendarDate(_selectedDate));
+            UpdateSelectedDay(_selectedDate);
+            CalendarLegendText.Text = string.Format(_culture, T("ActivityCalendar.Legend"), _recordedDays.Count);
+            CalendarHintText.Text = T("ActivityCalendar.CalendarHint");
+        }
+    }
+
+    private void CalendarPanel_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ActivityCalendarView.Height = Math.Max(0, e.NewSize.Height);
+    }
+
+    private async Task LoadWeekAsync()
+    {
+        _weekCancellation?.Cancel();
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        _weekCancellation = request;
+        var monday = _weekStart;
+        var from = monday < _firstDate ? _firstDate : monday;
+        var sunday = monday.AddDays(6);
+        var to = sunday > _lastDate ? _lastDate : sunday;
+        _weekCells = null;
+        WeekRangeText.Text = $"{monday.ToString("d MMM yyyy", _culture)} – {sunday.ToString("d MMM yyyy", _culture)}";
+        PreviousWeekButton.IsEnabled = monday > ActivityWeekProjection.MondayOf(_firstDate);
+        NextWeekButton.IsEnabled = sunday < _lastDate;
+        WeekHeatmap.Visibility = Visibility.Collapsed;
+        DayDetailsBorder.Visibility = Visibility.Collapsed;
+        WeekStatusPanel.Visibility = Visibility.Visible;
+        WeekLoadingRing.IsActive = true;
+        WeekRetryButton.Visibility = Visibility.Collapsed;
+        WeekStatusText.Text = T("ActivityCalendar.Loading");
+        CalendarLegendText.Text = T("ActivityCalendar.WeekLegend");
+        CalendarHintText.Text = T("ActivityCalendar.WeekHint");
+        try
+        {
+            var result = await _application.GetReportAsync(new ReportQuery(from, to, string.Empty, ReportView.HourOfWeek), request.Token);
+            // Navigation cancels obsolete reports; they must never overwrite a newer week or the calendar tab.
+            request.Token.ThrowIfCancellationRequested();
+            if (!result.Succeeded || result.Value is null)
+            {
+                throw new InvalidDataException(result.Code);
+            }
+
+            _weekCells = ActivityWeekProjection.Create(result.Value, monday, from, to);
+            WeekHeatmap.Render(_weekCells, _strings, GetActivityHeatBrush, HeatNoData.Background, CloseButton.Foreground);
+            WeekHeatmap.Visibility = Visibility.Visible;
+            WeekStatusPanel.Visibility = Visibility.Collapsed;
+            var selected = _weekCells.FirstOrDefault(cell => cell.Date == _selectedDate && cell.Hour == _selectedHour && cell.IsAvailable)
+                ?? _weekCells.LastOrDefault(cell => cell.Date == _selectedDate && cell.Activity.HasData)
+                ?? _weekCells.FirstOrDefault(cell => cell.Activity.HasData)
+                ?? _weekCells.First(cell => cell.IsAvailable);
+            UpdateSelectedHour(selected);
+        }
+        catch (OperationCanceledException) when (request.IsCancellationRequested)
+        {
+            // Closing or navigating away discards the old projection without a fallback snapshot.
+        }
+        catch (Exception)
+        {
+            // Failed queries stay visibly unavailable and can be retried; old data is never relabeled as this week.
+            if (request.IsCancellationRequested) return;
+            WeekStatusText.Text = T("ActivityCalendar.Unavailable");
+            WeekRetryButton.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            if (ReferenceEquals(_weekCancellation, request))
+            {
+                WeekLoadingRing.IsActive = false;
+                _weekCancellation = null;
+            }
+        }
+    }
+
+    private async void PreviousWeekButton_Click(object sender, RoutedEventArgs e)
+    {
+        _weekStart = _weekStart.AddDays(-7);
+        await LoadWeekAsync();
+    }
+
+    private async void NextWeekButton_Click(object sender, RoutedEventArgs e)
+    {
+        _weekStart = _weekStart.AddDays(7);
+        await LoadWeekAsync();
+    }
+
+    private async void CurrentWeekButton_Click(object sender, RoutedEventArgs e)
+    {
+        _weekStart = ActivityWeekProjection.MondayOf(_lastDate);
+        await LoadWeekAsync();
+    }
+
+    private async void WeekRetryButton_Click(object sender, RoutedEventArgs e) => await LoadWeekAsync();
+
+    private void TodayButton_Click(object sender, RoutedEventArgs e)
+    {
+        ActivityCalendarView.SelectedDates.Clear();
+        ActivityCalendarView.SelectedDates.Add(ToCalendarDate(_lastDate));
+        ActivityCalendarView.SetDisplayDate(ToCalendarDate(_lastDate));
+        UpdateSelectedDay(_lastDate);
+    }
+
+    private void UpdateSelectedHour(ActivityWeekCell selected)
+    {
+        _selectedDate = selected.Date;
+        _selectedHour = selected.Hour;
+        WeekHeatmap.Select(selected.Date, selected.Hour);
+        var cell = selected.Activity;
+        SelectedDateText.Text = $"{selected.Date.ToString("D", _culture)}\n{selected.Hour:00}:00–{selected.Hour + 1:00}:00";
+        DayDetailsBorder.Visibility = Visibility.Visible;
+        InstallationLegendSection.Visibility = Visibility.Collapsed;
+        ReprocessAiButton.Visibility = Visibility.Collapsed;
+        DayStatusText.Text = T(cell.HasData ? "ActivityCalendar.RecordedActivity" : "ActivityCalendar.NoDataLegend");
+        DayMetricsPanel.Visibility = cell.HasData ? Visibility.Visible : Visibility.Collapsed;
+        if (cell.ActivityScore is { } score)
+        {
+            ScoreValueText.Text = score.ToString("N0", _culture);
+            ScoreProgressBar.Value = score;
+            ScoreProgressBar.Foreground = GetActivityHeatBrush(score);
+            ActiveTimeValueText.Text = FormatDuration(cell.ActiveSeconds);
+            IdleTimeValueText.Text = FormatDuration(cell.IdleSeconds);
+            TrackedTimeValueText.Text = FormatDuration(cell.TrackedSeconds);
+            KeyPressesValueText.Text = cell.KeyPresses.ToString("N0", _culture);
+            MouseClicksValueText.Text = cell.MouseClicks.ToString("N0", _culture);
+            SamplesValueText.Text = cell.SampleCount.ToString("N0", _culture);
+            AutomationProperties.SetName(ScoreValueText, string.Format(_culture, T("ActivityCalendar.ScoreAccessible"), score));
+        }
+
+        AutomationProperties.SetName(DayDetailsBorder, $"{SelectedDateText.Text}. {DayStatusText.Text}");
     }
 
     private void ActivityCalendarView_CalendarViewDayItemChanging(
         CalendarView sender,
         CalendarViewDayItemChangingEventArgs args)
     {
+        // CalendarView reuses containers across months; clear the previous day's presentation first.
+        args.Item.ClearValue(Control.BackgroundProperty);
+        ToolTipService.SetToolTip(args.Item, null);
+        args.Item.ClearValue(AutomationProperties.NameProperty);
+        if (args.InRecycleQueue)
+        {
+            return;
+        }
+
         var date = FromCalendarDate(args.Item.Date);
+        args.Item.IsBlackout = date > _lastDate || date < _firstDate;
         if (!_recordedDays.TryGetValue(date, out var cell))
         {
-            args.Item.SetDensityColors(Array.Empty<Color>());
             var noDataLabel = string.Format(
                 _culture,
                 T("ActivityCalendar.Day.NoDataAccessible"),
@@ -266,8 +435,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
         var score = cell.ActivityScore!.Value;
         var installations = cell.Installations!;
-        args.Item.SetDensityColors(installations
-            .Select(profile => InstallationAppearance.CreateAccentBrush(profile.Color).Color));
+        args.Item.Background = GetActivityHeatBrush(score);
         var label = string.Format(
             _culture,
             T("ActivityCalendar.Day.ScoreAccessible"),
@@ -278,6 +446,17 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         AutomationProperties.SetName(args.Item, accessibleLabel);
         ToolTipService.SetToolTip(args.Item, accessibleLabel);
     }
+
+    private Brush GetActivityHeatBrush(int score) => score switch
+    {
+        >= 0 and < 20 => HeatLevelOne.Background,
+        >= 20 and < 40 => HeatLevelTwo.Background,
+        >= 40 and < 60 => HeatLevelThree.Background,
+        >= 60 and < 80 => HeatLevelFour.Background,
+        >= 80 and <= 100 => HeatLevelFive.Background,
+        // Invalid report scores must never be silently mapped to an activity level.
+        _ => throw new ArgumentOutOfRangeException(nameof(score))
+    };
 
     private void ActivityCalendarView_SelectedDatesChanged(
         CalendarView sender,
@@ -297,7 +476,9 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         }
 
         e.Handled = true;
-        await OpenScreenshotsAsync(FromCalendarDate(dayItem.Date));
+        var date = FromCalendarDate(dayItem.Date);
+        if (dayItem.IsBlackout || date < _firstDate || date > _lastDate) return;
+        await OpenScreenshotsAsync(date);
     }
 
     private static CalendarViewDayItem? FindCalendarDayItem(DependencyObject? source)
@@ -316,6 +497,10 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private void UpdateSelectedDay(DateOnly date)
     {
         _selectedDate = date;
+        _selectedHour = null;
+        DayDetailsBorder.Visibility = Visibility.Visible;
+        InstallationLegendSection.Visibility = Visibility.Visible;
+        ReprocessAiButton.Visibility = Visibility.Visible;
         SelectedDateText.Text = date.ToString("D", _culture);
         if (!_recordedDays.TryGetValue(date, out var cell))
         {
@@ -332,6 +517,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         DayStatusText.Text = T("ActivityCalendar.RecordedActivity");
         ScoreValueText.Text = score.ToString("N0", _culture);
         ScoreProgressBar.Value = score;
+        ScoreProgressBar.Foreground = GetActivityHeatBrush(score);
         ActiveTimeValueText.Text = FormatDuration(cell.ActiveSeconds);
         IdleTimeValueText.Text = FormatDuration(cell.IdleSeconds);
         TrackedTimeValueText.Text = FormatDuration(cell.TrackedSeconds);
@@ -358,9 +544,16 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
     private void ApplyLocalizedContent()
     {
-        DialogEyebrowText.Text = T("ActivityCalendar.Eyebrow");
-        DialogTitleText.Text = T("ActivityCalendar.Title");
-        DialogSubtitleText.Text = T("ActivityCalendar.Subtitle");
+        DialogTitleText.Text = T("ActivityCalendar.CompactTitle");
+        DialogSubtitleText.Text = T("ActivityCalendar.RecordedActivity");
+        CalendarTab.Header = T("ActivityCalendar.CalendarTab");
+        WeekTab.Header = T("ActivityCalendar.WeekTab");
+        TodayButton.Content = T("ActivityCalendar.Today");
+        CurrentWeekButton.Content = T("ActivityCalendar.CurrentWeek");
+        WeekRetryButton.Content = T("ActivityCalendar.Retry");
+        NoDataLegendText.Text = T("ActivityCalendar.NoDataLegend");
+        ApplyButtonAccessibility(PreviousWeekButton, "ActivityCalendar.PreviousWeek");
+        ApplyButtonAccessibility(NextWeekButton, "ActivityCalendar.NextWeek");
         CalendarHintText.Text = T("ActivityCalendar.CalendarHint");
         StatusText.Text = T("ActivityCalendar.Loading");
         ScoreLabelText.Text = T("ActivityCalendar.Score");
@@ -371,16 +564,21 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         MouseClicksLabelText.Text = T("ActivityCalendar.MouseClicks");
         SamplesLabelText.Text = T("ActivityCalendar.Samples");
         InstallationLegendTitleText.Text = T("Operations.InstallationTransfer.Installations.List");
-        OpenGalleryButtonText.Text = T("ActivityCalendar.OpenGallery");
         ReprocessAiButtonText.Text = T("ActivityCalendar.Reprocess");
         CloseButton.Content = T("About.Close");
+        ApplyButtonAccessibility(TitleBarCloseButton, "About.Close");
         AutomationProperties.SetName(RootGrid, T("ActivityCalendar.Title"));
         AutomationProperties.SetName(DialogTitleText, DialogTitleText.Text);
         AutomationProperties.SetName(DialogSubtitleText, DialogSubtitleText.Text);
         AutomationProperties.SetName(ActivityCalendarView, T("ActivityCalendar.Title"));
-        AutomationProperties.SetName(OpenGalleryButton, OpenGalleryButtonText.Text);
         AutomationProperties.SetName(ReprocessAiButton, ReprocessAiButtonText.Text);
         AutomationProperties.SetName(CloseButton, T("About.Close"));
+    }
+
+    private void ApplyButtonAccessibility(Button button, string key)
+    {
+        AutomationProperties.SetName(button, T(key));
+        ToolTipService.SetToolTip(button, T(key));
     }
 
     private void ShowError(string message)
@@ -428,9 +626,6 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         await CompleteAsync();
     }
 
-    private async void OpenGalleryButton_Click(object sender, RoutedEventArgs e) =>
-        await OpenScreenshotsAsync(_selectedDate);
-
     private async Task OpenScreenshotsAsync(DateOnly date)
     {
         if (_isCompleting)
@@ -463,7 +658,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
 
         _isCompleting = true;
         CloseButton.IsEnabled = false;
-        OpenGalleryButton.IsEnabled = false;
+        TitleBarCloseButton.IsEnabled = false;
         ReprocessAiButton.IsEnabled = false;
         _lifetimeCancellation.Cancel();
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);

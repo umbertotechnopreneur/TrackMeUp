@@ -202,6 +202,23 @@ public sealed class LocalizationServiceTests
         Assert.Equal("pt-BR", new LocalizationService("pt-BR").Culture.Name);
     }
 
+    /// <summary>Ensures the schedule uses save wording and both half-day labels in every supported locale.</summary>
+    [Fact]
+    public void ScheduleViewsAndSaveAreLocalizedWithoutTheSupersededStartCommand()
+    {
+        Assert.All(LocalizationService.SupportedLanguages, locale =>
+        {
+            var strings = new LocalizationService(locale);
+            Assert.All(new[] { "Schedule.Save", "Schedule.View.Morning", "Schedule.View.Evening", "Schedule.View.Legend" },
+                key => Assert.False(string.IsNullOrWhiteSpace(strings.Translate(key))));
+            Assert.Contains("06:00", strings.Format("Schedule.View.VisibleRange", "06:00", "12:00"), StringComparison.Ordinal);
+            Assert.Contains(strings.Translate("Schedule.Save"), strings.Translate("Schedule.Preset.WorkWeek.Message"), StringComparison.Ordinal);
+            Assert.Contains(strings.Translate("Schedule.Save"), strings.Translate("Schedule.ClearAll.Message"), StringComparison.Ordinal);
+            Assert.Throws<KeyNotFoundException>(() => strings.Translate("Schedule.Start"));
+        });
+        Assert.Equal("Salva", new LocalizationService("it-IT").Translate("Schedule.Save"));
+    }
+
     [Fact]
     public void WorldClockOptions_AreCompleteInEverySupportedLanguage()
     {
@@ -525,8 +542,6 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Cronologia attività", italian.Translate("ActivityCalendar.MenuTitle"));
         Assert.Equal("ACTIVITY INDEX", english.Translate("ActivityCalendar.Score"));
         Assert.Equal("INDICE DI ATTIVITÀ", italian.Translate("ActivityCalendar.Score"));
-        Assert.Equal("Explore screenshots", english.Translate("ActivityCalendar.OpenGallery"));
-        Assert.Equal("Esplora gli screenshot", italian.Translate("ActivityCalendar.OpenGallery"));
         Assert.Contains("out of 100", english.Translate("ActivityCalendar.Day.ScoreAccessible"), StringComparison.Ordinal);
         Assert.Contains("su 100", italian.Translate("ActivityCalendar.Day.ScoreAccessible"), StringComparison.Ordinal);
         Assert.Contains("last 12 months", english.Translate("ActivityCalendar.Empty"), StringComparison.Ordinal);

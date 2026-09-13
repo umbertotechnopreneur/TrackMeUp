@@ -1,0 +1,4 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+exec pwsh -NoProfile -File "$repo_root/scripts/Format-Code.ps1" -Staged
