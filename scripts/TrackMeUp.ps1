@@ -431,7 +431,7 @@ function Invoke-TrackMeUpBuildReports {
     }
 
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        throw 'npm was not found on PATH. Node.js 20.19.0 or newer is required.'
+        throw 'npm was not found on PATH. Install Node.js 24.16.0 (the CI runtime) to build reports.'
     }
 
     Push-Location -LiteralPath $webRoot
