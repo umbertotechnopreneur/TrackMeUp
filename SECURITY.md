@@ -1,56 +1,56 @@
-# TrackMeUp Security Policy
+# Reporting a security problem
 
-## Supported Versions
+## Versions we support
 
-Security fixes are considered for:
+We consider security fixes for:
 
 - the default branch;
 - the latest published release (when available).
 
-TrackMeUp is still evolving, so behavior may change between revisions.
+TrackMeUp is still in development, so behavior can change between versions.
 
-## Reporting a Vulnerability
+## How to reach us
 
-Do not open a public issue for suspected vulnerabilities.
+If you think you've found a vulnerability, please report it privately. Don't open a public issue with details that someone could use to exploit it.
 
-Report privately to **hello@umbertogiacobbi.biz** with subject:
+Email **hello@umbertogiacobbi.biz** with the subject:
 
 `TrackMeUp security report`
 
-Include, when possible:
+Include what you can:
 
-- affected commit/version;
-- component (for example capture pipeline, AI provider adapter, retention, CLI, installer);
-- reproduction steps;
-- security impact and prerequisites;
-- redacted logs or proof of concept;
-- possible workaround.
+- the affected commit or app version;
+- the part of the app involved, such as screenshots, AI requests, data deletion, the CLI, or the installer;
+- steps to reproduce the problem;
+- what someone could do with it and what access they would need;
+- logs with private information removed, or a small example that demonstrates the problem;
+- a workaround, if you know one.
 
-## Sensitive Data and Secrets
+## Keep private information out of reports
 
 Never publish:
 
 - API keys, bearer tokens, connection strings, or private endpoints;
 - personal screenshots or reports with sensitive data;
-- private local/UNC paths when avoidable;
+- private file or network-share paths when avoidable;
 - machine-specific diagnostic data that can expose identities.
 
-If a secret was ever committed, assume it is compromised:
+If a secret was committed to Git, assume someone may have copied it:
 
-1. rotate or revoke it;
-2. remove it from history where applicable;
-3. document the remediation.
+1. Replace or revoke it.
+2. Remove it from history where applicable.
+3. Record what you did to fix the problem.
 
-## Security-Sensitive Areas
+## Changes that need extra attention
 
-Call out changes in PRs when touching:
+Mention it clearly in your pull request if you change:
 
-- screenshot capture and retention flow;
-- AI provider request pipeline and transport;
-- local storage, redaction, and diagnostics export;
-- runtime ownership, mutex, named-pipe, startup flow;
-- packaging/release scripts and distribution artifacts.
+- how screenshots are taken, kept, or deleted;
+- how requests are built and sent to an AI provider;
+- local storage, removal of private information from logs, or diagnostics export;
+- how the shared tracker starts and how processes connect through the mutex and named pipe;
+- packaging, release scripts, or files included in a download.
 
-## Scope of Public Issues
+## For other questions
 
-Feature requests, standard bugs, and usage questions belong in public issues or `SUPPORT.md`.
+For feature ideas, ordinary bugs, or help using the app, see [SUPPORT.md](SUPPORT.md).

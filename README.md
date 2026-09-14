@@ -6,23 +6,23 @@
   </picture>
 </p>
 
-<h1 align="center">TrackMeUp — Private, local-first activity tracker for Windows</h1>
+<h1 align="center">TrackMeUp — Find your way back to what you were doing</h1>
 
-<p align="center"><strong>Your workday, searchable. Your history, local by default.</strong></p>
+<p align="center"><strong>A Windows activity tracker that keeps your history on your PC by default.</strong></p>
 
 <p align="center">
-  A private, local-first activity tracker and searchable workday memory for Windows.
-  Recover lost context, search captured moments, and understand how your day unfolded—without a TrackMeUp account or hidden cloud sync.
+  Saw something useful, then forgot where? TrackMeUp helps you find it again.
+  Search your activity, look through saved screenshots, and see where your time went. No TrackMeUp account needed, and no hidden cloud sync.
 </p>
 
 <p align="center">
   <a href="https://umbertogiacobbi.biz/trackmeup/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_product_page"><strong>Product page</strong></a>
   ·
-  <a href="#remember-the-moment-not-the-tab"><strong>Explore the product</strong></a>
+  <a href="#remember-the-moment-not-the-tab"><strong>See what it does</strong></a>
   ·
   <a href="#get-trackmeup"><strong>Build locally</strong></a>
   ·
-  <a href="docs/PRIVACY.md"><strong>Read the privacy model</strong></a>
+  <a href="docs/PRIVACY.md"><strong>How your data is handled</strong></a>
 </p>
 
 <p align="center">
@@ -33,39 +33,39 @@
 </p>
 
 > [!IMPORTANT]
-> **Beta 1 is coming soon.** We are using the next two months to carefully evaluate AI and privacy risks before publishing the first public beta.
+> **Beta 1 is coming soon.** We're spending the next two months checking how the app handles AI and private data before sharing the first public beta.
 
 ## Remember the moment, not the tab
 
-TrackMeUp is built for the moment when you know you saw something today, but cannot remember which app, window, or part of the day it belonged to.
+You know you saw it today. Was it in the browser, a document, or another app? TrackMeUp gives you a way to retrace your steps.
 
 <table>
   <tr>
     <td width="33%">
       <strong>Find it again</strong><br />
-      Search activity, applications, window titles, screenshots, local OCR, and optional AI descriptions from one compact recall surface.
+      Search your activity, app names, window titles, saved screenshots, text read from images (OCR), and optional AI descriptions in one place.
     </td>
     <td width="33%">
-      <strong>Resume faster</strong><br />
-      Reconstruct what was active before an interruption instead of rebuilding context from browser history and open tabs.
+      <strong>Pick up where you left off</strong><br />
+      Check what you were working on before a call, a break, or an interruption.
     </td>
     <td width="33%">
-      <strong>See the shape of your day</strong><br />
-      Compare active time, idle periods, applications, activity signals, daily reports, and longer-term trends.
+      <strong>See where your time went</strong><br />
+      Look back at the apps you used, time spent active or away, and daily reports. Compare days to spot patterns.
     </td>
   </tr>
 </table>
 
-TrackMeUp does **not** store the content of what you type. It retains only non-content activity signals, such as input counts, needed to distinguish active work from idle time.
+TrackMeUp counts key presses and mouse clicks to tell active time from idle time. It **doesn't record which keys you press or what you type**. Screenshots are a separate option and can include text visible on screen.
 
 ## TrackMeUp in action
 
-These promotional product previews use synthetic demo data and show the English, Italian, and Vietnamese interfaces.
+These previews use made-up demo data and show the app in English, Italian, and Vietnamese.
 
 <p align="center">
   <img src="docs/images/readme/trackmeup-live-tracking-it.png" alt="TrackMeUp live activity tracking in Italian" width="100%" />
   <br />
-  <sub><strong>Live tracking · Italiano</strong> — elapsed time, non-content input counts, and recent activity at a glance.</sub>
+  <sub><strong>Live tracking · Italiano</strong> — see elapsed time, key-press and click counts, and recent activity.</sub>
 </p>
 
 <table>
@@ -73,46 +73,46 @@ These promotional product previews use synthetic demo data and show the English,
     <td width="50%" valign="top">
       <img src="docs/images/readme/trackmeup-captured-moments-en.png" alt="TrackMeUp Captured moments inspector in English" width="100%" />
       <br />
-      <sub><strong>Captured moments · English</strong> — inspect one retained screenshot and move through the full-width timeline.</sub>
+      <sub><strong>Captured moments · English</strong> — open a saved screenshot and browse nearby moments on the timeline.</sub>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/readme/trackmeup-local-search-vi.png" alt="TrackMeUp local search and OCR in Vietnamese" width="100%" />
       <br />
-      <sub><strong>Local search and OCR · Tiếng Việt</strong> — recover context across applications, screenshots, OCR, and optional AI descriptions.</sub>
+      <sub><strong>Local search and OCR · Tiếng Việt</strong> — find something by its app, screenshot text, or optional AI description.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <img src="docs/images/readme/trackmeup-activity-history-en.png" alt="TrackMeUp Activity history in English" width="100%" />
       <br />
-      <sub><strong>Activity history · English</strong> — review observed activity intensity and exact daily signals without productivity scoring.</sub>
+      <sub><strong>Activity history · English</strong> — see when you were active and check the daily numbers. These aren't productivity scores.</sub>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/readme/trackmeup-world-clocks-it.png" alt="TrackMeUp World clocks in Italian" width="100%" />
       <br />
-      <sub><strong>World clocks · Italiano</strong> — compare local time, astronomy, and optional current weather across cities.</sub>
+      <sub><strong>World clocks · Italiano</strong> — check the time, sun and moon information, and optional weather in different cities.</sub>
     </td>
   </tr>
 </table>
 
 ## How TrackMeUp works
 
-1. **Observe locally.** TrackMeUp records time, active or idle state, application and window context, input counts, and selected system telemetry on this PC.
-2. **Enrich only when you choose.** Screenshots, on-device OCR, and AI-provider analysis are independent options rather than prerequisites.
-3. **Recall on demand.** Search your local history, inspect the original snapshot, review the timeline, or generate a daily report and digest.
-4. **Merge installations explicitly.** A private `.tmuarchive` can carry SQLite history and retained screenshots between installations; preview and confirmation happen before merge, while machine identity plus a friendly name, color, and icon preserve provenance.
+1. **Track your day.** TrackMeUp saves active and idle time, app and window details, key-press and click counts, and selected system measurements on this PC.
+2. **Choose what else to save.** Screenshots, text recognition on your PC, and analysis by an AI provider are separate options. You can use the tracker without them.
+3. **Look back when you need to.** Search your history, open a screenshot, browse the timeline, or make a daily report and summary.
+4. **Bring history from another installation.** Export a `.tmuarchive` with your history and, if you choose, saved screenshots. You can preview it before confirming an import. Each installation keeps its own identity, name, color, and icon so you can tell where the records came from.
 
-The desktop experience is paired with a PowerShell-friendly CLI, so the same application behavior is available to people and automation without creating a second tracking runtime.
+Prefer the terminal? There's also a command-line interface (CLI) for PowerShell and scripts. It controls the same tracker as the desktop app.
 
-### Native by design
+### Built for Windows
 
-TrackMeUp is a native WinUI Windows application, not a web page wrapped in a desktop shell. We have a deliberate bias against WebView-first applications where no web surface is needed: an otherwise idle experience should not consume tens of megabytes of RAM merely to host a browser runtime. The core experience uses native Windows controls and platform APIs, keeping it responsive, lightweight, and straightforward to move between supported Windows installations. Local interactive reports remain a separate, on-demand surface; they do not require a resident WebView2 runtime.
+TrackMeUp uses WinUI and native Windows controls. The desktop app doesn't need a browser running inside it, which helps keep it light. Interactive reports open when you need them and don't require WebView2 to stay running in the background.
 
-The desktop app, reports, and human-readable CLI output can follow the Windows language or use `en-US`, `it-IT`, `fr-FR`, `de-DE`, `es-ES`, `zh-Hans`, `vi-VN`, `ko-KR`, `pt-PT`, or `pt-BR`. European and Brazilian Portuguese use separate product catalogs.
+The app, reports, and readable CLI output can follow your Windows language. You can also choose English, Italian, French, German, Spanish, Simplified Chinese, Vietnamese, Korean, European Portuguese, or Brazilian Portuguese.
 
-Display, search, and OCR languages are configured independently. Search supports every product locale; OCR offers only the corresponding Windows recognizer choices and requires the selected language pack to be installed. Vietnamese remains available for the interface and search but is not offered as a Windows OCR language.
+You can choose separate languages for the interface, search, and text recognition (OCR). Search supports all the app's languages. OCR needs a supported Windows language pack installed on your PC. Vietnamese works for the interface and search, but isn't available for Windows OCR.
 
-## Privacy you can act on
+## You're in control of your data
 
 <p align="center">
   <picture>
@@ -122,40 +122,42 @@ Display, search, and OCR languages are configured independently. Search supports
   </picture>
 </p>
 
-Privacy should feel like control, not a policy page. TrackMeUp keeps your workday memory on your PC and lets you decide what is remembered, for how long, and when it is time to start over.
+You choose what TrackMeUp saves, how long it keeps it, and when to delete it.
 
-- **No account required.** Open TrackMeUp and your workday memory is yours.
-- **Nothing is quietly synced.** There is no hidden TrackMeUp cloud collecting your activity.
-- **More context is always your choice.** Screenshots, AI assistance, and location sharing wait for you to turn them on.
-- **Some moments can stay private.** Leave selected apps, windows, and details out of the story.
-- **Old memories fade on your schedule.** You choose how long TrackMeUp keeps them.
-- **A clean slate is built in.** The **Nuclearize everything** button permanently erases everything TrackMeUp has kept on this PC and restarts the app as new. Two deliberate confirmations protect against an accidental click.
+- **No account needed.** You can use the app without signing up.
+- **No hidden sync.** TrackMeUp doesn't upload your activity to its own cloud.
+- **Optional extras.** Screenshots, AI assistance, and location sharing stay off until you turn them on.
+- **Privacy rules.** Exclude selected apps, windows, or details from tracking.
+- **Your schedule.** Choose how many days to keep your history and screenshots.
+- **Start fresh.** **Nuclearize everything** deletes this installation's saved data and restarts the app with default settings. It asks you to confirm twice to avoid an accidental reset.
 
-Files you already exported or shared remain outside TrackMeUp's reach.
+The reset doesn't remove exported or shared files, copies held by other services, API keys in Windows environment variables, or Windows package and certificate settings. Deletion isn't a guarantee that data cannot be recovered from the disk or a backup.
 
-For the complete data-flow and dependency inventory, see [Privacy and Data Flow](docs/PRIVACY.md).
+See [how TrackMeUp handles your data](docs/PRIVACY.md) for the full details, including what optional services receive.
 
-## Choose the recall you want
+## Start with the features you need
 
-Screenshots and AI are separate choices. Start with the smallest footprint that solves your problem and enable more context only when it earns its place.
+You can track your activity without taking screenshots or using AI. Turn on either if it helps you find things later.
 
 | Setup | What it adds | What leaves this PC |
 | --- | --- | --- |
-| **Activity timeline** | Active and idle periods, application and window context, reports | Nothing unless optional diagnostics are enabled |
-| **Visual recall** | Local screenshots and on-device OCR | Nothing unless optional diagnostics are enabled |
-| **AI-assisted recall** | Optional descriptions or OCR refinement from your configured AI provider | Only the data included in an enabled provider request, plus optional diagnostics if enabled |
+| **Activity timeline** | Active and idle time, app and window details, reports | Nothing unless optional diagnostics are enabled |
+| **Screenshots and text recognition** | Saved screenshots and text read from them on your PC | Nothing unless optional diagnostics are enabled |
+| **AI descriptions** | Descriptions or improved screenshot text from your chosen AI provider | The data included in each enabled provider request, plus optional diagnostics if enabled |
 
-This table describes background product behavior. Export, Windows sharing, and
-redacted-log sharing send only the material you explicitly choose.
+The table covers tracking, screenshots, and AI analysis. Exporting files and
+sharing screenshots or logs happen when you choose. World-clock weather and
+provider pricing downloads have their own requests, described in the
+[privacy guide](docs/PRIVACY.md#what-can-leave-the-pc).
 
-Provider keys stay local and are never accepted through command-line arguments. Shared AI features remain provider-agnostic; you choose the supported provider and model that fit your workflow.
+You choose your AI provider and model. API keys are stored in Windows environment variables and sent directly to the selected provider to authenticate requests. Don't put keys in CLI arguments; TrackMeUp won't accept them there.
 
 ## Get TrackMeUp
 
 > [!NOTE]
-> TrackMeUp is currently pre-production. Public binary releases are not published yet; the supported early-access path is to build it from source.
+> TrackMeUp is still in development. There isn't a public download yet. For now, you can try it by building from source.
 
-Requirements:
+You'll need:
 
 - Windows 10 version 1809 or later.
 - PowerShell 7.
@@ -175,17 +177,17 @@ To produce a self-contained unpackaged build:
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ~~~
 
-The utility recreates a clean platform-specific payload in `artifacts/unpackaged/<platform>/` so stale trimmed or ReadyToRun files cannot survive between publishes.
+The script replaces the build in `artifacts/unpackaged/<platform>/` each time, so files from an older build don't get mixed in.
 
-The same utility can create a sideloadable MSIX or installer when release packaging is required. Package layouts are written to `artifacts/packages/`; final installers are written to `artifacts/installers/`.
+The same script can create an MSIX package for local installation or an installer. You'll find the package files in `artifacts/packages/` and installers in `artifacts/installers/`.
 
 On Windows, `PackageMsix` and `CreateInstaller` sign the package automatically with the local TrackMeUp test certificate (`CN=umber`). If it is missing, the script creates it in the current user's certificate store, exports the public certificate to `artifacts/certificates/TrackMeUp-Test-Signing.cer`, and trusts it for the current user. To use another certificate already installed in `Cert:\CurrentUser\My`, pass `-PackageCertificateThumbprint <thumbprint>`. The test certificate is intended only for local sideloading; production releases must use a certificate issued for distribution.
 
-## Power users and contributors
+## Using the terminal
 
-See the [practical CLI examples](docs/CLI_EXAMPLES.md) for status, tracking, local captures, reports, retention previews, and scriptable output.
+See the [practical CLI examples](docs/CLI_EXAMPLES.md) for checking status, controlling tracking, taking screenshots, making reports, previewing cleanup, and using the app in scripts.
 
-Installed-package CLI examples:
+Once the package is installed, try:
 
 ~~~powershell
 trackmeup.exe -cli status
@@ -195,11 +197,11 @@ trackmeup.exe -cli ai status
 trackmeup.exe -cli retention preview
 ~~~
 
-Run `trackmeup.exe -cli` with no command in PowerShell 7 to open the interactive Spectre.Console command center. It shows the live local dashboard and offers tracking, AI, screenshot, report, diagnostics, settings, and desktop-app actions. The CLI always talks to the same shared TrackMeUp runtime as the desktop app; it does not start a second tracker or automate the graphical UI.
+Run `trackmeup.exe -cli` with no command in PowerShell 7 to open an interactive menu. From there you can check live activity, control tracking and AI, take screenshots, open reports, troubleshoot, or change settings. It connects to the same tracker as the desktop app.
 
 ### CLI switches
 
-Use `trackmeup.exe -cli --help` for the complete command reference. The following quick switches expand to their documented command and are convenient for daily use:
+Use `trackmeup.exe -cli --help` to see all commands. These shortcuts are handy for everyday use:
 
 | Switch | Equivalent command | Purpose |
 | --- | --- | --- |
@@ -215,12 +217,12 @@ Use `trackmeup.exe -cli --help` for the complete command reference. The followin
 | `--help` | `help` | Show help without connecting to the runtime. |
 | `--version` | `version` | Show CLI and protocol versions without connecting to the runtime. |
 
-Global output and safety switches can be combined with a command or quick switch:
+You can add these options to a command or shortcut:
 
 | Switch | Purpose |
 | --- | --- |
 | `--format <rich|plain|json>` / `--json` | Select interactive, plain-text, or machine-readable output. |
-| `--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>` | Select the CLI display locale. Language-only legacy values such as `en`, `pt`, and `zh` are rejected. |
+| `--language <system|en-US|it-IT|fr-FR|de-DE|es-ES|zh-Hans|vi-VN|ko-KR|pt-PT|pt-BR>` | Choose the CLI language. Use the full code shown here; short forms such as `en`, `pt`, and `zh` aren't accepted. |
 | `--quiet`, `--verbose` | Reduce successful output or add diagnostics in plain mode. |
 | `--yes` | Explicitly confirm a command that requires confirmation. |
 | `--timeout <1-300>` | Set the shared-runtime connection timeout in seconds. |
@@ -234,7 +236,9 @@ trackmeup.exe -cli --status --format json
 trackmeup.exe -cli /ai --help
 ~~~
 
-Repository automation:
+## Working on TrackMeUp
+
+The repository script helps with builds, tests, and packaging:
 
 The `BuildReports` action uses Node.js 24.16.0 (the CI runtime). Install it before rebuilding the reports web assets.
 
@@ -246,7 +250,10 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
 ~~~
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [Windows contributor setup guide](docs/DEVELOPMENT.md) for a clean clone, prerequisites, x64 build/test commands, and troubleshooting. Use the [manual validation guide](docs/VALIDATION.md) for behavior and visual acceptance checks.
+Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows setup guide](docs/DEVELOPMENT.md) walks you through getting a fresh copy, installing what you need, building and testing on x64, and fixing common setup problems. Use the [manual checks](docs/VALIDATION.md) to check how your changes look and behave.
+
+<details>
+<summary>Detailed checks for contributors</summary>
 
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
 
@@ -293,15 +300,17 @@ Privacy and runtime regression checks:
 - [ ] During an index update, existing results stay responsive and new captures appear after the next publish.
 - [ ] After deletion, retention, or a failed rebuild, search remains consistent; a successful rebuild restores it.
 
-## Project documentation
+</details>
 
-- [Privacy and data flow](docs/PRIVACY.md)
+## More about the project
+
+- [How your data is handled](docs/PRIVACY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Windows contributor setup and troubleshooting](docs/DEVELOPMENT.md)
 - [Practical CLI examples](docs/CLI_EXAMPLES.md)
 - [Manual validation guide](docs/VALIDATION.md)
 - [Public roadmap](ROADMAP.md)
-- [Project governance](GOVERNANCE.md)
+- [How project decisions are made](GOVERNANCE.md)
 - [Changelog](CHANGELOG.md)
 - [CLI implementation plan](docs/CLI_IMPLEMENTATION_PLAN.md)
 - [Security policy](SECURITY.md)
@@ -314,19 +323,19 @@ Privacy and runtime regression checks:
 - [Trademark and brand policy](TRADEMARKS.md)
 - [Publication checklist](PUBLICATION_CHECKLIST.md)
 
-The About window provides quick access to the log folder, issue tracker, product links, and the runtime third-party license inventory.
+You can also open About in the app to find logs, report a problem, visit the project website, or check third-party licenses.
 
-## Repository map
+## Where to find things in the code
 
-- <code>TrackMeUp/</code> — Windows desktop app and composition root.
-- <code>TrackMeUp.Core/</code> — application behavior, persistence, capture, AI adapters, and runtime ownership.
-- <code>TrackMeUp.Presentation/</code> — UI-neutral models for desktop surfaces.
-- <code>TrackMeUp.Cli/</code> — PowerShell-facing CLI.
-- <code>TrackMeUp.Reports.Web/</code> — local reports web assets.
+- <code>TrackMeUp/</code> — Windows desktop app and startup code.
+- <code>TrackMeUp.Core/</code> — app behavior, storage, screenshots, AI connections, and the shared tracker.
+- <code>TrackMeUp.Presentation/</code> — models used by the desktop interface.
+- <code>TrackMeUp.Cli/</code> — command-line interface for PowerShell.
+- <code>TrackMeUp.Reports.Web/</code> — files used to display local reports.
 - <code>TrackMeUp.*.Tests/</code> — automated test projects.
-- <code>scripts/TrackMeUp.ps1</code> — shared automation entrypoint.
-- <code>docs/</code> — privacy, validation, and implementation documentation.
-- <code>store/</code> — Store copy and release-support material.
+- <code>scripts/TrackMeUp.ps1</code> — script for builds, tests, and packaging.
+- <code>docs/</code> — privacy, testing, and development guides.
+- <code>store/</code> — Microsoft Store listing and submission files.
 
 ## License
 
@@ -352,34 +361,31 @@ provenance file before redistributing repository material or packaged binaries.
 
 <p align="center"><strong>MORE FROM UMBERTO</strong></p>
 
-<h2 align="center">Good ideas deserve great tools.</h2>
+<h2 align="center">A few other things I'm working on</h2>
 
 <p align="center">
-  Enjoying TrackMeUp? Discover more ways to put AI to work, explore new perspectives,<br>
-  and turn your next big idea into something people can use.
+  If you find TrackMeUp useful, you might like these too.
 </p>
 
 <table>
   <tr>
     <td width="33%" valign="top">
       <h3>⌨️ PromptMeUp</h3>
-      <p><strong>Less command hunting. More getting things done.</strong></p>
-      <p>Your AI companion for the terminal: describe what you need, understand the next step, and review the exact command before you choose to run it.</p>
+      <p><strong>Find the terminal command you need.</strong></p>
+      <p>Describe what you want to do. PromptMeUp suggests a command and explains it, so you can check it before running it.</p>
       <p><a href="https://github.com/umbertotechnopreneur/PromptMeUp"><strong>Meet PromptMeUp →</strong></a></p>
     </td>
     <td width="33%" valign="top">
       <h3>🔎 ViewsApp.ai</h3>
-      <p><strong>One topic. Many AI perspectives.</strong></p>
-      <p>Explore how different AI models interpret people, events, and narratives. Compare their perspectives, spot common ground, and discover where the stories diverge.</p>
+      <p><strong>See how different AI models answer.</strong></p>
+      <p>Compare what different models say about people, events, and stories. See where they agree and where their answers differ.</p>
       <p><a href="https://www.viewsapp.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_more_views"><strong>Explore Views →</strong></a></p>
     </td>
     <td width="33%" valign="top">
       <h3>🚀 Umberto Giacobbi</h3>
-      <p><strong>Big ambition? Let's build what's next.</strong></p>
-      <p>Meet the builder behind these projects. Explore my work as a fractional CTO, software developer, and technopreneur—from product strategy and architecture to hands-on execution.</p>
+      <p><strong>Have something you'd like to build?</strong></p>
+      <p>I'm the developer behind these projects. I also work with teams as a fractional CTO and help turn product ideas into working software.</p>
       <p><a href="https://umbertogiacobbi.biz/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=trackmeup&amp;utm_content=readme_author_cta"><strong>Let's talk about your next idea →</strong></a></p>
     </td>
   </tr>
 </table>
-
-<p align="center"><em>Better tools. Fresh perspectives. More room for your next big idea.</em></p>

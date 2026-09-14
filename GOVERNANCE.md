@@ -1,55 +1,55 @@
-# TrackMeUp governance
+# How TrackMeUp is maintained
 
 TrackMeUp is an open-source project maintained by
 [@umbertotechnopreneur](https://github.com/umbertotechnopreneur). This document
-explains how changes are proposed, reviewed, and accepted.
+explains how to suggest changes and how we decide what goes into the app.
 
-## Project stewardship
+## Who looks after the project
 
-The maintainer sets product direction, protects the privacy and local-first
-contracts, reviews contributions, manages releases, and makes final decisions
-when consensus is not available.
+The maintainer decides what to work on, reviews contributions, and publishes
+releases. They also check that changes respect the app's privacy rules and keep
+data local by default. When a discussion doesn't reach agreement, the maintainer
+makes the final call.
 
 Repository ownership does not override the MIT license. Contributions accepted
 into the project are licensed as described in [CONTRIBUTING.md](CONTRIBUTING.md),
 while the TrackMeUp name and brand assets remain governed by
 [TRADEMARKS.md](TRADEMARKS.md).
 
-## Proposing changes
+## Suggesting a change
 
-- Use GitHub Discussions for questions, early ideas, and design exploration.
-- Use the issue forms for reproducible bugs, focused feature requests, and
-  documentation problems.
+- Use GitHub Discussions for questions and early ideas.
+- Use the issue forms for bugs, specific feature requests, and documentation
+  problems. For bugs, include the steps needed to reproduce them.
 - Report vulnerabilities privately according to [SECURITY.md](SECURITY.md).
-- Open an issue before a large architectural, privacy, persistence, protocol,
-  packaging, or dependency change.
+- Open an issue before a large change to the app's structure, privacy, storage,
+  process communication, packaging, or dependencies.
 
-## Accepting changes
+## Reviewing and merging changes
 
-Every change to `main` is made through a pull request. A pull request must be
-focused, pass the required checks, resolve review conversations, and satisfy the
-repository contribution and provenance requirements.
+Every change to `main` goes through a pull request. Keep it focused, make sure
+the required checks pass, and resolve review comments. Contributions must also
+follow the contributor rules and explain where any added material came from.
 
-TrackMeUp currently has one maintainer, so branch protection does not require an
-approval that the pull-request author cannot provide to themselves. The
-maintainer still reviews the complete diff and validation evidence before using
-squash merge. External contributions are reviewed by the maintainer.
+TrackMeUp currently has one maintainer. GitHub doesn't allow authors to approve
+their own pull requests, so a separate approval isn't required. The maintainer
+still reviews every change and its test results before merging it as a single
+commit (squash merge). They review external contributions too.
 
-Force pushes and branch deletion are disabled for `main`. A linear history is
-kept, and merged topic branches are deleted automatically.
+Force pushes and deletion are disabled for `main`. Merges keep a linear history,
+and branches are deleted automatically after merging.
 
 ## Decisions and releases
 
-Routine decisions are recorded in issues and pull requests. Material product or
-architecture decisions should update the relevant durable documentation in the
-same pull request.
+We record decisions in issues and pull requests. If a decision changes how the
+app works or how the code is organized, update the relevant guide in the same
+pull request.
 
-Releases are created by the maintainer after the protected checks pass and the
-package, privacy, licensing, and provenance requirements have been reviewed.
+The maintainer publishes releases after the required checks pass and after
+reviewing the package, privacy behavior, licenses, and sources of included material.
 
 ## Conduct
 
-Participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). The
-maintainer may edit, close, or reject contributions that violate the Code of
-Conduct, expose sensitive information, or conflict with the project's safety,
-privacy, licensing, or product boundaries.
+Follow the [Code of Conduct](CODE_OF_CONDUCT.md). The maintainer may edit, close,
+or reject contributions that break those rules, expose sensitive information,
+or conflict with the project's safety, privacy, licensing, or product decisions.

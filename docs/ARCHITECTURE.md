@@ -1,119 +1,117 @@
 # TrackMeUp architecture
 
-TrackMeUp is a Windows-first, local-first application with one application
-facade and one tracking runtime per installation. Desktop, CLI, taskbar, search,
-OCR, and reporting features share those boundaries instead of creating
-parallel implementations.
+TrackMeUp is a Windows app that stores your history on your PC by default.
+Each installation runs one tracker. The desktop app, CLI, taskbar, search,
+text recognition (OCR), and reports use the same application services through
+`ITrackMeUpApplication`. This keeps their behavior in one place.
 
-## System view
+## How the pieces fit together
 
 ```mermaid
 flowchart LR
-    WinUI[WinUI desktop surfaces] --> Facade[ITrackMeUpApplication]
+    WinUI[WinUI desktop app] --> Facade[ITrackMeUpApplication]
     CLI[Spectre CLI] --> Facade
     Taskbar[Taskbar integration] --> Facade
     Facade --> Runtime[Single installation runtime]
-    Runtime --> Services[Application and infrastructure services]
+    Runtime --> Services[Core services]
     Services --> SQLite[(Local SQLite history)]
-    Services --> Captures[(Retained screenshots)]
+    Services --> Captures[(Saved screenshots)]
     Services --> Search[Local search index]
     Services --> OCR[On-device OCR]
     Services --> Provider[Optional AI provider]
     Services --> Reports[Local HTML reports]
 ```
 
-The process that acquires the installation-scoped mutex owns the runtime. Other
-same-user processes connect through the versioned named-pipe protocol. Endpoint
-names are derived from a hash of the installation identifier so the raw
-identifier is not exposed through Windows kernel-object names.
+An installation-specific mutex (a Windows lock) decides which process runs the
+tracker. Other processes running as the same Windows user connect through a
+named pipe using a versioned protocol. The mutex and pipe names use a hash of
+the installation ID, so their Windows object names don't expose the ID itself.
 
-## Project responsibilities
+## What each project does
 
-| Project | Responsibility |
+| Project | What belongs here |
 | --- | --- |
-| `TrackMeUp/` | WinUI composition root, windows, controls, native presentation, and application startup. |
-| `TrackMeUp.Core/` | Application facade, contracts, runtime ownership, persistence, capture, retention, reporting, OS interop, network adapters, and localization. |
-| `TrackMeUp.Presentation/` | UI-neutral projections and view models consumed by presentation surfaces. |
-| `TrackMeUp.Cli/` | Spectre.Console commands and rendering over the shared application facade. |
-| `TrackMeUp.Taskbar/` | Taskbar integration over Core services. |
-| `TrackMeUp.Search/` | Local indexing, query validation, analyzers, and result retrieval. |
-| `TrackMeUp.Ocr/` | Windows on-device screenshot OCR boundary. |
-| `TrackMeUp.Reports.Web/` | Source and deterministic distribution for local interactive reports. |
-| `TrackMeUp.*.Tests/` | Core, presentation, CLI, search, and OCR contracts and regression coverage. |
+| `TrackMeUp/` | Windows, controls, app startup, and wiring services into the WinUI app. |
+| `TrackMeUp.Core/` | Shared app interface and data types, tracker ownership, storage, screenshots, cleanup, reports, Windows and network calls, and translations. |
+| `TrackMeUp.Presentation/` | Data and view models used by the UI, without depending on a particular UI framework. |
+| `TrackMeUp.Cli/` | Spectre.Console commands and output, using the shared app interface. |
+| `TrackMeUp.Taskbar/` | Taskbar features that call Core services. |
+| `TrackMeUp.Search/` | The local search index, query checks, text analysis, and results. |
+| `TrackMeUp.Ocr/` | Reading text from screenshots with Windows OCR on the PC. |
+| `TrackMeUp.Reports.Web/` | Source and reproducible bundled files for local interactive reports. |
+| `TrackMeUp.*.Tests/` | Tests for Core, the UI models, CLI, search, and OCR, including checks for previously fixed bugs. |
 
-## Application boundary
+## Where app behavior belongs
 
-`ITrackMeUpApplication` is the product behavior boundary. WinUI views,
-code-behind, controls, dialogs, Spectre commands, prompts, and renderers may
-collect input, bind or render DTOs, and invoke the facade. They do not directly
-own persistence, environment access, HTTP, capture, retention, startup, or OS
-interop.
+The UI and CLI call `ITrackMeUpApplication` to do work. Views, code-behind,
+controls, dialogs, commands, prompts, and renderers collect input and display
+data transfer objects (DTOs). They don't access storage, environment variables,
+HTTP, capture, cleanup, startup, or Windows APIs directly.
 
-The concrete `TrackMeUpApplication` composes Core services. Mutations are
-serialized in the application layer so the desktop and CLI cannot race separate
-stores or trackers.
+`TrackMeUpApplication` brings the Core services together. It handles changes
+one at a time, so the desktop app and CLI can't make conflicting updates through
+separate stores or trackers.
 
-### Internal maintenance seams
+### Keeping the implementation manageable
 
-The public facade remains the only product-behavior boundary, but cohesive
-implementation details are kept in focused internal collaborators:
+`ITrackMeUpApplication` remains the public way to use app behavior. Internally,
+smaller classes handle related pieces of work:
 
-- `WorldClockApplicationService` owns world-clock queries, selection rules,
-  conversion validation, and weather-key coordination. The facade still owns
-  mutation serialization and the single settings-persistence boundary.
-- `RuntimeHost` owns runtime acquisition and shutdown. `RuntimeMutexLease`
-  preserves thread-affine mutex ownership, `RuntimePipeServer` owns same-user
-  pipe acceptance and request draining, and `RuntimeRequestDispatcher` maps the
-  versioned wire catalog to the application facade.
+- `WorldClockApplicationService` handles clock queries, city selection rules,
+  time-conversion checks, and weather keys. The application facade still
+  processes changes one at a time and controls settings writes.
+- `RuntimeHost` starts and stops the shared tracker. `RuntimeMutexLease` keeps
+  the mutex on the thread that acquired it. `RuntimePipeServer` accepts pipe
+  connections from the same Windows user and handles pending requests during
+  shutdown. `RuntimeRequestDispatcher` routes versioned protocol requests to
+  the application facade.
 
-These collaborators are not alternate facades or runtimes. They isolate one
-reason to change while preserving the same mutex, named pipe, persistence, and
-failure contracts.
+These classes keep each job small while using the same app interface, tracker,
+mutex, named pipe, storage rules, and error behavior.
 
-### Automated architecture gates
+### Checks that keep this structure in place
 
-`ArchitectureBoundaryContractTests` locks the approved project-reference graph
-and rejects direct infrastructure work in WinUI code-behind or Spectre command
-and rendering sources. Runtime catalog tests require every typed operation to
-remain represented in both dispatch and client code. CI enables .NET analyzers,
-code-style enforcement, and warning-as-error behavior for tests and every
-Release architecture build.
+`ArchitectureBoundaryContractTests` checks which projects can reference each
+other. It also rejects direct storage, network, and other infrastructure work
+in WinUI code-behind or Spectre commands and renderers. Runtime catalog tests
+check that both the dispatcher and client handle every typed operation.
+CI runs .NET analyzers and code-style checks, and treats warnings as errors
+in tests and Release builds for every supported architecture.
 
-## Local data flow
+## How data moves through the app
 
-1. Activity and system services collect the enabled non-content signals.
-2. `LocalStore` and `SqliteActivityStore` persist settings, activity, analysis,
-   and metadata locally.
-3. Screenshot artifacts use the explicit
-   `yyyy-MM/week-YYYY-WW/yyyy-MM-dd` hierarchy owned by
-   `ScreenshotStorageLayout`.
-4. On-device OCR and local search remain usable without an AI provider.
-5. Optional AI-provider requests are built only for enabled features and use
-   the environment-variable secret flow.
-6. Reports are generated locally from the retained data and bundled web assets.
+1. Activity and system services collect the measurements you've enabled, such
+   as input counts, without recording the content of keys or clicks.
+2. `LocalStore` and `SqliteActivityStore` save settings, activity, analysis,
+   and related details on the PC.
+3. `ScreenshotStorageLayout` organizes screenshots in folders using
+   `yyyy-MM/week-YYYY-WW/yyyy-MM-dd`.
+4. OCR and local search work without an AI provider.
+5. AI requests are built only for enabled features, with keys read from
+   environment variables.
+6. Reports use saved local data and the web files included with the app.
 
-See [Privacy and data flow](PRIVACY.md) for the user-facing data inventory and
-transmission boundaries.
+See the [privacy guide](PRIVACY.md) for what is saved and what can leave the PC.
 
-## Failure and safety model
+## Handling errors and sensitive operations
 
-- Invalid input, unsupported states, missing required configuration, and
-  persistence or interop failures fail explicitly.
-- Destructive data operations require deliberate confirmation and target only
-  validated TrackMeUp-owned paths.
+- Report invalid input, unsupported states, missing required settings, and
+  storage or Windows API failures clearly.
+- Ask for confirmation before destructive actions. Check that every target
+  path belongs to TrackMeUp.
 - Secrets never travel through CLI arguments, settings, history, IPC
   diagnostics, or test snapshots.
-- Presentation failures do not create an alternative tracking runtime.
-- Optional features do not silently become mandatory fallbacks.
+- Don't start another tracker if the UI fails.
+- Don't silently turn an optional feature into a required fallback.
 
 ## Adding a feature
 
-1. Define or extend DTOs and the `ITrackMeUpApplication` contract.
-2. Implement behavior and I/O behind a Core application or infrastructure service.
-3. Keep WinUI and CLI changes passive and localized.
-4. Add focused Core or presentation contract tests.
-5. Document privacy, accessibility, failure, and migration implications.
-6. Update third-party notices or asset provenance when new material is introduced.
+1. Add or update the DTOs and methods in `ITrackMeUpApplication`.
+2. Put behavior and I/O in a Core application or infrastructure service.
+3. Keep WinUI and CLI code limited to input and display, and localize visible text.
+4. Add focused tests for the Core or presentation contracts you changed.
+5. Explain any effects on privacy, accessibility, error handling, or migration.
+6. Record the licenses and sources of any new third-party code or assets.
 
-Start with [CONTRIBUTING.md](../CONTRIBUTING.md) and validate visible behavior
-against the [manual validation guide](VALIDATION.md).
+Start with the [contributor guide](../CONTRIBUTING.md) and use the
+[manual checks](VALIDATION.md) to check how the change looks and behaves.

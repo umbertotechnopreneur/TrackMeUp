@@ -1,18 +1,17 @@
-# AI Contribution Policy
+# Using AI tools when contributing
 
-AI tools may assist with documentation, tests, debugging ideas, refactoring proposals, or implementation drafts.
+You're welcome to use AI tools for documentation, tests, debugging, or code changes.
 
-A human contributor remains responsible for reviewing, understanding, testing, and approving the final change.
+You're still responsible for what you submit. Read the result, make sure you understand it, test it, and decide whether it's ready.
 
-## Requirements
+## What to keep out of AI tools
 
-- Do not submit proprietary code or confidential information to AI tools.
-- Do not submit credentials, private endpoints, or personal data.
-- Do not submit material with unknown or incompatible licensing.
-- Do not present AI output as independently verified without human review.
+- Proprietary code or confidential information.
+- Passwords, API keys, private service addresses, or personal data.
+- Material whose license is unknown or doesn't allow this use.
 
-## Disclosure
+## What to mention in your pull request
 
-For material AI-assisted contributions, disclose assistance in the pull request and summarize human validation performed.
+If AI played a substantial part in your contribution, tell us what it helped with and what you personally reviewed and tested. Don't call generated output independently verified unless a person has reviewed it.
 
-Maintainers may request provenance notes, rationale, additional tests, or rewrites when a submission is unclear.
+If something isn't clear, a maintainer may ask where it came from, why you chose it, or for more tests or a rewrite.

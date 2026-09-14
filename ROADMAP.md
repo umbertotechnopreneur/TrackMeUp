@@ -1,44 +1,44 @@
 # TrackMeUp roadmap
 
-TrackMeUp is a local-first Windows workday memory. The roadmap prioritizes
-trust, recall quality, and a polished native experience before feature volume.
-It describes direction rather than a delivery promise.
+We're working toward a first public preview that's useful, reliable, and easy
+to use on Windows. This is what we're focusing on. Plans can change, and this
+page isn't a promise of delivery dates.
 
-## Now — public-preview readiness
+## What we're working on now
 
-- Close source, binary, dependency, and asset publication checks.
-- Stabilize the independent world-clock experience and current WinUI work.
-- Keep restore, build, tests, formatting, and dependency audits green on x64,
-  x86, and ARM64.
-- Publish real product screenshots, contributor guidance, and reproducible
-  release evidence.
-- Protect local data flows, destructive actions, secrets, diagnostics, and
-  optional AI-provider requests with explicit user control.
+- Finish checking the code, packages, dependencies, and artwork before publication.
+- Fix remaining issues in World clocks and the Windows interface.
+- Keep package restore, builds, tests, formatting, and dependency checks passing
+  on x64, x86, and ARM64.
+- Share real app screenshots, clear contributor guides, and release checks
+  others can repeat.
+- Check that users control what is saved, deleted, or sent to an AI provider
+  or diagnostics service, and that secrets stay protected.
 
-## Next — first public preview
+## Next: the first public preview
 
-- Publish a signed prerelease with checksums, an SBOM, complete third-party
-  notices, known limitations, and an exact validation record.
-- Improve the path from remembered fragment to recovered screenshot, local OCR
-  text, application context, or report.
-- Expand performance and accessibility evidence on realistic retained histories
-  and multiple Windows scaling configurations.
-- Turn contributor feedback into small, independently reviewable issues.
+- Publish a signed preview with file checksums, a software bill of materials
+  (SBOM), third-party notices, known limitations, and a record of the checks run.
+- Make it easier to find a screenshot, text, app, or report from the few details
+  you remember.
+- Check speed and accessibility with realistic amounts of saved history and
+  different Windows display scales.
+- Turn feedback into small issues that contributors can pick up.
 
-## Later — community-shaped improvements
+## After that
 
-- Refine import, export, and multi-installation workflows without adding hidden sync.
-- Extend local reporting and search where measured user value justifies the data footprint.
-- Explore integrations only when their transmitted data and consent boundaries are explicit.
-- Promote proven contributor proposals from issues into this roadmap.
+- Make it easier to move history between installations, with no hidden sync.
+- Improve local reports and search when they solve a real need and justify the extra data stored.
+- Consider integrations when we can clearly explain what they send and ask users to opt in.
+- Add useful ideas from contributors to this roadmap once we've worked through them together.
 
-## Product boundaries
+## What we want to keep
 
-- Local-first behavior remains the default.
+- Your history stays on your PC by default.
 - Screenshots, AI assistance, and location sharing remain independent choices.
-- TrackMeUp does not create a second tracking runtime for another interface.
-- Shared AI features remain vendor-agnostic and use the configured AI provider.
-- Privacy and retention controls are product capabilities, not premium gates.
+- The desktop app and CLI use the same tracker.
+- AI features work with the AI provider you select.
+- Privacy controls and settings for how long data is kept remain available without a paid upgrade.
 
-Discuss focused proposals through the
+Have a specific idea? Share it through the
 [feature request form](https://github.com/umbertotechnopreneur/TrackMeUp/issues/new?template=feature_request.yml).

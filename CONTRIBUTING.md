@@ -1,32 +1,33 @@
 # Contributing to TrackMeUp
 
-Thank you for helping improve TrackMeUp.
+Want to fix a bug, improve a guide, or suggest something new? You're welcome to help.
 
-TrackMeUp is an open-source, local-first Windows product and is still evolving. Small, focused changes with clear validation are easier to review and merge.
+TrackMeUp is an open-source Windows app that keeps your history on your PC by default. It's still in development. Start with a small change and show how you checked it; that makes review easier for everyone.
 
-## Before Opening an Issue or Pull Request
+## Before you start
 
-- Read `README.md` and `docs/PRIVACY.md`.
-- Read `AGENTS.md` and `.github/copilot-instructions.md` for repository guardrails.
+- Read the [README](README.md) and [privacy guide](docs/PRIVACY.md).
+- Check [AGENTS.md](AGENTS.md) and the [repository instructions](.github/copilot-instructions.md) for development rules.
 - Search existing issues and pull requests before opening a new one.
 - Keep credentials, API keys, tokens, personal data, and private local paths out of commits, logs, screenshots, and issue reports.
-- Use `SECURITY.md` for vulnerabilities; do not publish exploitable details in public issues.
-- For larger architectural changes, open an issue first.
+- If you've found a security problem, follow [SECURITY.md](SECURITY.md) and report it privately.
+- Open an issue before making a large change to how the app works.
 
-## Development Setup
+## Set up your copy
 
-Use PowerShell 7.
+Use PowerShell 7. After cloning the repository, run this once to enable the formatting hook:
 
 ```powershell
 pwsh -NoProfile -File ./scripts/Install-GitHooks.ps1
 ```
 
-Install the repository hooks once per clone. Before every commit, the hook
-automatically fixes C# whitespace in the staged snapshot with the same formatter
-as CI. Fully staged working files receive the same fixes. Partially staged
-working files stay untouched, so unstaged edits cannot enter the commit.
-Changing a staged `.editorconfig` formats all indexed C# sources using the staged
-rules. Formatter failures stop the commit without bypassing the check.
+Before each commit, the hook fixes C# spacing with the same formatter used by
+the automated checks. If you've staged a whole file, it also fixes your working
+copy. If you've staged only part of a file, it leaves your working copy alone
+and formats only the staged version. Your unstaged edits stay out of the commit.
+If you stage a change to `.editorconfig`, the hook applies those rules to all
+C# files in the Git index. If formatting fails, the commit stops; fix the error
+before trying again.
 
 C# sources use four spaces for indentation, LF line endings, a final newline,
 and no trailing whitespace. Git checkout and the formatter share these rules so
@@ -39,8 +40,10 @@ pwsh -NoProfile -File ./scripts/Format-Code.ps1
 pwsh -NoProfile -File ./scripts/Format-Code.ps1 -Verify
 ```
 
-These whitespace-only commands do not require NuGet restore. CI runs the same
-verification before restoring dependencies; it never rewrites pushed commits.
+These commands only check spacing and don't need a NuGet restore. The automated
+checks run the same verification and won't rewrite commits you've pushed.
+
+To restore packages, build, and run tests:
 
 ```powershell
 pwsh -NoProfile -Command "dotnet restore .\TrackMeUp.slnx"
@@ -48,7 +51,7 @@ pwsh -NoProfile -Command "dotnet build .\TrackMeUp.slnx -p:Platform=x64 -warnase
 pwsh -NoProfile -Command "dotnet test .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
 ```
 
-You can also use the repository script entrypoint:
+Or use the repository script:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Preflight
@@ -56,33 +59,33 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Build -Platform x64 -WarnA
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
 ```
 
-## Development Rules
+## A few development rules
 
-- Keep dependency direction clean: presentation surfaces stay passive and application behavior lives in `TrackMeUp.Core` services.
-- Fail fast on invalid input and unsupported state; do not add silent fallbacks unless behavior is explicitly documented.
-- Do not add backward-compatibility layers for superseded contracts unless explicitly requested.
-- Do not create a second tracking runtime; use the existing mutex and named-pipe ownership flow.
-- Never pass secrets by command arguments or persist them in settings/history/logs/diagnostics.
+- Keep app behavior in `TrackMeUp.Core` services. The UI and CLI should collect input, display results, and call `ITrackMeUpApplication`.
+- Report invalid input and unsupported states clearly. Don't silently try another path unless that behavior is documented.
+- Remove replaced contracts instead of adding compatibility code, unless compatibility was explicitly requested.
+- Use the existing shared tracker, mutex, and named pipe. Don't start a second tracker.
+- Never pass secrets in command arguments or save them in settings, history, logs, or diagnostics.
 - Start every first-party C# source file with `// SPDX-License-Identifier: MIT`; preserve original notices in generated or third-party files.
-- Keep changes scoped and avoid unrelated formatting churn.
+- Keep your change focused. Leave unrelated files and formatting alone.
 
-## Pull Request Expectations
+## Opening a pull request
 
-Describe:
+Tell us:
 
 - what changed;
 - why it changed;
-- which project/layer owns the behavior;
-- how it was validated;
+- where the behavior is implemented;
+- how you checked it;
 - known limitations or follow-up work.
 
 Keep each PR focused. Do not include build output, generated artifacts, or unrelated edits.
 
-## AI-Assisted Contributions
+## If you use AI tools
 
-AI tools may assist with drafts, tests, refactors, and implementation proposals. Human contributors remain responsible for correctness, security, and licensing.
+You can use AI tools to help write, test, or improve a change. Make sure you understand the result, review it, and check that it's correct, secure, and properly licensed.
 
-For material AI-assisted contributions, disclose usage and summarize your review/validation in the PR. See `AI_CONTRIBUTION_POLICY.md`.
+If AI played a substantial part, say what it helped with and how you reviewed and checked the result in your pull request. See the [AI contribution policy](AI_CONTRIBUTION_POLICY.md).
 
 ## License and Provenance
 

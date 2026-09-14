@@ -1,29 +1,23 @@
-# TrackMeUp Support
+# Need a hand with TrackMeUp?
 
-Use GitHub issues for:
+Open a [GitHub issue](https://github.com/umbertotechnopreneur/TrackMeUp/issues) if you've found a bug, spotted a confusing bit of documentation, or need help building or testing the app. You can suggest a feature there too.
 
-- reproducible bugs;
-- documentation issues;
-- build/test setup problems;
-- focused feature proposals.
+Have a quick look at existing issues first. Someone may already have an answer or be working on the same thing.
 
-Before opening a new issue, search existing issues first.
+## Help us understand what happened
 
-## What to Include
+You don't need a long report. A few details help:
 
-Please include:
+- your app version or commit, and Windows version;
+- the command you ran or the buttons you clicked;
+- what you expected to happen;
+- what happened instead;
+- logs or screenshots, if useful, with private information removed.
 
-- app version or commit;
-- Windows version;
-- exact command or UI path used;
-- expected result;
-- actual result;
-- redacted logs or screenshots when useful.
+Let us know whether you ran the app from source, installed a package, or only ran a build or tests. That helps us reproduce the problem.
 
-State whether evidence comes from local run, build/test validation, or packaged install.
+## Before you post
 
-## What Not to Include
+Check that your report doesn't include passwords, API keys, private service addresses, personal data, or confidential material.
 
-Never post credentials, API keys, private endpoints, personal data, or confidential material.
-
-Suspected vulnerabilities must be reported privately through `SECURITY.md`.
+If it looks like a security problem, please [report it privately](SECURITY.md).
