@@ -116,8 +116,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    /// <summary>Restores the existing UI, or creates it when a headless runtime receives a redirected launch.</summary>
-    internal void HandleRedirectedActivation(AppActivationArguments activation)
+    /// <summary>Queues the managed launch snapshot to restore the existing UI or promote a headless runtime.</summary>
+    internal void HandleRedirectedActivation(RedirectedActivationRequest activation)
     {
         ArgumentNullException.ThrowIfNull(activation);
         if (!_dispatcherQueue.TryEnqueue(() => HandleRedirectedActivationOnUiThread(activation)))
@@ -127,17 +127,9 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    private void HandleRedirectedActivationOnUiThread(AppActivationArguments activation)
+    private void HandleRedirectedActivationOnUiThread(RedirectedActivationRequest activation)
     {
-        var options = activation.Kind switch
-        {
-            ExtendedActivationKind.Launch when activation.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch =>
-                WindowsLaunchArguments.Parse(launch.Arguments, "TrackMeUp.exe"),
-            ExtendedActivationKind.StartupTask => StartupActivationPolicy.Apply(LaunchOptions.Parse([]), activation.Kind),
-            // Unsupported payloads cannot safely be replaced with an ordinary launch and its tracking defaults.
-            _ => throw new ArgumentException("Unsupported redirected TrackMeUp activation.", nameof(activation))
-        };
-
+        var options = activation.Options;
         _logger.LogInformation("Redirected activation received. Mode={Mode} ActivationKind={ActivationKind}", options.Mode, activation.Kind);
         switch (options.Mode)
         {

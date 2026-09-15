@@ -4,6 +4,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using TrackMeUp.Runtime;
+using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
@@ -12,12 +13,12 @@ public static class Program
 {
     private const string MainInstanceKey = "TrackMeUp.Main";
     private static readonly object ActivationGate = new();
-    private static readonly Queue<AppActivationArguments> PendingActivations = new();
+    private static readonly Queue<RedirectedActivationRequest> PendingActivations = new();
     private static App? _application;
 
     /// <summary>Redirects long-lived activations before XAML, services, or windows are initialized.</summary>
     [STAThread]
-    public static async Task Main(string[] arguments)
+    public static void Main(string[] arguments)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
@@ -28,7 +29,8 @@ public static class Program
             if (!mainInstance.IsCurrent)
             {
                 // Redirection is terminal for this process: the registered instance receives the activation and this process creates no runtime or window.
-                await mainInstance.RedirectActivationToAsync(activation);
+                StartupThreadService.CompleteActivationRedirection(
+                    () => mainInstance.RedirectActivationToAsync(activation).AsTask());
                 return;
             }
 
@@ -60,15 +62,44 @@ public static class Program
 
     private static void MainInstance_Activated(object? sender, AppActivationArguments activation)
     {
+        // Consume the WinRT payload before returning from its callback; queues must retain only managed values.
+        var request = CaptureRedirectedActivation(activation);
         lock (ActivationGate)
         {
             if (_application is null)
             {
-                PendingActivations.Enqueue(activation);
+                PendingActivations.Enqueue(request);
                 return;
             }
 
-            _application.HandleRedirectedActivation(activation);
+            _application.HandleRedirectedActivation(request);
         }
     }
+
+    private static RedirectedActivationRequest CaptureRedirectedActivation(AppActivationArguments activation)
+    {
+        ArgumentNullException.ThrowIfNull(activation);
+        var kind = activation.Kind;
+        var options = kind switch
+        {
+            ExtendedActivationKind.Launch when activation.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch =>
+                WindowsLaunchArguments.Parse(launch.Arguments, "TrackMeUp.exe"),
+            ExtendedActivationKind.StartupTask => StartupActivationPolicy.Apply(LaunchOptions.Parse([]), kind),
+            // Invalid payloads must fail on the receiving callback instead of entering the UI queue with tracking defaults.
+            _ => throw new ArgumentException("Unsupported redirected TrackMeUp activation.", nameof(activation))
+        };
+
+        if (options.Mode is not (LaunchMode.Ui or LaunchMode.Reports or LaunchMode.Background))
+        {
+            throw new ArgumentException("Unsupported redirected TrackMeUp launch mode.", nameof(activation));
+        }
+
+        // Copy the only collection so the immutable request owns every value needed after the sender has exited.
+        return new RedirectedActivationRequest(
+            options with { RemainingArguments = Array.AsReadOnly(options.RemainingArguments.ToArray()) },
+            kind);
+    }
 }
+
+/// <summary>Contains the managed snapshot consumed after a redirected WinRT activation callback returns.</summary>
+internal sealed record RedirectedActivationRequest(LaunchOptions Options, ExtendedActivationKind Kind);
