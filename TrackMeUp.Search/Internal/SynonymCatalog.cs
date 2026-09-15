@@ -1,119 +1,311 @@
 // SPDX-License-Identifier: MIT
 
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
 
 namespace TrackMeUp.Search.Internal;
 
+/// <summary>Matches original query spans and creates a bounded set of equivalent queries.</summary>
 internal sealed class SynonymCatalog
 {
-    private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, ImmutableArray<string>>> _byLanguage;
+    private readonly IReadOnlyDictionary<string, TrieNode> _byLanguage;
     private readonly int _maximumExpansions;
 
+    /// <summary>Builds one ordinal prefix tree per language from caller-provided groups.</summary>
     internal SynonymCatalog(SearchOptions options)
     {
         _maximumExpansions = options.MaxSynonymExpansions;
-        var mutable = new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.Ordinal);
-
+        var languages = new Dictionary<string, TrieNode>(StringComparer.Ordinal);
         foreach (var set in options.SynonymSets)
         {
             var language = TextNormalization.NormalizeLanguage(set.Language);
-            if (!mutable.TryGetValue(language, out var languageMap))
+            if (!languages.TryGetValue(language, out var root))
             {
-                languageMap = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-                mutable.Add(language, languageMap);
+                root = new TrieNode();
+                languages.Add(language, root);
             }
 
-            var normalizedTerms = set.Terms
-                .Select(TextNormalization.ForAnalysis)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-
-            foreach (var term in normalizedTerms)
+            var terms = set.Terms.Select(TextNormalization.ForAnalysis).Distinct(StringComparer.Ordinal).ToArray();
+            foreach (var term in terms)
             {
-                if (!languageMap.TryGetValue(term, out var expansions))
+                var node = root;
+                foreach (var character in term)
                 {
-                    expansions = new HashSet<string>(StringComparer.Ordinal);
-                    languageMap.Add(term, expansions);
+                    if (!node.Children.TryGetValue(character, out var child))
+                    {
+                        child = new TrieNode();
+                        node.Children.Add(character, child);
+                    }
+
+                    node = child;
                 }
 
-                foreach (var candidate in normalizedTerms)
+                foreach (var alternative in terms)
                 {
-                    if (!string.Equals(candidate, term, StringComparison.Ordinal))
+                    if (alternative != term)
                     {
-                        expansions.Add(candidate);
+                        node.Alternatives.Add(alternative);
                     }
                 }
             }
         }
 
-        _byLanguage = mutable.ToDictionary(
-            language => language.Key,
-            language => (IReadOnlyDictionary<string, ImmutableArray<string>>)language.Value.ToDictionary(
-                term => term.Key,
-                term => term.Value.Order(StringComparer.Ordinal).ToImmutableArray(),
-                StringComparer.Ordinal),
-            StringComparer.Ordinal);
+        _byLanguage = languages;
     }
 
+    /// <summary>Expands longest non-overlapping spans without re-expanding replacement text.</summary>
     internal ImmutableArray<string> Expand(string query, string? language)
     {
-        if (string.IsNullOrWhiteSpace(language))
+        if (string.IsNullOrWhiteSpace(language) || ResolveLanguage(language) is not { } root)
         {
+            // Unconfigured languages intentionally receive no synonym expansion.
             return [];
         }
 
-        var normalizedLanguage = TextNormalization.NormalizeLanguage(language);
-        if (!_byLanguage.TryGetValue(normalizedLanguage, out var languageMap))
+        var normalized = TextNormalization.ForAnalysis(query);
+        var spans = FindSpans(normalized, root, TextNormalization.AnalyzerLanguage(language) == "zh");
+        var variants = ImmutableArray.CreateBuilder<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal) { normalized };
+        var pending = new Queue<ImmutableArray<Replacement>>();
+        pending.Enqueue([]);
+
+        // Breadth-first traversal favors fewer changes. Both generated states and output
+        // stop at the same budget, so several matching spans cannot grow exponentially.
+        while (pending.TryDequeue(out var replacements))
         {
-            var primaryLanguage = TextNormalization.AnalyzerLanguage(normalizedLanguage);
-            if (!_byLanguage.TryGetValue(primaryLanguage, out languageMap))
+            var first = replacements.IsEmpty ? 0 : replacements[^1].SpanIndex + 1;
+            for (var index = first; index < spans.Count; index++)
             {
-                return [];
-            }
-        }
-
-        var normalizedQuery = TextNormalization.ForAnalysis(query);
-        var expansions = new HashSet<string>(StringComparer.Ordinal);
-
-        AddExpansions(languageMap, normalizedQuery, expansions);
-
-        var queryTerms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        for (var index = 0; index < queryTerms.Length && expansions.Count < _maximumExpansions; index++)
-        {
-            if (!languageMap.TryGetValue(queryTerms[index], out var replacements))
-            {
-                continue;
-            }
-
-            foreach (var replacement in replacements)
-            {
-                var variant = queryTerms.ToArray();
-                variant[index] = replacement;
-                expansions.Add(string.Join(' ', variant));
-                if (expansions.Count >= _maximumExpansions)
+                foreach (var alternative in spans[index].Alternatives)
                 {
-                    break;
+                    var next = replacements.Add(new Replacement(index, alternative));
+                    var variant = BuildVariant(normalized, spans, next);
+                    if (!seen.Add(variant))
+                    {
+                        continue;
+                    }
+
+                    variants.Add(variant);
+                    if (variants.Count == _maximumExpansions)
+                    {
+                        return variants.ToImmutable();
+                    }
+
+                    pending.Enqueue(next);
                 }
             }
         }
 
-        expansions.Remove(normalizedQuery);
-        return [.. expansions.Order(StringComparer.Ordinal).Take(_maximumExpansions)];
+        return variants.ToImmutable();
     }
 
-    private static void AddExpansions(
-        IReadOnlyDictionary<string, ImmutableArray<string>> languageMap,
-        string query,
-        ISet<string> target)
+    /// <summary>Resolves exact tags, caller-defined primary tags, and deliberate product aliases.</summary>
+    private TrieNode? ResolveLanguage(string language)
     {
-        if (!languageMap.TryGetValue(query, out var values))
+        var normalized = TextNormalization.NormalizeLanguage(language);
+        if (_byLanguage.TryGetValue(normalized, out var exact))
         {
-            return;
+            return exact;
         }
 
-        foreach (var value in values)
+        var primary = TextNormalization.AnalyzerLanguage(normalized);
+        if (_byLanguage.TryGetValue(primary, out var generic))
         {
-            target.Add(value);
+            return generic;
         }
+
+        var alias = primary switch
+        {
+            "en" => "en-us",
+            "it" => "it-it",
+            "fr" => "fr-fr",
+            "de" => "de-de",
+            "es" => "es-es",
+            "vi" => "vi-vn",
+            "ko" => "ko-kr",
+            "pt-br" => "pt-br",
+            "pt" => "pt-pt",
+            "zh" when normalized is "zh" or "zh-cn" or "zh-sg" or "zh-my"
+                || normalized.StartsWith("zh-hans-", StringComparison.Ordinal) => "zh-hans",
+            _ => null
+        };
+
+        // Traditional Chinese and other unconfigured scripts never borrow the simplified catalog.
+        return alias is not null && _byLanguage.TryGetValue(alias, out var localized) ? localized : null;
     }
+
+    /// <summary>Finds longest phrases with word boundaries and dictionary boundaries between Han characters.</summary>
+    private List<MatchedSpan> FindSpans(string query, TrieNode root, bool allowHanBoundaries)
+    {
+        var matches = new List<MatchedSpan>();
+        var protectedTokens = FindProtectedTokens(query);
+        var protectedIndex = 0;
+        for (var start = 0; start < query.Length && matches.Count < _maximumExpansions; start++)
+        {
+            while (protectedIndex < protectedTokens.Count && protectedTokens[protectedIndex].End <= start)
+            {
+                protectedIndex++;
+            }
+
+            var protectedStart = protectedIndex < protectedTokens.Count ? protectedTokens[protectedIndex].Start : query.Length;
+            if (start >= protectedStart)
+            {
+                start = protectedTokens[protectedIndex].End - 1;
+                continue;
+            }
+
+            if (!IsBoundary(query, start, allowHanBoundaries))
+            {
+                continue;
+            }
+
+            var node = root;
+            MatchedSpan? longest = null;
+            for (var end = start; end < protectedStart && node.Children.TryGetValue(query[end], out node); end++)
+            {
+                if (node.Alternatives.Count > 0 && IsBoundary(query, end + 1, allowHanBoundaries))
+                {
+                    longest = new MatchedSpan(start, end + 1, [.. node.Alternatives]);
+                }
+            }
+
+            if (longest is not null)
+            {
+                matches.Add(longest);
+                start = longest.End - 1;
+            }
+        }
+
+        return matches;
+    }
+
+    /// <summary>Locates literal tokens before matching so a phrase cannot cross into an address or filename.</summary>
+    private static List<(int Start, int End)> FindProtectedTokens(string query)
+    {
+        var result = new List<(int Start, int End)>();
+        for (var start = 0; start < query.Length; start++)
+        {
+            if (char.IsWhiteSpace(query[start]))
+            {
+                continue;
+            }
+
+            var end = start;
+            while (end < query.Length && !char.IsWhiteSpace(query[end]))
+            {
+                end++;
+            }
+
+            if (IsProtectedToken(query.AsSpan(start, end - start)))
+            {
+                result.Add((start, end));
+            }
+
+            start = end - 1;
+        }
+
+        return result;
+    }
+
+    /// <summary>Preserves paths, addresses, URLs, and dotted identifiers as literal query input.</summary>
+    private static bool IsProtectedToken(ReadOnlySpan<char> token)
+    {
+        if (token.ContainsAny('\\', '/', '@') || token.Contains(':'))
+        {
+            return true;
+        }
+
+        for (var index = 1; index + 1 < token.Length; index++)
+        {
+            if (token[index] == '.' && char.IsLetterOrDigit(token[index - 1]) && char.IsLetterOrDigit(token[index + 1]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Recognizes Unicode word edges without splitting surrogate pairs or Korean syllables.</summary>
+    private static bool IsBoundary(string text, int position, bool allowHanBoundaries)
+    {
+        if (position == 0 || position == text.Length)
+        {
+            return true;
+        }
+
+        if (char.IsLowSurrogate(text[position]))
+        {
+            return false;
+        }
+
+        var leftIndex = position - 1;
+        if (char.IsLowSurrogate(text[leftIndex]) && leftIndex > 0)
+        {
+            leftIndex--;
+        }
+
+        var left = Rune.GetRuneAt(text, leftIndex);
+        var right = Rune.GetRuneAt(text, position);
+        return !IsWordRune(left) || !IsWordRune(right)
+            || (allowHanBoundaries && (IsHan(left) || IsHan(right)));
+    }
+
+    /// <summary>Treats letters, digits, combining marks, and connectors as one word.</summary>
+    private static bool IsWordRune(Rune rune) => Rune.IsLetterOrDigit(rune)
+        || Rune.GetUnicodeCategory(rune) is UnicodeCategory.NonSpacingMark
+            or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.ConnectorPunctuation;
+
+    /// <summary>Identifies Han ideographs, including supplementary-plane extensions.</summary>
+    private static bool IsHan(Rune rune) => rune.Value is >= 0x3400 and <= 0x4DBF
+        or >= 0x4E00 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF
+        or >= 0x20000 and <= 0x2FA1F or >= 0x30000 and <= 0x323AF;
+
+    /// <summary>Applies selected original spans while preserving every unmatched part of the query.</summary>
+    private static string BuildVariant(string query, IReadOnlyList<MatchedSpan> spans, ImmutableArray<Replacement> replacements)
+    {
+        var builder = new StringBuilder(query.Length);
+        var cursor = 0;
+        foreach (var replacement in replacements)
+        {
+            var span = spans[replacement.SpanIndex];
+            builder.Append(query, cursor, span.Start - cursor);
+            // A Latin alias replacing a Han span needs separation from adjacent query text.
+            if (builder.Length > 0 && EndsWithWord(builder) && IsWordRune(Rune.GetRuneAt(replacement.Text, 0)))
+            {
+                builder.Append(' ');
+            }
+
+            builder.Append(replacement.Text);
+            if (span.End < query.Length && IsWordRune(Rune.GetRuneAt(query, span.End)) && EndsWithWord(builder))
+            {
+                builder.Append(' ');
+            }
+
+            cursor = span.End;
+        }
+
+        builder.Append(query, cursor, query.Length - cursor);
+        return builder.ToString();
+    }
+
+    /// <summary>Checks the last complete Unicode scalar when separating an inserted alias.</summary>
+    private static bool EndsWithWord(StringBuilder text)
+    {
+        var last = text[^1];
+        var rune = char.IsLowSurrogate(last) && text.Length > 1
+            ? new Rune(text[^2], last)
+            : new Rune(last);
+        return IsWordRune(rune);
+    }
+
+    private sealed class TrieNode
+    {
+        internal Dictionary<char, TrieNode> Children { get; } = [];
+        internal SortedSet<string> Alternatives { get; } = new(StringComparer.Ordinal);
+    }
+
+    private sealed record MatchedSpan(int Start, int End, ImmutableArray<string> Alternatives);
+    private sealed record Replacement(int SpanIndex, string Text);
 }

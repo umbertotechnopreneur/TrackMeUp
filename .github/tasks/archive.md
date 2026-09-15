@@ -4,6 +4,30 @@ This archive tracks completed development tasks for reference, historical alignm
 
 ---
 
+## [2026-09-15] Expand multilingual search synonyms and phrase matching
+
+### Completed
+
+- [x] Replace the 30-group catalog with 300 concepts per locale: 3,000 localized groups and 6,942 terms across all ten supported search locales.
+- [x] Ship a schema-2 manifest and ten per-locale JSON files with stable concept IDs and twelve categories. Validate complete coverage, metadata, term limits, and normalized duplicates with file/group diagnostics.
+- [x] Match longest embedded phrases and combine substitutions from original query spans with a deterministic 32-variant default budget.
+- [x] Preserve literal paths, filenames, addresses, and URLs; support Unicode boundaries including supplementary Han characters; keep script and Portuguese locale resolution explicit.
+- [x] Use the best synonym variant score so documents do not accumulate relevance merely by listing aliases.
+- [x] Prepare regression scenarios for catalog failures, multi-span retrieval, locale isolation, punctuation, literal tokens, large-catalog limits, the toggle, and exact-match ranking.
+- [x] Document catalog editing and restart behavior; synonym updates require no index rebuild.
+
+### Validation
+
+- Repository formatting hook enabled; Format-Code.ps1 and its -Verify mode passed.
+- Solution restore passed for x64.
+- Full solution Release-Unpackaged x64 build passed with warnings as errors: zero warnings and zero errors. Test assemblies compiled; automated tests and CLI smoke tests were not executed.
+- Static JSON validation confirmed 300 matching concept IDs per locale, two to five terms per group, and no normalized term collisions.
+- SHA-256 comparison confirmed that the built app contains the manifest and all ten catalogs unchanged.
+- git diff --check passed. Publication through a commit and pull request was requested after implementation validation.
+- English and Italian equivalences received an additional semantic review; no independent native-speaker review or runtime latency benchmark was performed.
+
+---
+
 ## [2026-06-05] Implement a standalone premium animated CLI identity banner demo in C# using Spectre.Console
 
 ### Plan

@@ -78,13 +78,20 @@ internal sealed class SearchQueryBuilder
         IEnumerable<string> synonymExpansions = request.EnableSynonyms
             ? _synonyms.Expand(normalizedText, synonymLanguage)
             : Array.Empty<string>();
+        // Equivalent variants compete for one score rather than rewarding repeated aliases.
+        var synonymQueries = new List<Query>();
         foreach (var expansion in synonymExpansions)
         {
             var synonymQuery = BuildAnalyzedVariant(expansion, synonymLanguage, 0.3f);
             if (synonymQuery is not null)
             {
-                textQuery.Add(synonymQuery, Occur.SHOULD);
+                synonymQueries.Add(synonymQuery);
             }
+        }
+
+        if (synonymQueries.Count > 0)
+        {
+            textQuery.Add(new DisjunctionMaxQuery(synonymQueries, 0f), Occur.SHOULD);
         }
 
         if (_options.EnableFuzzyMatching

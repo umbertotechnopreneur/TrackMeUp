@@ -112,6 +112,8 @@ The app, reports, and readable CLI output can follow your Windows language. You 
 
 You can choose separate languages for the interface, search, and text recognition (OCR). Search supports all the app's languages. OCR needs a supported Windows language pack installed on your PC. Vietnamese works for the interface and search, but isn't available for Windows OCR.
 
+Search also understands 300 curated concepts in each supported language, with synonyms for documents, messages, meetings, development, spreadsheets, payments, and more. For example, Italian `copia di sicurezza progetto` can also find `backup progetto`. Synonyms work locally and can be turned off in search settings.
+
 ## You're in control of your data
 
 <p align="center">
@@ -259,6 +261,7 @@ Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows 
 
 Search interaction check:
 
+- [ ] Run the prepared synonym regression scenarios: load all 3,000 localized groups; find `backup progetto` with Italian `copia di sicurezza progetto`; preserve unmatched query words; verify multiple replacements, locale isolation, exact-match ranking, literal filenames, and the **Use synonyms** toggle.
 - [ ] Open Activity history: verify Calendar is the initial tab, all six month rows are visible or reachable by scrolling, and Week shows Monday–Sunday with all 24 hourly rows. Select cells using mouse and arrow keys; verify side metrics and the selected outline without losing the heat color. Navigate rapidly between weeks and tabs, retry a failed query, check recorded zero versus no data, future dates, and daylight-saving gaps/repeated hours. Resize on a 150% display and check the legend, details and Close remain reachable. Open the selected day’s screenshots.
 - [ ] Open local search, move focus to another window, and confirm it remains open without covering it. Enter at least three characters and confirm the local-index status and progress indicator appear until results are available, with no suggestion popup.
 - [ ] In local search, select results by mouse and keyboard and verify the side preview updates its title, source, time, provenance, and highlighted text. Open the selected capture with Open snapshot or Enter. Clear the query or return no results: the previous preview must disappear. With more than 20 matches, verify the displayed/total count is explicit.
