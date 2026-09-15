@@ -18,6 +18,22 @@ public static class WindowInteropService
     private const uint SwpNoActivate = 0x0010;
     private static readonly IntPtr HwndTopMost = new(-1);
 
+    /// <summary>Gets the current native window DPI as a scale relative to 96 DPI.</summary>
+    public static double GetRasterizationScale(IntPtr windowHandle)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(windowHandle, IntPtr.Zero);
+
+        // Read the native DPI while XAML may still be processing the monitor transition.
+        var dpi = GetDpiForWindow(windowHandle);
+        if (dpi == 0)
+        {
+            // An invalid window cannot supply usable DPI; fail instead of retaining a stale scale.
+            throw new InvalidOperationException("Unable to read the native window DPI.");
+        }
+
+        return dpi / 96d;
+    }
+
     /// <summary>Applies the optional native chrome used by the compact player window.</summary>
     public static void ApplyPlayerWindowChrome(IntPtr windowHandle)
     {
@@ -114,6 +130,9 @@ public static class WindowInteropService
             }
         }
     }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
     private static extern int SetWindowLongPtr32(IntPtr windowHandle, int index, int newValue);

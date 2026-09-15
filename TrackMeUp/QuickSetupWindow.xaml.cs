@@ -24,7 +24,6 @@ internal sealed partial class QuickSetupWindow : Window
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly bool _firstRun;
-    private XamlRoot? _xamlRoot;
     private string _selectedProfileId;
     private bool _applying;
 
@@ -100,12 +99,6 @@ internal sealed partial class QuickSetupWindow : Window
         // ToggleButton content enters the visual tree only after its template is realized.
         ApplyLanguage();
         UpdateSelection();
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
         SelectedButton().Focus(FocusState.Programmatic);
     }
@@ -237,14 +230,6 @@ internal sealed partial class QuickSetupWindow : Window
 
     }
 
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
-    }
-
     private async void QuickSetupWindow_Closed(object sender, WindowEventArgs args)
     {
         Closed -= QuickSetupWindow_Closed;
@@ -257,11 +242,6 @@ internal sealed partial class QuickSetupWindow : Window
         {
             _titleBar.Dispose();
             _placement.Dispose();
-            if (_xamlRoot is not null)
-            {
-                _xamlRoot.Changed -= XamlRoot_Changed;
-            }
-
             _lifetimeCancellation.Dispose();
         }
     }

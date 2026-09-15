@@ -167,6 +167,8 @@ internal sealed class CustomTitleBarController : IDisposable
             _rightInsetColumn.Width = new GridLength(_appWindow.TitleBar.RightInset / scale);
         }
 
+        // Insets can move commands at a new DPI; commit their layout before calculating hit regions.
+        _root.UpdateLayout();
         var passthroughRects = _interactiveElements()
             .Where(static element =>
                 element.Visibility == Visibility.Visible

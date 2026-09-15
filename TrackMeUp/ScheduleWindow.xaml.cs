@@ -24,7 +24,6 @@ public sealed partial class ScheduleWindow : Window
     private readonly MicaDialogService _dialogs;
     private LocalizationService _strings;
     private string _theme;
-    private XamlRoot? _xamlRoot;
 
     /// <summary>Occurs after the user confirms a valid screenshot schedule.</summary>
     public event EventHandler<ScheduleConfigurationEventArgs>? ScheduleConfirmed;
@@ -90,12 +89,6 @@ public sealed partial class ScheduleWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
     }
@@ -135,25 +128,12 @@ public sealed partial class ScheduleWindow : Window
                 _strings.Translate("Dialog.Cancel")));
     }
 
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
-    }
-
     private async void ScheduleWindow_Closed(object sender, WindowEventArgs args)
     {
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
         _titleBar.Dispose();
         _lifetimeCancellation.Cancel();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
-
         _lifetimeCancellation.Dispose();
     }
 }

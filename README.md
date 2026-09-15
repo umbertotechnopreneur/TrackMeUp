@@ -291,6 +291,7 @@ Search interaction check:
 
 Privacy and runtime regression checks:
 
+- [ ] With the player, Search, reports, world clocks, and an owned dialog open, change Windows scaling through 100%, 150%, 200%, and back to 100%; repeat by moving between monitors. Confirm immediate reflow, aligned caption hit targets, usable minimum sizes, and preserved user-sized player bounds. Repeat during a player resize animation, with a maximized report, and with a window hidden/minimized; restore it and check layout. Close a window during a scale change and confirm clean shutdown.
 - [ ] Launch TrackMeUp twice from Start or its shortcut, including once while the player is hidden in the notification area. Confirm only one long-lived `TrackMeUp.exe` remains and the existing player is restored. Start the runtime through the CLI first, then launch the player and confirm the background owner becomes the UI process instead of leaving two processes running.
 - [ ] With an instance running, launch `reports --theme dark`, a normal player launch, and `--background`: confirm each retains its requested surface and duplicate background launches stay headless. Promote a background instance with `--paused` or `--safe-mode` and verify automatic tracking stays disabled; invalid redirected arguments must fail before activation.
 - [ ] Exclude a synthetic process/title/context and verify no activity is stored; disable each detail provider and verify titles/attributes are absent.

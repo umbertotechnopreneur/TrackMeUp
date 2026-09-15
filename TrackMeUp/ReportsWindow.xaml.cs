@@ -43,7 +43,6 @@ public sealed partial class ReportsWindow : Window
     private TaskCompletionSource<bool>? _frontendReadyCompletion;
     private bool _webReady;
     private bool _initializing;
-    private XamlRoot? _xamlRoot;
     private LocalizationService _strings = new("system");
     private string _reportTheme = "system";
     private string _reportLanguage = "en-US";
@@ -90,12 +89,6 @@ public sealed partial class ReportsWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
 
@@ -583,11 +576,6 @@ public sealed partial class ReportsWindow : Window
         _lifetimeCancellation.Cancel();
         _refreshCancellation?.Cancel();
         _refreshCancellation?.Dispose();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
-
         _titleBar.ThemeChanged -= TitleBar_ThemeChanged;
         _titleBar.Dispose();
         ReportsWebView.NavigationCompleted -= ReportsWebView_NavigationCompleted;
@@ -601,14 +589,6 @@ public sealed partial class ReportsWindow : Window
         }
 
         _lifetimeCancellation.Dispose();
-    }
-
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
     }
 
     private readonly record struct ReportRangeKey(DateOnly From, DateOnly ToInclusive, string TimeZoneId);

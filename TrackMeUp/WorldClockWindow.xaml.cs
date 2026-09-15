@@ -1311,11 +1311,6 @@ public sealed partial class WorldClockWindow : Window
             UpdateReferenceFlyoutConstraints();
         }
 
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
-
         if (_snapshot is { Clocks.Count: > 0 } snapshot)
         {
             UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);

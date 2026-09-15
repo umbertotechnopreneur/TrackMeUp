@@ -40,7 +40,6 @@ public sealed partial class ScreenshotWindow : Window
     private IReadOnlyList<ScreenshotGalleryItem> _items = Array.Empty<ScreenshotGalleryItem>();
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
     private LocalizationService _strings = new("system");
-    private XamlRoot? _xamlRoot;
     private string _theme = "system";
     private string _aiDescriptionEmptyMessageKey = DefaultAiDescriptionEmptyMessageKey;
     private int? _privacyRuleCount;
@@ -203,12 +202,6 @@ public sealed partial class ScreenshotWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
 
@@ -986,15 +979,6 @@ public sealed partial class ScreenshotWindow : Window
         _titleBar.ApplyTheme(effectiveTheme);
     }
 
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
-
-    }
-
     private void ScreenshotWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         if (_allowClose)
@@ -1028,11 +1012,6 @@ public sealed partial class ScreenshotWindow : Window
         _lifetimeCancellation.Cancel();
         _galleryCancellation?.Cancel();
         _galleryCancellation?.Dispose();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
-
         _titleBar.Dispose();
         _lifetimeCancellation.Dispose();
     }

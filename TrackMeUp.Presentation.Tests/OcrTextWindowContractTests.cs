@@ -15,6 +15,7 @@ public sealed class OcrTextWindowContractTests
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "OcrTextWindow.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "OcrTextWindow.xaml.cs"));
+        var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
         var search = window.Descendants().Single(element => HasName(element, "SearchBox"));
         var text = window.Descendants().Single(element => HasName(element, "OcrTextBlock"));
 
@@ -38,9 +39,11 @@ public sealed class OcrTextWindowContractTests
         Assert.Contains("_titleBar.Dispose();", source, StringComparison.Ordinal);
         Assert.DoesNotContain("RootGrid_ActualThemeChanged", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyThemeChrome", source, StringComparison.Ordinal);
-        Assert.Contains("_xamlRoot.Changed += XamlRoot_Changed", source, StringComparison.Ordinal);
-        Assert.Contains("_xamlRoot.Changed -= XamlRoot_Changed", source, StringComparison.Ordinal);
-        Assert.Contains("_placement.KeepCurrentBoundsInWorkArea(RootGrid)", source, StringComparison.Ordinal);
+        Assert.Contains("_xamlRoot.Changed += XamlRoot_Changed", placement, StringComparison.Ordinal);
+        Assert.Contains("_xamlRoot.Changed -= XamlRoot_Changed", placement, StringComparison.Ordinal);
+        Assert.Contains("_root.Loaded += Root_Loaded", placement, StringComparison.Ordinal);
+        Assert.Contains("_root.Loaded -= Root_Loaded", placement, StringComparison.Ordinal);
+        Assert.Contains("_placement.Dispose();", source, StringComparison.Ordinal);
         Assert.Contains("RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token)", source, StringComparison.Ordinal);
         Assert.Contains("_lifetimeCancellation.Cancel();", source, StringComparison.Ordinal);
         Assert.Contains("catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)", source, StringComparison.Ordinal);

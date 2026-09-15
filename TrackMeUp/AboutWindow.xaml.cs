@@ -27,7 +27,6 @@ public sealed partial class AboutWindow : Window
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private ThirdPartyLicensesWindow? _licensesWindow;
-    private XamlRoot? _xamlRoot;
     private ElementTheme? _heroTheme;
 
     /// <summary>Creates and sizes the About window on the display that contains its owner.</summary>
@@ -86,20 +85,10 @@ public sealed partial class AboutWindow : Window
         _licensesWindow?.Close();
         _titleBar.ThemeChanged -= TitleBar_ThemeChanged;
         _titleBar.Dispose();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
     }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateThemeAssets();
@@ -230,14 +219,6 @@ public sealed partial class AboutWindow : Window
                 ShowLogButton.IsEnabled = true;
                 ShareLogButton.IsEnabled = true;
             }
-        }
-    }
-
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
         }
     }
 

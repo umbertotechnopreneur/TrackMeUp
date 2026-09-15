@@ -23,7 +23,6 @@ internal sealed partial class SearchIndexingWindow : Window
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private LocalizationService _strings;
     private CancellationTokenSource? _rebuildCancellation;
-    private XamlRoot? _xamlRoot;
     private IndexingWindowState _state = IndexingWindowState.Running;
     private int _documentCount;
     private bool _started;
@@ -94,12 +93,6 @@ internal sealed partial class SearchIndexingWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
@@ -270,14 +263,6 @@ internal sealed partial class SearchIndexingWindow : Window
 
     }
 
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
-    }
-
     private async void SearchIndexingWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
@@ -286,11 +271,6 @@ internal sealed partial class SearchIndexingWindow : Window
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _titleBar.Dispose();
         _placement.Dispose();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
-
         _lifetimeCancellation.Dispose();
     }
 

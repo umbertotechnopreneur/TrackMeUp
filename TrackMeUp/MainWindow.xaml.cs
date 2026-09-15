@@ -71,7 +71,6 @@ public sealed partial class MainWindow : Window
     private AboutWindow? _aboutWindow;
     private ScheduleWindow? _scheduleWindow;
     private SearchIndexingWindow? _searchIndexingWindow;
-    private XamlRoot? _xamlRoot;
     private string? _latestScreenshotPath;
     private DateTimeOffset? _latestScreenshotCapturedAt;
     private CancellationTokenSource? _latestScreenshotLoadCancellation;
@@ -196,6 +195,7 @@ public sealed partial class MainWindow : Window
             LogicalWindowWidth,
             _layoutState.LogicalHeight,
             LogicalScreenMargin);
+        _placement.DpiChanged += Placement_DpiChanged;
         _currentWorkArea = CurrentWorkArea();
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += AppWindow_Closing;
@@ -2070,12 +2070,6 @@ public sealed partial class MainWindow : Window
     /// <summary>Starts the player entrance fade.</summary>
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         ResizeForCurrentLayout(animate: false);
         try
         {
@@ -2101,20 +2095,33 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Keeps the requested WinUI logical size stable when the window crosses displays with different DPI.</summary>
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
+    private void Placement_DpiChanged()
     {
-        if (Math.Abs(sender.RasterizationScale - _rasterizationScale) < 0.001d)
-        {
-            return;
-        }
-
+        _windowResizeAnimationTimer.Stop();
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
+        _requestedWindowSize = _appWindow.Size;
     }
 
     /// <summary>Reapplies the smart height limit when the flyout crosses onto another display.</summary>
     private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        if (args.DidVisibilityChange)
+        {
+            UpdateDashboardSubscriptionForVisibility();
+        }
+
+        if (_placement.IsDpiChangePending)
+        {
+            // Native DPI bounds can precede XAML's new scale. Preserve the user's logical viewport.
+            if (_windowSizingReady)
+            {
+                _windowResizeAnimationTimer.Stop();
+            }
+
+            return;
+        }
+
         if (args.DidSizeChange && _windowSizingReady)
         {
             if (sender.Size.Width != _requestedWindowSize.Width || sender.Size.Height != _requestedWindowSize.Height)
@@ -2125,11 +2132,6 @@ public sealed partial class MainWindow : Window
             }
 
             _titleBar.QueueLayoutUpdate();
-        }
-
-        if (args.DidVisibilityChange)
-        {
-            UpdateDashboardSubscriptionForVisibility();
         }
 
         if (!args.DidPositionChange)
@@ -2298,11 +2300,7 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
-
+        _placement.DpiChanged -= Placement_DpiChanged;
         _dashboardSurfaceClosed = true;
         _dashboardRefreshReady = false;
         CancelLatestScreenshotLoad();

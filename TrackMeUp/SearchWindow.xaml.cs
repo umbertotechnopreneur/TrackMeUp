@@ -37,7 +37,6 @@ public sealed partial class SearchWindow : Window
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private CancellationTokenSource? _queryCancellation;
     private CancellationTokenSource? _debounceCancellation;
-    private XamlRoot? _xamlRoot;
     private bool _hasExecutedQuery;
     private bool _closing;
     private int _activeSearchOperationCount;
@@ -97,6 +96,7 @@ public sealed partial class SearchWindow : Window
             useTallTitleBar: false);
         _titleBar.ApplyTheme(ElementTheme.Light);
         _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, CompactLogicalHeight, LogicalScreenMargin);
+        _placement.DpiChanged += ResizeForCurrentState;
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
         Activated += SearchWindow_Activated;
@@ -136,12 +136,6 @@ public sealed partial class SearchWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
@@ -453,20 +447,13 @@ public sealed partial class SearchWindow : Window
         }
     }
 
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            ResizeForCurrentState();
-        }
-    }
-
     private void SearchWindow_Activated(object sender, WindowActivatedEventArgs args) =>
         SearchActivityGlow.SetMotionEnabled(args.WindowActivationState != WindowActivationState.Deactivated);
 
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        _placement.DpiChanged -= ResizeForCurrentState;
         Activated -= SearchWindow_Activated;
         SearchActivityGlow.SetMotionEnabled(false);
         SearchActivityProgressRing.IsActive = false;
@@ -480,9 +467,5 @@ public sealed partial class SearchWindow : Window
         _placement.Dispose();
         _queryCancellation?.Dispose();
         _lifetimeCancellation.Dispose();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
     }
 }

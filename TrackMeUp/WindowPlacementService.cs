@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.ComponentModel;
@@ -8,6 +9,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 using Windows.Graphics;
 
 namespace TrackMeUp;
@@ -19,6 +21,7 @@ internal sealed class WindowPlacementService : IDisposable
     private static int s_nextSubclassId;
     private readonly ITrackMeUpApplication _application;
     private readonly Window _window;
+    private readonly FrameworkElement _root;
     private readonly AppWindow _appWindow;
     private readonly IntPtr _windowHandle;
     private readonly string _windowKey;
@@ -34,6 +37,10 @@ internal sealed class WindowPlacementService : IDisposable
     private bool _disposed;
     private SizeInt32 _minimumPhysicalSize = new(1, 1);
     private double _rasterizationScale = 1d;
+    private double _appliedDisplayScale;
+    private XamlRoot? _xamlRoot;
+    private bool _dpiRefreshQueued;
+    private bool _dpiRefreshAgain;
 
     internal WindowPlacementService(
         ITrackMeUpApplication application,
@@ -47,6 +54,8 @@ internal sealed class WindowPlacementService : IDisposable
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _window = window ?? throw new ArgumentNullException(nameof(window));
+        _root = window.Content as FrameworkElement
+            ?? throw new ArgumentException("Window content must be a framework element.", nameof(window));
         _appWindow = appWindow ?? throw new ArgumentNullException(nameof(appWindow));
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
         _windowKey = string.IsNullOrWhiteSpace(windowKey) ? throw new ArgumentException("A window key is required.", nameof(windowKey)) : windowKey;
@@ -57,10 +66,119 @@ internal sealed class WindowPlacementService : IDisposable
         _displayAnchorId = displayAnchorId ?? _appWindow.Id;
         _subclassProc = WindowSubclassProc;
         _subclassId = (nuint)Interlocked.Increment(ref s_nextSubclassId);
+        _appliedDisplayScale = WindowInteropService.GetRasterizationScale(_windowHandle);
+        _rasterizationScale = _appliedDisplayScale;
         InstallMinimumSizeSubclass();
+        _root.Loaded += Root_Loaded;
+        _window.Closed += Window_Closed;
+        _appWindow.Changed += AppWindow_Changed;
+        AttachXamlRoot();
     }
 
-    internal double RasterizationScale => _rasterizationScale;
+    /// <summary>Occurs after native and XAML DPI agree, before final layout and work-area clamping.</summary>
+    internal event Action? DpiChanged;
+
+    /// <summary>Identifies native DPI resizes before WinUI has delivered its corresponding layout event.</summary>
+    internal bool IsDpiChangePending => !_disposed
+        && (_dpiRefreshQueued
+            || Math.Abs(WindowInteropService.GetRasterizationScale(_windowHandle) - _appliedDisplayScale) >= 0.001d
+            || (_xamlRoot is not null && Math.Abs(_xamlRoot.RasterizationScale - _appliedDisplayScale) >= 0.001d));
+
+    private void Root_Loaded(object sender, RoutedEventArgs args)
+    {
+        AttachXamlRoot();
+        QueueDpiRefresh();
+    }
+
+    private void Window_Closed(object sender, WindowEventArgs args) => Dispose();
+
+    private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args) => QueueDpiRefresh();
+
+    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args) => QueueDpiRefresh();
+
+    private void AttachXamlRoot()
+    {
+        if (ReferenceEquals(_xamlRoot, _root.XamlRoot))
+        {
+            return;
+        }
+
+        if (_xamlRoot is not null)
+        {
+            _xamlRoot.Changed -= XamlRoot_Changed;
+        }
+
+        _xamlRoot = _root.XamlRoot;
+        if (_xamlRoot is not null)
+        {
+            _xamlRoot.Changed += XamlRoot_Changed;
+        }
+    }
+
+    private void QueueDpiRefresh()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (_dpiRefreshQueued)
+        {
+            _dpiRefreshAgain = true;
+            return;
+        }
+
+        if (!_root.IsLoaded || _xamlRoot is null || !IsDpiChangePending)
+        {
+            return;
+        }
+
+        _dpiRefreshQueued = true;
+        if (!_root.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, RefreshDpiLayout))
+        {
+            _dpiRefreshQueued = false;
+            // A live window must not silently keep stale DPI geometry if its dispatcher rejects the refresh.
+            throw new InvalidOperationException("Unable to queue the window DPI layout refresh.");
+        }
+    }
+
+    private void RefreshDpiLayout()
+    {
+        try
+        {
+            if (_disposed || !_root.IsLoaded || _xamlRoot is null)
+            {
+                // Closure or unloading cancels queued presentation work.
+                return;
+            }
+
+            var scale = _xamlRoot.RasterizationScale;
+            if (Math.Abs(scale - WindowInteropService.GetRasterizationScale(_windowHandle)) >= 0.001d)
+            {
+                // Native bounds can arrive before XAML DPI; the next change event resumes the refresh.
+                return;
+            }
+
+            _appliedDisplayScale = scale;
+            UpdateMinimumSize(scale, DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea);
+            _root.InvalidateMeasure();
+            _root.InvalidateArrange();
+            DpiChanged?.Invoke();
+            // WinUI applies the native suggested bounds. Never multiply those physical bounds a second time.
+            KeepCurrentBoundsInWorkArea(_root);
+            _root.UpdateLayout();
+        }
+        finally
+        {
+            _dpiRefreshQueued = false;
+            if (_dpiRefreshAgain)
+            {
+                // A content resize can move Search to another monitor while this refresh is still running.
+                _dpiRefreshAgain = false;
+                QueueDpiRefresh();
+            }
+        }
+    }
 
     /// <summary>Applies the requested default size without choosing a screen position.</summary>
     internal void ApplyDefaultSize(FrameworkElement root)
@@ -305,6 +423,13 @@ internal sealed class WindowPlacementService : IDisposable
     private void KeepCurrentBoundsInWorkArea(FrameworkElement root, RectInt32 area)
     {
         var scale = ResolveScale(root);
+        if (_appWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored })
+        {
+            // Windows owns maximized and minimized geometry; only refresh the restore-size constraints.
+            UpdateMinimumSize(scale, area);
+            return;
+        }
+
         var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
         var availableWidth = Math.Max(1, area.Width - (margin * 2));
         var availableHeight = Math.Max(1, area.Height - (margin * 2));
@@ -328,6 +453,7 @@ internal sealed class WindowPlacementService : IDisposable
         }
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         if (_disposed)
@@ -336,6 +462,16 @@ internal sealed class WindowPlacementService : IDisposable
         }
 
         _disposed = true;
+        _root.Loaded -= Root_Loaded;
+        _window.Closed -= Window_Closed;
+        _appWindow.Changed -= AppWindow_Changed;
+        if (_xamlRoot is not null)
+        {
+            _xamlRoot.Changed -= XamlRoot_Changed;
+            _xamlRoot = null;
+        }
+
+        DpiChanged = null;
         if (_subclassInstalled)
         {
             _ = RemoveWindowSubclass(_windowHandle, _subclassProc, _subclassId);
@@ -345,6 +481,7 @@ internal sealed class WindowPlacementService : IDisposable
 
     private double ResolveScale(FrameworkElement root)
     {
+        AttachXamlRoot();
         var scale = Math.Max(0.1d, root.XamlRoot?.RasterizationScale ?? _rasterizationScale);
         _rasterizationScale = scale;
         return scale;
@@ -403,6 +540,10 @@ internal sealed class WindowPlacementService : IDisposable
     {
         if (message == WmGetMinMaxInfo)
         {
+            // Native resizing precedes XAML DPI events. In particular, stale larger minima must not block a DPI decrease.
+            UpdateMinimumSize(
+                WindowInteropService.GetRasterizationScale(windowHandle),
+                DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary).WorkArea);
             var minMaxInfo = Marshal.PtrToStructure<MinMaxInfo>(lParam);
             minMaxInfo.MinTrackSize.X = Math.Max(minMaxInfo.MinTrackSize.X, _minimumPhysicalSize.Width);
             minMaxInfo.MinTrackSize.Y = Math.Max(minMaxInfo.MinTrackSize.Y, _minimumPhysicalSize.Height);

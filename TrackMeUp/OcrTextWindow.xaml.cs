@@ -29,7 +29,6 @@ internal sealed partial class OcrTextWindow : Window
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private LocalizationService _strings;
     private string _ocrText = string.Empty;
-    private XamlRoot? _xamlRoot;
 
     /// <summary>Creates an OCR text window anchored to the screenshot gallery display.</summary>
     internal OcrTextWindow(
@@ -100,12 +99,6 @@ internal sealed partial class OcrTextWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_xamlRoot is null && RootGrid.XamlRoot is { } xamlRoot)
-        {
-            _xamlRoot = xamlRoot;
-            _xamlRoot.Changed += XamlRoot_Changed;
-        }
-
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
@@ -179,22 +172,9 @@ internal sealed partial class OcrTextWindow : Window
         _searchTimer.Stop();
         _searchTimer.Tick -= SearchTimer_Tick;
         _titleBar.Dispose();
-        if (_xamlRoot is not null)
-        {
-            _xamlRoot.Changed -= XamlRoot_Changed;
-        }
-
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _placement.Dispose();
         _lifetimeCancellation.Dispose();
-    }
-
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
-    {
-        if (Math.Abs(sender.RasterizationScale - _placement.RasterizationScale) >= 0.001d)
-        {
-            _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        }
     }
 
     private string T(string key) => _strings.Translate(key);
