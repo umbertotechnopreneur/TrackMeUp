@@ -133,7 +133,10 @@ public sealed record AppSettings(
     int MainWindowOpacityPercent = 100,
     bool MainWindowShowInTaskbar = true,
     int WorldClockWindowOpacityPercent = 100,
-    bool WorldClockWindowShowInTaskbar = true);
+    bool WorldClockWindowShowInTaskbar = true,
+    IReadOnlyDictionary<string, bool>? WindowOpenStates = null,
+    TrackMeUp.Application.OcrTextWindowSource? OcrTextWindowSource = null,
+    bool AutoHideTitleBar = true);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

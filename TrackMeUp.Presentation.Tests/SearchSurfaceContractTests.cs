@@ -48,18 +48,19 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(footer.Descendants(), element => HasName(element, "SearchAvailabilityText"));
         Assert.Contains(footer.Descendants(), element => HasName(element, "TextReadingStatusText"));
         Assert.DoesNotContain("IsAlwaysOnTop", windowSource, StringComparison.Ordinal);
-        Assert.Contains("presenter.IsResizable = false;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsResizable = true;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("RootGrid.RequestedTheme = ElementTheme.Light;", windowSource, StringComparison.Ordinal);
-        Assert.Contains("MaximumLogicalWidth = 960", windowSource, StringComparison.Ordinal);
-        Assert.Contains("MaximumCursorDisplayHeightRatio = 0.78d", windowSource, StringComparison.Ordinal);
-        Assert.Contains("ResizeAndCenterOnCursorDisplay(", windowSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowWidth = 1040", windowSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowHeight = 720", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_placement.RestoreOrCenterAsync", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ResizeAndCenterOnCursorDisplay(", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ResizeForCurrentState", windowSource, StringComparison.Ordinal);
         Assert.Contains("TimeSpan.FromMilliseconds(250)", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("SuggestAsync", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ElementCompositionPreview", windowSource, StringComparison.Ordinal);
         Assert.Contains("textBox.IsTextPredictionEnabled = false;", windowSource, StringComparison.Ordinal);
-        Assert.Contains("_appWindow.ClientSize.Height", windowSource, StringComparison.Ordinal);
         Assert.Equal(2, windowSource.Split("BeginSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, windowSource.Split("EndSearchActivity();", StringSplitOptions.None).Length - 1);
         Assert.Contains("public const int MaximumResults = 20;", viewModelSource, StringComparison.Ordinal);
@@ -101,12 +102,48 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains("SearchTextHighlight.Apply(PreviewBodyText, result?.PreviewText", source, StringComparison.Ordinal);
         Assert.Contains("SearchResultsList.SelectedItem = _viewModel.SelectedResult;", source, StringComparison.Ordinal);
         Assert.Contains("Search.Results.Limited", source, StringComparison.Ordinal);
-        Assert.Contains("SearchFooter.Measure(measureSize)", source, StringComparison.Ordinal);
         Assert.Contains("Grid.SetRow(PreviewPane, stacked ? 1 : 0);", source, StringComparison.Ordinal);
         Assert.Contains("ScreenshotPreviewRequestedEventArgs", source, StringComparison.Ordinal);
         var selectionStart = source.IndexOf("private void SearchResultsList_SelectionChanged", StringComparison.Ordinal);
         var selectionEnd = source.IndexOf("private void RenderSelectedPreview", selectionStart, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenshotRequested", source[selectionStart..selectionEnd], StringComparison.Ordinal);
+    }
+
+    /// <summary>Selected screenshots render inline with safe async selection and accessible material fallbacks.</summary>
+    [Fact]
+    public void InlineScreenshotPreview_UsesFacadeLoadingAndAcrylicWithHighContrastFallbacks()
+    {
+        var window = XDocument.Load(RepositoryFile("TrackMeUp", "SearchWindow.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "SearchWindow.xaml.cs"));
+        var image = window.Descendants().Single(element => HasName(element, "PreviewScreenshotImage"));
+        var previewHost = window.Descendants().Single(element => HasName(element, "PreviewScreenshotHost"));
+        var query = window.Descendants().Single(element => HasName(element, "QueryBox"));
+        var results = window.Descendants().Single(element => HasName(element, "SearchResultsPane"));
+        var highContrast = window.Descendants().Single(element => KeyValue(element) == "HighContrast");
+        var loading = window.Descendants().Single(element => HasName(element, "PreviewImageLoadingPanel"));
+        var unavailable = window.Descendants().Single(element => HasName(element, "PreviewImageUnavailableText"));
+
+        Assert.Equal("Uniform", image.Attribute("Stretch")?.Value);
+        Assert.Equal("420", image.Attribute("MaxHeight")?.Value);
+        Assert.Same(previewHost, image.Parent);
+        Assert.Contains(previewHost.ElementsAfterSelf(), element => HasName(element, "PreviewTitleText"));
+        Assert.Equal("{ThemeResource SearchQueryBackdropBrush}", query.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource SearchResultsBackdropBrush}", results.Attribute("Background")?.Value);
+        Assert.Equal(4, window.Descendants().Count(element => element.Name.LocalName == "AcrylicBrush"));
+        Assert.Contains(highContrast.Elements(), element => KeyValue(element) == "SearchQueryBackdropBrush"
+            && element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
+        Assert.Contains(highContrast.Elements(), element => KeyValue(element) == "SearchResultsBackdropBrush"
+            && element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
+        Assert.Contains(loading.Descendants(), element => element.Attribute("Tag")?.Value == "Search.Preview.Loading");
+        Assert.Equal("Search.Preview.Unavailable", unavailable.Attribute("Tag")?.Value);
+        Assert.Equal("Polite", unavailable.Attribute("AutomationProperties.LiveSetting")?.Value);
+        Assert.Contains("new ScreenshotBitmapSourceLoader(application)", source, StringComparison.Ordinal);
+        Assert.Contains("_screenshotBitmapLoader.LoadAsync", source, StringComparison.Ordinal);
+        Assert.Contains("_previewSelection.IsCurrent(screenshotPath, generation)", source, StringComparison.Ordinal);
+        Assert.Contains("_previewSelection.Invalidate();", source, StringComparison.Ordinal);
+        Assert.Contains("CancelPreviewImageLoad();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("File.Read", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("StorageFile", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -170,4 +207,7 @@ public sealed class SearchSurfaceContractTests
 
     private static bool HasName(XElement element, string name) =>
         element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == name);
+
+    private static string? KeyValue(XElement element) =>
+        element.Attributes().FirstOrDefault(attribute => attribute.Name.LocalName == "Key")?.Value;
 }

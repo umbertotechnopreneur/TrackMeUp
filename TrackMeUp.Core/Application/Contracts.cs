@@ -359,6 +359,9 @@ public sealed record WindowState(
     int Height,
     string MonitorDeviceName);
 
+/// <summary>Identifies the retained screenshot whose existing OCR metadata belongs in the restored text window.</summary>
+public sealed record OcrTextWindowSource(string ScreenshotPath, DateTimeOffset CapturedAt);
+
 /// <summary>Defines the minimum usable logical dimensions for a window surface.</summary>
 public readonly record struct WindowMinimumSize(int Width, int Height);
 
@@ -923,6 +926,12 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Persists one window placement read from its native window handle.</summary>
     Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);
+
+    /// <summary>Persists whether a window is open so its visibility can be restored on the next launch.</summary>
+    Task<OperationResult<bool>> SetWindowOpenStateAsync(string windowKey, bool isOpen, CancellationToken cancellationToken);
+
+    /// <summary>Remembers the screenshot to reopen in the OCR text window without duplicating extracted text.</summary>
+    Task<OperationResult<OcrTextWindowSource>> SetOcrTextWindowSourceAsync(string screenshotPath, DateTimeOffset capturedAt, CancellationToken cancellationToken);
 
     /// <summary>Gets startup registration state.</summary>
     Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken);

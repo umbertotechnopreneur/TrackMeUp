@@ -136,6 +136,8 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.SettingsPatch => ToResponse(request, await _application.PatchSettingsAsync(Read<SettingsPatch>(request.Payload) ?? new SettingsPatch(new Dictionary<string, string?>()), cancellationToken)),
                 RuntimeOperation.WindowStateRestore => ToResponse(request, await _application.RestoreWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
                 RuntimeOperation.WindowStateSave => ToResponse(request, await _application.SaveWindowStateAsync(ReadString(request.Payload, "windowKey"), ReadInt64(request.Payload, "windowHandle"), cancellationToken)),
+                RuntimeOperation.WindowOpenStateSet => ToResponse(request, await _application.SetWindowOpenStateAsync(ReadString(request.Payload, "windowKey"), ReadRequiredBool(request.Payload, "isOpen"), cancellationToken)),
+                RuntimeOperation.WindowOcrSourceSet => ToResponse(request, await DispatchOcrTextWindowSourceAsync(request, cancellationToken)),
                 RuntimeOperation.StartupStatus => ToResponse(request, await _application.GetStartupStatusAsync(cancellationToken)),
                 RuntimeOperation.StartupEnable => ToResponse(request, await _application.SetStartupEnabledAsync(true, cancellationToken)),
                 RuntimeOperation.StartupDisable => ToResponse(request, await _application.SetStartupEnabledAsync(false, cancellationToken)),
@@ -306,6 +308,21 @@ internal sealed class RuntimeRequestDispatcher
         && value.TryGetProperty(name, out var property)
         && property.ValueKind is JsonValueKind.True or JsonValueKind.False
         && property.GetBoolean();
+
+    private static bool ReadRequiredBool(JsonElement value, string name) =>
+        value.ValueKind == JsonValueKind.Object
+        && value.TryGetProperty(name, out var property)
+        && property.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? property.GetBoolean()
+            // A missing visibility flag must fail rather than silently close the saved window.
+            : throw new InvalidOperationException($"A boolean '{name}' property is required.");
+
+    private Task<OperationResult<OcrTextWindowSource>> DispatchOcrTextWindowSourceAsync(RuntimeRequestEnvelope request, CancellationToken cancellationToken)
+    {
+        var source = Read<OcrTextWindowSource>(request.Payload)
+            ?? throw new InvalidOperationException("An OCR text window source is required.");
+        return _application.SetOcrTextWindowSourceAsync(source.ScreenshotPath, source.CapturedAt, cancellationToken);
+    }
 
     private static long ReadInt64(JsonElement value, string name) =>
         value.ValueKind == JsonValueKind.Object

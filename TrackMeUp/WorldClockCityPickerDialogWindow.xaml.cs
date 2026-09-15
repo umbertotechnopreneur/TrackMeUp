@@ -76,7 +76,8 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
             LogicalWidth,
             LogicalHeight,
             LogicalScreenMargin,
-            ownerAppWindow.Id);
+            ownerAppWindow.Id,
+            deferNativeClose: false);
         WindowInteropService.SetOwner(_windowHandle, ownerHandle);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -296,11 +297,23 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
 
         _isCompleting = true;
         UpdateCommandState();
-        _ = await _placement.TrySaveForCloseAsync(_lifetimeCancellation.Token);
-        if (!_closed)
+        try
         {
-            _allowClose = true;
-            Close();
+            await _placement.SaveForExplicitCloseAsync(_lifetimeCancellation.Token);
+            if (!_closed)
+            {
+                _allowClose = true;
+                Close();
+            }
+        }
+        finally
+        {
+            // A failed save leaves the guarded dialog available for another close attempt.
+            _isCompleting = false;
+            if (!_closed)
+            {
+                UpdateCommandState();
+            }
         }
     }
 

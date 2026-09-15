@@ -226,8 +226,9 @@ public sealed class LocalizationServiceTests
         [
             "WorldClock.Options.Open",
             "WorldClock.Options.Back",
-            "WorldClock.Map.Show",
-            "WorldClock.Map.Hide",
+            "WorldClock.Map.Open",
+            "WorldClock.MoonPhase.Open",
+            "WorldClock.MoonPhase.Title",
             "WorldClock.Map.Title",
             "WorldClock.Map.Night",
             "WorldClock.Map.Dawn",

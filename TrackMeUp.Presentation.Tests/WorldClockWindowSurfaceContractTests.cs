@@ -138,7 +138,7 @@ public sealed class WorldClockWindowSurfaceContractTests
             .Where(element => element.Name.LocalName == "ResourceDictionary" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Key"))
             .ToArray();
 
-        Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop();", source, StringComparison.Ordinal);
+        Assert.Contains("SystemBackdrop = new GlassBackdrop();", source, StringComparison.Ordinal);
         Assert.DoesNotContain(window.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
         Assert.DoesNotContain("MicaBackdrop", source, StringComparison.Ordinal);
         Assert.Equal("Transparent", root.Attribute("Background")?.Value);
@@ -223,9 +223,9 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("OptionsButton.Focus(FocusState.Programmatic)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("new MenuFlyout", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ToggleMenuFlyoutItem", source, StringComparison.Ordinal);
-        Assert.Contains("SystemBackdrop = new DesktopAcrylicBackdrop();", source, StringComparison.Ordinal);
+        Assert.Contains("SystemBackdrop = new GlassBackdrop();", source, StringComparison.Ordinal);
         Assert.Contains("_titleBar = new CustomTitleBarController(", source, StringComparison.Ordinal);
-        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, WorldMapToggleButton, PresentationModeButton, OptionsButton]", source, StringComparison.Ordinal);
+        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, PresentationModeButton, OptionsButton]", source, StringComparison.Ordinal);
         Assert.Contains("TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("InputNonClientPointerSource", source, StringComparison.Ordinal);
         Assert.Contains("_window.ExtendsContentIntoTitleBar = true;", titleBarSource, StringComparison.Ordinal);
@@ -697,32 +697,35 @@ public sealed class WorldClockWindowSurfaceContractTests
         }
     }
 
+    /// <summary>Checks the detached Acrylic map still renders the shared application projection.</summary>
     [Fact]
-    public void DayNightMap_IsAnOptionalBottomPanelWithCoreOwnedCelestialPositions()
+    public void DayNightMap_OpensInAnIndependentAcrylicWindowWithCoreOwnedCelestialPositions()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
+        var detachedWindow = XDocument.Load(RepositoryFile("TrackMeUp", "WorldMapWindow.xaml"));
         var map = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldDayNightMapControl.xaml"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var detachedSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldMapWindow.xaml.cs"));
         var mapSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldDayNightMapControl.xaml.cs"));
         var contracts = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "Contracts.cs"));
         var service = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "WorldClockService.cs"));
-        var toggle = window.Descendants().Single(element => HasName(element, "WorldMapToggleButton"));
-        var panel = window.Descendants().Single(element => HasName(element, "WorldMapPanel"));
-        var mapRow = window.Descendants().Single(element => HasName(element, "WorldMapRow"));
-        var mapControl = panel.Descendants().Single(element => HasName(element, "WorldMapControl"));
+        var openButton = window.Descendants().Single(element => HasName(element, "WorldMapButton"));
+        var mapControl = detachedWindow.Descendants().Single(element => HasName(element, "WorldMapControl"));
 
-        Assert.Equal("WorldClock.Map.Show", toggle.Attribute("Tag")?.Value);
-        Assert.Equal("WorldMapToggleButton_Click", toggle.Attribute("Click")?.Value);
-        Assert.Equal("True", toggle.Attribute("IsTabStop")?.Value);
-        Assert.Equal("True", toggle.Attribute("AllowFocusOnInteraction")?.Value);
-        Assert.Equal(AttributeValue(toggle, "AutomationProperties.Name"), AttributeValue(toggle, "ToolTipService.ToolTip"));
-        Assert.Equal("0", mapRow.Attribute("Height")?.Value);
-        Assert.Equal("1", panel.Attribute("Grid.Row")?.Value);
-        Assert.Equal("Collapsed", panel.Attribute("Visibility")?.Value);
+        Assert.Equal("WorldClock.Map.Open", openButton.Attribute("Tag")?.Value);
+        Assert.Equal("WorldMapButton_Click", openButton.Attribute("Click")?.Value);
+        Assert.Equal("True", openButton.Attribute("IsTabStop")?.Value);
+        Assert.Equal("True", openButton.Attribute("AllowFocusOnInteraction")?.Value);
+        Assert.Equal(AttributeValue(openButton, "AutomationProperties.Name"), AttributeValue(openButton, "ToolTipService.ToolTip"));
+        Assert.DoesNotContain(window.Descendants(), element => HasName(element, "WorldMapPanel") || HasName(element, "WorldMapRow"));
+        Assert.DoesNotContain(window.Descendants(), element => element.Name.LocalName == "WorldDayNightMapControl");
+        Assert.Contains(detachedWindow.Descendants(), element => element.Name.LocalName == "GlassBackdrop");
         Assert.Equal("WorldDayNightMapControl", mapControl.Name.LocalName);
         Assert.Contains(map.Descendants(), element => element.Name.LocalName == "Image" && element.Attribute("Source")?.Value == "ms-appx:///Assets/WorldClocks/Maps/world-map-day.png");
-        Assert.Contains("WorldMapControl.Apply(snapshot.Map, _strings);", windowSource, StringComparison.Ordinal);
-        Assert.Contains("WorldClockWindowLayoutState.CalculateWorldMapPanelHeight", windowSource, StringComparison.Ordinal);
+        Assert.Contains("WorldMapControl.Apply(snapshot.Map, _strings);", detachedSource, StringComparison.Ordinal);
+        Assert.Contains("WorldMapRequested?.Invoke(this, EventArgs.Empty)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("ProjectionChanged?.Invoke(snapshot, _isLive)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("WindowStateKeys.WorldMap", detachedSource, StringComparison.Ordinal);
         Assert.Contains("WorldMapLightingProjection.Sample(", mapSource, StringComparison.Ordinal);
         Assert.Contains("DayMapAssetUri", mapSource, StringComparison.Ordinal);
         Assert.Contains("NightMapAssetUri", mapSource, StringComparison.Ordinal);
@@ -735,6 +738,27 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.DoesNotContain("HttpClient", mapSource, StringComparison.Ordinal);
         Assert.True(File.Exists(RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "Maps", "world-map-day.png")));
         Assert.True(File.Exists(RepositoryFile("TrackMeUp", "Assets", "WorldClocks", "Maps", "world-map-night.png")));
+    }
+
+    /// <summary>Checks the detached Acrylic Moon window uses the clocks' reference projection.</summary>
+    [Fact]
+    public void LunarPhase_OpensInAnIndependentAcrylicWindowUsingTheSharedReferenceProjection()
+    {
+        var clocks = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
+        var lunar = XDocument.Load(RepositoryFile("TrackMeUp", "LunarPhaseWindow.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "LunarPhaseWindow.xaml.cs"));
+        var button = clocks.Descendants().Single(element => HasName(element, "LunarPhaseButton"));
+        var moon = lunar.Descendants().Single(element => HasName(element, "MoonPhaseControl"));
+
+        Assert.Equal("WorldClock.MoonPhase.Open", button.Attribute("Tag")?.Value);
+        Assert.Equal(AttributeValue(button, "AutomationProperties.Name"), AttributeValue(button, "ToolTipService.ToolTip"));
+        Assert.Contains(lunar.Descendants(), element => element.Name.LocalName == "GlassBackdrop");
+        Assert.Equal("CelestialPhaseControl", moon.Name.LocalName);
+        Assert.Equal("False", moon.Attribute("IsDaylight")?.Value);
+        Assert.DoesNotContain(lunar.Descendants(), element => element.Name.LocalName == "WorldDayNightMapControl");
+        Assert.Contains("WindowStateKeys.LunarPhase", source, StringComparison.Ordinal);
+        Assert.Contains("LunarPhaseProjection.Create(snapshot.Map.MoonPhaseAngleDegrees)", source, StringComparison.Ordinal);
+        Assert.Contains("MoonPhaseControl.MoonPhaseAngleDegrees = snapshot.Map.MoonPhaseAngleDegrees", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -801,7 +825,8 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
         Assert.Contains("SetIconButtonLabel(OptionsButton, \"WorldClock.Options.Open\");", windowSource, StringComparison.Ordinal);
         Assert.Contains("SetIconButtonLabel(HeaderBackButton, \"WorldClock.Options.Back\");", windowSource, StringComparison.Ordinal);
-        Assert.Contains("SetIconButtonLabel(WorldMapToggleButton, key);", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SetIconButtonLabel(WorldMapButton, \"WorldClock.Map.Open\");", windowSource, StringComparison.Ordinal);
+        Assert.Contains("SetIconButtonLabel(LunarPhaseButton, \"WorldClock.MoonPhase.Open\");", windowSource, StringComparison.Ordinal);
         Assert.Contains("SetIconButtonLabel(PresentationModeButton, key);", windowSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(button, label);", windowSource, StringComparison.Ordinal);
         Assert.Contains("ToolTipService.SetToolTip(button, label);", windowSource, StringComparison.Ordinal);
@@ -861,7 +886,8 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("WorldClock.AddedTitle", source, StringComparison.Ordinal);
         Assert.Contains("await AddSelectedCityAsync(closeWhenAdded: false);", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.WorldClockCityPicker", source, StringComparison.Ordinal);
-        Assert.Contains("await _placement.TrySaveForCloseAsync(_lifetimeCancellation.Token);", source, StringComparison.Ordinal);
+        Assert.Contains("await _placement.SaveForExplicitCloseAsync(_lifetimeCancellation.Token);", source, StringComparison.Ordinal);
+        Assert.Contains("deferNativeClose: false", source, StringComparison.Ordinal);
         Assert.Contains("if (IsClosing || _isAdding)", source, StringComparison.Ordinal);
         Assert.Contains("CancelButton.IsEnabled = canInteract;", source, StringComparison.Ordinal);
         Assert.Contains("CityComboBox.IsEnabled = canInteract;", source, StringComparison.Ordinal);

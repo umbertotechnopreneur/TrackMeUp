@@ -592,7 +592,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         var screenshot = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
         Assert.DoesNotContain("MicaDialogService _dialogs = new()", screenshot, StringComparison.Ordinal);
         Assert.Contains("_dialogs = dialogs ??", screenshot, StringComparison.Ordinal);
-        Assert.Equal(3, CountOccurrences(app, "new ScreenshotWindow(application, _dialogs,"));
+        Assert.Equal(
+            CountOccurrences(app, "new ScreenshotWindow("),
+            CountOccurrences(app, "new ScreenshotWindow(application, _dialogs,"));
         Assert.Contains("_dialogs.ConfirmAsync(", schedule, StringComparison.Ordinal);
         Assert.Contains("ShowAiConnectionTestAsync", service, StringComparison.Ordinal);
         Assert.Contains("new AiConnectionTestDialogWindow", service, StringComparison.Ordinal);
@@ -604,7 +606,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("MaxTerminalOutputCharacters", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("_lifetimeCancellation.Token", connectionDialog, StringComparison.Ordinal);
         Assert.DoesNotContain("TerminalScrollViewer.UpdateLayout()", connectionDialog, StringComparison.Ordinal);
-        Assert.Contains("RestoreAndCenterAsync", connectionDialog, StringComparison.Ordinal);
+        Assert.Contains("RestoreOrCenterAsync", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.Apply(RootGrid, _strings);", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("AiConnectionTest.Terminal.Response", connectionDialog, StringComparison.Ordinal);
         Assert.Contains("new LocalizationService(", service, StringComparison.Ordinal);

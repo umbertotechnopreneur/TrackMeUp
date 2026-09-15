@@ -30,7 +30,7 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("en-US", ["screen", "display"], ["screen capture", "screenshot"]);
 
-        Assert.Equal(["screenshot project"], catalog.Expand("screen capture project", "en-US"));
+        Assert.Equal<string>(["screenshot project"], catalog.Expand("screen capture project", "en-US"));
     }
 
     /// <summary>Word punctuation allows matching, while partial words and identifiers do not.</summary>
@@ -73,7 +73,7 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("it-IT", ["cartella", "directory"]);
 
-        Assert.Equal(["directory cartella@example.invalid"],
+        Assert.Equal<string>(["directory cartella@example.invalid"],
             catalog.Expand("cartella cartella@example.invalid", "it-IT"));
     }
 
@@ -83,7 +83,7 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("zh-Hans", ["屏幕截图", "screenshot"]);
 
-        Assert.Equal(["项目 screenshot"], catalog.Expand("项目屏幕截图", "zh-CN"));
+        Assert.Equal<string>(["项目 screenshot"], catalog.Expand("项目屏幕截图", "zh-CN"));
     }
 
     /// <summary>Supplementary Han characters receive the same boundaries as basic ideographs.</summary>
@@ -92,7 +92,7 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("zh-Hans", ["屏幕截图", "screenshot"]);
 
-        Assert.Equal(["𠀀 screenshot 𠀁"], catalog.Expand("𠀀屏幕截图𠀁", "zh-Hans"));
+        Assert.Equal<string>(["𠀀 screenshot 𠀁"], catalog.Expand("𠀀屏幕截图𠀁", "zh-Hans"));
     }
 
     /// <summary>Korean matching respects whole words and embedded phrases.</summary>
@@ -101,7 +101,7 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("ko-KR", ["데이터베이스", "database"]);
 
-        Assert.Equal(["database 고객"], catalog.Expand("데이터베이스 고객", "ko"));
+        Assert.Equal<string>(["database 고객"], catalog.Expand("데이터베이스 고객", "ko"));
         Assert.Empty(catalog.Expand("데이터베이스화", "ko"));
     }
 
@@ -111,8 +111,8 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("vi-VN", ["sao lưu", "backup"]);
 
-        Assert.Equal(["backup du an"], catalog.Expand("sao lưu dự án", "vi"));
-        Assert.Equal(["backup du an"], catalog.Expand("sao luu du an", "vi-VN"));
+        Assert.Equal<string>(["backup du an"], catalog.Expand("sao lưu dự án", "vi"));
+        Assert.Equal<string>(["backup du an"], catalog.Expand("sao luu du an", "vi-VN"));
     }
 
     /// <summary>Explicit locale aliases find canonical catalogs without merging language data.</summary>
@@ -130,7 +130,7 @@ public sealed class SynonymCatalogTests
     [InlineData("pt-BR", "pt-BR")]
     public void Expand_ResolvesSupportedLocaleAlias(string catalogLanguage, string queryLanguage)
     {
-        Assert.Equal(["beta"], Create(catalogLanguage, ["alpha", "beta"]).Expand("alpha", queryLanguage));
+        Assert.Equal<string>(["beta"], Create(catalogLanguage, ["alpha", "beta"]).Expand("alpha", queryLanguage));
     }
 
     /// <summary>Unconfigured scripts, regional Portuguese catalogs, and missing languages remain separate.</summary>
@@ -152,7 +152,7 @@ public sealed class SynonymCatalogTests
     {
         var catalog = Create("en", ["alpha", "beta"], ["beta", "gamma"]);
 
-        Assert.Equal(["beta"], catalog.Expand("alpha", "en-US"));
+        Assert.Equal<string>(["beta"], catalog.Expand("alpha", "en-US"));
     }
 
     /// <summary>Catalog input order does not change bounded output, even for a large catalog.</summary>
@@ -170,7 +170,7 @@ public sealed class SynonymCatalogTests
         var reversed = new SynonymCatalog(options with { SynonymSets = [.. sets.Reverse()] }).Expand(query, "en-US");
 
         Assert.Equal(32, first.Length);
-        Assert.Equal(first, reversed);
+        Assert.Equal<string>(first, reversed);
         Assert.Equal(first.Length, first.Distinct(StringComparer.Ordinal).Count());
         Assert.Contains(first, variant => variant.Contains("alias0 alias1", StringComparison.Ordinal));
     }

@@ -17,6 +17,12 @@ public static class WindowStateKeys
     /// <summary>Identifies the independent world-clock comparison window.</summary>
     public const string WorldClocks = "world-clocks";
 
+    /// <summary>Identifies the independent geographical day-and-night map window.</summary>
+    public const string WorldMap = "world-map";
+
+    /// <summary>Identifies the independent lunar-phase window.</summary>
+    public const string LunarPhase = "lunar-phase";
+
     /// <summary>Identifies the reports window.</summary>
     public const string Reports = "reports";
 
@@ -55,6 +61,8 @@ public static class WindowStateKeys
 
     /// <summary>Identifies the simplified AI pricing dialog window.</summary>
     public const string AiPricing = "ai-pricing";
+
+    /// <summary>Identifies the AI provider connection test dialog window.</summary>
     public const string AiConnectionTest = "ai-connection-test";
 }
 
@@ -64,7 +72,9 @@ public sealed class WindowStateService
     private const uint MonitorDefaultToNearest = 2;
     private const uint SetWindowPosNoActivate = 0x0010;
     private const uint SetWindowPosNoZOrder = 0x0004;
-    private const uint SetWindowPosShowWindow = 0x0040;
+    private const uint ShowNormal = 1;
+    private const int ExtendedWindowStyle = -20;
+    private const int ToolWindowStyle = 0x00000080;
     private readonly LocalStore _store;
 
     /// <summary>Creates the window-state service over the shared settings store.</summary>
@@ -91,17 +101,66 @@ public sealed class WindowStateService
             WindowStateKeys.OcrText => new(560, 360),
             WindowStateKeys.About => new(900, 700),
             WindowStateKeys.Licenses => new(720, 520),
-            WindowStateKeys.Search => new(780, 140),
+            WindowStateKeys.Search => new(780, 420),
             WindowStateKeys.SearchIndexing => new(560, 420),
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.QuickSetup => new(760, 560),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.WorldClocks => new(480, 240),
+            WindowStateKeys.WorldMap => new(640, 360),
+            WindowStateKeys.LunarPhase => new(320, 320),
             WindowStateKeys.WorldClockCityPicker => new(500, 560),
             WindowStateKeys.AiPricing => new(620, 430),
             WindowStateKeys.AiConnectionTest => new(480, 480),
-            _ => new(320, 240)
+            _ => throw new ArgumentException("The window key is not supported.", nameof(windowKey))
         };
+    }
+
+    /// <summary>Persists one window's open or closed state without changing its saved placement.</summary>
+    public AppSettings SetOpenState(string windowKey, bool isOpen)
+    {
+        _ = GetMinimumSize(windowKey);
+        var settings = _store.LoadSettings();
+        var openStates = settings.WindowOpenStates is null
+            ? new Dictionary<string, bool>(StringComparer.Ordinal)
+            : new Dictionary<string, bool>(settings.WindowOpenStates, StringComparer.Ordinal);
+        openStates[windowKey] = isOpen;
+        var updated = settings with { WindowOpenStates = openStates };
+        // LocalStore writes atomically; persistence failures propagate and the facade retains its previous snapshot.
+        _store.SaveSettings(updated);
+        return updated;
+    }
+
+    internal static void ValidateOpenStates(IReadOnlyDictionary<string, bool>? openStates)
+    {
+        if (openStates is null) return;
+        foreach (var key in openStates.Keys)
+        {
+            // Unsupported persisted keys are a contract error; never silently drop a saved window.
+            _ = GetMinimumSize(key);
+        }
+    }
+
+    /// <summary>Stores the screenshot identity for restoring the OCR text view from retained metadata.</summary>
+    public AppSettings SetOcrTextSource(string screenshotPath, DateTimeOffset capturedAt)
+    {
+        var source = new OcrTextWindowSource(screenshotPath, capturedAt);
+        ValidateOcrTextSource(source);
+        var settings = _store.LoadSettings() with { OcrTextWindowSource = source };
+        // Store only the source identity. Missing or deleted screenshots are resolved explicitly when the view reopens.
+        _store.SaveSettings(settings);
+        return settings;
+    }
+
+    internal static void ValidateOcrTextSource(OcrTextWindowSource? source)
+    {
+        if (source is null) return;
+        if (string.IsNullOrWhiteSpace(source.ScreenshotPath) || !Path.IsPathFullyQualified(source.ScreenshotPath)
+            || source.CapturedAt == default)
+        {
+            // Invalid context cannot be replaced with a different screenshot without changing what the user sees.
+            throw new ArgumentException("The OCR text window requires an absolute screenshot path and its capture timestamp.");
+        }
     }
 
     /// <summary>Reads the native window placement and persists it under the supplied key.</summary>
@@ -110,7 +169,7 @@ public sealed class WindowStateService
         ValidateRequest(windowKey, windowHandle);
         var handle = new IntPtr(windowHandle);
         var monitor = GetMonitorForWindow(handle);
-        var rect = GetWindowRect(handle);
+        var rect = GetNormalWindowRect(handle, monitor);
         var state = new WindowState(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top, monitor.DeviceName);
         if (state.Width <= 0 || state.Height <= 0)
         {
@@ -149,7 +208,8 @@ public sealed class WindowStateService
             targetMonitor.DeviceName,
             minimumSize.Width,
             minimumSize.Height);
-        if (!SetWindowPos(handle, IntPtr.Zero, safeState.X, safeState.Y, safeState.Width, safeState.Height, SetWindowPosNoActivate | SetWindowPosNoZOrder | SetWindowPosShowWindow))
+        // Geometry restoration must retain visibility, including a main window intentionally hidden in the notification area.
+        if (!SetWindowPos(handle, IntPtr.Zero, safeState.X, safeState.Y, safeState.Width, safeState.Height, SetWindowPosNoActivate | SetWindowPosNoZOrder))
         {
             throw new InvalidOperationException($"Unable to restore window bounds (Win32 error {Marshal.GetLastWin32Error()}).");
         }
@@ -159,10 +219,7 @@ public sealed class WindowStateService
 
     private static void ValidateRequest(string windowKey, long windowHandle)
     {
-        if (string.IsNullOrWhiteSpace(windowKey))
-        {
-            throw new ArgumentException("A window key is required.", nameof(windowKey));
-        }
+        _ = GetMinimumSize(windowKey);
 
         if (windowHandle == 0)
         {
@@ -215,7 +272,45 @@ public sealed class WindowStateService
         }
 
         var work = monitorInfo.WorkArea;
-        return new NativeMonitor(monitorInfo.DeviceName, new WindowWorkArea(work.Left, work.Top, work.Right - work.Left, work.Bottom - work.Top));
+        return new NativeMonitor(
+            monitorInfo.DeviceName,
+            new WindowWorkArea(work.Left, work.Top, work.Right - work.Left, work.Bottom - work.Top),
+            monitorInfo.MonitorArea);
+    }
+
+    private static NativeRect GetNormalWindowRect(IntPtr handle, NativeMonitor monitor)
+    {
+        var placement = new NativeWindowPlacement { Length = (uint)Marshal.SizeOf<NativeWindowPlacement>() };
+        if (!GetWindowPlacement(handle, ref placement))
+        {
+            // A failed native read must not overwrite the previous valid placement with synthetic bounds.
+            throw new InvalidOperationException($"Unable to read window placement (Win32 error {Marshal.GetLastWin32Error()}).");
+        }
+
+        if (placement.ShowCommand == ShowNormal) return GetWindowRect(handle);
+
+        Marshal.SetLastPInvokeError(0);
+        var extendedStyle = GetWindowLong(handle, ExtendedWindowStyle);
+        var error = Marshal.GetLastWin32Error();
+        if (extendedStyle == 0 && error != 0)
+        {
+            throw new InvalidOperationException($"Unable to read window style (Win32 error {error}).");
+        }
+
+        var normal = placement.NormalPosition;
+        if ((extendedStyle & ToolWindowStyle) == 0)
+        {
+            // WINDOWPLACEMENT uses workspace coordinates for ordinary top-level windows. Our stored bounds
+            // and SetWindowPos use screen coordinates, so account for taskbars on the monitor's top or left.
+            var offsetX = monitor.WorkArea.X - monitor.MonitorArea.Left;
+            var offsetY = monitor.WorkArea.Y - monitor.MonitorArea.Top;
+            normal.Left += offsetX;
+            normal.Right += offsetX;
+            normal.Top += offsetY;
+            normal.Bottom += offsetY;
+        }
+
+        return normal;
     }
 
     private static NativeRect GetWindowRect(IntPtr handle)
@@ -228,7 +323,25 @@ public sealed class WindowStateService
         return rect;
     }
 
-    private sealed record NativeMonitor(string DeviceName, WindowWorkArea WorkArea);
+    private sealed record NativeMonitor(string DeviceName, WindowWorkArea WorkArea, NativeRect MonitorArea);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeWindowPlacement
+    {
+        public uint Length;
+        public uint Flags;
+        public uint ShowCommand;
+        public NativePoint MinimumPosition;
+        public NativePoint MaximumPosition;
+        public NativeRect NormalPosition;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect
@@ -267,6 +380,13 @@ public sealed class WindowStateService
     [DllImport("user32.dll", EntryPoint = "GetWindowRect", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRectNative(IntPtr handle, out NativeRect rect);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowPlacement(IntPtr handle, ref NativeWindowPlacement placement);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern int GetWindowLong(IntPtr handle, int index);
 
     [DllImport("user32.dll", EntryPoint = "SetWindowPos", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

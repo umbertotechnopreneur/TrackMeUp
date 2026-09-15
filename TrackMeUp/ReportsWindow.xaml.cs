@@ -90,7 +90,7 @@ public sealed partial class ReportsWindow : Window
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
 
         if (_initializing || _webReady)
         {

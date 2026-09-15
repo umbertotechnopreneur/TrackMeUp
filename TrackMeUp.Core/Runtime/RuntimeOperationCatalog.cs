@@ -164,6 +164,10 @@ internal enum RuntimeOperation
     WindowStateRestore,
     [RuntimeOperationWireName("window.state.save")]
     WindowStateSave,
+    [RuntimeOperationWireName("window.open_state.set")]
+    WindowOpenStateSet,
+    [RuntimeOperationWireName("window.ocr_source.set")]
+    WindowOcrSourceSet,
     [RuntimeOperationWireName("startup.status")]
     StartupStatus,
     [RuntimeOperationWireName("startup.enable")]

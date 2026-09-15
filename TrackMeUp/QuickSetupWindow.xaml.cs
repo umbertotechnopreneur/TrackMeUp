@@ -99,7 +99,7 @@ internal sealed partial class QuickSetupWindow : Window
         // ToggleButton content enters the visual tree only after its template is realized.
         ApplyLanguage();
         UpdateSelection();
-        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
         SelectedButton().Focus(FocusState.Programmatic);
     }
 

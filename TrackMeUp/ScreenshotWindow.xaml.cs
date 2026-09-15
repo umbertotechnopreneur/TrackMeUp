@@ -46,12 +46,13 @@ public sealed partial class ScreenshotWindow : Window
     private ScreenshotDetailsViewState? _selectedDetailsState;
     private OcrTextWindow? _ocrTextWindow;
     private string? _ocrTextScreenshotPath;
+    private readonly OcrTextWindowSource? _restoreOcrSource;
+    private bool _openingOcrTextWindow;
     private bool _initialized;
     private bool _settingSelectedDate;
     private bool _detailsPaneOpenPreference;
     private bool _isSavingDetailsPanePreference;
     private bool _deleteOperationInProgress;
-    private bool _allowClose;
     private uint? _detailsResizePointerId;
     private double _detailsResizeStartPointerX;
     private double _detailsResizeStartWidth;
@@ -87,7 +88,8 @@ public sealed partial class ScreenshotWindow : Window
         string? launchTheme = null,
         string? requestedScreenshotPath = null,
         DateTimeOffset? requestedCapturedAt = null,
-        DateOnly? requestedDate = null)
+        DateOnly? requestedDate = null,
+        bool restoreOcrWindow = false)
     {
         if ((requestedScreenshotPath is null) != (requestedCapturedAt is null))
         {
@@ -104,11 +106,19 @@ public sealed partial class ScreenshotWindow : Window
             throw new ArgumentException("A gallery request cannot target both a day and a screenshot.");
         }
 
+        if (restoreOcrWindow && requestedScreenshotPath is null)
+        {
+            throw new ArgumentException("Restoring the OCR text window requires its screenshot source.", nameof(restoreOcrWindow));
+        }
+
         _application = application;
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _launchTheme = launchTheme;
         _requestedScreenshotPath = requestedScreenshotPath;
         _requestedDate = requestedDate;
+        _restoreOcrSource = restoreOcrWindow
+            ? new OcrTextWindowSource(requestedScreenshotPath!, requestedCapturedAt!.Value)
+            : null;
         if (requestedCapturedAt is { } capturedAt)
         {
             _selectedDate = DateOnly.FromDateTime(capturedAt.ToLocalTime().DateTime);
@@ -136,7 +146,6 @@ public sealed partial class ScreenshotWindow : Window
         ApplyTheme(_theme);
         ApplyLocalization();
         _placement.ApplyDefaultBounds(RootGrid);
-        _appWindow.Closing += ScreenshotWindow_Closing;
         Closed += ScreenshotWindow_Closed;
     }
 
@@ -203,7 +212,7 @@ public sealed partial class ScreenshotWindow : Window
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
 
         if (_initialized)
         {
@@ -244,7 +253,11 @@ public sealed partial class ScreenshotWindow : Window
         }
 
         await RefreshPrivacyStatusAsync(_lifetimeCancellation.Token);
-        await LoadGalleryAsync(_requestedScreenshotPath is null && _requestedDate is null ? null : _selectedDate);
+        var loaded = await LoadGalleryAsync(_requestedScreenshotPath is null && _requestedDate is null ? null : _selectedDate);
+        if (loaded && _restoreOcrSource is { } source && !_lifetimeCancellation.IsCancellationRequested)
+        {
+            await RestoreOcrTextWindowAsync(source);
+        }
     }
 
     private async Task RefreshPrivacyStatusAsync(CancellationToken cancellationToken)
@@ -282,7 +295,7 @@ public sealed partial class ScreenshotWindow : Window
         await LoadGalleryAsync(_selectedDate);
     }
 
-    private async Task LoadGalleryAsync(DateOnly? date)
+    private async Task<bool> LoadGalleryAsync(DateOnly? date)
     {
         _galleryCancellation?.Cancel();
         _galleryCancellation?.Dispose();
@@ -297,35 +310,38 @@ public sealed partial class ScreenshotWindow : Window
                 : await _application.GetLatestScreenshotGalleryAsync(cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
-                return;
+                return false;
             }
 
             if (!result.Succeeded || result.Value is null)
             {
                 _items = Array.Empty<ScreenshotGalleryItem>();
                 RenderGallery(_strings.Format("Screenshots.Error.UnavailableWithCode", result.Code));
-                return;
+                return false;
             }
 
             await RefreshAiDescriptionEmptyMessageAsync(cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
-                return;
+                return false;
             }
 
             SetSelectedDate(result.Value.Date);
             _items = result.Value.Items;
             SelectRequestedScreenshot();
             RenderGallery(null);
+            return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // A newer date selection owns the next gallery request; the superseded result is ignored.
+            return false;
         }
         catch (Exception)
         {
             _items = Array.Empty<ScreenshotGalleryItem>();
             RenderGallery(T("Screenshots.Error.Unavailable"));
+            return false;
         }
         finally
         {
@@ -539,11 +555,66 @@ public sealed partial class ScreenshotWindow : Window
         var count => _strings.Format("Screenshots.Privacy.Many", count)
     };
 
-    private void DetailsSection_OcrTextRequested(string ocrText)
+    private async void DetailsSection_OcrTextRequested(string ocrText)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ocrText);
-        _ocrTextScreenshotPath = GetSelectedItem().Path;
+        if (_openingOcrTextWindow || _lifetimeCancellation.IsCancellationRequested) return;
+        _openingOcrTextWindow = true;
+        var cancellationToken = _lifetimeCancellation.Token;
+        try
+        {
+            var selected = GetSelectedItem();
+            var saved = await _application.SetOcrTextWindowSourceAsync(selected.Path, selected.CapturedAt, cancellationToken);
+            if (!saved.Succeeded)
+            {
+                ShowActionResult(saved, "Screenshots.OcrText.WindowTitle");
+                return;
+            }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            ShowOcrTextWindow(ocrText, selected.Path);
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Closing owns cancellation; never reopen a child window after its gallery has closed.
+        }
+        catch (Exception)
+        {
+            // Surface an opening or persistence failure without retrying with different screenshot content.
+            _dialogs.Notifications.ShowError(ScreenshotActionBanner, T("Screenshots.OcrText.WindowTitle"), T("Screenshots.Action.Failed"));
+        }
+        finally
+        {
+            _openingOcrTextWindow = false;
+        }
+    }
+
+    private async Task RestoreOcrTextWindowAsync(OcrTextWindowSource source)
+    {
+        var selected = _items.Count > 0 ? GetSelectedItem() : null;
+        var ocrText = _selectedDetailsState?.OcrText;
+        if (selected is not null
+            && StringComparer.OrdinalIgnoreCase.Equals(selected.Path, source.ScreenshotPath)
+            && selected.CapturedAt == source.CapturedAt
+            && !string.IsNullOrWhiteSpace(ocrText))
+        {
+            ShowOcrTextWindow(ocrText, selected.Path);
+            return;
+        }
+
+        // Retention or deletion can remove this exact screenshot or its OCR. Close the saved surface explicitly
+        // and show the existing unavailable notice instead of opening text from the gallery's replacement selection.
+        var cleared = await _application.SetWindowOpenStateAsync(WindowStateKeys.OcrText, false, _lifetimeCancellation.Token);
+        if (!cleared.Succeeded)
+        {
+            throw new InvalidOperationException($"The unavailable OCR window state could not be saved ({cleared.Code}).");
+        }
+
+        _dialogs.Notifications.ShowError(ScreenshotActionBanner, T("Screenshots.OcrText.WindowTitle"), T("Screenshots.Error.Unavailable"));
+    }
+
+    private void ShowOcrTextWindow(string ocrText, string screenshotPath)
+    {
         var requestedTheme = RootGrid.RequestedTheme;
         if (_ocrTextWindow is null)
         {
@@ -560,6 +631,7 @@ public sealed partial class ScreenshotWindow : Window
             _ocrTextWindow.UpdateContent(ocrText, requestedTheme, _strings.Language);
         }
 
+        _ocrTextScreenshotPath = screenshotPath;
         _ocrTextWindow.Activate();
     }
 
@@ -647,7 +719,6 @@ public sealed partial class ScreenshotWindow : Window
     /// <summary>Closes the inspector without starting persistence while the owning application is shutting down.</summary>
     internal void CloseForShutdown()
     {
-        _allowClose = true;
         _lifetimeCancellation.Cancel();
         Close();
     }
@@ -979,22 +1050,8 @@ public sealed partial class ScreenshotWindow : Window
         _titleBar.ApplyTheme(effectiveTheme);
     }
 
-    private void ScreenshotWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
-    {
-        if (_allowClose)
-        {
-            return;
-        }
-
-        // Let the native close continue immediately; placement persistence starts while the handle is still valid
-        // and failure is traced by the close-safe helper instead of delaying or cancelling the user's X action.
-        _allowClose = true;
-        _ = _placement.TrySaveForCloseAsync(CancellationToken.None);
-    }
-
     private void ScreenshotWindow_Closed(object sender, WindowEventArgs args)
     {
-        _appWindow.Closing -= ScreenshotWindow_Closing;
         DetailsSection.OcrTextRequested -= DetailsSection_OcrTextRequested;
         ScreenshotViewer.ZoomStateChanged -= ScreenshotViewer_ZoomStateChanged;
         ScreenshotViewer.ImageLoadFailed -= ScreenshotViewer_ImageLoadFailed;

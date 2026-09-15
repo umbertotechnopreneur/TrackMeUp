@@ -58,7 +58,8 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
             LogicalWidth,
             LogicalHeight,
             LogicalScreenMargin,
-            ownerAppWindow?.Id);
+            ownerAppWindow?.Id,
+            deferNativeClose: false);
         if (ownerHandle != IntPtr.Zero)
         {
             WindowInteropService.SetOwner(_windowHandle, ownerHandle);
@@ -101,7 +102,7 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
-            await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+            await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
         }
         catch (OperationCanceledException) when (_allowClose)
         {
@@ -109,7 +110,7 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
         }
         catch (Exception)
         {
-            Complete(OperationResult<ScreenshotStorageMigrationResult>.Failure(
+            await CompleteAsync(OperationResult<ScreenshotStorageMigrationResult>.Failure(
                 "screenshot.storage_migration.window_failed",
                 "ScreenshotStorageMigrationFailed"));
             return;
@@ -124,7 +125,7 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
         // A low-priority dispatch gives WinUI a frame to compose the progress surface before file migration begins.
         if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, RunMigrationFromVisibleWindow))
         {
-            Complete(OperationResult<ScreenshotStorageMigrationResult>.Failure(
+            await CompleteAsync(OperationResult<ScreenshotStorageMigrationResult>.Failure(
                 "screenshot.storage_migration.dispatch_failed",
                 "ScreenshotStorageMigrationFailed"));
         }
@@ -149,16 +150,18 @@ internal sealed partial class ScreenshotStorageMigrationDialogWindow : Window
                 "ScreenshotStorageMigrationFailed");
         }
 
-        Complete(result);
+        await CompleteAsync(result);
     }
 
-    private void Complete(OperationResult<ScreenshotStorageMigrationResult> result)
+    private async Task CompleteAsync(OperationResult<ScreenshotStorageMigrationResult> result)
     {
         if (_allowClose)
         {
             return;
         }
 
+        // Keep the guarded window alive until its placement has been persisted.
+        await _placement.SaveForExplicitCloseAsync(CancellationToken.None);
         _allowClose = true;
         _completion.TrySetResult(result);
         Close();

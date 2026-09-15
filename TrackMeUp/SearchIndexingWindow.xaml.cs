@@ -96,7 +96,7 @@ internal sealed partial class SearchIndexingWindow : Window
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
-            await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+            await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
         }
         catch (OperationCanceledException) when (_closing)
         {

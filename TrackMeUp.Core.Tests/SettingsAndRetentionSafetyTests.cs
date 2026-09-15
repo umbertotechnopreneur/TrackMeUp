@@ -16,6 +16,69 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class SettingsAndRetentionSafetyTests
 {
+    /// <summary>Verifies that the global preference survives storage and unrelated settings changes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AutoHideTitleBar_RoundTripsThroughTheCatalogAndLocalStore(bool enabled)
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var defaults = store.LoadSettings();
+            Assert.True(defaults.AutoHideTitleBar);
+            var descriptor = Assert.Single(SettingsCatalog.Definitions, item => item.Key == "window.titlebar.auto_hide");
+            Assert.False(descriptor.RequiresRestart);
+
+            var updated = SettingsCatalog.Apply(defaults, new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["window.titlebar.auto_hide"] = enabled ? "true" : "false"
+            }));
+            Assert.True(updated.Succeeded);
+            store.SaveSettings(Assert.IsType<AppSettings>(updated.Value));
+
+            var restored = new LocalStore(dataDirectory).LoadSettings();
+            Assert.Equal(enabled, restored.AutoHideTitleBar);
+            Assert.True(SettingsCatalog.TryGetValue(restored, "window.titlebar.auto_hide", out var storedValue));
+            Assert.Equal(enabled, Assert.IsType<bool>(storedValue));
+
+            var themeChanged = SettingsCatalog.Apply(restored, new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["theme"] = "dark"
+            }));
+            Assert.True(themeChanged.Succeeded);
+            Assert.Equal(enabled, themeChanged.Value!.AutoHideTitleBar);
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>Rejects an invalid global preference without applying any accompanying settings.</summary>
+    [Fact]
+    public void AutoHideTitleBar_RejectsAnInvalidValueAtomically()
+    {
+        var defaults = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>(
+            "{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.True(defaults.AutoHideTitleBar);
+
+        var result = SettingsCatalog.Apply(defaults, new SettingsPatch(new Dictionary<string, string?>
+        {
+            ["window.titlebar.auto_hide"] = "sometimes",
+            ["theme"] = "dark"
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Value);
+        Assert.Contains(result.Issues, issue => issue.Field == "window.titlebar.auto_hide");
+        Assert.Equal("system", defaults.Theme);
+    }
+
     [Fact]
     public void Apply_UsesOneTransactionalCatalogForAiTuning()
     {

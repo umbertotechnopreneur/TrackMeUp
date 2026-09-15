@@ -405,6 +405,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState>(RuntimeOperation.WindowStateSave, new { windowKey, windowHandle }, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<bool>> SetWindowOpenStateAsync(string windowKey, bool isOpen, CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.WindowOpenStateSet, new { windowKey, isOpen }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<OcrTextWindowSource>> SetOcrTextWindowSourceAsync(string screenshotPath, DateTimeOffset capturedAt, CancellationToken cancellationToken) => SendAsync<OcrTextWindowSource>(RuntimeOperation.WindowOcrSourceSet, new OcrTextWindowSource(screenshotPath, capturedAt), cancellationToken);
+    /// <inheritdoc />
     public Task<OperationResult<bool>> GetStartupStatusAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.StartupStatus, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<bool>> SetStartupEnabledAsync(bool enabled, CancellationToken cancellationToken) =>

@@ -73,9 +73,6 @@ public sealed class WorldClockWindowLayoutState
     /// <summary>Gets the active density for the clock comparison.</summary>
     public WorldClockPresentationMode PresentationMode { get; private set; } = WorldClockPresentationMode.Expanded;
 
-    /// <summary>Gets whether the optional day/night map panel is visible.</summary>
-    public bool IsWorldMapVisible { get; private set; }
-
     /// <summary>Shows one top-level surface without resetting the current clock projection.</summary>
     /// <param name="surface">Surface to make current.</param>
     public void ShowSurface(WorldClockWindowSurface surface)
@@ -97,17 +94,6 @@ public sealed class WorldClockWindowLayoutState
             : WorldClockPresentationMode.Expanded;
         return PresentationMode;
     }
-
-    /// <summary>Switches the optional day/night map panel without changing the selected clocks.</summary>
-    /// <returns>Whether the map is visible after the change.</returns>
-    public bool ToggleWorldMap()
-    {
-        IsWorldMapVisible = !IsWorldMapVisible;
-        return IsWorldMapVisible;
-    }
-
-    /// <summary>Hides the optional map after the last selected clock is removed.</summary>
-    public void HideWorldMap() => IsWorldMapVisible = false;
 
     /// <summary>Returns a one-shot delay that lands just after the next UTC minute boundary.</summary>
     public static TimeSpan DelayUntilNextMinute(DateTimeOffset instant)
@@ -169,8 +155,7 @@ public sealed class WorldClockWindowLayoutState
     /// <summary>Calculates content-led bounds so a small city set stays compact without restricting manual resize.</summary>
     public static WorldClockWindowSizing CalculateWindowSizing(
         int clockCount,
-        WorldClockPresentationMode presentationMode,
-        bool isWorldMapVisible = false)
+        WorldClockPresentationMode presentationMode)
     {
         if (clockCount is < 1 or > 12)
         {
@@ -191,24 +176,8 @@ public sealed class WorldClockWindowLayoutState
         };
         var minimum = WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks);
         var preferredHeight = presentationMode == WorldClockPresentationMode.Compact ? 280 : 680;
-        if (isWorldMapVisible)
-        {
-            preferredHeight += (int)Math.Ceiling(CalculateWorldMapPanelHeight(preferredWidth));
-        }
-
         return new(preferredWidth, preferredHeight,
             minimum.Width, minimum.Height);
-    }
-
-    /// <summary>Calculates a readable map height that follows the window width without dominating the clocks.</summary>
-    public static double CalculateWorldMapPanelHeight(double viewportWidth)
-    {
-        if (!double.IsFinite(viewportWidth) || viewportWidth <= 0d)
-        {
-            throw new ArgumentOutOfRangeException(nameof(viewportWidth));
-        }
-
-        return Math.Clamp(viewportWidth * 0.24d, 220d, 340d);
     }
 
     /// <summary>Reserves a 12-DIP root inset and the flyout border so neither axis can clip its content.</summary>
@@ -233,7 +202,7 @@ public sealed class WorldClockWindowLayoutState
     /// <summary>Returns a pending sizing change, deferring it while options are visible.</summary>
     public WorldClockWindowResizeRequest? GetWindowResizeRequest(int clockCount)
     {
-        var sizing = CalculateWindowSizing(clockCount, PresentationMode, IsWorldMapVisible);
+        var sizing = CalculateWindowSizing(clockCount, PresentationMode);
         return Surface == WorldClockWindowSurface.Options || sizing == _appliedWindowSizing
             ? null
             : new(sizing, ResizeToPreferred: !_preserveRestoredSize);

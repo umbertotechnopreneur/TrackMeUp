@@ -83,6 +83,7 @@ public sealed partial class MainWindow : Window
     private DateTimeOffset _nextLastSessionRefreshAt = DateTimeOffset.MinValue;
     private bool _startupAiWarningShown;
     private bool _screenshotStorageReady;
+    private readonly TaskCompletionSource _workspaceReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
     private int _aiSpendRefreshInProgress;
@@ -230,6 +231,7 @@ public sealed partial class MainWindow : Window
         if (!await EnsureScreenshotStorageMigratedAsync(cancellationToken))
         {
             // Tracking and periodic refresh stay stopped until the explicit storage migration succeeds.
+            _workspaceReady.TrySetCanceled();
             return;
         }
 
@@ -267,10 +269,12 @@ public sealed partial class MainWindow : Window
         await ShowStartupAiWarningAsync(cancellationToken);
         await RefreshAiMonthlySpendAsync();
         await DrainApplicationNotificationsAsync(cancellationToken);
+        _workspaceReady.TrySetResult();
     }
 
     private void Lifecycle_InitializationFailed(Exception exception)
     {
+        _workspaceReady.TrySetException(exception);
         if (_lifecycle.IsCancellationRequested)
         {
             return;
@@ -915,10 +919,26 @@ public sealed partial class MainWindow : Window
     private async void ActivityCalendarMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
-        var selectedDate = await _dialogs.ShowActivityCalendarAsync(_application, this, RootGrid.RequestedTheme, _strings);
-        if (selectedDate is { } date)
+        await ShowActivityCalendarAsync();
+    }
+
+    private async Task ShowActivityCalendarAsync()
+    {
+        try
         {
-            ScreenshotGalleryDateRequested?.Invoke(this, new ScreenshotGalleryDateRequestedEventArgs(date));
+            var selectedDate = await _dialogs.ShowActivityCalendarAsync(_application, this, RootGrid.RequestedTheme, _strings);
+            if (selectedDate is { } date && !_dashboardSurfaceClosed)
+            {
+                ScreenshotGalleryDateRequested?.Invoke(this, new ScreenshotGalleryDateRequestedEventArgs(date));
+            }
+        }
+        catch (Exception) when (_dashboardSurfaceClosed)
+        {
+            // Closing the owner cancels its outstanding calendar interaction.
+        }
+        catch (Exception)
+        {
+            await ShowLazySurfaceFailureAsync();
         }
     }
 
@@ -1083,6 +1103,11 @@ public sealed partial class MainWindow : Window
     private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
     {
         MoreButton.Flyout.Hide();
+        ShowAboutWindow();
+    }
+
+    private void ShowAboutWindow()
+    {
         if (_aboutWindow is null)
         {
             _aboutWindow = new AboutWindow(
@@ -2034,6 +2059,35 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
+    /// <summary>Waits for storage and initial application state before restoring dependent work surfaces.</summary>
+    internal Task WaitForWorkspaceReadyAsync() => _workspaceReady.Task;
+
+    /// <summary>Restores passive tools after their main-window owner is ready.</summary>
+    internal async Task RestoreToolWindowsAsync(IReadOnlyList<string> windowKeys)
+    {
+        await WaitForWorkspaceReadyAsync();
+        if (windowKeys.Contains(WindowStateKeys.Schedule))
+        {
+            await OpenScheduleWindowAsync();
+        }
+
+        if (windowKeys.Contains(WindowStateKeys.About))
+        {
+            ShowAboutWindow();
+        }
+
+        if (windowKeys.Contains(WindowStateKeys.Licenses))
+        {
+            _aboutWindow!.ShowLicenses();
+        }
+
+        if (windowKeys.Contains(WindowStateKeys.ActivityCalendar))
+        {
+            // Calendar owns a modal interaction; its close must not block startup of other work windows.
+            _ = ShowActivityCalendarAsync();
+        }
+    }
+
     /// <summary>Closes the player for an application-owned shutdown that must not prompt the user.</summary>
     internal void CloseForShutdown()
     {
@@ -2179,7 +2233,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            await _placement.TrySaveForCloseAsync(CancellationToken.None);
+            await WindowPlacementService.PrepareForShutdownAsync();
             _allowClose = true;
             Close();
         }
@@ -2300,6 +2354,7 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
+        _workspaceReady.TrySetCanceled();
         _placement.DpiChanged -= Placement_DpiChanged;
         _dashboardSurfaceClosed = true;
         _dashboardRefreshReady = false;
@@ -2337,6 +2392,9 @@ public sealed partial class MainWindow : Window
             _scheduleWindow.Close();
             _scheduleWindow = null;
         }
+
+        _aboutWindow?.Close();
+        _aboutWindow = null;
 
         if (_searchIndexingWindow is not null)
         {

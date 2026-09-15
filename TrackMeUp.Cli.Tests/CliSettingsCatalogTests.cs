@@ -23,6 +23,7 @@ public sealed class CliSettingsCatalogTests
         Assert.Contains("ai.output_detail", keys);
         Assert.Contains("ai.reasoning_effort", keys);
         Assert.Contains("taskbar.widget.position", keys);
+        Assert.Contains("window.titlebar.auto_hide", keys);
         Assert.DoesNotContain(keys, key => key.Contains("installation", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(keys, key => key.Contains("privacy", StringComparison.OrdinalIgnoreCase));
     }
@@ -30,10 +31,11 @@ public sealed class CliSettingsCatalogTests
     [Fact]
     public void ReadAll_UsesStablePublicKeysInsteadOfPropertyNames()
     {
-        var values = CliSettingsCatalog.ReadAll(new AppSettings(Theme: "dark", ScreenshotsEnabled: true));
+        var values = CliSettingsCatalog.ReadAll(new AppSettings(Theme: "dark", ScreenshotsEnabled: true, AutoHideTitleBar: false));
 
         Assert.Equal("dark", Assert.Single(values, value => value.Key == "theme").Value);
         Assert.Equal(true, Assert.Single(values, value => value.Key == "screenshots.enabled").Value);
+        Assert.Equal(false, Assert.Single(values, value => value.Key == "window.titlebar.auto_hide").Value);
         Assert.DoesNotContain(values, value => value.Key == nameof(AppSettings.InstallationId));
     }
 

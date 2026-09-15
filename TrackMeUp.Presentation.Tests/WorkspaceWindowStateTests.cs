@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: MIT
+
+using System;
+using System.Collections.Generic;
+using TrackMeUp.Application;
+using TrackMeUp.Presentation;
+using Xunit;
+
+namespace TrackMeUp.Presentation.Tests;
+
+public sealed class WorkspaceWindowStateTests
+{
+    /// <summary>Verifies that the first launch does not invent auxiliary windows without a saved session.</summary>
+    [Fact]
+    public void MissingSession_DoesNotOpenAuxiliaryWindows()
+    {
+        Assert.Empty(WorkspaceWindowState.GetWindowsToRestore(null));
+    }
+
+    /// <summary>Verifies that temporary owner hiding cannot silently close saved auxiliary work surfaces.</summary>
+    [Theory]
+    [InlineData(WindowStateKeys.Main, false, false)]
+    [InlineData(WindowStateKeys.Main, true, true)]
+    [InlineData(WindowStateKeys.About, false, true)]
+    [InlineData(WindowStateKeys.ActivityCalendar, false, true)]
+    [InlineData(WindowStateKeys.WorldMap, false, true)]
+    [InlineData(WindowStateKeys.LunarPhase, true, true)]
+    public void LiveWindowState_DistinguishesMainTrayHidingFromAnOpenAuxiliary(string key, bool isVisible, bool expected)
+    {
+        Assert.Equal(expected, WorkspaceWindowState.IsOpenWhileAlive(key, isVisible));
+    }
+
+    /// <summary>Verifies that explicitly closed work surfaces remain closed and open surfaces restore deterministically.</summary>
+    [Fact]
+    public void Restore_PreservesOpenAndClosedWorkSurfaces()
+    {
+        var openStates = new Dictionary<string, bool>
+        {
+            [WindowStateKeys.LunarPhase] = true,
+            [WindowStateKeys.Main] = false,
+            [WindowStateKeys.WorldClocks] = false,
+            [WindowStateKeys.WorldMap] = true,
+            [WindowStateKeys.Reports] = true,
+            [WindowStateKeys.Search] = false
+        };
+
+        Assert.Equal(
+            new[] { WindowStateKeys.Reports, WindowStateKeys.WorldMap, WindowStateKeys.LunarPhase },
+            WorkspaceWindowState.GetWindowsToRestore(openStates));
+    }
+
+    /// <summary>Verifies that retained child windows restore only after the owner needed to display them.</summary>
+    [Fact]
+    public void Restore_OpenChildrenAddTheirOwnersInOrder()
+    {
+        var openStates = new Dictionary<string, bool>
+        {
+            [WindowStateKeys.OcrText] = true,
+            [WindowStateKeys.Screenshots] = false,
+            [WindowStateKeys.Licenses] = true,
+            [WindowStateKeys.About] = false
+        };
+
+        Assert.Equal(
+            new[] { WindowStateKeys.Screenshots, WindowStateKeys.OcrText, WindowStateKeys.About, WindowStateKeys.Licenses },
+            WorkspaceWindowState.GetWindowsToRestore(openStates));
+    }
+
+    /// <summary>Verifies that a closed child does not reopen its previously closed owner.</summary>
+    [Fact]
+    public void Restore_ClosedChildrenDoNotCreateOwnerWindows()
+    {
+        var openStates = new Dictionary<string, bool>
+        {
+            [WindowStateKeys.OcrText] = false,
+            [WindowStateKeys.Licenses] = false
+        };
+
+        Assert.Empty(WorkspaceWindowState.GetWindowsToRestore(openStates));
+    }
+
+    /// <summary>Verifies that startup cannot replay an operation or configuration dialog from a saved visibility flag.</summary>
+    [Theory]
+    [InlineData(WindowStateKeys.QuickSetup)]
+    [InlineData(WindowStateKeys.Dialog)]
+    [InlineData(WindowStateKeys.SearchIndexing)]
+    [InlineData(WindowStateKeys.WorldClockCityPicker)]
+    [InlineData(WindowStateKeys.AiScreenshotReprocessing)]
+    [InlineData(WindowStateKeys.AiPricing)]
+    [InlineData(WindowStateKeys.AiConnectionTest)]
+    public void Restore_LeavesTransientSurfacesClosed(string windowKey)
+    {
+        Assert.False(WorkspaceWindowState.IsRestorable(windowKey));
+        Assert.Empty(WorkspaceWindowState.GetWindowsToRestore(new Dictionary<string, bool> { [windowKey] = true }));
+    }
+
+    /// <summary>Verifies unsupported keys fail even when a malformed session marks them closed.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Restore_RejectsUnknownWindowIdentities(bool isOpen)
+    {
+        Assert.Throws<ArgumentException>(() => WorkspaceWindowState.IsRestorable("unknown-window"));
+        Assert.Throws<ArgumentException>(() => WorkspaceWindowState.GetWindowsToRestore(
+            new Dictionary<string, bool> { ["unknown-window"] = isOpen }));
+    }
+}

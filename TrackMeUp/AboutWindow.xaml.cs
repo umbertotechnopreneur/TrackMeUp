@@ -90,7 +90,7 @@ public sealed partial class AboutWindow : Window
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+        await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
         UpdateThemeAssets();
 
         try
@@ -136,7 +136,10 @@ public sealed partial class AboutWindow : Window
     private async void RepositoryButton_Click(object sender, RoutedEventArgs e) =>
         await RunProductLinkActionAsync("repository");
 
-    private void LicensesButton_Click(object sender, RoutedEventArgs e)
+    private void LicensesButton_Click(object sender, RoutedEventArgs e) => ShowLicenses();
+
+    /// <summary>Opens or focuses the licenses work surface, including during workspace restoration.</summary>
+    internal void ShowLicenses()
     {
         if (_licensesWindow is not null)
         {
