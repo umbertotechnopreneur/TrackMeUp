@@ -5,18 +5,17 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid
         x:Name="MapRoot"
-        MinHeight="220"
         AutomationProperties.Name="World day and night map"
         SizeChanged="MapRoot_SizeChanged">
         <Image
             AutomationProperties.AccessibilityView="Raw"
             Source="ms-appx:///Assets/WorldClocks/Maps/world-map-day.png"
-            Stretch="Fill" />
+            Stretch="Uniform" />
         <Image
             x:Name="CompositeMapImage"
             AutomationProperties.AccessibilityView="Raw"
             IsHitTestVisible="False"
-            Stretch="Fill" />
+            Stretch="Uniform" />
         <Canvas
             x:Name="MarkerCanvas"
             AutomationProperties.AccessibilityView="Raw" />

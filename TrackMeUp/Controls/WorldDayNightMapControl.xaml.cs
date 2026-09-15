@@ -22,6 +22,7 @@ public sealed partial class WorldDayNightMapControl : UserControl
 {
     private const int MapPixelWidth = 1440;
     private const int MapPixelHeight = 720;
+    private const double CelestialMarkerSize = 40d;
     private const string DayMapAssetUri = "ms-appx:///Assets/WorldClocks/Maps/world-map-day.png";
     private const string NightMapAssetUri = "ms-appx:///Assets/WorldClocks/Maps/world-map-night.png";
     private readonly WriteableBitmap _compositeBitmap = new(MapPixelWidth, MapPixelHeight);
@@ -211,8 +212,8 @@ public sealed partial class WorldDayNightMapControl : UserControl
                 12d);
         }
 
-        AddMarker(CreateSunMarker(_projection.Sun), _projection.Sun.Latitude, _projection.Sun.Longitude, 30d, 30d);
-        AddMarker(CreateMoonMarker(_projection), _projection.Moon.Latitude, _projection.Moon.Longitude, 30d, 30d);
+        AddMarker(CreateSunMarker(_projection.Sun), _projection.Sun.Latitude, _projection.Sun.Longitude, CelestialMarkerSize, CelestialMarkerSize);
+        AddMarker(CreateMoonMarker(_projection), _projection.Moon.Latitude, _projection.Moon.Longitude, CelestialMarkerSize, CelestialMarkerSize);
         PositionMarkers();
     }
 
@@ -235,16 +236,7 @@ public sealed partial class WorldDayNightMapControl : UserControl
 
     private FrameworkElement CreateSunMarker(WorldClockMapCoordinate position)
     {
-        var marker = new TextBlock
-        {
-            Width = 30d,
-            Height = 30d,
-            FontFamily = new FontFamily("Segoe UI Emoji"),
-            FontSize = 22d,
-            Text = "☀️",
-            TextAlignment = TextAlignment.Center,
-            Tag = new MarkerPosition(position.Latitude, position.Longitude, 30d, 30d)
-        };
+        var marker = CreateCelestialMarker(isDaylight: true);
         var label = FormatPosition(T("WorldClock.Map.Sun"), position.Latitude, position.Longitude);
         AutomationProperties.SetName(marker, label);
         ToolTipService.SetToolTip(marker, label);
@@ -254,16 +246,7 @@ public sealed partial class WorldDayNightMapControl : UserControl
     private FrameworkElement CreateMoonMarker(WorldClockMapProjection projection)
     {
         var phase = LunarPhaseProjection.Create(projection.MoonPhaseAngleDegrees);
-        var marker = new TextBlock
-        {
-            Width = 30d,
-            Height = 30d,
-            FontFamily = new FontFamily("Segoe UI Emoji"),
-            FontSize = 22d,
-            Text = phase.Glyph,
-            TextAlignment = TextAlignment.Center,
-            Tag = new MarkerPosition(projection.Moon.Latitude, projection.Moon.Longitude, 30d, 30d)
-        };
+        var marker = CreateCelestialMarker(isDaylight: false, projection.MoonPhaseAngleDegrees);
         var label = string.Join(
             " · ",
             T("WorldClock.Map.Moon"),
@@ -275,6 +258,23 @@ public sealed partial class WorldDayNightMapControl : UserControl
         return marker;
     }
 
+    private static Grid CreateCelestialMarker(bool isDaylight, double moonPhaseAngleDegrees = 0d)
+    {
+        var marker = new Grid
+        {
+            Width = CelestialMarkerSize,
+            Height = CelestialMarkerSize,
+            Background = new SolidColorBrush(Colors.Transparent)
+        };
+        marker.Children.Add(new CelestialPhaseControl
+        {
+            IsDaylight = isDaylight,
+            MoonPhaseAngleDegrees = moonPhaseAngleDegrees,
+            IsHitTestVisible = false
+        });
+        return marker;
+    }
+
     private void AddMarker(FrameworkElement marker, double latitude, double longitude, double width, double height)
     {
         marker.Tag = new MarkerPosition(latitude, longitude, width, height);
@@ -283,14 +283,21 @@ public sealed partial class WorldDayNightMapControl : UserControl
 
     private void PositionMarkers()
     {
-        var width = MapRoot.ActualWidth;
-        var height = MapRoot.ActualHeight;
-        if (width <= 0d || height <= 0d)
+        var viewportWidth = MapRoot.ActualWidth;
+        var viewportHeight = MapRoot.ActualHeight;
+        if (viewportWidth <= 0d || viewportHeight <= 0d)
         {
             return;
         }
 
-        MarkerCanvas.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, width, height) };
+        // Match both images' centered Uniform stretch, including the empty margins.
+        // Marker sizes stay in DIPs while their positions follow the fitted 2:1 map.
+        var scale = Math.Min(viewportWidth / MapPixelWidth, viewportHeight / MapPixelHeight);
+        var width = MapPixelWidth * scale;
+        var height = MapPixelHeight * scale;
+        var left = (viewportWidth - width) / 2d;
+        var top = (viewportHeight - height) / 2d;
+        MarkerCanvas.Clip = new RectangleGeometry { Rect = new Rect(left, top, width, height) };
         foreach (var element in MarkerCanvas.Children.OfType<FrameworkElement>())
         {
             if (element.Tag is not MarkerPosition marker)
@@ -299,8 +306,8 @@ public sealed partial class WorldDayNightMapControl : UserControl
             }
 
             var point = WorldMapLightingProjection.Project(marker.Latitude, marker.Longitude);
-            Canvas.SetLeft(element, (point.X * width) - (marker.Width / 2d));
-            Canvas.SetTop(element, (point.Y * height) - (marker.Height / 2d));
+            Canvas.SetLeft(element, left + (point.X * width) - (marker.Width / 2d));
+            Canvas.SetTop(element, top + (point.Y * height) - (marker.Height / 2d));
         }
     }
 

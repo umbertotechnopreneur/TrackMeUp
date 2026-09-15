@@ -12,6 +12,7 @@ These instructions apply to all changes in this repository.
 - Do not preserve legacy code or superseded contracts for compatibility. Remove obsolete code paths, adapters, fallbacks, and persisted settings when a feature is replaced; unsupported legacy input must fail fast.
 - Preserve unrelated local changes unless explicitly requested.
 - Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
+- When creating a pull request, assign it to `umbertotechnopreneur` and apply the existing repository labels that match its scope.
 - Keep WinUI views, code-behind, Spectre commands, prompts, and renderers passive: they may only collect input, bind/render DTOs, and invoke `ITrackMeUpApplication`.
 - Every icon-only WinUI button or toggle must have a localized tooltip and the same localized accessible name; never rely on the glyph alone.
 - Put application behavior, persistence, OS interop, capture, environment access, HTTP, retention, and startup changes behind `TrackMeUp.Core` application services.

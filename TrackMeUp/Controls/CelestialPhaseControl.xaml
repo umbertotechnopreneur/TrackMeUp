@@ -17,23 +17,13 @@
                         <GradientStop Color="#22FF8A2B" Offset="0.78" />
                         <GradientStop Color="#00FF7426" Offset="1" />
                     </RadialGradientBrush>
-                    <RadialGradientBrush x:Key="CelestialSunGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34">
-                        <GradientStop Color="#2EFFF8CB" Offset="0" />
-                        <GradientStop Color="#06FFFFFF" Offset="0.55" />
-                        <GradientStop Color="#52BD3A08" Offset="1" />
-                    </RadialGradientBrush>
                     <SolidColorBrush x:Key="CelestialSunOutlineBrush" Color="#70F6B44D" />
                     <RadialGradientBrush x:Key="CelestialMoonHaloBrush">
                         <GradientStop Color="#405B8FC7" Offset="0.42" />
                         <GradientStop Color="#16285988" Offset="0.74" />
                         <GradientStop Color="#00233D61" Offset="1" />
                     </RadialGradientBrush>
-                    <RadialGradientBrush x:Key="CelestialMoonGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34" RadiusX="0.7" RadiusY="0.7">
-                        <GradientStop Color="#12FFFFFF" Offset="0" />
-                        <GradientStop Color="#00FFFFFF" Offset="0.52" />
-                        <GradientStop Color="#880A1019" Offset="1" />
-                    </RadialGradientBrush>
-                    <SolidColorBrush x:Key="CelestialMoonShadowBrush" Color="#9A080D15" />
+                    <SolidColorBrush x:Key="CelestialMoonShadowBrush" Color="#E8000000" />
                     <SolidColorBrush x:Key="CelestialMoonOutlineBrush" Color="#52A9BAD0" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
@@ -47,32 +37,20 @@
                         <GradientStop Color="#48FF7A22" Offset="0.78" />
                         <GradientStop Color="#00FF6A1F" Offset="1" />
                     </RadialGradientBrush>
-                    <RadialGradientBrush x:Key="CelestialSunGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34">
-                        <GradientStop Color="#38FFF6C2" Offset="0" />
-                        <GradientStop Color="#08FFFFFF" Offset="0.55" />
-                        <GradientStop Color="#65BD3A08" Offset="1" />
-                    </RadialGradientBrush>
                     <SolidColorBrush x:Key="CelestialSunOutlineBrush" Color="#90FFD477" />
                     <RadialGradientBrush x:Key="CelestialMoonHaloBrush">
                         <GradientStop Color="#705B8FC7" Offset="0.42" />
                         <GradientStop Color="#30285988" Offset="0.74" />
                         <GradientStop Color="#00233D61" Offset="1" />
                     </RadialGradientBrush>
-                    <RadialGradientBrush x:Key="CelestialMoonGlazeBrush" Center="0.42,0.38" GradientOrigin="0.38,0.34" RadiusX="0.7" RadiusY="0.7">
-                        <GradientStop Color="#16FFFFFF" Offset="0" />
-                        <GradientStop Color="#00FFFFFF" Offset="0.52" />
-                        <GradientStop Color="#A30A1019" Offset="1" />
-                    </RadialGradientBrush>
-                    <SolidColorBrush x:Key="CelestialMoonShadowBrush" Color="#C0080D15" />
+                    <SolidColorBrush x:Key="CelestialMoonShadowBrush" Color="#E8000000" />
                     <SolidColorBrush x:Key="CelestialMoonOutlineBrush" Color="#68D8E7F9" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <SolidColorBrush x:Key="CelestialSunOuterHaloBrush" Color="Transparent" />
                     <SolidColorBrush x:Key="CelestialSunInnerHaloBrush" Color="Transparent" />
-                    <SolidColorBrush x:Key="CelestialSunGlazeBrush" Color="Transparent" />
                     <StaticResource x:Key="CelestialSunOutlineBrush" ResourceKey="SystemColorHighlightColorBrush" />
                     <SolidColorBrush x:Key="CelestialMoonHaloBrush" Color="Transparent" />
-                    <SolidColorBrush x:Key="CelestialMoonGlazeBrush" Color="Transparent" />
                     <StaticResource x:Key="CelestialMoonShadowBrush" ResourceKey="SystemColorWindowTextColorBrush" />
                     <StaticResource x:Key="CelestialMoonOutlineBrush" ResourceKey="SystemColorHighlightColorBrush" />
                 </ResourceDictionary>
@@ -95,17 +73,16 @@
                     Width="108"
                     Height="108"
                     Fill="{ThemeResource CelestialSunInnerHaloBrush}" />
-                <Grid Width="92" Height="92">
-                    <Ellipse Width="90" Height="90">
-                        <Ellipse.Fill>
-                            <ImageBrush ImageSource="ms-appx:///Assets/Celestial/sun-premium.png" Stretch="UniformToFill" />
-                        </Ellipse.Fill>
-                    </Ellipse>
-                    <Ellipse
-                        Width="92"
-                        Height="92"
-                        Fill="{ThemeResource CelestialSunGlazeBrush}" />
-                </Grid>
+                <Ellipse Width="92" Height="92">
+                    <Ellipse.Fill>
+                        <!-- Frame the 410px solar disk in the original 512px NASA image. -->
+                        <ImageBrush ImageSource="ms-appx:///Assets/Celestial/sun-sdo.jpg" Stretch="UniformToFill">
+                            <ImageBrush.RelativeTransform>
+                                <CompositeTransform CenterX="0.5" CenterY="0.5" ScaleX="1.24878" ScaleY="1.24878" />
+                            </ImageBrush.RelativeTransform>
+                        </ImageBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
                 <Ellipse
                     Width="92"
                     Height="92"
@@ -119,15 +96,22 @@
                     Height="122"
                     Fill="{ThemeResource CelestialMoonHaloBrush}" />
                 <Grid Width="102" Height="102">
-                    <Ellipse Width="100" Height="100">
+                    <Ellipse Width="102" Height="102">
                         <Ellipse.Fill>
-                            <ImageBrush ImageSource="ms-appx:///Assets/Celestial/moon-premium.png" Stretch="UniformToFill" />
+                            <!-- Center the original 368px lunar disk under the calculated phase shadow. -->
+                            <ImageBrush ImageSource="ms-appx:///Assets/Celestial/moon-apollo11.jpg" Stretch="UniformToFill">
+                                <ImageBrush.RelativeTransform>
+                                    <CompositeTransform
+                                        CenterX="0.5"
+                                        CenterY="0.5"
+                                        ScaleX="1.391304"
+                                        ScaleY="1.391304"
+                                        TranslateX="-0.019022"
+                                        TranslateY="0.070652" />
+                                </ImageBrush.RelativeTransform>
+                            </ImageBrush>
                         </Ellipse.Fill>
                     </Ellipse>
-                    <Ellipse
-                        Width="102"
-                        Height="102"
-                        Fill="{ThemeResource CelestialMoonGlazeBrush}" />
                     <Path
                         x:Name="MoonShadow"
                         Width="102"
