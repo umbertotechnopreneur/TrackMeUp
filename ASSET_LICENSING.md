@@ -53,6 +53,14 @@ Third-party package assets and embedded web code retain the terms recorded in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and its linked generated
 notice bundle.
 
+## Celestial photographs
+
+`TrackMeUp/Assets/Celestial/` contains public-domain NASA photographs of the
+Sun (SDO/AIA) and Moon (Apollo 11). They are third-party observations, outside
+the repository MIT grant and outside TrackMeUp Brand Assets. Preserve the
+NASA and SDO science-team credits, source links, and usage guidance recorded in
+[`Celestial/PROVENANCE.md`](TrackMeUp/Assets/Celestial/PROVENANCE.md).
+
 ## First-party AI-generated asset record
 
 The project owner has confirmed that the first-party TrackMeUp visual assets
@@ -62,7 +70,7 @@ with AI-assisted workflows run under his control, were selected and reviewed by
 him, and are authorized for publication in the public source repository and
 official TrackMeUp binaries. That dated declaration covers the application
 identity family, Atomic Nuke and Recall Timeline artwork, the screenshot
-placeholder, premium celestial images, the original world-clock watercolor
+placeholder, the original world-clock watercolor
 pilot, the manifest-defined Urban Wash catalog, and its 11 atmosphere overlays.
 
 The declaration does not alter the separate source and license records for

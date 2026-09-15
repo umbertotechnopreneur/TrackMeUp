@@ -39,7 +39,7 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\TrackMeUp*.png" />
     <Content Include="Assets\TrackMeUpIcon.ico" />
-    <Content Include="Assets\Celestial\*.png">
+    <Content Include="Assets\Celestial\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

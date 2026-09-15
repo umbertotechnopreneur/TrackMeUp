@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using TrackMeUp.Application;
 using TrackMeUp.Cli;
 using TrackMeUp.Controls;
+using TrackMeUp.Presentation;
 using TrackMeUp.Runtime;
 using TrackMeUp.Services;
 using TaskbarWidgetSurface = TrackMeUp.Taskbar.TaskbarWidgetSurface;
@@ -32,6 +33,8 @@ public partial class App : Microsoft.UI.Xaml.Application
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
     private WorldClockWindow? _worldClockWindow;
+    private WorldMapWindow? _worldMapWindow;
+    private LunarPhaseWindow? _lunarPhaseWindow;
     private ScreenshotWindow? _screenshotsWindow;
     private SearchWindow? _searchWindow;
     private QuickSetupWindow? _quickSetupWindow;
@@ -43,6 +46,9 @@ public partial class App : Microsoft.UI.Xaml.Application
     private bool _reportsOnly;
     private bool _searchWindowOpening;
     private bool _worldClockWindowOpening;
+    private bool _worldMapWindowOpening;
+    private bool _lunarPhaseWindowOpening;
+    private bool _uiStarting;
     private bool _quickSetupOwnerWasInteractive;
     private int _shutdownStarted;
     private int _atomicResetStarted;
@@ -163,7 +169,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    private void StartUi(LaunchOptions options)
+    private async void StartUi(LaunchOptions options)
     {
         if (_window is not null)
         {
@@ -171,71 +177,183 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        _reportsOnly = false;
-        var application = StartOrConnectRuntime();
-        _dashboardRefreshCoordinator = new DashboardRefreshCoordinator(application);
-        var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
-        _window = new MainWindow(application, options, _dialogs, trayIcon, _windowsNotifications, _dashboardRefreshCoordinator);
-        _window.SettingsApplied += ApplyTaskbarWidgetSettings;
-        _window.SettingsApplied += ApplyWorldClockWindowSettings;
-        _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
-        _window.ReportsRequested += MainWindow_ReportsRequested;
-        _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
-        _window.SearchRequested += MainWindow_SearchRequested;
-        _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
-        _window.ScreenshotGalleryDateRequested += MainWindow_ScreenshotGalleryDateRequested;
-        _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
-        _window.ExitRequested += MainWindow_ExitRequested;
-        _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
-        _window.Closed += MainWindow_Closed;
-        if (options.StartWithWindows)
+        if (_uiStarting)
         {
-            try
+            return;
+        }
+
+        _uiStarting = true;
+        try
+        {
+
+            _reportsOnly = false;
+            var application = StartOrConnectRuntime();
+            // Read the previous session before newly created windows can persist their visibility.
+            var initialSettings = await application.GetSettingsAsync(CancellationToken.None);
+            if (!initialSettings.Succeeded || initialSettings.Value is null)
             {
-                _window.StartMinimizedToNotificationArea();
+                throw new InvalidOperationException($"Workspace settings could not be loaded ({initialSettings.Code}).");
             }
-            catch (Exception exception)
+
+            ApplyTitleBarSettings(initialSettings.Value);
+            _dashboardRefreshCoordinator = new DashboardRefreshCoordinator(application);
+            var trayIcon = new TrayIconService(_services.GetRequiredService<ILoggerFactory>().CreateLogger<TrayIconService>());
+            _window = new MainWindow(application, options, _dialogs, trayIcon, _windowsNotifications, _dashboardRefreshCoordinator);
+            _window.SettingsApplied += ApplyTaskbarWidgetSettings;
+            _window.SettingsApplied += ApplyWorldClockWindowSettings;
+            _window.SettingsApplied += ApplyTitleBarSettings;
+            _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
+            _window.ReportsRequested += MainWindow_ReportsRequested;
+            _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
+            _window.SearchRequested += MainWindow_SearchRequested;
+            _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
+            _window.ScreenshotGalleryDateRequested += MainWindow_ScreenshotGalleryDateRequested;
+            _window.ScreenshotsRequested += MainWindow_ScreenshotsRequested;
+            _window.ExitRequested += MainWindow_ExitRequested;
+            _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
+            _window.Closed += MainWindow_Closed;
+            var restoreHiddenMain = initialSettings.Value.WindowOpenStates is { } openStates
+                && openStates.TryGetValue(WindowStateKeys.Main, out var wasMainOpen) && !wasMainOpen;
+            if (options.StartWithWindows || restoreHiddenMain)
             {
-                // If Explorer rejects the tray icon at sign-in, keep the application reachable instead of leaving a hidden window without an activation path.
-                _logger.LogError(exception, "Windows-sign-in startup could not initialize the notification-area icon.");
-                var strings = new LocalizationService(options.Language ?? "system");
-                _windowsNotifications.TryShow(
-                    strings.Translate("Notification.WindowsStartupFailed.Title"),
-                    $"{strings.Translate("Notification.WindowsStartupFailed.Message")}{Environment.NewLine}{Environment.NewLine}{exception.GetType().Name}: {exception.Message}");
+                try
+                {
+                    _window.StartMinimizedToNotificationArea();
+                }
+                catch (Exception exception)
+                {
+                    // If Explorer rejects the tray icon, keep the application reachable through its main window.
+                    _logger.LogError(exception, "Hidden startup could not initialize the notification-area icon.");
+                    var strings = new LocalizationService(options.Language ?? "system");
+                    _windowsNotifications.TryShow(
+                        strings.Translate("Tray.UnavailableTitle"),
+                        strings.Translate("Tray.UnavailableMessage"));
+                    _window.Activate();
+                }
+            }
+            else
+            {
                 _window.Activate();
             }
-        }
-        else
-        {
-            _window.Activate();
-        }
 
-        _ = CompleteUiStartupAsync(application, options);
+            await CompleteUiStartupAsync(application, options, initialSettings.Value);
+        }
+        finally
+        {
+            _uiStarting = false;
+        }
     }
 
-    private async Task CompleteUiStartupAsync(ITrackMeUpApplication application, LaunchOptions options)
+    private async Task CompleteUiStartupAsync(ITrackMeUpApplication application, LaunchOptions options, AppSettings previousSettings)
     {
         try
         {
             var settingsResult = await application.GetSettingsAsync(CancellationToken.None);
             if (!settingsResult.Succeeded || settingsResult.Value is null)
             {
-                _logger.LogWarning("UI startup settings could not be loaded. Code={Code}", settingsResult.Code);
-                DisposeTaskbarWidget();
-                return;
+                throw new InvalidOperationException($"UI startup settings could not be loaded ({settingsResult.Code}).");
             }
 
             var settings = settingsResult.Value;
             ApplyTaskbarWidgetSettings(settings);
+            if (_window is null)
+            {
+                return;
+            }
+
+            await _window.WaitForWorkspaceReadyAsync();
             if (!settings.QuickSetupCompleted && !options.StartWithWindows)
             {
                 ShowQuickSetupWindow(application, settings, firstRun: true);
             }
+            else
+            {
+                await RestoreWorkspaceAsync(application, previousSettings);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The owner already reported an initialization failure or closed before restoration could start.
         }
         catch (Exception exception)
         {
             _logger.LogError(exception, "UI startup preparation failed after the main window was activated.");
             DisposeTaskbarWidget();
+            if (_window is not null && Volatile.Read(ref _shutdownStarted) == 0)
+            {
+                var strings = new LocalizationService(previousSettings.UiLanguage);
+                await _dialogs.ShowInformativeAsync(_window, DialogRequest.Informative(
+                    strings.Translate("Workspace.RestoreFailed.Title"),
+                    strings.Translate("Workspace.RestoreFailed.Message"),
+                    strings.Translate("Dialog.Ok")));
+            }
+        }
+    }
+
+    private async Task RestoreWorkspaceAsync(ITrackMeUpApplication application, AppSettings settings)
+    {
+        var windowKeys = WorkspaceWindowState.GetWindowsToRestore(settings.WindowOpenStates);
+        if (windowKeys.Contains(WindowStateKeys.OcrText) && settings.OcrTextWindowSource is null)
+        {
+            // An OCR surface requires a retained source; invalid session state must be visible to the user.
+            var cleared = await application.SetWindowOpenStateAsync(WindowStateKeys.OcrText, false, CancellationToken.None);
+            if (!cleared.Succeeded)
+            {
+                throw new InvalidOperationException($"The invalid OCR workspace state could not be cleared ({cleared.Code}).");
+            }
+
+            throw new InvalidOperationException("The saved OCR workspace is missing its screenshot source.");
+        }
+
+        foreach (var key in windowKeys)
+        {
+            if (_window is null || Volatile.Read(ref _shutdownStarted) != 0)
+            {
+                return;
+            }
+
+            switch (key)
+            {
+                case WindowStateKeys.Reports:
+                    ShowReportsWindow(application, null);
+                    break;
+                case WindowStateKeys.WorldClocks:
+                    await ShowWorldClockWindowAsync(application);
+                    break;
+                case WindowStateKeys.WorldMap:
+                    await ShowAstronomyWindowAsync(isLunarPhase: false);
+                    break;
+                case WindowStateKeys.LunarPhase:
+                    await ShowAstronomyWindowAsync(isLunarPhase: true);
+                    break;
+                case WindowStateKeys.Search:
+                    await ShowSearchWindowAsync(application);
+                    break;
+                case WindowStateKeys.Screenshots:
+                    if (_screenshotsWindow is not null)
+                    {
+                        break;
+                    }
+
+                    if (windowKeys.Contains(WindowStateKeys.OcrText) && settings.OcrTextWindowSource is { } source)
+                    {
+                        _screenshotsWindow = new ScreenshotWindow(application, _dialogs, null,
+                            source.ScreenshotPath, source.CapturedAt, restoreOcrWindow: true);
+                        _screenshotsWindow.Closed += ScreenshotsWindow_Closed;
+                        _screenshotsWindow.Activate();
+                    }
+                    else
+                    {
+                        await ShowScreenshotWindowAsync(application, null);
+                    }
+
+                    break;
+            }
+        }
+
+        if (_window is not null)
+        {
+            await _window.RestoreToolWindowsAsync(windowKeys);
         }
     }
 
@@ -256,6 +374,7 @@ public partial class App : Microsoft.UI.Xaml.Application
                 return;
             }
 
+            ApplyTitleBarSettings(settings.Value);
             var startup = await application.SetStartupEnabledAsync(
                 settings.Value.StartWithWindows,
                 CancellationToken.None);
@@ -449,6 +568,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             }
 
             _worldClockWindow = new WorldClockWindow(application, _dialogs, settings.Value);
+            _worldClockWindow.WorldMapRequested += WorldClockWindow_WorldMapRequested;
+            _worldClockWindow.LunarPhaseRequested += WorldClockWindow_LunarPhaseRequested;
+            _worldClockWindow.ProjectionChanged += WorldClockWindow_ProjectionChanged;
             _worldClockWindow.Closed += WorldClockWindow_Closed;
             _worldClockWindow.Activate();
         }
@@ -467,14 +589,93 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
     }
 
-    private void ApplyWorldClockWindowSettings(AppSettings settings) =>
+    private void ApplyWorldClockWindowSettings(AppSettings settings)
+    {
         _worldClockWindow?.ApplySettings(settings);
+        _worldMapWindow?.ApplySettings(settings);
+        _lunarPhaseWindow?.ApplySettings(settings);
+    }
+
+    private static void ApplyTitleBarSettings(AppSettings settings) =>
+        CustomTitleBarController.ApplyAutoHideSetting(settings.AutoHideTitleBar);
+
+    private async void WorldClockWindow_WorldMapRequested(object? sender, EventArgs args) =>
+        await ShowAstronomyWindowAsync(isLunarPhase: false);
+
+    private async void WorldClockWindow_LunarPhaseRequested(object? sender, EventArgs args) =>
+        await ShowAstronomyWindowAsync(isLunarPhase: true);
+
+    private void WorldClockWindow_ProjectionChanged(WorldClockSnapshot snapshot, bool isLive)
+    {
+        _worldMapWindow?.ApplySnapshot(snapshot, isLive);
+        _lunarPhaseWindow?.ApplySnapshot(snapshot, isLive);
+    }
+
+    private async Task ShowAstronomyWindowAsync(bool isLunarPhase)
+    {
+        Window? existing = isLunarPhase ? _lunarPhaseWindow : _worldMapWindow;
+        if (existing is not null)
+        {
+            existing.Activate();
+            return;
+        }
+
+        if (isLunarPhase ? _lunarPhaseWindowOpening : _worldMapWindowOpening)
+        {
+            return;
+        }
+
+        if (isLunarPhase) _lunarPhaseWindowOpening = true;
+        else _worldMapWindowOpening = true;
+        try
+        {
+            var application = StartOrConnectRuntime();
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (_window is null || Volatile.Read(ref _shutdownStarted) != 0)
+            {
+                return;
+            }
+
+            if (!settings.Succeeded || settings.Value is null)
+            {
+                throw new InvalidOperationException($"Astronomy window settings are unavailable ({settings.Code}).");
+            }
+
+            if (isLunarPhase)
+            {
+                _lunarPhaseWindow = new LunarPhaseWindow(application, _dialogs, settings.Value);
+                _lunarPhaseWindow.Closed += (_, _) => _lunarPhaseWindow = null;
+                if (_worldClockWindow?.CurrentSnapshot is { } snapshot)
+                {
+                    _lunarPhaseWindow.ApplySnapshot(snapshot, _worldClockWindow.IsLive);
+                }
+
+                _lunarPhaseWindow.Activate();
+            }
+            else
+            {
+                _worldMapWindow = new WorldMapWindow(application, _dialogs, settings.Value);
+                _worldMapWindow.Closed += (_, _) => _worldMapWindow = null;
+                if (_worldClockWindow?.CurrentSnapshot is { } snapshot)
+                {
+                    _worldMapWindow.ApplySnapshot(snapshot, _worldClockWindow.IsLive);
+                }
+
+                _worldMapWindow.Activate();
+            }
+        }
+        finally
+        {
+            if (isLunarPhase) _lunarPhaseWindowOpening = false;
+            else _worldMapWindowOpening = false;
+        }
+    }
 
     private async Task ShowSearchWindowAsync(ITrackMeUpApplication application)
     {
         if (_searchWindow is not null)
         {
-            _searchWindow.ActivateAtCursor();
+            _searchWindow.ActivateSearch();
             return;
         }
 
@@ -600,16 +801,24 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (_worldClockWindow is not null)
         {
             _worldClockWindow.Closed -= WorldClockWindow_Closed;
+            _worldClockWindow.WorldMapRequested -= WorldClockWindow_WorldMapRequested;
+            _worldClockWindow.LunarPhaseRequested -= WorldClockWindow_LunarPhaseRequested;
+            _worldClockWindow.ProjectionChanged -= WorldClockWindow_ProjectionChanged;
             _worldClockWindow = null;
         }
     }
 
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
+        _worldMapWindow?.CloseForShutdown();
+        _worldMapWindow = null;
+        _lunarPhaseWindow?.CloseForShutdown();
+        _lunarPhaseWindow = null;
         if (_window is not null)
         {
             _window.SettingsApplied -= ApplyTaskbarWidgetSettings;
             _window.SettingsApplied -= ApplyWorldClockWindowSettings;
+            _window.SettingsApplied -= ApplyTitleBarSettings;
             _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
             _window.WorldClocksRequested -= MainWindow_WorldClocksRequested;
@@ -641,6 +850,9 @@ public partial class App : Microsoft.UI.Xaml.Application
         if (_worldClockWindow is not null)
         {
             _worldClockWindow.Closed -= WorldClockWindow_Closed;
+            _worldClockWindow.WorldMapRequested -= WorldClockWindow_WorldMapRequested;
+            _worldClockWindow.LunarPhaseRequested -= WorldClockWindow_LunarPhaseRequested;
+            _worldClockWindow.ProjectionChanged -= WorldClockWindow_ProjectionChanged;
             _worldClockWindow.CloseForShutdown();
             _worldClockWindow = null;
         }
@@ -862,6 +1074,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
+        WindowPlacementService.DiscardForReset();
         _ = CompleteAtomicResetAsync(plan, ownsRuntime: _runtimeHost is not null);
     }
 

@@ -10,6 +10,30 @@ namespace TrackMeUp.Presentation.Tests;
 
 public sealed class OcrTextWindowContractTests
 {
+    /// <summary>Guards the restore path against reopening OCR from a replacement gallery selection.</summary>
+    [Fact]
+    public void OcrTextSession_RestoresOnlyTheRetainedSourceAndPersistsNoExtractedText()
+    {
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
+        var contracts = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "Contracts.cs"));
+        var restoreStart = source.IndexOf("private async Task RestoreOcrTextWindowAsync", StringComparison.Ordinal);
+        var restoreEnd = source.IndexOf("private void ShowOcrTextWindow", restoreStart, StringComparison.Ordinal);
+        Assert.True(restoreStart >= 0 && restoreEnd > restoreStart);
+        var restore = source[restoreStart..restoreEnd];
+
+        Assert.Contains("bool restoreOcrWindow = false", source, StringComparison.Ordinal);
+        Assert.Contains("if (loaded && _restoreOcrSource is { } source", source, StringComparison.Ordinal);
+        Assert.Contains("_selectedDetailsState?.OcrText", restore, StringComparison.Ordinal);
+        Assert.Contains("StringComparer.OrdinalIgnoreCase.Equals(selected.Path, source.ScreenshotPath)", restore, StringComparison.Ordinal);
+        Assert.Contains("selected.CapturedAt == source.CapturedAt", restore, StringComparison.Ordinal);
+        Assert.Contains("!string.IsNullOrWhiteSpace(ocrText)", restore, StringComparison.Ordinal);
+        Assert.Contains("SetWindowOpenStateAsync(WindowStateKeys.OcrText, false", restore, StringComparison.Ordinal);
+        Assert.Contains("Screenshots.Error.Unavailable", restore, StringComparison.Ordinal);
+        Assert.Contains("SetOcrTextWindowSourceAsync(selected.Path, selected.CapturedAt, cancellationToken)", source, StringComparison.Ordinal);
+        Assert.Contains("record OcrTextWindowSource(string ScreenshotPath, DateTimeOffset CapturedAt)", contracts, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetOcrTextWindowSourceAsync(ocrText", source, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void OcrTextWindow_IsASelectableMicaSurfaceWithDebouncedHighlighting()
     {
@@ -44,7 +68,7 @@ public sealed class OcrTextWindowContractTests
         Assert.Contains("_root.Loaded += Root_Loaded", placement, StringComparison.Ordinal);
         Assert.Contains("_root.Loaded -= Root_Loaded", placement, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", source, StringComparison.Ordinal);
-        Assert.Contains("RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token)", source, StringComparison.Ordinal);
+        Assert.Contains("RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token)", source, StringComparison.Ordinal);
         Assert.Contains("_lifetimeCancellation.Cancel();", source, StringComparison.Ordinal);
         Assert.Contains("catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)", source, StringComparison.Ordinal);
         Assert.Contains("catch (InvalidOperationException) when (_lifetimeCancellation.IsCancellationRequested)", source, StringComparison.Ordinal);

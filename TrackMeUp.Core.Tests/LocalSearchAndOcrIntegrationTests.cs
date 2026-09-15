@@ -544,16 +544,17 @@ public sealed class LocalSearchAndOcrIntegrationTests
         }
     }
 
+    /// <summary>Every shipped search locale includes the complete curated concept catalog.</summary>
     [Fact]
-    public void SearchSynonymConfiguration_CoversEveryNewAnalyzerLocale()
+    public void SearchSynonymConfiguration_CoversEverySearchLocale()
     {
         var sets = SearchSynonymConfiguration.Load(Path.Combine(AppContext.BaseDirectory, "search-synonyms.json"));
 
         Assert.All(
-            new[] { "vi-VN", "zh-Hans", "ko-KR", "pt-PT", "pt-BR" },
+            ProductLanguageCatalog.SearchChoices.Where(locale => locale != ProductLanguageCatalog.SystemLanguage),
             locale => Assert.True(
-                sets.Count(set => string.Equals(set.Language, locale, StringComparison.OrdinalIgnoreCase)) >= 3,
-                $"Expected screenshot, email, and meeting synonym groups for {locale}."));
+                sets.Count(set => string.Equals(set.Language, locale, StringComparison.OrdinalIgnoreCase)) >= 300,
+                $"Expected at least 300 curated synonym groups for {locale}."));
     }
 
     [Fact]

@@ -75,7 +75,7 @@ internal sealed partial class ThirdPartyLicensesWindow : Window
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
+        await _placement.RestoreOrCenterAsync(RootGrid, CancellationToken.None);
     }
 
     private async void LicensesWindow_Closed(object sender, WindowEventArgs args)

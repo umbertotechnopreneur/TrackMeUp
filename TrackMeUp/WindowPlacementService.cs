@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using TrackMeUp.Application;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 using Windows.Graphics;
 
@@ -17,6 +18,9 @@ namespace TrackMeUp;
 /// <summary>Applies default bounds and delegates persisted placement to the shared application facade.</summary>
 internal sealed class WindowPlacementService : IDisposable
 {
+    private static readonly HashSet<WindowPlacementService> ActivePlacements = [];
+    private static bool s_preservingWorkspace;
+    private static Task? s_shutdownPreparation;
     private const uint WmGetMinMaxInfo = 0x0024;
     private static int s_nextSubclassId;
     private readonly ITrackMeUpApplication _application;
@@ -41,6 +45,14 @@ internal sealed class WindowPlacementService : IDisposable
     private XamlRoot? _xamlRoot;
     private bool _dpiRefreshQueued;
     private bool _dpiRefreshAgain;
+    private readonly DispatcherQueueTimer _saveTimer;
+    private Task _pendingSave = Task.CompletedTask;
+    private Task _pendingClose = Task.CompletedTask;
+    private Task<bool>? _restoreTask;
+    private bool _placementReady;
+    private bool _closeSaveStarted;
+    private bool _closeSaveCompleted;
+    private bool _shutdownPrepared;
 
     internal WindowPlacementService(
         ITrackMeUpApplication application,
@@ -50,7 +62,8 @@ internal sealed class WindowPlacementService : IDisposable
         int logicalDefaultWidth,
         int logicalDefaultHeight,
         int logicalScreenMargin,
-        WindowId? displayAnchorId = null)
+        WindowId? displayAnchorId = null,
+        bool deferNativeClose = true)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _window = window ?? throw new ArgumentNullException(nameof(window));
@@ -72,6 +85,15 @@ internal sealed class WindowPlacementService : IDisposable
         _root.Loaded += Root_Loaded;
         _window.Closed += Window_Closed;
         _appWindow.Changed += AppWindow_Changed;
+        if (deferNativeClose)
+        {
+            _appWindow.Closing += AppWindow_Closing;
+        }
+        _saveTimer = _root.DispatcherQueue.CreateTimer();
+        _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
+        _saveTimer.IsRepeating = false;
+        _saveTimer.Tick += SaveTimer_Tick;
+        ActivePlacements.Add(this);
         AttachXamlRoot();
     }
 
@@ -92,7 +114,129 @@ internal sealed class WindowPlacementService : IDisposable
 
     private void Window_Closed(object sender, WindowEventArgs args) => Dispose();
 
-    private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args) => QueueDpiRefresh();
+    private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        QueueDpiRefresh();
+        if (_placementReady && !_disposed && !_closeSaveStarted && !s_preservingWorkspace
+            && (args.DidPositionChange || args.DidSizeChange || args.DidVisibilityChange))
+        {
+            _saveTimer.Stop();
+            _saveTimer.Start();
+        }
+    }
+
+    private async void SaveTimer_Tick(DispatcherQueueTimer sender, object args) =>
+        await SaveAsync(CancellationToken.None);
+
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        // Main owns its confirmation and flushes the whole workspace before shutdown.
+        if (_windowKey == WindowStateKeys.Main || _closeSaveCompleted || _shutdownPrepared)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        if (_closeSaveStarted || s_preservingWorkspace)
+        {
+            return;
+        }
+
+        _closeSaveStarted = true;
+        _saveTimer.Stop();
+        _pendingClose = CloseAfterSaveAsync();
+        await _pendingClose;
+    }
+
+    private async Task CloseAfterSaveAsync()
+    {
+        try
+        {
+            await QueueSaveAsync(CancellationToken.None);
+            if (WorkspaceWindowState.IsRestorable(_windowKey))
+            {
+                await SaveOpenStateAsync(false, CancellationToken.None);
+            }
+
+            _closeSaveCompleted = true;
+            // Core can complete synchronously; defer the final close until the original native Closing event unwinds.
+            if (!_root.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!_disposed) _window.Close();
+                }))
+            {
+                throw new InvalidOperationException("Unable to queue the persisted window close.");
+            }
+        }
+        catch
+        {
+            // A failed save keeps the native handle alive so closing can be retried safely.
+            _closeSaveStarted = false;
+            _closeSaveCompleted = false;
+            throw;
+        }
+    }
+
+    /// <summary>Flushes every live window before shutdown closes owners and their dependent windows.</summary>
+    internal static Task PrepareForShutdownAsync()
+    {
+        if (s_preservingWorkspace)
+        {
+            return s_shutdownPreparation ?? Task.CompletedTask;
+        }
+
+        s_preservingWorkspace = true;
+        return s_shutdownPreparation = FlushWorkspaceAsync();
+    }
+
+    private static async Task FlushWorkspaceAsync()
+    {
+        try
+        {
+            // Newly opened child surfaces join the next pass while existing native handles remain protected.
+            while (ActivePlacements.Any(static placement => !placement._shutdownPrepared))
+            {
+                foreach (var placement in ActivePlacements.Where(static placement => !placement._shutdownPrepared).ToArray())
+                {
+                    if (placement._disposed) continue;
+                    placement._saveTimer.Stop();
+                    if (placement._closeSaveStarted)
+                    {
+                        // A manual close keeps its explicit closed flag even when application exit begins mid-save.
+                        await placement._pendingClose;
+                    }
+                    else
+                    {
+                        await placement.QueueSaveAsync(CancellationToken.None);
+                    }
+
+                    placement._shutdownPrepared = true;
+                }
+            }
+        }
+        catch
+        {
+            // Preserve the running workspace when any persistence operation fails.
+            s_preservingWorkspace = false;
+            foreach (var placement in ActivePlacements)
+            {
+                placement._shutdownPrepared = false;
+            }
+
+            throw;
+        }
+    }
+
+    /// <summary>Stops queued writes after an explicit data reset has discarded the persisted workspace.</summary>
+    internal static void DiscardForReset()
+    {
+        s_preservingWorkspace = true;
+        foreach (var placement in ActivePlacements)
+        {
+            placement._saveTimer.Stop();
+            placement._shutdownPrepared = true;
+        }
+    }
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args) => QueueDpiRefresh();
 
@@ -211,19 +355,26 @@ internal sealed class WindowPlacementService : IDisposable
     }
 
     /// <summary>Restores saved bounds without replacing the user's position with an application-selected anchor.</summary>
-    internal async Task<bool> RestoreAsync(FrameworkElement root, CancellationToken cancellationToken)
+    internal Task<bool> RestoreAsync(FrameworkElement root, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(root);
-        if (_restoreAttempted)
-        {
-            return false;
-        }
+        return _restoreTask ??= RestoreCoreAsync(root, cancellationToken);
+    }
 
+    private async Task<bool> RestoreCoreAsync(FrameworkElement root, CancellationToken cancellationToken)
+    {
         _restoreAttempted = true;
         var result = await _application.RestoreWindowStateAsync(
             _windowKey,
             _windowHandle.ToInt64(),
             cancellationToken);
+        if (_disposed)
+        {
+            // A guarded owner can close while its restore request is completing; native geometry is no longer usable.
+            return false;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
         if (!result.Succeeded)
         {
             throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
@@ -231,10 +382,13 @@ internal sealed class WindowPlacementService : IDisposable
 
         // Restored coordinates are authoritative; only clamp bounds that no longer fit the active display topology.
         KeepCurrentBoundsInWorkArea(root);
+        _placementReady = true;
+        if (!_closeSaveStarted && !s_preservingWorkspace) _saveTimer.Start();
         return result.Value is not null;
     }
 
-    internal async Task RestoreAndCenterAsync(
+    /// <summary>Retains saved placement, centering only the first opening without saved bounds.</summary>
+    internal async Task RestoreOrCenterAsync(
         FrameworkElement root,
         CancellationToken cancellationToken,
         bool centerOnCursorDisplay = false)
@@ -245,99 +399,14 @@ internal sealed class WindowPlacementService : IDisposable
             return;
         }
 
-        _restoreAttempted = true;
-        var result = await _application.RestoreWindowStateAsync(
-            _windowKey,
-            _windowHandle.ToInt64(),
-            cancellationToken);
-        if (!result.Succeeded)
+        if (await RestoreAsync(root, cancellationToken))
         {
-            throw new InvalidOperationException($"Window state could not be restored ({result.Code}).");
+            return;
         }
 
+        if (_disposed || _closeSaveStarted || s_preservingWorkspace) return;
         var area = centerOnCursorDisplay ? CursorWorkArea() : OpeningWorkArea();
         KeepCurrentBoundsInWorkArea(root, area);
-        CenterInWorkArea(area);
-    }
-
-    internal void ResizeAndCenterOnCursorDisplay(FrameworkElement root, double widthRatio, double heightRatio)
-    {
-        ArgumentNullException.ThrowIfNull(root);
-        if (widthRatio is <= 0d or > 1d)
-        {
-            throw new ArgumentOutOfRangeException(nameof(widthRatio));
-        }
-
-        if (heightRatio is <= 0d or > 1d)
-        {
-            throw new ArgumentOutOfRangeException(nameof(heightRatio));
-        }
-
-        // Re-resolve the pointer display for every activation so monitor choice and DPI follow the user's current context.
-        var area = CursorWorkArea();
-        var scale = ResolveScale(root);
-        var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
-        var availableWidth = Math.Max(1, area.Width - (margin * 2));
-        var availableHeight = Math.Max(1, area.Height - (margin * 2));
-        var minimumSize = UpdateMinimumSize(scale, area);
-        var width = Math.Clamp((int)Math.Round(area.Width * widthRatio), minimumSize.Width, availableWidth);
-        var height = Math.Clamp((int)Math.Round(area.Height * heightRatio), minimumSize.Height, availableHeight);
-        _appWindow.Resize(new SizeInt32(width, height));
-        CenterInWorkArea(area);
-    }
-
-    internal void ResizeAndCenterOnCursorDisplay(
-        FrameworkElement root,
-        double widthRatio,
-        int maximumLogicalWidth,
-        int logicalHeight,
-        double maximumHeightRatio)
-    {
-        ArgumentNullException.ThrowIfNull(root);
-        if (widthRatio is <= 0d or > 1d)
-        {
-            throw new ArgumentOutOfRangeException(nameof(widthRatio));
-        }
-
-        if (logicalHeight <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(logicalHeight));
-        }
-
-        if (maximumLogicalWidth <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumLogicalWidth));
-        }
-
-        if (maximumHeightRatio is <= 0d or > 1d)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumHeightRatio));
-        }
-
-        // Content chooses the desired logical height; the cursor display supplies DPI and a hard work-area ceiling.
-        var area = CursorWorkArea();
-        var scale = ResolveScale(root);
-        var margin = (int)Math.Ceiling(_logicalScreenMargin * scale);
-        var availableWidth = Math.Max(1, area.Width - (margin * 2));
-        var availableHeight = Math.Max(1, area.Height - (margin * 2));
-        var minimumSize = UpdateMinimumSize(scale, area);
-        var maximumWidth = Math.Clamp(
-            (int)Math.Ceiling(maximumLogicalWidth * scale),
-            minimumSize.Width,
-            availableWidth);
-        var width = Math.Clamp(
-            Math.Min((int)Math.Round(area.Width * widthRatio), maximumWidth),
-            minimumSize.Width,
-            availableWidth);
-        var maximumHeight = Math.Clamp(
-            (int)Math.Round(area.Height * maximumHeightRatio),
-            minimumSize.Height,
-            availableHeight);
-        var height = Math.Clamp(
-            (int)Math.Ceiling(logicalHeight * scale),
-            minimumSize.Height,
-            maximumHeight);
-        _appWindow.Resize(new SizeInt32(width, height));
         CenterInWorkArea(area);
     }
 
@@ -376,15 +445,99 @@ internal sealed class WindowPlacementService : IDisposable
         KeepCurrentBoundsInWorkArea(root);
     }
 
-    internal async Task SaveAsync(CancellationToken cancellationToken)
+    internal Task SaveAsync(CancellationToken cancellationToken)
     {
-        var result = await _application.SaveWindowStateAsync(
-            _windowKey,
-            _windowHandle.ToInt64(),
-            cancellationToken);
+        if (_disposed || _closeSaveStarted || _closeSaveCompleted || _shutdownPrepared || s_preservingWorkspace)
+        {
+            return _pendingSave;
+        }
+
+        return QueueSaveAsync(cancellationToken);
+    }
+
+    private Task QueueSaveAsync(CancellationToken cancellationToken)
+    {
+        if (_pendingSave.IsFaulted || _pendingSave.IsCanceled)
+        {
+            // The original caller observes its failure; a later explicit save can retry instead of inheriting it forever.
+            _pendingSave = Task.CompletedTask;
+        }
+
+        _pendingSave = PersistAsync(_pendingSave, cancellationToken);
+        return _pendingSave;
+    }
+
+    /// <summary>Flushes a guarded dialog's placement and freezes queued writes before its own completion path closes it.</summary>
+    internal Task SaveForExplicitCloseAsync(CancellationToken cancellationToken)
+    {
+        if (_disposed || _closeSaveCompleted || _shutdownPrepared) return _pendingSave;
+        if (s_preservingWorkspace) return s_shutdownPreparation ?? _pendingSave;
+        if (_closeSaveStarted) return _pendingClose;
+        _closeSaveStarted = true;
+        _saveTimer.Stop();
+        return _pendingClose = PersistExplicitCloseAsync(cancellationToken);
+    }
+
+    private async Task PersistExplicitCloseAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await QueueSaveAsync(cancellationToken);
+            if (WorkspaceWindowState.IsRestorable(_windowKey))
+            {
+                await SaveOpenStateAsync(false, cancellationToken);
+            }
+
+            _closeSaveCompleted = true;
+        }
+        catch
+        {
+            // Persistence must succeed before a guarded dialog releases its result or allows native closure.
+            _closeSaveStarted = false;
+            throw;
+        }
+    }
+
+    private async Task PersistAsync(Task previousSave, CancellationToken cancellationToken)
+    {
+        await previousSave;
+        if (_restoreTask is { } restoreTask)
+        {
+            try
+            {
+                await restoreTask;
+            }
+            catch (OperationCanceledException) when (restoreTask.IsCanceled)
+            {
+                // Closing during initial loading preserves the previous valid bounds instead of saving defaults.
+            }
+        }
+
+        if (_disposed) return;
+        if (_placementReady)
+        {
+            var result = await _application.SaveWindowStateAsync(
+                _windowKey,
+                _windowHandle.ToInt64(),
+                cancellationToken);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException($"Window state could not be saved ({result.Code}).");
+            }
+        }
+
+        if (WorkspaceWindowState.IsRestorable(_windowKey))
+        {
+            await SaveOpenStateAsync(WorkspaceWindowState.IsOpenWhileAlive(_windowKey, _appWindow.IsVisible), cancellationToken);
+        }
+    }
+
+    private async Task SaveOpenStateAsync(bool isOpen, CancellationToken cancellationToken)
+    {
+        var result = await _application.SetWindowOpenStateAsync(_windowKey, isOpen, cancellationToken);
         if (!result.Succeeded)
         {
-            throw new InvalidOperationException($"Window state could not be saved ({result.Code}).");
+            throw new InvalidOperationException($"Window visibility could not be saved ({result.Code}).");
         }
     }
 
@@ -465,6 +618,10 @@ internal sealed class WindowPlacementService : IDisposable
         _root.Loaded -= Root_Loaded;
         _window.Closed -= Window_Closed;
         _appWindow.Changed -= AppWindow_Changed;
+        _appWindow.Closing -= AppWindow_Closing;
+        _saveTimer.Stop();
+        _saveTimer.Tick -= SaveTimer_Tick;
+        ActivePlacements.Remove(this);
         if (_xamlRoot is not null)
         {
             _xamlRoot.Changed -= XamlRoot_Changed;

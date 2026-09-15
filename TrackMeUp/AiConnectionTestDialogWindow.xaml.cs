@@ -103,7 +103,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         try
         {
             _placement.ApplyDefaultBounds(RootGrid);
-            await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token);
+            await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token);
             _countdownTimer.Start();
             await RunTestAsync();
         }

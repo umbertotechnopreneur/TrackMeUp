@@ -112,7 +112,7 @@ internal sealed partial class AiScreenshotReprocessingDialogWindow : Window
 
         _isLoaded = true;
         _placement.ApplyDefaultBounds(RootGrid);
-        await _placement.RestoreAndCenterAsync(RootGrid, CancellationToken.None);
+        await _placement.RestoreOrCenterAsync(RootGrid, CancellationToken.None);
         CloseButton.Focus(FocusState.Programmatic);
         await PreviewAsync();
     }

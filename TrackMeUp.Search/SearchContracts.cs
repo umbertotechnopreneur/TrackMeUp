@@ -114,6 +114,9 @@ public sealed record SearchIndexMutation
 /// </summary>
 public sealed record SearchSynonymSet
 {
+    /// <summary>Normalizes a catalog term exactly as query-time synonym matching does.</summary>
+    public static string NormalizeTerm(string term) => Internal.TextNormalization.ForAnalysis(term);
+
     /// <summary>Gets the language tag to which this synonym set applies.</summary>
     public required string Language { get; init; }
 

@@ -183,6 +183,19 @@
                             Style="{StaticResource BodyStrongTextBlockStyle}"
                             Tag="Options.Section.Window"
                             Text="Window" />
+                        <ToggleSwitch
+                            x:Name="AutoHideTitleBarSwitch"
+                            Header="Automatically hide title bars"
+                            IsOn="True"
+                            OffContent=""
+                            OnContent=""
+                            Tag="Options.Window.AutoHideTitleBar" />
+                        <TextBlock
+                            Tag="Options.Window.AutoHideTitleBar.Description"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Applies to all windows. Turn off to keep title bars visible."
+                            TextWrapping="Wrap" />
                         <Slider
                             x:Name="MainWindowOpacitySlider"
                             Header="Window opacity"

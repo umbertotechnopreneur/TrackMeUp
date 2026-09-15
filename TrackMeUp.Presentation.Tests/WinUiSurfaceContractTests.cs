@@ -564,7 +564,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("var workArea = CurrentWorkArea();", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.Main", source, StringComparison.Ordinal);
         Assert.Contains("await _placement.RestoreAsync(RootGrid, _lifecycle.Token);", source, StringComparison.Ordinal);
-        Assert.Contains("await _placement.TrySaveForCloseAsync(CancellationToken.None);", source, StringComparison.Ordinal);
+        Assert.Contains("await WindowPlacementService.PrepareForShutdownAsync();", source, StringComparison.Ordinal);
         Assert.Contains("_placement.KeepCurrentBoundsInWorkArea(RootGrid);", source, StringComparison.Ordinal);
         Assert.Contains("positionChangedByUser", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplyFlyoutPosition(_position);\r\n        Activate();", source, StringComparison.Ordinal);
@@ -585,7 +585,7 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Contains("RestoreWindowStateAsync", placement, StringComparison.Ordinal);
         Assert.Contains("SaveWindowStateAsync", placement, StringComparison.Ordinal);
-        Assert.Contains("RestoreAndCenterAsync", placement, StringComparison.Ordinal);
+        Assert.Contains("RestoreOrCenterAsync", placement, StringComparison.Ordinal);
         Assert.Contains("RestoreAsync", placement, StringComparison.Ordinal);
         Assert.Contains("ApplyDefaultSize", placement, StringComparison.Ordinal);
         Assert.Contains("OpeningWorkArea()", placement, StringComparison.Ordinal);
@@ -612,7 +612,7 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void WindowClosePlacementFailures_DoNotEscapeAsyncVoidCallbacksOrSkipCleanup()
+    public void WindowClosedCallbacks_KeepCleanupSafeAndGuardedDialogsSaveBeforeClose()
     {
         var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
         var closeSources = new[]
@@ -625,7 +625,6 @@ public sealed class WinUiSurfaceContractTests
             "QuickSetupWindow.xaml.cs",
             "OcrTextWindow.xaml.cs",
             "ThirdPartyLicensesWindow.xaml.cs",
-            "WorldClockCityPickerDialogWindow.xaml.cs",
             "ActivityCalendarDialogWindow.xaml.cs",
             "AiPricingDialogWindow.xaml.cs",
             "AiConnectionTestDialogWindow.xaml.cs",
@@ -640,6 +639,10 @@ public sealed class WinUiSurfaceContractTests
             Assert.Contains("TrySaveForCloseAsync", source, StringComparison.Ordinal);
             Assert.DoesNotContain("_placement.SaveAsync(CancellationToken.None)", source, StringComparison.Ordinal);
         });
+
+        var picker = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockCityPickerDialogWindow.xaml.cs"));
+        Assert.Contains("deferNativeClose: false", picker, StringComparison.Ordinal);
+        Assert.Contains("await _placement.SaveForExplicitCloseAsync", picker, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -875,7 +878,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("T(\"Dialog.CloseTracking.Message\")", closeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Dialog.CloseTracking.Confirm", closeSource, StringComparison.Ordinal);
         Assert.True(
-            closeSource.IndexOf("await _placement.TrySaveForCloseAsync", StringComparison.Ordinal)
+            closeSource.IndexOf("await WindowPlacementService.PrepareForShutdownAsync();", StringComparison.Ordinal) >= 0
+            && closeSource.IndexOf("await WindowPlacementService.PrepareForShutdownAsync();", StringComparison.Ordinal)
             < closeSource.IndexOf("_allowClose = true;", StringComparison.Ordinal));
         Assert.True(
             closeSource.IndexOf("_allowClose = true;", StringComparison.Ordinal)
@@ -1135,7 +1139,7 @@ public sealed class WinUiSurfaceContractTests
     public void MainWindow_RemainsVisibleWhenTaskbarWidgetAttaches()
     {
         var appSource = File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs"));
-        var startUiStart = appSource.IndexOf("private void StartUi", StringComparison.Ordinal);
+        var startUiStart = appSource.IndexOf("private async void StartUi", StringComparison.Ordinal);
         var startUiEnd = appSource.IndexOf("private void StartReports", StringComparison.Ordinal);
         var applyWidgetStart = appSource.IndexOf("private void ApplyTaskbarWidgetSettings", StringComparison.Ordinal);
         var applyWidgetEnd = appSource.IndexOf("private void DisposeTaskbarWidget", StringComparison.Ordinal);
@@ -1145,7 +1149,7 @@ public sealed class WinUiSurfaceContractTests
         var startUiSource = appSource[startUiStart..startUiEnd];
         var applyWidgetSource = appSource[applyWidgetStart..applyWidgetEnd];
         Assert.Contains("_window.Activate();", startUiSource, StringComparison.Ordinal);
-        Assert.Contains("_ = CompleteUiStartupAsync(application, options);", startUiSource, StringComparison.Ordinal);
+        Assert.Contains("await CompleteUiStartupAsync(application, options, initialSettings.Value);", startUiSource, StringComparison.Ordinal);
         Assert.Contains("private async Task CompleteUiStartupAsync", startUiSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetAwaiter().GetResult()", startUiSource, StringComparison.Ordinal);
         Assert.True(
@@ -1163,18 +1167,22 @@ public sealed class WinUiSurfaceContractTests
     public void ScreenshotWindow_SavesPlacementBeforeItsNativeHandleIsDestroyed()
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "ScreenshotWindow.xaml.cs"));
-        var closingStart = source.IndexOf("private void ScreenshotWindow_Closing", StringComparison.Ordinal);
+        var placementSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
+        var closingStart = placementSource.IndexOf("private async void AppWindow_Closing", StringComparison.Ordinal);
+        var closingEnd = placementSource.IndexOf("internal static Task PrepareForShutdownAsync", closingStart, StringComparison.Ordinal);
         var closedStart = source.IndexOf("private void ScreenshotWindow_Closed", StringComparison.Ordinal);
 
-        Assert.True(closingStart >= 0 && closedStart > closingStart, "Screenshot close lifecycle source contract was not found.");
-        var closingSource = source[closingStart..closedStart];
+        Assert.True(closingStart >= 0 && closingEnd > closingStart && closedStart >= 0, "Shared close lifecycle source contract was not found.");
+        var closingSource = placementSource[closingStart..closingEnd];
         var closedSource = source[closedStart..];
-        Assert.Contains("_appWindow.Closing += ScreenshotWindow_Closing;", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("args.Cancel = true;", closingSource, StringComparison.Ordinal);
-        Assert.Contains("_ = _placement.TrySaveForCloseAsync(CancellationToken.None);", closingSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ScreenshotWindow_Closing", source, StringComparison.Ordinal);
+        Assert.Contains("_appWindow.Closing += AppWindow_Closing;", placementSource, StringComparison.Ordinal);
+        Assert.Contains("args.Cancel = true;", closingSource, StringComparison.Ordinal);
         Assert.True(
-            closingSource.IndexOf("TrySaveForCloseAsync", StringComparison.Ordinal) >= 0,
-            "Placement persistence must start while the screenshot window handle is still valid.");
+            closingSource.IndexOf("await QueueSaveAsync(CancellationToken.None);", StringComparison.Ordinal) >= 0
+            && closingSource.IndexOf("await QueueSaveAsync(CancellationToken.None);", StringComparison.Ordinal)
+                < closingSource.IndexOf("_window.Close();", StringComparison.Ordinal),
+            "Shared placement persistence must finish before the screenshot window handle is destroyed.");
         Assert.DoesNotContain("_placement.SaveAsync", closedSource, StringComparison.Ordinal);
         Assert.Contains("_placement.Dispose();", closedSource, StringComparison.Ordinal);
         Assert.Contains("_screenshotsWindow.CloseForShutdown();", File.ReadAllText(RepositoryFile("TrackMeUp", "App.xaml.cs")), StringComparison.Ordinal);

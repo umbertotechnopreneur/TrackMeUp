@@ -341,6 +341,63 @@ public sealed class LocalSearchServiceTests
         Assert.Equal("synonym", Assert.Single(response.Hits).Document.Id);
     }
 
+    /// <summary>Several equivalent phrases retrieve matching context without dropping other query words.</summary>
+    [Fact]
+    public async Task SearchAsync_ExpandsEmbeddedPhrasesAndMultipleSpans()
+    {
+        await using var harness = new SearchHarness(options => options with
+        {
+            SynonymSets =
+            [
+                new SearchSynonymSet { Language = "it-IT", Terms = ["copia di sicurezza", "backup"] },
+                new SearchSynonymSet { Language = "it-IT", Terms = ["scadenza", "deadline"] }
+            ]
+        });
+        await harness.RebuildAsync(
+        [
+            CreateDocument("relevant") with { Language = "it-IT", Context = "backup progetto deadline" },
+            CreateDocument("unrelated") with { Language = "it-IT", Context = "backup personale deadline" }
+        ]);
+        var request = new SearchRequest
+        {
+            Text = "copia di sicurezza progetto scadenza",
+            QueryLanguage = "it-IT",
+            EnableFuzzyMatching = false
+        };
+
+        Assert.Equal("relevant", Assert.Single((await harness.Service.SearchAsync(request)).Hits).Document.Id);
+        Assert.Empty((await harness.Service.SearchAsync(request with { EnableSynonyms = false })).Hits);
+    }
+
+    /// <summary>Many matching aliases do not outrank a literal match in comparable fields.</summary>
+    [Fact]
+    public async Task SearchAsync_PrefersExactMatchToManyAliases()
+    {
+        await using var harness = new SearchHarness(options => options with
+        {
+            SynonymSets =
+            [
+                new SearchSynonymSet { Language = "en-US", Terms = ["screenshot", "screen capture", "screen grab", "screencap", "screen shot"] }
+            ]
+        });
+        await harness.RebuildAsync(
+        [
+            CreateDocument("exact") with { Language = "en-US", Context = "screenshot" },
+            CreateDocument("aliases") with { Language = "en-US", Context = "screen capture screen grab screencap screen shot" }
+        ]);
+
+        var response = await harness.Service.SearchAsync(new SearchRequest
+        {
+            Text = "screenshot",
+            QueryLanguage = "en-US",
+            EnableFuzzyMatching = false
+        });
+
+        Assert.Equal(2, response.TotalCount);
+        Assert.Equal("exact", response.Hits[0].Document.Id);
+        Assert.True(response.Hits[0].Score > response.Hits[1].Score);
+    }
+
     [Fact]
     public async Task SearchAsync_CanDisableConfiguredSynonymsPerRequest()
     {

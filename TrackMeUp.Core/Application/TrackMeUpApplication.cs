@@ -2292,8 +2292,28 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
         var state = _windowState.Save(windowKey, windowHandle);
+        // Window persistence shares settings storage; refresh the snapshot before later settings mutations can overwrite it.
+        _settingsSnapshot.Replace(_store.LoadSettings());
         await Task.CompletedTask;
         return OperationResult<WindowState>.Success("window.state.saved", "WindowStateSaved", state);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> SetWindowOpenStateAsync(string windowKey, bool isOpen, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        var settings = _windowState.SetOpenState(windowKey, isOpen);
+        _settingsSnapshot.Replace(settings);
+        await Task.CompletedTask;
+        return OperationResult<bool>.Success("window.open_state.saved", "WindowOpenStateSaved", isOpen);
+    }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<OcrTextWindowSource>> SetOcrTextWindowSourceAsync(string screenshotPath, DateTimeOffset capturedAt, CancellationToken cancellationToken) => MutateAsync(async () =>
+    {
+        var settings = _windowState.SetOcrTextSource(screenshotPath, capturedAt);
+        _settingsSnapshot.Replace(settings);
+        await Task.CompletedTask;
+        return OperationResult<OcrTextWindowSource>.Success("window.ocr_source.saved", "WindowOcrSourceSaved", settings.OcrTextWindowSource!);
     }, cancellationToken);
 
     /// <inheritdoc />

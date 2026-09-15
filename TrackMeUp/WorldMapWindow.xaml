@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="TrackMeUp.WorldMapWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TrackMeUp"
+    xmlns:controls="using:TrackMeUp.Controls"
+    Title="World day and night map">
+    <Window.SystemBackdrop>
+        <local:GlassBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            x:Name="TitleBarDragRegion"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <Image
+                Grid.Column="1"
+                Margin="16,0,10,0"
+                Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
+            <TextBlock
+                x:Name="TitleBarText"
+                Grid.Column="2"
+                Margin="0,0,12,0"
+                CharacterSpacing="70"
+                Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
+                TextTrimming="CharacterEllipsis" />
+            <TextBlock
+                x:Name="ReferenceInstantText"
+                Grid.Column="3"
+                Margin="0,0,16,0"
+                VerticalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                FontSize="13" />
+        </Grid>
+
+        <controls:WorldDayNightMapControl
+            x:Name="WorldMapControl"
+            Grid.Row="1"
+            Visibility="Collapsed" />
+        <ProgressRing
+            x:Name="LoadingIndicator"
+            Grid.Row="1"
+            Width="36"
+            Height="36"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="Loading world clocks"
+            IsActive="True" />
+        <controls:TimedInfoBar
+            x:Name="WorldMapNotificationBanner"
+            Grid.Row="1"
+            Margin="16"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Canvas.ZIndex="100" />
+    </Grid>
+</Window>

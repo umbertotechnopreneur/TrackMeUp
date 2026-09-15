@@ -28,6 +28,7 @@ alwaysApply: true
 - Treat the TrackMeUp name, logos, app icons, and project-authored brand artwork separately under `TRADEMARKS.md`, and preserve all third-party license and attribution notices.
 - Keep unrelated working-tree changes untouched.
 - Never create a Git branch or worktree unless the user explicitly asks for it or approves it first.
+- When creating a pull request, assign it to `umbertotechnopreneur` and apply the existing repository labels that match its scope.
 - Exclude generated artifacts (`bin/`, `obj/`, `artifacts/`, `.vs/`) from commits.
 - Ignore automatic version metadata changes in `TrackMeUp/build-version.json` and version-only updates in `TrackMeUp/Package.appxmanifest`: do not inspect, restore, report, stage, or commit them unless the user explicitly asks to manage the application version.
 - Prefer explicit, scoped edits and minimal churn.

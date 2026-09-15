@@ -12,21 +12,17 @@ using TrackMeUp.Application;
 using TrackMeUp.Controls;
 using TrackMeUp.Presentation;
 using TrackMeUp.Services;
-using Windows.Graphics;
 
 namespace TrackMeUp;
 
 /// <summary>Displays a light Acrylic surface for local screenshot search.</summary>
 public sealed partial class SearchWindow : Window
 {
-    private const int LogicalWindowWidth = 960;
-    private const int MaximumLogicalWidth = 960;
-    private const int CompactLogicalHeight = 168;
-    private const int ResultLogicalHeight = 92;
+    private const int LogicalWindowWidth = 1040;
+    private const int LogicalWindowHeight = 720;
+    private const int PreviewDecodePixelWidth = 1600;
     private const double StackedPreviewWidth = 760d;
     private const int LogicalScreenMargin = 22;
-    private const double CursorDisplayWidthRatio = 0.64d;
-    private const double MaximumCursorDisplayHeightRatio = 0.78d;
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(250);
     private readonly SearchViewModel _viewModel;
     private readonly LocalizationService _strings;
@@ -34,9 +30,12 @@ public sealed partial class SearchWindow : Window
     private readonly AppWindow _appWindow;
     private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
+    private readonly ScreenshotBitmapSourceLoader _screenshotBitmapLoader;
+    private readonly SearchPreviewSelectionState _previewSelection = new();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private CancellationTokenSource? _queryCancellation;
     private CancellationTokenSource? _debounceCancellation;
+    private CancellationTokenSource? _previewImageCancellation;
     private bool _hasExecutedQuery;
     private bool _closing;
     private int _activeSearchOperationCount;
@@ -54,6 +53,7 @@ public sealed partial class SearchWindow : Window
         }
 
         _strings = new LocalizationService(language);
+        _screenshotBitmapLoader = new ScreenshotBitmapSourceLoader(application);
         _culture = _strings.Culture;
         _viewModel = new SearchViewModel(
             application,
@@ -83,6 +83,7 @@ public sealed partial class SearchWindow : Window
         AutomationProperties.SetName(SearchResultsList, _strings.Translate("Search.Results.Title"));
         AutomationProperties.SetName(PreviewScroller, _strings.Translate("Search.Preview.Title"));
         AutomationProperties.SetName(OpenSnapshotButton, _strings.Translate("Search.Preview.Open"));
+        AutomationProperties.SetName(PreviewImageProgressRing, _strings.Translate("Search.Preview.Loading"));
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         _titleBar = new CustomTitleBarController(
@@ -95,8 +96,7 @@ public sealed partial class SearchWindow : Window
             static () => Array.Empty<FrameworkElement>(),
             useTallTitleBar: false);
         _titleBar.ApplyTheme(ElementTheme.Light);
-        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, CompactLogicalHeight, LogicalScreenMargin);
-        _placement.DpiChanged += ResizeForCurrentState;
+        _placement = new WindowPlacementService(application, this, _appWindow, WindowStateKeys.Search, LogicalWindowWidth, LogicalWindowHeight, LogicalScreenMargin);
         ConfigureWindowBehavior();
         _placement.ApplyDefaultBounds(RootGrid);
         Activated += SearchWindow_Activated;
@@ -126,10 +126,9 @@ public sealed partial class SearchWindow : Window
         SelectAllQueryText();
     }
 
-    /// <summary>Activates the existing search window centered on the monitor containing the pointer.</summary>
-    public void ActivateAtCursor()
+    /// <summary>Activates the existing search window without replacing its saved or user-adjusted placement.</summary>
+    public void ActivateSearch()
     {
-        ResizeForCurrentState();
         Activate();
         FocusQuery();
     }
@@ -139,14 +138,13 @@ public sealed partial class SearchWindow : Window
         _placement.ApplyDefaultBounds(RootGrid);
         try
         {
-            await _placement.RestoreAndCenterAsync(RootGrid, _lifetimeCancellation.Token, centerOnCursorDisplay: true);
+            await _placement.RestoreOrCenterAsync(RootGrid, _lifetimeCancellation.Token, centerOnCursorDisplay: true);
         }
         catch (OperationCanceledException) when (_closing)
         {
             return;
         }
 
-        ResizeForCurrentState();
         ConfigureQueryInput();
         FocusQuery();
     }
@@ -293,39 +291,6 @@ public sealed partial class SearchWindow : Window
         SearchActivityProgressRing.IsActive = isSearching;
         SearchStatusRow.Visibility = isSearching || EmptyStatePanel.Visibility == Visibility.Visible
             ? Visibility.Visible : Visibility.Collapsed;
-        ResizeForCurrentState();
-    }
-
-    private void ResizeForCurrentState()
-    {
-        if (_closing)
-        {
-            return;
-        }
-
-        var resultCount = _viewModel.Results.Count;
-        var width = RootGrid.ActualWidth > 0d ? RootGrid.ActualWidth : LogicalWindowWidth;
-        var measureSize = new Windows.Foundation.Size(width, double.PositiveInfinity);
-        SearchQueryHost.Measure(measureSize);
-        SearchFooter.Measure(measureSize);
-        SearchInfoBar.Measure(measureSize);
-        SearchStatusRow.Measure(measureSize);
-        var chromeHeight = 40d + SearchQueryHost.DesiredSize.Height + SearchFooter.DesiredSize.Height
-            + SearchInfoBar.DesiredSize.Height + SearchStatusRow.DesiredSize.Height;
-        var previewHeight = width < StackedPreviewWidth ? 420d : 280d;
-        var logicalHeight = resultCount > 0
-            ? checked((int)Math.Ceiling(chromeHeight + Math.Max(previewHeight, Math.Min(6, resultCount) * ResultLogicalHeight)))
-            : checked((int)Math.Ceiling(Math.Max(CompactLogicalHeight, chromeHeight)));
-        // XAML measures client content, while placement resizes the outer window. Reserve its native frame too.
-        var scale = RootGrid.XamlRoot?.RasterizationScale ?? 1d;
-        var frameHeight = Math.Max(0, _appWindow.Size.Height - _appWindow.ClientSize.Height) / scale;
-        logicalHeight += checked((int)Math.Ceiling(frameHeight));
-        _placement.ResizeAndCenterOnCursorDisplay(
-            RootGrid,
-            CursorDisplayWidthRatio,
-            MaximumLogicalWidth,
-            logicalHeight,
-            MaximumCursorDisplayHeightRatio);
     }
 
     private void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -344,6 +309,89 @@ public sealed partial class SearchWindow : Window
         PreviewInstallationText.Visibility = string.IsNullOrWhiteSpace(result?.InstallationDisplay)
             ? Visibility.Collapsed : Visibility.Visible;
         OpenSnapshotButton.IsEnabled = result is not null;
+        UpdatePreviewScreenshot(result);
+    }
+
+    private void UpdatePreviewScreenshot(ScreenshotSearchResult? result)
+    {
+        if (!_previewSelection.Select(result?.ScreenshotPath))
+        {
+            return;
+        }
+
+        CancelPreviewImageLoad();
+        PreviewScreenshotImage.Source = null;
+        PreviewScreenshotImage.Visibility = Visibility.Collapsed;
+        PreviewImageUnavailableText.Visibility = Visibility.Collapsed;
+        var loading = result is not null;
+        PreviewImageLoadingPanel.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+        PreviewImageProgressRing.IsActive = loading;
+        if (result is null)
+        {
+            return;
+        }
+
+        AutomationProperties.SetName(PreviewScreenshotImage,
+            _strings.Format("Search.Preview.ImageAccessible", result.SourceDisplay));
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        _previewImageCancellation = cancellation;
+        _ = LoadPreviewScreenshotAsync(result.ScreenshotPath, _previewSelection.Generation, cancellation);
+    }
+
+    private async Task LoadPreviewScreenshotAsync(string screenshotPath, int generation, CancellationTokenSource cancellation)
+    {
+        try
+        {
+            // The shared loader delegates all validation and file reads to ITrackMeUpApplication.
+            var result = await _screenshotBitmapLoader.LoadAsync(screenshotPath, PreviewDecodePixelWidth, cancellation.Token);
+            if (!IsCurrentPreviewLoad(screenshotPath, generation, cancellation))
+            {
+                return;
+            }
+
+            PreviewScreenshotImage.Source = result.Bitmap;
+            PreviewScreenshotImage.Visibility = result.Succeeded && result.Bitmap is not null
+                ? Visibility.Visible : Visibility.Collapsed;
+            PreviewImageUnavailableText.Visibility = PreviewScreenshotImage.Visibility == Visibility.Visible
+                ? Visibility.Collapsed : Visibility.Visible;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            // A newer selection or closed window owns the visible preview; no stale image or failure is applied.
+        }
+        catch (Exception)
+        {
+            if (IsCurrentPreviewLoad(screenshotPath, generation, cancellation))
+            {
+                PreviewImageUnavailableText.Visibility = Visibility.Visible;
+            }
+        }
+        finally
+        {
+            if (IsCurrentPreviewLoad(screenshotPath, generation, cancellation))
+            {
+                PreviewImageLoadingPanel.Visibility = Visibility.Collapsed;
+                PreviewImageProgressRing.IsActive = false;
+            }
+
+            if (ReferenceEquals(_previewImageCancellation, cancellation))
+            {
+                _previewImageCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
+    private bool IsCurrentPreviewLoad(string screenshotPath, int generation, CancellationTokenSource cancellation) =>
+        !_closing && !cancellation.IsCancellationRequested
+        && ReferenceEquals(_previewImageCancellation, cancellation)
+        && _previewSelection.IsCurrent(screenshotPath, generation);
+
+    private void CancelPreviewImageLoad()
+    {
+        _previewImageCancellation?.Cancel();
+        _previewImageCancellation = null;
     }
 
     private void OpenSnapshotButton_Click(object sender, RoutedEventArgs e) => OpenSelectedSnapshot();
@@ -378,11 +426,6 @@ public sealed partial class SearchWindow : Window
         Grid.SetColumn(PreviewPane, stacked ? 0 : 1);
         Grid.SetRow(PreviewPane, stacked ? 1 : 0);
         PreviewPane.BorderThickness = stacked ? new Thickness(0, 1, 0, 0) : new Thickness(1, 0, 0, 0);
-        if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) >= 0.5d)
-        {
-            // Re-measure wrapped status/footer text after placement selects a different monitor width.
-            DispatcherQueue.TryEnqueue(ResizeForCurrentState);
-        }
     }
 
     private void QueryBox_GotFocus(object sender, RoutedEventArgs e)
@@ -441,7 +484,7 @@ public sealed partial class SearchWindow : Window
     {
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsResizable = false;
+            presenter.IsResizable = true;
             presenter.IsMinimizable = false;
             presenter.IsMaximizable = false;
         }
@@ -453,7 +496,6 @@ public sealed partial class SearchWindow : Window
     private async void SearchWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
-        _placement.DpiChanged -= ResizeForCurrentState;
         Activated -= SearchWindow_Activated;
         SearchActivityGlow.SetMotionEnabled(false);
         SearchActivityProgressRing.IsActive = false;
@@ -462,6 +504,10 @@ public sealed partial class SearchWindow : Window
         _lifetimeCancellation.Cancel();
         CancelDebounce();
         _queryCancellation?.Cancel();
+        _previewSelection.Invalidate();
+        CancelPreviewImageLoad();
+        PreviewScreenshotImage.Source = null;
+        PreviewImageProgressRing.IsActive = false;
         _ = await _placement.TrySaveForCloseAsync(CancellationToken.None);
         _titleBar.Dispose();
         _placement.Dispose();

@@ -24,8 +24,6 @@ declaration date:
 - the Atomic Nuke privacy banners under `atomic-nuke/output/`;
 - the Recall Timeline source and generated outputs under `recall-timeline/`;
 - `TrackMeUp/Assets/TrackMeUpSnapshotPlaceholder.png`;
-- `TrackMeUp/Assets/Celestial/sun-premium.png` and
-  `TrackMeUp/Assets/Celestial/moon-premium.png`; and
 - the text-prompt-generated world-clock watercolor pilot recorded under
   `design/world-clocks/watercolor/pilot-v1/`;
 - the manifest-defined selected Urban Wash city masters and their deterministic WebP
@@ -37,6 +35,10 @@ declaration date:
 The icon, Atomic Nuke, and Recall Timeline directories retain their more
 specific provenance records. Generated derivatives remain traceable through
 their repository scripts and manifests.
+
+The former AI-generated celestial artwork was replaced on 2026-09-15 by NASA
+photographs. The current images are third-party material recorded in
+[`Celestial/PROVENANCE.md`](../../TrackMeUp/Assets/Celestial/PROVENANCE.md).
 
 ## License and third-party boundary
 

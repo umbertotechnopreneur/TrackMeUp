@@ -88,6 +88,8 @@ public sealed partial class OptionsControl : UserControl
             ToolTipService.SetToolTip(OpenScreenshotFolderButton, openFolderLabel);
             AutomationProperties.SetName(TaskbarWidgetVisibleSwitch, T("Options.TaskbarWidget.Visible"));
             AutomationProperties.SetName(MainWindowOpacitySlider, T("Options.Window.Opacity.Header"));
+            AutomationProperties.SetName(AutoHideTitleBarSwitch, T("Options.Window.AutoHideTitleBar.Header"));
+            AutomationProperties.SetHelpText(AutoHideTitleBarSwitch, T("Options.Window.AutoHideTitleBar.Description"));
             AutomationProperties.SetName(MainWindowShowInTaskbarSwitch, T("Options.Window.ShowInTaskbar.Header"));
             AutomationProperties.SetName(KeepScreenshotsSwitch, T("Options.KeepSnapshots.Header"));
             AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
@@ -474,6 +476,7 @@ public sealed partial class OptionsControl : UserControl
             SelectTag(LanguageBox, settings.UiLanguage, "system");
             SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
             MainWindowOpacitySlider.Value = settings.MainWindowOpacityPercent;
+            AutoHideTitleBarSwitch.IsOn = settings.AutoHideTitleBar;
             MainWindowShowInTaskbarSwitch.IsOn = settings.MainWindowShowInTaskbar;
             TaskbarWidgetVisibleSwitch.IsOn = settings.TaskbarWidgetVisible;
             SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
@@ -503,6 +506,9 @@ public sealed partial class OptionsControl : UserControl
     private void RegisterAutoSaveHandlers()
     {
         PositionBox.SelectionChanged += (_, _) => QueueAutoSave("position", SelectedTag(PositionBox, "bottom-center"));
+        AutoHideTitleBarSwitch.Toggled += (_, _) => QueueAutoSave(
+            "window.titlebar.auto_hide",
+            AutoHideTitleBarSwitch.IsOn ? "true" : "false");
         MainWindowOpacitySlider.ValueChanged += (_, _) => QueueAutoSave(
             "window.main.opacity_percent",
             MainWindowOpacitySlider.Value.ToString("0", CultureInfo.InvariantCulture));

@@ -12,6 +12,17 @@ namespace TrackMeUp.Presentation.Tests;
 /// <summary>Guards the shared title-bar and main-window lifetime ownership contracts.</summary>
 public sealed class WindowChromeLifecycleContractTests
 {
+    /// <summary>The delayed title-bar reveal must never place an input shield over ordinary window content.</summary>
+    [Fact]
+    public void RevealShield_IsConfinedToTheTitleBarRow()
+    {
+        var controller = File.ReadAllText(RepositoryFile("TrackMeUp", "CustomTitleBarController.cs"));
+        Assert.Contains("Grid.SetRow(_revealSurface, 0);", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("Grid.SetRowSpan(_revealSurface", controller, StringComparison.Ordinal);
+        Assert.Contains("_root.PreviewKeyDown += Root_PreviewKeyDown;", controller, StringComparison.Ordinal);
+        Assert.Contains("_transitionTimer.Tick -= TransitionTimer_Tick;", controller, StringComparison.Ordinal);
+    }
+
     private static readonly string[] MigratedTopLevelWindows =
     [
         "AboutWindow",

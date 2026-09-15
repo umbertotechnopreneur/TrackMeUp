@@ -48,14 +48,27 @@ public sealed partial class WorldClockWindow : Window
     private bool _pendingLiveConversion;
     private bool _customProjectionValid = true;
     private string? _lastConversionErrorKey;
-    private bool _allowClose;
-    private bool _closeInProgress;
     private bool _closed;
     private bool _weatherProviderLinkOpening;
     private bool _wasMinimized;
     private int _requestVersion;
 
     private bool IsClosing => _closed || _lifetimeCancellation.IsCancellationRequested;
+
+    /// <summary>Requests opening or focusing the independent world-map window.</summary>
+    internal event EventHandler? WorldMapRequested;
+
+    /// <summary>Requests opening or focusing the independent lunar-phase window.</summary>
+    internal event EventHandler? LunarPhaseRequested;
+
+    /// <summary>Publishes the reference projection rendered by the clocks for other passive surfaces.</summary>
+    internal event Action<WorldClockSnapshot, bool>? ProjectionChanged;
+
+    /// <summary>Gets the last complete world-clock projection.</summary>
+    internal WorldClockSnapshot? CurrentSnapshot => _snapshot;
+
+    /// <summary>Gets whether the reference instant follows the current time.</summary>
+    internal bool IsLive => _isLive;
 
     /// <summary>Creates the independent world-clock window over the shared application facade.</summary>
     internal WorldClockWindow(
@@ -69,7 +82,7 @@ public sealed partial class WorldClockWindow : Window
         _settings = settings;
         InitializeComponent();
 
-        SystemBackdrop = new DesktopAcrylicBackdrop();
+        SystemBackdrop = new GlassBackdrop();
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)));
         _titleBar = new CustomTitleBarController(
             this,
@@ -78,7 +91,7 @@ public sealed partial class WorldClockWindow : Window
             HeaderDragRegion,
             TitleBarLeftInsetColumn,
             TitleBarRightInsetColumn,
-            () => [HeaderBackButton, ReferenceInstantButton, WorldMapToggleButton, PresentationModeButton, OptionsButton]);
+            () => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, PresentationModeButton, OptionsButton]);
         _titleBar.ThemeChanged += TitleBar_ThemeChanged;
 
         _placement = new WindowPlacementService(
@@ -101,7 +114,6 @@ public sealed partial class WorldClockWindow : Window
         _refreshTimer.Interval = TimeSpan.FromMinutes(1);
         _refreshTimer.Tick += RefreshTimer_Tick;
         _appWindow.Changed += AppWindow_Changed;
-        _appWindow.Closing += WorldClockWindow_Closing;
         ApplySettings(settings);
         _placement.ApplyDefaultBounds(RootGrid);
         Closed += WorldClockWindow_Closed;
@@ -130,8 +142,8 @@ public sealed partial class WorldClockWindow : Window
         ApplyReferenceButton.Content = T("WorldClock.Apply");
         SetIconButtonLabel(OptionsButton, "WorldClock.Options.Open");
         SetIconButtonLabel(HeaderBackButton, "WorldClock.Options.Back");
-        WorldMapControl.ApplyLanguage(_strings);
-        UpdateWorldMapCommand();
+        SetIconButtonLabel(WorldMapButton, "WorldClock.Map.Open");
+        SetIconButtonLabel(LunarPhaseButton, "WorldClock.MoonPhase.Open");
         UpdatePresentationModeCommand();
         ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");
         ReferenceDatePicker.Header = T("WorldClock.ReferenceDate");
@@ -167,18 +179,9 @@ public sealed partial class WorldClockWindow : Window
 
     private async void HeaderBackButton_Click(object sender, RoutedEventArgs e) => await ShowClocksSurfaceAsync();
 
-    private void WorldMapToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        var isVisible = _layoutState.ToggleWorldMap();
-        ApplyWorldMapVisibility(isVisible);
-        if (_snapshot is { Clocks.Count: > 0 } snapshot)
-        {
-            ApplySmartWindowSizing(snapshot.Clocks.Count);
-            UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
-        }
+    private void WorldMapButton_Click(object sender, RoutedEventArgs e) => WorldMapRequested?.Invoke(this, EventArgs.Empty);
 
-        _titleBar.QueueLayoutUpdate();
-    }
+    private void LunarPhaseButton_Click(object sender, RoutedEventArgs e) => LunarPhaseRequested?.Invoke(this, EventArgs.Empty);
 
     private void PresentationModeButton_Click(object sender, RoutedEventArgs e)
     {
@@ -328,40 +331,10 @@ public sealed partial class WorldClockWindow : Window
         HeaderBackButton.Visibility = optionsVisible ? Visibility.Visible : Visibility.Collapsed;
         TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         ReferenceInstantButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
-        WorldMapToggleButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        WorldMapButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
+        LunarPhaseButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         PresentationModeButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         OptionsButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
-    }
-
-    private void ApplyWorldMapVisibility(bool isVisible)
-    {
-        if (isVisible)
-        {
-            WorldMapRow.Height = new GridLength(WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(
-                Math.Max(1d, RootGrid.ActualWidth)));
-            WorldMapPanel.Visibility = Visibility.Visible;
-            if (_snapshot is not null)
-            {
-                WorldMapControl.Apply(_snapshot.Map, _strings);
-            }
-        }
-        else
-        {
-            WorldMapPanel.Visibility = Visibility.Collapsed;
-            WorldMapRow.Height = new GridLength(0d);
-        }
-
-        UpdateWorldMapCommand();
-    }
-
-    private void UpdateWorldMapCommand()
-    {
-        var key = _layoutState.IsWorldMapVisible
-            ? "WorldClock.Map.Hide"
-            : "WorldClock.Map.Show";
-        WorldMapToggleButton.Tag = key;
-        WorldMapToggleIcon.Opacity = _layoutState.IsWorldMapVisible ? 1d : 0.72d;
-        SetIconButtonLabel(WorldMapToggleButton, key);
     }
 
     private void UpdatePresentationModeCommand()
@@ -379,12 +352,6 @@ public sealed partial class WorldClockWindow : Window
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateHeaderForSurface();
-        if (_layoutState.IsWorldMapVisible && e.NewSize.Width > 0d)
-        {
-            WorldMapRow.Height = new GridLength(
-                WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(e.NewSize.Width));
-        }
-
         if (ReferenceInstantFlyout.IsOpen)
         {
             UpdateReferenceFlyoutConstraints();
@@ -430,7 +397,6 @@ public sealed partial class WorldClockWindow : Window
     /// <summary>Closes immediately while the composition root is already shutting down.</summary>
     internal void CloseForShutdown()
     {
-        _allowClose = true;
         _lifetimeCancellation.Cancel();
         Close();
     }
@@ -619,11 +585,9 @@ public sealed partial class WorldClockWindow : Window
         ArgumentNullException.ThrowIfNull(snapshot);
         UpdateWeatherAttribution(snapshot);
         _snapshot = snapshot;
+        ProjectionChanged?.Invoke(snapshot, _isLive);
         if (snapshot.Clocks.Count == 0)
         {
-            _layoutState.HideWorldMap();
-            ApplyWorldMapVisibility(isVisible: false);
-            WorldMapToggleButton.IsEnabled = false;
             _referenceCityId = null;
             _updatingReferenceControls = true;
             try
@@ -652,8 +616,6 @@ public sealed partial class WorldClockWindow : Window
             return;
         }
 
-        WorldMapToggleButton.IsEnabled = true;
-        WorldMapControl.Apply(snapshot.Map, _strings);
         ReferenceInstantButton.IsEnabled = true;
         if (_referenceCityId is null || snapshot.Clocks.All(clock => clock.CityId != _referenceCityId))
         {
@@ -949,9 +911,6 @@ public sealed partial class WorldClockWindow : Window
             UpdateClockColumnsLayout(clockCount, request.Sizing.PreferredLogicalWidth);
             var measuredHeight = _columns.Values.Max(column => column.PreferredContentHeight)
                 + HeaderDragRegion.ActualHeight
-                + (_layoutState.IsWorldMapVisible
-                    ? WorldClockWindowLayoutState.CalculateWorldMapPanelHeight(request.Sizing.PreferredLogicalWidth)
-                    : 0d)
                 + 16d;
             _placement.ResizeForContent(
                 RootGrid,
@@ -1319,52 +1278,10 @@ public sealed partial class WorldClockWindow : Window
         _titleBar.QueueLayoutUpdate();
     }
 
-    private async void WorldClockWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
-    {
-        if (_allowClose)
-        {
-            return;
-        }
-
-        args.Cancel = true;
-        if (_closeInProgress)
-        {
-            return;
-        }
-
-        _closeInProgress = true;
-        var cancellationToken = _lifetimeCancellation.Token;
-        try
-        {
-            await _placement.SaveAsync(cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            _allowClose = true;
-            Close();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // Application shutdown owns the final close and skips optional placement persistence.
-        }
-        catch (Exception exception)
-        {
-            _closeInProgress = false;
-            _allowClose = true;
-            _dialogs.Notifications.ShowError(
-                WorldClockNotificationBanner,
-                T("WorldClock.ErrorTitle"),
-                $"{T("WorldClock.PlacementFailed")} ({exception.GetType().Name})");
-        }
-    }
-
     private void WorldClockWindow_Closed(object sender, WindowEventArgs args)
     {
         _closed = true;
         _appWindow.Changed -= AppWindow_Changed;
-        _appWindow.Closing -= WorldClockWindow_Closing;
         _refreshTimer.Stop();
         _refreshTimer.Tick -= RefreshTimer_Tick;
         if (_weatherAttributionLogoSource is not null)
