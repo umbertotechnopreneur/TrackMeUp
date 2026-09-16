@@ -24,7 +24,7 @@ These instructions apply to all changes in this repository.
 - Start every first-party C# source file with `// SPDX-License-Identifier: MIT`; preserve original notices in generated or third-party files.
 - Exclude generated artifacts in commits (`bin/`, `obj/`, `artifacts/`, `.vs/`).
 - Ignore automatic version metadata changes in `TrackMeUp/build-version.json` and version-only updates in `TrackMeUp/Package.appxmanifest`: do not inspect, restore, report, stage, or commit them unless the user explicitly asks to manage the application version.
-- Run build on Windows SDK targets only: x64, x86, ARM64.
+- Run build on supported Windows SDK targets only: x64 and ARM64.
 - Prefer parser checks for PowerShell before running potentially destructive scripts.
 - After every successful commit and push, run the relevant `dotnet clean` (x64 by default) and remove stale test build outputs. When an installer is produced, keep the newly validated installer and delete older generated installer/package artifacts only after resolving and verifying their paths under this repository's `artifacts/` directory.
 

@@ -164,7 +164,7 @@ You'll need:
 - Windows 10 version 1809 or later.
 - PowerShell 7.
 - .NET 10 SDK.
-- x64, x86, or ARM64.
+- x64 or ARM64.
 
 ~~~powershell
 git clone https://github.com/umbertotechnopreneur/TrackMeUp.git
@@ -258,6 +258,7 @@ Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows 
 <summary>Detailed checks for contributors</summary>
 
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
+- [ ] Build the app for x64 and ARM64. Run `pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action Preflight -Platform x86` and verify that parameter validation rejects the unsupported architecture before running the action.
 
 Search interaction check:
 

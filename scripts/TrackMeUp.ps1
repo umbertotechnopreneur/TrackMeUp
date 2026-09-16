@@ -39,7 +39,7 @@ param(
     )]
     [string]$Action = 'Menu',
 
-    [ValidateSet('x86', 'x64', 'ARM64')]
+    [ValidateSet('x64', 'ARM64')]
     [string]$Platform = 'x64',
 
     [ValidateSet('Debug', 'Release', 'Debug-Unpackaged', 'Release-Unpackaged')]

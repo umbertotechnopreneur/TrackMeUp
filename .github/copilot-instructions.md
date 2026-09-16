@@ -7,7 +7,7 @@ alwaysApply: true
 # TrackMeUp Baseline
 
 - This repository is a **Windows-first workspace** with:
-  - `TrackMeUp/`: WinUI 3 desktop app (`net10.0-windows10.0.19041.0`, x86/x64/ARM64).
+  - `TrackMeUp/`: WinUI 3 desktop app (`net10.0-windows10.0.19041.0`, x64/ARM64).
   - `scripts/`: project utility scripts adapted from local `PowerShell` templates.
   - `.github/`: instruction and workflow context for AI assistants.
 

@@ -68,7 +68,7 @@ following constraints are especially relevant to this work:
 - do not commit generated `bin/`, `obj/`, `.vs/`, or `artifacts/` content;
 - after each successful commit and push, run the relevant x64 `dotnet clean` and remove
   stale test build outputs;
-- build Windows SDK targets only: x64, x86, and ARM64.
+- build supported Windows SDK targets only: x64 and ARM64.
 
 ## Product invariants that must not regress
 
@@ -432,7 +432,7 @@ priority because the window is lazy.
 3. Preserve offline CSP, no network, deterministic embedded paths, tests, and verifier.
 4. Run `npm ci` and `npm run build`; record before/after raw/gzip sizes.
 
-Validate native changes for x64, x86, and ARM64. Identical bytes do not alone prove that a
+Validate native changes for x64 and ARM64. Identical bytes do not alone prove that a
 package-role alias is removable.
 
 Suggested separate commits:
@@ -488,7 +488,6 @@ git diff --check
 ### Final/WinUI/assets/project-structure gate
 
 ```powershell
-dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=x86
 dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=ARM64
 ```
 
