@@ -185,6 +185,8 @@ The same script can create an MSIX package for local installation or an installe
 
 On Windows, `PackageMsix` and `CreateInstaller` sign the package automatically with the local TrackMeUp test certificate (`CN=umber`). If it is missing, the script creates it in the current user's certificate store, exports the public certificate to `artifacts/certificates/TrackMeUp-Test-Signing.cer`, and trusts it for the current user. To use another certificate already installed in `Cert:\CurrentUser\My`, pass `-PackageCertificateThumbprint <thumbprint>`. The test certificate is intended only for local sideloading; production releases must use a certificate issued for distribution.
 
+The [release preparation guide](docs/RELEASING.md) describes the x64/ARM64 GitHub workflow, common package version, bundled runtime dependencies, and SHA-256 checksums. While distribution certificates are pending, the workflow produces explicitly unsigned archives and draft Releases only; these preparation packages cannot yet be installed.
+
 ## Using the terminal
 
 See the [practical CLI examples](docs/CLI_EXAMPLES.md) for checking status, controlling tracking, taking screenshots, making reports, previewing cleanup, and using the app in scripts.
@@ -259,6 +261,7 @@ Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows 
 
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
 - [ ] Build the app for x64 and ARM64. Run `pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action Preflight -Platform x86` and verify that parameter validation rejects the unsupported architecture before running the action.
+- [ ] Run `pwsh -NoProfile -File ./scripts/Test-ReleasePackaging.ps1`; verify common x64/ARM64 release versions, unchanged local version state, invalid-input rejection, required framework dependency checks, and refusal to install unsigned archives. Before a public release, complete the clean-machine x64/ARM64 installation checks in [RELEASING.md](docs/RELEASING.md).
 
 Search interaction check:
 

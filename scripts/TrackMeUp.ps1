@@ -16,6 +16,9 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64
 
 .EXAMPLE
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
+
+.EXAMPLE
+pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform ARM64 -ReleaseVersion 1.2.3 -Unsigned -PackageOutputPath artifacts\releases\1.2.3\ARM64\packages -InstallerOutputPath artifacts\releases\1.2.3\TrackMeUp-1.2.3-ARM64-unsigned.msix
 #>
 [CmdletBinding()]
 param(
@@ -55,6 +58,9 @@ param(
     [ValidateSet('Msix', 'Zip')]
     [string]$InstallerFormat = 'Msix',
     [string]$InstallerOutputPath,
+    [string]$PackageOutputPath,
+    [string]$ReleaseVersion = $env:TRACKMEUP_RELEASE_VERSION,
+    [switch]$Unsigned,
     [ValidateSet('Menu', 'Preflight', 'Protect', 'Reveal', 'Copy', 'PrintAndCopy', 'Inspect', 'SetupSlot', 'MigrateCredentialXml')]
     [string]$SecretToolAction = 'Menu',
     [string]$SecretPath,
@@ -67,6 +73,7 @@ param(
     [string]$VersionStatePath,
     [string]$OutputPath,
     [string]$PackageManifestPath,
+    [string]$PackageManifestOutputPath,
     [string]$RuntimeIdentifier,
     [string]$PackageCertificateThumbprint,
 
@@ -81,6 +88,34 @@ $script:StartedAt = Get-Date
 $script:ScriptName = Split-Path -Leaf $PSCommandPath
 $script:RepositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $script:InteractiveMode = $Action -eq 'Menu' -and $MyInvocation.BoundParameters.Count -eq 0 -and @($PassThruArguments).Count -eq 0
+$script:PackageOutputDirectory = $null
+
+if ($PSBoundParameters.ContainsKey('ReleaseVersion') -and [string]::IsNullOrEmpty($ReleaseVersion)) {
+    throw 'ReleaseVersion must not be empty when supplied.'
+}
+
+if (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
+    if ($ReleaseVersion -cnotmatch '^(?<major>[1-9][0-9]{0,4})\.(?<minor>0|[1-9][0-9]{0,4})\.(?<patch>0|[1-9][0-9]{0,4})$' -or
+        [int]$Matches.major -gt 65535 -or [int]$Matches.minor -gt 65535 -or [int]$Matches.patch -gt 65535) {
+        throw 'ReleaseVersion must be X.Y.Z with major 1..65535 and minor/patch 0..65535, without leading zeros.'
+    }
+
+    if ($Action -notin @('PackageMsix', 'CreateInstaller', 'BuildInfo')) {
+        throw 'ReleaseVersion is supported only for PackageMsix, CreateInstaller, and BuildInfo.'
+    }
+}
+
+if ($Unsigned -and -not [string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)) {
+    throw 'Unsigned packaging cannot use PackageCertificateThumbprint.'
+}
+
+if ($Unsigned -and $Action -notin @('PackageMsix', 'CreateInstaller')) {
+    throw 'Unsigned is supported only for PackageMsix and CreateInstaller.'
+}
+
+if ($SkipPackageBuild -and [string]::IsNullOrWhiteSpace($PackageOutputPath)) {
+    throw 'SkipPackageBuild requires an explicit PackageOutputPath.'
+}
 
 function Test-RunningInIdeTerminal {
     if ($env:WT_SESSION -or $env:WT_PROFILE_ID) {
@@ -1020,14 +1055,39 @@ function Assert-TrackMeUpPackageIntegrity {
             $entries[$entry.FullName.Replace('\', '/')] = $entry
         }
 
-        if (-not $entries.ContainsKey('AppxSignature.p7x')) {
+        if ($Unsigned -and $entries.ContainsKey('AppxSignature.p7x')) {
+            throw "Unsigned packaging produced a signed MSIX: $($PackageFile.FullName)"
+        }
+
+        if (-not $Unsigned -and -not $entries.ContainsKey('AppxSignature.p7x')) {
             throw "MSIX package is not signed: $($PackageFile.FullName)"
         }
 
-        foreach ($requiredEntry in @('ReportsWeb/index.html', 'ReportsWeb/THIRD_PARTY_NOTICES.md')) {
+        foreach ($requiredEntry in @('AppxManifest.xml', 'BuildInfo.json', 'ReportsWeb/index.html', 'ReportsWeb/THIRD_PARTY_NOTICES.md')) {
             if (-not $entries.ContainsKey($requiredEntry)) {
-                throw "MSIX package is missing required report asset '$requiredEntry': $($PackageFile.FullName)"
+                throw "MSIX package is missing required payload '$requiredEntry': $($PackageFile.FullName)"
             }
+        }
+
+        $manifestReader = [System.IO.StreamReader]::new($entries['AppxManifest.xml'].Open())
+        $buildInfoReader = [System.IO.StreamReader]::new($entries['BuildInfo.json'].Open())
+        try {
+            [xml]$packageManifest = $manifestReader.ReadToEnd()
+            $packageBuildInfo = $buildInfoReader.ReadToEnd() | ConvertFrom-Json
+        }
+        finally {
+            $manifestReader.Dispose()
+            $buildInfoReader.Dispose()
+        }
+
+        $identity = $packageManifest.Package.Identity
+        if ($identity.ProcessorArchitecture -ne $Platform.ToLowerInvariant() -or $packageBuildInfo.platform -ne $Platform) {
+            throw "MSIX package architecture does not match requested platform '$Platform': $($PackageFile.FullName)"
+        }
+
+        if ($identity.Version -ne $packageBuildInfo.packageVersion -or
+            (-not [string]::IsNullOrEmpty($ReleaseVersion) -and $identity.Version -ne "$ReleaseVersion.0")) {
+            throw "MSIX manifest/build information does not match the requested package version: $($PackageFile.FullName)"
         }
 
         $indexStream = $entries['ReportsWeb/index.html'].Open()
@@ -1044,7 +1104,7 @@ function Assert-TrackMeUpPackageIntegrity {
             $indexStream.Dispose()
         }
 
-        # Every bundle referenced by the packaged entry point must exist in that same signed archive.
+        # Every bundle referenced by the packaged entry point must exist in that same archive.
         $assetMatches = [regex]::Matches($indexHtml, '(?:src|href)=["'']\./(?<path>assets/[^"'']+)["'']')
         if ($assetMatches.Count -eq 0) {
             throw "MSIX report entry point contains no local production asset references: $($PackageFile.FullName)"
@@ -1063,12 +1123,17 @@ function Assert-TrackMeUpPackageIntegrity {
 }
 
 function Invoke-TrackMeUpMsixPackage {
+    $packageDirectory = Get-TrackMeUpPackageOutputDirectory
+    if (Test-Path -LiteralPath $packageDirectory) {
+        if (@(Get-ChildItem -LiteralPath $packageDirectory -Force).Count -gt 0) {
+            throw "Package output directory must be empty: $packageDirectory"
+        }
+    }
+
+    [System.IO.Directory]::CreateDirectory($packageDirectory) | Out-Null
     Invoke-TrackMeUpBuildReports
 
     $runtime = Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform
-    $certificate = Resolve-TrackMeUpPackageCertificate
-    $packageDirectory = Join-Path $script:RepositoryRoot 'artifacts\packages'
-    [System.IO.Directory]::CreateDirectory($packageDirectory) | Out-Null
     $arguments = @(
         'msbuild',
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
@@ -1083,37 +1148,80 @@ function Invoke-TrackMeUpMsixPackage {
         '/p:PublishTrimmed=false',
         '/p:DebugSymbols=false',
         '/p:DebugType=None',
-        '/p:AppxSymbolPackageEnabled=false',
-        '/p:AppxPackageSigningEnabled=true',
-        "/p:PackageCertificateThumbprint=$($certificate.Thumbprint)"
+        '/p:AppxSymbolPackageEnabled=false'
     )
+
+    if ($Unsigned) {
+        # CI preparation never creates, imports, or trusts a signing certificate.
+        $arguments += '/p:AppxPackageSigningEnabled=false'
+    }
+    else {
+        $certificate = Resolve-TrackMeUpPackageCertificate
+        $arguments += @('/p:AppxPackageSigningEnabled=true', "/p:PackageCertificateThumbprint=$($certificate.Thumbprint)")
+    }
+
+    if (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
+        $arguments += "/p:TrackMeUpReleaseVersion=$ReleaseVersion"
+    }
 
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments
 
-    $packageFile = Get-TrackMeUpLatestPackageFile
+    $packageFile = Get-TrackMeUpPackageFile
     Assert-TrackMeUpPackageIntegrity -PackageFile $packageFile
-    Write-Host "Signed MSIX package ready: $($packageFile.FullName)" -ForegroundColor Green
+    $signingState = if ($Unsigned) { 'Unsigned' } else { 'Signed' }
+    Write-Host "$signingState MSIX package ready: $($packageFile.FullName)" -ForegroundColor Green
+    Write-Host "Package dependency directory: $(Join-Path $packageFile.DirectoryName 'Dependencies')"
 }
 
-function Get-TrackMeUpLatestPackageFile {
-    $roots = @(
-        (Join-Path $script:RepositoryRoot 'artifacts\packages'),
-        (Join-Path $script:RepositoryRoot 'TrackMeUp\bin')
-    )
+function Get-TrackMeUpPackageOutputDirectory {
+    if ($null -ne $script:PackageOutputDirectory) {
+        return $script:PackageOutputDirectory
+    }
 
-    $extensions = @('.msix', '.msixbundle', '.appx', '.appxbundle')
-    $files = foreach ($root in $roots) {
-        if (Test-Path -LiteralPath $root -PathType Container) {
-            Get-ChildItem -LiteralPath $root -Recurse -File -ErrorAction Stop | Where-Object { $_.Extension -in $extensions }
+    $artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $script:RepositoryRoot 'artifacts'))
+    $versionDirectory = if ([string]::IsNullOrEmpty($ReleaseVersion)) { 'local' } else { $ReleaseVersion }
+    $candidate = if ([string]::IsNullOrWhiteSpace($PackageOutputPath)) {
+        $invocationDirectory = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), [Guid]::NewGuid().ToString('N')
+        Join-Path $artifactsRoot "packages\$versionDirectory\$Platform\$invocationDirectory"
+    }
+    else {
+        Resolve-TrackMeUpPath -Path $PackageOutputPath
+    }
+
+    $resolvedDirectory = [System.IO.Path]::GetFullPath($candidate).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+    $requiredPrefix = $artifactsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $resolvedDirectory.StartsWith($requiredPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Package output must be a subdirectory of repository artifacts: $resolvedDirectory"
+    }
+
+    # A junction or symlink can escape artifacts even when its lexical path is inside it.
+    $ancestor = $resolvedDirectory
+    while ($ancestor.Length -ge $artifactsRoot.Length) {
+        if ((Test-Path -LiteralPath $ancestor) -and
+            ((Get-Item -LiteralPath $ancestor -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+            throw "Package output cannot pass through a symbolic link or junction: $ancestor"
         }
+
+        $ancestor = Split-Path -Parent $ancestor
     }
 
-    $latest = @($files | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1)
-    if ($latest.Count -eq 0) {
-        throw 'No MSIX/AppX package file was found. Run PackageMsix first or use CreateInstaller without -SkipPackageBuild.'
+    $script:PackageOutputDirectory = $resolvedDirectory
+    return $script:PackageOutputDirectory
+}
+
+function Get-TrackMeUpPackageFile {
+    $packageDirectory = Get-TrackMeUpPackageOutputDirectory
+    $files = @(if (Test-Path -LiteralPath $packageDirectory -PathType Container) {
+        Get-ChildItem -LiteralPath $packageDirectory -Recurse -File -ErrorAction Stop |
+            Where-Object { $_.Extension -in @('.msix', '.appx') -and $_.FullName -notmatch '[\\/]Dependencies[\\/]' }
+    })
+
+    $packages = @($files)
+    if ($packages.Count -ne 1) {
+        throw "Expected exactly one MSIX/AppX package for $Platform in '$packageDirectory'; found $($packages.Count). Run PackageMsix or omit -SkipPackageBuild."
     }
 
-    return $latest[0]
+    return $packages[0]
 }
 
 function Resolve-TrackMeUpInstallerOutputPath {
@@ -1154,7 +1262,7 @@ function Invoke-TrackMeUpInstallerCreation {
         Invoke-TrackMeUpMsixPackage
     }
 
-    $packageFile = Get-TrackMeUpLatestPackageFile
+    $packageFile = Get-TrackMeUpPackageFile
     Assert-TrackMeUpPackageIntegrity -PackageFile $packageFile
     if ($InstallerFormat -eq 'Zip') {
         $outputPath = Resolve-TrackMeUpInstallerOutputPath -DefaultExtension '.zip'
@@ -1179,25 +1287,41 @@ function Invoke-TrackMeUpBuildInfo {
     $statePath = if ([string]::IsNullOrWhiteSpace($VersionStatePath)) { Join-Path $script:RepositoryRoot 'TrackMeUp\build-version.json' } else { Resolve-TrackMeUpPath -Path $VersionStatePath }
     $buildInfoPath = if ([string]::IsNullOrWhiteSpace($OutputPath)) { Join-Path $script:RepositoryRoot 'TrackMeUp\BuildInfo.json' } else { Resolve-TrackMeUpPath -Path $OutputPath }
     $manifestPath = if ([string]::IsNullOrWhiteSpace($PackageManifestPath)) { Join-Path $script:RepositoryRoot 'TrackMeUp\Package.appxmanifest' } else { Resolve-TrackMeUpPath -Path $PackageManifestPath }
-    $runtime = if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) { Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform } else { $RuntimeIdentifier }
-
-    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
-        throw "Build version state not found: $statePath"
+    $manifestOutputPath = if (-not [string]::IsNullOrWhiteSpace($PackageManifestOutputPath)) {
+        Resolve-TrackMeUpPath -Path $PackageManifestOutputPath
     }
+    elseif (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
+        Join-Path $script:RepositoryRoot "TrackMeUp\obj\release\$ReleaseVersion\$Platform\Package.appxmanifest"
+    }
+    else {
+        $manifestPath
+    }
+    $runtime = if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) { Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform } else { $RuntimeIdentifier }
 
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
         throw "Package manifest not found: $manifestPath"
     }
 
-    $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
-    if ($state.semVer -notmatch '^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)$') {
-        throw "Invalid SemVer in build version state: '$($state.semVer)'"
+    if ([string]::IsNullOrEmpty($ReleaseVersion)) {
+        if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+            throw "Build version state not found: $statePath"
+        }
+
+        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+        if ($state.semVer -notmatch '^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)$') {
+            throw "Invalid SemVer in build version state: '$($state.semVer)'"
+        }
+
+        $major = [int]$Matches.major
+        $minor = [int]$Matches.minor
+        $patch = [int]$Matches.patch + 1
+        $semVer = "$major.$minor.$patch"
+    }
+    else {
+        # Release builds use the tag's version and never advance the local build counter.
+        $semVer = $ReleaseVersion
     }
 
-    $major = [int]$Matches.major
-    $minor = [int]$Matches.minor
-    $patch = [int]$Matches.patch + 1
-    $semVer = "$major.$minor.$patch"
     $packageVersion = "$semVer.0"
     $builtAtUtc = [DateTimeOffset]::UtcNow
     $builtAtLocal = [DateTimeOffset]::Now
@@ -1229,7 +1353,9 @@ function Invoke-TrackMeUpBuildInfo {
         runtimeIdentifier = $runtime
     }
 
-    Write-Utf8Json -Path $statePath -Value ([ordered]@{ semVer = $semVer })
+    if ([string]::IsNullOrEmpty($ReleaseVersion)) {
+        Write-Utf8Json -Path $statePath -Value ([ordered]@{ semVer = $semVer })
+    }
     Write-Utf8Json -Path $buildInfoPath -Value $buildInfo
 
     [xml]$manifest = Get-Content -LiteralPath $manifestPath -Raw
@@ -1244,7 +1370,8 @@ function Invoke-TrackMeUpBuildInfo {
     $writerSettings.Encoding = [System.Text.UTF8Encoding]::new($false)
     $writerSettings.NewLineChars = [Environment]::NewLine
     $writerSettings.OmitXmlDeclaration = $false
-    $writer = [System.Xml.XmlWriter]::Create($manifestPath, $writerSettings)
+    [System.IO.Directory]::CreateDirectory((Split-Path -Parent $manifestOutputPath)) | Out-Null
+    $writer = [System.Xml.XmlWriter]::Create($manifestOutputPath, $writerSettings)
     try {
         $manifest.Save($writer)
     }
