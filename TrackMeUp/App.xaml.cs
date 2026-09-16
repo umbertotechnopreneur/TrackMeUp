@@ -50,6 +50,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private bool _lunarPhaseWindowOpening;
     private bool _uiStarting;
     private bool _quickSetupOwnerWasInteractive;
+    private string _uiLanguage = "system";
     private int _shutdownStarted;
     private int _atomicResetStarted;
 
@@ -63,6 +64,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         _windowsNotifications = new WindowsToastNotificationService(
             _services.GetRequiredService<ILoggerFactory>().CreateLogger<WindowsToastNotificationService>());
         InitializeComponent();
+        WindowPlacementService.PersistenceFailed += WindowPlacementService_PersistenceFailed;
         UnhandledException += (_, eventArgs) => _logger.LogCritical(eventArgs.Exception, "Unhandled WinUI exception.");
         _logger.LogInformation("TrackMeUp process started. Architecture={Architecture}", RuntimeInformation.ProcessArchitecture);
     }
@@ -596,8 +598,26 @@ public partial class App : Microsoft.UI.Xaml.Application
         _lunarPhaseWindow?.ApplySettings(settings);
     }
 
-    private static void ApplyTitleBarSettings(AppSettings settings) =>
+    private void ApplyTitleBarSettings(AppSettings settings)
+    {
+        _uiLanguage = settings.UiLanguage;
         CustomTitleBarController.ApplyAutoHideSetting(settings.AutoHideTitleBar);
+    }
+
+    private async Task WindowPlacementService_PersistenceFailed(Window owner, string windowKey, Exception exception)
+    {
+        _logger.LogError(exception, "Window placement persistence failed. WindowKey={WindowKey}", windowKey);
+        if (Volatile.Read(ref _shutdownStarted) != 0 || owner.Content is not FrameworkElement { IsLoaded: true })
+        {
+            return;
+        }
+
+        var strings = new LocalizationService(_uiLanguage);
+        await _dialogs.ShowInformativeAsync(owner, DialogRequest.Informative(
+            strings.Translate("Operations.Status.Failed.Title"),
+            strings.Translate("WorldClock.PlacementFailed"),
+            strings.Translate("Dialog.Ok")));
+    }
 
     private async void WorldClockWindow_WorldMapRequested(object? sender, EventArgs args) =>
         await ShowAstronomyWindowAsync(isLunarPhase: false);
@@ -614,12 +634,6 @@ public partial class App : Microsoft.UI.Xaml.Application
     private async Task ShowAstronomyWindowAsync(bool isLunarPhase)
     {
         Window? existing = isLunarPhase ? _lunarPhaseWindow : _worldMapWindow;
-        if (existing is not null)
-        {
-            existing.Activate();
-            return;
-        }
-
         if (isLunarPhase ? _lunarPhaseWindowOpening : _worldMapWindowOpening)
         {
             return;
@@ -627,8 +641,15 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         if (isLunarPhase) _lunarPhaseWindowOpening = true;
         else _worldMapWindowOpening = true;
+        Window? createdWindow = null;
         try
         {
+            if (existing is not null)
+            {
+                existing.Activate();
+                return;
+            }
+
             var application = StartOrConnectRuntime();
             var settings = await application.GetSettingsAsync(CancellationToken.None);
             if (_window is null || Volatile.Read(ref _shutdownStarted) != 0)
@@ -644,7 +665,11 @@ public partial class App : Microsoft.UI.Xaml.Application
             if (isLunarPhase)
             {
                 _lunarPhaseWindow = new LunarPhaseWindow(application, _dialogs, settings.Value);
-                _lunarPhaseWindow.Closed += (_, _) => _lunarPhaseWindow = null;
+                createdWindow = _lunarPhaseWindow;
+                _lunarPhaseWindow.Closed += (sender, _) =>
+                {
+                    if (ReferenceEquals(_lunarPhaseWindow, sender)) _lunarPhaseWindow = null;
+                };
                 if (_worldClockWindow?.CurrentSnapshot is { } snapshot)
                 {
                     _lunarPhaseWindow.ApplySnapshot(snapshot, _worldClockWindow.IsLive);
@@ -655,13 +680,45 @@ public partial class App : Microsoft.UI.Xaml.Application
             else
             {
                 _worldMapWindow = new WorldMapWindow(application, _dialogs, settings.Value);
-                _worldMapWindow.Closed += (_, _) => _worldMapWindow = null;
+                createdWindow = _worldMapWindow;
+                _worldMapWindow.Closed += (sender, _) =>
+                {
+                    if (ReferenceEquals(_worldMapWindow, sender)) _worldMapWindow = null;
+                };
                 if (_worldClockWindow?.CurrentSnapshot is { } snapshot)
                 {
                     _worldMapWindow.ApplySnapshot(snapshot, _worldClockWindow.IsLive);
                 }
 
                 _worldMapWindow.Activate();
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Astronomy window could not be opened. IsLunarPhase={IsLunarPhase}", isLunarPhase);
+            // Only discard a window created by this attempt; a failed activation must retain an existing surface.
+            try
+            {
+                switch (createdWindow)
+                {
+                    case LunarPhaseWindow lunarWindow:
+                        _lunarPhaseWindow = null;
+                        lunarWindow.CloseAfterFailedOpening();
+                        break;
+                    case WorldMapWindow mapWindow:
+                        _worldMapWindow = null;
+                        mapWindow.CloseAfterFailedOpening();
+                        break;
+                }
+            }
+            catch (Exception cleanupException)
+            {
+                _logger.LogError(cleanupException, "Failed astronomy opening could not release its window.");
+            }
+
+            if (_window is not null && Volatile.Read(ref _shutdownStarted) == 0)
+            {
+                _window.ShowWorldClockOpenFailure();
             }
         }
         finally

@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "数据存档导入预览已准备就绪。",
+  "DataArchiveImportPreviewFailed": "无法准备数据存档导入预览。请先打开诊断日志查看详细信息，然后重试。",
+  "DataArchiveImportCompleted": "数据存档已导入。",
+  "DataArchiveImportFailed": "无法导入数据存档。请先打开诊断日志查看详细信息，然后重试。",
+  "DataArchiveExportCompleted": "数据存档已导出。",
+  "DataArchiveExportFailed": "无法导出数据存档。请先打开诊断日志查看详细信息，然后重试。",
   "WorldClock.DstActiveUntil": "夏令时生效中 · {0}结束",
   "WorldClock.DstInactive": "夏令时未生效",
   "WorldClock.DstActiveEndUnknown": "夏令时生效中 · 结束日期不可用",

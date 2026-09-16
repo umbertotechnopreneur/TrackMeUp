@@ -13,7 +13,8 @@ namespace TrackMeUp.Services;
 internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
-    private const int SchemaVersion = 9;
+    /// <summary>Defines the current persisted SQLite contract, shared with portable archive validation.</summary>
+    internal const int SchemaVersion = 9;
     private const int PreviousSchemaVersion = 8;
     private const int LegacySchemaVersion = 7;
     private const long FixedEstimatedRowBytes = 96;
@@ -384,7 +385,15 @@ internal sealed class SqliteActivityStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         using var connection = OpenConnection();
+        return MarkSearchSourceRebuild(connection, null, reason);
+    }
+
+    /// <summary>Writes an index invalidation in the same transaction as an external history mutation.</summary>
+    internal static long MarkSearchSourceRebuild(SqliteConnection connection, SqliteTransaction? transaction, string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO search_change_log (kind, entity_id, operation)
             VALUES ('rebuild', $reason, 'upsert');
@@ -2273,7 +2282,8 @@ internal sealed class SqliteActivityStore
         return deletionPlans.Count;
     }
 
-    private static string[] EnumerateScreenshotPaths(string? screenshotPaths) =>
+    /// <summary>Reads the semicolon-separated screenshot path list used by the current SQLite schema.</summary>
+    internal static string[] EnumerateScreenshotPaths(string? screenshotPaths) =>
         screenshotPaths?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         ?? [];
 

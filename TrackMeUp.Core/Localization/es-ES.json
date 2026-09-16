@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "Vista previa de la importación del archivo de datos preparada.",
+  "DataArchiveImportPreviewFailed": "No se pudo preparar la vista previa de la importación del archivo de datos. Abre los registros de diagnóstico para consultar los detalles antes de volver a intentarlo.",
+  "DataArchiveImportCompleted": "Archivo de datos importado.",
+  "DataArchiveImportFailed": "No se pudo importar el archivo de datos. Abre los registros de diagnóstico para consultar los detalles antes de volver a intentarlo.",
+  "DataArchiveExportCompleted": "Archivo de datos exportado.",
+  "DataArchiveExportFailed": "No se pudo exportar el archivo de datos. Abre los registros de diagnóstico para consultar los detalles antes de volver a intentarlo.",
   "WorldClock.DstActiveUntil": "Horario de verano activo · termina el {0}",
   "WorldClock.DstInactive": "Horario de verano inactivo",
   "WorldClock.DstActiveEndUnknown": "Horario de verano activo · fecha de fin no disponible",

@@ -142,7 +142,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.DoesNotContain(window.Descendants(), element => element.Name.LocalName == "MicaBackdrop");
         Assert.DoesNotContain("MicaBackdrop", source, StringComparison.Ordinal);
         Assert.Equal("Transparent", root.Attribute("Background")?.Value);
-        Assert.Equal("{ThemeResource WorldClockHeaderTintBrush}", header.Attribute("Background")?.Value);
+        Assert.Equal("{ThemeResource TrackMeUpTitleBarOverlayBrush}", header.Attribute("Background")?.Value);
         Assert.Equal("48", root.Elements().Single(element => element.Name.LocalName == "Grid.RowDefinitions").Elements().First().Attribute("Height")?.Value);
         Assert.Equal(["Auto", "*", "Auto"], header.Elements().Single(element => element.Name.LocalName == "Grid.ColumnDefinitions").Elements().Select(element => element.Attribute("Width")?.Value ?? string.Empty).ToArray());
         Assert.Equal("0", titleBarIdentityHost.Attribute("Grid.Column")?.Value);
@@ -163,7 +163,6 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.All(windowThemeDictionaries, dictionary =>
         {
             Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockWindowTintBrush");
-            Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockHeaderTintBrush");
             Assert.Contains(dictionary.Descendants(), element => KeyValueOrNull(element) == "WorldClockReferenceFieldBrush");
         });
         Assert.All(columnThemeDictionaries, dictionary =>
@@ -275,7 +274,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.DoesNotContain(column.Descendants(), element => HasName(element, "ReferenceButton") || HasName(element, "RemoveButton"));
         Assert.Contains("new GridLength(1, GridUnitType.Star)", source, StringComparison.Ordinal);
         Assert.Contains("_refreshTimer.IsRepeating = false;", source, StringComparison.Ordinal);
-        Assert.Contains("WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc)", source, StringComparison.Ordinal);
+        Assert.Contains("WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc, DateTimeOffset.UtcNow)", source, StringComparison.Ordinal);
         Assert.Contains("WorldClockWindowLayoutState.CalculateColumnsLayout", source, StringComparison.Ordinal);
         Assert.Contains("BorderThickness = index < clocks.Count - 1", source, StringComparison.Ordinal);
         Assert.Contains("WindowStateKeys.WorldClocks", source, StringComparison.Ordinal);

@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "Anteprima dell'importazione dell'archivio dati pronta.",
+  "DataArchiveImportPreviewFailed": "Non è stato possibile preparare l'anteprima dell'importazione dell'archivio dati. Apri i log diagnostici per i dettagli prima di riprovare.",
+  "DataArchiveImportCompleted": "Archivio dati importato.",
+  "DataArchiveImportFailed": "Non è stato possibile importare l'archivio dati. Apri i log diagnostici per i dettagli prima di riprovare.",
+  "DataArchiveExportCompleted": "Archivio dati esportato.",
+  "DataArchiveExportFailed": "Non è stato possibile esportare l'archivio dati. Apri i log diagnostici per i dettagli prima di riprovare.",
   "WorldClock.DstActiveUntil": "DST attivo · termina il {0}",
   "WorldClock.DstInactive": "DST non attivo",
   "WorldClock.DstActiveEndUnknown": "DST attivo · data di fine non disponibile",

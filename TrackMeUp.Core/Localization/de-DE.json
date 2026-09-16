@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "Die Vorschau für den Import des Datenarchivs ist bereit.",
+  "DataArchiveImportPreviewFailed": "Die Importvorschau für das Datenarchiv konnte nicht erstellt werden. Öffnen Sie vor einem erneuten Versuch die Diagnoseprotokolle, um Details zu erfahren.",
+  "DataArchiveImportCompleted": "Datenarchiv importiert.",
+  "DataArchiveImportFailed": "Das Datenarchiv konnte nicht importiert werden. Öffnen Sie vor einem erneuten Versuch die Diagnoseprotokolle, um Details zu erfahren.",
+  "DataArchiveExportCompleted": "Datenarchiv exportiert.",
+  "DataArchiveExportFailed": "Das Datenarchiv konnte nicht exportiert werden. Öffnen Sie vor einem erneuten Versuch die Diagnoseprotokolle, um Details zu erfahren.",
   "WorldClock.DstActiveUntil": "Sommerzeit aktiv · endet am {0}",
   "WorldClock.DstInactive": "Sommerzeit nicht aktiv",
   "WorldClock.DstActiveEndUnknown": "Sommerzeit aktiv · Enddatum nicht verfügbar",

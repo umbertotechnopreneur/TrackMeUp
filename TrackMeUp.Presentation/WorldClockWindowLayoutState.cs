@@ -95,12 +95,15 @@ public sealed class WorldClockWindowLayoutState
         return PresentationMode;
     }
 
-    /// <summary>Returns a one-shot delay that lands just after the next UTC minute boundary.</summary>
-    public static TimeSpan DelayUntilNextMinute(DateTimeOffset instant)
+    /// <summary>Returns the remaining delay until the displayed snapshot's next UTC minute, refreshing immediately when overdue.</summary>
+    /// <param name="instant">Reference instant of the currently displayed live snapshot.</param>
+    /// <param name="now">Current UTC time at scheduling, including time elapsed since the snapshot was received.</param>
+    public static TimeSpan DelayUntilNextMinute(DateTimeOffset instant, DateTimeOffset now)
     {
         var ticksIntoMinute = instant.UtcDateTime.Ticks % TimeSpan.TicksPerMinute;
         var ticksUntilNextMinute = TimeSpan.TicksPerMinute - ticksIntoMinute;
-        return TimeSpan.FromTicks(ticksUntilNextMinute) + MinuteBoundaryMargin;
+        var remaining = TimeSpan.FromTicks(ticksUntilNextMinute) + MinuteBoundaryMargin - (now - instant);
+        return remaining > TimeSpan.Zero ? remaining : TimeSpan.FromMilliseconds(1);
     }
 
     /// <summary>Calculates an equal-column width that scrolls instead of compressing narrow content.</summary>

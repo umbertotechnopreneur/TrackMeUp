@@ -53,6 +53,10 @@ internal sealed class WindowPlacementService : IDisposable
     private bool _closeSaveStarted;
     private bool _closeSaveCompleted;
     private bool _shutdownPrepared;
+    private bool _failureNotificationPending;
+
+    /// <summary>Lets the composition root report recoverable persistence failures on the owning window.</summary>
+    internal static event Func<Window, string, Exception, Task>? PersistenceFailed;
 
     internal WindowPlacementService(
         ITrackMeUpApplication application,
@@ -125,8 +129,18 @@ internal sealed class WindowPlacementService : IDisposable
         }
     }
 
-    private async void SaveTimer_Tick(DispatcherQueueTimer sender, object args) =>
-        await SaveAsync(CancellationToken.None);
+    private async void SaveTimer_Tick(DispatcherQueueTimer sender, object args)
+    {
+        try
+        {
+            await SaveAsync(CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            // Event callbacks must report failed writes without terminating the tracking runtime.
+            await NotifyPersistenceFailureAsync(exception);
+        }
+    }
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
@@ -145,7 +159,39 @@ internal sealed class WindowPlacementService : IDisposable
         _closeSaveStarted = true;
         _saveTimer.Stop();
         _pendingClose = CloseAfterSaveAsync();
-        await _pendingClose;
+        try
+        {
+            await _pendingClose;
+        }
+        catch (Exception exception)
+        {
+            // CloseAfterSaveAsync has restored the flags, so the live window can be closed again later.
+            await NotifyPersistenceFailureAsync(exception);
+        }
+    }
+
+    private async Task NotifyPersistenceFailureAsync(Exception exception)
+    {
+        Trace.TraceError("Window persistence failed. WindowKey={0} Exception={1}", _windowKey, exception);
+        if (_disposed || _failureNotificationPending || PersistenceFailed is not { } reportFailure)
+        {
+            return;
+        }
+
+        _failureNotificationPending = true;
+        try
+        {
+            await reportFailure(_window, _windowKey, exception);
+        }
+        catch (Exception notificationException)
+        {
+            // A closed owner or unavailable notification surface must not turn the original save failure into a crash.
+            Trace.TraceError("Window persistence notification failed. WindowKey={0} Exception={1}", _windowKey, notificationException);
+        }
+        finally
+        {
+            _failureNotificationPending = false;
+        }
     }
 
     private async Task CloseAfterSaveAsync()
@@ -510,6 +556,11 @@ internal sealed class WindowPlacementService : IDisposable
             catch (OperationCanceledException) when (restoreTask.IsCanceled)
             {
                 // Closing during initial loading preserves the previous valid bounds instead of saving defaults.
+            }
+            catch (Exception) when (restoreTask.IsFaulted)
+            {
+                // The restore owner has reported this error. Preserve its last valid bounds and allow closing;
+                // reopening starts a fresh restore instead of making every later save inherit the failed task.
             }
         }
 

@@ -185,12 +185,28 @@ public sealed class LocalizationServiceTests
     [Fact]
     public void EverySupportedCatalog_LoadsWithAConcreteCultureCompleteKeysAndValidFormats()
     {
+        string[] archiveResultKeys =
+        [
+            "DataArchiveExportCompleted",
+            "DataArchiveExportFailed",
+            "DataArchiveImportPreviewed",
+            "DataArchiveImportPreviewFailed",
+            "DataArchiveImportCompleted",
+            "DataArchiveImportFailed"
+        ];
+
         Assert.All(LocalizationService.SupportedLanguages, locale =>
         {
             var strings = new LocalizationService(locale);
 
             Assert.Equal(locale, strings.Language);
             Assert.NotEqual("StateRunning", strings.Translate("StateRunning"));
+            Assert.All(archiveResultKeys, key =>
+            {
+                var message = strings.Translate(key);
+                Assert.NotEqual(key, message);
+                Assert.False(string.IsNullOrWhiteSpace(message));
+            });
             Assert.False(string.IsNullOrWhiteSpace(strings.Culture.Name));
             var format = strings.Translate("AiReprocess.QuotaValue");
             var formatted = strings.Format("AiReprocess.QuotaValue", 1, 10, 9, 2, 3);

@@ -69,7 +69,8 @@ internal sealed class AstronomyWindowController
             titleBarRegion,
             leftInset,
             rightInset,
-            () => []);
+            () => [],
+            overlayContent: true);
         _placement = new WindowPlacementService(
             application, window, _appWindow, windowKey, defaultWidth, defaultHeight, 24);
         _refreshTimer = window.DispatcherQueue.CreateTimer();
@@ -124,6 +125,14 @@ internal sealed class AstronomyWindowController
     internal void CloseForShutdown()
     {
         _lifetimeCancellation.Cancel();
+        _window.Close();
+    }
+
+    /// <summary>Discards a failed opening without saving incomplete geometry or replacing the previous workspace state.</summary>
+    internal void CloseAfterFailedOpening()
+    {
+        _lifetimeCancellation.Cancel();
+        _placement.Dispose();
         _window.Close();
     }
 
@@ -223,7 +232,7 @@ internal sealed class AstronomyWindowController
         }
 
         _refreshTimer.Interval = !useRetryDelay && _snapshot is { } snapshot
-            ? WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc)
+            ? WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc, DateTimeOffset.UtcNow)
             : TimeSpan.FromMinutes(1);
         _refreshTimer.Start();
     }
@@ -232,6 +241,12 @@ internal sealed class AstronomyWindowController
     {
         var minimized = sender.Presenter is OverlappedPresenter presenter
             && presenter.State == OverlappedPresenterState.Minimized;
+        if (minimized == _wasMinimized)
+        {
+            // Moving or resizing must not restart the minute countdown or its failure retry delay.
+            return;
+        }
+
         var restored = _wasMinimized && !minimized;
         _wasMinimized = minimized;
         ScheduleRefresh();

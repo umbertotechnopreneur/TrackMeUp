@@ -44,9 +44,33 @@ public sealed class WorldClockWindowLayoutStateTests
     [InlineData("2026-08-30T12:34:59.9900000+00:00", 0.11d)]
     public void DelayUntilNextMinute_LandsJustAfterMinuteBoundary(string instantText, double expectedSeconds)
     {
-        var delay = WorldClockWindowLayoutState.DelayUntilNextMinute(DateTimeOffset.Parse(instantText));
+        var instant = DateTimeOffset.Parse(instantText);
+        var delay = WorldClockWindowLayoutState.DelayUntilNextMinute(instant, instant);
 
         Assert.Equal(expectedSeconds, delay.TotalSeconds, precision: 6);
+    }
+
+    /// <summary>Re-scheduling an unchanged snapshot retains its original minute deadline.</summary>
+    [Fact]
+    public void DelayUntilNextMinute_PreservesDeadlineAfterLayoutOrOtherElapsedWork()
+    {
+        var snapshot = DateTimeOffset.Parse("2026-09-16T12:00:01+00:00");
+        var originalDelay = WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot, snapshot);
+        var later = snapshot.AddSeconds(49);
+        var remainingDelay = WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot, later);
+
+        Assert.Equal(snapshot + originalDelay, later + remainingDelay);
+        Assert.Equal(TimeSpan.FromSeconds(10.1), remainingDelay);
+    }
+
+    /// <summary>An overdue snapshot refreshes immediately instead of waiting another full minute.</summary>
+    [Fact]
+    public void DelayUntilNextMinute_RefreshesOverdueSnapshotImmediately()
+    {
+        var snapshot = DateTimeOffset.Parse("2026-09-16T12:00:01+00:00");
+
+        Assert.Equal(TimeSpan.FromMilliseconds(1),
+            WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot, snapshot.AddMinutes(3)));
     }
 
     [Theory]

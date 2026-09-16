@@ -42,6 +42,9 @@ internal sealed partial class WorldMapWindow : Window
     /// <summary>Closes the map after the composition root has persisted the open application session.</summary>
     internal void CloseForShutdown() => _controller.CloseForShutdown();
 
+    /// <summary>Releases a failed opening without overwriting the last valid window placement.</summary>
+    internal void CloseAfterFailedOpening() => _controller.CloseAfterFailedOpening();
+
     private void RenderSnapshot(WorldClockSnapshot snapshot)
     {
         WorldMapControl.Apply(snapshot.Map, _strings);

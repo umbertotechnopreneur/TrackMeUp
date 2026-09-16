@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "Đã chuẩn bị bản xem trước việc nhập tệp lưu trữ dữ liệu.",
+  "DataArchiveImportPreviewFailed": "Không thể chuẩn bị bản xem trước việc nhập tệp lưu trữ dữ liệu. Hãy mở nhật ký chẩn đoán để xem chi tiết trước khi thử lại.",
+  "DataArchiveImportCompleted": "Đã nhập tệp lưu trữ dữ liệu.",
+  "DataArchiveImportFailed": "Không thể nhập tệp lưu trữ dữ liệu. Hãy mở nhật ký chẩn đoán để xem chi tiết trước khi thử lại.",
+  "DataArchiveExportCompleted": "Đã xuất tệp lưu trữ dữ liệu.",
+  "DataArchiveExportFailed": "Không thể xuất tệp lưu trữ dữ liệu. Hãy mở nhật ký chẩn đoán để xem chi tiết trước khi thử lại.",
   "WorldClock.DstActiveUntil": "Giờ mùa hè đang áp dụng · kết thúc {0}",
   "WorldClock.DstInactive": "Không áp dụng giờ mùa hè",
   "WorldClock.DstActiveEndUnknown": "Giờ mùa hè đang áp dụng · chưa có ngày kết thúc",

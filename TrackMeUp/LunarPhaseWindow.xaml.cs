@@ -42,6 +42,9 @@ internal sealed partial class LunarPhaseWindow : Window
     /// <summary>Closes the lunar display after the composition root has persisted the open application session.</summary>
     internal void CloseForShutdown() => _controller.CloseForShutdown();
 
+    /// <summary>Releases a failed opening without overwriting the last valid window placement.</summary>
+    internal void CloseAfterFailedOpening() => _controller.CloseAfterFailedOpening();
+
     private void RenderSnapshot(WorldClockSnapshot snapshot)
     {
         var phase = LunarPhaseProjection.Create(snapshot.Map.MoonPhaseAngleDegrees);

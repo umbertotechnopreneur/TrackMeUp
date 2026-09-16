@@ -76,11 +76,11 @@ public sealed class LocalStore
     /// <summary>Gets the in-process revision of the durable activity rows used by the live dashboard cache.</summary>
     internal long ActivityRevision => Interlocked.Read(ref _activityRevision);
 
-    /// <summary>Invalidates in-process projections after an atomic history import commits.</summary>
-    internal void NotifyHistoryImported()
+    /// <summary>Invalidates in-process projections after the import and its search marker commit together.</summary>
+    internal void NotifyHistoryImportCommitted()
     {
+        // This notification must remain memory-only: post-commit I/O cannot change the import's durable outcome.
         Interlocked.Increment(ref _activityRevision);
-        _activity.MarkSearchSourceRebuild("archive-import");
     }
 
     /// <summary>Gets the dedicated directory used by the reconstructible Lucene search index.</summary>

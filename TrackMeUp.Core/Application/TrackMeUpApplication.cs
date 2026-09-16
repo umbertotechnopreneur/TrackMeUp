@@ -246,7 +246,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             TrackingDomainService.IsHistoricalContextPrivate,
             model => ResolveAiModel(model)?.Key ?? model.Trim(),
             _logger);
-        _archives = new DataArchiveService(store);
+        _archives = new DataArchiveService(store, _logger);
         _worldClockOperations = new WorldClockApplicationService(
             worldClockService ?? new WorldClockService(),
             _settingsSnapshot,

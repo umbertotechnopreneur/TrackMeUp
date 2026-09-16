@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "Data archive import preview ready.",
+  "DataArchiveImportPreviewFailed": "The data archive import preview could not be prepared. Open the diagnostic logs for details before trying again.",
+  "DataArchiveImportCompleted": "Data archive imported.",
+  "DataArchiveImportFailed": "The data archive could not be imported. Open the diagnostic logs for details before trying again.",
+  "DataArchiveExportCompleted": "Data archive exported.",
+  "DataArchiveExportFailed": "The data archive could not be exported. Open the diagnostic logs for details before trying again.",
   "WorldClock.DstActiveUntil": "DST active · ends {0}",
   "WorldClock.DstInactive": "DST inactive",
   "WorldClock.DstActiveEndUnknown": "DST active · end date unavailable",

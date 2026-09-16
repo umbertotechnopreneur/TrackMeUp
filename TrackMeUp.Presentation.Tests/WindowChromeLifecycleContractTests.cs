@@ -12,15 +12,31 @@ namespace TrackMeUp.Presentation.Tests;
 /// <summary>Guards the shared title-bar and main-window lifetime ownership contracts.</summary>
 public sealed class WindowChromeLifecycleContractTests
 {
-    /// <summary>The delayed title-bar reveal must never place an input shield over ordinary window content.</summary>
+    /// <summary>The delayed reveal shield must stay within the caption, including when its grid row has zero height.</summary>
     [Fact]
     public void RevealShield_IsConfinedToTheTitleBarRow()
     {
         var controller = File.ReadAllText(RepositoryFile("TrackMeUp", "CustomTitleBarController.cs"));
         Assert.Contains("Grid.SetRow(_revealSurface, 0);", controller, StringComparison.Ordinal);
-        Assert.DoesNotContain("Grid.SetRowSpan(_revealSurface", controller, StringComparison.Ordinal);
+        Assert.Contains("_revealSurface.Height = overlay ? _overlayLayout.HeaderHeight : double.NaN;", controller, StringComparison.Ordinal);
+        Assert.Contains("_revealSurface.VerticalAlignment = overlay ? VerticalAlignment.Top : VerticalAlignment.Stretch;", controller, StringComparison.Ordinal);
         Assert.Contains("_root.PreviewKeyDown += Root_PreviewKeyDown;", controller, StringComparison.Ordinal);
         Assert.Contains("_transitionTimer.Tick -= TransitionTimer_Tick;", controller, StringComparison.Ordinal);
+    }
+
+    /// <summary>Only astronomy widgets opt into overlays; ordinary work windows keep their top controls unobstructed.</summary>
+    [Fact]
+    public void Overlay_IsLimitedToAstronomyWidgets()
+    {
+        var clocks = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
+        var astronomy = File.ReadAllText(RepositoryFile("TrackMeUp", "AstronomyWindowController.cs"));
+        Assert.Contains("overlayContent: true", clocks, StringComparison.Ordinal);
+        Assert.Contains("overlayContent: true", astronomy, StringComparison.Ordinal);
+        foreach (var window in MigratedTopLevelWindows.Concat(MigratedDialogWindows).Append("MainWindow"))
+        {
+            Assert.DoesNotContain("overlayContent: true", File.ReadAllText(RepositoryFile("TrackMeUp", window + ".xaml.cs")), StringComparison.Ordinal);
+        }
+
     }
 
     private static readonly string[] MigratedTopLevelWindows =

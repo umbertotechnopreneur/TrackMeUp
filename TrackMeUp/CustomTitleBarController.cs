@@ -34,6 +34,9 @@ internal sealed class CustomTitleBarController : IDisposable
     private readonly ColumnDefinition _rightInsetColumn;
     private readonly Func<IEnumerable<FrameworkElement>> _interactiveElements;
     private readonly Grid _rootGrid;
+    private readonly bool _supportsContentOverlay;
+    private TitleBarOverlayLayout? _overlayLayout;
+    private bool _overlayContentEnabled;
     private readonly Border _revealSurface;
     private readonly InputNonClientPointerSource _pointerSource;
     private readonly DispatcherQueueTimer _pointerTimer;
@@ -62,7 +65,8 @@ internal sealed class CustomTitleBarController : IDisposable
         ColumnDefinition leftInsetColumn,
         ColumnDefinition rightInsetColumn,
         Func<IEnumerable<FrameworkElement>> interactiveElements,
-        bool useTallTitleBar = true)
+        bool useTallTitleBar = true,
+        bool overlayContent = false)
     {
         _window = window ?? throw new ArgumentNullException(nameof(window));
         _appWindow = appWindow ?? throw new ArgumentNullException(nameof(appWindow));
@@ -73,6 +77,8 @@ internal sealed class CustomTitleBarController : IDisposable
         _interactiveElements = interactiveElements ?? throw new ArgumentNullException(nameof(interactiveElements));
         _rootGrid = root as Grid
             ?? throw new ArgumentException("Shared title bars require a grid window root.", nameof(root));
+        _overlayContentEnabled = overlayContent;
+        _supportsContentOverlay = overlayContent;
         _windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(_window);
         _visibleOpacity = _dragRegion.Opacity;
         _visibleHitTesting = _dragRegion.IsHitTestVisible;
@@ -124,6 +130,7 @@ internal sealed class CustomTitleBarController : IDisposable
         _pointerSource.PointerReleased += NonClient_PointerReleased;
         _dragRegion.Loaded += DragRegion_Loaded;
         _dragRegion.SizeChanged += DragRegion_SizeChanged;
+        ApplyOverlayLayout();
         ApplyTheme(_root.ActualTheme);
         Controllers.Add(this);
     }
@@ -139,8 +146,44 @@ internal sealed class CustomTitleBarController : IDisposable
         _autoHideEnabled = enabled;
         foreach (var controller in Controllers.ToArray())
         {
+            controller.ApplyOverlayLayout();
             controller.ApplyChromeVisibility(immediate: !enabled);
         }
+    }
+
+    /// <summary>Gets the vertical space consumed by docked chrome, excluding a floating overlay.</summary>
+    internal double ReservedHeight => _overlayLayout?.ReservedHeight
+        ?? (_supportsContentOverlay && _overlayContentEnabled && _autoHideEnabled ? 0d : _dragRegion.ActualHeight);
+
+    /// <summary>Temporarily docks the title bar when a widget displays interactive settings.</summary>
+    internal void SetOverlayContentEnabled(bool enabled)
+    {
+        if (!_supportsContentOverlay)
+        {
+            throw new InvalidOperationException("This title bar was not configured for content overlays.");
+        }
+
+        _overlayContentEnabled = enabled;
+        ApplyOverlayLayout();
+    }
+
+    private void ApplyOverlayLayout()
+    {
+        if (!_supportsContentOverlay || !_dragRegion.IsLoaded)
+        {
+            return;
+        }
+
+        // WinUI does not attach XAML parents during window construction. Capture the original
+        // rows only after Loaded, when the header belongs to its live visual tree.
+        _overlayLayout ??= new TitleBarOverlayLayout(_rootGrid, _dragRegion);
+        var overlay = _overlayContentEnabled && _autoHideEnabled;
+        _overlayLayout.SetEnabled(overlay);
+        // Span the content only for layout; the shield's fixed height limits input to the floating caption.
+        Grid.SetRowSpan(_revealSurface, overlay ? Math.Max(1, _rootGrid.RowDefinitions.Count) : 1);
+        _revealSurface.Height = overlay ? _overlayLayout.HeaderHeight : double.NaN;
+        _revealSurface.VerticalAlignment = overlay ? VerticalAlignment.Top : VerticalAlignment.Stretch;
+        QueueLayoutUpdate();
     }
 
     /// <summary>Occurs after native caption colors have followed a XAML theme change.</summary>
@@ -196,6 +239,7 @@ internal sealed class CustomTitleBarController : IDisposable
 
     private void DragRegion_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyOverlayLayout();
         AttachXamlRoot(_dragRegion.XamlRoot);
         UpdateLayout();
         _pointerTimer.Start();
@@ -450,7 +494,7 @@ internal sealed class CustomTitleBarController : IDisposable
         }
 
         _chromeVisible = visible;
-        // Keep the row and the window's outer bounds unchanged; only its chrome and hit regions change.
+        // Hover changes only chrome and hit regions; the content and window bounds retain their layout.
         FadeChrome(visible);
         _dragRegion.IsHitTestVisible = visible && _visibleHitTesting;
         _revealSurface.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;

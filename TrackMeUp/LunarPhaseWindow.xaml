@@ -16,7 +16,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="TitleBarDragRegion">
+        <Grid x:Name="TitleBarDragRegion" Background="{ThemeResource TrackMeUpTitleBarOverlayBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
                 <ColumnDefinition Width="Auto" />
@@ -79,7 +79,7 @@
             Grid.Row="1"
             Margin="16"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Top"
+            VerticalAlignment="Bottom"
             Canvas.ZIndex="100" />
     </Grid>
 </Window>

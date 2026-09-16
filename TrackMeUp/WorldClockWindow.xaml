@@ -15,7 +15,6 @@
                 <ResourceDictionary.ThemeDictionaries>
                     <ResourceDictionary x:Key="Light">
                         <SolidColorBrush x:Key="WorldClockWindowTintBrush" Color="#20FFFFFF" />
-                        <SolidColorBrush x:Key="WorldClockHeaderTintBrush" Color="#24FFFFFF" />
                         <SolidColorBrush x:Key="WorldClockReferenceFieldBrush" Color="#30FFFFFF" />
                         <SolidColorBrush x:Key="WorldClockReferenceFlyoutBrush" Color="#FCFFFFFF" />
                         <SolidColorBrush x:Key="WorldClockReferenceFlyoutBorderBrush" Color="#1F000000" />
@@ -26,7 +25,6 @@
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <SolidColorBrush x:Key="WorldClockWindowTintBrush" Color="#14151619" />
-                        <SolidColorBrush x:Key="WorldClockHeaderTintBrush" Color="#22151619" />
                         <SolidColorBrush x:Key="WorldClockReferenceFieldBrush" Color="#24101114" />
                         <SolidColorBrush x:Key="WorldClockReferenceFlyoutBrush" Color="#FC252429" />
                         <SolidColorBrush x:Key="WorldClockReferenceFlyoutBorderBrush" Color="#34FFFFFF" />
@@ -37,7 +35,6 @@
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="HighContrast">
                         <StaticResource x:Key="WorldClockWindowTintBrush" ResourceKey="SystemColorWindowColorBrush" />
-                        <StaticResource x:Key="WorldClockHeaderTintBrush" ResourceKey="SystemColorWindowColorBrush" />
                         <StaticResource x:Key="WorldClockReferenceFieldBrush" ResourceKey="SystemColorWindowColorBrush" />
                         <StaticResource x:Key="WorldClockReferenceFlyoutBrush" ResourceKey="SystemColorWindowColorBrush" />
                         <StaticResource x:Key="WorldClockReferenceFlyoutBorderBrush" ResourceKey="SystemColorWindowTextColorBrush" />
@@ -88,7 +85,7 @@
             <Grid
                 x:Name="HeaderDragRegion"
                 Grid.Row="0"
-                Background="{ThemeResource WorldClockHeaderTintBrush}"
+                Background="{ThemeResource TrackMeUpTitleBarOverlayBrush}"
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1">
                 <Grid.ColumnDefinitions>

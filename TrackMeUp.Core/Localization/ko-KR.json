@@ -1,4 +1,10 @@
 {
+  "DataArchiveImportPreviewed": "데이터 보관 파일의 가져오기 미리보기가 준비되었습니다.",
+  "DataArchiveImportPreviewFailed": "데이터 보관 파일의 가져오기 미리보기를 준비하지 못했습니다. 다시 시도하기 전에 진단 로그에서 자세한 내용을 확인하세요.",
+  "DataArchiveImportCompleted": "데이터 보관 파일을 가져왔습니다.",
+  "DataArchiveImportFailed": "데이터 보관 파일을 가져오지 못했습니다. 다시 시도하기 전에 진단 로그에서 자세한 내용을 확인하세요.",
+  "DataArchiveExportCompleted": "데이터 보관 파일을 내보냈습니다.",
+  "DataArchiveExportFailed": "데이터 보관 파일을 내보내지 못했습니다. 다시 시도하기 전에 진단 로그에서 자세한 내용을 확인하세요.",
   "WorldClock.DstActiveUntil": "서머타임 적용 중 · {0} 종료",
   "WorldClock.DstInactive": "서머타임 미적용",
   "WorldClock.DstActiveEndUnknown": "서머타임 적용 중 · 종료일 정보 없음",

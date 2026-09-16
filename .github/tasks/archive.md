@@ -4,6 +4,19 @@ This archive tracks completed development tasks for reference, historical alignm
 
 ---
 
+## [2026-09-16] Astronomy title-bar overlays and archive reliability
+
+### Completed
+
+- [x] Render auto-hidden title bars over World Clocks, map, and Moon content without a reserved top strip or reflow on hover. Retain the shared delay/fade and dock the header while editing clock options or when auto-hide is disabled. Other work windows and dialogs keep their existing layout.
+- [x] Extract reversible overlay geometry into `TitleBarOverlayLayout`; capture header parents/rows after XAML `Loaded`, preserve resources, and bound the first-touch surface to the caption. Place map/Moon notifications below the overlay.
+- [x] Diagnose the local export failure logged on September 16 at 00:28: the archive service tried to deserialize current SQLite screenshot path lists as JSON. Share the current store parser across export/import instead.
+- [x] Test AI/OCR screenshot references with and without bundled files, remapping into a different installation, null/empty references, and repeated imports. Create an export destination directory before its temporary archive.
+- [x] Commit import data, ledger, and search invalidation together. A post-commit cleanup failure is logged without falsely reporting that the committed import failed; recovery retains the durable ledger as its source of truth. Cover rollback and cleanup failures with fault-injection tests.
+- [x] Review recent UI/Core changes and fix timer postponement during move/resize, astronomy opening failures, and unhandled window-persistence event failures. Add comments at the layout, retry, and transaction boundaries. Record larger refactoring opportunities in the active task list.
+
+Native hover, touch, theme, and DPI checks remain in the README manual checklist; automated contracts do not replace visual verification.
+
 ## [2026-09-15] Expand multilingual search synonyms and phrase matching
 
 ### Completed

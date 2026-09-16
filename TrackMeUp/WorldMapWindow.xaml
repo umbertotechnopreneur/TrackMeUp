@@ -18,6 +18,7 @@
 
         <Grid
             x:Name="TitleBarDragRegion"
+            Background="{ThemeResource TrackMeUpTitleBarOverlayBrush}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
             <Grid.ColumnDefinitions>
@@ -65,7 +66,7 @@
             Grid.Row="1"
             Margin="16"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Top"
+            VerticalAlignment="Bottom"
             Canvas.ZIndex="100" />
     </Grid>
 </Window>

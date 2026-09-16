@@ -8,6 +8,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
@@ -18,7 +20,6 @@ namespace TrackMeUp.Services;
 internal sealed class DataArchiveService
 {
     private const int ArchiveSchemaVersion = 1;
-    private const int CurrentStoreSchemaVersion = 9;
     private const int MaximumArchiveEntries = 100_000;
     private const long MaximumDatabaseBytes = 4L * 1024 * 1024 * 1024;
     private const long MaximumManifestBytes = 4L * 1024 * 1024;
@@ -81,6 +82,8 @@ internal sealed class DataArchiveService
     ];
 
     private readonly LocalStore _store;
+    private readonly ILogger _logger;
+    private readonly Action<string> _deleteFile;
     private readonly ConcurrentDictionary<Guid, PendingImportPlan> _pendingPlans = new();
     private readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web)
     {
@@ -89,9 +92,11 @@ internal sealed class DataArchiveService
     };
     private readonly string _journalPath;
 
-    internal DataArchiveService(LocalStore store)
+    internal DataArchiveService(LocalStore store, ILogger? logger = null, Action<string>? deleteFile = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _logger = logger ?? NullLogger.Instance;
+        _deleteFile = deleteFile ?? DeleteFileIfPresent;
         _journalPath = Path.Combine(_store.DataDirectory, "archive-import-journal.json");
         RecoverInterruptedImport();
     }
@@ -144,11 +149,11 @@ internal sealed class DataArchiveService
                 screenshotEntries.Count,
                 screenshotEntries.Sum(entry => entry.Manifest.Length),
                 entryManifest);
-            WriteArchive(temporaryArchivePath, snapshotPath, screenshotEntries, manifest, cancellationToken);
-
             var parent = Path.GetDirectoryName(destination)
                 ?? throw new InvalidDataException("The archive destination has no parent directory.");
+            // The temporary archive shares the destination directory so final publication stays atomic.
             Directory.CreateDirectory(parent);
+            WriteArchive(temporaryArchivePath, snapshotPath, screenshotEntries, manifest, cancellationToken);
             File.Move(temporaryArchivePath, destination, overwrite: true);
             return new DataArchiveExportResult(
                 archiveId,
@@ -210,6 +215,7 @@ internal sealed class DataArchiveService
         }
 
         var validation = ValidateAndExtractArchiveDatabase(pending.ArchivePath, cancellationToken);
+        var mergeCommitted = false;
         try
         {
             if (!string.Equals(validation.Fingerprint, pending.Fingerprint, StringComparison.Ordinal)
@@ -225,25 +231,44 @@ internal sealed class DataArchiveService
             var staging = StageScreenshotFiles(validation.ArchivePath, screenshotPlan, planId, cancellationToken);
             try
             {
-                return MergeDatabaseAndFiles(
+                var result = MergeDatabaseAndFiles(
                     validation.DatabasePath,
                     validation.Manifest,
                     validation.Fingerprint,
                     screenshotPlan,
                     staging,
                     cancellationToken);
+                mergeCommitted = true;
+                CleanupImportResource(() => _deleteFile(_journalPath), mergeCommitted, "recovery journal");
+                return result;
             }
             finally
             {
                 foreach (var stagedPath in staging.Values)
                 {
-                    DeleteFileIfPresent(stagedPath);
+                    CleanupImportResource(() => _deleteFile(stagedPath), mergeCommitted, "staged screenshot");
                 }
             }
         }
         finally
         {
-            DeleteDirectoryIfPresent(validation.WorkDirectory);
+            CleanupImportResource(() => DeleteDirectoryIfPresent(validation.WorkDirectory), mergeCommitted, "temporary database");
+        }
+    }
+
+    private void CleanupImportResource(Action cleanup, bool mergeCommitted, string resource)
+    {
+        try
+        {
+            cleanup();
+        }
+        catch (Exception exception) when (mergeCommitted && exception is IOException or UnauthorizedAccessException)
+        {
+            // The durable ledger is authoritative after COMMIT. A cleanup failure cannot undo the import;
+            // retain its successful result and leave any journal available for the next startup recovery.
+            _logger.LogWarning(exception,
+                "Data archive import committed, but {Resource} cleanup failed. ExceptionType={ExceptionType}",
+                resource, exception.GetType().Name);
         }
     }
 
@@ -350,11 +375,12 @@ internal sealed class DataArchiveService
             while (reader.Read())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var paths = JsonSerializer.Deserialize<string[]>(reader.GetString(1), _json)
-                    ?? throw new InvalidDataException("An archived AI screenshot path list is invalid.");
+                // Archives retain the current SQLite schema: only the path roots change.
+                // Invalid or unowned paths fail in the mapper rather than being omitted.
+                var paths = SqliteActivityStore.EnumerateScreenshotPaths(reader.GetString(1));
                 analysisUpdates.Add((
                     reader.GetString(0),
-                    JsonSerializer.Serialize(paths.Select(pathMapper).ToArray(), _json)));
+                    string.Join(';', paths.Select(pathMapper))));
             }
         }
 
@@ -419,8 +445,7 @@ internal sealed class DataArchiveService
             while (reader.Read())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var paths = JsonSerializer.Deserialize<string[]>(reader.GetString(0), _json)
-                    ?? throw new InvalidDataException("An archive screenshot path list is invalid.");
+                var paths = SqliteActivityStore.EnumerateScreenshotPaths(reader.GetString(0));
                 foreach (var path in paths)
                 {
                     ValidateArchiveScreenshotPath(path);
@@ -647,7 +672,7 @@ internal sealed class DataArchiveService
         using (var command = connection.CreateCommand())
         {
             command.CommandText = "PRAGMA user_version;";
-            if (Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) != CurrentStoreSchemaVersion)
+            if (Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture) != SqliteActivityStore.SchemaVersion)
             {
                 throw new InvalidDataException("The archive database schema version is unsupported.");
             }
@@ -983,10 +1008,12 @@ internal sealed class DataArchiveService
                     ("$archiveId", manifest.ArchiveId.ToString("N")),
                     ("$fingerprint", fingerprint),
                     ("$importedAt", DateTimeOffset.UtcNow.UtcDateTime.Ticks));
+                // Data, import ledger and the derived-index invalidation become durable together.
+                // Marker failures roll back the import; after COMMIT only in-memory invalidation remains.
+                _ = SqliteActivityStore.MarkSearchSourceRebuild(connection, transaction, "archive-import");
                 transaction.Commit();
                 mergeCommitted = true;
-                DeleteFileIfPresent(_journalPath);
-                _store.NotifyHistoryImported();
+                _store.NotifyHistoryImportCommitted();
                 return new DataArchiveImportResult(
                     manifest.ArchiveId,
                     addedInstallations,

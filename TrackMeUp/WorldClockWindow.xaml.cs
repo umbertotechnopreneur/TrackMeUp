@@ -91,7 +91,8 @@ public sealed partial class WorldClockWindow : Window
             HeaderDragRegion,
             TitleBarLeftInsetColumn,
             TitleBarRightInsetColumn,
-            () => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, PresentationModeButton, OptionsButton]);
+            () => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, PresentationModeButton, OptionsButton],
+            overlayContent: true);
         _titleBar.ThemeChanged += TitleBar_ThemeChanged;
 
         _placement = new WindowPlacementService(
@@ -203,6 +204,7 @@ public sealed partial class WorldClockWindow : Window
 
     private void ShowOptionsSurface()
     {
+        _titleBar.SetOverlayContentEnabled(false);
         var options = EnsureOptionsControl();
         options.ApplyState(_settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
         ClocksSurface.IsHitTestVisible = false;
@@ -218,6 +220,7 @@ public sealed partial class WorldClockWindow : Window
 
     private async Task ShowClocksSurfaceAsync()
     {
+        _titleBar.SetOverlayContentEnabled(true);
         OptionsPanel.Visibility = Visibility.Collapsed;
         ClocksSurface.Visibility = Visibility.Visible;
         ClocksSurface.IsHitTestVisible = true;
@@ -351,6 +354,12 @@ public sealed partial class WorldClockWindow : Window
 
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        // XAML may raise size changes before construction has finished attaching the chrome controller.
+        if (_titleBar is null)
+        {
+            return;
+        }
+
         UpdateHeaderForSurface();
         if (ReferenceInstantFlyout.IsOpen)
         {
@@ -910,7 +919,7 @@ public sealed partial class WorldClockWindow : Window
             // Measure against the target column width before sizing so the detailed command actually reveals its content.
             UpdateClockColumnsLayout(clockCount, request.Sizing.PreferredLogicalWidth);
             var measuredHeight = _columns.Values.Max(column => column.PreferredContentHeight)
-                + HeaderDragRegion.ActualHeight
+                + _titleBar.ReservedHeight
                 + 16d;
             _placement.ResizeForContent(
                 RootGrid,
@@ -1202,7 +1211,7 @@ public sealed partial class WorldClockWindow : Window
             && !_lifetimeCancellation.IsCancellationRequested
             && _snapshot is { Clocks.Count: > 0 } snapshot)
         {
-            _refreshTimer.Interval = WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc);
+            _refreshTimer.Interval = WorldClockWindowLayoutState.DelayUntilNextMinute(snapshot.InstantUtc, DateTimeOffset.UtcNow);
             _refreshTimer.Start();
         }
     }
@@ -1226,6 +1235,12 @@ public sealed partial class WorldClockWindow : Window
     {
         var minimized = sender.Presenter is OverlappedPresenter presenter
             && presenter.State == OverlappedPresenterState.Minimized;
+        if (minimized == _wasMinimized)
+        {
+            // Moving or resizing must not restart the minute countdown or its failure retry delay.
+            return;
+        }
+
         var restored = _wasMinimized && !minimized;
         _wasMinimized = minimized;
         UpdateRefreshTimerState();

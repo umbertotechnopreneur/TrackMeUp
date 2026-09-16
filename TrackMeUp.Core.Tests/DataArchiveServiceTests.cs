@@ -4,12 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -18,8 +20,215 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class DataArchiveServiceTests
 {
+    /// <summary>Publishes an export into a destination whose parent directories do not exist yet.</summary>
     [Fact]
-    public void ExportPreviewAndMerge_RoundTripsSqlAndScreenshotsIdempotently()
+    public void Export_CreatesDestinationDirectoryBeforeWritingArchive()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var source = new LocalStore(Path.Combine(root, "source"));
+            var destination = Path.Combine(root, "new", "nested", "history.tmuarchive");
+
+            var result = new DataArchiveService(source).Export(
+                new DataArchiveExportRequest(destination, IncludeScreenshots: false), CancellationToken.None);
+
+            Assert.Equal(destination, result.Path);
+            using var archive = ZipFile.OpenRead(destination);
+            Assert.NotNull(archive.GetEntry("data.sqlite3"));
+            Assert.Empty(Directory.EnumerateFiles(Path.GetDirectoryName(destination)!, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>A failed search invalidation must roll back the imported rows and the import ledger together.</summary>
+    [Fact]
+    public void Import_SearchMarkerFailureRollsBackTheMerge()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var archivePath = CreateMinimalArchive(root);
+            var targetDirectory = Path.Combine(root, "target");
+            var target = new LocalStore(targetDirectory);
+            var importer = new DataArchiveService(target);
+            var plan = importer.PreviewImport(new DataArchiveImportPreviewRequest(archivePath), CancellationToken.None);
+            using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = target.ActivityDatabasePath,
+                Mode = SqliteOpenMode.ReadWrite,
+                Pooling = false
+            }.ToString()))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TRIGGER fail_archive_search_marker BEFORE INSERT ON search_change_log
+                    WHEN NEW.kind = 'rebuild' AND NEW.entity_id = 'archive-import'
+                    BEGIN
+                        SELECT RAISE(ABORT, 'test search marker failure');
+                    END;
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            var exception = Assert.Throws<SqliteException>(() => importer.Import(plan.PlanId, CancellationToken.None));
+
+            Assert.Contains("test search marker failure", exception.Message, StringComparison.Ordinal);
+            Assert.Single(target.GetInstallationProfiles());
+            Assert.Equal(0, ReadCount(targetDirectory, "archive_imports"));
+            Assert.Equal(0, target.ActivityRevision);
+            Assert.DoesNotContain(target.LoadSearchSourceChanges(0, 100), change => change.EntityId == "archive-import");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>Exercises the current SQLite AI path contract and OCR paths across archive and destination roots.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ExportAndImport_WithAiAndOcrRecords_RemapsEveryScreenshotPath(bool includeScreenshots)
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var sourceDirectory = Path.Combine(root, "source");
+            var targetDirectory = Path.Combine(root, "target");
+            Directory.CreateDirectory(sourceDirectory);
+            Directory.CreateDirectory(targetDirectory);
+            var source = new LocalStore(sourceDirectory);
+            var sourceScreenshots = Path.Combine(sourceDirectory, "screenshots");
+            source.SaveSettings(source.LoadSettings() with { ScreenshotDirectory = sourceScreenshots });
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var captureId = Guid.NewGuid().ToString("N");
+            var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(sourceScreenshots, capturedAt);
+            Directory.CreateDirectory(dayDirectory);
+            var sourcePaths = Enumerable.Range(1, 2)
+                .Select(monitor => Path.Combine(dayDirectory, $"{captureId}_1.0.0_manual_monitor-{monitor}.webp"))
+                .ToArray();
+            foreach (var path in sourcePaths)
+            {
+                File.WriteAllBytes(path, [1, 2, 3]);
+                File.SetLastWriteTimeUtc(path, capturedAt.UtcDateTime);
+                source.UpsertScreenshotTextSnapshot(captureId, new ScreenshotTextSnapshot(
+                    path,
+                    new OcrRawSnapshot(ScreenshotTextExtractionStatus.Succeeded, "Archive test text", "en-US",
+                        null, capturedAt, "test-ocr", 100, 100, [])));
+            }
+
+            var sourcePathList = string.Join(';', sourcePaths);
+            source.UpsertScreenshotIntervalTelemetry(captureId, sourcePaths,
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, 12, 4));
+            AppendAnalysis(source, captureId, capturedAt, sourcePathList, sourcePaths.Length);
+            var archivePath = Path.Combine(root, "ai-history.tmuarchive");
+            var exporter = new DataArchiveService(source);
+            var exported = exporter.Export(
+                new DataArchiveExportRequest(archivePath, IncludeScreenshots: includeScreenshots),
+                CancellationToken.None);
+
+            Assert.Equal(1, exported.AiAnalysisCount);
+            Assert.Equal(1, exported.AiRequestCount);
+            Assert.Equal(includeScreenshots ? 2 : 0, exported.ScreenshotFileCount);
+            using (var archive = ZipFile.OpenRead(archivePath))
+            {
+                var snapshotPath = Path.Combine(root, "exported.sqlite3");
+                archive.GetEntry("data.sqlite3")!.ExtractToFile(snapshotPath);
+                using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+                {
+                    DataSource = snapshotPath,
+                    Mode = SqliteOpenMode.ReadOnly,
+                    Pooling = false
+                }.ToString());
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT screenshot_paths FROM ai_analysis_results;";
+                var archivedPaths = Assert.IsType<string>(command.ExecuteScalar()).Split(';');
+                Assert.Equal(2, archivedPaths.Length);
+                Assert.All(archivedPaths, path =>
+                {
+                    Assert.StartsWith("screenshots/", path, StringComparison.Ordinal);
+                    Assert.False(Path.IsPathFullyQualified(path));
+                    Assert.DoesNotContain(sourceDirectory, path, StringComparison.OrdinalIgnoreCase);
+                });
+            }
+
+            var target = new LocalStore(targetDirectory);
+            var targetScreenshots = Path.Combine(targetDirectory, "screenshots");
+            target.SaveSettings(target.LoadSettings() with { ScreenshotDirectory = targetScreenshots });
+            var importer = new DataArchiveService(target);
+            var preview = importer.PreviewImport(new DataArchiveImportPreviewRequest(archivePath), CancellationToken.None);
+            var imported = importer.Import(preview.PlanId, CancellationToken.None);
+            Assert.Equal(1, imported.AddedAiAnalysisCount);
+            Assert.Equal(1, imported.AddedAiRequestCount);
+
+            var targetPaths = sourcePaths.Select(path => Path.Combine(
+                ScreenshotStorageLayout.GetDayDirectory(targetScreenshots, capturedAt), Path.GetFileName(path))).ToArray();
+            var importedAnalysis = Assert.IsType<AiAnalysis>(target.LoadAiAnalysis(captureId));
+            Assert.Equal(string.Join(';', targetPaths), importedAnalysis.ScreenshotPaths);
+            foreach (var path in targetPaths)
+            {
+                var snapshot = Assert.IsType<ScreenshotTextSnapshot>(target.LoadScreenshotTextSnapshot(path));
+                Assert.Equal(path, snapshot.SourceScreenshotPath);
+                Assert.Equal("Archive test text", snapshot.Ocr.RawText);
+                Assert.Equal(includeScreenshots, File.Exists(path));
+            }
+
+            Assert.Equal(sourcePathList, source.LoadAiAnalysis(captureId)!.ScreenshotPaths);
+            Assert.Equal(sourcePaths[0], source.LoadScreenshotTextSnapshot(sourcePaths[0])!.SourceScreenshotPath);
+            var repeat = importer.PreviewImport(new DataArchiveImportPreviewRequest(archivePath), CancellationToken.None);
+            Assert.True(repeat.AlreadyImported);
+            Assert.Equal(1, importer.Import(repeat.PlanId, CancellationToken.None).SkippedAiAnalysisCount);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>Preserves analysis records that have no retained screenshot references.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ExportAndImport_WithNoAnalysisScreenshotPaths_PreservesTheRecord(string? screenshotPaths)
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var sourceDirectory = Path.Combine(root, "source");
+            var targetDirectory = Path.Combine(root, "target");
+            Directory.CreateDirectory(sourceDirectory);
+            Directory.CreateDirectory(targetDirectory);
+            var source = new LocalStore(sourceDirectory);
+            var captureId = Guid.NewGuid().ToString("N");
+            AppendAnalysis(source, captureId, DateTimeOffset.UtcNow.AddMinutes(-1), screenshotPaths, 0);
+            var archivePath = Path.Combine(root, "no-screenshots.tmuarchive");
+            _ = new DataArchiveService(source).Export(
+                new DataArchiveExportRequest(archivePath, IncludeScreenshots: false), CancellationToken.None);
+            var target = new LocalStore(targetDirectory);
+            var importer = new DataArchiveService(target);
+            var preview = importer.PreviewImport(new DataArchiveImportPreviewRequest(archivePath), CancellationToken.None);
+            _ = importer.Import(preview.PlanId, CancellationToken.None);
+
+            Assert.Equal(screenshotPaths, target.LoadAiAnalysis(captureId)!.ScreenshotPaths);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>Preserves the committed import result even when post-commit journal or staging cleanup fails.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("journal")]
+    [InlineData("staging")]
+    public void ExportPreviewAndMerge_RoundTripsSqlAndScreenshotsIdempotently(string? cleanupFailure)
     {
         var root = CreateTemporaryDirectory();
         try
@@ -75,7 +284,21 @@ public sealed class DataArchiveServiceTests
 
             var target = new LocalStore(targetDirectory);
             target.SaveSettings(target.LoadSettings() with { ScreenshotDirectory = targetScreenshots });
-            var importer = new DataArchiveService(target);
+            var logger = new RecordingLogger();
+            var journalPath = Path.Combine(targetDirectory, "archive-import-journal.json");
+            var failureInjected = false;
+            var importer = new DataArchiveService(target, logger, deleteFile: path =>
+            {
+                if (!failureInjected
+                    && ((cleanupFailure == "journal" && path == journalPath)
+                        || (cleanupFailure == "staging" && path.EndsWith(".importing", StringComparison.Ordinal))))
+                {
+                    failureInjected = true;
+                    throw new IOException("Simulated post-commit cleanup failure.");
+                }
+
+                File.Delete(path);
+            });
             var preview = importer.PreviewImport(new DataArchiveImportPreviewRequest(archivePath), CancellationToken.None);
             Assert.False(preview.AlreadyImported);
             Assert.Single(preview.Installations);
@@ -86,6 +309,26 @@ public sealed class DataArchiveServiceTests
             Assert.Equal(1, imported.AddedScreenshotFileCount);
             Assert.Equal(2, target.GetInstallationProfiles().Count);
             Assert.Equal(1, ReadCount(targetDirectory, "activity_samples"));
+            Assert.Equal(1, target.ActivityRevision);
+            Assert.Contains(target.LoadSearchSourceChanges(0, 100), change => change.Kind == "rebuild" && change.EntityId == "archive-import");
+            Assert.Equal(cleanupFailure is not null, failureInjected);
+            if (cleanupFailure is not null)
+            {
+                var warning = Assert.Single(logger.Entries);
+                Assert.Equal(LogLevel.Warning, warning.Level);
+                Assert.Contains("import committed", warning.Message, StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.Empty(logger.Entries);
+            }
+
+            if (cleanupFailure == "journal")
+            {
+                Assert.True(File.Exists(journalPath));
+                _ = new DataArchiveService(target);
+                Assert.False(File.Exists(journalPath));
+            }
 
             var importedScreenshot = Path.Combine(
                 ScreenshotStorageLayout.GetDayDirectory(targetScreenshots, capturedAt),
@@ -216,6 +459,23 @@ public sealed class DataArchiveServiceTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    private static void AppendAnalysis(
+        LocalStore store,
+        string captureId,
+        DateTimeOffset capturedAt,
+        string? screenshotPaths,
+        int imageCount)
+    {
+        var usage = new AiRequestUsageRecord(
+            Guid.NewGuid().ToString("N"), captureId, capturedAt, capturedAt.AddMilliseconds(10),
+            "snapshot.manual", "screen_analysis", "test-provider", "provider.invalid", "test-model", "test-model",
+            null, null, 200, 10, null, imageCount, 10, 100, new AiUsageMetrics(10, 5, 15), "stop", true, null);
+        var analysis = new AiAnalysis(
+            capturedAt, "Test", "Archive", "Portable AI analysis", store.LoadSettings().InstallationId,
+            screenshotPaths, CorrelationId: captureId, Origin: "snapshot.manual");
+        store.AppendAiAnalysisAndUsage(usage, analysis);
     }
 
     private static int ReadCount(string dataDirectory, string table)
@@ -350,5 +610,20 @@ public sealed class DataArchiveServiceTests
         var path = Path.Combine(Path.GetTempPath(), "TrackMeUp.Archive.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private sealed class RecordingLogger : ILogger
+    {
+        internal List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        /// <inheritdoc />
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        /// <inheritdoc />
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        /// <inheritdoc />
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Entries.Add((logLevel, formatter(state, exception)));
     }
 }
