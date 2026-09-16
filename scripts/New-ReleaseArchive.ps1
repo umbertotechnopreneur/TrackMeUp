@@ -16,8 +16,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($Version -cnotmatch '^[1-9][0-9]{0,4}\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or
-    @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count -gt 0) {
-    throw 'Version must be X.Y.Z with major 1..65535 and minor/patch 0..65535.'
+    @($Version.Split('.') | Where-Object { [int]$_ -gt 65534 }).Count -gt 0) {
+    throw 'Version must be X.Y.Z with major 1..65534 and minor/patch 0..65534.'
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot

@@ -1,9 +1,10 @@
 # Preparing a GitHub release
 
-TrackMeUp produces native **x64** and **ARM64** MSIX packages. The `release packages`
-workflow prepares both architectures from the same commit and version. Until a
-distribution signing identity is configured, all application packages are **unsigned**
-and are not installable releases.
+TrackMeUp produces native **x64** and **ARM64** MSIX packages and portable ZIPs.
+The `release packages` workflow prepares all four artifacts from the same commit
+and version. Until a distribution signing identity is configured, application
+binaries are **unsigned**. MSIX packages require signing before installation;
+portable executables can be extracted and run directly. The workflow creates drafts only.
 
 ## GitHub Actions
 
@@ -12,7 +13,7 @@ and are not installable releases.
 - Push an approved `vX.Y.Z` tag to generate the same artifacts and attach them to a
   **draft** GitHub Release. The workflow never publishes the draft and refuses to
   replace an existing release for that tag.
-- Versions have three numeric components: major `1..65535`, minor and patch `0..65535`,
+- Versions have three numeric components: major `1..65534`, minor and patch `0..65534`,
   with no leading zeros or prerelease suffixes. Both MSIX packages use `X.Y.Z.0`.
 - Each archive and its `.zip.sha256` file are retained as workflow artifacts for 30 days.
   Draft Release assets remain available to maintainers independently of that retention.
@@ -34,6 +35,11 @@ foreach ($releasePlatform in @('x64', 'ARM64')) {
     if ($LASTEXITCODE -ne 0) { throw "Packaging failed: $releasePlatform" }
     pwsh -NoProfile -File ./scripts/New-ReleaseArchive.ps1 -PackageDirectory $packageDirectory -Version $releaseVersion -Platform $releasePlatform
     if ($LASTEXITCODE -ne 0) { throw "Archive creation failed: $releasePlatform" }
+    $publishDirectory = "./artifacts/portable-publish/$releaseVersion/$releasePlatform"
+    pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PublishUnpackaged -Platform $releasePlatform -ReleaseVersion $releaseVersion -PublishOutputPath $publishDirectory
+    if ($LASTEXITCODE -ne 0) { throw "Portable publish failed: $releasePlatform" }
+    pwsh -NoProfile -File ./scripts/New-PortableReleaseArchive.ps1 -PublishDirectory $publishDirectory -Version $releaseVersion -Platform $releasePlatform
+    if ($LASTEXITCODE -ne 0) { throw "Portable archive creation failed: $releasePlatform" }
 }
 ```
 
@@ -71,6 +77,29 @@ has been prepared, it verifies package hashes, signatures, architecture, version
 and dependency coverage before registering the app with `Add-AppxPackage`. It never
 imports a certificate or changes certificate trust. The helper needs PowerShell 7.
 
+## Portable archives
+
+Each `artifacts/releases/<version>/<platform>/portable/TrackMeUp-<version>-<platform>-portable-unsigned.zip`
+contains the complete `Release-Unpackaged` publish output, including .NET and Windows
+App SDK, report assets, build/release metadata, notices, and payload checksums.
+An adjacent `.zip.sha256` verifies the archive. The archive writer rejects missing
+runtimes, mismatched version/architecture metadata, and an existing output directory.
+
+Extract the entire ZIP and run `TrackMeUp.exe`. No MSIX registration, certificate
+import, runtime installer, or administrator access is part of this portable route.
+Use `./TrackMeUp.exe --version` for the CLI; portable ZIPs do not register an execution alias.
+Unsigned executables may show a Windows security prompt.
+
+Portable describes deployment, not a separate data-storage mode: settings and history
+remain under `%LOCALAPPDATA%\TrackMeUp`. Reports require an installed Microsoft Edge
+WebView2 Runtime; the bundled SDK libraries do not contain the browser engine.
+On-device screenshot OCR uses a Windows API that requires package identity, so it
+is available through the MSIX edition and unavailable in the portable build.
+
+Before publication, verify extraction, CLI and UI startup on clean Windows x64 and
+ARM64 machines without .NET or Windows App SDK preinstalled. Cross-compilation and
+archive checks do not establish native ARM64 launch behavior.
+
 ## Completing signing later
 
 Before publishing a public release:
@@ -84,8 +113,9 @@ Before publishing a public release:
    archive script deliberately accepts only unsigned preparation packages.
 3. Regenerate all hashes after signing; never relabel an existing unsigned ZIP as signed.
    A valid signature does not by itself guarantee immediate SmartScreen reputation.
-4. Test installation, upgrade, launch, CLI access, and uninstall on clean Windows
-   x64 and ARM64 machines. Cross-compilation does not verify execution on ARM64.
+4. Test MSIX installation, upgrade, launch, CLI access, and uninstall, and portable
+   extraction/launch on clean Windows x64 and ARM64 machines. Cross-compilation does
+   not verify execution on ARM64.
 5. Replace the preparation assets in the draft with the validated signed archives,
    review the release notes, and publish explicitly.
 
@@ -93,6 +123,7 @@ Run the script contract tests with:
 
 ```powershell
 pwsh -NoProfile -File ./scripts/Test-ReleasePackaging.ps1
+pwsh -NoProfile -File ./scripts/Test-PortableReleasePackaging.ps1
 ```
 
 References: [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository),

@@ -59,6 +59,7 @@ param(
     [string]$InstallerFormat = 'Msix',
     [string]$InstallerOutputPath,
     [string]$PackageOutputPath,
+    [string]$PublishOutputPath,
     [string]$ReleaseVersion = $env:TRACKMEUP_RELEASE_VERSION,
     [switch]$Unsigned,
     [ValidateSet('Menu', 'Preflight', 'Protect', 'Reveal', 'Copy', 'PrintAndCopy', 'Inspect', 'SetupSlot', 'MigrateCredentialXml')]
@@ -96,12 +97,12 @@ if ($PSBoundParameters.ContainsKey('ReleaseVersion') -and [string]::IsNullOrEmpt
 
 if (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
     if ($ReleaseVersion -cnotmatch '^(?<major>[1-9][0-9]{0,4})\.(?<minor>0|[1-9][0-9]{0,4})\.(?<patch>0|[1-9][0-9]{0,4})$' -or
-        [int]$Matches.major -gt 65535 -or [int]$Matches.minor -gt 65535 -or [int]$Matches.patch -gt 65535) {
-        throw 'ReleaseVersion must be X.Y.Z with major 1..65535 and minor/patch 0..65535, without leading zeros.'
+        [int]$Matches.major -gt 65534 -or [int]$Matches.minor -gt 65534 -or [int]$Matches.patch -gt 65534) {
+        throw 'ReleaseVersion must be X.Y.Z with major 1..65534 and minor/patch 0..65534, without leading zeros.'
     }
 
-    if ($Action -notin @('PackageMsix', 'CreateInstaller', 'BuildInfo')) {
-        throw 'ReleaseVersion is supported only for PackageMsix, CreateInstaller, and BuildInfo.'
+    if ($Action -notin @('PackageMsix', 'CreateInstaller', 'PublishUnpackaged', 'BuildInfo')) {
+        throw 'ReleaseVersion is supported only for PackageMsix, CreateInstaller, PublishUnpackaged, and BuildInfo.'
     }
 }
 
@@ -945,18 +946,31 @@ public class TaskbarProbe {
 
 function Invoke-TrackMeUpUnpackagedPublish {
     $runtime = Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform
-    $unpackagedRoot = [System.IO.Path]::GetFullPath((Join-Path $script:RepositoryRoot 'artifacts\unpackaged'))
-    $publishDirectory = [System.IO.Path]::GetFullPath((Join-Path $unpackagedRoot $Platform))
-    $requiredPrefix = $unpackagedRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    $artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $script:RepositoryRoot 'artifacts'))
+    $versionDirectory = if ([string]::IsNullOrEmpty($ReleaseVersion)) { 'local' } else { $ReleaseVersion }
+    $candidate = if ([string]::IsNullOrWhiteSpace($PublishOutputPath)) {
+        $invocationDirectory = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), [Guid]::NewGuid().ToString('N')
+        Join-Path $artifactsRoot "unpackaged\$versionDirectory\$Platform\$invocationDirectory"
+    }
+    else {
+        Resolve-TrackMeUpPath -Path $PublishOutputPath
+    }
+    $publishDirectory = [System.IO.Path]::GetFullPath($candidate).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+    $requiredPrefix = $artifactsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
     if (-not $publishDirectory.StartsWith($requiredPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Unpackaged publish output escaped the repository artifacts directory: $publishDirectory"
     }
-
-    if (Test-Path -LiteralPath $publishDirectory) {
-        # `dotnet publish` does not remove stale ReadyToRun or trimmed payload files. A clean
-        # target directory is required so the smoke-tested executable matches current settings.
-        Remove-Item -LiteralPath $publishDirectory -Recurse -Force
+    for ($ancestor = $publishDirectory; $ancestor.Length -ge $artifactsRoot.Length; $ancestor = Split-Path -Parent $ancestor) {
+        if ((Test-Path -LiteralPath $ancestor) -and
+            ((Get-Item -LiteralPath $ancestor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Unpackaged output cannot pass through a symbolic link or junction: $ancestor"
+        }
     }
+    if ((Test-Path -LiteralPath $publishDirectory) -and @(Get-ChildItem -LiteralPath $publishDirectory -Force).Count -gt 0) {
+        # Publishing into a used directory can retain stale native files; never replace an existing artifact.
+        throw "Unpackaged publish output directory must be empty: $publishDirectory"
+    }
+    Invoke-TrackMeUpBuildReports
 
     $arguments = @(
         'publish',
@@ -968,6 +982,7 @@ function Invoke-TrackMeUpUnpackagedPublish {
         $runtime,
         '--self-contained',
         'true',
+        '-p:WindowsAppSDKSelfContained=true',
         '--output',
         $publishDirectory
     )
@@ -975,8 +990,15 @@ function Invoke-TrackMeUpUnpackagedPublish {
     if ($SkipRestore) {
         $arguments += '--no-restore'
     }
+    if (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
+        $arguments += @("-p:TrackMeUpReleaseVersion=$ReleaseVersion", "-p:Version=$ReleaseVersion")
+    }
 
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments
+    if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory 'TrackMeUp.exe') -PathType Leaf)) {
+        throw 'Unpackaged publish completed without producing TrackMeUp.exe.'
+    }
+    Write-Host "Portable application files ready: $publishDirectory" -ForegroundColor Green
 }
 
 function Resolve-TrackMeUpPackageCertificate {
@@ -1163,7 +1185,7 @@ function Invoke-TrackMeUpMsixPackage {
     }
 
     if (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
-        $arguments += "/p:TrackMeUpReleaseVersion=$ReleaseVersion"
+        $arguments += @("/p:TrackMeUpReleaseVersion=$ReleaseVersion", "/p:Version=$ReleaseVersion")
     }
 
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments

@@ -68,4 +68,6 @@ jobs:
 
       - name: Test release packaging safeguards
         shell: pwsh -NoProfile -File {0}
-        run: ./scripts/Test-ReleasePackaging.ps1
+        run: |
+          ./scripts/Test-ReleasePackaging.ps1
+          ./scripts/Test-PortableReleasePackaging.ps1

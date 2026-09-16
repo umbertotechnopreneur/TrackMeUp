@@ -113,7 +113,7 @@ foreach ($platform in @('x64', 'ARM64')) {
 }
 
 $invalidIndex = 0
-foreach ($invalidVersion in @('', '0.1.2', '01.2.3', '1.2', '1.2.3.4', '1.2.3-beta', '65536.1.2', '1.65536.2', '1.2.65536')) {
+foreach ($invalidVersion in @('', '0.1.2', '01.2.3', '1.2', '1.2.3.4', '1.2.3-beta', '65535.1.2', '1.65535.2', '1.2.65535', '65536.1.2', '1.65536.2', '1.2.65536')) {
     $invalidIndex++
     $output = Join-Path $fixtureRoot "invalid-$invalidIndex/BuildInfo.json"
     Assert-Rejected -Name "invalid release version '$invalidVersion'" -Path $entryPoint -ExpectedMessage 'ReleaseVersion must' -ForbiddenOutput $output -Arguments @(

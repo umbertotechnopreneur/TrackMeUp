@@ -179,13 +179,13 @@ To produce a self-contained unpackaged build:
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ~~~
 
-The script replaces the build in `artifacts/unpackaged/<platform>/` each time, so files from an older build don't get mixed in.
+The script builds the reports and writes to a fresh directory under `artifacts/unpackaged/<version>/<platform>/`. Use `-ReleaseVersion X.Y.Z -PublishOutputPath <empty-directory-under-artifacts>` for a deterministic release build. Extract a portable release ZIP and run `TrackMeUp.exe`; .NET and Windows App SDK are included. Data remains in `%LOCALAPPDATA%\TrackMeUp`, reports require the Microsoft Edge WebView2 Runtime, and on-device screenshot OCR requires the MSIX edition.
 
 The same script can create an MSIX package for local installation or an installer. You'll find the package files in `artifacts/packages/` and installers in `artifacts/installers/`.
 
 On Windows, `PackageMsix` and `CreateInstaller` sign the package automatically with the local TrackMeUp test certificate (`CN=umber`). If it is missing, the script creates it in the current user's certificate store, exports the public certificate to `artifacts/certificates/TrackMeUp-Test-Signing.cer`, and trusts it for the current user. To use another certificate already installed in `Cert:\CurrentUser\My`, pass `-PackageCertificateThumbprint <thumbprint>`. The test certificate is intended only for local sideloading; production releases must use a certificate issued for distribution.
 
-The [release preparation guide](docs/RELEASING.md) describes the x64/ARM64 GitHub workflow, common package version, bundled runtime dependencies, and SHA-256 checksums. While distribution certificates are pending, the workflow produces explicitly unsigned archives and draft Releases only; these preparation packages cannot yet be installed.
+The [release preparation guide](docs/RELEASING.md) describes the x64/ARM64 MSIX and portable ZIP workflow, common version, bundled runtimes, and SHA-256 checksums. While distribution certificates are pending, the workflow produces unsigned archives and draft Releases only. MSIX packages require signing before installation; portable executables can be launched directly.
 
 ## Using the terminal
 
@@ -263,6 +263,7 @@ Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows 
 - [ ] Build the app for x64 and ARM64. Run `pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action Preflight -Platform x86` and verify that parameter validation rejects the unsupported architecture before running the action.
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-ReleasePackaging.ps1`; verify common x64/ARM64 release versions, unchanged local version state, invalid-input rejection, required framework dependency checks, and refusal to install unsigned archives. Before a public release, complete the clean-machine x64/ARM64 installation checks in [RELEASING.md](docs/RELEASING.md).
 - [ ] From a checkout without generated `bin/` or `obj/` files, run unsigned `PackageMsix` with an explicit release version for x64 and ARM64. Both first builds must resolve the WebView2 projection and produce packages with matching versions; no preliminary restore or second build should be necessary.
+- [ ] Run `pwsh -NoProfile -File ./scripts/Test-PortableReleasePackaging.ps1`. Publish and archive `Release-Unpackaged` for x64 and ARM64 with one explicit version; verify bundled runtimes, matching executable architecture and metadata, and complete payload/archive checksums. Extract each ZIP on a matching clean Windows machine, run `TrackMeUp.exe --version`, and verify the UI opens without installing .NET or Windows App SDK. Check report availability with the WebView2 Runtime and the documented MSIX requirement for on-device OCR.
 
 Search interaction check:
 

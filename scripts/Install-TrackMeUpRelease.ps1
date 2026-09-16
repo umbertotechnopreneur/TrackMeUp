@@ -135,8 +135,8 @@ if (($release.schemaVersion -isnot [long] -and $release.schemaVersion -isnot [in
     $release.dependencies -isnot [array]) {
     throw 'Unsupported or invalid release.json schema, version, platform, signing mode, or dependencies.'
 }
-if (@($release.version.Split('.') | Where-Object { [long]$_ -gt 65535 }).Count -gt 0) {
-    throw 'MSIX version components cannot exceed 65535.'
+if (@($release.version.Split('.') | Where-Object { [long]$_ -gt 65534 }).Count -gt 0) {
+    throw 'Release version components cannot exceed 65534.'
 }
 if ($release.signing -ceq 'unsigned') {
     throw 'This release is unsigned and is not installable until signing. Obtain a signed release; this script never installs or trusts certificates.'
