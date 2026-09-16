@@ -51,8 +51,9 @@
                 Grid.Row="1"
                 Margin="0,8,0,0"
                 HorizontalAlignment="Center"
-                FontSize="18"
-                FontWeight="SemiBold"
+                FontFamily="Segoe UI Variable Display"
+                FontSize="22"
+                FontWeight="Light"
                 TextAlignment="Center"
                 TextWrapping="Wrap" />
             <TextBlock
@@ -61,7 +62,8 @@
                 Margin="0,8,0,0"
                 HorizontalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                FontSize="13"
+                FontFamily="Segoe UI Variable Text"
+                FontSize="12"
                 TextAlignment="Center"
                 TextWrapping="Wrap" />
         </Grid>
