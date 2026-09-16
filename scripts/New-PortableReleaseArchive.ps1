@@ -139,6 +139,7 @@ $instructions = @"
 TrackMeUp $Version - $Platform - PORTABLE UNSIGNED BUILD
 
 Extract the entire ZIP into a folder and run TrackMeUp.exe from that folder.
+Keep all DLLs, resources, and subfolders beside the executable; do not copy only the EXE.
 Use the archive matching your Windows architecture ($Platform).
 No MSIX installation, administrator access, certificate import, or CLI alias is provided.
 This unsigned prerelease preparation artifact may trigger Windows security prompts.
@@ -147,7 +148,12 @@ Follow your organization's policy for unsigned software; do not disable security
 The .NET and Windows App SDK runtimes are included.
 Reports require the Microsoft Edge WebView2 Evergreen Runtime installed on Windows.
 The browser engine is not bundled in this ZIP.
+The main player does not initialize WebView2. Opening or restoring Reports without
+a usable Runtime shows a report initialization error rather than closing the app.
 On-device screenshot OCR requires the MSIX edition; it is unavailable in this portable build.
+OCR is initialized on extraction, not basic startup. An OCR failure is recorded on
+the capture without discarding the screenshot or terminating the application.
+These feature limitations do not by themselves prevent basic application startup.
 
 Portable describes application deployment, not a portable user profile.
 Settings, screenshots, history, and other application data use the normal LocalAppData

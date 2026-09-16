@@ -179,7 +179,12 @@ To produce a self-contained unpackaged build:
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ~~~
 
-The script builds the reports and writes to a fresh directory under `artifacts/unpackaged/<version>/<platform>/`. Use `-ReleaseVersion X.Y.Z -PublishOutputPath <empty-directory-under-artifacts>` for a deterministic release build. Extract a portable release ZIP and run `TrackMeUp.exe`; .NET and Windows App SDK are included. Data remains in `%LOCALAPPDATA%\TrackMeUp`, reports require the Microsoft Edge WebView2 Runtime, and on-device screenshot OCR requires the MSIX edition.
+The script builds the reports and writes to a fresh directory under `artifacts/unpackaged/<version>/<platform>/`. Use `-ReleaseVersion X.Y.Z -PublishOutputPath <empty-directory-under-artifacts>` for a deterministic release build. Extract the **entire** portable release ZIP and run `TrackMeUp.exe`; .NET, WinUI, and Windows App SDK are included. Keep the executable together with its DLLs, resources, and subfolders. Data remains in `%LOCALAPPDATA%\TrackMeUp`.
+
+> [!IMPORTANT]
+> **Portable limitations:** interactive reports require the separately installed Microsoft Edge WebView2 Runtime. Without it, the reports window shows an initialization error. On-device screenshot OCR requires MSIX package identity and is unavailable in the portable edition; failed OCR is recorded without discarding the screenshot.
+>
+> Neither feature is initialized just to open the main player, so these limitations are not missing-library requirements for basic startup. A restored reports window can show the same report error during startup. The x64 portable has passed an extracted `--version` launch check; full UI startup on clean x64/ARM64 machines remains a separate release check. See [portable requirements and verification](docs/RELEASING.md#portable-startup-and-feature-limitations).
 
 The same script can create an MSIX package for local installation or an installer. You'll find the package files in `artifacts/packages/` and installers in `artifacts/installers/`.
 
