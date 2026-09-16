@@ -2043,6 +2043,82 @@ internal sealed class SqliteActivityStore
         return analyses;
     }
 
+    /// <summary>Loads validated durable screenshot references, including images no longer present on disk.</summary>
+    internal IReadOnlyDictionary<string, DateTimeOffset?> LoadScreenshotPathReferences(CancellationToken cancellationToken)
+    {
+        var references = new Dictionary<string, DateTimeOffset?>(StringComparer.OrdinalIgnoreCase);
+        using var connection = OpenConnection();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT result.correlation_id, result.screenshot_paths, capture.captured_utc_ticks
+                FROM ai_analysis_results AS result
+                LEFT JOIN screenshot_captures AS capture ON capture.capture_id = result.correlation_id
+                WHERE result.screenshot_paths IS NOT NULL;
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var captureId = reader.GetString(0);
+                var capturedAt = reader.IsDBNull(2) ? (DateTimeOffset?)null : new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
+                foreach (var path in EnumerateScreenshotPaths(reader.GetString(1)))
+                {
+                    AddReference(path, captureId, capturedAt);
+                }
+            }
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT snapshot.artifact_identity, snapshot.capture_id, snapshot.source_path,
+                       snapshot.snapshot_json, capture.captured_utc_ticks
+                FROM screenshot_text_snapshots AS snapshot
+                LEFT JOIN screenshot_captures AS capture ON capture.capture_id = snapshot.capture_id;
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var sourcePath = reader.GetString(2);
+                var snapshot = JsonSerializer.Deserialize<ScreenshotTextSnapshot>(reader.GetString(3), _json)
+                    ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
+                // Validate duplicated metadata before any filesystem move; inconsistent rows must not be repaired by guessing.
+                if (!string.Equals(ArtifactIdentityFromScreenshotPath(sourcePath), reader.GetString(0), StringComparison.OrdinalIgnoreCase)
+                    || !Path.IsPathFullyQualified(snapshot.SourceScreenshotPath)
+                    || !string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(snapshot.SourceScreenshotPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("Persisted screenshot text snapshot paths or identities do not match.");
+                }
+
+                var capturedAt = reader.IsDBNull(4) ? (DateTimeOffset?)null : new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
+                AddReference(sourcePath, reader.GetString(1), capturedAt);
+            }
+        }
+
+        return references;
+
+        void AddReference(string path, string captureId, DateTimeOffset? capturedAt)
+        {
+            var identity = ArtifactIdentityFromScreenshotPath(path);
+            if (!Guid.TryParseExact(captureId, "N", out var parsedCaptureId)
+                || !string.Equals(captureId, parsedCaptureId.ToString("N"), StringComparison.Ordinal)
+                || !identity.StartsWith(captureId + "_", StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("A screenshot reference does not match its registered capture identity.");
+            }
+
+            var fullPath = Path.GetFullPath(path);
+            if (references.TryGetValue(fullPath, out var existingTimestamp) && existingTimestamp != capturedAt)
+            {
+                throw new InvalidDataException("A screenshot reference has conflicting capture timestamps.");
+            }
+
+            references[fullPath] = capturedAt;
+        }
+    }
+
     /// <summary>Remaps screenshot paths in every durable record that stores an absolute artifact location.</summary>
     internal void RemapScreenshotPaths(IReadOnlyDictionary<string, string> pathMappings)
     {

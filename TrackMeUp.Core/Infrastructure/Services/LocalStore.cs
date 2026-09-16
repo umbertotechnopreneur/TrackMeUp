@@ -206,15 +206,14 @@ public sealed class LocalStore
         _activity.BackfillLocalScreenshotCaptures(settings.InstallationId, registrations);
     }
 
-    /// <summary>Inspects owned screenshot artifacts that are outside the current calendar layout.</summary>
+    /// <summary>Inspects owned screenshot artifacts and durable references outside the current calendar layout.</summary>
     internal ScreenshotStorageMigrationStatus GetScreenshotStorageMigrationStatus(CancellationToken cancellationToken)
     {
         _screenshotProjectionGate.Wait(cancellationToken);
         try
         {
-            var settings = LoadSettings();
-            var moves = ScreenshotStorageLayout.BuildMigrationPlan(settings.ScreenshotDirectory);
-            return new ScreenshotStorageMigrationStatus(moves.Count > 0, moves.Count);
+            var plan = BuildScreenshotStorageMigrationPlan(cancellationToken);
+            return new ScreenshotStorageMigrationStatus(plan.PathRemaps.Count > 0, plan.Moves.Count);
         }
         finally
         {
@@ -228,9 +227,8 @@ public sealed class LocalStore
         _screenshotProjectionGate.Wait(cancellationToken);
         try
         {
-            var settings = LoadSettings();
-            var root = ScreenshotStorageLayout.NormalizeRoot(settings.ScreenshotDirectory);
-            var moves = ScreenshotStorageLayout.BuildMigrationPlan(root);
+            var plan = BuildScreenshotStorageMigrationPlan(cancellationToken);
+            var moves = plan.Moves;
             var completedMoves = new List<ScreenshotStorageMove>(moves.Count);
             try
             {
@@ -245,34 +243,7 @@ public sealed class LocalStore
                     completedMoves.Add(move);
                 }
 
-                var pathRemaps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var move in moves)
-                {
-                    pathRemaps[Path.GetFullPath(move.SourcePath)] = Path.GetFullPath(move.DestinationPath);
-                }
-
-                var currentArtifacts = ScreenshotStorageLayout.EnumerateOwnedArtifacts(root)
-                    .Select(Path.GetFullPath)
-                    .ToArray();
-                var duplicateName = currentArtifacts
-                    .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-                    .FirstOrDefault(group => group.Count() > 1);
-                if (duplicateName is not null)
-                {
-                    throw new InvalidDataException($"Screenshot artifact name is not unique: '{duplicateName.Key}'.");
-                }
-
-                foreach (var currentPath in currentArtifacts)
-                {
-                    var legacyPath = Path.Combine(root, Path.GetFileName(currentPath));
-                    if (!string.Equals(legacyPath, currentPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Reapplying the legacy-root mapping repairs metadata after an interrupted prior startup.
-                        pathRemaps[legacyPath] = currentPath;
-                    }
-                }
-
-                _activity.RemapScreenshotPaths(pathRemaps);
+                _activity.RemapScreenshotPaths(plan.PathRemaps);
                 return new ScreenshotStorageMigrationResult(completedMoves.Count);
             }
             catch (Exception migrationException)
@@ -311,6 +282,74 @@ public sealed class LocalStore
             _screenshotProjectionGate.Release();
         }
     }
+
+    private ScreenshotStorageMigrationPlan BuildScreenshotStorageMigrationPlan(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var root = ScreenshotStorageLayout.NormalizeRoot(LoadSettings().ScreenshotDirectory);
+        var references = _activity.LoadScreenshotPathReferences(cancellationToken);
+        var moves = ScreenshotStorageLayout.BuildMigrationPlan(root);
+        var pathRemaps = moves.ToDictionary(
+            move => Path.GetFullPath(move.SourcePath),
+            move => Path.GetFullPath(move.DestinationPath),
+            StringComparer.OrdinalIgnoreCase);
+        var daysByCapture = new Dictionary<string, DateOnly>(StringComparer.Ordinal);
+        var canonicalPaths = ScreenshotStorageLayout.EnumerateOwnedArtifacts(root)
+            .Select(path => pathRemaps.TryGetValue(path, out var destination) ? destination : path)
+            .Concat(references.Keys);
+        foreach (var path in canonicalPaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!ScreenshotStorageLayout.TryGetDay(root, path, out var day))
+            {
+                // The explicit migration accepts only the former flat root, never foreign roots or unknown nesting.
+                if (!string.Equals(Path.GetDirectoryName(path), root, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("A screenshot reference uses an unsupported directory layout.");
+                }
+
+                continue;
+            }
+
+            var captureId = TryGetCaptureId(ScreenshotIdentity(Path.GetFileName(path)))
+                ?? throw new InvalidDataException("A screenshot reference has no valid capture identity.");
+            if (daysByCapture.TryGetValue(captureId, out var existingDay) && existingDay != day)
+            {
+                throw new InvalidDataException("A screenshot capture is split across canonical day directories.");
+            }
+
+            daysByCapture[captureId] = day;
+        }
+
+        foreach (var (path, capturedAt) in references)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (ScreenshotStorageLayout.TryGetDay(root, path, out _))
+            {
+                continue;
+            }
+
+            var captureId = TryGetCaptureId(ScreenshotIdentity(Path.GetFileName(path)))
+                ?? throw new InvalidDataException("A screenshot reference has no valid capture identity.");
+            if (!daysByCapture.TryGetValue(captureId, out var day))
+            {
+                // Missing raw images still have OCR records. Preserve them using the capture's durable
+                // timestamp only when no canonical sibling supplies its original storage day.
+                day = capturedAt is { } timestamp
+                    ? DateOnly.FromDateTime(timestamp.ToLocalTime().DateTime)
+                    : throw new InvalidDataException("A missing screenshot reference has no registered capture timestamp.");
+                daysByCapture[captureId] = day;
+            }
+
+            pathRemaps[path] = Path.Combine(ScreenshotStorageLayout.GetDayDirectory(root, day), Path.GetFileName(path));
+        }
+
+        return new ScreenshotStorageMigrationPlan(moves, pathRemaps);
+    }
+
+    private sealed record ScreenshotStorageMigrationPlan(
+        IReadOnlyList<ScreenshotStorageMove> Moves,
+        IReadOnlyDictionary<string, string> PathRemaps);
 
     /// <summary>Persists raw local OCR and optional AI refinement for one owned screenshot source.</summary>
     internal void UpsertScreenshotTextSnapshot(string captureId, ScreenshotTextSnapshot snapshot)
