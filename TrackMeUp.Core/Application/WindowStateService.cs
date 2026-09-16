@@ -163,8 +163,8 @@ public sealed class WindowStateService
         }
     }
 
-    /// <summary>Reads the native window placement and persists it under the supplied key.</summary>
-    public WindowState Save(string windowKey, long windowHandle)
+    /// <summary>Persists native placement and returns its committed settings for the runtime snapshot.</summary>
+    public (WindowState State, AppSettings Settings) Save(string windowKey, long windowHandle)
     {
         ValidateRequest(windowKey, windowHandle);
         var handle = new IntPtr(windowHandle);
@@ -181,8 +181,10 @@ public sealed class WindowStateService
             ? new Dictionary<string, WindowState>(StringComparer.Ordinal)
             : new Dictionary<string, WindowState>(settings.WindowStates, StringComparer.Ordinal);
         placements[windowKey] = state;
-        _store.SaveSettings(settings with { WindowStates = placements });
-        return state;
+        var updated = settings with { WindowStates = placements };
+        // A failed write propagates before the facade can publish these settings; no reread is needed after success.
+        _store.SaveSettings(updated);
+        return (state, updated);
     }
 
     /// <summary>Restores the saved placement and keeps it inside the selected monitor work area.</summary>

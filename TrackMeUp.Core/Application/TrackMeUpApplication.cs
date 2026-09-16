@@ -2291,9 +2291,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => MutateAsync(async () =>
     {
-        var state = _windowState.Save(windowKey, windowHandle);
-        // Window persistence shares settings storage; refresh the snapshot before later settings mutations can overwrite it.
-        _settingsSnapshot.Replace(_store.LoadSettings());
+        var (state, settings) = _windowState.Save(windowKey, windowHandle);
+        // Publish the committed settings before another serialized mutation can overwrite the saved placement.
+        _settingsSnapshot.Replace(settings);
         await Task.CompletedTask;
         return OperationResult<WindowState>.Success("window.state.saved", "WindowStateSaved", state);
     }, cancellationToken);

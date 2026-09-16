@@ -14,7 +14,7 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class WindowStatePersistenceTests
 {
-    /// <summary>Verifies restoring persisted geometry cannot reveal a window launched into the notification area.</summary>
+    /// <summary>Verifies saving returns committed settings and restoring geometry cannot reveal a hidden window.</summary>
     [Fact]
     public void RestorePlacement_PreservesAHiddenNativeWindow()
     {
@@ -22,12 +22,24 @@ public sealed class WindowStatePersistenceTests
         var handle = IntPtr.Zero;
         try
         {
-            var service = new WindowStateService(new LocalStore(directory));
+            var store = new LocalStore(directory);
+            var mapBounds = new WindowState(120, 140, 960, 540, "display-one");
+            store.SaveSettings(store.LoadSettings() with
+            {
+                Theme = "dark",
+                WindowStates = new Dictionary<string, WindowState> { [WindowStateKeys.WorldMap] = mapBounds }
+            });
+            var service = new WindowStateService(store);
             handle = CreateWindowEx(0, "STATIC", "", 0x80000000, 160, 180, 960, 540,
                 IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
             Assert.NotEqual(IntPtr.Zero, handle);
             Assert.False(IsWindowVisible(handle));
-            service.Save(WindowStateKeys.Main, handle.ToInt64());
+            var (savedState, savedSettings) = service.Save(WindowStateKeys.Main, handle.ToInt64());
+
+            Assert.Equal(savedState, savedSettings.WindowStates![WindowStateKeys.Main]);
+            Assert.Equal(savedState, new LocalStore(directory).LoadSettings().WindowStates![WindowStateKeys.Main]);
+            Assert.Equal(mapBounds, savedSettings.WindowStates[WindowStateKeys.WorldMap]);
+            Assert.Equal("dark", savedSettings.Theme);
 
             var restored = service.Restore(WindowStateKeys.Main, handle.ToInt64());
 

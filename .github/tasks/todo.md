@@ -3,7 +3,7 @@
 ## Focused code-review follow-ups (2026-09-16)
 
 - [ ] Consider a single live astronomy snapshot coordinator shared by clocks, map, and Moon. Each currently owns a refresh request; a shared subscription should continue working when World Clocks is closed and avoid fetching weather for the Moon alone. Measure request counts before changing the ownership model.
-- [ ] Reduce window-placement persistence I/O: return the committed settings with the saved geometry and skip unchanged open-state writes. Preserve facade serialization and the existing close/shutdown ordering; this review found redundant I/O, not a demonstrated lost-update bug.
+- [ ] Reduce remaining window-placement persistence I/O by skipping unchanged open-state writes. Placement now returns committed settings to the facade without a second read. Preserve serialization and close/shutdown ordering; this review found redundant I/O, not a demonstrated lost-update bug.
 - [ ] Consolidate capture-ID parsing in archive export, screenshot storage layout, and LocalStore. Define GUID casing once and test malformed/uppercase identifiers while preserving each caller's strict failure behavior.
 
 ## Mission
