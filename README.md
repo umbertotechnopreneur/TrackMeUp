@@ -262,6 +262,7 @@ Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows 
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1`: malformed C# indentation, tabs, CRLF line endings, trailing whitespace and a missing final newline must be corrected before commit, while a partially staged file keeps its unstaged bytes and commits only the formatted index content. The fixture must also verify filenames with spaces, staged formatting rules and failure of read-only verification on malformed source.
 - [ ] Build the app for x64 and ARM64. Run `pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action Preflight -Platform x86` and verify that parameter validation rejects the unsupported architecture before running the action.
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-ReleasePackaging.ps1`; verify common x64/ARM64 release versions, unchanged local version state, invalid-input rejection, required framework dependency checks, and refusal to install unsigned archives. Before a public release, complete the clean-machine x64/ARM64 installation checks in [RELEASING.md](docs/RELEASING.md).
+- [ ] From a checkout without generated `bin/` or `obj/` files, run unsigned `PackageMsix` with an explicit release version for x64 and ARM64. Both first builds must resolve the WebView2 projection and produce packages with matching versions; no preliminary restore or second build should be necessary.
 
 Search interaction check:
 

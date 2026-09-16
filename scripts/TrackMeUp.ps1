@@ -1137,7 +1137,9 @@ function Invoke-TrackMeUpMsixPackage {
     $arguments = @(
         'msbuild',
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
-        '/t:Restore,Clean,Publish',
+        # Re-evaluate NuGet imports after restore so fresh checkouts load package build targets.
+        '/restore',
+        '/t:Clean,Publish',
         '/p:Configuration=Release',
         "/p:Platform=$Platform",
         "/p:RuntimeIdentifier=$runtime",
