@@ -31,8 +31,6 @@ param(
         'GenerateAssets',
         'ProbeTaskbar',
         'PublishUnpackaged',
-        'PackageMsix',
-        'CreateInstaller',
         'ProtectSecret',
         'ProtectSecretYubiKey',
         'BuildInfo'
@@ -2191,8 +2189,6 @@ function Invoke-TrackMeUpAction {
         'GenerateAssets' { Invoke-TrackMeUpAssetGeneration }
         'ProbeTaskbar' { Invoke-TrackMeUpTaskbarProbe }
         'PublishUnpackaged' { Invoke-TrackMeUpUnpackagedPublish }
-        'PackageMsix' { Invoke-TrackMeUpMsixPackage }
-        'CreateInstaller' { Invoke-TrackMeUpInstallerCreation }
         'ProtectSecret' { Invoke-TrackMeUpSecretTool }
         'ProtectSecretYubiKey' { Invoke-TrackMeUpYubiKeySecretTool }
         'BuildInfo' { Invoke-TrackMeUpBuildInfo }
@@ -2245,14 +2241,12 @@ function Show-TrackMeUpMenu {
         Write-MenuItem -Key '6' -Label 'Validate Store listing'
         Write-MenuItem -Key '7' -Label 'Generate Store/package assets'
         Write-MenuItem -Key '8' -Label 'Publish unpackaged x64 build'
-        Write-MenuItem -Key '9' -Label 'Package x64 MSIX sideload installer'
-        Write-MenuItem -Key '10' -Label 'Create installer file'
-        Write-MenuItem -Key '11' -Label 'Probe taskbar widget'
-        Write-MenuItem -Key '12' -Label 'DPAPI secret helper'
-        Write-MenuItem -Key '13' -Label 'YubiKey secret helper'
+        Write-MenuItem -Key '9' -Label 'Probe taskbar widget'
+        Write-MenuItem -Key '10' -Label 'DPAPI secret helper'
+        Write-MenuItem -Key '11' -Label 'YubiKey secret helper'
         Write-MenuItem -Key '0' -Label 'Exit'
 
-        $choice = Read-MenuChoice -Prompt 'Select' -AllowedChoices @('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13')
+        $choice = Read-MenuChoice -Prompt 'Select' -AllowedChoices @('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11')
         if ($choice -eq '0') {
             Show-Footer -ScriptName $script:ScriptName -Status 'COMPLETED' -StartTime $script:StartedAt -EndTime (Get-Date)
             return
@@ -2267,11 +2261,9 @@ function Show-TrackMeUpMenu {
             '6' { 'ValidateStoreListing' }
             '7' { 'GenerateAssets' }
             '8' { 'PublishUnpackaged' }
-            '9' { 'PackageMsix' }
-            '10' { 'CreateInstaller' }
-            '11' { 'ProbeTaskbar' }
-            '12' { 'ProtectSecret' }
-            '13' { 'ProtectSecretYubiKey' }
+            '9' { 'ProbeTaskbar' }
+            '10' { 'ProtectSecret' }
+            '11' { 'ProtectSecretYubiKey' }
         }
 
         try {
