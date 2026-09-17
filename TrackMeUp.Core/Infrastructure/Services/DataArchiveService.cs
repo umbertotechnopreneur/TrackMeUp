@@ -70,6 +70,11 @@ internal sealed class DataArchiveService
         "cpu_usage_percent", "gpu_usage_percent", "updated_utc_ticks"
     ];
 
+    private static readonly string[] CaptureHardwareSnapshotColumns =
+    [
+        "capture_id", "sampled_utc_ticks", "snapshot_json"
+    ];
+
     private static readonly string[] AiArtifactColumns =
     [
         "artifact_identity", "capture_id", "correlation_id"
@@ -327,6 +332,8 @@ internal sealed class DataArchiveService
             "DELETE FROM screenshot_text_snapshots WHERE capture_id NOT IN (SELECT capture_id FROM screenshot_captures);");
         ExecuteNonQuery(connection, transaction,
             "DELETE FROM screenshot_interval_telemetry WHERE capture_id NOT IN (SELECT capture_id FROM screenshot_captures);");
+        ExecuteNonQuery(connection, transaction,
+            "DELETE FROM capture_hardware_snapshots WHERE capture_id NOT IN (SELECT capture_id FROM screenshot_captures);");
         ExecuteNonQuery(connection, transaction, "DELETE FROM ai_analysis_search;");
         ExecuteNonQuery(connection, transaction, "DELETE FROM ai_model_pricing;");
         ExecuteNonQuery(connection, transaction, "DELETE FROM ai_reprocess_job_items;");
@@ -685,6 +692,7 @@ internal sealed class DataArchiveService
         ValidateColumns(connection, "screenshot_captures", ScreenshotCaptureColumns);
         ValidateColumns(connection, "screenshot_text_snapshots", ScreenshotSnapshotColumns);
         ValidateColumns(connection, "screenshot_interval_telemetry", ScreenshotTelemetryColumns);
+        ValidateColumns(connection, "capture_hardware_snapshots", CaptureHardwareSnapshotColumns);
         ValidateColumns(connection, "ai_analysis_artifacts", AiArtifactColumns);
 
         foreach (var profile in ReadInstallationProfiles(connection))
@@ -694,6 +702,19 @@ internal sealed class DataArchiveService
         }
 
         EnsureArchiveRelations(connection);
+        using (var hardwareCommand = connection.CreateCommand())
+        {
+            hardwareCommand.CommandText = "SELECT sampled_utc_ticks, snapshot_json FROM capture_hardware_snapshots;";
+            using var hardwareReader = hardwareCommand.ExecuteReader();
+            while (hardwareReader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // Imported readings must satisfy the same schema and value contract as local
+                // measurements; malformed evidence fails preflight before any destination writes.
+                _ = SqliteActivityStore.ReadCaptureHardwareSnapshot(hardwareReader.GetInt64(0), hardwareReader.GetString(1));
+            }
+        }
+
         using var captureCommand = connection.CreateCommand();
         captureCommand.CommandText = "SELECT capture_id, installation_id, origin FROM screenshot_captures;";
         using var captureReader = captureCommand.ExecuteReader();
@@ -815,6 +836,7 @@ internal sealed class DataArchiveService
             "SELECT 1 FROM ai_analysis_results AS row LEFT JOIN ai_request_usage AS request ON request.attempt_id = row.attempt_id WHERE request.attempt_id IS NULL LIMIT 1;",
             "SELECT 1 FROM screenshot_text_snapshots AS row LEFT JOIN screenshot_captures AS capture ON capture.capture_id = row.capture_id WHERE capture.capture_id IS NULL LIMIT 1;",
             "SELECT 1 FROM screenshot_interval_telemetry AS row LEFT JOIN screenshot_captures AS capture ON capture.capture_id = row.capture_id WHERE capture.capture_id IS NULL LIMIT 1;",
+            "SELECT 1 FROM capture_hardware_snapshots AS row LEFT JOIN screenshot_captures AS capture ON capture.capture_id = row.capture_id WHERE capture.capture_id IS NULL LIMIT 1;",
             "SELECT 1 FROM ai_analysis_artifacts AS row LEFT JOIN ai_analysis_results AS analysis ON analysis.correlation_id = row.correlation_id LEFT JOIN screenshot_captures AS capture ON capture.capture_id = row.capture_id WHERE analysis.correlation_id IS NULL OR capture.capture_id IS NULL LIMIT 1;"
         };
         foreach (var sql in checks)
@@ -849,6 +871,7 @@ internal sealed class DataArchiveService
             EnsureNoPayloadConflict(connection, "ai_analysis_artifacts", ["artifact_identity"], AiArtifactColumns.Except(["artifact_identity"]).ToArray());
             EnsureNoVersionedPayloadConflict(connection, "screenshot_text_snapshots", "artifact_identity", "updated_utc_ticks", ScreenshotSnapshotColumns);
             EnsureNoVersionedPayloadConflict(connection, "screenshot_interval_telemetry", "artifact_identity", "updated_utc_ticks", ScreenshotTelemetryColumns);
+            EnsureNoPayloadConflict(connection, "capture_hardware_snapshots", ["capture_id"], CaptureHardwareSnapshotColumns.Except(["capture_id"]).ToArray());
         }
         finally
         {
@@ -987,6 +1010,8 @@ internal sealed class DataArchiveService
                     connection, transaction, "screenshot_text_snapshots", "artifact_identity", "updated_utc_ticks", ScreenshotSnapshotColumns);
                 MergeVersionedTable(
                     connection, transaction, "screenshot_interval_telemetry", "artifact_identity", "updated_utc_ticks", ScreenshotTelemetryColumns);
+                _ = MergeImmutableTable(
+                    connection, transaction, "capture_hardware_snapshots", ["capture_id"], CaptureHardwareSnapshotColumns, cancellationToken);
                 RebuildSqliteAiSearch(connection, transaction);
 
                 foreach (var item in newScreenshots)

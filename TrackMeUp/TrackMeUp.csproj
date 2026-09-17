@@ -141,7 +141,25 @@
     <ProjectReference Include="..\TrackMeUp.Cli\TrackMeUp.Cli.csproj" />
     <ProjectReference Include="..\TrackMeUp.Presentation\TrackMeUp.Presentation.csproj" />
     <ProjectReference Include="..\TrackMeUp.Taskbar\TrackMeUp.Taskbar.csproj" />
+    <ProjectReference Include="..\TrackMeUp.Hardware\TrackMeUp.Hardware.csproj" ReferenceOutputAssembly="false" OutputItemType="_HardwareCollectorTarget" />
   </ItemGroup>
+
+  <Target Name="IncludeHardwareCollector" AfterTargets="ResolveProjectReferences" Condition="'@(_HardwareCollectorTarget)' != ''">
+    <!-- Keep the sensor-only executable and its dependency closure together in both deployment modes. -->
+    <PropertyGroup>
+      <_HardwareCollectorDirectory>@(_HardwareCollectorTarget->'%(RootDir)%(Directory)')</_HardwareCollectorDirectory>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_HardwareCollectorDirectory)\TrackMeUp.Hardware.exe')" Text="The hardware collector executable was not built." />
+    <ItemGroup>
+      <_HardwareCollectorFile Include="$(_HardwareCollectorDirectory)\**\*" Exclude="$(_HardwareCollectorDirectory)\**\*.pdb" />
+      <ContentWithTargetPath Include="@(_HardwareCollectorFile)">
+        <Link>Hardware\%(_HardwareCollectorFile.RecursiveDir)%(_HardwareCollectorFile.Filename)%(_HardwareCollectorFile.Extension)</Link>
+        <TargetPath>Hardware\%(_HardwareCollectorFile.RecursiveDir)%(_HardwareCollectorFile.Filename)%(_HardwareCollectorFile.Extension)</TargetPath>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ContentWithTargetPath>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <Compile Remove="Models\**\*.cs" />

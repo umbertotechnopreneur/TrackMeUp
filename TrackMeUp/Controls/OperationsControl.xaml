@@ -57,6 +57,8 @@
                             <Button Tag="Operations.Health" AutomationProperties.Name="Health" Click="RuntimeHealthButton_Click" Content="Health" />
                             <Button Tag="Operations.SystemSnapshot" AutomationProperties.Name="System snapshot" Click="SystemSnapshotButton_Click" Content="System snapshot" />
                         </StackPanel>
+                        <Button x:Name="AdvancedSensorsButton" Tag="Hardware.Advanced.Action" HorizontalAlignment="Left" Click="AdvancedSensorsButton_Click" Content="Enable advanced sensors (PawnIO)" AutomationProperties.Name="Enable advanced sensors (PawnIO)" ToolTipService.ToolTip="Enable advanced sensors (PawnIO)" />
+                        <TextBlock Tag="Hardware.Advanced.Description" Style="{StaticResource OperationsMetricDetailStyle}" Text="Requires PawnIO to be installed. Windows asks for administrator consent when you enable advanced sensors." TextWrapping="Wrap" />
                         <TextBlock x:Name="RuntimeHealthEmptyText" Tag="Operations.Initial.Health" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Health not acquired yet." TextWrapping="Wrap" />
                         <StackPanel x:Name="RuntimeHealthSummary" Spacing="14" Visibility="Collapsed">
                             <Grid ColumnSpacing="18">
@@ -105,22 +107,28 @@
                         <TextBlock x:Name="SystemSnapshotEmptyText" Tag="Operations.Initial.SystemSnapshot" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="System snapshot not acquired yet." TextWrapping="Wrap" />
                         <StackPanel x:Name="SystemSnapshotSummary" Spacing="12" Visibility="Collapsed">
                             <TextBlock Tag="Operations.System.Live" Style="{StaticResource OperationsMetricLabelStyle}" Text="LIVE SYSTEM" />
-                            <Grid ColumnSpacing="18" RowSpacing="12">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <StackPanel Spacing="1"><TextBlock Text="CPU" Style="{StaticResource OperationsMetricDetailStyle}" /><TextBlock x:Name="SystemCpuValue" Style="{StaticResource OperationsMetricValueStyle}" /><TextBlock x:Name="SystemCpuDetail" Style="{StaticResource OperationsMetricDetailStyle}" /></StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="1"><TextBlock Text="GPU" Style="{StaticResource OperationsMetricDetailStyle}" /><TextBlock x:Name="SystemGpuValue" Style="{StaticResource OperationsMetricValueStyle}" /><TextBlock x:Name="SystemGpuDetail" Style="{StaticResource OperationsMetricDetailStyle}" /></StackPanel>
-                                <StackPanel Grid.Row="1" Spacing="1"><TextBlock Tag="Operations.System.Memory" Style="{StaticResource OperationsMetricDetailStyle}" Text="Memory" /><TextBlock x:Name="SystemMemoryValue" FontSize="17" FontWeight="SemiLight" IsTextSelectionEnabled="True" TextWrapping="Wrap" /></StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="1"><TextBlock Tag="Operations.System.Network" Style="{StaticResource OperationsMetricDetailStyle}" Text="Network" /><TextBlock x:Name="SystemNetworkValue" FontSize="15" FontWeight="SemiLight" IsTextSelectionEnabled="True" TextWrapping="Wrap" /></StackPanel>
-                            </Grid>
-                            <StackPanel Spacing="6">
-                                <TextBlock Tag="Operations.System.Storage" Style="{StaticResource OperationsMetricLabelStyle}" Text="STORAGE" />
-                                <ItemsControl x:Name="SystemDisksList">
+                            <TextBlock x:Name="SystemHardwareStatusText" Style="{StaticResource OperationsMetricDetailStyle}" />
+                            <TextBlock x:Name="SystemHardwareCollectedAtText" Style="{StaticResource OperationsMetricDetailStyle}" />
+                            <TextBlock x:Name="SystemHardwareDriverStatusText" Style="{StaticResource OperationsMetricDetailStyle}" />
+                            <ItemsControl x:Name="SystemHardwareSummaryList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,4" Spacing="2">
+                                            <TextBlock Style="{StaticResource OperationsMetricLabelStyle}" Text="{Binding Label}" />
+                                            <TextBlock FontSize="13" IsTextSelectionEnabled="True" Text="{Binding Value}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Expander x:Name="SystemHardwareSensorsExpander" HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0" IsExpanded="False">
+                                <Expander.Header><TextBlock Tag="Hardware.AllSensors" Text="All sensors" /></Expander.Header>
+                                <ItemsControl x:Name="SystemHardwareSensorsList">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate><TextBlock Margin="0,1" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
+                            </Expander>
+                            <TextBlock Tag="Hardware.PowerNote" Style="{StaticResource OperationsMetricDetailStyle}" Text="W measures component power. Battery capacity in mWh is not whole-PC energy use." />
                         </StackPanel>
                     </StackPanel>
 

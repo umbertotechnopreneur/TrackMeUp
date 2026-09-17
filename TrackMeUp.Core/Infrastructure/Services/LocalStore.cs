@@ -388,11 +388,20 @@ public sealed class LocalStore
         return _activity.DeleteScreenshotTextSnapshot(ScreenshotIdentity(Path.GetFileName(screenshotPath)));
     }
 
+    /// <summary>Persists immutable hardware evidence for one already-registered screenshot capture.</summary>
+    internal void UpsertCaptureHardwareSnapshot(string captureId, SystemSnapshot snapshot) =>
+        _activity.UpsertCaptureHardwareSnapshot(captureId, snapshot);
+
+    /// <summary>Loads retained hardware evidence without sampling the current machine.</summary>
+    internal SystemSnapshot? LoadCaptureHardwareSnapshot(string captureId) =>
+        _activity.LoadCaptureHardwareSnapshot(captureId);
+
     /// <summary>Persists the same capture-interval telemetry for every retained artifact in one screenshot pass.</summary>
     internal void UpsertScreenshotIntervalTelemetry(
         string captureId,
         IReadOnlyList<string> screenshotPaths,
-        ScreenshotIntervalTelemetry telemetry)
+        ScreenshotIntervalTelemetry telemetry,
+        SystemSnapshot? hardwareSnapshot = null)
     {
         if (string.IsNullOrWhiteSpace(captureId) || screenshotPaths.Count == 0)
         {
@@ -422,18 +431,13 @@ public sealed class LocalStore
             throw new InvalidDataException("Screenshot telemetry artifacts contain conflicting capture origins.");
         }
 
-        RegisterScreenshotCapture(
+        _activity.UpsertScreenshotCaptureTelemetry(
             captureId,
             LoadSettings().InstallationId,
-            telemetry.CapturedAt,
-            origins.Single());
-        foreach (var path in distinctPaths)
-        {
-            _activity.UpsertScreenshotIntervalTelemetry(
-                ScreenshotIdentity(Path.GetFileName(path)),
-                captureId,
-                telemetry);
-        }
+            origins.Single(),
+            distinctPaths.Select(path => ScreenshotIdentity(Path.GetFileName(path))).ToArray(),
+            telemetry,
+            hardwareSnapshot);
     }
 
     /// <summary>Loads persisted interval telemetry for one retained screenshot.</summary>
@@ -1019,6 +1023,7 @@ public sealed class LocalStore
                 ?? throw new InvalidDataException($"Screenshot artifact has no valid capture identity: {identity}"))
             .ToArray();
         var provenanceByCapture = _activity.LoadScreenshotCaptures(captureIds);
+        var hardwareByCapture = _activity.LoadCaptureHardwareSnapshots(captureIds, cancellationToken);
         var sources = retainedFiles
             .Select(file =>
             {
@@ -1083,6 +1088,10 @@ public sealed class LocalStore
                 source.Provenance.Installation);
             analyses.TryGetValue(source.File.FullName, out var analysis);
             textByIdentity.TryGetValue(source.ArtifactIdentity, out var textSnapshot);
+            hardwareByCapture.TryGetValue(source.Provenance.CaptureId, out var hardwareSnapshot);
+            // Analysis-only deletion is per artifact; a sibling monitor may still retain the
+            // capture's shared hardware evidence without exposing it on this cleared artifact.
+            hardwareSnapshot = source.Telemetry is null ? null : hardwareSnapshot;
             items.Add(new ScreenshotGalleryItem(
                 source.CapturedAt,
                 source.File.FullName,
@@ -1101,7 +1110,8 @@ public sealed class LocalStore
                 source.Telemetry?.CpuUsagePercent,
                 source.Telemetry?.GpuUsagePercent,
                 source.Provenance.Installation,
-                analysis is not null || textSnapshot is not null || source.Telemetry is not null));
+                analysis is not null || textSnapshot is not null || source.Telemetry is not null || hardwareSnapshot is not null,
+                HardwareSnapshot: hardwareSnapshot));
         }
 
         return new ScreenshotGallery(date, items);
@@ -1237,6 +1247,7 @@ public sealed class LocalStore
             .SelectMany(record => record.ArtifactIdentities)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var textByIdentity = _activity.LoadScreenshotTextSnapshots(requestedIdentities, cancellationToken);
+        var hardwareByCapture = _activity.LoadCaptureHardwareSnapshots(records.Select(record => record.CaptureId), cancellationToken);
         var activitySamples = new List<ActivitySample>();
         var recordsWithProvenance = records
             .Select(record => (Record: record, InstallationId: NormalizeInstallationId(record.InstallationId)))
@@ -1292,7 +1303,8 @@ public sealed class LocalStore
                     historicalSample.Context,
                     historicalSample.WindowTitle,
                     historicalSample.State,
-                    TrackingDomainService.FilterAnalysisAttributes(historicalSample.Attributes));
+                    TrackingDomainService.FilterAnalysisAttributes(historicalSample.Attributes),
+                    Snapshot: hardwareByCapture.GetValueOrDefault(record.CaptureId));
             var captureOrigin = GetCaptureOrigin(record.ArtifactIdentities[0] + ".webp");
             candidates.Add(new AiScreenshotReprocessCandidate(
                 record.CaptureId,

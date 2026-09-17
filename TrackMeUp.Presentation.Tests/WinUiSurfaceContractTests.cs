@@ -92,7 +92,17 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal(2, optionExpanders.Length);
         Assert.Contains(optionExpanders, element => HasName(element, "ApiKeyExpander"));
         Assert.Contains(optionExpanders, element => HasName(element, "AiDailyLimitExpander"));
-        Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "Expander");
+        // Only the potentially long sensor list is disclosed; operational controls and summaries stay flat.
+        var sensorDisclosure = Assert.Single(operations.Descendants(), element => element.Name.LocalName == "Expander");
+        Assert.True(HasName(sensorDisclosure, "SystemHardwareSensorsExpander"));
+        Assert.Equal("Transparent", sensorDisclosure.Attribute("Background")?.Value);
+        Assert.Equal("0", sensorDisclosure.Attribute("BorderThickness")?.Value);
+        Assert.Equal("False", sensorDisclosure.Attribute("IsExpanded")?.Value);
+        Assert.Contains(sensorDisclosure.Descendants(), element => element.Attribute("Tag")?.Value == "Hardware.AllSensors");
+        var sensorContent = Assert.Single(sensorDisclosure.Elements(), element => element.Name.LocalName != "Expander.Header");
+        Assert.Equal("ItemsControl", sensorContent.Name.LocalName);
+        Assert.True(HasName(sensorContent, "SystemHardwareSensorsList"));
+        Assert.DoesNotContain(sensorDisclosure.Descendants(), element => element.Name.LocalName is "Button" or "ToggleSwitch" or "Border" or "Expander");
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("CornerRadius") is not null);
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("Click")?.Value == "BackButton_Click");
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("Tag")?.Value is "Operations.Title" or "Operations.Subtitle");

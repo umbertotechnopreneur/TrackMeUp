@@ -227,28 +227,6 @@ public sealed record LastSessionState(
     string? ScreenshotPath,
     DateTimeOffset? ScreenshotCapturedAt);
 
-public sealed record DiskSnapshotState(
-    string Drive,
-    string FileSystem,
-    long TotalBytes,
-    long FreeBytes);
-
-public sealed record NetworkSnapshotState(long UploadBytesPerSecond, long DownloadBytesPerSecond);
-
-public sealed record SystemSnapshot(
-    DateTimeOffset Timestamp,
-    int CpuUsagePercent,
-    int? CpuTemperatureCelsius,
-    int? GpuTemperatureCelsius,
-    int? GpuUsagePercent,
-    long MemoryUsedMb,
-    long MemoryTotalMb,
-    int? GpuMemoryUsedMb,
-    NetworkSnapshotState Network,
-    IReadOnlyList<DiskSnapshotState> Disks,
-    DeviceContextSnapshot? DeviceContext = null,
-    string? InformationalSchedule = null);
-
 public sealed record AnalysisContextSnapshot(
     string Application,
     string Context,

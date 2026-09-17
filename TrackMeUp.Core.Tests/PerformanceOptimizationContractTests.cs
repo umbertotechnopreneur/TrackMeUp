@@ -28,16 +28,16 @@ public sealed class PerformanceOptimizationContractTests
     }
 
     [Fact]
-    public void MinuteSampler_ContainsOnlyCpuAndGpuUsageInterop()
+    public void HardwareTelemetry_HasOneRuntimeOwnerAndNoLegacyReaders()
     {
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "SystemUsageSampler.cs"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.cs"));
 
-        Assert.Contains("GetSystemTimes", source, StringComparison.Ordinal);
-        Assert.Contains("GPU Engine", source, StringComparison.Ordinal);
+        Assert.Contains("IHardwareTelemetryService", source, StringComparison.Ordinal);
+        Assert.Contains("_snapshot.CaptureAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ManagementObjectSearcher", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("DriveInfo", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("NetworkInterface", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("SystemSnapshotService", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SystemSnapshotReuseWindow", source, StringComparison.Ordinal);
+        Assert.False(File.Exists(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "SystemUsageSampler.cs")));
+        Assert.False(File.Exists(RepositoryFile("TrackMeUp.Core", "Infrastructure", "Services", "SystemSnapshotService.cs")));
     }
 
     private static string RepositoryFile(params string[] pathSegments)

@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Controls;
@@ -30,6 +31,7 @@ public sealed partial class OperationsControl : UserControl
     private RetentionOperationsControl? _retentionSection;
     private PluginOperationsControl? _pluginsSection;
     private InstallationTransferOperationsControl? _installationTransferSection;
+    private SystemSnapshot? _systemSnapshot;
 
     /// <summary>Creates the passive operational surface.</summary>
     public OperationsControl() => InitializeComponent();
@@ -68,6 +70,13 @@ public sealed partial class OperationsControl : UserControl
         AutomationProperties.SetName(OperationProgress, _strings.Translate("Operations.Status.InProgress.Title"));
         AutomationProperties.SetName(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Action"));
         AutomationProperties.SetHelpText(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Description"));
+        var advancedSensorsLabel = _strings.Translate("Hardware.Advanced.Action");
+        AutomationProperties.SetName(AdvancedSensorsButton, advancedSensorsLabel);
+        ToolTipService.SetToolTip(AdvancedSensorsButton, advancedSensorsLabel);
+        if (_systemSnapshot is { } snapshot)
+        {
+            RenderSystemSnapshot(snapshot);
+        }
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
@@ -160,21 +169,29 @@ public sealed partial class OperationsControl : UserControl
             return;
         }
 
+        RenderSystemSnapshot(snapshot);
+    }
+
+    private async void AdvancedSensorsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var result = await ExecuteAsync((application, token) => application.EnableAdvancedHardwareTelemetryAsync(token));
+        if (result is { Succeeded: true, Value: { } snapshot })
+        {
+            RenderSystemSnapshot(snapshot);
+        }
+    }
+
+    private void RenderSystemSnapshot(SystemSnapshot snapshot)
+    {
+        _systemSnapshot = snapshot;
+        var state = HardwareSnapshotProjection.Create(snapshot, _strings.Culture, _strings.Translate);
         SystemSnapshotEmptyText.Visibility = Visibility.Collapsed;
         SystemSnapshotSummary.Visibility = Visibility.Visible;
-        SystemCpuValue.Text = $"{snapshot.CpuUsagePercent}%";
-        SystemCpuDetail.Text = FormatTemperature(snapshot.CpuTemperatureCelsius);
-        SystemGpuValue.Text = FormatPercent(snapshot.GpuUsagePercent);
-        SystemGpuDetail.Text = FormatTemperature(snapshot.GpuTemperatureCelsius);
-        SystemMemoryValue.Text = $"{FormatMemory(snapshot.MemoryUsedMb)} / {FormatMemory(snapshot.MemoryTotalMb)}";
-        SystemNetworkValue.Text = $"↑ {FormatBytes(snapshot.Network.UploadBytesPerSecond)}/s\n↓ {FormatBytes(snapshot.Network.DownloadBytesPerSecond)}/s";
-        SystemDisksList.ItemsSource = snapshot.Disks.Count == 0
-            ? [_strings.Translate("Operations.System.NoStorage")]
-            : snapshot.Disks.Select(disk => _strings.Format(
-                "Operations.System.StorageRow",
-                disk.Drive,
-                FormatBytes(disk.FreeBytes),
-                FormatBytes(disk.TotalBytes))).ToArray();
+        SystemHardwareStatusText.Text = state.Status;
+        SystemHardwareCollectedAtText.Text = state.CollectedAt;
+        SystemHardwareDriverStatusText.Text = state.DriverStatus;
+        SystemHardwareSummaryList.ItemsSource = state.Summary;
+        SystemHardwareSensorsList.ItemsSource = state.Details;
     }
 
     private void OpenSnapshotAiLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.SnapshotAi, sender);
@@ -494,32 +511,6 @@ public sealed partial class OperationsControl : UserControl
 
     private string EnabledDisabled(bool value) => _strings.Translate(value ? "Common.Enabled" : "Common.Disabled");
 
-    private string FormatPercent(int? value) => value is null
-        ? _strings.Translate("Common.NotAvailable")
-        : $"{value.Value.ToString("N0", _strings.Culture)}%";
-
-    private string FormatTemperature(int? value) => value is null
-        ? _strings.Translate("Common.NotAvailable")
-        : $"{value.Value.ToString("N0", _strings.Culture)} °C";
-
-    private string FormatMemory(long megabytes) => megabytes >= 1024
-        ? $"{(megabytes / 1024d).ToString("0.0", _strings.Culture)} GB"
-        : $"{Math.Max(0, megabytes).ToString("N0", _strings.Culture)} MB";
-
-    private string FormatBytes(long bytes)
-    {
-        var size = Math.Max(0, bytes);
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        var unit = 0;
-        var value = (double)size;
-        while (value >= 1024d && unit < units.Length - 1)
-        {
-            value /= 1024d;
-            unit++;
-        }
-
-        return $"{value.ToString("0.#", _strings.Culture)} {units[unit]}";
-    }
 }
 
 /// <summary>Contains the validated reset plan returned by the runtime owner.</summary>

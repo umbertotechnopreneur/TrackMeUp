@@ -144,8 +144,8 @@ public sealed class WindowStatePersistenceTests
                 utilities,
                 new TrackingDomainService(store),
                 capture,
-                new SystemSnapshotService(),
-                new OpenAiAnalysisService(store, capture, new SystemSnapshotService()),
+                new FakeHardwareTelemetryService(),
+                new OpenAiAnalysisService(store, capture),
                 new StartupService(),
                 new BuildInformationService(),
                 startScheduledSnapshotTimer: false);

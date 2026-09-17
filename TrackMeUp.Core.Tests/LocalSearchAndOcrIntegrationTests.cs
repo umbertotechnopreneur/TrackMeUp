@@ -338,7 +338,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
             }
 
             var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
-            Assert.Contains("Unsupported activity database schema version 5; expected 9", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("Unsupported activity database schema version 5; expected 10", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -755,6 +755,7 @@ public sealed class LocalSearchAndOcrIntegrationTests
                     DROP TRIGGER tr_search_profile_update;
                     DROP TRIGGER tr_search_profile_delete;
                     DROP TABLE search_change_log;
+                    DROP TABLE capture_hardware_snapshots;
                     PRAGMA user_version = 8;
                     """;
                 command.ExecuteNonQuery();

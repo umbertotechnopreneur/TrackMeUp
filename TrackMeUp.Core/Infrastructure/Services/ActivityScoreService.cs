@@ -21,7 +21,7 @@ public sealed class ActivityScoreService
     private const double MaximumDurableActivityContribution = MaximumInputContribution + MaximumActiveContribution;
     private readonly object _gate = new();
     private readonly Dictionary<DateTimeOffset, MinuteAggregate> _minutes = new();
-    private readonly List<SystemTelemetryPoint> _telemetryPoints = new();
+    private readonly Dictionary<DateTimeOffset, SystemTelemetryPoint> _telemetryPoints = new();
 
     /// <summary>Records keyboard, click, and active-time contributions from one durable activity sample.</summary>
     public void RecordSample(ActivitySample sample)
@@ -45,29 +45,22 @@ public sealed class ActivityScoreService
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
-        RecordSystemUsage(new SystemUsageSample(snapshot.Timestamp, snapshot.CpuUsagePercent, snapshot.GpuUsagePercent));
-    }
-
-    /// <summary>Records the narrow CPU/GPU telemetry used by the live score.</summary>
-    public void RecordSystemUsage(SystemUsageSample sample)
-    {
-        ArgumentNullException.ThrowIfNull(sample);
+        var usage = HardwareUsageProjection.Read(snapshot);
 
         lock (_gate)
         {
-            var aggregate = GetOrCreate(TruncateToMinute(sample.Timestamp));
-            aggregate.CpuUsagePercent = sample.CpuUsagePercent is { } cpuUsage
-                ? Math.Clamp(cpuUsage, 0, 100)
-                : null;
-            aggregate.GpuUsagePercent = sample.GpuUsagePercent is { } gpuUsage
-                ? Math.Clamp(gpuUsage, 0, 100)
-                : null;
-            if (sample.CpuUsagePercent is not null || sample.GpuUsagePercent is not null)
+            var aggregate = GetOrCreate(TruncateToMinute(snapshot.Timestamp));
+            aggregate.CpuUsagePercent = usage.Cpu;
+            aggregate.GpuUsagePercent = usage.Gpu;
+            if (usage.Cpu is not null || usage.Gpu is not null)
             {
-                _telemetryPoints.Add(new SystemTelemetryPoint(
-                    sample.Timestamp.ToUniversalTime(),
+                var timestamp = snapshot.Timestamp.ToUniversalTime();
+                // The shared collector can return one cached reading to several callers.
+                // Count that measured instant once while continuing to refresh the minute display.
+                _telemetryPoints[timestamp] = new SystemTelemetryPoint(
+                    timestamp,
                     aggregate.CpuUsagePercent,
-                    aggregate.GpuUsagePercent));
+                    aggregate.GpuUsagePercent);
             }
         }
     }
@@ -87,7 +80,7 @@ public sealed class ActivityScoreService
         lock (_gate)
         {
             Trim(toUtc.AddMinutes(-WindowMinutes));
-            var points = _telemetryPoints
+            var points = _telemetryPoints.Values
                 .Where(point => point.TimestampUtc > fromUtc && point.TimestampUtc <= toUtc)
                 .ToArray();
             var cpuPoints = points.Where(point => point.CpuUsagePercent is not null).ToArray();
@@ -234,7 +227,10 @@ public sealed class ActivityScoreService
             _minutes.Remove(minute);
         }
 
-        _telemetryPoints.RemoveAll(point => point.TimestampUtc < oldestMinute);
+        foreach (var timestamp in _telemetryPoints.Keys.Where(timestamp => timestamp < oldestMinute).ToArray())
+        {
+            _telemetryPoints.Remove(timestamp);
+        }
     }
 
     private static ActivityScoreInterval BuildInterval(

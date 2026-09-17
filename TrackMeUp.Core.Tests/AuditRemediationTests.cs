@@ -271,7 +271,7 @@ public sealed class AuditRemediationTests : IDisposable
     }
 
     private static TrackMeUpApplication CreateApplication(LocalStore store, IAiAnalysisService? analysis = null) =>
-        new(store, new UtilityService(), new TrackingDomainService(store), new NoCapture(), new SystemSnapshotService(),
+        new(store, new UtilityService(), new TrackingDomainService(store), new NoCapture(), new FakeHardwareTelemetryService(),
             analysis ?? new NoAnalysis(), new StartupService(), new BuildInformationService(), startScheduledSnapshotTimer: false);
 
     /// <inheritdoc />

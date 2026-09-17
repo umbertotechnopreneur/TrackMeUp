@@ -44,6 +44,8 @@ internal enum RuntimeOperation
     SearchRebuildV1,
     [RuntimeOperationWireName("system.snapshot")]
     SystemSnapshot,
+    [RuntimeOperationWireName("hardware.advanced.enable.v1")]
+    HardwareAdvancedEnableV1,
     [RuntimeOperationWireName("screenshot.capture")]
     ScreenshotCapture,
     [RuntimeOperationWireName("screenshot.manual.capture")]

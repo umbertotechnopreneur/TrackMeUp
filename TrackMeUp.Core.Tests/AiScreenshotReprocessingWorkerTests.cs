@@ -655,7 +655,7 @@ public sealed class AiScreenshotReprocessingWorkerTests
             utilities,
             new TrackingDomainService(store),
             new UnexpectedCaptureService(),
-            new SystemSnapshotService(),
+            new FakeHardwareTelemetryService(),
             analysis,
             new StartupService(),
             new BuildInformationService(),

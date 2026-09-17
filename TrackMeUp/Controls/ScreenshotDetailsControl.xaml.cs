@@ -52,6 +52,11 @@ public sealed partial class ScreenshotDetailsControl : UserControl
         MouseClicksValueText.Text = state?.MouseClicks ?? "--";
         CpuUsageValueText.Text = state?.CpuUsage ?? "--";
         GpuUsageValueText.Text = state?.GpuUsage ?? "--";
+        HardwareStatusText.Text = state?.Hardware.Status ?? "--";
+        HardwareCollectedAtText.Text = state?.Hardware.CollectedAt ?? "--";
+        HardwareDriverStatusText.Text = state?.Hardware.DriverStatus ?? "--";
+        HardwareSummaryList.ItemsSource = state?.Hardware.Summary;
+        HardwareSensorList.ItemsSource = state?.Hardware.Details;
         PrivacyStatusValueText.Text = privacyStatusText;
         AnalysisTimeValueText.Text = state?.AnalysisTime ?? "--";
         AnalysisTimePanel.Visibility = string.IsNullOrWhiteSpace(state?.AnalysisTime)
