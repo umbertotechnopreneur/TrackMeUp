@@ -21,8 +21,8 @@ public sealed class WindowStateCalculatorTests
         Assert.Equal(new WindowMinimumSize(620, 480), WindowStateService.GetMinimumSize(WindowStateKeys.Schedule));
         Assert.Equal(new WindowMinimumSize(320, 196), WindowStateService.GetMinimumSize(WindowStateKeys.Dialog));
         Assert.Equal(new WindowMinimumSize(480, 240), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks));
-        Assert.Equal(new WindowMinimumSize(640, 360), WindowStateService.GetMinimumSize(WindowStateKeys.WorldMap));
-        Assert.Equal(new WindowMinimumSize(320, 320), WindowStateService.GetMinimumSize(WindowStateKeys.LunarPhase));
+        Assert.Equal(new WindowMinimumSize(192, 160), WindowStateService.GetMinimumSize(WindowStateKeys.WorldMap));
+        Assert.Equal(new WindowMinimumSize(192, 192), WindowStateService.GetMinimumSize(WindowStateKeys.LunarPhase));
         Assert.Equal(new WindowMinimumSize(500, 560), WindowStateService.GetMinimumSize(WindowStateKeys.WorldClockCityPicker));
         Assert.Equal(new WindowMinimumSize(480, 480), WindowStateService.GetMinimumSize(WindowStateKeys.AiConnectionTest));
     }
@@ -37,6 +37,39 @@ public sealed class WindowStateCalculatorTests
         var restored = WindowStateCalculator.ClampToWorkArea(saved, workArea, @"\\.\DISPLAY1", minimum.Width, minimum.Height);
 
         Assert.Equal(saved, restored);
+    }
+
+    /// <summary>Compact astronomy widgets retain their user-selected bounds when reopened.</summary>
+    [Theory]
+    [InlineData(WindowStateKeys.WorldMap, 192, 160)]
+    [InlineData(WindowStateKeys.LunarPhase, 192, 192)]
+    public void AstronomyRestore_PreservesCompactWidgetBounds(string windowKey, int width, int height)
+    {
+        var saved = new WindowState(120, 160, width, height, @"\\.\DISPLAY1");
+        var workArea = new WindowWorkArea(0, 0, 1920, 1080);
+        var minimum = WindowStateService.GetMinimumSize(windowKey);
+
+        var restored = WindowStateCalculator.ClampToWorkArea(saved, workArea, @"\\.\DISPLAY1", minimum.Width, minimum.Height);
+
+        Assert.Equal(saved, restored);
+    }
+
+    /// <summary>Undersized saved widgets regain enough space for their caption controls.</summary>
+    [Theory]
+    [InlineData(WindowStateKeys.WorldMap, 192, 160)]
+    [InlineData(WindowStateKeys.LunarPhase, 192, 192)]
+    public void AstronomyRestore_ClampsToCompactMinimum(string windowKey, int width, int height)
+    {
+        var saved = new WindowState(1900, 1060, 100, 40, @"\\.\DISPLAY1");
+        var workArea = new WindowWorkArea(0, 0, 1920, 1080);
+        var minimum = WindowStateService.GetMinimumSize(windowKey);
+
+        var restored = WindowStateCalculator.ClampToWorkArea(saved, workArea, @"\\.\DISPLAY1", minimum.Width, minimum.Height);
+
+        Assert.Equal(width, restored.Width);
+        Assert.Equal(height, restored.Height);
+        Assert.Equal(workArea.Right - width, restored.X);
+        Assert.Equal(workArea.Bottom - height, restored.Y);
     }
 
     [Fact]

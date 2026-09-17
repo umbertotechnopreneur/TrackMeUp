@@ -35,7 +35,11 @@ public sealed partial class ReportsOperationsControl : UserControl
             dialogs,
             ownerWindow,
             banner,
-            Progress,
+            active =>
+            {
+                Progress.IsActive = active;
+                Progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+            },
             SectionBody,
             key => _strings.TryTranslate(key, out var value) ? value : null);
 
@@ -44,7 +48,10 @@ public sealed partial class ReportsOperationsControl : UserControl
     private async void TodayReportButton_Click(object sender, RoutedEventArgs e)
     {
         var open = OpenGeneratedReportBox.IsChecked == true;
-        var result = await Context.ExecuteAsync((application, token) => application.GenerateTodayReportAsync(null, open, token));
+        var result = await Context.ExecuteWithProgressAsync(
+            (application, token) => application.GenerateTodayReportAsync(null, open, token),
+            _strings.Translate("Operations.TodayReport"),
+            _strings.Translate("Operations.Reports.Today.Description"));
         if (result is { Succeeded: true, Value: { } path })
         {
             ShowResult(_strings.Translate("Operations.Reports.Today"), path);
@@ -64,7 +71,10 @@ public sealed partial class ReportsOperationsControl : UserControl
 
         var date = DateOnly.FromDateTime(selectedDate.DateTime);
         var open = OpenGeneratedReportBox.IsChecked == true;
-        var result = await Context.ExecuteAsync((application, token) => application.GenerateDailyDigestAsync(date, open, token));
+        var result = await Context.ExecuteWithProgressAsync(
+            (application, token) => application.GenerateDailyDigestAsync(date, open, token),
+            _strings.Translate("Operations.GenerateDigest"),
+            _strings.Translate("Operations.Reports.Digest.Description"));
         if (result is { Succeeded: true, Value: { } path })
         {
             ShowResult(_strings.Format("Operations.Reports.Digest", date), path);

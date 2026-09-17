@@ -35,6 +35,48 @@ internal sealed class MicaDialogService
         return await RunContentDialogSessionAsync(owner, request, ContentDialogButton.Close) == ContentDialogResult.Primary;
     }
 
+    /// <summary>Runs one facade request only after its queued modal Mica progress surface is visible.</summary>
+    internal async Task<OperationResult<T>> RunWithProgressAsync<T>(
+        ITrackMeUpApplication application,
+        Window owner,
+        ElementTheme theme,
+        string title,
+        string description,
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(operation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ValidateOwnerThread(owner);
+        if (owner.Content is not FrameworkElement ownerContent)
+        {
+            throw new InvalidOperationException("Progress dialogs require framework-element owner content.");
+        }
+
+        var result = await RunModalSessionAsync<OperationResult<T>?>(owner, null, async (ownerAppWindow, ownerHandle) =>
+        {
+            OperationResult<T>? operationResult = null;
+            var dialog = new OperationProgressDialogWindow(
+                application,
+                theme,
+                title,
+                description,
+                ownerContent.Language,
+                ownerAppWindow,
+                ownerHandle,
+                async cancellationToken =>
+                {
+                    operationResult = await operation(application, cancellationToken);
+                });
+            await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+            return operationResult ?? throw new InvalidOperationException("The progress operation returned no result.");
+        });
+
+        // A closed owner or shutting-down queue cancels this request; it must not be reported as completed work.
+        return result ?? throw new OperationCanceledException("The progress dialog was cancelled during shutdown.");
+    }
+
     /// <summary>Shows provider-specific pricing and locally estimated costs in the shared acrylic dialog queue.</summary>
     internal async Task ShowPricingAsync(
         ITrackMeUpApplication application,
@@ -214,6 +256,9 @@ internal sealed class MicaDialogService
     {
         switch (_activeWindow)
         {
+            case OperationProgressDialogWindow progressWindow:
+                progressWindow.CloseForShutdown();
+                break;
             case ScreenshotStorageMigrationDialogWindow migrationWindow:
                 migrationWindow.CloseForShutdown();
                 break;

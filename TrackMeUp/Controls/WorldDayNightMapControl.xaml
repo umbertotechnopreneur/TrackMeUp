@@ -7,6 +7,30 @@
         x:Name="MapRoot"
         AutomationProperties.Name="World day and night map"
         SizeChanged="MapRoot_SizeChanged">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="LegendLayoutStates">
+                <VisualState x:Name="WideLegend">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="480" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="CompactLegend">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DayLegend.(Grid.Row)" Value="1" />
+                        <Setter Target="DayLegend.(Grid.Column)" Value="0" />
+                        <Setter Target="SunsetLegend.(Grid.Row)" Value="1" />
+                        <Setter Target="SunsetLegend.(Grid.Column)" Value="1" />
+                        <Setter Target="DayLegend.Margin" Value="0" />
+                        <Setter Target="DawnLegend.Margin" Value="10,0,0,0" />
+                        <Setter Target="SunsetLegend.Margin" Value="10,0,0,0" />
+                        <Setter Target="LegendLayout.RowSpacing" Value="6" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
         <Image
             AutomationProperties.AccessibilityView="Raw"
             Source="ms-appx:///Assets/WorldClocks/Maps/world-map-day.png"
@@ -19,47 +43,61 @@
         <Canvas
             x:Name="MarkerCanvas"
             AutomationProperties.AccessibilityView="Raw" />
-        <Border
-            Margin="18,0,18,12"
-            Padding="12,6"
+        <Viewbox
+            Margin="8,0,8,8"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Background="#B8121823"
-            CornerRadius="6">
-            <StackPanel Orientation="Horizontal" Spacing="14">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="14" Height="4" VerticalAlignment="Center" Background="#C9081022" CornerRadius="2" />
-                    <TextBlock x:Name="NightLegendText" FontSize="11" Tag="WorldClock.Map.Night" Text="NIGHT" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="18" Height="4" VerticalAlignment="Center" CornerRadius="2">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                <GradientStop Offset="0" Color="#FF0A1328" />
-                                <GradientStop Offset="0.55" Color="#FFE4A168" />
-                                <GradientStop Offset="1" Color="#FF91B9D8" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-                    <TextBlock x:Name="DawnLegendText" FontSize="11" Tag="WorldClock.Map.Dawn" Text="DAWN" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="14" Height="4" VerticalAlignment="Center" Background="#FF91B9D8" CornerRadius="2" />
-                    <TextBlock x:Name="DayLegendText" FontSize="11" Tag="WorldClock.Map.Day" Text="DAY" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Border Width="18" Height="4" VerticalAlignment="Center" CornerRadius="2">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                <GradientStop Offset="0" Color="#FF91B9D8" />
-                                <GradientStop Offset="0.45" Color="#FFFF755B" />
-                                <GradientStop Offset="1" Color="#FF0A1328" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-                    <TextBlock x:Name="SunsetLegendText" FontSize="11" Tag="WorldClock.Map.Sunset" Text="SUNSET" />
-                </StackPanel>
-            </StackPanel>
-        </Border>
+            Stretch="Uniform"
+            StretchDirection="DownOnly">
+            <Border
+                Padding="12,6"
+                Background="#B8121823"
+                CornerRadius="6">
+                <Grid x:Name="LegendLayout">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="14" Height="4" VerticalAlignment="Center" Background="#C9081022" CornerRadius="2" />
+                        <TextBlock x:Name="NightLegendText" FontSize="11" Tag="WorldClock.Map.Night" Text="NIGHT" />
+                    </StackPanel>
+                    <StackPanel x:Name="DawnLegend" Grid.Column="1" Margin="14,0,0,0" Orientation="Horizontal" Spacing="6">
+                        <Border Width="18" Height="4" VerticalAlignment="Center" CornerRadius="2">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                    <GradientStop Offset="0" Color="#FF0A1328" />
+                                    <GradientStop Offset="0.55" Color="#FFE4A168" />
+                                    <GradientStop Offset="1" Color="#FF91B9D8" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock x:Name="DawnLegendText" FontSize="11" Tag="WorldClock.Map.Dawn" Text="DAWN" />
+                    </StackPanel>
+                    <StackPanel x:Name="DayLegend" Grid.Column="2" Margin="14,0,0,0" Orientation="Horizontal" Spacing="6">
+                        <Border Width="14" Height="4" VerticalAlignment="Center" Background="#FF91B9D8" CornerRadius="2" />
+                        <TextBlock x:Name="DayLegendText" FontSize="11" Tag="WorldClock.Map.Day" Text="DAY" />
+                    </StackPanel>
+                    <StackPanel x:Name="SunsetLegend" Grid.Column="3" Margin="14,0,0,0" Orientation="Horizontal" Spacing="6">
+                        <Border Width="18" Height="4" VerticalAlignment="Center" CornerRadius="2">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                    <GradientStop Offset="0" Color="#FF91B9D8" />
+                                    <GradientStop Offset="0.45" Color="#FFFF755B" />
+                                    <GradientStop Offset="1" Color="#FF0A1328" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBlock x:Name="SunsetLegendText" FontSize="11" Tag="WorldClock.Map.Sunset" Text="SUNSET" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Viewbox>
     </Grid>
 </UserControl>

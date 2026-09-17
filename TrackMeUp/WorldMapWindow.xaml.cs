@@ -45,6 +45,15 @@ internal sealed partial class WorldMapWindow : Window
     /// <summary>Releases a failed opening without overwriting the last valid window placement.</summary>
     internal void CloseAfterFailedOpening() => _controller.CloseAfterFailedOpening();
 
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Keep native caption space available even when only the compact logo fits beside it.
+        var compact = e.NewSize.Width < 320d;
+        TitleBarLogo.Margin = compact ? new Thickness(8, 0, 8, 0) : new Thickness(16, 0, 10, 0);
+        TitleBarText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        ReferenceInstantText.Visibility = e.NewSize.Width < 640d ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void RenderSnapshot(WorldClockSnapshot snapshot)
     {
         WorldMapControl.Apply(snapshot.Map, _strings);

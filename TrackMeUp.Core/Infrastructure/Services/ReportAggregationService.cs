@@ -256,7 +256,7 @@ public sealed class ReportAggregationService
             var includedMouseClicks = ScaleCount(sample.MouseClicks, includedDurationTicks, originalDurationTicks);
             var keyPresses = AllocateCount(includedKeyPresses, segments, includedDurationTicks);
             var mouseClicks = AllocateCount(includedMouseClicks, segments, includedDurationTicks);
-            var sampleDates = new HashSet<DateOnly>();
+            var sampleDates = new Dictionary<DateOnly, (long StartTicks, long EndTicks)>();
             var sampleHours = new HashSet<(int DayOfWeek, int Hour)>();
             var isActive = string.Equals(sample.State, "active", StringComparison.OrdinalIgnoreCase);
 
@@ -268,13 +268,8 @@ public sealed class ReportAggregationService
                     throw new InvalidOperationException("An activity segment fell outside the normalized report range.");
                 }
 
-                day.TrackedIntervals.Add(segment.StartTicks, segment.EndTicks);
                 day.KeyPresses += keyPresses[index];
                 day.MouseClicks += mouseClicks[index];
-                if (isActive)
-                {
-                    day.ActiveIntervals.Add(segment.StartTicks, segment.EndTicks);
-                }
 
                 var hour = _hours[(segment.Bucket.DayOfWeek, segment.Bucket.Hour)];
                 hour.TrackedIntervals.Add(segment.StartTicks, segment.EndTicks);
@@ -290,12 +285,23 @@ public sealed class ReportAggregationService
                     hour.ActiveIntervals.Add(segment.StartTicks, segment.EndTicks);
                 }
 
-                sampleDates.Add(segment.Bucket.Date);
+                var dayStartTicks = sampleDates.TryGetValue(segment.Bucket.Date, out var dayInterval)
+                    ? dayInterval.StartTicks
+                    : segment.StartTicks;
+                sampleDates[segment.Bucket.Date] = (dayStartTicks, segment.EndTicks);
             }
 
-            foreach (var date in sampleDates)
+            foreach (var (date, interval) in sampleDates)
             {
                 var day = _days[date];
+                // Add each sample's daily coverage once: its hourly fragments can overtake the
+                // start of an overlapping sample from another installation at an hour boundary.
+                day.TrackedIntervals.Add(interval.StartTicks, interval.EndTicks);
+                if (isActive)
+                {
+                    day.ActiveIntervals.Add(interval.StartTicks, interval.EndTicks);
+                }
+
                 day.SampleCount++;
                 if (!_installationProfiles.TryGetValue(sample.InstallationId, out var installation))
                 {

@@ -958,13 +958,37 @@ public sealed partial class ScreenshotWindow : Window
         picker.FileTypeChoices.Add(T("Screenshots.FileType"), new[] { extension });
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
         var destination = await picker.PickSaveFileAsync();
-        if (destination is null)
+        if (destination is null || _lifetimeCancellation.IsCancellationRequested)
         {
             return;
         }
 
-        var result = await _application.SaveScreenshotAsync(selected.Path, destination.Path, _lifetimeCancellation.Token);
-        ShowActionResult(result, "Screenshots.Action.Saved");
+        try
+        {
+            var result = await _dialogs.RunWithProgressAsync(
+                _application,
+                this,
+                RootGrid.RequestedTheme,
+                T("Screenshots.Toolbar.Save"),
+                T("Operations.Status.InProgress.Message"),
+                (application, token) => application.SaveScreenshotAsync(selected.Path, destination.Path, token));
+            if (!_lifetimeCancellation.IsCancellationRequested)
+            {
+                ShowActionResult(result, "Screenshots.Action.Saved");
+            }
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Closing the gallery owns cancellation; do not report a stale save result.
+        }
+        catch (Exception)
+        {
+            if (!_lifetimeCancellation.IsCancellationRequested)
+            {
+                // Storage or dialog failures retain the localized screenshot-action error and no private paths.
+                _dialogs.Notifications.ShowError(ScreenshotActionBanner, T("Screenshots.Caption"), T("Screenshots.Action.Failed"));
+            }
+        }
     }
 
     private async void HeaderSection_OpenFolderRequested(object? sender, EventArgs e)

@@ -158,6 +158,117 @@ public sealed class ReportAggregationTests
         });
     }
 
+    [Theory]
+    [InlineData(12, "active", 6, 3)]
+    [InlineData(12, "idle", 5, 2)]
+    [InlineData(0, "active", 6, 3)]
+    [InlineData(0, "idle", 5, 2)]
+    public void Build_UnionsOverlappingInstallationsAcrossHourAndDayBoundaries(
+        int boundaryHour,
+        string secondState,
+        long expectedActiveSeconds,
+        long expectedActiveSecondsAfterBoundary)
+    {
+        WithStore((store, reports) =>
+        {
+            var boundary = new DateTimeOffset(2026, 2, 2, boundaryHour, 0, 0, TimeSpan.Zero);
+            var installationA = InsertInstallationProfile(store, "Work laptop");
+            var installationB = InsertInstallationProfile(store, "Home desktop");
+            store.AppendSample(Sample(store,
+                boundary.AddSeconds(2),
+                durationSeconds: 5,
+                application: "Editor",
+                keyPresses: 5,
+                mouseClicks: 2,
+                installationId: installationA.InstallationId));
+            store.AppendSample(Sample(store,
+                boundary.AddSeconds(3),
+                durationSeconds: 5,
+                application: "Editor",
+                keyPresses: 5,
+                mouseClicks: 2,
+                state: secondState,
+                installationId: installationB.InstallationId));
+            var from = DateOnly.FromDateTime(boundary.AddSeconds(-3).DateTime);
+            var to = DateOnly.FromDateTime(boundary.DateTime);
+
+            var result = reports.Build(new ReportQuery(from, to, "UTC"), CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(6, snapshot.Totals.TrackedSeconds);
+            Assert.Equal(expectedActiveSeconds, snapshot.Totals.ActiveSeconds);
+            Assert.Equal(6 - expectedActiveSeconds, snapshot.Totals.IdleSeconds);
+            Assert.Equal(10, snapshot.Totals.KeyPresses);
+            Assert.Equal(4, snapshot.Totals.MouseClicks);
+            Assert.Equal(6, snapshot.Quality.CoveredSeconds);
+            Assert.Equal(2, snapshot.Quality.SampleCount);
+            Assert.Equal(expectedActiveSeconds, Assert.Single(snapshot.Applications).ActiveSeconds);
+            Assert.All(snapshot.Calendar, day =>
+            {
+                Assert.Equal(2, day.SampleCount);
+                Assert.Equal(2, day.Installations!.Count);
+                Assert.Equal(boundaryHour == 0 ? 3 : 6, day.TrackedSeconds);
+                Assert.Equal(day.TrackedSeconds, day.ActiveSeconds + day.IdleSeconds);
+            });
+
+            var before = boundary.AddSeconds(-1);
+            var beforeHour = Assert.Single(snapshot.HourOfWeek,
+                cell => cell.DayOfWeek == (int)before.DayOfWeek && cell.Hour == before.Hour);
+            var afterHour = Assert.Single(snapshot.HourOfWeek,
+                cell => cell.DayOfWeek == (int)boundary.DayOfWeek && cell.Hour == boundary.Hour);
+            Assert.Equal(3, beforeHour.TrackedSeconds);
+            Assert.Equal(3, beforeHour.ActiveSeconds);
+            Assert.Equal(3, afterHour.TrackedSeconds);
+            Assert.Equal(expectedActiveSecondsAfterBoundary, afterHour.ActiveSeconds);
+            Assert.Equal(2, beforeHour.SampleCount);
+            Assert.Equal(2, afterHour.SampleCount);
+            Assert.Equal(10, beforeHour.KeyPresses + afterHour.KeyPresses);
+            Assert.Equal(4, beforeHour.MouseClicks + afterHour.MouseClicks);
+        });
+    }
+
+    [Fact]
+    public void Build_PreservesDailyCoverageWhenOverlappingSamplesSpanMultipleDays()
+    {
+        WithStore((store, reports) =>
+        {
+            var boundary = new DateTimeOffset(2026, 2, 1, 12, 0, 0, TimeSpan.Zero);
+            var installationA = InsertInstallationProfile(store, "Work laptop");
+            var installationB = InsertInstallationProfile(store, "Home desktop");
+            store.AppendSample(Sample(store,
+                boundary.AddDays(1).AddSeconds(2),
+                durationSeconds: 86_405,
+                application: "Editor",
+                keyPresses: 7,
+                installationId: installationA.InstallationId));
+            store.AppendSample(Sample(store,
+                boundary.AddSeconds(3),
+                durationSeconds: 5,
+                application: "Desktop",
+                keyPresses: 5,
+                state: "idle",
+                installationId: installationB.InstallationId));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 2), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            Assert.Equal(86_405, snapshot.Totals.TrackedSeconds);
+            Assert.Equal(86_405, snapshot.Totals.ActiveSeconds);
+            Assert.Equal(0, snapshot.Totals.IdleSeconds);
+            Assert.Equal(12, snapshot.Totals.KeyPresses);
+            Assert.Equal(86_405, snapshot.Quality.CoveredSeconds);
+            Assert.Equal(43_203, snapshot.Calendar[0].TrackedSeconds);
+            Assert.Equal(43_202, snapshot.Calendar[1].TrackedSeconds);
+            Assert.Equal(2, snapshot.Calendar[0].Installations!.Count);
+            Assert.Single(snapshot.Calendar[1].Installations!);
+            Assert.Equal(86_405, snapshot.HourOfWeek.Sum(hour => hour.TrackedSeconds));
+        });
+    }
+
     [Fact]
     public void Build_FailsFastWhenActivityReferencesUnknownInstallationProfile()
     {
