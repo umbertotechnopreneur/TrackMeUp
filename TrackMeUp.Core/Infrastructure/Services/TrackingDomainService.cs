@@ -186,14 +186,6 @@ public sealed class TrackingDomainService : IDisposable
         DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
     }
 
-    /// <summary>Records the narrow CPU/GPU usage sample used by the live activity score.</summary>
-    public void RecordSystemUsage(SystemUsageSample sample)
-    {
-        ArgumentNullException.ThrowIfNull(sample);
-        _activityScore.RecordSystemUsage(sample);
-        DashboardStateChanged?.Invoke(LoadCurrentDashboardState());
-    }
-
     /// <summary>Calculates the telemetry averages that must be persisted with one screenshot.</summary>
     public ScreenshotIntervalTelemetry BuildScreenshotIntervalTelemetry(
         DateTimeOffset intervalStartedAt,

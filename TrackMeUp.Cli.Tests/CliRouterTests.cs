@@ -377,6 +377,8 @@ public sealed class CliRouterTests
         }
 
         public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => Unsupported<WindowState?>();
+        /// <inheritdoc />
+        public Task<OperationResult<int>> RevealOpenWindowsAsync(WindowRevealRequest request, CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => Unsupported<WindowState>();
         public Task<OperationResult<bool>> SetWindowOpenStateAsync(string windowKey, bool isOpen, CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<OcrTextWindowSource>> SetOcrTextWindowSourceAsync(string screenshotPath, DateTimeOffset capturedAt, CancellationToken cancellationToken) => Unsupported<OcrTextWindowSource>();
@@ -412,6 +414,8 @@ public sealed class CliRouterTests
         public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();
         public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => Unsupported<SystemSnapshot>();
+
+        public Task<OperationResult<SystemSnapshot>> EnableAdvancedHardwareTelemetryAsync(CancellationToken cancellationToken) => Unsupported<SystemSnapshot>();
         public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken)
         {
             TotalCalls++;

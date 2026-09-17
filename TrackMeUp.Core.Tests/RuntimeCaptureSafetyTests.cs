@@ -158,7 +158,6 @@ public sealed class RuntimeCaptureSafetyTests
                 capture,
                 startTimer: false,
                 screenshotOcr: ocr);
-            SeedRecentSystemSnapshot(application);
             using var cancellation = new CancellationTokenSource();
 
             var operation = application.CaptureManualScreenshotAsync(cancellation.Token);
@@ -285,8 +284,8 @@ public sealed class RuntimeCaptureSafetyTests
             utilities,
             tracking ?? new TrackingDomainService(store, settings),
             capture,
-            new SystemSnapshotService(),
-            new OpenAiAnalysisService(store, capture, new SystemSnapshotService()),
+            new FakeHardwareTelemetryService(),
+            new OpenAiAnalysisService(store, capture),
             new StartupService(),
             new BuildInformationService(),
             screenshotOcr: screenshotOcr,
@@ -305,25 +304,6 @@ public sealed class RuntimeCaptureSafetyTests
         "test-installation",
         0,
         0);
-
-    private static void SeedRecentSystemSnapshot(TrackMeUpApplication application)
-    {
-        var field = typeof(TrackMeUpApplication).GetField(
-            "_recentSystemSnapshot",
-            BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("Recent system snapshot field was not found.");
-        field.SetValue(application, new SystemSnapshot(
-            DateTimeOffset.UtcNow,
-            0,
-            null,
-            null,
-            null,
-            0,
-            0,
-            null,
-            new NetworkSnapshotState(0, 0),
-            Array.Empty<DiskSnapshotState>()));
-    }
 
     private static string CreateTemporaryDirectory()
     {

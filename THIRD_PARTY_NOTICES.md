@@ -10,7 +10,7 @@ This file inventories the direct `PackageReference` dependencies declared in
 tracked `.csproj` files, the production dependency closure used to build the
 tracked web report bundle, and distributed world-clock data/media assets.
 
-- NuGet scope: direct dependencies declared in tracked project files as of 2026-08-29. Transitive NuGet packages are not included yet.
+- NuGet scope: direct dependencies declared in tracked project files as of 2026-09-17. Transitive NuGet packages are not included yet.
 - Web scope: all production packages resolved by `TrackMeUp.Reports.Web/package-lock.json`; development-only packages are excluded.
 - Source of truth: repository `*.csproj` files, official NuGet package metadata, the npm lockfile, and installed package license/notice files.
 - Special cases: packages that publish a bundled license file instead of a NuGet SPDX expression are called out explicitly below.
@@ -18,10 +18,11 @@ tracked web report bundle, and distributed world-clock data/media assets.
 
 ## Summary
 
-- Runtime dependencies: 21 unique packages.
+- Runtime dependencies: 24 unique packages, plus the pinned LibreHardwareMonitor source build below.
+- Build-only hardware source generator: Microsoft.Windows.CsWin32 0.3.269 (MIT).
 - Test-only dependencies: 4 unique packages.
 - Web report production dependencies: 29 unique packages.
-- Open-source licenses observed: `MIT`, `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `0BSD`, plus the separately recorded Creative Commons/public-domain asset terms.
+- Open-source licenses observed: `MIT`, `Apache-2.0`, `MPL-2.0`, `LGPL-2.1` (upstream embedded PawnIO modules), `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `0BSD`, plus the separately recorded Creative Commons/public-domain asset terms.
 - Additional Microsoft package terms observed: `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`.
 
 ## Runtime Dependencies
@@ -45,9 +46,40 @@ tracked web report bundle, and distributed world-clock data/media assets.
 | [SkiaSharp.NativeAssets.Win32](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/4.151.0) | [![NuGet](https://img.shields.io/nuget/v/SkiaSharp.NativeAssets.Win32?label=NuGet)](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/4.151.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
 | [Spectre.Console](https://www.nuget.org/packages/Spectre.Console/0.57.2) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console?label=NuGet)](https://www.nuget.org/packages/Spectre.Console/0.57.2) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli |
 | [SQLitePCLRaw.lib.e_sqlite3](https://www.nuget.org/packages/SQLitePCLRaw.lib.e_sqlite3/2.1.12) | [![NuGet](https://img.shields.io/nuget/v/SQLitePCLRaw.lib.e_sqlite3?label=NuGet)](https://www.nuget.org/packages/SQLitePCLRaw.lib.e_sqlite3/2.1.12) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Core |
-| [System.Diagnostics.PerformanceCounter](https://www.nuget.org/packages/System.Diagnostics.PerformanceCounter/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Diagnostics.PerformanceCounter?label=NuGet)](https://www.nuget.org/packages/System.Diagnostics.PerformanceCounter/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
 | [System.Drawing.Common](https://www.nuget.org/packages/System.Drawing.Common/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Drawing.Common?label=NuGet)](https://www.nuget.org/packages/System.Drawing.Common/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
-| [System.Management](https://www.nuget.org/packages/System.Management/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Management?label=NuGet)](https://www.nuget.org/packages/System.Management/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
+| [System.Management](https://www.nuget.org/packages/System.Management/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/System.Management?label=NuGet)](https://www.nuget.org/packages/System.Management/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
+| [DiskInfoToolkit 1.1.2](https://www.nuget.org/packages/DiskInfoToolkit/1.1.2) | NuGet | [MPL-2.0](https://licenses.nuget.org/MPL-2.0) | LibreHardwareMonitor source build |
+| [HidSharp 2.6.4](https://www.nuget.org/packages/HidSharp/2.6.4) | NuGet | Apache-2.0 (package LICENSE.txt) | LibreHardwareMonitor source build |
+| [Mono.Posix.NETStandard 1.0.0](https://www.nuget.org/packages/Mono.Posix.NETStandard/1.0.0) | NuGet | [Package license terms](https://go.microsoft.com/fwlink/?linkid=869050) (legacy licenseUrl, no SPDX expression) | LibreHardwareMonitor source build |
+| [System.IO.FileSystem.AccessControl 5.0.0](https://www.nuget.org/packages/System.IO.FileSystem.AccessControl/5.0.0) | NuGet | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
+| [System.IO.Ports 10.0.3](https://www.nuget.org/packages/System.IO.Ports/10.0.3) | NuGet | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
+
+## Hardware telemetry source and optional driver
+
+The isolated `TrackMeUp.Hardware` helper compiles LibreHardwareMonitor 0.9.6 from
+upstream commit `3d331e3370efb858411f19511373eff65a218701`, under MPL-2.0. The build
+downloads only the pinned SHA-256-verified source archive into the project's
+ignored `obj` directory. It replaces memory discovery with OS usage counters,
+omits RAM SPD sources and RAMSPDToolkit, gates low-level driver access behind
+explicit advanced-mode consent, and tracks fresh sensor assignments. Without
+the driver, AMD CPU load uses LibreHardwareMonitor's own GenericCpu service.
+The exact source changes are in
+`scripts/Restore-LibreHardwareMonitorSource.ps1` and
+`TrackMeUp.Hardware/LibreHardwareMonitor/MemoryGroup.cs`.
+
+The helper distribution includes the upstream MPL license, upstream third-party
+notices (including the LGPL-2.1 notice for embedded PawnIO modules), the changed
+upstream source files and the modification script under `HardwareLicenses`.
+Original source: [pinned LibreHardwareMonitor source](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701).
+The [integration notice](TrackMeUp.Hardware/LibreHardwareMonitor/NOTICE.md) records
+the complete source pin and modifications. First-party collector, IPC and
+application integration code remains MIT-licensed.
+
+The PawnIO kernel driver and its installer are **not distributed or installed**
+by TrackMeUp. Advanced telemetry can use a separately installed
+[official signed PawnIO distribution](https://pawnio.eu/), with explicit Windows
+elevation of the sensor helper. PawnIO is a separate component governed by its
+[own GPL license and IOCTL exception](https://github.com/namazso/PawnIO#license).
 
 ## Test-Only Dependencies
 

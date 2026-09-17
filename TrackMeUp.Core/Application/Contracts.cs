@@ -154,7 +154,8 @@ public sealed record ScreenshotGalleryItem(
     int? CpuUsagePercent = null,
     int? GpuUsagePercent = null,
     InstallationProfile? Installation = null,
-    bool HasRemovableAnalysisData = false);
+    bool HasRemovableAnalysisData = false,
+    SystemSnapshot? HardwareSnapshot = null);
 
 /// <summary>Contains telemetry averaged between the previous retained screenshot and the current capture.</summary>
 public sealed record ScreenshotIntervalTelemetry(
@@ -735,6 +736,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Captures a current system snapshot.</summary>
     Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken);
 
+    /// <summary>Explicitly enables the optional elevated hardware collector using an already installed PawnIO driver.</summary>
+    Task<OperationResult<SystemSnapshot>> EnableAdvancedHardwareTelemetryAsync(CancellationToken cancellationToken);
+
     /// <summary>Captures screenshots after privacy checks.</summary>
     Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken);
 
@@ -923,6 +927,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Restores one window placement using the current monitor topology.</summary>
     Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);
+
+    /// <summary>Reveals only the supplied already-open UI peers while the main window retains foreground focus.</summary>
+    Task<OperationResult<int>> RevealOpenWindowsAsync(WindowRevealRequest request, CancellationToken cancellationToken);
 
     /// <summary>Persists one window placement read from its native window handle.</summary>
     Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);

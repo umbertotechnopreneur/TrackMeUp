@@ -14,6 +14,18 @@
     <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
     <BuildType Solution="Release-Unpackaged|*" Project="Release" />
   </Project>
+  <Project Path="TrackMeUp.Hardware/TrackMeUp.Hardware.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="TrackMeUp.Hardware/LibreHardwareMonitor/LibreHardwareMonitor.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
   <Project Path="TrackMeUp.Cli/TrackMeUp.Cli.csproj">
     <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
     <BuildType Solution="Release-Unpackaged|*" Project="Release" />

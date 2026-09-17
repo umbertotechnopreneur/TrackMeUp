@@ -6,6 +6,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using TrackMeUp.Application;
 using TrackMeUp.Ocr;
 using TrackMeUp.Services;
@@ -18,8 +19,143 @@ public sealed class SnapshotAnalysisFlowTests
 {
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
 
+    /// <summary>Reading and retention preferences are independent and never remove older capture evidence.</summary>
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task CaptureScreenshot_HonorsSensorReadingAndSavingPreferences(bool enabled, bool save)
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(directory);
+            store.SaveSettings(store.LoadSettings() with
+            {
+                ScreenshotsEnabled = true,
+                ScreenshotDirectory = directory,
+                HardwareSensorsEnabled = enabled,
+                HardwareSaveSnapshots = save
+            });
+            var olderId = Guid.NewGuid().ToString("N");
+            var olderTime = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var olderSnapshot = HardwareTestData.Snapshot(olderTime);
+            store.UpsertScreenshotIntervalTelemetry(olderId,
+                [Path.Combine(directory, $"{olderId}_1.0.0_manual_monitor-1.webp")],
+                new ScreenshotIntervalTelemetry(olderTime.AddMinutes(-1), olderTime, 25, 15), olderSnapshot);
+            var capture = new RecordingCaptureService(directory);
+            var hardware = new FakeHardwareTelemetryService();
+            await using var application = CreateApplication(store, capture,
+                new RecordingAnalysisService(store.LoadSettings().InstallationId), hardwareTelemetry: hardware);
+
+            var result = await application.CaptureScreenshotAsync(
+                new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual), CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(enabled ? 1 : 0, hardware.CaptureCount);
+            Assert.Equal(enabled && save, store.LoadCaptureHardwareSnapshot(capture.Result.CaptureId) is not null);
+            Assert.Equal(olderTime, store.LoadCaptureHardwareSnapshot(olderId)!.Timestamp);
+            Assert.Equal(enabled ? "ready" : "disabled", result.Value!.HardwareSnapshot!.Status);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    /// <summary>Saved advanced preference never causes automatic elevation; changes reach the existing service immediately.</summary>
     [Fact]
-    public async Task CaptureScreenshot_AnalyzesTheSameSnapshot_WhenOpenAiIsEnabled()
+    public async Task SensorSettings_ApplyLiveWithoutImplicitAdvancedActivation()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(directory);
+            store.SaveSettings(store.LoadSettings() with { HardwareUseAdvancedSensors = true, HardwareSamplingProfile = "slow" });
+            var hardware = new FakeHardwareTelemetryService();
+            await using var application = CreateApplication(store, new RecordingCaptureService(directory),
+                new RecordingAnalysisService(store.LoadSettings().InstallationId), hardwareTelemetry: hardware);
+            Assert.Equal("slow", hardware.Configuration.SamplingProfile);
+            Assert.True(hardware.Configuration.UseAdvancedSensors);
+            Assert.False(hardware.AdvancedEnabled);
+
+            var changed = await application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["sensors.sampling_profile"] = "fastest",
+                ["sensors.enabled"] = "false",
+                ["sensors.save_snapshots"] = "false"
+            }), CancellationToken.None);
+
+            Assert.True(changed.Succeeded);
+            Assert.Equal("fastest", hardware.Configuration.SamplingProfile);
+            Assert.False(hardware.Configuration.Enabled);
+            Assert.False(store.LoadSettings().HardwareSaveSnapshots);
+            Assert.True(store.LoadSettings().HardwareUseAdvancedSensors);
+            var disabledActivation = await application.EnableAdvancedHardwareTelemetryAsync(CancellationToken.None);
+            Assert.False(disabledActivation.Succeeded);
+            Assert.False(hardware.AdvancedEnabled);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    /// <summary>A post-commit index failure cannot restore sensor collection against the saved and published preference.</summary>
+    [Fact]
+    public async Task SensorSettings_PostCommitFailureKeepsHardwareAlignedWithPublishedPreferences()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(directory);
+            var hardware = new FakeHardwareTelemetryService();
+            await using var application = CreateApplication(store, new RecordingCaptureService(directory),
+                new RecordingAnalysisService(store.LoadSettings().InstallationId), hardwareTelemetry: hardware);
+            using (var connection = new SqliteConnection($"Data Source={store.ActivityDatabasePath};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TRIGGER fail_settings_search_marker BEFORE INSERT ON search_change_log
+                    WHEN NEW.entity_id = 'settings-search-projection'
+                    BEGIN SELECT RAISE(ABORT, 'test settings search marker failure'); END;
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            await Assert.ThrowsAsync<SqliteException>(() => application.PatchSettingsAsync(
+                new SettingsPatch(new Dictionary<string, string?>
+                {
+                    ["sensors.enabled"] = "false",
+                    ["sensors.sampling_profile"] = "fast",
+                    ["search.synonyms"] = "false"
+                }), CancellationToken.None));
+
+            var persisted = store.LoadSettings();
+            var published = Assert.IsType<AppSettings>((await application.GetSettingsAsync(CancellationToken.None)).Value);
+            Assert.False(persisted.HardwareSensorsEnabled);
+            Assert.False(published.HardwareSensorsEnabled);
+            Assert.False(persisted.SearchSynonymsEnabled);
+            Assert.False(published.SearchSynonymsEnabled);
+            Assert.Equal("fast", persisted.HardwareSamplingProfile);
+            Assert.Equal("fast", published.HardwareSamplingProfile);
+            Assert.Equal(persisted.HardwareSensorsEnabled, hardware.Configuration.Enabled);
+            Assert.Equal(persisted.HardwareSamplingProfile, hardware.Configuration.SamplingProfile);
+
+            var retry = await application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["sensors.enabled"] = "false"
+            }), CancellationToken.None);
+            Assert.True(retry.Succeeded);
+            Assert.False(hardware.Configuration.Enabled);
+            var snapshot = await application.CaptureSystemSnapshotAsync(CancellationToken.None);
+            Assert.True(snapshot.Succeeded);
+            Assert.Equal("disabled", snapshot.Value!.Status);
+            Assert.Equal(0, hardware.CaptureCount);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CaptureScreenshot_AnalyzesTheSameSnapshot_WhenOpenAiIsEnabled(bool saveSensorSnapshot)
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
@@ -33,12 +169,14 @@ public sealed class SnapshotAnalysisFlowTests
                 ScreenshotsEnabled = true,
                 OpenAiEnabled = true,
                 AiApiKeyName = TestApiKeyVariable,
+                HardwareSaveSnapshots = saveSensorSnapshot,
                 ScreenshotDirectory = dataDirectory
             });
 
             var capture = new RecordingCaptureService(dataDirectory);
             var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
-            await using var application = CreateApplication(store, capture, analysis);
+            var hardware = new FakeHardwareTelemetryService();
+            await using var application = CreateApplication(store, capture, analysis, hardwareTelemetry: hardware);
 
             var result = await application.CaptureScreenshotAsync(
                 new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual),
@@ -48,7 +186,14 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.NotNull(result.Value);
             Assert.Equal(1, capture.CallCount);
             Assert.Equal(1, analysis.CallCount);
-            Assert.Same(capture.Result, analysis.Capture);
+            Assert.Equal(capture.Result.CaptureId, analysis.Capture?.CaptureId);
+            Assert.Same(result.Value.HardwareSnapshot, analysis.Capture?.HardwareSnapshot);
+            Assert.Equal(1, hardware.CaptureCount);
+            var savedSnapshot = store.LoadCaptureHardwareSnapshot(capture.Result.CaptureId);
+            if (saveSensorSnapshot)
+                Assert.Equal(result.Value.HardwareSnapshot?.Timestamp, savedSnapshot?.Timestamp);
+            else
+                Assert.Null(savedSnapshot);
             Assert.Equal("snapshot.manual", analysis.Origin);
             Assert.True(analysis.KeepCapture);
         }
@@ -59,8 +204,10 @@ public sealed class SnapshotAnalysisFlowTests
         }
     }
 
-    [Fact]
-    public async Task DeferredCapture_AnalyzesTheSameSnapshotOnlyAfterExplicitRequest_WhenOpenAiIsEnabled()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DeferredCapture_AnalyzesTheSameSnapshotOnlyAfterExplicitRequest_WhenOpenAiIsEnabled(bool saveSensorSnapshot)
     {
         var dataDirectory = CreateTemporaryDirectory();
         var previousApiKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
@@ -74,12 +221,14 @@ public sealed class SnapshotAnalysisFlowTests
                 ScreenshotsEnabled = true,
                 OpenAiEnabled = true,
                 AiApiKeyName = TestApiKeyVariable,
+                HardwareSaveSnapshots = saveSensorSnapshot,
                 ScreenshotDirectory = dataDirectory
             });
 
             var capture = new RecordingCaptureService(dataDirectory);
             var analysis = new RecordingAnalysisService(store.LoadSettings().InstallationId);
-            await using var application = CreateApplication(store, capture, analysis);
+            var hardware = new FakeHardwareTelemetryService();
+            await using var application = CreateApplication(store, capture, analysis, hardwareTelemetry: hardware);
 
             var captureResult = await application.CaptureScreenshotAsync(
                 new CaptureScreenshotRequest("all-screens", Keep: true, ScreenshotCaptureOrigins.Manual, DeferAiAnalysis: true),
@@ -88,6 +237,7 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.True(captureResult.Succeeded);
             Assert.Equal(1, capture.CallCount);
             Assert.Equal(0, analysis.CallCount);
+            hardware.Snapshot = HardwareTestData.Snapshot(DateTimeOffset.UtcNow, cpu: 99, gpu: 99);
 
             var analysisResult = await application.AnalyzeCapturedScreenshotAsync(
                 new AnalyzeCapturedScreenshotRequest(capture.Result, KeepCapture: true),
@@ -95,7 +245,18 @@ public sealed class SnapshotAnalysisFlowTests
 
             Assert.True(analysisResult.Succeeded);
             Assert.Equal(1, analysis.CallCount);
-            Assert.Same(capture.Result, analysis.Capture);
+            Assert.Equal(capture.Result.CaptureId, analysis.Capture?.CaptureId);
+            if (saveSensorSnapshot)
+            {
+                Assert.Equal(captureResult.Value?.HardwareSnapshot?.Timestamp, analysis.Capture?.HardwareSnapshot?.Timestamp);
+                Assert.Equal(25, HardwareUsageProjection.Read(analysis.Capture!.HardwareSnapshot!).Cpu);
+            }
+            else
+            {
+                Assert.Null(analysis.Capture?.HardwareSnapshot);
+                Assert.Null(store.LoadCaptureHardwareSnapshot(capture.Result.CaptureId));
+            }
+            Assert.Equal(1, hardware.CaptureCount);
             Assert.Equal("snapshot.manual", analysis.Origin);
             Assert.True(analysis.KeepCapture);
         }
@@ -210,7 +371,7 @@ public sealed class SnapshotAnalysisFlowTests
             Assert.True(result.Succeeded);
             Assert.Equal("analyzed", result.Value?.Summary);
             Assert.Equal(1, analysis.CallCount);
-            Assert.Same(capture.Result, analysis.Capture);
+            Assert.Equal(capture.Result.CaptureId, analysis.Capture?.CaptureId);
         }
         finally
         {
@@ -250,7 +411,8 @@ public sealed class SnapshotAnalysisFlowTests
 
             Assert.True(result.Succeeded);
             Assert.Equal(1, analysis.CallCount);
-            Assert.Same(capture.Result, analysis.Capture);
+            Assert.Equal(capture.Result.CaptureId, analysis.Capture?.CaptureId);
+            Assert.NotNull(analysis.Capture?.HardwareSnapshot);
         }
         finally
         {
@@ -812,7 +974,8 @@ public sealed class SnapshotAnalysisFlowTests
         IAiAnalysisService analysis,
         ApplicationLogService? applicationLogs = null,
         IAiOcrRefinementService? ocrRefinement = null,
-        IScreenshotOcrService? screenshotOcr = null)
+        IScreenshotOcrService? screenshotOcr = null,
+        IHardwareTelemetryService? hardwareTelemetry = null)
     {
         var utilities = new UtilityService();
         return new TrackMeUpApplication(
@@ -820,7 +983,7 @@ public sealed class SnapshotAnalysisFlowTests
             utilities,
             new TrackingDomainService(store),
             capture,
-            new SystemSnapshotService(),
+            hardwareTelemetry ?? new FakeHardwareTelemetryService(),
             analysis,
             new StartupService(),
             new BuildInformationService(),

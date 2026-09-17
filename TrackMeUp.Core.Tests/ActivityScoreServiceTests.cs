@@ -122,9 +122,30 @@ public sealed class ActivityScoreServiceTests
         Assert.Equal(50, telemetry.GpuUsagePercent);
     }
 
+    /// <summary>Repeated consumers of one cached sensor instant cannot give it extra averaging weight.</summary>
+    [Fact]
+    public void BuildScreenshotIntervalTelemetry_CountsCachedTimestampOnceAndKeepsLatestMinute()
+    {
+        var service = new ActivityScoreService();
+        var intervalStart = new DateTimeOffset(2026, 8, 9, 10, 0, 0, TimeSpan.Zero);
+        var cached = Snapshot(intervalStart.AddSeconds(10), cpu: 20, gpu: 40);
+        service.RecordSystemSnapshot(cached);
+        service.RecordSystemSnapshot(cached);
+        service.RecordSystemSnapshot(cached with { Timestamp = cached.Timestamp.ToOffset(TimeSpan.FromHours(7)) });
+        service.RecordSystemSnapshot(Snapshot(intervalStart.AddSeconds(12), cpu: 80, gpu: 60));
+
+        var telemetry = service.BuildScreenshotIntervalTelemetry(intervalStart, intervalStart.AddSeconds(15));
+        var minute = service.GetState(5, intervalStart).Minutes[^1];
+
+        Assert.Equal(50, telemetry.CpuUsagePercent);
+        Assert.Equal(50, telemetry.GpuUsagePercent);
+        Assert.Equal(80, minute.CpuUsagePercent);
+        Assert.Equal(60, minute.GpuUsagePercent);
+    }
+
     private static ActivitySample Sample(DateTimeOffset timestamp, long keys, long clicks) => new(
         timestamp, 5, "active", "test", "Test", "Test", "Test", "installation", keys, clicks);
 
-    private static SystemSnapshot Snapshot(DateTimeOffset timestamp, int cpu, int gpu) => new(
-        timestamp, cpu, null, null, gpu, 0, 0, null, new NetworkSnapshotState(0, 0), []);
+    private static SystemSnapshot Snapshot(DateTimeOffset timestamp, int cpu, int gpu) =>
+        HardwareTestData.Snapshot(timestamp, cpu, gpu);
 }

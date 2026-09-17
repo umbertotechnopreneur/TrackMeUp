@@ -44,6 +44,8 @@ internal enum RuntimeOperation
     SearchRebuildV1,
     [RuntimeOperationWireName("system.snapshot")]
     SystemSnapshot,
+    [RuntimeOperationWireName("hardware.advanced.enable.v1")]
+    HardwareAdvancedEnableV1,
     [RuntimeOperationWireName("screenshot.capture")]
     ScreenshotCapture,
     [RuntimeOperationWireName("screenshot.manual.capture")]
@@ -162,6 +164,8 @@ internal enum RuntimeOperation
     SettingsPatch,
     [RuntimeOperationWireName("window.state.restore")]
     WindowStateRestore,
+    [RuntimeOperationWireName("window.reveal_open.v1")]
+    WindowRevealOpenV1,
     [RuntimeOperationWireName("window.state.save")]
     WindowStateSave,
     [RuntimeOperationWireName("window.open_state.set")]

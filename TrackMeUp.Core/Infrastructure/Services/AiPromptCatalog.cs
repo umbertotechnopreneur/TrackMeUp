@@ -158,18 +158,47 @@ internal static partial class AiPromptCatalog
             return "not available";
         }
 
-        return string.Format(CultureInfo.InvariantCulture,
-            "CPU {0}% (temperature {1}); GPU {2} (temperature {3}); RAM {4}/{5} MB; network upload={6} B/s, download={7} B/s; disks=[{8}]; device_context=[{9}]",
-            snapshot.CpuUsagePercent,
-            FormatTemperature(snapshot.CpuTemperatureCelsius),
-            FormatPercent(snapshot.GpuUsagePercent),
-            FormatTemperature(snapshot.GpuTemperatureCelsius),
-            snapshot.MemoryUsedMb,
-            snapshot.MemoryTotalMb,
-            snapshot.Network.UploadBytesPerSecond,
-            snapshot.Network.DownloadBytesPerSecond,
-            string.Join(" | ", snapshot.Disks.Select(disk => $"{Sanitize(disk.Drive)} {disk.FreeBytes}/{disk.TotalBytes} bytes free/total")),
-            BuildDeviceContextSummary(snapshot.DeviceContext));
+        const int maximumHardwareCharacters = 6_000;
+        const int maximumDevices = 12;
+        const int maximumSensorsPerDevice = 8;
+        var devices = snapshot.Devices
+            .OrderBy(device => device.Kind switch { "Cpu" => 0, "Battery" => 1, "Memory" => 3, "Storage" => 4, "Network" => 5, _ => 2 })
+            .ThenBy(device => device.Id, StringComparer.Ordinal)
+            .Take(maximumDevices);
+        var lines = new List<string>
+        {
+            $"collection_completed={snapshot.Timestamp:O}; status={Sanitize(snapshot.Status)}; PawnIO={Sanitize(snapshot.DriverStatus)}; error={Sanitize(snapshot.ErrorCode, "none")}",
+            "Historical hardware context captured with this image. Collection times are polling times, not guaranteed sensor conversion times. Missing measurements are unavailable. W is component power; battery mWh is capacity, not whole-PC consumption. Do not infer productivity from heat or power."
+        };
+        foreach (var device in devices)
+        {
+            var selectedSensors = device.Sensors
+                .OrderBy(sensor => sensor.Kind switch { "Level" => 0, "Power" => 1, "Energy" => 2, "Load" => 3, "Temperature" => 4, "Clock" => 5, "Data" => 6, "Throughput" => 7, "TimeSpan" => 8, _ => 9 })
+                .ThenBy(sensor => sensor.Id, StringComparer.Ordinal)
+                .GroupBy(sensor => sensor.Kind, StringComparer.Ordinal)
+                .SelectMany(group => group.Take(2))
+                .Take(maximumSensorsPerDevice)
+                .ToArray();
+            var values = selectedSensors.Select(sensor =>
+                $"{BoundHardwareText(sensor.Name)} ({BoundHardwareText(sensor.Kind)})={sensor.Value?.ToString("0.##", CultureInfo.InvariantCulture) ?? "unavailable"} {BoundHardwareText(sensor.Unit)}");
+            lines.Add($"{BoundHardwareText(device.Kind)} {BoundHardwareText(device.Name)} updated={device.SampledAt:O}: {string.Join("; ", values)}; omitted_sensors={device.Sensors.Count - selectedSensors.Length}");
+        }
+        if (snapshot.Devices.Count > maximumDevices)
+        {
+            lines.Add($"omitted_devices={snapshot.Devices.Count - maximumDevices}");
+        }
+        var hardware = string.Join(Environment.NewLine, lines);
+        if (hardware.Length > maximumHardwareCharacters)
+        {
+            hardware = string.Concat(hardware.AsSpan(0, maximumHardwareCharacters), "… [hardware summary truncated]");
+        }
+        return $"{hardware}{Environment.NewLine}device_context=[{BuildDeviceContextSummary(snapshot.DeviceContext)}]";
+    }
+
+    private static string BoundHardwareText(string value)
+    {
+        var text = Sanitize(value);
+        return text.Length <= 96 ? text : string.Concat(text.AsSpan(0, 96), "…");
     }
 
     private static string BuildDeviceContextSummary(DeviceContextSnapshot? context)
@@ -208,14 +237,6 @@ internal static partial class AiPromptCatalog
             .Replace("{{", "{ {", StringComparison.Ordinal)
             .Replace("}}", "} }", StringComparison.Ordinal);
     }
-
-    private static string FormatTemperature(int? value) => value.HasValue
-        ? $"{value.Value.ToString(CultureInfo.InvariantCulture)} C"
-        : "n/a";
-
-    private static string FormatPercent(int? value) => value.HasValue
-        ? $"{value.Value.ToString(CultureInfo.InvariantCulture)}%"
-        : "n/a";
 
     [GeneratedRegex(@"\{\{([A-Z_]+)\}\}", RegexOptions.CultureInvariant)]
     private static partial Regex PlaceholderRegex();

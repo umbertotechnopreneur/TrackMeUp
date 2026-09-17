@@ -137,6 +137,10 @@ public sealed record AppSettings(
     IReadOnlyDictionary<string, bool>? WindowOpenStates = null,
     TrackMeUp.Application.OcrTextWindowSource? OcrTextWindowSource = null,
     bool AutoHideTitleBar = true,
+    bool HardwareSensorsEnabled = true,
+    bool HardwareUseAdvancedSensors = false,
+    bool HardwareSaveSnapshots = true,
+    string HardwareSamplingProfile = "normal",
     bool WorldMapWindowShowInTaskbar = true,
     bool LunarPhaseWindowShowInTaskbar = true);
 
@@ -228,28 +232,6 @@ public sealed record LastSessionState(
     IReadOnlyDictionary<string, string>? Attributes,
     string? ScreenshotPath,
     DateTimeOffset? ScreenshotCapturedAt);
-
-public sealed record DiskSnapshotState(
-    string Drive,
-    string FileSystem,
-    long TotalBytes,
-    long FreeBytes);
-
-public sealed record NetworkSnapshotState(long UploadBytesPerSecond, long DownloadBytesPerSecond);
-
-public sealed record SystemSnapshot(
-    DateTimeOffset Timestamp,
-    int CpuUsagePercent,
-    int? CpuTemperatureCelsius,
-    int? GpuTemperatureCelsius,
-    int? GpuUsagePercent,
-    long MemoryUsedMb,
-    long MemoryTotalMb,
-    int? GpuMemoryUsedMb,
-    NetworkSnapshotState Network,
-    IReadOnlyList<DiskSnapshotState> Disks,
-    DeviceContextSnapshot? DeviceContext = null,
-    string? InformationalSchedule = null);
 
 public sealed record AnalysisContextSnapshot(
     string Application,

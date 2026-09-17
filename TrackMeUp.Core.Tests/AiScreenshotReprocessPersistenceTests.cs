@@ -70,6 +70,7 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 captureId,
                 paths,
                 new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, null, null));
+            store.UpsertCaptureHardwareSnapshot(captureId, new SystemSnapshot(capturedAt, "unavailable", []));
             store.AppendSample(ActivitySampleAt(
                 capturedAt.AddSeconds(-1),
                 durationSeconds: 20,
@@ -89,6 +90,8 @@ public sealed class AiScreenshotReprocessPersistenceTests
                 CancellationToken.None));
 
             Assert.Equal("Friendly editor", candidate.HistoricalContext!.Application);
+            Assert.Equal(capturedAt, candidate.HistoricalContext.Snapshot!.Timestamp);
+            Assert.Equal("unavailable", candidate.HistoricalContext.Snapshot.Status);
             Assert.Equal("secret-editor.exe", candidate.ProcessName);
             Assert.True(TrackingDomainService.IsHistoricalContextPrivate(
                 store.LoadSettings() with { PrivacyProcessNames = "rule-id|secret-editor.exe" },
@@ -442,7 +445,7 @@ public sealed class AiScreenshotReprocessPersistenceTests
 
             var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(directory));
 
-            Assert.Contains("Unsupported activity database schema version 6; expected 9", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("Unsupported activity database schema version 6; expected 10", exception.Message, StringComparison.Ordinal);
             using var check = OpenDatabase(directory);
             using var version = check.CreateCommand();
             version.CommandText = "PRAGMA user_version;";

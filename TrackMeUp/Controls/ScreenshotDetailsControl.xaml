@@ -237,6 +237,38 @@
                 </Grid>
             </StackPanel>
 
+            <StackPanel Spacing="8">
+                <TextBlock Style="{StaticResource ScreenshotDetailSectionTitleStyle}" Tag="Hardware.CaptureTitle" Text="Hardware at capture" />
+                <TextBlock x:Name="HardwareStatusText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
+                <TextBlock x:Name="HardwareCollectedAtText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                <ItemsControl x:Name="HardwareSummaryList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4" Spacing="2">
+                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Text="{Binding Label}" />
+                                <TextBlock Style="{StaticResource ScreenshotDetailValueStyle}" Text="{Binding Value}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Expander Background="Transparent" HorizontalAlignment="Stretch" IsExpanded="False">
+                    <Expander.Header>
+                        <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Hardware.AllSensors" Text="All sensors" />
+                    </Expander.Header>
+                    <StackPanel Spacing="6">
+                        <TextBlock x:Name="HardwareDriverStatusText" FontSize="12" TextWrapping="Wrap" />
+                        <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Tag="Hardware.PowerNote" Text="W measures component power. Battery capacity in mWh is not whole-PC energy use." TextWrapping="Wrap" />
+                        <ItemsControl x:Name="HardwareSensorList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,3" FontSize="12" IsTextSelectionEnabled="True" Text="{Binding}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+
             <Expander
                 x:Name="AnalysisSourcesExpander"
                 Background="Transparent"
@@ -263,11 +295,11 @@
                                 <TextBlock x:Name="MouseClicksValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.CpuUsage" Text="CPU" />
+                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Hardware.CpuInterval" Text="CPU interval avg." />
                                 <TextBlock x:Name="CpuUsageValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Screenshots.GpuUsage" Text="GPU" />
+                                <TextBlock Style="{StaticResource ScreenshotDetailLabelStyle}" Tag="Hardware.GpuInterval" Text="GPU interval avg." />
                                 <TextBlock x:Name="GpuUsageValueText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                             </StackPanel>
                         </Grid>

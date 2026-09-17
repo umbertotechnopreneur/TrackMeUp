@@ -75,8 +75,8 @@ public sealed class AiEnablementGuardTests
                 utilities,
                 new TrackingDomainService(store),
                 new ScreenCaptureService(utilities.GetAppVersion()),
-                new SystemSnapshotService(),
-                new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion()), new SystemSnapshotService()),
+                new FakeHardwareTelemetryService(),
+                new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion())),
                 new StartupService(),
                 new BuildInformationService());
 

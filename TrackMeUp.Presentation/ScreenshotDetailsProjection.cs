@@ -45,7 +45,8 @@ public sealed record ScreenshotDetailsViewState(
     string GpuUsage,
     string? AnalysisTime,
     IReadOnlyList<SafeMarkdownBlock> AiDescription,
-    string? OcrText);
+    string? OcrText,
+    HardwareSnapshotViewState Hardware);
 
 /// <summary>Builds safe screenshot-detail and Markdown projections without presentation-framework dependencies.</summary>
 public static partial class ScreenshotDetailsProjection
@@ -59,12 +60,14 @@ public static partial class ScreenshotDetailsProjection
     /// <param name="localizedCaptureKind">Localized label for the stable capture-kind identifier.</param>
     /// <param name="localizedOrigin">Localized label for the stable capture-origin identifier.</param>
     /// <param name="missingValue">Placeholder rendered for unavailable optional values.</param>
+    /// <param name="translate">Resolves hardware labels in the current UI language.</param>
     public static ScreenshotDetailsViewState Create(
         ScreenshotGalleryItem item,
         CultureInfo culture,
         string localizedCaptureKind,
         string localizedOrigin,
-        string missingValue)
+        string missingValue,
+        Func<string, string> translate)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentNullException.ThrowIfNull(culture);
@@ -100,7 +103,8 @@ public static partial class ScreenshotDetailsProjection
             item.GpuUsagePercent is { } gpu ? (gpu / 100d).ToString("P0", culture) : missingValue,
             item.AiAnalyzedAt?.ToLocalTime().ToString("g", culture),
             ParseMarkdown(item.AiDescriptionMarkdown),
-            ocrText);
+            ocrText,
+            HardwareSnapshotProjection.Create(item.HardwareSnapshot, culture, translate));
     }
 
     /// <summary>

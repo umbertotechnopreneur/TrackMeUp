@@ -544,7 +544,8 @@ public sealed record ScreenshotCaptureResult(
     string CaptureOrigin,
     IReadOnlyList<TrackMeUp.Application.ScreenshotTextSnapshot>? TextSnapshots = null,
     ScreenshotFocusMetadata? FocusMetadata = null,
-    DateTimeOffset? CapturedAt = null)
+    DateTimeOffset? CapturedAt = null,
+    SystemSnapshot? HardwareSnapshot = null)
 {
     /// <summary>
     /// Returns all generated files, used for retention and cleanup.

@@ -91,6 +91,7 @@ public sealed partial class MainWindow : Window
     private IDisposable? _dashboardSubscription;
     private bool _dashboardRefreshReady;
     private bool _dashboardSurfaceClosed;
+    private bool _revealingOpenWindows;
     private bool _allowClose;
     private bool _closeConfirmationInProgress;
     private OptionsControl? _optionsControl;
@@ -217,7 +218,46 @@ public sealed partial class MainWindow : Window
         _lifecycle.InitializationFailed += Lifecycle_InitializationFailed;
         _lifecycle.StartInitialization(cancellationToken => InitializeAsync(options, cancellationToken));
         Closed += MainWindow_Closed;
+        Activated += MainWindow_Activated;
     }
+
+    private async void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == WindowActivationState.Deactivated
+            || _dashboardSurfaceClosed || _revealingOpenWindows)
+        {
+            return;
+        }
+
+        // Snapshot lifecycle-owned handles on this dispatcher. Core owns visibility/focus policy, including IPC races.
+        var mainHandle = WinRT.Interop.WindowNative.GetWindowHandle(this).ToInt64();
+        var peers = WindowPlacementService.GetOpenPeerWindowHandles(mainHandle);
+        if (peers.Count == 0) return;
+        _revealingOpenWindows = true;
+        try
+        {
+            var result = await _application.RevealOpenWindowsAsync(new WindowRevealRequest(mainHandle, peers), _lifecycle.Token);
+            if (!result.Succeeded && !_dashboardSurfaceClosed) ShowWindowRevealFailure();
+        }
+        catch (OperationCanceledException) when (_dashboardSurfaceClosed)
+        {
+            // Closing the main window cancels its pending reveal; no late UI update is required.
+        }
+        catch (Exception)
+        {
+            // Report failures inline, without a modal window or activation retry that would start another reveal.
+            if (!_dashboardSurfaceClosed) ShowWindowRevealFailure();
+        }
+        finally
+        {
+            _revealingOpenWindows = false;
+        }
+    }
+
+    private void ShowWindowRevealFailure() => _dialogs.Notifications.ShowWarning(
+        MainNotificationBanner,
+        T("Operations.Status.Failed.Title"),
+        T("Window.RevealFailed"));
 
     private void ApplyBorderlessPlayerWindow()
     {
@@ -2384,6 +2424,7 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
+        Activated -= MainWindow_Activated;
         _workspaceReady.TrySetCanceled();
         _placement.DpiChanged -= Placement_DpiChanged;
         _dashboardSurfaceClosed = true;

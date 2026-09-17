@@ -683,7 +683,7 @@ public sealed class ScreenshotDeletionTests
             new UtilityService(),
             new TrackingDomainService(store),
             new UnexpectedCaptureService(),
-            new SystemSnapshotService(),
+            new FakeHardwareTelemetryService(),
             analysis ?? new UnexpectedAnalysisService(),
             new StartupService(),
             new BuildInformationService());

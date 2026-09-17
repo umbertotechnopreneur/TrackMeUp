@@ -14,7 +14,7 @@ internal sealed class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
     /// <summary>Defines the current persisted SQLite contract, shared with portable archive validation.</summary>
-    internal const int SchemaVersion = 9;
+    internal const int SchemaVersion = 10;
     private const int PreviousSchemaVersion = 8;
     private const int LegacySchemaVersion = 7;
     private const long FixedEstimatedRowBytes = 96;
@@ -122,6 +122,13 @@ internal sealed class SqliteActivityStore
         new("cpu_usage_percent", "INTEGER", false, 0),
         new("gpu_usage_percent", "INTEGER", false, 0),
         new("updated_utc_ticks", "INTEGER", true, 0)
+    ];
+
+    private static readonly SchemaColumn[] ExpectedCaptureHardwareSnapshotColumns =
+    [
+        new("capture_id", "TEXT", true, 1),
+        new("sampled_utc_ticks", "INTEGER", true, 0),
+        new("snapshot_json", "TEXT", true, 0)
     ];
 
     private static readonly SchemaColumn[] ExpectedAiAnalysisArtifactColumns =
@@ -292,7 +299,7 @@ internal sealed class SqliteActivityStore
         "store_metadata"
     ];
 
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV9 =
     [
         .. ExpectedApplicationSchemaObjectsV8,
         "search_change_log",
@@ -319,9 +326,20 @@ internal sealed class SqliteActivityStore
         "tr_search_profile_delete"
     ];
 
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
+    [
+        .. ExpectedApplicationSchemaObjectsV9,
+        "capture_hardware_snapshots",
+        "ix_capture_hardware_snapshots_sampled"
+    ];
+
     private readonly string _databasePath;
     private readonly SqliteConnectionFactory _connections;
     private readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions HardwareSnapshotJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+    };
 
     /// <summary>Initializes and validates the only supported activity-history schema.</summary>
     internal SqliteActivityStore(string databasePath)
@@ -572,14 +590,26 @@ internal sealed class SqliteActivityStore
         DateTimeOffset capturedAt,
         string origin)
     {
+        using var connection = OpenConnection();
+        RegisterScreenshotCapture(connection, null, captureId, installationId, capturedAt, origin);
+    }
+
+    private static void RegisterScreenshotCapture(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        string captureId,
+        string installationId,
+        DateTimeOffset capturedAt,
+        string origin)
+    {
         var capture = new ScreenshotCaptureRegistration(captureId, capturedAt, origin).Validate();
         if (!Guid.TryParseExact(installationId, "N", out var parsedInstallation))
         {
             throw new InvalidDataException("Screenshot capture provenance contains an invalid identifier.");
         }
 
-        using var connection = OpenConnection();
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO screenshot_captures (capture_id, installation_id, captured_utc_ticks, origin)
             VALUES ($captureId, $installationId, $capturedAt, $origin)
@@ -967,8 +997,141 @@ internal sealed class SqliteActivityStore
         command.ExecuteNonQuery();
     }
 
-    /// <summary>Upserts CPU/GPU averages for one retained screenshot artifact.</summary>
-    internal void UpsertScreenshotIntervalTelemetry(
+    /// <summary>Stores one immutable capture-time hardware snapshot shared by every display artifact.</summary>
+    internal void UpsertCaptureHardwareSnapshot(string captureId, SystemSnapshot snapshot)
+    {
+        using var connection = OpenConnection();
+        UpsertCaptureHardwareSnapshot(connection, null, captureId, snapshot);
+    }
+
+    private void UpsertCaptureHardwareSnapshot(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        string captureId,
+        SystemSnapshot snapshot)
+    {
+        if (!Guid.TryParseExact(captureId, "N", out _))
+        {
+            throw new ArgumentException("Hardware telemetry requires a valid capture identifier.", nameof(captureId));
+        }
+
+        SystemSnapshotValidator.Validate(snapshot);
+        var payload = JsonSerializer.Serialize(snapshot, _json);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        // A foreign key requires registered capture provenance. A repeat must be byte-identical;
+        // replacing capture-time evidence with a later hardware reading fails explicitly.
+        command.CommandText = """
+            INSERT INTO capture_hardware_snapshots (capture_id, sampled_utc_ticks, snapshot_json)
+            VALUES ($captureId, $sampledAt, $snapshot)
+            ON CONFLICT(capture_id) DO NOTHING;
+            """;
+        command.Parameters.AddWithValue("$captureId", captureId);
+        command.Parameters.AddWithValue("$sampledAt", snapshot.Timestamp.UtcDateTime.Ticks);
+        command.Parameters.AddWithValue("$snapshot", payload);
+        if (command.ExecuteNonQuery() == 0)
+        {
+            command.CommandText = """
+                SELECT 1 FROM capture_hardware_snapshots
+                WHERE capture_id = $captureId AND sampled_utc_ticks = $sampledAt AND snapshot_json = $snapshot;
+                """;
+            if (command.ExecuteScalar() is null)
+            {
+                throw new InvalidDataException("Hardware telemetry already exists for this capture with a different payload.");
+            }
+        }
+    }
+
+    /// <summary>Loads capture-time hardware evidence; older captures legitimately have no reading.</summary>
+    internal SystemSnapshot? LoadCaptureHardwareSnapshot(string captureId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(captureId);
+        return LoadCaptureHardwareSnapshots([captureId], CancellationToken.None).GetValueOrDefault(captureId);
+    }
+
+    /// <summary>Loads bounded batches of hardware snapshots for gallery and historical analysis.</summary>
+    internal IReadOnlyDictionary<string, SystemSnapshot> LoadCaptureHardwareSnapshots(
+        IEnumerable<string> captureIds,
+        CancellationToken cancellationToken)
+    {
+        var identities = captureIds.Distinct(StringComparer.Ordinal).ToArray();
+        if (identities.Any(identity => !Guid.TryParseExact(identity, "N", out _)))
+        {
+            throw new ArgumentException("Hardware telemetry requires valid capture identifiers.", nameof(captureIds));
+        }
+
+        var snapshots = new Dictionary<string, SystemSnapshot>(StringComparer.Ordinal);
+        using var connection = OpenConnection();
+        foreach (var batch in identities.Chunk(400))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var command = connection.CreateCommand();
+            var parameters = AddIdentityParameters(command, batch);
+            command.CommandText = $"""
+                SELECT capture_id, sampled_utc_ticks, snapshot_json FROM capture_hardware_snapshots
+                WHERE capture_id IN ({parameters});
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                snapshots.Add(reader.GetString(0), ReadCaptureHardwareSnapshot(reader.GetInt64(1), reader.GetString(2)));
+            }
+        }
+
+        return snapshots;
+    }
+
+    /// <summary>Validates persisted or imported capture-time hardware JSON before exposing it.</summary>
+    internal static SystemSnapshot ReadCaptureHardwareSnapshot(long sampledUtcTicks, string payload)
+    {
+        var snapshot = JsonSerializer.Deserialize<SystemSnapshot>(payload, HardwareSnapshotJsonOptions)
+            ?? throw new InvalidDataException("Persisted capture hardware snapshot is invalid.");
+        SystemSnapshotValidator.Validate(snapshot);
+        if (snapshot.Timestamp.UtcDateTime.Ticks != sampledUtcTicks)
+        {
+            throw new InvalidDataException("Persisted hardware snapshot timestamp does not match its metadata.");
+        }
+
+        return snapshot;
+    }
+
+    /// <summary>Commits provenance, all monitor intervals and optional hardware evidence atomically.</summary>
+    internal void UpsertScreenshotCaptureTelemetry(
+        string captureId,
+        string installationId,
+        string origin,
+        IReadOnlyList<string> artifactIdentities,
+        ScreenshotIntervalTelemetry telemetry,
+        SystemSnapshot? hardwareSnapshot)
+    {
+        ArgumentNullException.ThrowIfNull(telemetry);
+        if (artifactIdentities.Count == 0)
+        {
+            throw new ArgumentException("Capture telemetry requires retained artifact identities.", nameof(artifactIdentities));
+        }
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        // A failure in any sensor or monitor write rolls back the capture's entire metadata
+        // commit. The caller reports storage failure and owns any required image cleanup.
+        RegisterScreenshotCapture(connection, transaction, captureId, installationId, telemetry.CapturedAt, origin);
+        foreach (var identity in artifactIdentities)
+        {
+            UpsertScreenshotIntervalTelemetry(connection, transaction, identity, captureId, telemetry);
+        }
+
+        if (hardwareSnapshot is not null)
+        {
+            UpsertCaptureHardwareSnapshot(connection, transaction, captureId, hardwareSnapshot);
+        }
+
+        transaction.Commit();
+    }
+
+    private static void UpsertScreenshotIntervalTelemetry(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
         string artifactIdentity,
         string captureId,
         ScreenshotIntervalTelemetry telemetry)
@@ -986,8 +1149,8 @@ internal sealed class SqliteActivityStore
             throw new ArgumentException("Screenshot interval telemetry is invalid.", nameof(telemetry));
         }
 
-        using var connection = OpenConnection();
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO screenshot_interval_telemetry (
                 artifact_identity, capture_id, interval_started_utc_ticks, captured_utc_ticks,
@@ -1651,10 +1814,28 @@ internal sealed class SqliteActivityStore
         }
 
         using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM screenshot_interval_telemetry WHERE artifact_identity = $identity;";
+        command.Transaction = transaction;
+        command.CommandText = "SELECT capture_id FROM screenshot_interval_telemetry WHERE artifact_identity = $identity;";
         command.Parameters.AddWithValue("$identity", artifactIdentity);
-        return command.ExecuteNonQuery();
+        var captureId = command.ExecuteScalar() as string;
+        command.CommandText = "DELETE FROM screenshot_interval_telemetry WHERE artifact_identity = $identity;";
+        var removed = command.ExecuteNonQuery();
+        if (captureId is not null)
+        {
+            // Sibling displays still own the shared snapshot. The last artifact's telemetry
+            // removal also removes its hardware evidence, including analysis-only cleanup.
+            command.CommandText = """
+                DELETE FROM capture_hardware_snapshots WHERE capture_id = $captureId
+                AND NOT EXISTS (SELECT 1 FROM screenshot_interval_telemetry WHERE capture_id = $captureId);
+                """;
+            command.Parameters.AddWithValue("$captureId", captureId);
+            removed += command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        return removed;
     }
 
     /// <summary>Loads the persisted text snapshot for one screenshot artifact identity.</summary>
@@ -2728,7 +2909,11 @@ internal sealed class SqliteActivityStore
                  FROM ai_analysis_results WHERE timestamp_utc_ticks < $cutoff),
                 (SELECT COUNT(*) FROM screenshot_text_snapshots WHERE extracted_utc_ticks < $cutoff),
                 (SELECT COALESCE(SUM(length(snapshot_json) + length(source_path)), 0) FROM screenshot_text_snapshots WHERE extracted_utc_ticks < $cutoff),
-                (SELECT COUNT(*) FROM screenshot_interval_telemetry WHERE captured_utc_ticks < $cutoff);
+                (SELECT COUNT(*) FROM screenshot_interval_telemetry WHERE captured_utc_ticks < $cutoff),
+                (SELECT COUNT(*) FROM capture_hardware_snapshots WHERE capture_id IN
+                    (SELECT capture_id FROM screenshot_captures WHERE captured_utc_ticks < $cutoff)),
+                (SELECT COALESCE(SUM(length(snapshot_json)), 0) FROM capture_hardware_snapshots WHERE capture_id IN
+                    (SELECT capture_id FROM screenshot_captures WHERE captured_utc_ticks < $cutoff));
             """;
         command.Parameters.AddWithValue("$cutoff", cutoffUtc.UtcDateTime.Ticks);
         using var reader = command.ExecuteReader();
@@ -2738,8 +2923,8 @@ internal sealed class SqliteActivityStore
         }
 
         return (
-            checked(reader.GetInt32(0) + reader.GetInt32(2) + reader.GetInt32(3) + reader.GetInt32(6) + reader.GetInt32(8)),
-            checked(reader.GetInt64(1) + reader.GetInt64(4) + reader.GetInt64(5) + reader.GetInt64(7)));
+            checked(reader.GetInt32(0) + reader.GetInt32(2) + reader.GetInt32(3) + reader.GetInt32(6) + reader.GetInt32(8) + reader.GetInt32(9)),
+            checked(reader.GetInt64(1) + reader.GetInt64(4) + reader.GetInt64(5) + reader.GetInt64(7) + reader.GetInt64(10)));
     }
 
     /// <summary>Deletes expired activity and AI rows, including their derived full-text search documents.</summary>
@@ -2767,8 +2952,12 @@ internal sealed class SqliteActivityStore
         var removedActivity = ExecuteDelete(connection, transaction, "DELETE FROM activity_samples WHERE timestamp_utc_ticks < $cutoff;", cutoff);
         var removedText = ExecuteDelete(connection, transaction, "DELETE FROM screenshot_text_snapshots WHERE extracted_utc_ticks < $cutoff;", cutoff);
         var removedTelemetry = ExecuteDelete(connection, transaction, "DELETE FROM screenshot_interval_telemetry WHERE captured_utc_ticks < $cutoff;", cutoff);
+        var removedHardware = ExecuteDelete(connection, transaction, """
+            DELETE FROM capture_hardware_snapshots WHERE capture_id IN
+                (SELECT capture_id FROM screenshot_captures WHERE captured_utc_ticks < $cutoff);
+            """, cutoff);
         transaction.Commit();
-        return checked(removedActivity + removedRequests + removedResults + removedText + removedTelemetry);
+        return checked(removedActivity + removedRequests + removedResults + removedText + removedTelemetry + removedHardware);
     }
 
     private void InitializeSchema(bool databaseExisted)
@@ -2820,6 +3009,13 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
+            if (version == 9)
+            {
+                ValidateSchemaV9(connection);
+                MigrateSchemaV9ToV10(connection);
+                version = ReadSchemaVersion(connection);
+            }
+
             if (version != SchemaVersion)
             {
                 throw new InvalidOperationException($"Unsupported activity database schema version {version}; expected {SchemaVersion}.");
@@ -2854,6 +3050,7 @@ internal sealed class SqliteActivityStore
         command.CommandText = ActivitySchemaSql + AiSchemaSql + ScreenshotTextSchemaSql + AiPricingSchemaSql
             + ScreenshotIntervalTelemetrySchemaSql + AiReprocessingSchemaSql + InstallationArchiveSchemaSql
             + SearchRevisionSchemaSql
+            + CaptureHardwareSnapshotSchemaSql
             + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
@@ -2919,7 +3116,19 @@ internal sealed class SqliteActivityStore
         command.CommandText = SearchRevisionSchemaSql + """
             INSERT INTO search_change_log (kind, entity_id, operation)
             VALUES ('rebuild', 'schema-v9', 'upsert');
-            """ + $"PRAGMA user_version = {SchemaVersion};";
+            """ + "PRAGMA user_version = 9;";
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    private static void MigrateSchemaV9ToV10(SqliteConnection connection)
+    {
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        // Existing captures remain explicitly without hardware evidence; no current reading
+        // or inferred value can reconstruct a historical measurement.
+        command.CommandText = CaptureHardwareSnapshotSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
     }
@@ -2957,6 +3166,22 @@ internal sealed class SqliteActivityStore
 
     private static void ValidateSchema(SqliteConnection connection)
     {
+        ValidateSchemaV9(connection, validateObjects: false);
+        ValidateCreateStatement(connection, "capture_hardware_snapshots", CaptureHardwareSnapshotSchemaSql);
+        if (!ReadColumns(connection, "capture_hardware_snapshots").SequenceEqual(ExpectedCaptureHardwareSnapshotColumns)
+            || !ReadIndexes(connection, "capture_hardware_snapshots").SetEquals([
+                "sqlite_autoindex_capture_hardware_snapshots_1", "ix_capture_hardware_snapshots_sampled"]))
+        {
+            throw new InvalidOperationException("The capture hardware snapshot schema does not match the supported schema.");
+        }
+        if (!ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjects))
+        {
+            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
+        }
+    }
+
+    private static void ValidateSchemaV9(SqliteConnection connection, bool validateObjects = true)
+    {
         ValidateBaseSchema(connection, ActivitySchemaSql, ExpectedActivityColumns, ExpectedActivityIndexes);
         ValidateScreenshotTextSchema(connection);
         ValidateScreenshotIntervalTelemetrySchema(connection);
@@ -2978,7 +3203,7 @@ internal sealed class SqliteActivityStore
         }
 
         var schemaObjects = ReadApplicationSchemaObjects(connection);
-        if (!schemaObjects.SetEquals(ExpectedApplicationSchemaObjects))
+        if (validateObjects && !schemaObjects.SetEquals(ExpectedApplicationSchemaObjectsV9))
         {
             throw new InvalidOperationException("The activity database contains unsupported schema objects.");
         }
@@ -3637,6 +3862,16 @@ internal sealed class SqliteActivityStore
             source_retrieved_utc_ticks INTEGER NOT NULL,
             PRIMARY KEY (provider, model, service_tier, context_window)
         );
+        """;
+
+    private const string CaptureHardwareSnapshotSchemaSql = """
+        CREATE TABLE capture_hardware_snapshots (
+            capture_id TEXT NOT NULL PRIMARY KEY REFERENCES screenshot_captures(capture_id) ON DELETE CASCADE,
+            sampled_utc_ticks INTEGER NOT NULL,
+            snapshot_json TEXT NOT NULL
+        );
+        CREATE INDEX ix_capture_hardware_snapshots_sampled
+            ON capture_hardware_snapshots (sampled_utc_ticks, capture_id);
         """;
 
     private const string ScreenshotIntervalTelemetrySchemaSql = """

@@ -3,6 +3,7 @@
 using System;
 using System.Globalization;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 using Xunit;
 
 namespace TrackMeUp.Presentation.Tests;
@@ -65,7 +66,8 @@ public sealed class ScreenshotDetailsProjectionTests
             CultureInfo.GetCultureInfo("it-IT"),
             "Schermo",
             "Pianificata",
-            "--");
+            "--",
+            new LocalizationService("it-IT").Translate);
 
         Assert.Equal("ChatGPT", state.Application);
         Assert.Equal("--", state.WindowTitle);
@@ -179,6 +181,7 @@ public sealed class ScreenshotDetailsProjectionTests
             CultureInfo.GetCultureInfo("it-IT"),
             "Schermo",
             "Pianificata",
-            "--");
+            "--",
+            new LocalizationService("it-IT").Translate);
     }
 }

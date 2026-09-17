@@ -61,9 +61,7 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
 {
     private readonly LocalStore _store;
     private readonly IScreenCaptureService _capture;
-    private readonly SystemSnapshotService _snapshotService;
     private readonly IAIDecoder? _decoder;
-    private readonly DeviceContextService _deviceContext;
     private readonly ILogger<OpenAiAnalysisService> _logger;
 
     /// <summary>
@@ -71,23 +69,17 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
     /// </summary>
     /// <param name="store">Application data store used for settings and persistence.</param>
     /// <param name="capture">Screenshot capture service for the selected capture mode.</param>
-    /// <param name="snapshotService">Optional system snapshot provider.</param>
     /// <param name="decoder">Optional decoder override for testing.</param>
-    /// <param name="deviceContext">Optional device-context provider for time zone, language, and Windows location metadata.</param>
     /// <param name="logger">Optional structured application logger.</param>
     public OpenAiAnalysisService(
         LocalStore store,
         IScreenCaptureService capture,
-        SystemSnapshotService? snapshotService = null,
         IAIDecoder? decoder = null,
-        DeviceContextService? deviceContext = null,
         ILogger<OpenAiAnalysisService>? logger = null)
     {
         _store = store;
         _capture = capture;
-        _snapshotService = snapshotService ?? new SystemSnapshotService();
         _decoder = decoder;
-        _deviceContext = deviceContext ?? new DeviceContextService();
         _logger = logger ?? NullLogger<OpenAiAnalysisService>.Instance;
     }
 
@@ -238,35 +230,32 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
     {
         try
         {
-            AnalysisContextSnapshot context;
-            if (includeCurrentSystemContext)
+            if (!includeCurrentSystemContext && activity is null)
             {
-                var deviceContext = await _deviceContext.CaptureAsync(settings.IncludeDeviceLocation, cancellationToken);
-                var capturedSnapshot = _snapshotService.Capture();
-                var scheduleNote = ActiveHoursSchedule.BuildInformationalNote(settings.ActiveHours, capturedSnapshot.Timestamp);
-                var snapshot = capturedSnapshot with
+                throw new InvalidOperationException("Historical analysis context is required.");
+            }
+
+            // Hardware and device context belong to the capture boundary. An absent historical
+            // measurement stays absent; AI processing never polls the current machine.
+            var snapshot = captureResult.HardwareSnapshot ?? activity?.Snapshot;
+            if (!settings.IncludeDeviceLocation && snapshot?.DeviceContext is { } deviceContext)
+            {
+                // Revocation applies to every outgoing request, including saved historical context.
+                // Clone only the outbound projection so durable capture-time evidence stays unchanged.
+                snapshot = snapshot with
                 {
-                    DeviceContext = deviceContext,
-                    InformationalSchedule = scheduleNote
+                    DeviceContext = deviceContext with
+                    {
+                        Location = new DeviceLocationSnapshot(null, null, null, "windows-geolocator", "disabled_by_setting")
+                    }
                 };
-                context = (activity is null ? null : activity with
-                {
-                    Snapshot = snapshot,
-                    InformationalSchedule = scheduleNote
-                }) ?? new AnalysisContextSnapshot(
-                    "not available",
-                    "not available",
-                    "not available",
-                    "active",
-                    null,
-                    snapshot,
-                    scheduleNote);
             }
-            else
+            var context = (activity ?? new AnalysisContextSnapshot(
+                "not available", "not available", "not available", "active", null)) with
             {
-                // Historical processing must never present current telemetry or location as capture-time context.
-                context = activity ?? throw new InvalidOperationException("Historical analysis context is required.");
-            }
+                Snapshot = snapshot,
+                InformationalSchedule = snapshot?.InformationalSchedule ?? activity?.InformationalSchedule
+            };
             context = ApplyCaptureFocusMetadata(context, captureResult.FocusMetadata);
 
             var prompt = AiPromptCatalog.RenderScreenshotAnalysis(

@@ -530,7 +530,8 @@ public sealed partial class ScreenshotWindow : Window
             culture,
             FormatCaptureKind(item.CaptureKind),
             captureOrigin,
-            "--");
+            "--",
+            _strings.Translate);
         RenderDetails();
     }
 

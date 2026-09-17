@@ -12,6 +12,31 @@ namespace TrackMeUp.Presentation.Tests;
 /// <summary>Guards the shared title-bar and main-window lifetime ownership contracts.</summary>
 public sealed class WindowChromeLifecycleContractTests
 {
+    /// <summary>Main activation delegates live peer handles to Core without opening new windows or activating each peer.</summary>
+    [Fact]
+    public void MainActivation_RevealsOnlyLivePeersThroughTheFacade()
+    {
+        var main = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
+        var placement = File.ReadAllText(RepositoryFile("TrackMeUp", "WindowPlacementService.cs"));
+        Assert.Contains("Activated += MainWindow_Activated;", main, StringComparison.Ordinal);
+        Assert.Contains("Activated -= MainWindow_Activated;", main, StringComparison.Ordinal);
+        var start = main.IndexOf("private async void MainWindow_Activated", StringComparison.Ordinal);
+        var end = main.IndexOf("private void ShowWindowRevealFailure", start, StringComparison.Ordinal);
+        var handler = main[start..end];
+        Assert.Contains("WindowActivationState.Deactivated", handler, StringComparison.Ordinal);
+        Assert.Contains("_dashboardSurfaceClosed || _revealingOpenWindows", handler, StringComparison.Ordinal);
+        Assert.Contains("_revealingOpenWindows = true;", handler, StringComparison.Ordinal);
+        Assert.Contains("_revealingOpenWindows = false;", handler, StringComparison.Ordinal);
+        Assert.Contains("WindowPlacementService.GetOpenPeerWindowHandles(mainHandle)", handler, StringComparison.Ordinal);
+        Assert.Contains("_application.RevealOpenWindowsAsync(new WindowRevealRequest(mainHandle, peers), _lifecycle.Token)", handler, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Activate(", handler, StringComparison.Ordinal);
+        Assert.DoesNotContain("new ScreenshotWindow", handler, StringComparison.Ordinal);
+        Assert.DoesNotContain("RestoreWorkspace", handler, StringComparison.Ordinal);
+        Assert.Contains("!placement._disposed && placement._placementReady", placement, StringComparison.Ordinal);
+        Assert.Contains("!placement._closeSaveStarted && !placement._shutdownPrepared", placement, StringComparison.Ordinal);
+        Assert.Contains("GetOpenPeerWindowHandles(long mainWindowHandle) => s_preservingWorkspace", placement, StringComparison.Ordinal);
+    }
+
     /// <summary>The delayed reveal shield must stay within the caption, including when its grid row has zero height.</summary>
     [Fact]
     public void RevealShield_IsConfinedToTheTitleBarRow()

@@ -5,6 +5,7 @@ using System.Text.Json;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 using TrackMeUp.Application;
+using TrackMeUp.Services;
 
 namespace TrackMeUp.Cli;
 
@@ -160,15 +161,31 @@ public sealed class CliOutput(CliOptions options)
     /// <summary>Renders a system snapshot in a stable table.</summary>
     public IRenderable RenderSystemSnapshot(SystemSnapshot snapshot)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        var strings = new LocalizationService(_options.Language);
         var table = new Table().Border(TableBorder.Rounded).AddColumn(Localize("metric")).AddColumn(Localize("value"));
-        table.AddRow("CPU", snapshot.CpuUsagePercent.ToString(_culture) + "%");
-        table.AddRow("GPU", snapshot.GpuUsagePercent is { } gpu ? gpu.ToString(_culture) + "%" : Localize("notAvailable"));
-        table.AddRow(Localize("memory"), $"{snapshot.MemoryUsedMb.ToString("N0", _culture)}/{snapshot.MemoryTotalMb.ToString("N0", _culture)} MB");
-        table.AddRow(Localize("network"), $"↓ {snapshot.Network.DownloadBytesPerSecond.ToString("N0", _culture)} B/s · ↑ {snapshot.Network.UploadBytesPerSecond.ToString("N0", _culture)} B/s");
-        foreach (var disk in snapshot.Disks)
+        table.AddRow(Localize("state"), Markup.Escape(snapshot.Status));
+        table.AddRow(Markup.Escape(strings.Format("Hardware.CollectedAt", snapshot.Timestamp.ToLocalTime().ToString("G", _culture))), string.Empty);
+        table.AddRow(Markup.Escape(strings.Translate("Hardware.Advanced.Label")), Markup.Escape(snapshot.DriverStatus));
+        if (snapshot.ErrorCode is { } errorCode)
         {
-            table.AddRow(Markup.Escape(disk.Drive), $"{disk.FreeBytes.ToString("N0", _culture)}/{disk.TotalBytes.ToString("N0", _culture)} bytes");
+            table.AddRow(Localize("error"), Markup.Escape(errorCode));
         }
+        foreach (var device in snapshot.Devices)
+        {
+            table.AddRow(Markup.Escape($"{device.Name} ({device.Kind})"),
+                Markup.Escape(strings.Format("Hardware.DeviceUpdated", device.SampledAt.ToLocalTime().ToString("G", _culture))));
+            foreach (var sensor in device.Sensors)
+            {
+                var value = sensor.Value is { } reading ? $"{reading.ToString("0.##", _culture)} {sensor.Unit}" : Localize("notAvailable");
+                table.AddRow(Markup.Escape($"  {sensor.Name} ({sensor.Kind})"), Markup.Escape(value));
+            }
+        }
+        if (!snapshot.Devices.Any(device => device.Kind == "Battery"))
+        {
+            table.AddRow(Markup.Escape(strings.Translate("Hardware.Category.Battery")), Localize("notAvailable"));
+        }
+        table.AddRow(Markup.Escape(strings.Translate("Hardware.PowerNote")), string.Empty);
         return new Panel(table).Header($"[bold cyan]{Markup.Escape(Localize("systemSnapshot"))}[/]");
     }
 

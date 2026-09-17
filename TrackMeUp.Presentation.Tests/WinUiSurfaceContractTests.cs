@@ -92,7 +92,17 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal(2, optionExpanders.Length);
         Assert.Contains(optionExpanders, element => HasName(element, "ApiKeyExpander"));
         Assert.Contains(optionExpanders, element => HasName(element, "AiDailyLimitExpander"));
-        Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "Expander");
+        // Only the potentially long sensor list is disclosed; operational controls and summaries stay flat.
+        var sensorDisclosure = Assert.Single(operations.Descendants(), element => element.Name.LocalName == "Expander");
+        Assert.True(HasName(sensorDisclosure, "SystemHardwareSensorsExpander"));
+        Assert.Equal("Transparent", sensorDisclosure.Attribute("Background")?.Value);
+        Assert.Equal("0", sensorDisclosure.Attribute("BorderThickness")?.Value);
+        Assert.Equal("False", sensorDisclosure.Attribute("IsExpanded")?.Value);
+        Assert.Contains(sensorDisclosure.Descendants(), element => element.Attribute("Tag")?.Value == "Hardware.AllSensors");
+        var sensorContent = Assert.Single(sensorDisclosure.Elements(), element => element.Name.LocalName != "Expander.Header");
+        Assert.Equal("ItemsControl", sensorContent.Name.LocalName);
+        Assert.True(HasName(sensorContent, "SystemHardwareSensorsList"));
+        Assert.DoesNotContain(sensorDisclosure.Descendants(), element => element.Name.LocalName is "Button" or "ToggleSwitch" or "Border" or "Expander");
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("CornerRadius") is not null);
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("Click")?.Value == "BackButton_Click");
         Assert.DoesNotContain(operations.Descendants(), element => element.Attribute("Tag")?.Value is "Operations.Title" or "Operations.Subtitle");
@@ -130,6 +140,42 @@ public sealed class WinUiSurfaceContractTests
             Assert.Equal("0", compactSwitch.Attribute("MinWidth")?.Value);
             Assert.Null(compactSwitch.Attribute("Header"));
         }
+    }
+
+    [Fact]
+    public void SensorSettings_KeepPreferencesSeparateFromExplicitActivationAndRenderFlatControls()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var sensors = options.Descendants().Single(element => HasName(element, "HardwareSensorsSection"));
+        var slider = sensors.Descendants().Single(element => HasName(element, "HardwareSamplingSlider"));
+        Assert.Equal(3, sensors.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
+        Assert.DoesNotContain(sensors.Descendants(), element => element.Name.LocalName is "Expander" or "Border");
+        Assert.Equal("0", slider.Attribute("Minimum")?.Value);
+        Assert.Equal("3", slider.Attribute("Maximum")?.Value);
+        Assert.Equal("1", slider.Attribute("StepFrequency")?.Value);
+        Assert.Equal("False", slider.Attribute("IsThumbToolTipEnabled")?.Value);
+        Assert.Contains(sensors.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Sensors.SaveSnapshots.Description");
+        Assert.Contains(sensors.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Sensors.Enabled.Description");
+        foreach (var key in new[] { "sensors.enabled", "sensors.advanced", "sensors.save_snapshots", "sensors.sampling_profile" })
+        {
+            Assert.Contains(key, source, StringComparison.Ordinal);
+        }
+        var registrationStart = source.IndexOf("private void RegisterAutoSaveHandlers()", StringComparison.Ordinal);
+        var registrationEnd = source.IndexOf("private void QueueReasoningEffortSave()", registrationStart, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableAdvancedHardwareTelemetryAsync", source[registrationStart..registrationEnd], StringComparison.Ordinal);
+        var activationStart = source.IndexOf("private async void ActivateAdvancedSensorsButton_Click", StringComparison.Ordinal);
+        var activation = source[activationStart..];
+        Assert.True(activation.IndexOf("await _autoSaveQueue;", StringComparison.Ordinal) < activation.IndexOf("_application.EnableAdvancedHardwareTelemetryAsync", StringComparison.Ordinal));
+        Assert.Contains("HardwareSensorsEnabled: true, HardwareUseAdvancedSensors: true", activation, StringComparison.Ordinal);
+        Assert.Contains("var sensorOptionsEnabled = HardwareSensorsEnabledSwitch.IsOn && !_activatingAdvancedSensors;", source, StringComparison.Ordinal);
+        foreach (var control in new[] { "HardwareAdvancedSwitch", "HardwareSaveSnapshotsSwitch", "HardwareSamplingSlider" })
+        {
+            Assert.Contains($"{control}.IsEnabled = sensorOptionsEnabled;", source, StringComparison.Ordinal);
+        }
+        Assert.Contains("HardwareSensorsEnabledSwitch.IsEnabled = !_activatingAdvancedSensors;", source, StringComparison.Ordinal);
+        Assert.Contains("ClearHardwareActivationStatus();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("PawnIO", sensors.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

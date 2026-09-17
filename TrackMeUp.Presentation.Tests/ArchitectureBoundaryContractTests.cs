@@ -43,6 +43,8 @@ public sealed class ArchitectureBoundaryContractTests
             "Microsoft.WindowsAppSDK",
             "Spectre",
             "TrackMeUp.Cli",
+            "TrackMeUp.Hardware",
+            "LibreHardwareMonitorLib",
             "TrackMeUp.Presentation",
             "TrackMeUp.Taskbar"
         };
@@ -62,9 +64,10 @@ public sealed class ArchitectureBoundaryContractTests
     {
         var expectedReferences = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["TrackMeUp"] = ["TrackMeUp.Cli", "TrackMeUp.Core", "TrackMeUp.Presentation", "TrackMeUp.Taskbar"],
+            ["TrackMeUp"] = ["TrackMeUp.Cli", "TrackMeUp.Core", "TrackMeUp.Hardware", "TrackMeUp.Presentation", "TrackMeUp.Taskbar"],
             ["TrackMeUp.Cli"] = ["TrackMeUp.Core"],
             ["TrackMeUp.Core"] = ["TrackMeUp.Ocr", "TrackMeUp.Search"],
+            ["TrackMeUp.Hardware"] = ["LibreHardwareMonitor", "TrackMeUp.Core"],
             ["TrackMeUp.Ocr"] = [],
             ["TrackMeUp.Presentation"] = ["TrackMeUp.Core"],
             ["TrackMeUp.Search"] = [],
@@ -82,6 +85,15 @@ public sealed class ArchitectureBoundaryContractTests
 
             Assert.Equal(expected.Order(StringComparer.Ordinal), actual);
         }
+
+        // The application ships the isolated collector but must never load its sensor implementation in-process.
+        var appProject = XDocument.Load(RepositoryFile("TrackMeUp", "TrackMeUp.csproj"));
+        var collectorReference = Assert.Single(appProject.Descendants("ProjectReference"), reference =>
+            ProjectNameFromReference((string?)reference.Attribute("Include")) == "TrackMeUp.Hardware");
+        Assert.Equal("false", (string?)collectorReference.Attribute("ReferenceOutputAssembly"));
+        Assert.Equal("_HardwareCollectorTarget", (string?)collectorReference.Attribute("OutputItemType"));
+        var libraryProject = XDocument.Load(RepositoryFile("TrackMeUp.Hardware", "LibreHardwareMonitor", "LibreHardwareMonitor.csproj"));
+        Assert.Empty(libraryProject.Descendants("ProjectReference"));
     }
 
     /// <summary>Ensures WinUI presentation sources delegate I/O and environment work to the application facade.</summary>

@@ -56,7 +56,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar");
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true);
         Assert.Contains(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
-        Assert.Contains(operations.Descendants(), element => HasName(element, "SystemDisksList"));
+        Assert.Contains(operations.Descendants(), element => HasName(element, "SystemHardwareSensorsList"));
 
         var settingsLinks = options.Descendants()
             .Where(element => element.Name.LocalName == "HyperlinkButton" && element.Attributes().Any(attribute =>
@@ -388,6 +388,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         ];
 
         Assert.All(requiredFacadeCalls, call => Assert.Contains(call, source, StringComparison.Ordinal));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        Assert.Contains("_application.EnableAdvancedHardwareTelemetryAsync", optionsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableAdvancedHardwareTelemetryAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Process.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.", source, StringComparison.Ordinal);

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using TrackMeUp.Services;
 using Xunit;
@@ -10,6 +11,52 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class AiPromptAndPayloadTests
 {
+    [Fact]
+    public void PromptRenderer_UsesHistoricalBatteryReadingsAndPreservesPowerCapacityDistinction()
+    {
+        var timestamp = new DateTimeOffset(2026, 9, 12, 10, 30, 0, TimeSpan.Zero);
+        var sampledAt = timestamp.AddSeconds(-30);
+        var snapshot = new SystemSnapshot(timestamp, "partial",
+        [
+            new("/battery/0", "Portable battery", "Battery", sampledAt,
+            [
+                new("/battery/0/power/0", "Discharge Rate", "Power", "W", 8.4),
+                new("/battery/0/energy/0", "Remaining Capacity", "Energy", "mWh", 43000),
+                new("/battery/0/temp/0", "Temperature", "Temperature", "°C", null)
+            ])
+        ]);
+        var context = new AnalysisContextSnapshot("App", "Task", "Window", "active", null, snapshot);
+
+        var prompt = AiPromptCatalog.RenderScreenshotAnalysis("compact", context, _ => "{{SYSTEM_TELEMETRY}}");
+
+        Assert.Contains($"collection_completed={timestamp:O}", prompt, StringComparison.Ordinal);
+        Assert.Contains($"updated={sampledAt:O}", prompt, StringComparison.Ordinal);
+        Assert.Contains("Discharge Rate (Power)=8.4 W", prompt, StringComparison.Ordinal);
+        Assert.Contains("Remaining Capacity (Energy)=43000 mWh", prompt, StringComparison.Ordinal);
+        Assert.Contains("Temperature (Temperature)=unavailable °C", prompt, StringComparison.Ordinal);
+        Assert.Contains("battery mWh is capacity", prompt, StringComparison.Ordinal);
+        Assert.Contains("device_context=[not available]", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PromptRenderer_BoundsHardwareContextAndReportsOmittedMeasurements()
+    {
+        var timestamp = new DateTimeOffset(2026, 9, 12, 10, 30, 0, TimeSpan.Zero);
+        var devices = Enumerable.Range(0, 20).Select(index => new HardwareDeviceSnapshot(
+            $"/cpu/{index}", new string('C', 256), "Cpu", timestamp,
+            Enumerable.Range(0, 100).Select(sensor => new HardwareSensorSnapshot(
+                $"/cpu/{index}/temperature/{sensor}", new string('T', 256), "Temperature", "°C", 45)).ToArray())).ToArray();
+        var snapshot = new SystemSnapshot(timestamp, "ready", devices);
+        var context = new AnalysisContextSnapshot("App", "Task", "Window", "active", null, snapshot);
+
+        var prompt = AiPromptCatalog.RenderScreenshotAnalysis("compact", context, _ => "{{SYSTEM_TELEMETRY}}");
+
+        Assert.True(prompt.Length < 6_200);
+        Assert.Contains("omitted_sensors=98", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain(new string('T', 97), prompt, StringComparison.Ordinal);
+        Assert.Contains("device_context=[not available]", prompt, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("{\"error\":{\"code\":\"insufficient_quota\",\"type\":\"requests\"}}", "insufficient_quota")]
     [InlineData("{\"error\":{\"code\":\"rate_limit_exceeded\",\"type\":\"requests\"}}", "rate_limit_exceeded")]

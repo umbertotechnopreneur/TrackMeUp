@@ -188,6 +188,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
+    // Allow explicit Windows consent plus bounded helper startup and its first sensor read.
+    internal static readonly TimeSpan HardwareAdvancedTimeout = TimeSpan.FromSeconds(90);
+    internal static readonly TimeSpan HardwareSnapshotTimeout = TimeSpan.FromSeconds(30);
+    internal static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(60);
     internal static readonly TimeSpan ScreenshotImageTimeout = TimeSpan.FromSeconds(15);
     internal static readonly TimeSpan WorldClockQueryTimeout = TimeSpan.FromSeconds(15);
     internal static readonly TimeSpan WorldClockWeatherKeyTimeout = TimeSpan.FromSeconds(15);
@@ -263,11 +267,18 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
         SendAsync<ReportSnapshot>(RuntimeOperation.ReportQueryV1, query, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => SendAsync<SystemSnapshot>(RuntimeOperation.SystemSnapshot, null, cancellationToken);
+    public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) =>
+        SendAsync<SystemSnapshot>(RuntimeOperation.SystemSnapshot, null, cancellationToken, HardwareSnapshotTimeout);
+
     /// <inheritdoc />
-    public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) => SendAsync<ScreenshotCaptureResult>(RuntimeOperation.ScreenshotCapture, request, cancellationToken);
+    public Task<OperationResult<SystemSnapshot>> EnableAdvancedHardwareTelemetryAsync(CancellationToken cancellationToken) =>
+        SendAsync<SystemSnapshot>(RuntimeOperation.HardwareAdvancedEnableV1, null, cancellationToken, HardwareAdvancedTimeout);
     /// <inheritdoc />
-    public Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<PendingManualScreenshotState>(RuntimeOperation.ScreenshotManualCapture, null, cancellationToken);
+    public Task<OperationResult<ScreenshotCaptureResult>> CaptureScreenshotAsync(CaptureScreenshotRequest request, CancellationToken cancellationToken) =>
+        SendAsync<ScreenshotCaptureResult>(RuntimeOperation.ScreenshotCapture, request, cancellationToken, ScreenshotCaptureTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<PendingManualScreenshotState>> CaptureManualScreenshotAsync(CancellationToken cancellationToken) =>
+        SendAsync<PendingManualScreenshotState>(RuntimeOperation.ScreenshotManualCapture, null, cancellationToken, ScreenshotCaptureTimeout);
     /// <inheritdoc />
     public Task<OperationResult<bool>> DeletePendingManualScreenshotAsync(CancellationToken cancellationToken) => SendAsync<bool>(RuntimeOperation.ScreenshotManualDelete, null, cancellationToken);
     /// <inheritdoc />
@@ -399,9 +410,14 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.QuickSetupApplyV1, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.SettingsPatch, patch, cancellationToken);
+    public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) =>
+        // A sensor preference may drain one bounded native read before reconfiguring its existing collector.
+        SendAsync<AppSettings>(RuntimeOperation.SettingsPatch, patch, cancellationToken,
+            patch.Values.Keys.Any(key => key.Trim().StartsWith("sensors.", StringComparison.OrdinalIgnoreCase)) ? HardwareSnapshotTimeout : null);
     /// <inheritdoc />
     public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState?>(RuntimeOperation.WindowStateRestore, new { windowKey, windowHandle }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<int>> RevealOpenWindowsAsync(WindowRevealRequest request, CancellationToken cancellationToken) => SendAsync<int>(RuntimeOperation.WindowRevealOpenV1, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState>(RuntimeOperation.WindowStateSave, new { windowKey, windowHandle }, cancellationToken);
     /// <inheritdoc />

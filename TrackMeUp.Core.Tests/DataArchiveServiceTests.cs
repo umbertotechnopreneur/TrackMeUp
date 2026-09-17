@@ -233,6 +233,11 @@ public sealed class DataArchiveServiceTests
             var sourcePathList = string.Join(';', sourcePaths);
             source.UpsertScreenshotIntervalTelemetry(captureId, sourcePaths,
                 new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, 12, 4));
+            source.UpsertCaptureHardwareSnapshot(captureId, new SystemSnapshot(capturedAt, "partial",
+            [
+                new HardwareDeviceSnapshot("/gpu/0", "Archive GPU", "GpuNvidia", capturedAt,
+                [new HardwareSensorSnapshot("/gpu/0/power/0", "GPU Power", "Power", "W", 37.5)])
+            ]));
             AppendAnalysis(source, captureId, capturedAt, sourcePathList, sourcePaths.Length);
             var archivePath = Path.Combine(root, "ai-history.tmuarchive");
             var exporter = new DataArchiveService(source);
@@ -274,6 +279,9 @@ public sealed class DataArchiveServiceTests
             var imported = importer.Import(preview.PlanId, CancellationToken.None);
             Assert.Equal(1, imported.AddedAiAnalysisCount);
             Assert.Equal(1, imported.AddedAiRequestCount);
+            var importedHardware = Assert.IsType<SystemSnapshot>(target.LoadCaptureHardwareSnapshot(captureId));
+            Assert.Equal(capturedAt, importedHardware.Timestamp);
+            Assert.Equal(37.5d, Assert.Single(Assert.Single(importedHardware.Devices).Sensors).Value);
 
             var targetPaths = sourcePaths.Select(path => Path.Combine(
                 ScreenshotStorageLayout.GetDayDirectory(targetScreenshots, capturedAt), Path.GetFileName(path))).ToArray();
