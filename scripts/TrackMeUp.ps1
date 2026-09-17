@@ -34,6 +34,8 @@ param(
         'GenerateAssets',
         'ProbeTaskbar',
         'PublishUnpackaged',
+        'PackageMsix',
+        'CreateInstaller',
         'ProtectSecret',
         'ProtectSecretYubiKey',
         'BuildInfo'
@@ -2340,6 +2342,8 @@ function Invoke-TrackMeUpAction {
         'GenerateAssets' { Invoke-TrackMeUpAssetGeneration }
         'ProbeTaskbar' { Invoke-TrackMeUpTaskbarProbe }
         'PublishUnpackaged' { Invoke-TrackMeUpUnpackagedPublish }
+        'PackageMsix' { Invoke-TrackMeUpMsixPackage }
+        'CreateInstaller' { Invoke-TrackMeUpInstallerCreation }
         'ProtectSecret' { Invoke-TrackMeUpSecretTool }
         'ProtectSecretYubiKey' { Invoke-TrackMeUpYubiKeySecretTool }
         'BuildInfo' { Invoke-TrackMeUpBuildInfo }
