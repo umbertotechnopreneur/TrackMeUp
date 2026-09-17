@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -20,6 +21,113 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class DataArchiveServiceTests
 {
+    /// <summary>Retries a real SQLite lock and publishes a valid archive after the writer releases it.</summary>
+    [Fact]
+    public void Export_TransientDatabaseLock_RetriesAndProducesImportableArchive()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var source = new LocalStore(Path.Combine(root, "source"));
+            var destination = Path.Combine(root, "history.tmuarchive");
+            using var blocker = LockDatabaseForExport(source);
+            var logger = new RecordingLogger(() =>
+            {
+                using var release = blocker.CreateCommand();
+                release.CommandText = "ROLLBACK;";
+                release.ExecuteNonQuery();
+            });
+
+            var exported = new DataArchiveService(source, logger).Export(
+                new DataArchiveExportRequest(destination, IncludeScreenshots: false), CancellationToken.None);
+
+            Assert.Equal(LogLevel.Warning, Assert.Single(logger.Entries).Level);
+            Assert.Equal(destination, exported.Path);
+            var importer = CreateImporter(root);
+            var preview = importer.PreviewImport(new DataArchiveImportPreviewRequest(destination), CancellationToken.None);
+            Assert.Single(preview.Installations);
+            Assert.Equal(1, importer.Import(preview.PlanId, CancellationToken.None).AddedInstallationCount);
+            Assert.Empty(Directory.EnumerateFiles(root, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>Bounds lock retries and observes cancellation without overwriting an existing archive.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Export_PersistentDatabaseLock_FailsOrCancelsWithoutPublishing(bool cancel)
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var source = new LocalStore(Path.Combine(root, "source"));
+            var destination = Path.Combine(root, "history.tmuarchive");
+            var original = new byte[] { 1, 2, 3 };
+            File.WriteAllBytes(destination, original);
+            using var blocker = LockDatabaseForExport(source);
+            using var cancellation = new CancellationTokenSource();
+            var logger = new RecordingLogger(() =>
+            {
+                if (cancel) cancellation.CancelAfter(TimeSpan.FromMilliseconds(20));
+            });
+            var exporter = new DataArchiveService(source, logger);
+            var stopwatch = Stopwatch.StartNew();
+
+            if (cancel)
+            {
+                var exception = Assert.Throws<OperationCanceledException>(() => exporter.Export(
+                    new DataArchiveExportRequest(destination, IncludeScreenshots: false), cancellation.Token));
+                Assert.Equal(cancellation.Token, exception.CancellationToken);
+                Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(3));
+            }
+            else
+            {
+                var exception = Assert.Throws<SqliteException>(() => exporter.Export(
+                    new DataArchiveExportRequest(destination, IncludeScreenshots: false), cancellation.Token));
+                Assert.Equal(5, exception.SqliteErrorCode);
+                Assert.InRange(stopwatch.Elapsed, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+            }
+
+            Assert.Equal(LogLevel.Warning, Assert.Single(logger.Entries).Level);
+            Assert.Equal(original, File.ReadAllBytes(destination));
+            Assert.Empty(Directory.EnumerateFiles(root, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>Propagates a non-lock database failure immediately without retrying or publishing an archive.</summary>
+    [Fact]
+    public void Export_InvalidDatabase_DoesNotRetry()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var source = new LocalStore(Path.Combine(root, "source"));
+            File.WriteAllBytes(source.ActivityDatabasePath, new byte[4096]);
+            var destination = Path.Combine(root, "history.tmuarchive");
+            var logger = new RecordingLogger();
+
+            var exception = Assert.Throws<SqliteException>(() => new DataArchiveService(source, logger).Export(
+                new DataArchiveExportRequest(destination, IncludeScreenshots: false), CancellationToken.None));
+
+            Assert.Equal(26, exception.SqliteErrorCode);
+            Assert.Empty(logger.Entries);
+            Assert.False(File.Exists(destination));
+            Assert.Empty(Directory.EnumerateFiles(root, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     /// <summary>Publishes an export into a destination whose parent directories do not exist yet.</summary>
     [Fact]
     public void Export_CreatesDestinationDirectoryBeforeWritingArchive()
@@ -461,6 +569,31 @@ public sealed class DataArchiveServiceTests
         }
     }
 
+    private static SqliteConnection LockDatabaseForExport(LocalStore store)
+    {
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = store.ActivityDatabasePath,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false
+        }.ToString());
+        try
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            // An exclusive rollback-journal transaction deterministically blocks a separate backup reader.
+            // This changes only the isolated fixture; production continues to use WAL.
+            command.CommandText = "PRAGMA journal_mode = DELETE; BEGIN EXCLUSIVE;";
+            command.ExecuteNonQuery();
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
+    }
+
     private static void AppendAnalysis(
         LocalStore store,
         string captureId,
@@ -612,7 +745,7 @@ public sealed class DataArchiveServiceTests
         return path;
     }
 
-    private sealed class RecordingLogger : ILogger
+    private sealed class RecordingLogger(Action? onFirstEntry = null) : ILogger
     {
         internal List<(LogLevel Level, string Message)> Entries { get; } = [];
 
@@ -624,6 +757,10 @@ public sealed class DataArchiveServiceTests
 
         /// <inheritdoc />
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Entries.Add((logLevel, formatter(state, exception)));
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, formatter(state, exception)));
+            if (Entries.Count == 1) onFirstEntry?.Invoke();
+        }
     }
 }
