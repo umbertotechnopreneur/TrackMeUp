@@ -189,7 +189,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.All(
             new[] { "desktop", "laptop", "workstation", "home", "tablet", "phone", "server", "cloud", "office", "briefcase", "terminal", "gaming", "travel", "school", "studio", "camera" },
             icon => Assert.Contains($"\"{icon}\" =>", appearance, StringComparison.Ordinal));
-        Assert.Contains("_ = section.LoadAsync();", operationsSource, StringComparison.Ordinal);
+        Assert.Contains("section.ShowArchiveActions();", operationsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
         Assert.DoesNotContain("File.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Directory.", source, StringComparison.Ordinal);

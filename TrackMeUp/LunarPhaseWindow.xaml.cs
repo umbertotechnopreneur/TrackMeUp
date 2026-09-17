@@ -45,6 +45,20 @@ internal sealed partial class LunarPhaseWindow : Window
     /// <summary>Releases a failed opening without overwriting the last valid window placement.</summary>
     internal void CloseAfterFailedOpening() => _controller.CloseAfterFailedOpening();
 
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var compactTitle = e.NewSize.Width < 320d;
+        TitleBarLogo.Margin = compactTitle ? new Thickness(8, 0, 8, 0) : new Thickness(16, 0, 10, 0);
+        TitleBarText.Visibility = compactTitle ? Visibility.Collapsed : Visibility.Visible;
+        // Short, wide windows need compact text too, otherwise the automatic rows consume the Moon's space.
+        var compact = compactTitle || e.NewSize.Height < 320d;
+        MoonContent.Margin = compact ? new Thickness(8, 0, 8, 12) : new Thickness(20, 0, 20, 24);
+        PhaseSummaryText.FontSize = compact ? 16d : 22d;
+        PhaseSummaryText.TextWrapping = compact ? TextWrapping.NoWrap : TextWrapping.Wrap;
+        ReferenceInstantText.FontSize = compact ? 10d : 12d;
+        ReferenceInstantText.TextWrapping = compact ? TextWrapping.NoWrap : TextWrapping.Wrap;
+    }
+
     private void RenderSnapshot(WorldClockSnapshot snapshot)
     {
         var phase = LunarPhaseProjection.Create(snapshot.Map.MoonPhaseAngleDegrees);

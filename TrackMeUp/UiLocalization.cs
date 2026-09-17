@@ -57,6 +57,9 @@ internal static class UiLocalization
     {
         switch (root)
         {
+            case Border border when border.Child is DependencyObject borderChild:
+                yield return borderChild;
+                break;
             case Panel panel:
                 foreach (var child in panel.Children)
                 {
@@ -85,6 +88,20 @@ internal static class UiLocalization
     {
         switch (element)
         {
+            case Expander expander:
+                SetIfTranslated(strings, key, value =>
+                {
+                    expander.Header = value;
+                    AutomationProperties.SetName(expander, value);
+                });
+                break;
+            case Slider slider:
+                SetIfTranslated(strings, $"{key}.Header", value =>
+                {
+                    slider.Header = value;
+                    AutomationProperties.SetName(slider, value);
+                });
+                break;
             case TextBlock textBlock:
                 SetIfTranslated(strings, key, value => textBlock.Text = value);
                 break;

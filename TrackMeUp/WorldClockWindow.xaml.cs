@@ -70,6 +70,9 @@ public sealed partial class WorldClockWindow : Window
     /// <summary>Gets whether the reference instant follows the current time.</summary>
     internal bool IsLive => _isLive;
 
+    /// <summary>Notifies the composition root after world-clock options persist shared settings.</summary>
+    internal event Action<AppSettings>? SettingsSaved;
+
     /// <summary>Creates the independent world-clock window over the shared application facade.</summary>
     internal WorldClockWindow(
         ITrackMeUpApplication application,
@@ -313,7 +316,11 @@ public sealed partial class WorldClockWindow : Window
         _optionsControl?.ApplyState(_settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
     }
 
-    private void OptionsControl_SettingsSaved(AppSettings settings) => ApplySettings(settings);
+    private void OptionsControl_SettingsSaved(AppSettings settings)
+    {
+        ApplySettings(settings);
+        SettingsSaved?.Invoke(settings);
+    }
 
     private void OptionsControl_WarningRequested(string messageKey) => ShowFailure(messageKey);
 

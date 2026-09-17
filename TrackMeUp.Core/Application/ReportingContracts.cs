@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+using System.Text.Json.Serialization;
+
 namespace TrackMeUp.Application;
 
 /// <summary>Identifies the report visualization selected by a presentation client.</summary>
@@ -43,7 +45,7 @@ public sealed record ReportTotals(
 
 /// <summary>Contains aggregate activity for one local calendar date.</summary>
 /// <param name="ActivityScore">Normalized 0-100 daily activity intensity, or <see langword="null"/> when the date has no recorded samples.</param>
-/// <param name="Installations">Distinct installation profiles that contributed samples to the date; omitted only by older version-4 payloads.</param>
+/// <param name="Installations">Distinct installation profiles that contributed samples to the date.</param>
 public sealed record ReportCalendarCell(
     DateOnly Date,
     long ActiveSeconds,
@@ -61,6 +63,7 @@ public sealed record ReportCalendarCell(
 /// Input and sample counters are totals across those dates. ActivityScore uses the total input and unioned observed duration.
 /// A query covering one Monday-to-Sunday week therefore returns exact counters for each local date and hour.
 /// Repeated daylight-saving hours are combined; skipped hours have no data.</remarks>
+/// <param name="Installations">Distinct installation profiles that contributed samples to this weekday-and-hour bucket; empty when it has no data.</param>
 public sealed record ReportHourCell(
     int DayOfWeek,
     int Hour,
@@ -72,7 +75,8 @@ public sealed record ReportHourCell(
     long KeyPresses,
     long MouseClicks,
     int SampleCount,
-    int? ActivityScore);
+    int? ActivityScore,
+    [property: JsonRequired] IReadOnlyList<InstallationProfile> Installations);
 
 /// <summary>Contains one chronological daily trend bucket.</summary>
 public sealed record ReportTrendBucket(

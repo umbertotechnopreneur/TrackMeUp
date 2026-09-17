@@ -98,7 +98,8 @@
                     <ColumnDefinition Width="280" />
                 </Grid.ColumnDefinitions>
                 <TabView x:Name="ActivityTabs" IsAddTabButtonVisible="False" CanDragTabs="False" CanReorderTabs="False"
-                         TabWidthMode="Equal" SelectionChanged="ActivityTabs_SelectionChanged" Visibility="Collapsed">
+                         TabWidthMode="Equal" SelectionChanged="ActivityTabs_SelectionChanged" Visibility="Collapsed"
+                         VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
                     <TabViewItem x:Name="CalendarTab" IsClosable="False">
                         <TabViewItem.IconSource><SymbolIconSource Symbol="Calendar" /></TabViewItem.IconSource>
                             <Grid x:Name="CalendarPanel" RowSpacing="8">
@@ -140,8 +141,18 @@
                                         <CalendarView.CalendarViewDayItemStyle>
                                             <Style TargetType="CalendarViewDayItem">
                                                 <Setter Property="Margin" Value="2" />
-                                                <Setter Property="MinHeight" Value="0" />
+                                                <Setter Property="MinHeight" Value="20" />
                                                 <Setter Property="Padding" Value="0" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="CalendarViewDayItem">
+                                                            <ContentPresenter Content="{TemplateBinding Tag}"
+                                                                              IsHitTestVisible="False"
+                                                                              HorizontalContentAlignment="Stretch"
+                                                                              VerticalContentAlignment="Stretch" />
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
                                             </Style>
                                         </CalendarView.CalendarViewDayItemStyle>
                                     </CalendarView>

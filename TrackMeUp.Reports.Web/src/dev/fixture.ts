@@ -5,6 +5,7 @@ import type {
   ReportEnvelope,
   ReportHourCell,
   ReportTrendBucket,
+  InstallationProfile,
 } from '../reporting'
 import type { ReportLocale } from '../locales/catalogs'
 
@@ -49,6 +50,31 @@ const calendar: ReportCalendarCell[] = Array.from({ length: 14 }, (_, index) => 
   }
 })
 
+const developmentInstallations: InstallationProfile[] = [
+  {
+    installationId: '11111111111111111111111111111111',
+    machineName: 'DEMO-DESKTOP',
+    friendlyName: 'Studio desktop',
+    color: '#5B8DEF',
+    icon: 'desktop',
+    firstSeenAt: '2026-07-23T00:00:00Z',
+    updatedAt: '2026-07-23T00:00:00Z',
+    revision: 1,
+    isCurrent: true,
+  },
+  {
+    installationId: '22222222222222222222222222222222',
+    machineName: 'DEMO-LAPTOP',
+    friendlyName: 'Travel laptop',
+    color: '#6BBF8A',
+    icon: 'laptop',
+    firstSeenAt: '2026-07-23T00:00:00Z',
+    updatedAt: '2026-07-24T00:00:00Z',
+    revision: 2,
+    isCurrent: false,
+  },
+]
+
 const hourOfWeek: ReportHourCell[] = Array.from({ length: 7 * 24 }, (_, index) => {
   const dayOfWeek = Math.floor(index / 24)
   const hour = index % 24
@@ -69,6 +95,7 @@ const hourOfWeek: ReportHourCell[] = Array.from({ length: 7 * 24 }, (_, index) =
     mouseClicks: hasData ? 48 : 0,
     sampleCount: hasData ? 12 : 0,
     activityScore: hasData ? 52 : null,
+    installations: hasData ? developmentInstallations.slice(0, hour >= 15 ? 2 : 1) : [],
   }
 })
 
@@ -141,7 +168,7 @@ export function buildDevelopmentEnvelope(): ReportEnvelope {
     type: 'report.snapshot',
     view: 'calendar',
     snapshot: {
-      contractVersion: 5,
+      contractVersion: 6,
       range: {
         from: '2026-07-23',
         toInclusive: '2026-08-05',

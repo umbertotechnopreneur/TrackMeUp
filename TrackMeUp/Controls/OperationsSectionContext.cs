@@ -14,7 +14,7 @@ namespace TrackMeUp.Controls;
 internal sealed class OperationsSectionContext
 {
     private readonly TimedInfoBar _status;
-    private readonly ProgressRing _progress;
+    private readonly Action<bool> _setProgressState;
     private readonly UIElement _interactionRoot;
     private readonly Func<string, string?> _tryTranslate;
     private bool _operationInProgress;
@@ -24,7 +24,7 @@ internal sealed class OperationsSectionContext
         MicaDialogService dialogs,
         Window ownerWindow,
         TimedInfoBar status,
-        ProgressRing progress,
+        Action<bool> setProgressState,
         UIElement interactionRoot,
         Func<string, string?> tryTranslate)
     {
@@ -32,7 +32,7 @@ internal sealed class OperationsSectionContext
         Dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         OwnerWindow = ownerWindow ?? throw new ArgumentNullException(nameof(ownerWindow));
         _status = status ?? throw new ArgumentNullException(nameof(status));
-        _progress = progress ?? throw new ArgumentNullException(nameof(progress));
+        _setProgressState = setProgressState ?? throw new ArgumentNullException(nameof(setProgressState));
         _interactionRoot = interactionRoot ?? throw new ArgumentNullException(nameof(interactionRoot));
         _tryTranslate = tryTranslate ?? throw new ArgumentNullException(nameof(tryTranslate));
     }
@@ -43,24 +43,67 @@ internal sealed class OperationsSectionContext
 
     internal Window OwnerWindow { get; }
 
-    internal async Task<OperationResult<T>?> ExecuteAsync<T>(
+    /// <summary>Runs a quick request with the subsection's existing inline progress feedback.</summary>
+    internal Task<OperationResult<T>?> ExecuteAsync<T>(
         Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        bool showSuccess = true) =>
+        ExecuteCoreAsync(operation, showSuccess, showInlineProgress: true);
+
+    /// <summary>Runs a potentially long request behind the shared modal progress surface without an inline spinner.</summary>
+    internal Task<OperationResult<T>?> ExecuteWithProgressAsync<T>(
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        string title,
+        string description,
         bool showSuccess = true)
     {
+        ArgumentNullException.ThrowIfNull(operation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        return ExecuteCoreAsync(
+            (application, _) => Dialogs.RunWithProgressAsync(
+                application,
+                OwnerWindow,
+                OwnerWindow.Content is FrameworkElement ownerContent
+                    ? ownerContent.ActualTheme
+                    : throw new InvalidOperationException("Progress dialogs require framework-element owner content."),
+                title,
+                description,
+                operation),
+            showSuccess,
+            showInlineProgress: false);
+    }
+
+    private async Task<OperationResult<T>?> ExecuteCoreAsync<T>(
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        bool showSuccess,
+        bool showInlineProgress)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
         if (_operationInProgress)
         {
             ShowStatus(Translate("Operations.Status.InProgress.Title"), Translate("Operations.Status.InProgress.Message"), InfoBarSeverity.Warning);
             return null;
         }
 
+        var ownerClosed = false;
+        void OwnerClosed(object sender, WindowEventArgs args) => ownerClosed = true;
+        OwnerWindow.Closed += OwnerClosed;
         _operationInProgress = true;
-        _interactionRoot.IsHitTestVisible = false;
-        _interactionRoot.Opacity = 0.72;
-        _progress.IsActive = true;
-        _progress.Visibility = Visibility.Visible;
         try
         {
+            _interactionRoot.IsHitTestVisible = false;
+            _interactionRoot.Opacity = 0.72;
+            if (showInlineProgress)
+            {
+                _setProgressState(true);
+            }
             var result = await operation(Application, CancellationToken.None);
+            if (ownerClosed)
+            {
+                // A closed owner cannot render a late result or ask its caller to update detached controls.
+                return null;
+            }
+
             if (result.Succeeded)
             {
                 if (showSuccess)
@@ -84,22 +127,40 @@ internal sealed class OperationsSectionContext
         catch (OperationCanceledException)
         {
             // Cancellation keeps the subsection interactive and does not infer a successful result.
-            ShowStatus(Translate("Operations.Status.Cancelled.Title"), Translate("Operations.Status.Cancelled.Message"), InfoBarSeverity.Warning);
+            if (!ownerClosed)
+            {
+                ShowStatus(Translate("Operations.Status.Cancelled.Title"), Translate("Operations.Status.Cancelled.Message"), InfoBarSeverity.Warning);
+            }
             return null;
         }
         catch (Exception)
         {
             // Runtime failures are rendered without exposing implementation or host details.
-            ShowStatus(Translate("Operations.Status.RuntimeUnavailable.Title"), Translate("Operations.Status.RuntimeUnavailable.Message"), InfoBarSeverity.Error);
+            if (!ownerClosed)
+            {
+                ShowStatus(Translate("Operations.Status.RuntimeUnavailable.Title"), Translate("Operations.Status.RuntimeUnavailable.Message"), InfoBarSeverity.Error);
+            }
             return null;
         }
         finally
         {
-            _progress.IsActive = false;
-            _progress.Visibility = Visibility.Collapsed;
-            _interactionRoot.Opacity = 1;
-            _interactionRoot.IsHitTestVisible = true;
-            _operationInProgress = false;
+            try
+            {
+                if (!ownerClosed)
+                {
+                    if (showInlineProgress)
+                    {
+                        _setProgressState(false);
+                    }
+                    _interactionRoot.Opacity = 1;
+                    _interactionRoot.IsHitTestVisible = true;
+                }
+            }
+            finally
+            {
+                OwnerWindow.Closed -= OwnerClosed;
+                _operationInProgress = false;
+            }
         }
     }
 

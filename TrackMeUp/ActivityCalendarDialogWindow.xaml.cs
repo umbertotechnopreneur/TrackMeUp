@@ -37,7 +37,7 @@ internal sealed record ActivityCalendarInstallationLegendItem(
 /// <summary>Shows a native rolling activity calendar backed only by aggregate application-layer report data.</summary>
 internal sealed partial class ActivityCalendarDialogWindow : Window
 {
-    private const int ExpectedReportContractVersion = 5;
+    private const int ExpectedReportContractVersion = 6;
     private const int LogicalWidth = 1080;
     private const int LogicalHeight = 820;
     private const int LogicalScreenMargin = 24;
@@ -50,6 +50,7 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
     private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly IntPtr _windowHandle;
+    private readonly TextBlock _dayNumberMeasure = new() { Text = "88" };
     private IReadOnlyDictionary<DateOnly, ReportCalendarCell> _recordedDays = new Dictionary<DateOnly, ReportCalendarCell>();
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
     private ActivityCalendarDialogResult? _result;
@@ -386,7 +387,8 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         var cell = selected.Activity;
         SelectedDateText.Text = $"{selected.Date.ToString("D", _culture)}\n{selected.Hour:00}:00–{selected.Hour + 1:00}:00";
         DayDetailsBorder.Visibility = Visibility.Visible;
-        InstallationLegendSection.Visibility = Visibility.Collapsed;
+        InstallationLegendSection.Visibility = cell.HasData ? Visibility.Visible : Visibility.Collapsed;
+        UpdateInstallationLegend(cell.Installations);
         ReprocessAiButton.Visibility = Visibility.Collapsed;
         DayStatusText.Text = T(cell.HasData ? "ActivityCalendar.RecordedActivity" : "ActivityCalendar.NoDataLegend");
         DayMetricsPanel.Visibility = cell.HasData ? Visibility.Visible : Visibility.Collapsed;
@@ -404,7 +406,8 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
             AutomationProperties.SetName(ScoreValueText, string.Format(_culture, T("ActivityCalendar.ScoreAccessible"), score));
         }
 
-        AutomationProperties.SetName(DayDetailsBorder, $"{SelectedDateText.Text}. {DayStatusText.Text}");
+        AutomationProperties.SetName(DayDetailsBorder,
+            $"{SelectedDateText.Text}. {DayStatusText.Text}. {BuildInstallationAccessibleLabel(cell.Installations)}");
     }
 
     private void ActivityCalendarView_CalendarViewDayItemChanging(
@@ -412,6 +415,8 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         CalendarViewDayItemChangingEventArgs args)
     {
         // CalendarView reuses containers across months; clear the previous day's presentation first.
+        args.Item.SizeChanged -= CalendarDay_SizeChanged;
+        args.Item.Tag = null;
         args.Item.ClearValue(Control.BackgroundProperty);
         ToolTipService.SetToolTip(args.Item, null);
         args.Item.ClearValue(AutomationProperties.NameProperty);
@@ -436,6 +441,9 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         var score = cell.ActivityScore!.Value;
         var installations = cell.Installations!;
         args.Item.Background = GetActivityHeatBrush(score);
+        args.Item.Tag = new ActivityInstallationBadges(installations, _culture);
+        args.Item.SizeChanged += CalendarDay_SizeChanged;
+        UpdateCalendarDayBadges(args.Item);
         var label = string.Format(
             _culture,
             T("ActivityCalendar.Day.ScoreAccessible"),
@@ -445,6 +453,28 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         var accessibleLabel = $"{label}. {T("Operations.InstallationTransfer.Installations.List")}: {provenanceLabel}.";
         AutomationProperties.SetName(args.Item, accessibleLabel);
         ToolTipService.SetToolTip(args.Item, accessibleLabel);
+    }
+
+    private void CalendarDay_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateCalendarDayBadges((CalendarViewDayItem)sender);
+
+    private void UpdateCalendarDayBadges(CalendarViewDayItem item)
+    {
+        if (item.Tag is not ActivityInstallationBadges badges) return;
+
+        // Native CalendarView draws the centered day number outside its template. Reserve its space,
+        // using a second line in tall cells and the right-hand side in compact, wide cells.
+        _dayNumberMeasure.FontFamily = ActivityCalendarView.DayItemFontFamily;
+        _dayNumberMeasure.FontSize = ActivityCalendarView.DayItemFontSize;
+        _dayNumberMeasure.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+        var dateHeight = _dayNumberMeasure.DesiredSize.Height + Math.Abs(ActivityCalendarView.DayItemMargin.Top - ActivityCalendarView.DayItemMargin.Bottom);
+        var belowDate = item.ActualHeight >= dateHeight + 48;
+        var width = Math.Max(0, belowDate ? item.ActualWidth - 8 : item.ActualWidth / 2 - _dayNumberMeasure.DesiredSize.Width / 2 - 8);
+        badges.HorizontalAlignment = belowDate ? HorizontalAlignment.Center : HorizontalAlignment.Right;
+        badges.VerticalAlignment = belowDate ? VerticalAlignment.Bottom : VerticalAlignment.Center;
+        badges.Margin = belowDate ? new Thickness(4, 0, 4, 4) : new Thickness(0, 0, 4, 0);
+        badges.MaxWidth = width;
+        badges.UpdateAvailableSize(width, item.ActualHeight);
     }
 
     private Brush GetActivityHeatBrush(int score) => score switch
@@ -524,7 +554,19 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         KeyPressesValueText.Text = cell.KeyPresses.ToString("N0", _culture);
         MouseClicksValueText.Text = cell.MouseClicks.ToString("N0", _culture);
         SamplesValueText.Text = cell.SampleCount.ToString("N0", _culture);
-        InstallationLegendItems.ItemsSource = cell.Installations!
+        UpdateInstallationLegend(cell.Installations!);
+        DayMetricsPanel.Visibility = Visibility.Visible;
+        AutomationProperties.SetName(ScoreValueText, string.Format(_culture, T("ActivityCalendar.ScoreAccessible"), score));
+        var scoreLabel = string.Format(_culture, T("ActivityCalendar.ScoreAccessible"), score);
+        var provenanceLabel = BuildInstallationAccessibleLabel(cell.Installations!);
+        AutomationProperties.SetName(
+            DayDetailsBorder,
+            $"{SelectedDateText.Text}. {scoreLabel}. {T("Operations.InstallationTransfer.Installations.List")}: {provenanceLabel}.");
+    }
+
+    private void UpdateInstallationLegend(IReadOnlyList<InstallationProfile> installations)
+    {
+        InstallationLegendItems.ItemsSource = installations
             .Select(profile => new ActivityCalendarInstallationLegendItem(
                 profile.FriendlyName,
                 profile.MachineName,
@@ -532,14 +574,6 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
                 InstallationAppearance.CreateAccentBrush(profile.Color),
                 $"{profile.FriendlyName}, {profile.MachineName}"))
             .ToArray();
-        DayMetricsPanel.Visibility = Visibility.Visible;
-
-        var scoreLabel = string.Format(_culture, T("ActivityCalendar.ScoreAccessible"), score);
-        var provenanceLabel = BuildInstallationAccessibleLabel(cell.Installations!);
-        AutomationProperties.SetName(ScoreValueText, scoreLabel);
-        AutomationProperties.SetName(
-            DayDetailsBorder,
-            $"{SelectedDateText.Text}. {scoreLabel}. {T("Operations.InstallationTransfer.Installations.List")}: {provenanceLabel}.");
     }
 
     private void ApplyLocalizedContent()

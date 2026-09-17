@@ -34,7 +34,11 @@ public sealed partial class RetentionOperationsControl : UserControl
             dialogs,
             ownerWindow,
             banner,
-            Progress,
+            active =>
+            {
+                Progress.IsActive = active;
+                Progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+            },
             SectionBody,
             key => _strings.TryTranslate(key, out var value) ? value : null);
 
@@ -57,7 +61,10 @@ public sealed partial class RetentionOperationsControl : UserControl
 
     private async void RetentionPreviewButton_Click(object sender, RoutedEventArgs e)
     {
-        var result = await Context.ExecuteAsync((application, token) => application.PreviewRetentionAsync(token));
+        var result = await Context.ExecuteWithProgressAsync(
+            (application, token) => application.PreviewRetentionAsync(token),
+            _strings.Translate("Operations.Retention.PreviewAction"),
+            _strings.Translate("Operations.Retention.Preview.Description"));
         if (result is { Succeeded: true, Value: { } preview })
         {
             RenderRetentionPreview(preview, executed: false);
@@ -78,7 +85,10 @@ public sealed partial class RetentionOperationsControl : UserControl
         _confirmationOpen = true;
         try
         {
-            var previewResult = await Context.ExecuteAsync((application, token) => application.PreviewRetentionAsync(token));
+            var previewResult = await Context.ExecuteWithProgressAsync(
+                (application, token) => application.PreviewRetentionAsync(token),
+                _strings.Translate("Operations.Retention.PreviewAction"),
+                _strings.Translate("Operations.Retention.Preview.Description"));
             if (previewResult is not { Succeeded: true, Value: { } preview })
             {
                 return;
@@ -101,7 +111,10 @@ public sealed partial class RetentionOperationsControl : UserControl
                 return;
             }
 
-            var runResult = await Context.ExecuteAsync((application, token) => application.RunRetentionAsync(new RetentionRequest(Execute: true, Confirmed: true), token));
+            var runResult = await Context.ExecuteWithProgressAsync(
+                (application, token) => application.RunRetentionAsync(new RetentionRequest(Execute: true, Confirmed: true), token),
+                _strings.Translate("Operations.Retention.Progress.Cleanup.Title"),
+                _strings.Translate("Operations.Retention.Progress.Cleanup.Description"));
             if (runResult is { Succeeded: true, Value: { } deleted })
             {
                 RenderRetentionPreview(deleted, executed: true);

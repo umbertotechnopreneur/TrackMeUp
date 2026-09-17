@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -43,9 +44,15 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         UiLocalization.Apply(this, _strings);
         ApplyAppearanceOptions();
         ApplyProfiles(_profiles, _selectedProfile?.InstallationId);
-        AutomationProperties.SetName(Progress, T("Operations.Status.InProgress.Title", "Operation in progress"));
+        ExportSection.Header = _strings.Translate("Operations.InstallationTransfer.Export.Title");
+        ImportSection.Header = _strings.Translate("Operations.InstallationTransfer.Import.Title");
+        InstallationsSection.Header = _strings.Translate("Operations.InstallationTransfer.Installations.Title");
         AutomationProperties.SetName(InstallationsList, T("Operations.InstallationTransfer.Installations.List", "Known installations"));
         AutomationProperties.SetName(ImportInstallationsList, T("Operations.InstallationTransfer.Import.Installations", "Installations in this archive"));
+        if (_importPlan is { } plan)
+        {
+            RenderImportPreview(plan, ImportArchivePathText.Text);
+        }
     }
 
     /// <summary>Connects the passive surface to the application facade owned by the composition root.</summary>
@@ -55,14 +62,15 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
             dialogs,
             ownerWindow,
             banner,
-            Progress,
+            busy => TransferSections.IsEnabled = !busy,
             SectionBody,
             key => _strings.TryTranslate(key, out var value) ? value : null);
 
+    /// <summary>Loads installation identities using the shared modal progress surface.</summary>
     internal async Task LoadAsync()
     {
         var selectedInstallationId = _selectedProfile?.InstallationId;
-        var result = await Context.ExecuteAsync(
+        var result = await ExecuteWithProgressAsync("Load",
             (application, token) => application.GetInstallationProfilesAsync(token),
             showSuccess: false);
         if (result is { Succeeded: true, Value: { } profiles })
@@ -72,6 +80,27 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     }
 
     private OperationsSectionContext Context => _context ?? throw new InvalidOperationException("InstallationTransferOperationsControl must be initialized before use.");
+
+    /// <summary>Opens the action chooser without starting an unrelated installation load or modal dialog.</summary>
+    internal void ShowArchiveActions() => TransferSections.SelectedItem = ExportSection;
+
+    private async void TransferSections_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_context is not null && e.AddedItems.Contains(InstallationsSection))
+        {
+            await LoadAsync();
+        }
+    }
+
+    private Task<OperationResult<T>?> ExecuteWithProgressAsync<T>(
+        string operationName,
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        bool showSuccess = true) =>
+        Context.ExecuteWithProgressAsync(
+            operation,
+            _strings.Translate($"Operations.InstallationTransfer.Progress.{operationName}.Title"),
+            _strings.Translate($"Operations.InstallationTransfer.Progress.{operationName}.Description"),
+            showSuccess);
 
     private void InstallationsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -116,7 +145,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
             FriendlyNameBox.Text,
             color.Value,
             icon.Value);
-        var result = await Context.ExecuteAsync((application, token) => application.UpdateInstallationProfileAsync(request, token));
+        var result = await ExecuteWithProgressAsync("Save", (application, token) => application.UpdateInstallationProfileAsync(request, token));
         if (result is not { Succeeded: true, Value: { } updated })
         {
             return;
@@ -138,6 +167,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     /// <summary>Collects an export destination and delegates archive creation to the application facade.</summary>
     internal async Task StartExportAsync()
     {
+        TransferSections.SelectedItem = ExportSection;
         var destinationPath = await PickExportPathAsync();
         if (destinationPath is null)
         {
@@ -147,7 +177,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         ExportResultPanel.Visibility = Visibility.Collapsed;
         ExportResultSummaryText.Text = string.Empty;
         ExportResultPathText.Text = string.Empty;
-        var result = await Context.ExecuteAsync((application, token) => application.ExportDataArchiveAsync(
+        var result = await ExecuteWithProgressAsync("Export", (application, token) => application.ExportDataArchiveAsync(
             new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true),
             token));
         if (result is { Succeeded: true, Value: { } export })
@@ -173,6 +203,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     /// <summary>Collects an archive path and delegates validation and preview to the application facade.</summary>
     internal async Task StartImportPreviewAsync()
     {
+        TransferSections.SelectedItem = ImportSection;
         var archivePath = await PickImportPathAsync();
         if (archivePath is null)
         {
@@ -180,7 +211,7 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         }
 
         ClearImportPreview();
-        var result = await Context.ExecuteAsync(
+        var result = await ExecuteWithProgressAsync("Preview",
             (application, token) => application.PreviewDataArchiveImportAsync(new DataArchiveImportPreviewRequest(archivePath), token),
             showSuccess: false);
         if (result is { Succeeded: true, Value: { } plan })
@@ -236,12 +267,13 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
             return;
         }
 
-        var result = await Context.ExecuteAsync(
+        // Import plans are consumed by the facade; a failed attempt requires a fresh archive preview.
+        _importPlan = null;
+        MergeImportButton.IsEnabled = false;
+        var result = await ExecuteWithProgressAsync("Import",
             (application, token) => application.ImportDataArchiveAsync(new DataArchiveImportRequest(plan.PlanId), token));
         if (result is { Succeeded: true, Value: { } imported })
         {
-            _importPlan = null;
-            MergeImportButton.IsEnabled = false;
             ImportResultText.Text = Format(
                 "Operations.InstallationTransfer.Import.Result",
                 "Merge completed: {0:N0} installations and {1:N0} activity or AI records added; {2:N0} matching activity or AI records skipped; {3:N0} screenshots added ({4}) and {5:N0} screenshots skipped.",
@@ -252,7 +284,11 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
                 FormatBytes(imported.AddedScreenshotBytes),
                 imported.SkippedScreenshotFileCount);
             ImportResultText.Visibility = Visibility.Visible;
-            await LoadAsync();
+        }
+        else if (IsLoaded)
+        {
+            ImportResultText.Text = _strings.Translate("Operations.InstallationTransfer.Import.PreviewAgain");
+            ImportResultText.Visibility = Visibility.Visible;
         }
     }
 
@@ -490,29 +526,36 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
 
     private void RenderImportPreview(DataArchiveImportPlan plan, string archivePath)
     {
+        ImportArchiveNameText.Text = archivePath[(archivePath.LastIndexOfAny(['\\', '/']) + 1)..];
         ImportArchivePathText.Text = archivePath;
-        AutomationProperties.SetName(ImportArchivePathText, archivePath);
+        AutomationProperties.SetName(ImportArchivePathText, $"{_strings.Translate("Operations.InstallationTransfer.Import.ArchivePath")}: {archivePath}");
         AutomationProperties.SetHelpText(ImportArchivePathText, archivePath);
         ToolTipService.SetToolTip(ImportArchivePathText, archivePath);
         ImportPreviewSummaryText.Text = Format(
-            "Operations.InstallationTransfer.Import.PreviewResult",
-            "Archive created {0:g}: {1:N0} activity records, {2:N0} AI records, and {3:N0} screenshots ({4}).",
-            plan.CreatedAt.ToLocalTime(),
-            plan.ActivitySampleCount,
-            (long)plan.AiRequestCount + plan.AiAnalysisCount,
-            plan.ScreenshotFileCount,
-            FormatBytes(plan.ScreenshotBytes));
+            "Operations.InstallationTransfer.Import.CreatedAt",
+            "Created {0:g}",
+            plan.CreatedAt.ToLocalTime());
+        SetPreviewMetric(ImportActivityCountText, plan.ActivitySampleCount.ToString("N0", _strings.Culture), "ActivityCount");
+        SetPreviewMetric(ImportAiCountText, ((long)plan.AiRequestCount + plan.AiAnalysisCount).ToString("N0", _strings.Culture), "AiCount");
+        SetPreviewMetric(ImportScreenshotCountText, plan.ScreenshotFileCount.ToString("N0", _strings.Culture), "ScreenshotCount");
+        SetPreviewMetric(ImportScreenshotSizeText, FormatBytes(plan.ScreenshotBytes), "ScreenshotSize");
         ImportInstallationsList.ItemsSource = plan.Installations
             .OrderBy(installation => installation.FriendlyName, StringComparer.Create(_strings.Culture, ignoreCase: true))
             .Select(installation => new ArchiveInstallationListItem(
                 installation.FriendlyName,
-                installation.MachineName,
+                Format("Operations.InstallationTransfer.MachineName", "Computer: {0}", installation.MachineName),
                 InstallationAppearance.CreateAccentBrush(installation.Color),
                 InstallationAppearance.GetIconGlyph(installation.Icon)))
             .ToArray();
         AlreadyImportedText.Visibility = plan.AlreadyImported ? Visibility.Visible : Visibility.Collapsed;
         MergeImportButton.IsEnabled = !plan.AlreadyImported;
         ImportPreviewPanel.Visibility = Visibility.Visible;
+    }
+
+    private void SetPreviewMetric(TextBlock target, string value, string labelKey)
+    {
+        target.Text = value;
+        AutomationProperties.SetName(target, $"{_strings.Translate($"Operations.InstallationTransfer.Import.{labelKey}")}: {value}");
     }
 
     private string T(string key, string fallback) => _strings.TryTranslate(key, out var value) ? value : fallback;

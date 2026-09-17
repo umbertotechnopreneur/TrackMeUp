@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -30,6 +31,8 @@ internal sealed class DataArchiveService
     private const string ScreenshotEntryPrefix = "screenshots/";
     private const string ArchiveExtension = ".tmuarchive";
     private static readonly TimeSpan ImportPlanLifetime = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan SnapshotLockTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan SnapshotRetryDelay = TimeSpan.FromMilliseconds(100);
 
     private static readonly string[] ActivityColumns =
     [
@@ -121,7 +124,7 @@ internal sealed class DataArchiveService
         Directory.CreateDirectory(workDirectory);
         try
         {
-            CreateConsistentDatabaseSnapshot(snapshotPath);
+            CreateConsistentDatabaseSnapshot(snapshotPath, cancellationToken);
             SanitizeArchiveDatabase(snapshotPath, fromUtcTicks, toUtcTicks, cancellationToken);
 
             var settings = _store.LoadSettings();
@@ -277,7 +280,7 @@ internal sealed class DataArchiveService
         }
     }
 
-    private void CreateConsistentDatabaseSnapshot(string snapshotPath)
+    private void CreateConsistentDatabaseSnapshot(string snapshotPath, CancellationToken cancellationToken)
     {
         var sourceBuilder = new SqliteConnectionStringBuilder
         {
@@ -295,7 +298,41 @@ internal sealed class DataArchiveService
         using var destination = new SqliteConnection(destinationBuilder.ToString());
         source.Open();
         destination.Open();
-        source.BackupDatabase(destination);
+        var startedAt = Stopwatch.GetTimestamp();
+        var lockReported = false;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                // BackupDatabase makes one native backup attempt without retrying SQLITE_BUSY/SQLITE_LOCKED.
+                // Each failed attempt rolls back its destination; retry only the consistent snapshot operation.
+                source.BackupDatabase(destination);
+                cancellationToken.ThrowIfCancellationRequested();
+                return;
+            }
+            catch (SqliteException exception) when (exception.SqliteErrorCode is 5 or 6)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var remaining = SnapshotLockTimeout - Stopwatch.GetElapsedTime(startedAt);
+                if (remaining <= TimeSpan.Zero)
+                {
+                    // Persistent locks fail with the original SQLite error; never publish a partial snapshot.
+                    throw;
+                }
+
+                if (!lockReported)
+                {
+                    _logger.LogWarning(
+                        "Data archive snapshot is locked; retrying for up to {TimeoutSeconds} seconds. SqliteErrorCode={SqliteErrorCode}",
+                        SnapshotLockTimeout.TotalSeconds, exception.SqliteErrorCode);
+                    lockReported = true;
+                }
+
+                // Shutdown/cancellation interrupts the wait instead of waiting for the retry budget to expire.
+                cancellationToken.WaitHandle.WaitOne(remaining < SnapshotRetryDelay ? remaining : SnapshotRetryDelay);
+            }
+        }
     }
 
     private static void SanitizeArchiveDatabase(

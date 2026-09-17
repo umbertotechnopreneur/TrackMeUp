@@ -185,17 +185,24 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
-    public async Task ReportSnapshotV4_RoundTripsNullableDailyActivityScores()
+    public async Task ReportSnapshotV6_RoundTripsActivityScoresAndHourlyInstallationProfiles()
     {
+        var installation = InstallationProfileCatalog.CreateDefault(
+            Guid.NewGuid().ToString("N"),
+            "Workstation",
+            new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero));
         var snapshot = new ReportSnapshot(
-            4,
+            6,
             new ReportRange(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 2), "UTC", 2),
             new ReportTotals(60, 0, 60, 40, 8, 1),
             [
-                new ReportCalendarCell(new DateOnly(2026, 2, 1), 60, 0, 60, 40, 8, 1, true, 62),
-                new ReportCalendarCell(new DateOnly(2026, 2, 2), 0, 0, 0, 0, 0, 0, false, null)
+                new ReportCalendarCell(new DateOnly(2026, 2, 1), 60, 0, 60, 40, 8, 1, true, 62, [installation]),
+                new ReportCalendarCell(new DateOnly(2026, 2, 2), 0, 0, 0, 0, 0, 0, false, null, [])
             ],
-            [],
+            [
+                new ReportHourCell(0, 12, 60, 0, 60, 1, true, 40, 8, 1, 62, [installation]),
+                new ReportHourCell(0, 13, 0, 0, 0, 0, false, 0, 0, 0, null, [])
+            ],
             [],
             [],
             new ReportDataQuality(true, null, null, 1, 60, 172_800, 60d / 172_800d),
@@ -217,9 +224,23 @@ public sealed class RuntimeProtocolTests
         var actual = payload.Deserialize<ReportSnapshot>(RuntimeProtocol.SerializerOptions);
 
         Assert.NotNull(actual);
-        Assert.Equal(4, actual.ContractVersion);
+        Assert.Equal(6, actual.ContractVersion);
         Assert.Equal(62, actual.Calendar[0].ActivityScore);
         Assert.Null(actual.Calendar[1].ActivityScore);
+        Assert.Equal(installation, Assert.Single(actual.HourOfWeek[0].Installations));
+        Assert.Equal(62, actual.HourOfWeek[0].ActivityScore);
+        Assert.Empty(actual.HourOfWeek[1].Installations);
+    }
+
+    [Fact]
+    public void ReportHourCell_RejectsPayloadWithoutInstallationProvenance()
+    {
+        const string payload = """
+            {"dayOfWeek":0,"hour":12,"activeSeconds":60,"idleSeconds":0,"trackedSeconds":60,
+             "observationDays":1,"hasData":true,"keyPresses":40,"mouseClicks":8,"sampleCount":1,"activityScore":62}
+            """;
+
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ReportHourCell>(payload, RuntimeProtocol.SerializerOptions));
     }
 
     [Fact]

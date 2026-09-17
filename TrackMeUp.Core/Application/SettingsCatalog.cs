@@ -74,6 +74,8 @@ public static class SettingsCatalog
         Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
         Integer("window.world_clocks.opacity_percent", "World-clock window opacity from 25 through 100 percent."),
         Boolean("window.world_clocks.show_in_taskbar", "Show the world-clock window in the Windows taskbar."),
+        Boolean("window.world_map.show_in_taskbar", "Show the world-map window in the Windows taskbar."),
+        Boolean("window.lunar_phase.show_in_taskbar", "Show the lunar-phase window in the Windows taskbar."),
         Boolean("taskbar.widget.visible", "Show the compact control in the Windows taskbar."),
         Choice("taskbar.widget.position", "Taskbar control anchor.", TaskbarAnchors),
         Text("activity.span_label", "Short local activity label, limited to 20 characters."),
@@ -153,6 +155,8 @@ public static class SettingsCatalog
             "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
             "window.world_clocks.opacity_percent" => settings.WorldClockWindowOpacityPercent,
             "window.world_clocks.show_in_taskbar" => settings.WorldClockWindowShowInTaskbar,
+            "window.world_map.show_in_taskbar" => settings.WorldMapWindowShowInTaskbar,
+            "window.lunar_phase.show_in_taskbar" => settings.LunarPhaseWindowShowInTaskbar,
             "taskbar.widget.visible" => settings.TaskbarWidgetVisible,
             "taskbar.widget.position" => settings.TaskbarWidgetPosition,
             "activity.span_label" => settings.SpanLabel,
@@ -275,6 +279,8 @@ public static class SettingsCatalog
                 case "world_clocks.weather.enabled" when TryBoolean(value, out var worldClockWeatherEnabled): current = current with { WorldClockWeatherEnabled = worldClockWeatherEnabled }; break;
                 case "window.world_clocks.opacity_percent" when TryInteger(value, 25, 100, out var worldClockOpacity): current = current with { WorldClockWindowOpacityPercent = worldClockOpacity }; break;
                 case "window.world_clocks.show_in_taskbar" when TryBoolean(value, out var worldClockShowInTaskbar): current = current with { WorldClockWindowShowInTaskbar = worldClockShowInTaskbar }; break;
+                case "window.world_map.show_in_taskbar" when TryBoolean(value, out var worldMapShowInTaskbar): current = current with { WorldMapWindowShowInTaskbar = worldMapShowInTaskbar }; break;
+                case "window.lunar_phase.show_in_taskbar" when TryBoolean(value, out var lunarPhaseShowInTaskbar): current = current with { LunarPhaseWindowShowInTaskbar = lunarPhaseShowInTaskbar }; break;
                 case "taskbar.widget.visible" when TryBoolean(value, out var taskbarVisible): current = current with { TaskbarWidgetVisible = taskbarVisible }; break;
                 case "taskbar.widget.position" when Canonical(TaskbarAnchors, value) is { } taskbarPosition: current = current with { TaskbarWidgetPosition = taskbarPosition }; break;
                 case "activity.span_label" when value is not null && value.Length <= 20: current = current with { SpanLabel = value }; break;

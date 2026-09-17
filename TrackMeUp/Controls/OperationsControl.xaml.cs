@@ -206,10 +206,10 @@ public sealed partial class OperationsControl : UserControl
         DetailScroll.Visibility = Visibility.Visible;
         HideDetailSections();
         var section = EnsureInstallationTransferSection();
+        section.ShowArchiveActions();
         section.Visibility = Visibility.Visible;
         DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         NotifyLayoutChanged();
-        _ = section.LoadAsync();
     }
 
     /// <summary>Starts the export picker on the visible installation-transfer surface.</summary>
