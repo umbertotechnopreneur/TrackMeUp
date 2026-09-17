@@ -219,11 +219,9 @@
 
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                            <StackPanel Spacing="8">
-                                <TextBlock
-                                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                                    Tag="Options.Section.Window"
-                                    Text="Window" />
+                            <Expander x:Name="WindowOptionsExpander" Header="Window" Tag="Options.Section.Window"
+                                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsExpanded="False">
+                              <StackPanel Spacing="16">
                                 <Slider
                                     x:Name="WorldClockOpacitySlider"
                                     Header="Window opacity"
@@ -242,10 +240,6 @@
                                     OnContent=""
                                     Tag="Options.Window.ShowInTaskbar"
                                     Toggled="WorldClockShowInTaskbarSwitch_Toggled" />
-                            </StackPanel>
-
-                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
                             <ToggleSwitch
                                 x:Name="AlwaysOnTopSwitch"
                                 Header="Always on top"
@@ -253,6 +247,17 @@
                                 OnContent="On"
                                 Tag="WorldClock.Options.AlwaysOnTop"
                                 Toggled="AlwaysOnTopSwitch_Toggled" />
+                                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                                <ToggleSwitch x:Name="LunarPhaseShowInTaskbarSwitch"
+                                              Header="Show Moon window icon in taskbar" OnContent="" OffContent=""
+                                              Tag="WorldClock.Options.MoonTaskbar"
+                                              Toggled="AstronomyShowInTaskbarSwitch_Toggled" />
+                                <ToggleSwitch x:Name="WorldMapShowInTaskbarSwitch"
+                                              Header="Show world-map window icon in taskbar" OnContent="" OffContent=""
+                                              Tag="WorldClock.Options.MapTaskbar"
+                                              Toggled="AstronomyShowInTaskbarSwitch_Toggled" />
+                              </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </Border>
 

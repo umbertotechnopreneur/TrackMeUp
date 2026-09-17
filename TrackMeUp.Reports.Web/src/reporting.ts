@@ -44,6 +44,19 @@ export interface ReportHourCell {
   mouseClicks: number
   sampleCount: number
   activityScore: number | null
+  installations: InstallationProfile[]
+}
+
+export interface InstallationProfile {
+  installationId: string
+  machineName: string
+  friendlyName: string
+  color: string
+  icon: string
+  firstSeenAt: string
+  updatedAt: string
+  revision: number
+  isCurrent: boolean
 }
 
 export interface ReportTrendBucket {
@@ -206,12 +219,50 @@ const isCalendarCell = (value: unknown): value is ReportCalendarCell => {
     ])
 }
 
+const installationColors: readonly string[] = [
+  '#5B8DEF', '#6BBF8A', '#E88F6B', '#A97BEA', '#E0B84D', '#5CC2C7', '#E36D8D', '#8A9AAE',
+  '#B23A48', '#3157C8', '#2D7D46', '#5B4DB7', '#B85C24', '#167C80', '#A23B72', '#7A553B',
+]
+
+const installationIcons: readonly string[] = [
+  'desktop', 'laptop', 'workstation', 'home', 'tablet', 'phone', 'server', 'cloud',
+  'office', 'briefcase', 'terminal', 'gaming', 'travel', 'school', 'studio', 'camera',
+]
+
+const isProfileName = (value: unknown, maximumLength: number): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= maximumLength && value === value.trim()
+
+const isUtcDateTimeText = (value: unknown): value is string =>
+  typeof value === 'string'
+    && /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,7})?(?:Z|\+00:00)$/.test(value)
+    && isDateText(value.slice(0, 10))
+    && !Number.isNaN(Date.parse(value))
+
+const isInstallationProfile = (value: unknown): value is InstallationProfile => {
+  if (!isObject(value)) return false
+  return typeof value.installationId === 'string'
+    && /^[0-9a-f]{32}$/.test(value.installationId)
+    && isProfileName(value.machineName, 128)
+    && isProfileName(value.friendlyName, 64)
+    && typeof value.color === 'string' && installationColors.includes(value.color)
+    && typeof value.icon === 'string' && installationIcons.includes(value.icon)
+    && isUtcDateTimeText(value.firstSeenAt)
+    && isUtcDateTimeText(value.updatedAt)
+    && Date.parse(value.updatedAt) >= Date.parse(value.firstSeenAt)
+    && isIntegerInRange(value.revision, 1, Number.MAX_SAFE_INTEGER)
+    && typeof value.isCurrent === 'boolean'
+}
+
 const isHourCell = (value: unknown): value is ReportHourCell => {
   if (!isObject(value)) return false
   return isIntegerInRange(value.dayOfWeek, 0, 6)
     && isIntegerInRange(value.hour, 0, 23)
     && typeof value.hasData === 'boolean'
     && (value.hasData ? isIntegerInRange(value.activityScore, 0, 100) : value.activityScore === null)
+    && Array.isArray(value.installations)
+    && value.installations.every(isInstallationProfile)
+    && (value.hasData ? value.installations.length > 0 : value.installations.length === 0)
+    && new Set(value.installations.map((profile) => profile.installationId)).size === value.installations.length
     && hasNumericFields(value, [
       'activeSeconds',
       'idleSeconds',
@@ -315,7 +366,7 @@ export function validateReportEnvelope(value: unknown): EnvelopeValidationResult
     return { error: tr('The report does not contain a valid snapshot.') }
   }
 
-  if (snapshot.contractVersion !== 5) {
+  if (snapshot.contractVersion !== 6) {
     return { error: tr('The report version is not compatible with this application.') }
   }
 

@@ -1004,6 +1004,8 @@
   "WorldClock.Options.Description": "Choisissez le comportement des horloges mondiales et de la météo actuelle.",
   "WorldClock.Options.Clocks.Header": "Horloges",
   "WorldClock.Options.Clocks.Description": "Ajoutez ou supprimez jusqu’à 12 villes et choisissez la ville de référence.",
+  "WorldClock.Options.MoonTaskbar.Header": "Afficher l'icône de la Lune dans la barre des tâches",
+  "WorldClock.Options.MapTaskbar.Header": "Afficher l'icône de la carte dans la barre des tâches",
   "WorldClock.Options.AlwaysOnTop.Header": "Toujours au premier plan",
   "WorldClock.Options.AlwaysOnTop.Off": "Désactivé",
   "WorldClock.Options.AlwaysOnTop.On": "Activé",

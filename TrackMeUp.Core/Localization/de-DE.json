@@ -1004,6 +1004,8 @@
   "WorldClock.Options.Description": "Legen Sie fest, wie sich Weltuhren und das aktuelle Wetter verhalten.",
   "WorldClock.Options.Clocks.Header": "Uhren",
   "WorldClock.Options.Clocks.Description": "Fügen Sie bis zu 12 Städte hinzu oder entfernen Sie sie und wählen Sie die Referenzstadt.",
+  "WorldClock.Options.MoonTaskbar.Header": "Symbol des Mondfensters in der Taskleiste anzeigen",
+  "WorldClock.Options.MapTaskbar.Header": "Symbol der Weltkarte in der Taskleiste anzeigen",
   "WorldClock.Options.AlwaysOnTop.Header": "Immer im Vordergrund",
   "WorldClock.Options.AlwaysOnTop.Off": "Aus",
   "WorldClock.Options.AlwaysOnTop.On": "Ein",

@@ -1004,6 +1004,8 @@
   "WorldClock.Options.Description": "Choose how world clocks and current weather behave.",
   "WorldClock.Options.Clocks.Header": "Clocks",
   "WorldClock.Options.Clocks.Description": "Add or remove up to 12 cities and choose the reference city.",
+  "WorldClock.Options.MoonTaskbar.Header": "Show Moon window icon in taskbar",
+  "WorldClock.Options.MapTaskbar.Header": "Show world-map window icon in taskbar",
   "WorldClock.Options.AlwaysOnTop.Header": "Always on top",
   "WorldClock.Options.AlwaysOnTop.Off": "Off",
   "WorldClock.Options.AlwaysOnTop.On": "On",

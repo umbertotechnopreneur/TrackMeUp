@@ -24,6 +24,7 @@ internal sealed class AstronomyWindowController
     private readonly ITrackMeUpApplication _application;
     private readonly MicaDialogService _dialogs;
     private readonly AppWindow _appWindow;
+    private readonly string _windowKey;
     private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -60,6 +61,7 @@ internal sealed class AstronomyWindowController
         _renderSnapshot = renderSnapshot ?? throw new ArgumentNullException(nameof(renderSnapshot));
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
+        _windowKey = windowKey;
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(window)));
         _titleBar = new CustomTitleBarController(
@@ -86,6 +88,12 @@ internal sealed class AstronomyWindowController
     internal void ApplySettings(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        _appWindow.IsShownInSwitchers = _windowKey switch
+        {
+            WindowStateKeys.WorldMap => settings.WorldMapWindowShowInTaskbar,
+            WindowStateKeys.LunarPhase => settings.LunarPhaseWindowShowInTaskbar,
+            _ => throw new InvalidOperationException("Unsupported astronomical window.")
+        };
         _strings = new LocalizationService(settings.UiLanguage);
         _root.RequestedTheme = settings.Theme switch
         {

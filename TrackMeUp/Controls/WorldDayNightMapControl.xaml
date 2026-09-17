@@ -66,35 +66,35 @@
                     </Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Border Width="14" Height="4" VerticalAlignment="Center" Background="#C9081022" CornerRadius="2" />
-                        <TextBlock x:Name="NightLegendText" FontSize="11" Tag="WorldClock.Map.Night" Text="NIGHT" />
+                        <TextBlock x:Name="NightLegendText" FontSize="11" Foreground="White" Tag="WorldClock.Map.Night" Text="NIGHT" />
                     </StackPanel>
                     <StackPanel x:Name="DawnLegend" Grid.Column="1" Margin="14,0,0,0" Orientation="Horizontal" Spacing="6">
                         <Border Width="18" Height="4" VerticalAlignment="Center" CornerRadius="2">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
                                     <GradientStop Offset="0" Color="#FF0A1328" />
-                                    <GradientStop Offset="0.55" Color="#FFE4A168" />
+                                    <GradientStop Offset="0.55" Color="#FFFF9A24" />
                                     <GradientStop Offset="1" Color="#FF91B9D8" />
                                 </LinearGradientBrush>
                             </Border.Background>
                         </Border>
-                        <TextBlock x:Name="DawnLegendText" FontSize="11" Tag="WorldClock.Map.Dawn" Text="DAWN" />
+                        <TextBlock x:Name="DawnLegendText" FontSize="11" Foreground="White" Tag="WorldClock.Map.Dawn" Text="DAWN" />
                     </StackPanel>
                     <StackPanel x:Name="DayLegend" Grid.Column="2" Margin="14,0,0,0" Orientation="Horizontal" Spacing="6">
                         <Border Width="14" Height="4" VerticalAlignment="Center" Background="#FF91B9D8" CornerRadius="2" />
-                        <TextBlock x:Name="DayLegendText" FontSize="11" Tag="WorldClock.Map.Day" Text="DAY" />
+                        <TextBlock x:Name="DayLegendText" FontSize="11" Foreground="White" Tag="WorldClock.Map.Day" Text="DAY" />
                     </StackPanel>
                     <StackPanel x:Name="SunsetLegend" Grid.Column="3" Margin="14,0,0,0" Orientation="Horizontal" Spacing="6">
                         <Border Width="18" Height="4" VerticalAlignment="Center" CornerRadius="2">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
                                     <GradientStop Offset="0" Color="#FF91B9D8" />
-                                    <GradientStop Offset="0.45" Color="#FFFF755B" />
+                                    <GradientStop Offset="0.45" Color="#FFFF4935" />
                                     <GradientStop Offset="1" Color="#FF0A1328" />
                                 </LinearGradientBrush>
                             </Border.Background>
                         </Border>
-                        <TextBlock x:Name="SunsetLegendText" FontSize="11" Tag="WorldClock.Map.Sunset" Text="SUNSET" />
+                        <TextBlock x:Name="SunsetLegendText" FontSize="11" Foreground="White" Tag="WorldClock.Map.Sunset" Text="SUNSET" />
                     </StackPanel>
                 </Grid>
             </Border>

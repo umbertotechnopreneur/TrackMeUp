@@ -14,6 +14,8 @@ namespace TrackMeUp.Controls;
 /// <summary>Renders application-supplied hourly aggregates and forwards user selection.</summary>
 public sealed partial class ActivityWeekHeatmap : UserControl
 {
+    private const double MinimumCellHeight = 20;
+    private readonly List<TextBlock> _columnHeaders = [];
     private readonly List<(Button Button, Border Fill, ActivityWeekCell Cell)> _cells = [];
     private Brush? _selectionBrush;
 
@@ -28,8 +30,16 @@ public sealed partial class ActivityWeekHeatmap : UserControl
 
     private void Heatmap_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        // Bound the star rows to the viewport; allow scrolling only when the window is too short.
-        CellsGrid.Height = Math.Max(CellsGrid.MinHeight, e.NewSize.Height);
+        UpdateGridHeight();
+    }
+
+    private void UpdateGridHeight()
+    {
+        var headerHeight = _columnHeaders.Count == 0 ? 0 : _columnHeaders.Max(header =>
+            header.ActualHeight + header.Margin.Top + header.Margin.Bottom);
+        // Give every hour at least 20 DIPs; taller viewports distribute the remaining height equally.
+        CellsGrid.MinHeight = headerHeight + 24 * (MinimumCellHeight + CellsGrid.RowSpacing);
+        CellsGrid.Height = Math.Max(CellsGrid.MinHeight, HeatmapViewport.ActualHeight);
     }
 
     /// <summary>Replaces the visible cells with a validated weekly projection.</summary>
@@ -37,6 +47,7 @@ public sealed partial class ActivityWeekHeatmap : UserControl
         Func<int, Brush> heatBrush, Brush emptyBrush, Brush selectionBrush)
     {
         _selectionBrush = selectionBrush;
+        _columnHeaders.Clear();
         _cells.Clear();
         CellsGrid.Children.Clear();
         CellsGrid.RowDefinitions.Clear();
@@ -50,7 +61,11 @@ public sealed partial class ActivityWeekHeatmap : UserControl
         CellsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         for (var hour = 0; hour < 24; hour++)
         {
-            CellsGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            CellsGrid.RowDefinitions.Add(new RowDefinition
+            {
+                Height = new GridLength(1, GridUnitType.Star),
+                MinHeight = MinimumCellHeight
+            });
             Add(new TextBlock
             {
                 Text = $"{hour:00}:00",
@@ -66,13 +81,16 @@ public sealed partial class ActivityWeekHeatmap : UserControl
             var day = ((int)cell.Date.DayOfWeek + 6) % 7;
             if (cell.Hour == 0)
             {
-                Add(new TextBlock
+                var header = new TextBlock
                 {
                     Text = cell.Date.ToString("ddd d", strings.Culture),
                     TextAlignment = TextAlignment.Center,
                     FontSize = 12,
                     Margin = new Thickness(0, 4, 0, 6)
-                }, 0, day + 1);
+                };
+                header.SizeChanged += Heatmap_SizeChanged;
+                _columnHeaders.Add(header);
+                Add(header, 0, day + 1);
             }
 
             var fill = new Border
@@ -82,6 +100,12 @@ public sealed partial class ActivityWeekHeatmap : UserControl
                 BackgroundSizing = BackgroundSizing.OuterBorderEdge,
                 CornerRadius = new CornerRadius(0)
             };
+            var badges = new ActivityInstallationBadges(cell.Activity.Installations, strings.Culture)
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            fill.Child = badges;
             var button = new Button
             {
                 Content = fill,
@@ -103,14 +127,27 @@ public sealed partial class ActivityWeekHeatmap : UserControl
                 ? string.Format(strings.Culture, strings.Translate("ActivityCalendar.ScoreAccessible"), value)
                 : strings.Translate("ActivityCalendar.NoDataLegend");
             var label = $"{cell.Date.ToString("D", strings.Culture)}, {cell.Hour:00}:00–{cell.Hour + 1:00}:00. {activityLabel}";
+            if (cell.Activity.Installations.Count > 0)
+            {
+                var installationNames = string.Join(", ", cell.Activity.Installations.Select(profile =>
+                    string.Equals(profile.FriendlyName, profile.MachineName, StringComparison.OrdinalIgnoreCase)
+                        ? profile.FriendlyName
+                        : $"{profile.FriendlyName} ({profile.MachineName})"));
+                label += $". {installationNames}";
+            }
             AutomationProperties.SetName(button, label);
             ToolTipService.SetToolTip(button, label);
+            button.SizeChanged += (_, e) => badges.UpdateAvailableSize(
+                Math.Max(0, e.NewSize.Width - fill.BorderThickness.Left - fill.BorderThickness.Right),
+                e.NewSize.Height);
             button.Click += (_, _) => SelectAndNotify(cell);
             button.DoubleTapped += (_, e) => { e.Handled = true; CellInvoked?.Invoke(cell); };
             button.KeyDown += Cell_KeyDown;
             _cells.Add((button, fill, cell));
             Add(button, cell.Hour + 1, day + 1);
         }
+
+        UpdateGridHeight();
     }
 
     /// <summary>Shows selection without changing the activity fill or emitting a user action.</summary>

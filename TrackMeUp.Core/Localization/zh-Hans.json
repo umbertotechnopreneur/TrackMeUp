@@ -989,6 +989,8 @@
   "WorldClock.MoonPhase.Title": "月相",
   "WorldClock.MoonPhase.Open": "在新窗口中打开月相", "WorldClock.Map.Title": "世界昼夜地图", "WorldClock.Map.Night": "夜晚", "WorldClock.Map.Dawn": "黎明", "WorldClock.Map.Day": "白天", "WorldClock.Map.Sunset": "黄昏", "WorldClock.Map.Sun": "太阳", "WorldClock.Map.Moon": "月亮",
   "WorldClock.Options.Clocks.Header": "时钟", "WorldClock.Options.Clocks.Description": "添加或移除最多 12 个城市，并选择参考城市。",
+  "WorldClock.Options.MoonTaskbar.Header": "在任务栏中显示月相窗口图标",
+  "WorldClock.Options.MapTaskbar.Header": "在任务栏中显示世界地图窗口图标",
   "WorldClock.Options.AlwaysOnTop.Header": "始终置顶", "WorldClock.Options.AlwaysOnTop.Off": "关闭", "WorldClock.Options.AlwaysOnTop.On": "开启",
   "WorldClock.Options.Weather.Header": "当前天气", "WorldClock.Options.Weather.Off": "关闭", "WorldClock.Options.Weather.On": "开启", "WorldClock.Options.Weather.Description": "显示所选城市的最新天气状况。", "WorldClock.Options.Weather.Setup": "天气提供商设置",
   "WorldClock.Options.Weather.ApiKey.Header": "OpenWeather API 密钥", "WorldClock.Options.Weather.ApiKey.Placeholder": "保存在 Windows 中，而不保存在 TrackMeUp 设置中", "WorldClock.Options.Weather.ApiKey.ConfiguredHelp": "天气密钥已保存在 Windows 中。输入新密钥可将其替换。",

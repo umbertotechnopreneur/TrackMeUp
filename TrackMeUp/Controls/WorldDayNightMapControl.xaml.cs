@@ -112,9 +112,9 @@ public sealed partial class WorldDayNightMapControl : UserControl
                     _projection.Sun.Longitude);
                 var offset = ((y * MapPixelWidth) + x) * 4;
                 var (tintRed, tintGreen, tintBlue) = sample.Band == WorldMapLightBand.Dawn
-                    ? ((byte)236, (byte)167, (byte)99)
-                    : ((byte)255, (byte)105, (byte)78);
-                var tintBlend = sample.TwilightBlend * 0.2d;
+                    ? ((byte)255, (byte)154, (byte)36)
+                    : ((byte)255, (byte)73, (byte)53);
+                var tintBlend = sample.TwilightBlend * 0.42d;
                 pixels[offset] = BlendChannel(
                     _nightTexture[offset],
                     _dayTexture[offset],

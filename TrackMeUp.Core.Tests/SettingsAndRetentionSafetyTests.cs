@@ -16,6 +16,58 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class SettingsAndRetentionSafetyTests
 {
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public void AstronomyTaskbarPreferences_PersistIndependently(bool mapVisible, bool moonVisible)
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var original = store.LoadSettings();
+            Assert.True(original.WorldMapWindowShowInTaskbar);
+            Assert.True(original.LunarPhaseWindowShowInTaskbar);
+            var result = SettingsCatalog.Apply(original, new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["window.world_map.show_in_taskbar"] = mapVisible ? "true" : "false",
+                ["window.lunar_phase.show_in_taskbar"] = moonVisible ? "true" : "false"
+            }));
+            Assert.True(result.Succeeded);
+            store.SaveSettings(Assert.IsType<AppSettings>(result.Value));
+            var restored = new LocalStore(dataDirectory).LoadSettings();
+            Assert.Equal(mapVisible, restored.WorldMapWindowShowInTaskbar);
+            Assert.Equal(moonVisible, restored.LunarPhaseWindowShowInTaskbar);
+            Assert.Equal(original.WorldClockWindowShowInTaskbar, restored.WorldClockWindowShowInTaskbar);
+            var changedTheme = SettingsCatalog.Apply(restored, new SettingsPatch(new Dictionary<string, string?> { ["theme"] = "dark" }));
+            Assert.True(changedTheme.Succeeded);
+            Assert.True(SettingsCatalog.TryGetValue(changedTheme.Value!, "window.world_map.show_in_taskbar", out var map));
+            Assert.True(SettingsCatalog.TryGetValue(changedTheme.Value!, "window.lunar_phase.show_in_taskbar", out var moon));
+            Assert.Equal(mapVisible, Assert.IsType<bool>(map));
+            Assert.Equal(moonVisible, Assert.IsType<bool>(moon));
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("window.world_map.show_in_taskbar")]
+    [InlineData("window.lunar_phase.show_in_taskbar")]
+    public void AstronomyTaskbarPreferences_RejectInvalidValuesAtomically(string key)
+    {
+        var result = SettingsCatalog.Apply(new AppSettings(), new SettingsPatch(new Dictionary<string, string?>
+        {
+            [key] = "sometimes",
+            ["theme"] = "dark"
+        }));
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Value);
+        Assert.Contains(result.Issues, issue => issue.Field == key);
+    }
+
     /// <summary>Verifies that the global preference survives storage and unrelated settings changes.</summary>
     [Theory]
     [InlineData(false)]

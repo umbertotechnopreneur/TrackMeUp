@@ -989,6 +989,8 @@
   "WorldClock.MoonPhase.Title": "달의 위상",
   "WorldClock.MoonPhase.Open": "새 창에서 달의 위상 열기", "WorldClock.Map.Title": "세계 낮과 밤 지도", "WorldClock.Map.Night": "밤", "WorldClock.Map.Dawn": "새벽", "WorldClock.Map.Day": "낮", "WorldClock.Map.Sunset": "해질녘", "WorldClock.Map.Sun": "태양", "WorldClock.Map.Moon": "달",
   "WorldClock.Options.Clocks.Header": "시계", "WorldClock.Options.Clocks.Description": "최대 12개의 도시를 추가하거나 제거하고 기준 도시를 선택하세요.",
+  "WorldClock.Options.MoonTaskbar.Header": "작업 표시줄에 달 창 아이콘 표시",
+  "WorldClock.Options.MapTaskbar.Header": "작업 표시줄에 세계 지도 창 아이콘 표시",
   "WorldClock.Options.AlwaysOnTop.Header": "항상 위에 표시", "WorldClock.Options.AlwaysOnTop.Off": "꺼짐", "WorldClock.Options.AlwaysOnTop.On": "켜짐",
   "WorldClock.Options.Weather.Header": "현재 날씨", "WorldClock.Options.Weather.Off": "꺼짐", "WorldClock.Options.Weather.On": "켜짐", "WorldClock.Options.Weather.Description": "선택한 도시의 최신 현재 날씨를 표시합니다.", "WorldClock.Options.Weather.Setup": "날씨 제공업체 설정",
   "WorldClock.Options.Weather.ApiKey.Header": "OpenWeather API 키", "WorldClock.Options.Weather.ApiKey.Placeholder": "Windows에 저장되며 TrackMeUp 설정에는 저장되지 않습니다", "WorldClock.Options.Weather.ApiKey.ConfiguredHelp": "날씨 키가 Windows에 저장되어 있습니다. 바꾸려면 새 키를 입력하세요.",

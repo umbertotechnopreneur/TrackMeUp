@@ -62,6 +62,7 @@ public sealed class ReportAggregationTests
             Assert.Equal(168, snapshot.HourOfWeek.Count);
             Assert.All(snapshot.HourOfWeek, cell => Assert.False(cell.HasData));
             Assert.All(snapshot.HourOfWeek, cell => Assert.Null(cell.ActivityScore));
+            Assert.All(snapshot.HourOfWeek, cell => Assert.Empty(cell.Installations));
             Assert.Empty(snapshot.Applications);
         });
     }
@@ -89,7 +90,7 @@ public sealed class ReportAggregationTests
 
             Assert.True(result.Succeeded);
             var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
-            Assert.Equal(5, snapshot.ContractVersion);
+            Assert.Equal(6, snapshot.ContractVersion);
             Assert.Equal(62, snapshot.Calendar[0].ActivityScore);
             Assert.True(snapshot.Calendar[1].HasData);
             Assert.Equal(0, snapshot.Calendar[1].ActivityScore);
@@ -131,7 +132,7 @@ public sealed class ReportAggregationTests
 
             Assert.True(result.Succeeded);
             var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
-            Assert.Equal(5, snapshot.ContractVersion);
+            Assert.Equal(6, snapshot.ContractVersion);
             Assert.Equal(60, snapshot.Totals.TrackedSeconds);
             Assert.Equal(60, snapshot.Totals.ActiveSeconds);
             Assert.Equal(0, snapshot.Totals.IdleSeconds);
@@ -155,6 +156,49 @@ public sealed class ReportAggregationTests
             Assert.Equal(3, sundayNoon.MouseClicks);
             Assert.Equal(2, sundayNoon.SampleCount);
             Assert.Equal(day.ActivityScore, sundayNoon.ActivityScore);
+            Assert.Equal(day.Installations, sundayNoon.Installations);
+        });
+    }
+
+    [Fact]
+    public void Build_ReportsOnlyInstallationsContributingToEachObservedHour()
+    {
+        WithStore((store, reports) =>
+        {
+            var morning = new DateTimeOffset(2026, 2, 1, 8, 0, 0, TimeSpan.Zero);
+            var workstation = InsertInstallationProfile(store, "Workstation");
+            var laptop = InsertInstallationProfile(store, "Laptop");
+            var tablet = InsertInstallationProfile(store, "Tablet");
+            store.AppendSample(Sample(store, morning.AddMinutes(1), 60, "Editor",
+                installationId: workstation.InstallationId));
+            store.AppendSample(Sample(store, morning.AddMinutes(2), 60, "Editor",
+                installationId: workstation.InstallationId));
+            store.AppendSample(Sample(store, morning.AddHours(1).AddMinutes(1), 60, "Desktop", state: "idle",
+                installationId: laptop.InstallationId));
+            store.AppendSample(Sample(store, morning.AddHours(2).AddSeconds(30), 60, "Notes",
+                installationId: tablet.InstallationId));
+            store.AppendSample(Sample(store, morning.AddDays(7).AddMinutes(1), 60, "Editor",
+                installationId: laptop.InstallationId));
+
+            var result = reports.Build(
+                new ReportQuery(new DateOnly(2026, 2, 1), new DateOnly(2026, 2, 8), "UTC"),
+                CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
+            var eight = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 8);
+            Assert.Equal(2, eight.ObservationDays);
+            Assert.Equal(3, eight.SampleCount);
+            Assert.Equal([laptop.InstallationId, workstation.InstallationId],
+                eight.Installations.Select(profile => profile.InstallationId));
+            var nine = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 9);
+            Assert.Equal([laptop.InstallationId, tablet.InstallationId],
+                nine.Installations.Select(profile => profile.InstallationId));
+            var ten = Assert.Single(snapshot.HourOfWeek, cell => cell.DayOfWeek == 0 && cell.Hour == 10);
+            Assert.Equal(tablet.InstallationId, Assert.Single(ten.Installations).InstallationId);
+            Assert.All(snapshot.HourOfWeek.Where(cell => !cell.HasData), cell => Assert.Empty(cell.Installations));
+            Assert.Equal(3, snapshot.Calendar[0].Installations!.Count);
+            Assert.Equal(laptop.InstallationId, Assert.Single(snapshot.Calendar[7].Installations!).InstallationId);
         });
     }
 
@@ -223,6 +267,9 @@ public sealed class ReportAggregationTests
             Assert.Equal(expectedActiveSecondsAfterBoundary, afterHour.ActiveSeconds);
             Assert.Equal(2, beforeHour.SampleCount);
             Assert.Equal(2, afterHour.SampleCount);
+            Assert.Equal([installationB.InstallationId, installationA.InstallationId],
+                beforeHour.Installations.Select(profile => profile.InstallationId));
+            Assert.Equal(beforeHour.Installations, afterHour.Installations);
             Assert.Equal(10, beforeHour.KeyPresses + afterHour.KeyPresses);
             Assert.Equal(4, beforeHour.MouseClicks + afterHour.MouseClicks);
         });
@@ -411,7 +458,7 @@ public sealed class ReportAggregationTests
 
             Assert.True(result.Succeeded);
             var snapshot = Assert.IsType<ReportSnapshot>(result.Value);
-            Assert.Equal(5, snapshot.ContractVersion);
+            Assert.Equal(6, snapshot.ContractVersion);
             var usage = snapshot.AiUsage;
             Assert.Equal(3, usage.RequestCount);
             Assert.Equal(2, usage.SuccessfulRequestCount);

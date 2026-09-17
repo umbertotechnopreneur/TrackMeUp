@@ -10,7 +10,7 @@ public sealed class ReportAggregationService
     /// <summary>Gets the maximum inclusive local-date range accepted by a report query.</summary>
     public const int MaximumRangeDays = 366;
 
-    private const int ContractVersion = 5;
+    private const int ContractVersion = 6;
     private const int DefaultApplicationLimit = 12;
     private readonly LocalStore _store;
 
@@ -238,6 +238,12 @@ public sealed class ReportAggregationService
                 return;
             }
 
+            if (!_installationProfiles.TryGetValue(sample.InstallationId, out var installation))
+            {
+                // Incomplete provenance invalidates the report; never attribute a sample to another system.
+                throw new InvalidDataException("An activity sample references an unknown installation profile.");
+            }
+
             _sampleCount++;
             if (_firstSampleAt is null || sample.Timestamp < _firstSampleAt.Value)
             {
@@ -273,6 +279,7 @@ public sealed class ReportAggregationService
 
                 var hour = _hours[(segment.Bucket.DayOfWeek, segment.Bucket.Hour)];
                 hour.TrackedIntervals.Add(segment.StartTicks, segment.EndTicks);
+                hour.Installations.Add(installation);
                 hour.ObservationDates.Add(segment.Bucket.Date);
                 hour.KeyPresses += keyPresses[index];
                 hour.MouseClicks += mouseClicks[index];
@@ -303,12 +310,7 @@ public sealed class ReportAggregationService
                 }
 
                 day.SampleCount++;
-                if (!_installationProfiles.TryGetValue(sample.InstallationId, out var installation))
-                {
-                    throw new InvalidDataException("An activity sample references an unknown installation profile.");
-                }
-
-                day.AddInstallation(installation);
+                day.Installations.Add(installation);
             }
 
             if (isActive)
@@ -388,7 +390,7 @@ public sealed class ReportAggregationService
         private IReadOnlyList<ReportApplicationSlice> BuildApplications(int applicationLimit)
         {
             // Each application is unioned independently. Parallel different applications can therefore
-            // exceed the wall-clock active total; the v4 contract has no cross-application attribution model.
+            // exceed the wall-clock active total; the report has no cross-application attribution model.
             var ordered = _applicationIntervals
                 .Select(pair => new ReportApplicationSlice(pair.Key, pair.Value.Complete() / TimeSpan.TicksPerSecond))
                 .Where(slice => slice.ActiveSeconds > 0)
@@ -492,24 +494,12 @@ public sealed class ReportAggregationService
 
     private sealed class DayAccumulator
     {
-        private readonly Dictionary<string, InstallationProfile> _installations = new(StringComparer.Ordinal);
-
+        internal InstallationAccumulator Installations { get; } = new();
         internal OrderedIntervalUnionAccumulator ActiveIntervals { get; } = new();
         internal OrderedIntervalUnionAccumulator TrackedIntervals { get; } = new();
         internal long KeyPresses { get; set; }
         internal long MouseClicks { get; set; }
         internal int SampleCount { get; set; }
-
-        internal void AddInstallation(InstallationProfile installation)
-        {
-            if (_installations.TryGetValue(installation.InstallationId, out var existing)
-                && existing != installation)
-            {
-                throw new InvalidDataException("An installation profile changed inside one report snapshot.");
-            }
-
-            _installations[installation.InstallationId] = installation;
-        }
 
         internal ReportCalendarCell ToCalendarCell(DateOnly date)
         {
@@ -541,16 +531,13 @@ public sealed class ReportAggregationService
                 SampleCount,
                 hasData,
                 activityScore,
-                _installations.Values
-                    .OrderBy(profile => profile.FriendlyName, StringComparer.OrdinalIgnoreCase)
-                    .ThenBy(profile => profile.MachineName, StringComparer.OrdinalIgnoreCase)
-                    .ThenBy(profile => profile.InstallationId, StringComparer.Ordinal)
-                    .ToArray());
+                Installations.Build());
         }
     }
 
     private sealed class HourAccumulator
     {
+        internal InstallationAccumulator Installations { get; } = new();
         internal long KeyPresses { get; set; }
         internal long MouseClicks { get; set; }
         internal int SampleCount { get; set; }
@@ -585,7 +572,8 @@ public sealed class ReportAggregationService
                         KeyPresses, MouseClicks,
                         activeTicks / (double)TimeSpan.TicksPerSecond,
                         trackedTicks / (double)TimeSpan.TicksPerSecond)
-                    : null);
+                    : null,
+                Installations.Build());
         }
 
         private long MeanSeconds(long ticks) => ObservationDates.Count == 0
@@ -593,6 +581,29 @@ public sealed class ReportAggregationService
             : checked((long)Math.Round(
                 ticks / (double)TimeSpan.TicksPerSecond / ObservationDates.Count,
                 MidpointRounding.AwayFromZero));
+    }
+
+    private sealed class InstallationAccumulator
+    {
+        private readonly Dictionary<string, InstallationProfile> _installations = new(StringComparer.Ordinal);
+
+        internal void Add(InstallationProfile installation)
+        {
+            if (_installations.TryGetValue(installation.InstallationId, out var existing)
+                && existing != installation)
+            {
+                // A snapshot cannot mix revisions of one profile; report the invalid state to the caller.
+                throw new InvalidDataException("An installation profile changed inside one report snapshot.");
+            }
+
+            _installations[installation.InstallationId] = installation;
+        }
+
+        internal IReadOnlyList<InstallationProfile> Build() => _installations.Values
+            .OrderBy(profile => profile.FriendlyName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(profile => profile.MachineName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(profile => profile.InstallationId, StringComparer.Ordinal)
+            .ToArray();
     }
 
     /// <summary>Merges a start-ordered interval stream without retaining raw report samples.</summary>
