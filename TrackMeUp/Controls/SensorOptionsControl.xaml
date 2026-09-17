@@ -1,0 +1,26 @@
+<UserControl x:Class="TrackMeUp.Controls.SensorOptionsControl"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<StackPanel x:Name="HardwareSensorsSection" Margin="0" Spacing="8">
+                        <TextBlock Tag="Options.Sensors.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Sensors" />
+                        <ToggleSwitch x:Name="HardwareSensorsEnabledSwitch" Toggled="Enabled_Toggled" Tag="Options.Sensors.Enabled" Header="Read hardware sensors" OffContent="" OnContent="" />
+                        <TextBlock Tag="Options.Sensors.Enabled.Description" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Updates while recording; otherwise readings refresh only when requested." TextWrapping="Wrap" />
+                        <StackPanel x:Name="HardwareSensorOptionsPanel" Spacing="8">
+                            <ToggleSwitch x:Name="HardwareAdvancedSwitch" Toggled="Advanced_Toggled" Tag="Options.Sensors.Advanced" Header="Use advanced sensors" OffContent="" OnContent="" />
+                            <TextBlock Tag="Hardware.Advanced.Description" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Activate advanced sensors for each app session. Windows asks for confirmation; an optional component may be required." TextWrapping="Wrap" />
+                            <Button x:Name="ActivateAdvancedSensorsButton" Tag="Hardware.Advanced.Action" HorizontalAlignment="Left" Click="ActivateAdvancedSensorsButton_Click" Content="Activate advanced sensors" AutomationProperties.Name="Activate advanced sensors" ToolTipService.ToolTip="Activate advanced sensors" />
+                            <TextBlock x:Name="HardwareActivationStatusText" AutomationProperties.LiveSetting="Polite" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                            <ToggleSwitch x:Name="HardwareSaveSnapshotsSwitch" Toggled="Snapshots_Toggled" Tag="Options.Sensors.SaveSnapshots" Header="Save sensor readings with captures" OffContent="" OnContent="" />
+                            <TextBlock Tag="Options.Sensors.SaveSnapshots.Description" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Applies to new captures. Turning this off stops saving detailed sensor readings and keeps existing captures unchanged." TextWrapping="Wrap" />
+                            <Slider x:Name="HardwareSamplingSlider" ValueChanged="Sampling_Changed" Header="Update frequency" Tag="Options.Sensors.Sampling" Minimum="0" Maximum="3" StepFrequency="1" TickFrequency="1" TickPlacement="Outside" SnapsTo="Ticks" IsThumbToolTipEnabled="False" Value="1" />
+                            <Grid ColumnSpacing="6">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <TextBlock Tag="Options.Sensors.Profile.slow" FontSize="11" Text="Slow" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="1" Tag="Options.Sensors.Profile.normal" HorizontalAlignment="Center" FontSize="11" Text="Normal" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="2" Tag="Options.Sensors.Profile.fast" HorizontalAlignment="Center" FontSize="11" Text="Fast" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="3" Tag="Options.Sensors.Profile.fastest" HorizontalAlignment="Right" FontSize="11" Text="Fastest" TextWrapping="Wrap" />
+                            </Grid>
+                            <TextBlock x:Name="HardwareSamplingSummaryText" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+</UserControl>

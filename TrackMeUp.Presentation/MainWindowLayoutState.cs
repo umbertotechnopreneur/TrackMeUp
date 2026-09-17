@@ -176,7 +176,7 @@ public sealed class MainWindowLayoutState
         var displayLimit = Math.Max(1, checked((int)Math.Floor(availableLogicalHeight)));
         if (_manualSize is { } manualSize)
         {
-            // Navigation and content changes preserve the user's main-window viewport; taller content scrolls.
+            // Navigation preserves the user's viewport; the player reflows and reduces secondary detail to fit.
             return Math.Min(manualSize.Height, displayLimit);
         }
 

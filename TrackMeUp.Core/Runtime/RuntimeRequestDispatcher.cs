@@ -59,6 +59,7 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.SearchQueryV1 => await DispatchSearchAsync(request, cancellationToken),
                 RuntimeOperation.SearchAvailabilityV1 => ToResponse(request, await _application.GetSearchAvailabilityAsync(cancellationToken)),
                 RuntimeOperation.SearchRebuildV1 => ToResponse(request, await _application.RebuildSearchIndexAsync(cancellationToken)),
+                RuntimeOperation.HardwareSnapshotV1 => ToResponse(request, await _application.CaptureHardwareSnapshotAsync(cancellationToken)),
                 RuntimeOperation.SystemSnapshot => ToResponse(request, await _application.CaptureSystemSnapshotAsync(cancellationToken)),
                 RuntimeOperation.HardwareAdvancedEnableV1 => ToResponse(request, await _application.EnableAdvancedHardwareTelemetryAsync(cancellationToken)),
                 RuntimeOperation.ScreenshotCapture => await DispatchScreenshotCaptureAsync(request, cancellationToken),

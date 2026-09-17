@@ -33,6 +33,8 @@ public partial class App : Microsoft.UI.Xaml.Application
     private MainWindow? _window;
     private ReportsWindow? _reportsWindow;
     private WorldClockWindow? _worldClockWindow;
+    private SensorsWindow? _sensorsWindow;
+    private bool _sensorsWindowOpening;
     private WorldMapWindow? _worldMapWindow;
     private LunarPhaseWindow? _lunarPhaseWindow;
     private ScreenshotWindow? _screenshotsWindow;
@@ -207,6 +209,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
             _window.ReportsRequested += MainWindow_ReportsRequested;
             _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
+            _window.SensorsRequested += MainWindow_SensorsRequested;
             _window.SearchRequested += MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested += MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotGalleryDateRequested += MainWindow_ScreenshotGalleryDateRequested;
@@ -318,6 +321,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             {
                 case WindowStateKeys.Reports:
                     ShowReportsWindow(application, null);
+                    break;
+                case WindowStateKeys.Sensors:
+                    await ShowSensorsWindowAsync(application);
                     break;
                 case WindowStateKeys.WorldClocks:
                     await ShowWorldClockWindowAsync(application);
@@ -540,6 +546,62 @@ public partial class App : Microsoft.UI.Xaml.Application
         _reportsWindow.Activate();
     }
 
+    private async void MainWindow_SensorsRequested(object? sender, EventArgs eventArgs) =>
+        await ShowSensorsWindowAsync(StartOrConnectRuntime());
+
+    private async Task ShowSensorsWindowAsync(ITrackMeUpApplication application)
+    {
+        if (_sensorsWindow is not null) { _sensorsWindow.Activate(); return; }
+        if (_sensorsWindowOpening) return;
+        _sensorsWindowOpening = true;
+        try
+        {
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (_window is null || Volatile.Read(ref _shutdownStarted) != 0) return;
+            if (!settings.Succeeded || settings.Value is null) { _window.ShowSensorsOpenFailure(); return; }
+            _sensorsWindow = new SensorsWindow(application, settings.Value);
+            _sensorsWindow.SettingsSaved += SensorsWindow_SettingsSaved;
+            _sensorsWindow.Closed += SensorsWindow_Closed;
+            _sensorsWindow.Activate();
+        }
+        catch (Exception exception)
+        {
+            // Opening failures remain visible; never start an alternate telemetry collector.
+            _logger.LogError(exception, "Sensor window could not be opened.");
+            if (_sensorsWindow is not null)
+            {
+                _sensorsWindow.SettingsSaved -= SensorsWindow_SettingsSaved;
+                _sensorsWindow.Closed -= SensorsWindow_Closed;
+                _sensorsWindow.CloseForShutdown();
+                _sensorsWindow = null;
+            }
+            _window?.ShowSensorsOpenFailure();
+        }
+        finally { _sensorsWindowOpening = false; }
+    }
+
+    private async void SensorsWindow_SettingsSaved(AppSettings settings)
+    {
+        try
+        {
+            if (_window is not null) await _window.ApplyExternalSettingsAsync(settings);
+        }
+        catch (Exception exception)
+        {
+            // Persistence succeeded; report a failed peer refresh instead of undoing confirmed preferences.
+            _logger.LogError(exception, "Sensor settings could not refresh the main window.");
+            _window?.ShowSensorsOpenFailure();
+        }
+    }
+
+    private void SensorsWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_sensorsWindow is null) return;
+        _sensorsWindow.SettingsSaved -= SensorsWindow_SettingsSaved;
+        _sensorsWindow.Closed -= SensorsWindow_Closed;
+        _sensorsWindow = null;
+    }
+
     private async Task ShowWorldClockWindowAsync(ITrackMeUpApplication application)
     {
         if (_worldClockWindow is not null)
@@ -595,6 +657,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private void ApplyWorldClockWindowSettings(AppSettings settings)
     {
         _worldClockWindow?.ApplySettings(settings);
+        _sensorsWindow?.ApplySettings(settings);
         ApplyAstronomyWindowSettings(settings);
     }
 
@@ -886,6 +949,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
             _window.ReportsRequested -= MainWindow_ReportsRequested;
             _window.WorldClocksRequested -= MainWindow_WorldClocksRequested;
+            _window.SensorsRequested -= MainWindow_SensorsRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
             _window.ScreenshotGalleryRequested -= MainWindow_ScreenshotGalleryRequested;
             _window.ScreenshotGalleryDateRequested -= MainWindow_ScreenshotGalleryDateRequested;
@@ -909,6 +973,14 @@ public partial class App : Microsoft.UI.Xaml.Application
             _reportsWindow.Closed -= ReportsWindow_Closed;
             _reportsWindow.Close();
             _reportsWindow = null;
+        }
+
+        if (_sensorsWindow is not null)
+        {
+            _sensorsWindow.SettingsSaved -= SensorsWindow_SettingsSaved;
+            _sensorsWindow.Closed -= SensorsWindow_Closed;
+            _sensorsWindow.CloseForShutdown();
+            _sensorsWindow = null;
         }
 
         if (_worldClockWindow is not null)

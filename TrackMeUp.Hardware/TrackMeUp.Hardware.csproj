@@ -18,6 +18,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="LibreHardwareTelemetryCollector.cs" />
+    <Compile Include="WindowsStorageTelemetryCollector.cs" />
+    <Compile Include="WindowsVolumeSnapshotProjection.cs" />
     <ProjectReference Include="..\TrackMeUp.Core\TrackMeUp.Core.csproj" />
     <ProjectReference Include="LibreHardwareMonitor\LibreHardwareMonitor.csproj" />
     <Content Include="LibreHardwareMonitor\NOTICE.md" Link="HardwareLicenses\LibreHardwareMonitor-NOTICE.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -398,6 +398,25 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public async Task<OperationResult<SystemSnapshot>> CaptureHardwareSnapshotAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            // The live window uses the sole collector/cache; no device context or location is captured here.
+            var snapshot = await CaptureAndRecordSystemSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            return OperationResult<SystemSnapshot>.Success("hardware.snapshot.captured", "SystemSnapshotCaptured", snapshot);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            // An unavailable collector stays a visible failure; there is no second hardware runtime.
+            _logger.LogWarning("Hardware snapshot capture failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return OperationResult<SystemSnapshot>.Failure("hardware.snapshot.failed", "SystemSnapshotFailed");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<OperationResult<SystemSnapshot>> EnableAdvancedHardwareTelemetryAsync(CancellationToken cancellationToken)
     {
         try

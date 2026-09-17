@@ -736,6 +736,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Captures a current system snapshot.</summary>
     Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken);
 
+    /// <summary>Reads only the shared hardware collector for live sensor presentation.</summary>
+    Task<OperationResult<SystemSnapshot>> CaptureHardwareSnapshotAsync(CancellationToken cancellationToken);
+
     /// <summary>Explicitly enables the optional elevated hardware collector using an already installed PawnIO driver.</summary>
     Task<OperationResult<SystemSnapshot>> EnableAdvancedHardwareTelemetryAsync(CancellationToken cancellationToken);
 

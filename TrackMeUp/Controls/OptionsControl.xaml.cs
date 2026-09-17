@@ -44,7 +44,6 @@ public sealed partial class OptionsControl : UserControl
     private int? _openAiDailyLimit;
     private Task _autoSaveQueue = Task.CompletedTask;
     private AppSettings? _lastPersistedSettings;
-    private bool _activatingAdvancedSensors;
 
     /// <summary>Initializes the options control.</summary>
     public OptionsControl()
@@ -120,16 +119,6 @@ public sealed partial class OptionsControl : UserControl
             AutomationProperties.SetHelpText(RetentionOperationsLink, T("Options.Navigation.Retention.Description"));
             AutomationProperties.SetName(PluginsOperationsLink, T("Options.Navigation.Plugins.Action"));
             AutomationProperties.SetHelpText(PluginsOperationsLink, T("Options.Navigation.Plugins.Description"));
-            AutomationProperties.SetName(HardwareSensorsEnabledSwitch, T("Options.Sensors.Enabled.Header"));
-            AutomationProperties.SetHelpText(HardwareSensorsEnabledSwitch, T("Options.Sensors.Enabled.Description"));
-            AutomationProperties.SetName(HardwareAdvancedSwitch, T("Options.Sensors.Advanced.Header"));
-            AutomationProperties.SetHelpText(HardwareAdvancedSwitch, T("Hardware.Advanced.Description"));
-            AutomationProperties.SetName(HardwareSaveSnapshotsSwitch, T("Options.Sensors.SaveSnapshots.Header"));
-            AutomationProperties.SetHelpText(HardwareSaveSnapshotsSwitch, T("Options.Sensors.SaveSnapshots.Description"));
-            AutomationProperties.SetName(HardwareSamplingSlider, T("Options.Sensors.Sampling.Header"));
-            AutomationProperties.SetName(ActivateAdvancedSensorsButton, T("Hardware.Advanced.Action"));
-            ToolTipService.SetToolTip(ActivateAdvancedSensorsButton, T("Hardware.Advanced.Action"));
-            UpdateHardwareSettingsPresentation();
             UpdateApiKeyPresentation();
             UpdateAiQuotaPresentation();
             UpdateScreenshotModeHint();
@@ -457,11 +446,6 @@ public sealed partial class OptionsControl : UserControl
 
     private void ApplySettings(AppSettings settings)
     {
-        if (_lastPersistedSettings is { } previous &&
-            (previous.HardwareSensorsEnabled != settings.HardwareSensorsEnabled || previous.HardwareUseAdvancedSensors != settings.HardwareUseAdvancedSensors))
-        {
-            ClearHardwareActivationStatus();
-        }
         _lastPersistedSettings = settings;
         var wasSuppressingAutoSave = _suppressAutoSave;
         _suppressAutoSave = true;
@@ -477,11 +461,6 @@ public sealed partial class OptionsControl : UserControl
             ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
             KeepScreenshotsSwitch.IsOn = settings.KeepScreenshots;
             ScreenshotsEnabledSwitch.IsOn = settings.ScreenshotsEnabled;
-            HardwareSensorsEnabledSwitch.IsOn = settings.HardwareSensorsEnabled;
-            HardwareAdvancedSwitch.IsOn = settings.HardwareUseAdvancedSensors;
-            HardwareSaveSnapshotsSwitch.IsOn = settings.HardwareSaveSnapshots;
-            HardwareSamplingSlider.Value = HardwareSettingsProjection.ProfileIndex(settings.HardwareSamplingProfile);
-            UpdateHardwareSettingsPresentation();
             SelectTag(SearchLanguageBox, settings.SearchLanguage, "system");
             SearchSynonymsSwitch.IsOn = settings.SearchSynonymsEnabled;
             SearchTypoToleranceSwitch.IsOn = settings.SearchTypoToleranceEnabled;
@@ -555,25 +534,6 @@ public sealed partial class OptionsControl : UserControl
         ScreenshotsEnabledSwitch.Toggled += (_, _) => QueueAutoSave(
             "screenshots.enabled",
             ScreenshotsEnabledSwitch.IsOn ? "true" : "false");
-        HardwareSensorsEnabledSwitch.Toggled += (_, _) =>
-        {
-            ClearHardwareActivationStatus();
-            UpdateHardwareSettingsPresentation();
-            QueueAutoSave("sensors.enabled", HardwareSensorsEnabledSwitch.IsOn ? "true" : "false");
-        };
-        HardwareAdvancedSwitch.Toggled += (_, _) =>
-        {
-            ClearHardwareActivationStatus();
-            UpdateHardwareSettingsPresentation();
-            QueueAutoSave("sensors.advanced", HardwareAdvancedSwitch.IsOn ? "true" : "false");
-        };
-        HardwareSaveSnapshotsSwitch.Toggled += (_, _) => QueueAutoSave(
-            "sensors.save_snapshots", HardwareSaveSnapshotsSwitch.IsOn ? "true" : "false");
-        HardwareSamplingSlider.ValueChanged += (_, _) =>
-        {
-            UpdateHardwareSettingsPresentation();
-            QueueAutoSave("sensors.sampling_profile", HardwareSettingsProjection.ProfileKeyAt(HardwareSamplingSlider.Value));
-        };
         SearchLanguageBox.SelectionChanged += (_, _) => QueueAutoSave("search.language", SelectedTag(SearchLanguageBox, "system"));
         SearchSynonymsSwitch.Toggled += (_, _) => QueueAutoSave(
             "search.synonyms",
@@ -643,74 +603,6 @@ public sealed partial class OptionsControl : UserControl
         catch (Exception)
         {
             // Keep the last confirmed settings when even the refresh fails; the caller displays the save error.
-        }
-    }
-
-    private void UpdateHardwareSettingsPresentation()
-    {
-        HardwareSensorsEnabledSwitch.IsEnabled = !_activatingAdvancedSensors;
-        var sensorOptionsEnabled = HardwareSensorsEnabledSwitch.IsOn && !_activatingAdvancedSensors;
-        HardwareAdvancedSwitch.IsEnabled = sensorOptionsEnabled;
-        HardwareSaveSnapshotsSwitch.IsEnabled = sensorOptionsEnabled;
-        HardwareSamplingSlider.IsEnabled = sensorOptionsEnabled;
-        ActivateAdvancedSensorsButton.IsEnabled = HardwareSensorsEnabledSwitch.IsOn && HardwareAdvancedSwitch.IsOn && !_activatingAdvancedSensors;
-        var profile = HardwareSettingsProjection.Create(
-            HardwareSettingsProjection.ProfileKeyAt(HardwareSamplingSlider.Value), _strings.Culture, _strings.Translate);
-        HardwareSamplingSummaryText.Text = $"{profile.Label} · {profile.Summary}";
-        ToolTipService.SetToolTip(HardwareSamplingSummaryText, profile.Detail);
-        AutomationProperties.SetHelpText(HardwareSamplingSlider, $"{profile.Label}. {profile.Summary}. {profile.Detail}");
-    }
-
-    private void ClearHardwareActivationStatus()
-    {
-        if (!_activatingAdvancedSensors)
-        {
-            HardwareActivationStatusText.Text = string.Empty;
-            HardwareActivationStatusText.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private async void ActivateAdvancedSensorsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_application is null || _activatingAdvancedSensors)
-        {
-            return;
-        }
-
-        _activatingAdvancedSensors = true;
-        UpdateHardwareSettingsPresentation();
-        try
-        {
-            // Explicit activation follows confirmed persistence; changing the preference alone never requests elevation.
-            await _autoSaveQueue;
-            if (_lastPersistedSettings is not { HardwareSensorsEnabled: true, HardwareUseAdvancedSensors: true })
-            {
-                HardwareActivationStatusText.Text = T("Options.SaveError");
-                return;
-            }
-
-            var result = await _application.EnableAdvancedHardwareTelemetryAsync(CancellationToken.None);
-            if (result is { Succeeded: true, Value: { } snapshot })
-            {
-                var state = HardwareSnapshotProjection.Create(snapshot, _strings.Culture, _strings.Translate);
-                HardwareActivationStatusText.Text = $"{state.Status} · {state.DriverStatus}";
-            }
-            else
-            {
-                HardwareActivationStatusText.Text = T("HardwareAdvancedFailed");
-            }
-        }
-        catch (Exception)
-        {
-            // Unavailable optional hardware access remains a visible failure without exposing driver details.
-            HardwareActivationStatusText.Text = T("HardwareAdvancedFailed");
-        }
-        finally
-        {
-            HardwareActivationStatusText.Visibility = Visibility.Visible;
-            _activatingAdvancedSensors = false;
-            UpdateHardwareSettingsPresentation();
-            NotifyLayoutChanged();
         }
     }
 

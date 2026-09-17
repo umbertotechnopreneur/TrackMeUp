@@ -10,6 +10,7 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
 {
     private readonly bool _advanced;
     private readonly Dictionary<IHardware, CachedDeviceReading> _deviceCache = new();
+    private readonly WindowsStorageTelemetryCollector _windowsStorage = new();
     private Computer? _computer;
 
     internal LibreHardwareTelemetryCollector(bool advanced)
@@ -74,11 +75,20 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
             _deviceCache[hardware] = new CachedDeviceReading(sampledAt, current.AsReadOnly(), deviceError);
             hadError |= deviceError;
         }
+        var basicStorageError = false;
+        if (!devices.Any(device => device.Kind == "Storage"))
+        {
+            // Basic mode cannot always open raw physical disks. Its documented Windows volume source stays
+            // within this collector and cadence; it is never added beside the library's physical-disk readings.
+            var basicStorage = _windowsStorage.Sample(profile);
+            devices.AddRange(basicStorage.Devices);
+            basicStorageError = basicStorage.HasError;
+        }
         var usable = devices.Sum(device => device.Sensors.Count(sensor => sensor.Value is not null));
         var missing = devices.Any(device => device.Sensors.Any(sensor => sensor.Value is null));
-        var status = usable == 0 ? "unavailable" : hadError || missing || DriverStatus != "active" ? "partial" : "ready";
+        var status = usable == 0 ? "unavailable" : hadError || basicStorageError || missing || DriverStatus != "active" ? "partial" : "ready";
         var snapshot = new SystemSnapshot(DateTimeOffset.UtcNow, status, Array.AsReadOnly(devices.ToArray()),
-            DriverStatus, hadError ? "device-read-failed" : null, started);
+            DriverStatus, basicStorageError ? "windows-storage-read-failed" : hadError ? "device-read-failed" : null, started);
         SystemSnapshotValidator.Validate(snapshot);
         return snapshot;
     }
@@ -90,7 +100,10 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
         {
             var staticMetadata = hardware.HardwareType == HardwareType.Battery
                 && (sensor.SensorType == SensorType.Energy && sensor.Index is 0 or 1 || sensor.SensorType == SensorType.Level && sensor.Index == 1)
-                || hardware.HardwareType == HardwareType.GpuAmd && sensor.SensorType == SensorType.SmallData && sensor.Name == "GPU Memory Total";
+                || hardware.HardwareType == HardwareType.GpuAmd && sensor.SensorType == SensorType.SmallData && sensor.Name == "GPU Memory Total"
+                // The library assigns disk capacity only at discovery. Free/used space, activity and temperature
+                // remain poll-dependent, so failed updates cannot replay those cached measurements as fresh.
+                || hardware.HardwareType == HardwareType.Storage && sensor.SensorType == SensorType.Data && sensor.Name == "Total Space";
             var raw = TrackMeUpSensorAccess.ReadUpdatedValue(sensor, versions, staticMetadata);
             double? value = raw is { } number && float.IsFinite(number) ? number : null;
             if (hardware.HardwareType == HardwareType.Cpu && (!_advanced || DriverStatus != "active") && sensor.SensorType != SensorType.Load)
