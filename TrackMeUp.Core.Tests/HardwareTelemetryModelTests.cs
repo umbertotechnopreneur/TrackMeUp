@@ -64,4 +64,29 @@ public sealed class HardwareTelemetryModelTests
         Assert.Equal(60, HardwareUsageProjection.Read(snapshot).Gpu);
         Assert.Null(HardwareUsageProjection.Read(snapshot with { Status = "stale" }).Gpu);
     }
+
+    [Fact]
+    public void UsageProjection_UsesBusiestIntegratedD3DEngineWithoutAddingConcurrentLoads()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var snapshot = new SystemSnapshot(now, "partial", [new("/gpu/0", "Intel Graphics", "GpuIntel", now, [
+            new("/gpu/load/0", "D3D 3D", "Load", "%", 20),
+            new("/gpu/load/1", "D3D Video Decode", "Load", "%", 45),
+            new("/gpu/load/2", "GPU Memory", "Load", "%", 90),
+            new("/gpu/load/3", "D3D Copy", "Load", "%", null)])]);
+        Assert.Equal(45, HardwareUsageProjection.Read(snapshot).Gpu);
+    }
+
+    [Fact]
+    public void GpuUtilization_PrefersCoreLoadAndDoesNotTurnMissingOrInvalidValuesIntoZero()
+    {
+        HardwareSensorSnapshot[] sensors = [
+            new("core", "GPU Core", "Load", "%", 10),
+            new("3d", "D3D 3D", "Load", "%", 30),
+            new("copy", "D3D Copy", "Load", "%", 150)];
+        Assert.Equal("core", HardwareUsageProjection.SelectGpuUtilization(sensors)?.Id);
+        Assert.Equal("3d", HardwareUsageProjection.SelectGpuUtilization([sensors[0] with { Value = null }, sensors[1], sensors[2]])?.Id);
+        Assert.Null(HardwareUsageProjection.SelectGpuUtilization([sensors[0] with { Value = null }, sensors[2]]));
+        Assert.Equal(0, HardwareUsageProjection.SelectGpuUtilization([sensors[1] with { Value = 0 }])?.Value);
+    }
 }

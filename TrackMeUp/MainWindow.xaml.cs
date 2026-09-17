@@ -121,6 +121,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when the user requests the independent world-clock window.</summary>
     public event EventHandler? WorldClocksRequested;
 
+    /// <summary>Occurs when the user requests the independent hardware-sensors window.</summary>
+    public event EventHandler? SensorsRequested;
+
     /// <summary>Occurs when the user requests the floating local-search surface.</summary>
     public event EventHandler? SearchRequested;
 
@@ -183,6 +186,7 @@ public sealed partial class MainWindow : Window
             [
                 TitleBarBackButton,
                 WorldClockButton,
+                SensorsButton,
                 TitleBarMoreButton,
                 TitleBarSearchButton,
                 TitleBarReportButton,
@@ -408,6 +412,7 @@ public sealed partial class MainWindow : Window
         TitleBarMoreButton.IsEnabled = isReady;
         TitleBarSearchButton.IsEnabled = isReady;
         TitleBarReportButton.IsEnabled = isReady;
+        SensorsButton.IsEnabled = isReady;
         ScreenshotPreviewButton.IsEnabled = isReady;
         CaptureMenu.IsEnabled = isReady;
         OperationsMenuItem.IsEnabled = isReady;
@@ -640,6 +645,13 @@ public sealed partial class MainWindow : Window
             MainNotificationBanner,
             T("WorldClock.ErrorTitle"),
             T("WorldClock.OpenFailed"));
+
+    /// <summary>Shows a localized warning when the hardware-sensors surface cannot open.</summary>
+    internal void ShowSensorsOpenFailure() =>
+        _dialogs.Notifications.ShowWarning(
+            MainNotificationBanner,
+            T("Sensors.Title"),
+            T("Sensors.OpenFailed"));
 
     /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
     private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
@@ -954,6 +966,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Forwards world-clock activation to the application composition root.</summary>
     private void WorldClockButton_Click(object sender, RoutedEventArgs e) =>
         WorldClocksRequested?.Invoke(this, EventArgs.Empty);
+
+    private void SensorsButton_Click(object sender, RoutedEventArgs e) =>
+        SensorsRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Shows the native aggregate activity calendar through the shared dialog coordinator.</summary>
     private async void ActivityCalendarMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1404,6 +1419,7 @@ public sealed partial class MainWindow : Window
         PlayerPanel.Visibility = Visibility.Collapsed;
         PlayerBackgroundSurface.Visibility = Visibility.Collapsed;
         WorldClockButton.Visibility = Visibility.Collapsed;
+        SensorsButton.Visibility = Visibility.Collapsed;
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
@@ -1429,6 +1445,7 @@ public sealed partial class MainWindow : Window
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
         WorldClockButton.Visibility = Visibility.Visible;
+        SensorsButton.Visibility = Visibility.Visible;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         TitleBarLogo.Visibility = Visibility.Visible;
         TitleBarTitleText.Text = "TRACK ME UP";
@@ -1462,8 +1479,22 @@ public sealed partial class MainWindow : Window
     /// <summary>Measures the active XAML surface at its presentation width and applies the resulting window height.</summary>
     private void ResizeForCurrentLayout(bool animate)
     {
-        RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));
-        var logicalHeight = _layoutState.RecordMeasuredHeight(RootGrid.DesiredSize.Height);
+        double measuredHeight;
+        if (_layoutState.Surface == MainWindowSurface.Player)
+        {
+            ConfigurePlayerColumns(Math.Max(1d, CurrentLogicalWindowWidth - 56d));
+            ApplyPlayerDetailLevel(MainPlayerDetailLevel.Full);
+            PlayerLayout.Measure(new Size(PlayerLayout.Width, double.PositiveInfinity));
+            measuredHeight = PlayerLayout.DesiredSize.Height + 74d;
+        }
+        else
+        {
+            RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));
+            measuredHeight = RootGrid.DesiredSize.Height;
+        }
+
+        var logicalHeight = _layoutState.RecordMeasuredHeight(measuredHeight);
+        UpdateResponsivePlayer();
         if (animate && RootGrid.IsLoaded)
         {
             AnimateResizeForLogicalContent(logicalHeight);
@@ -1471,6 +1502,89 @@ public sealed partial class MainWindow : Window
         }
 
         ResizeForLogicalContent(logicalHeight);
+    }
+
+    private void PlayerViewport_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateResponsivePlayer();
+
+    /// <summary>Reflows first, then reduces secondary detail before fitting exceptionally small viewports.</summary>
+    private void UpdateResponsivePlayer()
+    {
+        if (_layoutState.Surface != MainWindowSurface.Player || PlayerViewport.ActualWidth <= 0d || PlayerViewport.ActualHeight <= 0d)
+        {
+            // The first arrange or a hidden surface has no usable viewport; its size event retries.
+            return;
+        }
+
+        ConfigurePlayerColumns(PlayerViewport.ActualWidth);
+        ApplyPlayerDetailLevel(MainPlayerDetailLevel.Full);
+        var fullHeight = MeasurePlayerHeight();
+        ApplyPlayerDetailLevel(MainPlayerDetailLevel.Compact);
+        var compactHeight = MeasurePlayerHeight();
+        var level = MainPlayerResponsiveLayout.ResolveDetails(PlayerViewport.ActualHeight, fullHeight, compactHeight);
+        ApplyPlayerDetailLevel(level);
+        var measuredHeight = MeasurePlayerHeight();
+        if (_layoutState.IsActivityScoreVisible && level != MainPlayerDetailLevel.Summary)
+        {
+            ActivityChartRow.Height = new GridLength(MainPlayerResponsiveLayout.ResolveChartHeight(
+                PlayerViewport.ActualHeight, measuredHeight, ActivityChartRow.Height.Value));
+        }
+
+        ResizeActivityBars();
+    }
+
+    private double MeasurePlayerHeight()
+    {
+        PlayerLayout.Measure(new Size(PlayerLayout.Width, double.PositiveInfinity));
+        return PlayerLayout.DesiredSize.Height;
+    }
+
+    private void ConfigurePlayerColumns(double width)
+    {
+        PlayerLayout.Width = Math.Max(360d, width);
+        var columns = MainPlayerResponsiveLayout.UsesColumns(width);
+        PlayerSecondaryColumn.Width = columns ? new GridLength(1d, GridUnitType.Star) : new GridLength(0d);
+        PlayerLayout.ColumnSpacing = columns ? 24d : 0d;
+        Grid.SetRow(PlayerActivity, columns ? 0 : 2);
+        Grid.SetColumn(PlayerActivity, columns ? 1 : 0);
+        Grid.SetRowSpan(PlayerActivity, columns ? 2 : 1);
+        Grid.SetRow(DetailsButton, columns ? 2 : 3);
+        Grid.SetColumnSpan(DetailsButton, columns ? 2 : 1);
+        Grid.SetRow(DetailsPanel, columns ? 3 : 4);
+        Grid.SetColumnSpan(DetailsPanel, columns ? 2 : 1);
+    }
+
+    private void ApplyPlayerDetailLevel(MainPlayerDetailLevel level)
+    {
+        var full = level == MainPlayerDetailLevel.Full;
+        PlayerLayout.RowSpacing = full ? 6d : 2d;
+        TrackingButton.Width = TrackingButton.Height = full ? 74d : 52d;
+        TrackingButton.CornerRadius = new CornerRadius(full ? 37d : 26d);
+        ElapsedText.FontSize = full ? 34d : 28d;
+        AiMonthlySpendPanel.Orientation = full ? Orientation.Vertical : Orientation.Horizontal;
+        AiMonthlySpendPanel.Spacing = full ? 1d : 6d;
+        AiMonthlySpendLabel.VerticalAlignment = full ? VerticalAlignment.Top : VerticalAlignment.Center;
+        AiMonthlySpendText.FontSize = full ? 34d : 16d;
+        AiMonthlySpendRangeText.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
+        ActivityChartRow.Height = new GridLength(full ? 54d : 28d);
+        ActivityChartHeading.Visibility = ActivityChartFooter.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
+        ActivityScorePanel.Visibility = _layoutState.IsActivityScoreVisible && level != MainPlayerDetailLevel.Summary
+            ? Visibility.Visible : Visibility.Collapsed;
+        LastSessionBody.Visibility = LastSessionClockFooter.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
+        CompactLastSessionSummary.Visibility = full ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void ResizeActivityBars()
+    {
+        foreach (var cell in ActivityScoreBarHost.Children.OfType<Grid>())
+        {
+            foreach (var rectangle in cell.Children.OfType<Rectangle>())
+            {
+                if (rectangle.Tag is double proportion)
+                {
+                    rectangle.Height = Math.Max(2d, proportion * ActivityChartRow.Height.Value);
+                }
+            }
+        }
     }
 
     /// <summary>Renders current dashboard values without making application calls.</summary>
@@ -1644,7 +1758,8 @@ public sealed partial class MainWindow : Window
             Grid.SetColumn(cell, index);
             cell.Children.Add(new Rectangle
             {
-                Height = Math.Max(2d, minute.Score / 100d * 78d),
+                Tag = minute.Score / 100d,
+                Height = Math.Max(2d, minute.Score / 100d * ActivityChartRow.Height.Value),
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Fill = scoreBrush,
                 Opacity = 0.25,
@@ -1656,7 +1771,8 @@ public sealed partial class MainWindow : Window
                 cell.Children.Add(new Rectangle
                 {
                     Width = 2,
-                    Height = Math.Max(2d, minute.KeyPresses / (double)maximumKeys * 42d),
+                    Tag = minute.KeyPresses / (double)maximumKeys * 0.54d,
+                    Height = Math.Max(2d, minute.KeyPresses / (double)maximumKeys * ActivityChartRow.Height.Value * 0.54d),
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Fill = inputBrush,
@@ -1666,7 +1782,8 @@ public sealed partial class MainWindow : Window
                 cell.Children.Add(new Rectangle
                 {
                     Width = 2,
-                    Height = Math.Max(2d, minute.MouseClicks / (double)maximumClicks * 42d),
+                    Tag = minute.MouseClicks / (double)maximumClicks * 0.54d,
+                    Height = Math.Max(2d, minute.MouseClicks / (double)maximumClicks * ActivityChartRow.Height.Value * 0.54d),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Fill = scoreBrush,
@@ -1967,6 +2084,7 @@ public sealed partial class MainWindow : Window
         SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
         SetIconButtonLabel(TitleBarCloseButton, "Tray.CloseApplication");
         SetIconButtonLabel(WorldClockButton, "WorldClock.OpenWindow");
+        SetIconButtonLabel(SensorsButton, "Sensors.Open");
         SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
         SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
         AutomationProperties.SetName(TrackingStatusToast, T("Main.TrackingStatus"));

@@ -267,6 +267,10 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
         SendAsync<ReportSnapshot>(RuntimeOperation.ReportQueryV1, query, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
+    public Task<OperationResult<SystemSnapshot>> CaptureHardwareSnapshotAsync(CancellationToken cancellationToken) =>
+        SendAsync<SystemSnapshot>(RuntimeOperation.HardwareSnapshotV1, null, cancellationToken, HardwareSnapshotTimeout);
+
+    /// <inheritdoc />
     public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) =>
         SendAsync<SystemSnapshot>(RuntimeOperation.SystemSnapshot, null, cancellationToken, HardwareSnapshotTimeout);
 

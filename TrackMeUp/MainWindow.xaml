@@ -36,20 +36,11 @@
                             <Setter Target="AiMonthlySpendPanel.(Grid.ColumnSpan)" Value="3" />
                             <Setter Target="AiMonthlySpendPanel.Margin" Value="0,8,0,0" />
                             <Setter Target="AiMonthlySpendPanel.HorizontalAlignment" Value="Left" />
-                            <Setter Target="ActiveMetricPanel.(Grid.Row)" Value="1" />
-                            <Setter Target="ActiveMetricPanel.(Grid.Column)" Value="0" />
-                            <Setter Target="ActiveMetricPanel.(Grid.ColumnSpan)" Value="5" />
-                            <Setter Target="ActiveMetricPanel.HorizontalAlignment" Value="Left" />
-                            <Setter Target="ActiveMetricPanel.Margin" Value="0,6,0,0" />
-                            <Setter Target="ClickMetricPanel.HorizontalAlignment" Value="Right" />
-                            <Setter Target="ActiveMetricColumn.Width" Value="0" />
-                            <Setter Target="ActiveMetricSeparatorColumn.Width" Value="0" />
-                            <Setter Target="ActiveMetricSeparator.Visibility" Value="Collapsed" />
                         </VisualState.Setters>
                     </VisualState>
                     <VisualState x:Name="WidePlayer">
                         <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="620" />
+                            <AdaptiveTrigger MinWindowWidth="480" />
                         </VisualState.StateTriggers>
                     </VisualState>
                 </VisualStateGroup>
@@ -73,6 +64,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition x:Name="TitleBarCaptionColumn" Width="*" MinWidth="64" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -111,6 +103,16 @@
                         AutomationProperties.AccessibilityView="Raw"
                         Symbol="Clock" />
                 </Button>
+                <Button
+                    x:Name="SensorsButton"
+                    Grid.Column="5"
+                    AutomationProperties.Name="Show hardware sensors"
+                    Click="SensorsButton_Click"
+                    Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
+                    Tag="Sensors.Open"
+                    ToolTipService.ToolTip="Show hardware sensors">
+                    <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="17" Glyph="&#xE9D9;" />
+                </Button>
                 <Image
                     x:Name="TitleBarLogo"
                     Grid.Column="2"
@@ -127,7 +129,7 @@
                     TextTrimming="CharacterEllipsis" />
                 <Button
                     x:Name="TitleBarMoreButton"
-                    Grid.Column="5"
+                    Grid.Column="6"
                     Padding="6"
                     AutomationProperties.Name="Open application menu"
                     Click="TitleBarMoreButton_Click"
@@ -145,7 +147,7 @@
                 </Button>
                 <Button
                     x:Name="TitleBarSearchButton"
-                    Grid.Column="6"
+                    Grid.Column="7"
                     AutomationProperties.Name="Search history"
                     Click="TitleBarSearchButton_Click"
                     Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
@@ -159,7 +161,7 @@
                 </Button>
                 <Button
                     x:Name="TitleBarReportButton"
-                    Grid.Column="7"
+                    Grid.Column="8"
                     AutomationProperties.Name="Activity reports"
                     Click="TitleBarReportButton_Click"
                     Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
@@ -174,7 +176,7 @@
                 </Button>
                 <Button
                     x:Name="TitleBarMinimizeToTrayButton"
-                    Grid.Column="8"
+                    Grid.Column="9"
                     AutomationProperties.Name="Minimize to notification area"
                     Click="MinimizeToTrayButton_Click"
                     Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
@@ -189,7 +191,7 @@
                 </Button>
                 <Button
                     x:Name="TitleBarCloseButton"
-                    Grid.Column="9"
+                    Grid.Column="10"
                     Width="48"
                     AutomationProperties.Name="Close app"
                     Click="TitleBarCloseButton_Click"
@@ -316,14 +318,14 @@
                         </ResourceDictionary.ThemeDictionaries>
                     </ResourceDictionary>
                 </Border.Resources>
-                <Grid>
-                    <ScrollViewer
-                        HorizontalContentAlignment="Stretch"
-                        HorizontalScrollBarVisibility="Disabled"
-                        HorizontalScrollMode="Disabled"
-                        VerticalScrollBarVisibility="Auto"
-                        VerticalScrollMode="Enabled">
-                        <Grid Padding="0,0,6,0" RowSpacing="6">
+                <Grid x:Name="PlayerViewport" SizeChanged="PlayerViewport_SizeChanged">
+                    <!-- Reflow first; fit only unusually small viewports after compact disclosure. -->
+                    <Viewbox x:Name="PlayerFit" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                        <Grid x:Name="PlayerLayout" Width="520" RowSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="PlayerSecondaryColumn" Width="0" />
+                            </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -583,7 +585,7 @@
                             </Button.Flyout>
                         </Button>
 
-                        <Grid Grid.Row="0">
+                        <Grid x:Name="PlayerHeader" Grid.Row="0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -801,6 +803,7 @@
                                 Spacing="1"
                                 Visibility="Collapsed">
                                 <TextBlock
+                                    x:Name="AiMonthlySpendLabel"
                                     HorizontalAlignment="Right"
                                     Style="{StaticResource DashboardMetricLabelTextBlockStyle}"
                                     Tag="Main.AiMonthlySpend"
@@ -821,7 +824,7 @@
                             </Grid>
                         </Grid>
 
-                        <StackPanel Grid.Row="1" Spacing="6">
+                        <StackPanel x:Name="PlayerMetrics" Grid.Row="1" Spacing="6">
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                             <Grid Margin="0,3,4,1" ColumnSpacing="8">
                                 <Grid.RowDefinitions>
@@ -861,7 +864,7 @@
                             </Grid>
                         </StackPanel>
 
-                        <Grid Grid.Row="2" Margin="0,1,0,0">
+                        <Grid x:Name="PlayerActivity" Grid.Row="2" Margin="0,1,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -923,10 +926,10 @@
                             <Grid x:Name="ActivityScorePanel" Grid.Row="1" Margin="2,0,2,3" RowSpacing="4">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="54" />
+                                    <RowDefinition x:Name="ActivityChartRow" Height="54" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <Grid ColumnSpacing="10">
+                                <Grid x:Name="ActivityChartHeading" ColumnSpacing="10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -947,7 +950,7 @@
                                         Text="CPU -- · GPU --" />
                                 </Grid>
                                 <Grid x:Name="ActivityScoreBarHost" Grid.Row="1" AutomationProperties.Name="Activity score for the last 30 minutes" />
-                                <Grid Grid.Row="2" ColumnSpacing="8">
+                                <Grid x:Name="ActivityChartFooter" Grid.Row="2" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
@@ -1019,7 +1022,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <Grid Grid.Row="0" Height="92" ColumnSpacing="10">
+                            <Grid x:Name="LastSessionBody" Grid.Row="0" Height="92" ColumnSpacing="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="36" />
                                     <ColumnDefinition Width="*" />
@@ -1119,7 +1122,8 @@
                                     </Border>
                                 </Button>
                             </Grid>
-                            <Grid Grid.Row="1" Margin="0,4,0,0">
+                            <TextBlock x:Name="CompactLastSessionSummary" Grid.Row="0" Text="{Binding Text, ElementName=LastSessionAppText}" TextTrimming="CharacterEllipsis" FontSize="12" Visibility="Collapsed" />
+                            <Grid x:Name="LastSessionClockFooter" Grid.Row="1" Margin="0,4,0,0">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="1" />
                                     <RowDefinition Height="Auto" />
@@ -1151,7 +1155,7 @@
                             </Grid>
                         </Grid>
                     </Grid>
-                    </ScrollViewer>
+                    </Viewbox>
                 </Grid>
             </Border>
 

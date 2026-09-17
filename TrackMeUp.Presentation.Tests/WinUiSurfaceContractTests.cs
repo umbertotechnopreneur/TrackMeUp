@@ -38,7 +38,12 @@ public sealed class WinUiSurfaceContractTests
         var licenses = XDocument.Load(RepositoryFile("TrackMeUp", "ThirdPartyLicensesWindow.xaml"));
         var licensesSource = File.ReadAllText(RepositoryFile("TrackMeUp", "ThirdPartyLicensesWindow.xaml.cs"));
 
-        Assert.Contains(player.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        var playerPanel = player.Descendants().Single(element => HasName(element, "PlayerPanel"));
+        Assert.DoesNotContain(playerPanel.Descendants(), element => element.Name.LocalName == "ScrollViewer");
+        Assert.Contains(playerPanel.Descendants(), element => HasName(element, "PlayerViewport")
+            && element.Attribute("SizeChanged")?.Value == "PlayerViewport_SizeChanged");
+        Assert.Contains(playerPanel.Descendants(), element => element.Name.LocalName == "Viewbox"
+            && element.Attribute("StretchDirection")?.Value == "DownOnly");
         Assert.Equal(2, options.Descendants().Count(element => element.Name.LocalName == "ScrollViewer"));
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.DoesNotContain(about.Descendants(), element => element.Name.LocalName == "ScrollViewer");
@@ -145,8 +150,12 @@ public sealed class WinUiSurfaceContractTests
     [Fact]
     public void SensorSettings_KeepPreferencesSeparateFromExplicitActivationAndRenderFlatControls()
     {
-        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "SensorOptionsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "SensorOptionsControl.xaml.cs"));
+        var general = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var window = XDocument.Load(RepositoryFile("TrackMeUp", "SensorsWindow.xaml"));
+        Assert.DoesNotContain(general.Descendants(), element => HasName(element, "HardwareSensorsSection"));
+        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "SensorOptionsControl");
         var sensors = options.Descendants().Single(element => HasName(element, "HardwareSensorsSection"));
         var slider = sensors.Descendants().Single(element => HasName(element, "HardwareSamplingSlider"));
         Assert.Equal(3, sensors.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
@@ -161,20 +170,20 @@ public sealed class WinUiSurfaceContractTests
         {
             Assert.Contains(key, source, StringComparison.Ordinal);
         }
-        var registrationStart = source.IndexOf("private void RegisterAutoSaveHandlers()", StringComparison.Ordinal);
-        var registrationEnd = source.IndexOf("private void QueueReasoningEffortSave()", registrationStart, StringComparison.Ordinal);
+        var registrationStart = source.IndexOf("private async Task SaveAsync", StringComparison.Ordinal);
+        var registrationEnd = source.IndexOf("private async void ActivateAdvancedSensorsButton_Click", registrationStart, StringComparison.Ordinal);
         Assert.DoesNotContain("EnableAdvancedHardwareTelemetryAsync", source[registrationStart..registrationEnd], StringComparison.Ordinal);
         var activationStart = source.IndexOf("private async void ActivateAdvancedSensorsButton_Click", StringComparison.Ordinal);
         var activation = source[activationStart..];
-        Assert.True(activation.IndexOf("await _autoSaveQueue;", StringComparison.Ordinal) < activation.IndexOf("_application.EnableAdvancedHardwareTelemetryAsync", StringComparison.Ordinal));
+        Assert.True(activation.IndexOf("if (_busy", StringComparison.Ordinal) < activation.IndexOf("_application.EnableAdvancedHardwareTelemetryAsync", StringComparison.Ordinal));
         Assert.Contains("HardwareSensorsEnabled: true, HardwareUseAdvancedSensors: true", activation, StringComparison.Ordinal);
-        Assert.Contains("var sensorOptionsEnabled = HardwareSensorsEnabledSwitch.IsOn && !_activatingAdvancedSensors;", source, StringComparison.Ordinal);
+        Assert.Contains("var enabled = HardwareSensorsEnabledSwitch.IsOn && !_busy;", source, StringComparison.Ordinal);
         foreach (var control in new[] { "HardwareAdvancedSwitch", "HardwareSaveSnapshotsSwitch", "HardwareSamplingSlider" })
         {
-            Assert.Contains($"{control}.IsEnabled = sensorOptionsEnabled;", source, StringComparison.Ordinal);
+            Assert.Contains($"{control}.IsEnabled = enabled;", source, StringComparison.Ordinal);
         }
-        Assert.Contains("HardwareSensorsEnabledSwitch.IsEnabled = !_activatingAdvancedSensors;", source, StringComparison.Ordinal);
-        Assert.Contains("ClearHardwareActivationStatus();", source, StringComparison.Ordinal);
+        Assert.Contains("HardwareSensorsEnabledSwitch.IsEnabled = !_busy;", source, StringComparison.Ordinal);
+        Assert.Contains("HardwareActivationStatusText.Text = string.Empty;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("PawnIO", sensors.ToString(), StringComparison.Ordinal);
     }
 
@@ -237,15 +246,15 @@ public sealed class WinUiSurfaceContractTests
 
         Assert.Equal("{StaticResource TrackMeUpTitleBarCommandButtonStyle}", moreButton.Attribute("Style")?.Value);
         Assert.Null(moreButton.Attribute("Visibility"));
-        Assert.Equal("6", searchButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("7", searchButton.Attribute("Grid.Column")?.Value);
         Assert.Equal("TitleBarSearchButton_Click", searchButton.Attribute("Click")?.Value);
         Assert.Contains(searchButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE721");
-        Assert.Equal("7", reportButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("8", reportButton.Attribute("Grid.Column")?.Value);
         Assert.Null(reportButton.Attribute("Margin"));
         Assert.Equal("TitleBarReportButton_Click", reportButton.Attribute("Click")?.Value);
         Assert.Contains(reportButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE9F9");
         Assert.Equal("Collapsed", reportButton.Attribute("Visibility")?.Value);
-        Assert.Equal("8", minimizeToTrayButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("9", minimizeToTrayButton.Attribute("Grid.Column")?.Value);
         Assert.Null(minimizeToTrayButton.Attribute("Margin"));
         Assert.Equal("MinimizeToTrayButton_Click", minimizeToTrayButton.Attribute("Click")?.Value);
         Assert.Equal("Main.Menu.MinimizeToTray", minimizeToTrayButton.Attribute("Tag")?.Value);
@@ -253,7 +262,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Minimize to notification area", minimizeToTrayButton.Attribute("ToolTipService.ToolTip")?.Value);
         Assert.Equal("Collapsed", minimizeToTrayButton.Attribute("Visibility")?.Value);
         Assert.Contains(minimizeToTrayButton.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE921");
-        Assert.Equal("5", moreButton.Attribute("Grid.Column")?.Value);
+        Assert.Equal("6", moreButton.Attribute("Grid.Column")?.Value);
         Assert.Null(moreButton.Attribute("Margin"));
         Assert.Contains(
             moreButton.Descendants(),

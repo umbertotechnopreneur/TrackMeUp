@@ -59,6 +59,22 @@ public sealed class HardwareTelemetryRuntimeTests
         Assert.True(RuntimeClient.ScreenshotCaptureTimeout > RuntimeClient.HardwareSnapshotTimeout);
     }
 
+    /// <summary>The live monitor uses its hardware-only IPC operation rather than system context capture.</summary>
+    [Fact]
+    public async Task LiveMonitor_UsesSharedHardwareOnlyOperation()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, HardwareRuntimeProxy>();
+        var installation = $"sensor-monitor-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installation);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installation, TimeSpan.Zero);
+        var result = await client.CaptureHardwareSnapshotAsync(CancellationToken.None);
+        Assert.True(result.Succeeded);
+        Assert.Equal(nameof(ITrackMeUpApplication.CaptureHardwareSnapshotAsync), ((HardwareRuntimeProxy)application).Operation);
+        Assert.Null(result.Value!.DeviceContext);
+        Assert.Equal(new WindowMinimumSize(400, 360), WindowStateService.GetMinimumSize(WindowStateKeys.Sensors));
+    }
+
     public class HardwareRuntimeProxy : DispatchProxy
     {
         public string? Operation { get; private set; }
@@ -69,6 +85,7 @@ public sealed class HardwareTelemetryRuntimeTests
             if (targetMethod?.Name == nameof(ITrackMeUpApplication.PatchSettingsAsync))
                 return Task.FromResult(SettingsCatalog.Apply(new AppSettings(), (SettingsPatch)args![0]!));
             if (targetMethod?.Name is nameof(ITrackMeUpApplication.CaptureSystemSnapshotAsync)
+                or nameof(ITrackMeUpApplication.CaptureHardwareSnapshotAsync)
                 or nameof(ITrackMeUpApplication.EnableAdvancedHardwareTelemetryAsync))
             {
                 Operation = targetMethod.Name;

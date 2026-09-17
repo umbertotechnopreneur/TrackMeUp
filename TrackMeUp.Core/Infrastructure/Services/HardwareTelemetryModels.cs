@@ -95,7 +95,7 @@ public static class SystemSnapshotValidator
 /// <summary>Derives low-weight activity usage from the same library readings used by screenshots.</summary>
 public static class HardwareUsageProjection
 {
-    /// <summary>Projects CPU package average and busiest GPU core utilization without summing overlapping GPU engines.</summary>
+    /// <summary>Projects CPU package average and GPU utilization without summing overlapping GPU engines.</summary>
     public static (int? Cpu, int? Gpu) Read(SystemSnapshot snapshot)
     {
         if (snapshot.Status is not ("ready" or "partial"))
@@ -105,11 +105,23 @@ public static class HardwareUsageProjection
 
         var cpu = ReadValues(snapshot, "Cpu", "CPU Total");
         var gpu = snapshot.Devices.Where(device => device.Kind.StartsWith("Gpu", StringComparison.Ordinal))
-            .SelectMany(device => device.Sensors)
-            .Where(sensor => sensor.Kind == "Load" && sensor.Name == "GPU Core" && sensor.Value is >= 0 and <= 100)
-            .Select(sensor => sensor.Value!.Value).ToArray();
+            .Select(device => SelectGpuUtilization(device.Sensors))
+            .Where(sensor => sensor is not null)
+            .Select(sensor => sensor!.Value!.Value).ToArray();
         return (cpu.Length == 0 ? null : (int)Math.Round(cpu.Average()),
             gpu.Length == 0 ? null : (int)Math.Round(gpu.Max()));
+    }
+
+    /// <summary>Selects the driver's core utilization, or its busiest D3D engine when no core reading is available.</summary>
+    public static HardwareSensorSnapshot? SelectGpuUtilization(IEnumerable<HardwareSensorSnapshot> sensors)
+    {
+        ArgumentNullException.ThrowIfNull(sensors);
+        var loads = sensors.Where(sensor => sensor.Kind == "Load" && sensor.Unit == "%" && sensor.Value is >= 0 and <= 100).ToArray();
+        // Integrated Intel adapters expose D3D engines instead of GPU Core. Their concurrent loads overlap,
+        // so the busiest engine is representative; absent/invalid readings remain unavailable, never zero.
+        return loads.FirstOrDefault(sensor => sensor.Name == "GPU Core")
+            ?? loads.Where(sensor => sensor.Name.StartsWith("D3D ", StringComparison.Ordinal))
+                .OrderByDescending(sensor => sensor.Value).ThenBy(sensor => sensor.Id, StringComparer.Ordinal).FirstOrDefault();
     }
 
     private static double[] ReadValues(SystemSnapshot snapshot, string kind, string name) =>

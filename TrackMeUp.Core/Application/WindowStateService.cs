@@ -17,6 +17,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the independent world-clock comparison window.</summary>
     public const string WorldClocks = "world-clocks";
 
+    /// <summary>Identifies the independent live sensor window.</summary>
+    public const string Sensors = "sensors";
+
     /// <summary>Identifies the independent geographical day-and-night map window.</summary>
     public const string WorldMap = "world-map";
 
@@ -107,6 +110,7 @@ public sealed class WindowStateService
             WindowStateKeys.QuickSetup => new(760, 560),
             WindowStateKeys.Dialog => new(320, 196),
             WindowStateKeys.WorldClocks => new(480, 240),
+            WindowStateKeys.Sensors => new(400, 360),
             WindowStateKeys.WorldMap => new(192, 160),
             WindowStateKeys.LunarPhase => new(192, 192),
             WindowStateKeys.WorldClockCityPicker => new(500, 560),
