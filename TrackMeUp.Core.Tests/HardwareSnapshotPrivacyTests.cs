@@ -15,7 +15,8 @@ namespace TrackMeUp.Core.Tests;
 [Collection(ProcessEnvironmentCollection.Name)]
 public sealed class HardwareSnapshotPrivacyTests
 {
-    private const string TestApiKeyVariable = "TRACKMEUP_HARDWARE_PRIVACY_TEST_KEY";
+    private const string TestApiKeyVariable = "OPENAI_API_KEY";
+    private const string TestApiKey = "sk-test-only-hardware-privacy-1234567890";
 
     /// <summary>Deferred, historical and context-only requests redact revoked location without changing storage.</summary>
     [Theory]
@@ -29,7 +30,7 @@ public sealed class HardwareSnapshotPrivacyTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "TrackMeUp.PrivacyTests", Guid.NewGuid().ToString("N"));
         var previousKey = Environment.GetEnvironmentVariable(TestApiKeyVariable, EnvironmentVariableTarget.Process);
-        Environment.SetEnvironmentVariable(TestApiKeyVariable, "test-only-hardware-privacy-key", EnvironmentVariableTarget.Process);
+        Environment.SetEnvironmentVariable(TestApiKeyVariable, TestApiKey, EnvironmentVariableTarget.Process);
         try
         {
             var store = new LocalStore(directory);
@@ -40,6 +41,7 @@ public sealed class HardwareSnapshotPrivacyTests
                 AiApiKeyName = TestApiKeyVariable,
                 ScreenshotDirectory = directory
             });
+            Assert.Equal(TestApiKeyVariable, store.LoadSettings().AiApiKeyName);
             var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
             var captureId = Guid.NewGuid().ToString("N");
             var screenshot = Path.Combine(directory, $"{captureId}_1.0.0_manual_monitor-1.webp");
@@ -147,6 +149,7 @@ public sealed class HardwareSnapshotPrivacyTests
         public Task<AiProviderResult> DecodeAsync(string prompt, IReadOnlyList<string> screenshotPaths, AppSettings settings,
             string apiKey, string correlationId, AiProviderRequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         {
+            Assert.Equal(TestApiKey, apiKey);
             Prompt = prompt;
             return Task.FromResult(new AiProviderResult("Recorded", new AiUsageMetrics(), null, null, settings.Model, "completed", 200, 1, null));
         }
