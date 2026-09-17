@@ -186,9 +186,10 @@ The script builds the reports and writes to a fresh directory under `artifacts/u
 >
 > Neither feature is initialized just to open the main player, so these limitations are not missing-library requirements for basic startup. A restored reports window can show the same report error during startup. The x64 portable has passed an extracted `--version` launch check; full UI startup on clean x64/ARM64 machines remains a separate release check. See [portable requirements and verification](docs/RELEASING.md#portable-startup-and-feature-limitations).
 
-The same script can create an MSIX package for local installation or an installer. You'll find the package files in `artifacts/packages/` and installers in `artifacts/installers/`.
+> [!NOTE]
+> **MSIX installers are temporarily unavailable.** We're working on the code-signing certificate needed to distribute them. Use an unpackaged build for now.
 
-On Windows, `PackageMsix` and `CreateInstaller` sign the package automatically with the local TrackMeUp test certificate (`CN=umber`). If it is missing, the script creates it in the current user's certificate store, exports the public certificate to `artifacts/certificates/TrackMeUp-Test-Signing.cer`, and trusts it for the current user. To use another certificate already installed in `Cert:\CurrentUser\My`, pass `-PackageCertificateThumbprint <thumbprint>`. The test certificate is intended only for local sideloading; production releases must use a certificate issued for distribution.
+Portable release archives are built by GitHub Actions from a version-matching `v<version>` tag, which prepares a draft release for review.
 
 The [release preparation guide](docs/RELEASING.md) describes the x64/ARM64 MSIX and portable ZIP workflow, common version, bundled runtimes, and SHA-256 checksums. While distribution certificates are pending, the workflow produces unsigned archives and draft Releases only. MSIX packages require signing before installation; portable executables can be launched directly.
 
@@ -257,8 +258,6 @@ The Core report snapshot and web renderer use contract version 6. Every hourly c
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action BuildReports
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PackageMsix -Platform x64
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action CreateInstaller -Platform x64
 ~~~
 
 Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows setup guide](docs/DEVELOPMENT.md) walks you through getting a fresh copy, installing what you need, building and testing on x64, and fixing common setup problems. Use the [manual checks](docs/VALIDATION.md) to check how your changes look and behave.

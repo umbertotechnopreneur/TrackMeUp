@@ -2,6 +2,13 @@
 
 These instructions apply to all changes in this repository.
 
+## Shared delivery workflow
+
+- Keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved.
+- Do not bypass branch protections, required checks, or review requirements. Delete the branch after a successful merge.
+- Create portable release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
+- Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
+
 - Read this file and `.github/copilot-instructions.md` before editing.
 - Keep changes scoped, minimal, and reviewable.
 - Enable the repository pre-commit formatter with `pwsh -NoProfile -File ./scripts/Install-GitHooks.ps1` once per clone. Before completing C# changes, run `pwsh -NoProfile -File ./scripts/Format-Code.ps1` and its `-Verify` mode; do not defer whitespace failures to CI or bypass the hook.
