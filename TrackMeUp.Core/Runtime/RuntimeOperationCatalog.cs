@@ -164,6 +164,8 @@ internal enum RuntimeOperation
     SettingsPatch,
     [RuntimeOperationWireName("window.state.restore")]
     WindowStateRestore,
+    [RuntimeOperationWireName("window.reveal_open.v1")]
+    WindowRevealOpenV1,
     [RuntimeOperationWireName("window.state.save")]
     WindowStateSave,
     [RuntimeOperationWireName("window.open_state.set")]

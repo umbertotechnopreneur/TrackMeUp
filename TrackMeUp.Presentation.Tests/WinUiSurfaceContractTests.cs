@@ -143,6 +143,42 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
+    public void SensorSettings_KeepPreferencesSeparateFromExplicitActivationAndRenderFlatControls()
+    {
+        var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        var sensors = options.Descendants().Single(element => HasName(element, "HardwareSensorsSection"));
+        var slider = sensors.Descendants().Single(element => HasName(element, "HardwareSamplingSlider"));
+        Assert.Equal(3, sensors.Descendants().Count(element => element.Name.LocalName == "ToggleSwitch"));
+        Assert.DoesNotContain(sensors.Descendants(), element => element.Name.LocalName is "Expander" or "Border");
+        Assert.Equal("0", slider.Attribute("Minimum")?.Value);
+        Assert.Equal("3", slider.Attribute("Maximum")?.Value);
+        Assert.Equal("1", slider.Attribute("StepFrequency")?.Value);
+        Assert.Equal("False", slider.Attribute("IsThumbToolTipEnabled")?.Value);
+        Assert.Contains(sensors.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Sensors.SaveSnapshots.Description");
+        Assert.Contains(sensors.Descendants(), element => element.Attribute("Tag")?.Value == "Options.Sensors.Enabled.Description");
+        foreach (var key in new[] { "sensors.enabled", "sensors.advanced", "sensors.save_snapshots", "sensors.sampling_profile" })
+        {
+            Assert.Contains(key, source, StringComparison.Ordinal);
+        }
+        var registrationStart = source.IndexOf("private void RegisterAutoSaveHandlers()", StringComparison.Ordinal);
+        var registrationEnd = source.IndexOf("private void QueueReasoningEffortSave()", registrationStart, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableAdvancedHardwareTelemetryAsync", source[registrationStart..registrationEnd], StringComparison.Ordinal);
+        var activationStart = source.IndexOf("private async void ActivateAdvancedSensorsButton_Click", StringComparison.Ordinal);
+        var activation = source[activationStart..];
+        Assert.True(activation.IndexOf("await _autoSaveQueue;", StringComparison.Ordinal) < activation.IndexOf("_application.EnableAdvancedHardwareTelemetryAsync", StringComparison.Ordinal));
+        Assert.Contains("HardwareSensorsEnabled: true, HardwareUseAdvancedSensors: true", activation, StringComparison.Ordinal);
+        Assert.Contains("var sensorOptionsEnabled = HardwareSensorsEnabledSwitch.IsOn && !_activatingAdvancedSensors;", source, StringComparison.Ordinal);
+        foreach (var control in new[] { "HardwareAdvancedSwitch", "HardwareSaveSnapshotsSwitch", "HardwareSamplingSlider" })
+        {
+            Assert.Contains($"{control}.IsEnabled = sensorOptionsEnabled;", source, StringComparison.Ordinal);
+        }
+        Assert.Contains("HardwareSensorsEnabledSwitch.IsEnabled = !_activatingAdvancedSensors;", source, StringComparison.Ordinal);
+        Assert.Contains("ClearHardwareActivationStatus();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("PawnIO", sensors.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OpenAiOptions_UseCatalogPickerAndPerSnapshotLayout()
     {
         var options = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml"));

@@ -63,7 +63,7 @@ public static class HardwareSnapshotProjection
         return new HardwareSnapshotViewState(
             status,
             string.Format(culture, translate("Hardware.CollectedAt"), snapshot.Timestamp.ToLocalTime().ToString("G", culture)),
-            $"PawnIO: {TranslateStatus(snapshot.DriverStatus, translate)}",
+            $"{translate("Hardware.Advanced.Label")}: {TranslateStatus(snapshot.DriverStatus, translate)}",
             rows,
             details);
     }
@@ -102,6 +102,7 @@ public static class HardwareSnapshotProjection
     private static string TranslateStatus(string status, Func<string, string> translate) => status switch
     {
         "ready" => translate("Hardware.Status.Available"),
+        "disabled" => translate("Hardware.Status.Disabled"),
         "partial" => translate("Hardware.Status.Partial"),
         "unavailable" => translate("Common.NotAvailable"),
         "error" => translate("Hardware.Status.Error"),

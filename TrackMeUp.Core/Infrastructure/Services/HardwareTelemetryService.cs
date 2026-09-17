@@ -15,7 +15,6 @@ namespace TrackMeUp.Services;
 /// <summary>Serializes the sole isolated hardware collector and shares immutable snapshots across consumers.</summary>
 public sealed class HardwareTelemetryService : IHardwareTelemetryService
 {
-    private static readonly TimeSpan SampleInterval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan FailureRetryInterval = TimeSpan.FromSeconds(10);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly SemaphoreSlim _trackingGate = new(1, 1);
@@ -30,8 +29,11 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
     private Process? _helper;
     private SystemSnapshot? _snapshot;
     private DateTimeOffset _lastAttempt;
+    private HardwareTelemetryConfiguration _configuration = new();
+    private HardwareSamplingProfile _profile = HardwareSamplingProfiles.Get("normal");
+    private bool _trackingRequested;
     private bool _advanced;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     /// <summary>Creates the application-owned collector with the packaged helper beside the executable.</summary>
     public HardwareTelemetryService(ILogger<HardwareTelemetryService>? logger = null)
@@ -47,6 +49,44 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         _testReader = reader;
     }
 
+    /// <summary>Applies sampling and opt-in settings without launching an elevated collector.</summary>
+    public async ValueTask ConfigureAsync(HardwareTelemetryConfiguration configuration, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var profile = HardwareSamplingProfiles.Get(configuration.SamplingProfile);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _trackingGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_configuration == configuration) return;
+            // Stop only the timer, not an in-flight read: changing rates must retain an elevated session.
+            await StopPollingAsync().ConfigureAwait(false);
+            try
+            {
+                await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    ObjectDisposedException.ThrowIf(_disposed, this);
+                    var resetSnapshot = _configuration.Enabled != configuration.Enabled
+                        || _configuration.SamplingProfile != configuration.SamplingProfile
+                        || _advanced && !configuration.UseAdvancedSensors;
+                    if (!configuration.Enabled || _advanced && !configuration.UseAdvancedSensors)
+                        await StopCollectorAsync().ConfigureAwait(false);
+                    _configuration = configuration;
+                    _profile = profile;
+                    if (!configuration.Enabled)
+                        _snapshot = new SystemSnapshot(_time.GetUtcNow(), "disabled", [], "disabled");
+                    else if (resetSnapshot)
+                        _snapshot = null;
+                }
+                finally { _gate.Release(); }
+            }
+            finally { StartPollingIfRequested(); }
+        }
+        finally { _trackingGate.Release(); }
+    }
+
     /// <summary>Returns a recent immutable reading or collects one with a strict process/IPC deadline.</summary>
     public async ValueTask<SystemSnapshot> CaptureAsync(CancellationToken cancellationToken)
     {
@@ -54,8 +94,11 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_configuration.Enabled)
+                return _snapshot ??= new SystemSnapshot(_time.GetUtcNow(), "disabled", [], "disabled");
             var now = _time.GetUtcNow();
-            var retry = _snapshot?.Status is "error" or "unavailable" or "unsupported" ? FailureRetryInterval : SampleInterval;
+            var retry = _snapshot?.Status is "error" or "unavailable" or "unsupported" ? FailureRetryInterval : _profile.CpuInterval;
             if (_snapshot is not null && now - _lastAttempt < retry) return _snapshot;
             _lastAttempt = now;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
@@ -74,6 +117,9 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
                         Sensors = Array.AsReadOnly(device.Sensors.ToArray())
                     }).ToArray())
                 };
+                // A fatal library failure can leave initialization partially complete. Retain the
+                // explicit error, but discard that session; a later retry never requests UAC automatically.
+                if (snapshot.Status == "error") await StopCollectorAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _lifetime.IsCancellationRequested)
             {
@@ -94,6 +140,8 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
                 _logger.LogWarning("Hardware telemetry unavailable. ErrorCode={ErrorCode} ExceptionType={ExceptionType}", code, exception.GetType().Name);
                 _snapshot = new SystemSnapshot(_time.GetUtcNow(), "unavailable", [], GetDriverStatus(), code, now);
             }
+            // Admit the next poll relative to completion, matching the helper's device timestamps.
+            _lastAttempt = _time.GetUtcNow();
             return _snapshot;
         }
         finally { _gate.Release(); }
@@ -106,19 +154,10 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         await _trackingGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (isTracking && _polling is null)
-            {
-                _polling = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-                _pollTask = PollAsync(_polling.Token);
-            }
-            else if (!isTracking && _polling is not null)
-            {
-                await _polling.CancelAsync().ConfigureAwait(false);
-                if (_pollTask is not null) await _pollTask.ConfigureAwait(false);
-                _polling.Dispose();
-                _polling = null;
-                _pollTask = null;
-            }
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _trackingRequested = isTracking;
+            if (isTracking) StartPollingIfRequested();
+            else await StopPollingAsync().ConfigureAwait(false);
         }
         finally { _trackingGate.Release(); }
     }
@@ -127,11 +166,14 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
     public async Task EnableAdvancedAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (RuntimeInformation.ProcessArchitecture != Architecture.X64) throw new PlatformNotSupportedException("Advanced hardware telemetry requires x64.");
-        if (GetDriverStatus() == "not-installed") throw new InvalidOperationException("PawnIO is not installed.");
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_configuration.Enabled || !_configuration.UseAdvancedSensors)
+                throw new InvalidOperationException("Advanced telemetry requires enabled sensors and explicit advanced-sensor configuration.");
+            if (RuntimeInformation.ProcessArchitecture != Architecture.X64) throw new PlatformNotSupportedException("Advanced hardware telemetry requires x64.");
+            if (GetDriverStatus() == "not-installed") throw new InvalidOperationException("PawnIO is not installed.");
             if (_advanced && _pipe is { IsConnected: true }) return;
             await StopCollectorAsync().ConfigureAwait(false);
             _advanced = true;
@@ -159,23 +201,45 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         if (_disposed) return;
         _disposed = true;
         await _lifetime.CancelAsync().ConfigureAwait(false);
-        if (_pollTask is not null) await _pollTask.ConfigureAwait(false);
-        await _gate.WaitAsync().ConfigureAwait(false);
-        try { await StopCollectorAsync().ConfigureAwait(false); }
-        finally { _gate.Release(); }
-        _polling?.Dispose();
-        _lifetime.Dispose();
+        await _trackingGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await StopPollingAsync().ConfigureAwait(false);
+            await _gate.WaitAsync().ConfigureAwait(false);
+            try { await StopCollectorAsync().ConfigureAwait(false); }
+            finally { _gate.Release(); }
+            _lifetime.Dispose();
+        }
+        finally { _trackingGate.Release(); }
     }
 
-    private async Task PollAsync(CancellationToken cancellationToken)
+    private void StartPollingIfRequested()
+    {
+        if (_disposed || !_trackingRequested || !_configuration.Enabled || _polling is not null) return;
+        _polling = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _pollTask = PollAsync(_profile.CpuInterval, _polling.Token);
+    }
+
+    private async Task StopPollingAsync()
+    {
+        if (_polling is null) return;
+        await _polling.CancelAsync().ConfigureAwait(false);
+        if (_pollTask is not null) await _pollTask.ConfigureAwait(false);
+        _polling.Dispose();
+        _polling = null;
+        _pollTask = null;
+    }
+
+    private async Task PollAsync(TimeSpan interval, CancellationToken cancellationToken)
     {
         try
         {
-            using var timer = new PeriodicTimer(SampleInterval, _time);
             while (!cancellationToken.IsCancellationRequested)
             {
-                await CaptureAsync(cancellationToken).ConfigureAwait(false);
-                if (!await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) break;
+                // A schedule change cancels the timer only. Disposal still cancels bounded IPC work.
+                await CaptureAsync(_lifetime.Token).ConfigureAwait(false);
+                // Delay from completion so native read time cannot make every second base-rate poll miss its cache boundary.
+                await Task.Delay(interval, _time, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -187,7 +251,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         if (RuntimeInformation.ProcessArchitecture != Architecture.X64)
             return new SystemSnapshot(_time.GetUtcNow(), "unsupported", [], "unsupported-architecture", "collector-architecture-unsupported");
         if (_pipe is null) await StartCollectorAsync(cancellationToken).ConfigureAwait(false);
-        await HardwareTelemetryProtocol.WriteAsync(_pipe!, new HardwareCollectorRequest(HardwareTelemetryProtocol.Version, "sample"), cancellationToken).ConfigureAwait(false);
+        await HardwareTelemetryProtocol.WriteAsync(_pipe!, new HardwareCollectorRequest(HardwareTelemetryProtocol.Version, "sample", _profile.Key), cancellationToken).ConfigureAwait(false);
         return await HardwareTelemetryProtocol.ReadAsync<SystemSnapshot>(_pipe!, cancellationToken).ConfigureAwait(false);
     }
 

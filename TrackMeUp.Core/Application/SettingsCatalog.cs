@@ -31,6 +31,7 @@ public static class SettingsCatalog
     private static readonly string[] ScreenshotModes = ["all-screens", "active-window"];
     private static readonly string[] FlyoutAnchors = [FlyoutPositions.BottomCenter, FlyoutPositions.BottomLeft, FlyoutPositions.BottomRight, FlyoutPositions.TopLeft, FlyoutPositions.TopRight];
     private static readonly string[] TaskbarAnchors = [TaskbarWidgetPositions.Left, TaskbarWidgetPositions.Right];
+    private static readonly IReadOnlyList<string> HardwareProfiles = HardwareSamplingProfiles.All.Select(profile => profile.Key).ToArray();
 
     /// <summary>Gets all settings that are safe to expose and writable through WinUI or CLI.</summary>
     public static IReadOnlyList<SettingDescriptor> Definitions { get; } =
@@ -41,6 +42,10 @@ public static class SettingsCatalog
         Text("screenshots.directory", "Directory used for TrackMeUp screenshot artifacts.", "path"),
         Integer("screenshots.interval_minutes", "Minutes between scheduled eligible screenshots."),
         Boolean("screenshots.details_pane_open", "Keep the snapshot-details sidebar open when the gallery reopens."),
+        Boolean("sensors.enabled", "Read hardware sensors for live telemetry and capture context."),
+        Boolean("sensors.advanced", "Allow the optional advanced-sensor helper after explicit Windows administrator consent; inactive while sensors are disabled."),
+        Boolean("sensors.save_snapshots", "Save raw hardware readings with future captures; existing snapshots and interval usage are unchanged."),
+        Choice("sensors.sampling_profile", "Hardware polling profile; inactive while sensors are disabled.", HardwareProfiles),
         Boolean("ocr.enabled", "Extract searchable text locally from captured screenshots.", requiresRestart: true),
         Choice("ocr.language", "Preferred installed Windows OCR recognizer language.", ProductLanguageCatalog.OcrChoices, requiresRestart: true),
         Choice("search.language", "Language used for local query analysis and stemming.", ProductLanguageCatalog.SearchChoices),
@@ -116,6 +121,10 @@ public static class SettingsCatalog
             "screenshots.directory" => settings.ScreenshotDirectory,
             "screenshots.interval_minutes" => settings.ScreenshotIntervalMinutes,
             "screenshots.details_pane_open" => settings.ScreenshotDetailsPaneOpen,
+            "sensors.enabled" => settings.HardwareSensorsEnabled,
+            "sensors.advanced" => settings.HardwareUseAdvancedSensors,
+            "sensors.save_snapshots" => settings.HardwareSaveSnapshots,
+            "sensors.sampling_profile" => settings.HardwareSamplingProfile,
             "ocr.enabled" => settings.OcrEnabled,
             "ocr.language" => settings.OcrLanguage,
             "search.language" => settings.SearchLanguage,
@@ -235,6 +244,10 @@ public static class SettingsCatalog
                 case "screenshots.directory" when TryDirectory(value, allowEmpty: false, out var screenshotDirectory): current = current with { ScreenshotDirectory = screenshotDirectory }; break;
                 case "screenshots.interval_minutes" when TryInteger(value, 1, 1440, out var screenshotIntervalMinutes): current = current with { ScreenshotIntervalMinutes = screenshotIntervalMinutes }; break;
                 case "screenshots.details_pane_open" when TryBoolean(value, out var detailsPaneOpen): current = current with { ScreenshotDetailsPaneOpen = detailsPaneOpen }; break;
+                case "sensors.enabled" when TryBoolean(value, out var hardwareSensorsEnabled): current = current with { HardwareSensorsEnabled = hardwareSensorsEnabled }; break;
+                case "sensors.advanced" when TryBoolean(value, out var hardwareUseAdvancedSensors): current = current with { HardwareUseAdvancedSensors = hardwareUseAdvancedSensors }; break;
+                case "sensors.save_snapshots" when TryBoolean(value, out var hardwareSaveSnapshots): current = current with { HardwareSaveSnapshots = hardwareSaveSnapshots }; break;
+                case "sensors.sampling_profile" when Canonical(HardwareProfiles, value) is { } hardwareSamplingProfile: current = current with { HardwareSamplingProfile = hardwareSamplingProfile }; break;
                 case "ocr.enabled" when TryBoolean(value, out var ocrEnabled): current = current with { OcrEnabled = ocrEnabled }; break;
                 case "ocr.language" when Canonical(ProductLanguageCatalog.OcrChoices, value) is { } ocrLanguage: current = current with { OcrLanguage = ocrLanguage }; break;
                 case "search.language" when Canonical(ProductLanguageCatalog.SearchChoices, value) is { } searchLanguage: current = current with { SearchLanguage = searchLanguage }; break;
@@ -317,6 +330,8 @@ public static class SettingsCatalog
             ScreenshotIntervalMinutes = settings.ScreenshotIntervalMinutes <= 0
                 ? 15
                 : Math.Min(settings.ScreenshotIntervalMinutes, 1440),
+            // Unknown polling profiles fail fast, even while sensors are disabled; stored preferences remain independent.
+            HardwareSamplingProfile = RequiredPersistedChoice(HardwareProfiles, settings.HardwareSamplingProfile, "sensors.sampling_profile"),
             // Persisted locale identifiers are contracts and unsupported values fail fast.
             OcrLanguage = RequiredPersistedChoice(ProductLanguageCatalog.OcrChoices, settings.OcrLanguage, "ocr.language"),
             SearchLanguage = RequiredPersistedChoice(ProductLanguageCatalog.SearchChoices, settings.SearchLanguage, "search.language"),

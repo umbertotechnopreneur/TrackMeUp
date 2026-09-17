@@ -57,21 +57,27 @@ internal static class Program
             {
                 var request = await HardwareTelemetryProtocol.ReadAsync<HardwareCollectorRequest>(pipe, CancellationToken.None).ConfigureAwait(false);
                 if (request.Version != HardwareTelemetryProtocol.Version) return 5;
+                var profile = HardwareSamplingProfiles.Get(request.SamplingProfile);
                 if (request.Command == "stop") return 0;
                 if (request.Command != "sample") return 6;
                 Interlocked.Exchange(ref _operationStarted, Stopwatch.GetTimestamp());
                 SystemSnapshot snapshot;
+                var fatalError = false;
                 try
                 {
-                    snapshot = await collector.SampleAsync().ConfigureAwait(false);
+                    snapshot = await collector.SampleAsync(profile).ConfigureAwait(false);
                 }
                 catch
                 {
                     // Never send exception messages, paths, device serial numbers or diagnostics over IPC.
                     snapshot = new SystemSnapshot(DateTimeOffset.UtcNow, "error", [], collector.DriverStatus, "sensor-read-failed");
+                    fatalError = true;
                 }
                 await HardwareTelemetryProtocol.WriteAsync(pipe, snapshot, CancellationToken.None).ConfigureAwait(false);
                 Interlocked.Exchange(ref _operationStarted, 0);
+                // Device-local errors are already isolated by the collector. A global failure may
+                // leave LHM only partly initialized, so this process must never reuse that state.
+                if (fatalError) return 8;
             }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Text.Json.JsonException)

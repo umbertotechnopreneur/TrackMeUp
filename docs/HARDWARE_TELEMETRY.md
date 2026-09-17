@@ -3,9 +3,33 @@
 TrackMeUp uses one application-owned `HardwareTelemetryService` and one isolated
 LibreHardwareMonitor collector. The shared `SystemSnapshot` model is used by
 capture, persistence, diagnostics, screenshot details, CLI output and AI context.
-Each capture stores its available snapshot even when AI is disabled. Reanalysis
-uses that saved snapshot; it does not substitute the machine's current readings.
-Activity interval averages remain separate from capture-time readings.
+By default each capture stores its available snapshot even when AI is disabled.
+Reanalysis uses that saved snapshot; it does not substitute the machine's current
+readings. Activity interval averages remain separate from capture-time readings.
+
+## Settings and saved data
+
+The shared settings catalog exposes four independent preferences, with changes
+applied without an application restart:
+
+| Public key | Default | Meaning |
+| --- | --- | --- |
+| `sensors.enabled` | `true` | Enable hardware sensor collection |
+| `sensors.advanced` | `false` | Opt into the optional advanced-sensor helper, subject to explicit administrator consent |
+| `sensors.save_snapshots` | `true` | Save raw hardware readings with future captures |
+| `sensors.sampling_profile` | `normal` | Select `slow`, `normal`, `fast` or `fastest` polling |
+
+Disabling sensors stops collection without clearing the advanced, save or profile
+preferences; those preferences are inactive while sensors are disabled. Unknown
+sampling profile identifiers are rejected, including when loaded from settings.
+
+With snapshot saving disabled, a fresh reading can still be used in memory for
+immediate AI analysis, but raw sensor readings are not retained in the capture
+database or in stored AI results. Deferred analysis and reanalysis cannot recover
+an unsaved reading and do not poll current hardware as a substitute. Existing
+saved snapshots remain unchanged; disabling saving is not a historical-data
+deletion action. Interval CPU/GPU usage aggregates are a separate data stream and
+are not controlled by the raw-snapshot saving preference.
 
 ## Available readings
 
@@ -30,11 +54,20 @@ a universal guarantee that no bus access occurs inside a vendor driver.
 
 ## Sampling and availability
 
-Tracking enables a shared two-second polling loop. Other consumers reuse its
-recent immutable snapshot or request a bounded on-demand reading. Storage is
-polled every 30 seconds; reused storage readings retain their original device
-timestamp. Missing or failed telemetry remains explicit and does not prevent
-screenshot capture.
+Tracking enables a shared polling loop using the selected profile. Other
+consumers reuse its recent immutable snapshot or request a bounded on-demand
+reading. Intervals are in seconds:
+
+| Profile | CPU/GPU | Memory | Battery | Storage | Network |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `slow` | 10 | 30 | 60 | 120 | 10 |
+| `normal` (default) | 2 | 10 | 30 | 60 | 2 |
+| `fast` | 1 | 5 | 10 | 30 | 1 |
+| `fastest` | 0.5 | 2 | 5 | 30 | 0.5 |
+
+Faster polling increases collector work and does not change the screenshot
+schedule. Reused readings retain their original device timestamp. Missing or
+failed telemetry remains explicit and does not prevent screenshot capture.
 
 `CollectionStartedAt` and `Timestamp` describe the collection window;
 `HardwareDeviceSnapshot.SampledAt` describes each device's polling time. They are
@@ -43,7 +76,7 @@ prevents unchanged cached dynamic values from being restamped after a failed
 library update; static capacities retain their metadata semantics.
 
 The contract supports `ready`, `partial`, `unavailable`, `unsupported`, `error`,
-`starting` and `stale` states, with a separate driver status and optional bounded
+`starting`, `stale` and `disabled` states, with a separate driver status and optional bounded
 error code. A partial snapshot remains useful. Native ARM64 telemetry currently
 returns explicit `unsupported` status before initializing the collector; ARM64
 application builds remain supported.
@@ -88,7 +121,8 @@ dotnet test .\TrackMeUp.Core.Tests\TrackMeUp.Core.Tests.csproj -p:Platform=x64 -
 pwsh -NoProfile -File .\scripts\Test-HardwareTelemetry.ps1 -HelperPath .\TrackMeUp.Hardware\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\TrackMeUp.Hardware.exe
 ```
 
-The smoke test uses ordinary privileges, reads two bounded snapshots and prints
-aggregate counts only. It does not install a driver or request elevation. Check
+The smoke test uses ordinary privileges, reads three bounded snapshots and checks
+per-category timing across a live profile change. It prints aggregate counts only
+and does not install a driver or request elevation. Check
 the [manual verification checklist](../README.md) for capture persistence,
 battery presentation, reanalysis, import/export and advanced-mode scenarios.

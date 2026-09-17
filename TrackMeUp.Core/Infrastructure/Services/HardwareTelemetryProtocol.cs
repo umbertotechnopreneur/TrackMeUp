@@ -13,7 +13,7 @@ namespace TrackMeUp.Services;
 public static class HardwareTelemetryProtocol
 {
     /// <summary>The only supported protocol version; incompatible helpers fail before polling.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
     /// <summary>Bounds memory allocated for an incoming telemetry frame.</summary>
     public const int MaximumMessageBytes = 524_288;
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -74,4 +74,4 @@ public static class HardwareTelemetryProtocol
 public sealed record HardwareCollectorHello(int Version, bool Elevated);
 
 /// <summary>Allows only telemetry collection or orderly shutdown; no hardware controls are exposed.</summary>
-public sealed record HardwareCollectorRequest(int Version, string Command);
+public sealed record HardwareCollectorRequest(int Version, string Command, [property: JsonRequired] string SamplingProfile);

@@ -136,7 +136,11 @@ public sealed record AppSettings(
     bool WorldClockWindowShowInTaskbar = true,
     IReadOnlyDictionary<string, bool>? WindowOpenStates = null,
     TrackMeUp.Application.OcrTextWindowSource? OcrTextWindowSource = null,
-    bool AutoHideTitleBar = true);
+    bool AutoHideTitleBar = true,
+    bool HardwareSensorsEnabled = true,
+    bool HardwareUseAdvancedSensors = false,
+    bool HardwareSaveSnapshots = true,
+    string HardwareSamplingProfile = "normal");
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

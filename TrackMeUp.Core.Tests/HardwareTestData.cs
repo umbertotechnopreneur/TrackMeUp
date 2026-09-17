@@ -26,10 +26,22 @@ internal sealed class FakeHardwareTelemetryService : IHardwareTelemetryService
     internal int CaptureCount { get; private set; }
     internal bool IsTracking { get; private set; }
     internal bool AdvancedEnabled { get; private set; }
+    internal HardwareTelemetryConfiguration Configuration { get; private set; } = new();
+
+    public ValueTask ConfigureAsync(HardwareTelemetryConfiguration configuration, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _ = HardwareSamplingProfiles.Get(configuration.SamplingProfile);
+        Configuration = configuration;
+        if (!configuration.Enabled || !configuration.UseAdvancedSensors) AdvancedEnabled = false;
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask<SystemSnapshot> CaptureAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!Configuration.Enabled)
+            return ValueTask.FromResult(new SystemSnapshot(DateTimeOffset.UtcNow, "disabled", [], "disabled"));
         CaptureCount++;
         return ValueTask.FromResult(Snapshot ?? HardwareTestData.Snapshot(DateTimeOffset.UtcNow));
     }
@@ -44,6 +56,7 @@ internal sealed class FakeHardwareTelemetryService : IHardwareTelemetryService
     public Task EnableAdvancedAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!Configuration.Enabled || !Configuration.UseAdvancedSensors) throw new InvalidOperationException("Advanced sensors are not enabled.");
         AdvancedEnabled = true;
         return Task.CompletedTask;
     }

@@ -58,6 +58,16 @@ internal sealed class WindowPlacementService : IDisposable
     /// <summary>Lets the composition root report recoverable persistence failures on the owning window.</summary>
     internal static event Func<Window, string, Exception, Task>? PersistenceFailed;
 
+    /// <summary>Snapshots the already-created peers on the UI dispatcher without reopening persisted workspace entries.</summary>
+    internal static IReadOnlyList<long> GetOpenPeerWindowHandles(long mainWindowHandle) => s_preservingWorkspace
+        ? []
+        : ActivePlacements
+            .Where(placement => !placement._disposed && placement._placementReady
+                && !placement._closeSaveStarted && !placement._shutdownPrepared
+                && placement._windowHandle.ToInt64() != mainWindowHandle)
+            .Select(placement => placement._windowHandle.ToInt64())
+            .ToArray();
+
     internal WindowPlacementService(
         ITrackMeUpApplication application,
         Window window,

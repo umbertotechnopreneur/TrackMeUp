@@ -410,9 +410,14 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.QuickSetupApplyV1, request, cancellationToken);
     /// <inheritdoc />
-    public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.SettingsPatch, patch, cancellationToken);
+    public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) =>
+        // A sensor preference may drain one bounded native read before reconfiguring its existing collector.
+        SendAsync<AppSettings>(RuntimeOperation.SettingsPatch, patch, cancellationToken,
+            patch.Values.Keys.Any(key => key.Trim().StartsWith("sensors.", StringComparison.OrdinalIgnoreCase)) ? HardwareSnapshotTimeout : null);
     /// <inheritdoc />
     public Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState?>(RuntimeOperation.WindowStateRestore, new { windowKey, windowHandle }, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<int>> RevealOpenWindowsAsync(WindowRevealRequest request, CancellationToken cancellationToken) => SendAsync<int>(RuntimeOperation.WindowRevealOpenV1, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => SendAsync<WindowState>(RuntimeOperation.WindowStateSave, new { windowKey, windowHandle }, cancellationToken);
     /// <inheritdoc />

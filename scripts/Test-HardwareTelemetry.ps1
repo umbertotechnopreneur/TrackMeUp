@@ -44,11 +44,17 @@ try {
     try { $pipe.WaitForConnectionAsync($connectionDeadline.Token).GetAwaiter().GetResult() }
     finally { $connectionDeadline.Dispose() }
     $hello = Read-HardwareFrame
-    if ($hello.Version -ne 1) { throw 'Hardware helper protocol version mismatch.' }
+    if ($hello.Version -ne 2) { throw 'Hardware helper protocol version mismatch.' }
 
-    $previousStorageTimes = @{}
-    foreach ($sampleNumber in 1..2) {
-        $payload = [Text.Encoding]::UTF8.GetBytes('{"Version":1,"Command":"sample"}')
+    $previousSampleTimes = @{}
+    $profileIntervals = @{
+        normal = @{ Cpu = 2; GpuIntel = 2; GpuNvidia = 2; GpuAmd = 2; Memory = 10; Battery = 30; Storage = 60; Network = 2 }
+        fastest = @{ Cpu = 0.5; GpuIntel = 0.5; GpuNvidia = 0.5; GpuAmd = 0.5; Memory = 2; Battery = 5; Storage = 30; Network = 0.5 }
+    }
+    foreach ($sampleNumber in 1..3) {
+        $samplingProfile = if ($sampleNumber -lt 3) { 'normal' } else { 'fastest' }
+        $request = @{ Version = 2; Command = 'sample'; SamplingProfile = $samplingProfile } | ConvertTo-Json -Compress
+        $payload = [Text.Encoding]::UTF8.GetBytes($request)
         $header = [BitConverter]::GetBytes([int]$payload.Length)
         $pipe.Write($header)
         $pipe.Write($payload)
@@ -60,14 +66,24 @@ try {
         $sensors = @($devices | ForEach-Object { $_.Sensors })
         $validCount = @($sensors | Where-Object { $null -ne $_.Value }).Count
         if ($devices.Count -gt 64 -or $sensors.Count -gt 4096 -or $validCount -eq 0) { throw 'Hardware smoke returned invalid sensor cardinality.' }
-        foreach ($device in $devices | Where-Object Kind -eq 'Storage') {
-            if ($sampleNumber -eq 1) { $previousStorageTimes[$device.Id] = $device.SampledAt }
-            elseif ($previousStorageTimes.ContainsKey($device.Id) -and $previousStorageTimes[$device.Id] -ne $device.SampledAt) {
-                throw 'Storage was polled again inside the 30-second sampling window.'
+        foreach ($device in $devices) {
+            if (-not $profileIntervals[$samplingProfile].ContainsKey($device.Kind)) { throw 'Unexpected hardware sampling category.' }
+            if ($previousSampleTimes.ContainsKey($device.Id)) {
+                $previousTime = [DateTimeOffset]$previousSampleTimes[$device.Id]
+                $currentTime = [DateTimeOffset]$device.SampledAt
+                $due = $previousTime.AddSeconds($profileIntervals[$samplingProfile][$device.Kind])
+                if ([DateTimeOffset]$snapshot.CollectionStartedAt -ge $due -and $currentTime -eq $previousTime) {
+                    throw "Due category was not refreshed: $($device.Kind)."
+                }
+                if ([DateTimeOffset]$snapshot.Timestamp -lt $due -and $currentTime -ne $previousTime) {
+                    throw "Category was polled before its configured interval: $($device.Kind)."
+                }
             }
+            $previousSampleTimes[$device.Id] = $device.SampledAt
         }
         [pscustomobject]@{
             Sample = $sampleNumber
+            Profile = $samplingProfile
             Status = $snapshot.Status
             DriverStatus = $snapshot.DriverStatus
             Devices = $devices.Count
@@ -77,6 +93,7 @@ try {
             DeviceKinds = (@($devices.Kind | Sort-Object -Unique) -join ', ')
         }
         if ($sampleNumber -eq 1) { Start-Sleep -Milliseconds 2100 }
+        elseif ($sampleNumber -eq 2) { Start-Sleep -Milliseconds 600 }
     }
 }
 finally {

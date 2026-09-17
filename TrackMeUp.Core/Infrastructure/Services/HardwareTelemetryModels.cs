@@ -2,6 +2,9 @@
 
 namespace TrackMeUp.Services;
 
+/// <summary>Configures optional collection without granting consent to elevate a helper process.</summary>
+public sealed record HardwareTelemetryConfiguration(bool Enabled = true, bool UseAdvancedSensors = false, string SamplingProfile = "normal");
+
 /// <summary>Contains one immutable library reading; a null value means no usable measurement.</summary>
 public sealed record HardwareSensorSnapshot(string Id, string Name, string Kind, string Unit, double? Value);
 
@@ -29,6 +32,9 @@ public sealed record SystemSnapshot(
 /// <summary>Owns the sole sensor collector and its optional explicitly elevated mode.</summary>
 public interface IHardwareTelemetryService : IAsyncDisposable
 {
+    /// <summary>Applies validated sensor settings live without requesting Windows elevation.</summary>
+    ValueTask ConfigureAsync(HardwareTelemetryConfiguration configuration, CancellationToken cancellationToken);
+
     /// <summary>Gets a bounded immutable snapshot, including explicit unavailable or failed states.</summary>
     ValueTask<SystemSnapshot> CaptureAsync(CancellationToken cancellationToken);
 
@@ -46,8 +52,9 @@ public static class SystemSnapshotValidator
     public static void Validate(SystemSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        if (snapshot.Timestamp == default || snapshot.Status is not ("ready" or "partial" or "unavailable" or "unsupported" or "error" or "starting" or "stale")
+        if (snapshot.Timestamp == default || snapshot.Status is not ("ready" or "partial" or "unavailable" or "unsupported" or "error" or "starting" or "stale" or "disabled")
             || snapshot.Devices is null || snapshot.Devices.Count > 64
+            || snapshot.Status == "disabled" && snapshot.Devices.Count != 0
             || !ValidText(snapshot.DriverStatus, 80)
             || !ValidText(snapshot.LibraryVersion, 80)
             || snapshot.ErrorCode is { } error && !ValidText(error, 160)

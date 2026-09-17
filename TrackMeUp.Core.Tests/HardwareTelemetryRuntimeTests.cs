@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +14,25 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class HardwareTelemetryRuntimeTests
 {
+    /// <summary>A live sensor preference can drain hardware work instead of using the short general-settings deadline.</summary>
+    [Fact]
+    public async Task SensorSettings_UseHardwareAwareTimeout()
+    {
+        var application = DispatchProxy.Create<ITrackMeUpApplication, HardwareRuntimeProxy>();
+        var installation = $"hardware-settings-test-{Guid.NewGuid():N}";
+        await using var host = new RuntimeHost(application, installation);
+        Assert.True(host.TryStart());
+        await using var client = new RuntimeClient(installation, TimeSpan.Zero);
+
+        var result = await client.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?>
+        {
+            ["sensors.sampling_profile"] = "fast"
+        }), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("fast", result.Value!.HardwareSamplingProfile);
+    }
+
     /// <summary>Allows hardware collection and explicit consent to outlive the short default IPC timeout.</summary>
     [Theory]
     [InlineData(false)]
@@ -46,6 +66,8 @@ public sealed class HardwareTelemetryRuntimeTests
         /// <summary>Returns inert telemetry without starting a collector or asking Windows for consent.</summary>
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
+            if (targetMethod?.Name == nameof(ITrackMeUpApplication.PatchSettingsAsync))
+                return Task.FromResult(SettingsCatalog.Apply(new AppSettings(), (SettingsPatch)args![0]!));
             if (targetMethod?.Name is nameof(ITrackMeUpApplication.CaptureSystemSnapshotAsync)
                 or nameof(ITrackMeUpApplication.EnableAdvancedHardwareTelemetryAsync))
             {

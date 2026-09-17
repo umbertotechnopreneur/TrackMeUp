@@ -204,6 +204,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _tracking = tracking;
         _capture = capture;
         _snapshot = snapshot;
+        // Loading preferences never requests elevation or starts hardware reads.
+        _snapshot.ConfigureAsync(HardwareConfiguration(_settingsSnapshot.Value), CancellationToken.None).GetAwaiter().GetResult();
         _deviceContext = deviceContext ?? new DeviceContextService();
         _screenshotShare = screenshotShare ?? new ScreenshotShareService();
         _applicationLogs = applicationLogs ?? new ApplicationLogService();
@@ -2278,14 +2280,26 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
                 new ValidationIssue("startup.enabled", "os_update_failed", "StartupUpdateFailed"));
         }
 
+        var hardwareChanged = HardwareConfiguration(current) != HardwareConfiguration(settings);
         try
         {
+            if (hardwareChanged)
+            {
+                // Apply collection changes before acknowledging persistence; configuration never requests consent.
+                await _snapshot.ConfigureAsync(HardwareConfiguration(current), cancellationToken).ConfigureAwait(false);
+            }
             PersistSettings(current);
         }
         catch
         {
-            if (startupChanged
-                && !await _startup.SetEnabledAsync(settings.StartWithWindows, CancellationToken.None).ConfigureAwait(false))
+            if (hardwareChanged)
+            {
+                // Persistence may already have committed before a dependent search refresh failed.
+                // Reconcile to the last published settings without reopening an elevated session.
+                await _snapshot.ConfigureAsync(HardwareConfiguration(_settingsSnapshot.Value), CancellationToken.None).ConfigureAwait(false);
+            }
+            if (startupChanged && current.StartWithWindows != _settingsSnapshot.Value.StartWithWindows
+                && !await _startup.SetEnabledAsync(_settingsSnapshot.Value.StartWithWindows, CancellationToken.None).ConfigureAwait(false))
             {
                 _logger.LogError("Startup state rollback failed after settings persistence error.");
             }
@@ -2318,6 +2332,26 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             state is null ? "WindowStateNotFound" : "WindowStateRestored",
             state);
     }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<int>> RevealOpenWindowsAsync(WindowRevealRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var count = new OpenWindowVisibilityService().Reveal(request, cancellationToken);
+            return Task.FromResult(OperationResult<int>.Success("window.reveal.completed", "WindowRevealCompleted", count));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // A failed reveal is reported without retrying activation or reopening persisted workspace windows.
+            _logger.LogWarning("Open windows could not be revealed. ExceptionType={ExceptionType}", exception.GetType().Name);
+            return Task.FromResult(OperationResult<int>.Failure("window.reveal.failed", "Window.RevealFailed"));
+        }
+    }
 
     /// <inheritdoc />
     public Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken) => MutateAsync(async () =>
@@ -2675,6 +2709,11 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
     }
 
+    private static HardwareTelemetryConfiguration HardwareConfiguration(AppSettings settings) => new(
+        settings.HardwareSensorsEnabled,
+        settings.HardwareUseAdvancedSensors,
+        settings.HardwareSamplingProfile);
+
     private PendingManualScreenshotState? GetPendingManualScreenshotState()
     {
         var registration = Volatile.Read(ref _pendingManualScreenshot);
@@ -2880,7 +2919,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
             .ToUniversalTime();
         var telemetry = _tracking.BuildScreenshotIntervalTelemetry(intervalStartedAt, provenanceCapturedAt);
         // Capture provenance, interval averages and the immutable hardware snapshot commit together.
-        _store.UpsertScreenshotIntervalTelemetry(capture.CaptureId, capture.StoredScreenshotPaths, telemetry, capture.HardwareSnapshot);
+        var settings = _settingsSnapshot.Value;
+        // This preference affects new durable readings only. Existing captures and activity averages are untouched.
+        var storedHardware = settings.HardwareSensorsEnabled && settings.HardwareSaveSnapshots ? capture.HardwareSnapshot : null;
+        _store.UpsertScreenshotIntervalTelemetry(capture.CaptureId, capture.StoredScreenshotPaths, telemetry, storedHardware);
     }
 
     /// <summary>Captures one telemetry point per minute while tracking so the live score includes CPU and GPU activity.</summary>

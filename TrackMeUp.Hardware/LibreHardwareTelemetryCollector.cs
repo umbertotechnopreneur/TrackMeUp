@@ -9,7 +9,7 @@ namespace TrackMeUp.Hardware;
 internal sealed class LibreHardwareTelemetryCollector : IDisposable
 {
     private readonly bool _advanced;
-    private readonly Dictionary<IHardware, IReadOnlyList<HardwareDeviceSnapshot>> _storageCache = new();
+    private readonly Dictionary<IHardware, CachedDeviceReading> _deviceCache = new();
     private Computer? _computer;
 
     internal LibreHardwareTelemetryCollector(bool advanced)
@@ -21,8 +21,9 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
 
     internal string DriverStatus { get; }
 
-    internal async Task<SystemSnapshot> SampleAsync()
+    internal async Task<SystemSnapshot> SampleAsync(HardwareSamplingProfile profile)
     {
+        ArgumentNullException.ThrowIfNull(profile);
         var started = DateTimeOffset.UtcNow;
         if (_computer is null)
         {
@@ -41,7 +42,11 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
             };
             _computer.Open();
             // Delta-based load and throughput sensors need a baseline before the first snapshot.
-            foreach (var hardware in _computer.Hardware.Where(hardware => hardware.HardwareType != HardwareType.Storage)) Update(hardware);
+            foreach (var hardware in _computer.Hardware.Where(hardware => hardware.HardwareType != HardwareType.Storage))
+            {
+                try { Update(hardware); }
+                catch { /* The actual sample reports device failures independently after warm-up. */ }
+            }
             await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
         }
 
@@ -49,20 +54,25 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
         var hadError = false;
         foreach (var hardware in _computer.Hardware)
         {
-            if (hardware.HardwareType == HardwareType.Storage && _storageCache.TryGetValue(hardware, out var cached)
-                && DateTimeOffset.UtcNow - cached[0].SampledAt < TimeSpan.FromSeconds(30))
+            if (_deviceCache.TryGetValue(hardware, out var cached)
+                && !profile.IsSampleDue(hardware.HardwareType.ToString(), cached.SampledAt, DateTimeOffset.UtcNow))
             {
-                // Storage polling is intentionally slower; cached readings retain their original collection time.
-                devices.AddRange(cached);
+                // A profile change reuses device readings until due under the new rate, including failures.
+                // Cached values retain their original timestamps; reusing them never suggests a fresh read.
+                devices.AddRange(cached.Devices);
+                hadError |= cached.HadError;
                 continue;
             }
             var versions = TrackMeUpSensorAccess.BeginUpdate(hardware);
+            var deviceError = false;
             try { Update(hardware); }
-            catch { hadError = true; /* This device remains explicitly null/partial; other devices are independent. */ }
+            catch { deviceError = true; /* This device remains explicitly null/partial; other devices are independent. */ }
             var current = new List<HardwareDeviceSnapshot>();
-            AppendDevice(hardware, current, versions);
+            var sampledAt = DateTimeOffset.UtcNow;
+            AppendDevice(hardware, current, versions, sampledAt);
             devices.AddRange(current);
-            if (hardware.HardwareType == HardwareType.Storage) _storageCache[hardware] = current.AsReadOnly();
+            _deviceCache[hardware] = new CachedDeviceReading(sampledAt, current.AsReadOnly(), deviceError);
+            hadError |= deviceError;
         }
         var usable = devices.Sum(device => device.Sensors.Count(sensor => sensor.Value is not null));
         var missing = devices.Any(device => device.Sensors.Any(sensor => sensor.Value is null));
@@ -73,7 +83,7 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
         return snapshot;
     }
 
-    private void AppendDevice(IHardware hardware, List<HardwareDeviceSnapshot> devices, IReadOnlyDictionary<ISensor, long> versions)
+    private void AppendDevice(IHardware hardware, List<HardwareDeviceSnapshot> devices, IReadOnlyDictionary<ISensor, long> versions, DateTimeOffset sampledAt)
     {
         var readings = new List<HardwareSensorSnapshot>();
         foreach (var sensor in hardware.Sensors)
@@ -89,8 +99,8 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
                 sensor.SensorType.ToString(), Unit(sensor.SensorType), value));
         }
         devices.Add(new HardwareDeviceSnapshot(hardware.Identifier.ToString(), hardware.Name, hardware.HardwareType.ToString(),
-            DateTimeOffset.UtcNow, Array.AsReadOnly(readings.ToArray())));
-        foreach (var child in hardware.SubHardware) AppendDevice(child, devices, versions);
+            sampledAt, Array.AsReadOnly(readings.ToArray())));
+        foreach (var child in hardware.SubHardware) AppendDevice(child, devices, versions, sampledAt);
     }
 
     private static void Update(IHardware hardware)
@@ -141,4 +151,6 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
         Program.BeginNativeOperation();
         _computer?.Close();
     }
+
+    private sealed record CachedDeviceReading(DateTimeOffset SampledAt, IReadOnlyList<HardwareDeviceSnapshot> Devices, bool HadError);
 }

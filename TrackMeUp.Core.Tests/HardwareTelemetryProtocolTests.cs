@@ -54,12 +54,32 @@ public sealed class HardwareTelemetryProtocolTests
     [Fact]
     public async Task UnknownCommandProperties_AreRejected()
     {
-        var payload = Encoding.UTF8.GetBytes("{\"Version\":1,\"Command\":\"sample\",\"path\":\"unexpected\"}");
+        var payload = Encoding.UTF8.GetBytes("{\"Version\":2,\"Command\":\"sample\",\"SamplingProfile\":\"normal\",\"path\":\"unexpected\"}");
         using var stream = new MemoryStream();
         var header = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(header, payload.Length);
         stream.Write(header);
         stream.Write(payload);
+        stream.Position = 0;
+        await Assert.ThrowsAsync<JsonException>(() => HardwareTelemetryProtocol.ReadAsync<HardwareCollectorRequest>(stream, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task VersionTwoRequest_RoundTripsProfile()
+    {
+        using var stream = new MemoryStream();
+        var request = new HardwareCollectorRequest(HardwareTelemetryProtocol.Version, "sample", "fastest");
+        await HardwareTelemetryProtocol.WriteAsync(stream, request, CancellationToken.None);
+        stream.Position = 0;
+        Assert.Equal(2, HardwareTelemetryProtocol.Version);
+        Assert.Equal(request, await HardwareTelemetryProtocol.ReadAsync<HardwareCollectorRequest>(stream, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task MissingSamplingProfile_IsRejected()
+    {
+        using var stream = new MemoryStream();
+        await HardwareTelemetryProtocol.WriteAsync(stream, new { Version = 2, Command = "sample" }, CancellationToken.None);
         stream.Position = 0;
         await Assert.ThrowsAsync<JsonException>(() => HardwareTelemetryProtocol.ReadAsync<HardwareCollectorRequest>(stream, CancellationToken.None));
     }

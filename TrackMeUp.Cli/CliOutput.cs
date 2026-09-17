@@ -166,7 +166,7 @@ public sealed class CliOutput(CliOptions options)
         var table = new Table().Border(TableBorder.Rounded).AddColumn(Localize("metric")).AddColumn(Localize("value"));
         table.AddRow(Localize("state"), Markup.Escape(snapshot.Status));
         table.AddRow(Markup.Escape(strings.Format("Hardware.CollectedAt", snapshot.Timestamp.ToLocalTime().ToString("G", _culture))), string.Empty);
-        table.AddRow("PawnIO", Markup.Escape(snapshot.DriverStatus));
+        table.AddRow(Markup.Escape(strings.Translate("Hardware.Advanced.Label")), Markup.Escape(snapshot.DriverStatus));
         if (snapshot.ErrorCode is { } errorCode)
         {
             table.AddRow(Localize("error"), Markup.Escape(errorCode));

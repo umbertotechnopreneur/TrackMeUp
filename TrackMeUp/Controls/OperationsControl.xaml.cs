@@ -70,9 +70,6 @@ public sealed partial class OperationsControl : UserControl
         AutomationProperties.SetName(OperationProgress, _strings.Translate("Operations.Status.InProgress.Title"));
         AutomationProperties.SetName(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Action"));
         AutomationProperties.SetHelpText(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Description"));
-        var advancedSensorsLabel = _strings.Translate("Hardware.Advanced.Action");
-        AutomationProperties.SetName(AdvancedSensorsButton, advancedSensorsLabel);
-        ToolTipService.SetToolTip(AdvancedSensorsButton, advancedSensorsLabel);
         if (_systemSnapshot is { } snapshot)
         {
             RenderSystemSnapshot(snapshot);
@@ -170,15 +167,6 @@ public sealed partial class OperationsControl : UserControl
         }
 
         RenderSystemSnapshot(snapshot);
-    }
-
-    private async void AdvancedSensorsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.EnableAdvancedHardwareTelemetryAsync(token));
-        if (result is { Succeeded: true, Value: { } snapshot })
-        {
-            RenderSystemSnapshot(snapshot);
-        }
     }
 
     private void RenderSystemSnapshot(SystemSnapshot snapshot)

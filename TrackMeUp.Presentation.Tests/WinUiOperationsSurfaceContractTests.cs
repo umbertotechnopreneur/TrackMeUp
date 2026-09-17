@@ -364,7 +364,6 @@ public sealed class WinUiOperationsSurfaceContractTests
         [
             "GetRuntimeHealthAsync",
             "CaptureSystemSnapshotAsync",
-            "EnableAdvancedHardwareTelemetryAsync",
             "GetLatestScreenshotAsync",
             "OpenScreenshotFolderAsync",
             "AnalyzeCurrentActivityAsync",
@@ -389,6 +388,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         ];
 
         Assert.All(requiredFacadeCalls, call => Assert.Contains(call, source, StringComparison.Ordinal));
+        var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs"));
+        Assert.Contains("_application.EnableAdvancedHardwareTelemetryAsync", optionsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableAdvancedHardwareTelemetryAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Process.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.", source, StringComparison.Ordinal);

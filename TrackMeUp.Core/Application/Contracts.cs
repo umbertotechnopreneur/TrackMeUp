@@ -928,6 +928,9 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Restores one window placement using the current monitor topology.</summary>
     Task<OperationResult<WindowState?>> RestoreWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);
 
+    /// <summary>Reveals only the supplied already-open UI peers while the main window retains foreground focus.</summary>
+    Task<OperationResult<int>> RevealOpenWindowsAsync(WindowRevealRequest request, CancellationToken cancellationToken);
+
     /// <summary>Persists one window placement read from its native window handle.</summary>
     Task<OperationResult<WindowState>> SaveWindowStateAsync(string windowKey, long windowHandle, CancellationToken cancellationToken);
 
