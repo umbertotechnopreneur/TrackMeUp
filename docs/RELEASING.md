@@ -1,0 +1,157 @@
+# Preparing a GitHub release
+
+TrackMeUp produces native **x64** and **ARM64** MSIX packages and portable ZIPs.
+The `release packages` workflow prepares all four artifacts from the same commit
+and version. Until a distribution signing identity is configured, application
+binaries are **unsigned**. MSIX packages require signing before installation;
+portable executables can be extracted and run directly. The workflow creates drafts only.
+
+## GitHub Actions
+
+- Run **release packages** manually with a version such as `1.2.3` to produce downloadable
+  workflow artifacts only.
+- Push an approved `vX.Y.Z` tag to generate the same artifacts and attach them to a
+  **draft** GitHub Release. The workflow never publishes the draft and refuses to
+  replace an existing release for that tag.
+- Versions have three numeric components: major `1..65534`, minor and patch `0..65534`,
+  with no leading zeros or prerelease suffixes. Both MSIX packages use `X.Y.Z.0`.
+- Each archive and its `.zip.sha256` file are retained as workflow artifacts for 30 days.
+  Draft Release assets remain available to maintainers independently of that retention.
+
+The workflow pins its actions by commit, grants package jobs read-only repository
+access, and gives only the draft-creation job `contents: write`. No signing secrets
+or development certificates are used or exported.
+
+## Local preparation
+
+Use PowerShell 7, the .NET SDK selected by `global.json`, Windows SDK build tools,
+and Node.js 24.16.0. Run these commands sequentially from the repository root:
+
+```powershell
+$releaseVersion = '1.2.3'
+foreach ($releasePlatform in @('x64', 'ARM64')) {
+    $packageDirectory = "./artifacts/release-packages/$releaseVersion/$releasePlatform"
+    pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PackageMsix -Platform $releasePlatform -ReleaseVersion $releaseVersion -Unsigned -PackageOutputPath $packageDirectory
+    if ($LASTEXITCODE -ne 0) { throw "Packaging failed: $releasePlatform" }
+    pwsh -NoProfile -File ./scripts/New-ReleaseArchive.ps1 -PackageDirectory $packageDirectory -Version $releaseVersion -Platform $releasePlatform
+    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed: $releasePlatform" }
+    $publishDirectory = "./artifacts/portable-publish/$releaseVersion/$releasePlatform"
+    pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PublishUnpackaged -Platform $releasePlatform -ReleaseVersion $releaseVersion -PublishOutputPath $publishDirectory
+    if ($LASTEXITCODE -ne 0) { throw "Portable publish failed: $releasePlatform" }
+    pwsh -NoProfile -File ./scripts/New-PortableReleaseArchive.ps1 -PublishDirectory $publishDirectory -Version $releaseVersion -Platform $releasePlatform
+    if ($LASTEXITCODE -ne 0) { throw "Portable archive creation failed: $releasePlatform" }
+}
+```
+
+Explicit packaging directories must be empty. Archive output directories must not
+already exist; choose a fresh `-OutputDirectory` for repeat verification. Existing
+validated artifacts are never silently overwritten. Local builds share generated
+project files, so do not package both architectures concurrently in one checkout.
+GitHub matrix jobs use separate checkouts.
+
+Release builds generate their manifest and `BuildInfo.json` under
+`TrackMeUp/obj/release/<version>/<platform>/`; they do not advance the local build
+counter or rewrite the tracked package manifest. Normal local builds retain their
+automatic version increment.
+
+## Archive contents and dependencies
+
+Each `artifacts/releases/<version>/<platform>/TrackMeUp-<version>-<platform>-unsigned.zip`
+contains:
+
+- the unsigned application MSIX, including its .NET runtime;
+- the matching Microsoft-signed framework packages from the SDK's `Dependencies`
+  output, validated against the application manifest's name, publisher, minimum
+  version, and architecture;
+- `release.json` with package versions and hashes, and `SHA256SUMS.txt` covering the
+  payload files;
+- `Install.ps1`, preparation instructions, and license/trademark notices.
+
+Only dependencies for the target architecture or neutral architecture are copied.
+The current application requires `Microsoft.WindowsAppRuntime.2`; the packaging
+scripts consume the SDK's emitted files and do not download an arbitrary latest
+runtime. Missing, ambiguous, or untrusted dependencies fail preparation.
+
+`Install.ps1` refuses unsigned archives before making changes. Once a signed release
+has been prepared, it verifies package hashes, signatures, architecture, version,
+and dependency coverage before registering the app with `Add-AppxPackage`. It never
+imports a certificate or changes certificate trust. The helper needs PowerShell 7.
+
+## Portable archives
+
+Each `artifacts/releases/<version>/<platform>/portable/TrackMeUp-<version>-<platform>-portable-unsigned.zip`
+contains the complete `Release-Unpackaged` publish output, including .NET and Windows
+App SDK, report assets, build/release metadata, notices, and payload checksums.
+An adjacent `.zip.sha256` verifies the archive. The archive writer rejects missing
+runtimes, mismatched version/architecture metadata, and an existing output directory.
+
+Extract the entire ZIP and run `TrackMeUp.exe`. Keep the executable with all DLLs,
+resources, and subfolders; copying only the EXE is not a supported deployment.
+No MSIX registration, certificate
+import, runtime installer, or administrator access is part of this portable route.
+Use `./TrackMeUp.exe --version` for the CLI; portable ZIPs do not register an execution alias.
+Unsigned executables may show a Windows security prompt.
+
+Portable describes deployment, not a separate data-storage mode: settings and history
+remain under `%LOCALAPPDATA%\TrackMeUp`.
+
+### Portable startup and feature limitations
+
+| Component or feature | Portable distribution | Effect on startup and use |
+| --- | --- | --- |
+| .NET, WinUI, and Windows App SDK | Included in the ZIP for the selected architecture. | These supply the application startup libraries. An incomplete extraction or the wrong architecture can prevent launch. |
+| Interactive reports | WebView2 SDK libraries are included; the browser Runtime is a separate prerequisite. | The main player does not initialize WebView2. Opening or restoring Reports initializes it; if initialization fails, the report window displays an error instead of closing the application. |
+| On-device screenshot OCR | The Windows OCR API requires MSIX package identity, which this portable build does not have. | The OCR engine is created only when text extraction is requested. OCR failures are recorded on the capture without discarding the screenshot or terminating the application. Enabling OCR in saved settings does not provide package identity. |
+
+The absence of the WebView2 Runtime and the lack of OCR package identity are feature
+limitations, not prerequisites for opening the main player. The application does
+not automatically install WebView2 or substitute another OCR engine. Install the
+[WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+to use interactive reports; use the MSIX edition for supported on-device OCR.
+See Microsoft's [WebView2 distribution guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)
+for the distinction between SDK libraries and the browser Runtime.
+
+This behavior is grounded in the current startup and error-handling paths:
+`ReportsWindow.InitializeWebViewAsync` handles report initialization failures, and
+`ScreenshotTextExtractionCoordinator.AttachAsync` records typed OCR failures.
+Neither engine is initialized by the OCR service constructor or the basic player path.
+
+For `v1.0.900`, the extracted x64 portable passed `TrackMeUp.exe --version` with exit
+code zero and reported `1.0.900` on the development workstation. This exercises the
+WinUI application bootstrap and CLI route, not full player/report initialization.
+It does **not** establish full UI startup on a clean machine without WebView2 or
+preinstalled development runtimes. Native ARM64 execution has not been verified.
+
+Before publication, verify extraction, CLI and UI startup on clean Windows x64 and
+ARM64 machines without .NET or Windows App SDK preinstalled. Cross-compilation and
+archive checks do not establish native ARM64 launch behavior.
+
+## Completing signing later
+
+Before publishing a public release:
+
+1. Configure the chosen signing provider and its publisher identity. The manifest
+   publisher must match the certificate. Keep credentials in the provider/GitHub
+   secret mechanism, never command-line arguments or repository files.
+2. Add the provider's signing step after package creation and before archive/hash
+   generation. Extend archive generation to accept and validate the signed application,
+   record `signing: signed`, and remove the unsigned filename/instructions. The current
+   archive script deliberately accepts only unsigned preparation packages.
+3. Regenerate all hashes after signing; never relabel an existing unsigned ZIP as signed.
+   A valid signature does not by itself guarantee immediate SmartScreen reputation.
+4. Test MSIX installation, upgrade, launch, CLI access, and uninstall, and portable
+   extraction/launch on clean Windows x64 and ARM64 machines. Cross-compilation does
+   not verify execution on ARM64.
+5. Replace the preparation assets in the draft with the validated signed archives,
+   review the release notes, and publish explicitly.
+
+Run the script contract tests with:
+
+```powershell
+pwsh -NoProfile -File ./scripts/Test-ReleasePackaging.ps1
+pwsh -NoProfile -File ./scripts/Test-PortableReleasePackaging.ps1
+```
+
+References: [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository),
+[Microsoft signing options](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options),
+and [Add-AppxPackage dependencies](https://learn.microsoft.com/en-us/powershell/module/appx/add-appxpackage).

@@ -358,8 +358,26 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public async Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        // Large SQLite scans run off the presentation/pipe thread and observe cancellation once per row.
-        return await Task.Run(() => _reports.Build(query, cancellationToken), cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Large SQLite scans run off the presentation/pipe thread and observe cancellation once per row.
+            return await Task.Run(() => _reports.Build(query, cancellationToken), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Closing a report is expected cancellation, not a report-generation failure.
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Preserve the failure and log only code metadata; exception messages may contain private data.
+            _logger.LogError(
+                "Activity report generation failed. ExceptionType={ExceptionType} FailureComponent={FailureComponent} FailureMethod={FailureMethod}",
+                exception.GetType().Name,
+                exception.TargetSite?.DeclaringType?.FullName,
+                exception.TargetSite?.Name);
+            throw;
+        }
     }
 
     /// <inheritdoc />

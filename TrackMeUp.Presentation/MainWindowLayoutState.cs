@@ -39,7 +39,7 @@ public sealed class MainWindowLayoutState
 {
     private const int InitialLogicalHeight = 304;
     private const int PreferredSecondarySurfaceLogicalHeight = 520;
-    private readonly Dictionary<MainWindowSurface, (int Width, int Height)> _manualSizes = new();
+    private (int Width, int Height)? _manualSize;
 
     /// <summary>Gets the currently active top-level surface.</summary>
     public MainWindowSurface Surface { get; private set; } = MainWindowSurface.Player;
@@ -128,7 +128,7 @@ public sealed class MainWindowLayoutState
         return LogicalHeight;
     }
 
-    /// <summary>Retains the user's resized bounds for the current surface in logical pixels.</summary>
+    /// <summary>Retains the user's resized bounds for the entire main window across all surfaces in logical pixels.</summary>
     public void RecordManualSize(double width, double height)
     {
         if (!double.IsFinite(width) || width <= 0d)
@@ -141,10 +141,10 @@ public sealed class MainWindowLayoutState
             throw new ArgumentOutOfRangeException(nameof(height));
         }
 
-        _manualSizes[Surface] = (checked((int)Math.Ceiling(width)), checked((int)Math.Ceiling(height)));
+        _manualSize = (checked((int)Math.Ceiling(width)), checked((int)Math.Ceiling(height)));
     }
 
-    /// <summary>Fits the surface's manual or preferred width within the current display.</summary>
+    /// <summary>Fits the main window's manual width, or the surface's preferred width, within the current display.</summary>
     public int ResolveLogicalWidth(double availableLogicalWidth, int preferredLogicalWidth)
     {
         if (!double.IsFinite(availableLogicalWidth) || availableLogicalWidth <= 0d)
@@ -153,7 +153,7 @@ public sealed class MainWindowLayoutState
         }
 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(preferredLogicalWidth);
-        var width = _manualSizes.TryGetValue(Surface, out var size) ? size.Width : preferredLogicalWidth;
+        var width = _manualSize?.Width ?? preferredLogicalWidth;
         return Math.Min(width, Math.Max(1, checked((int)Math.Floor(availableLogicalWidth))));
     }
 
@@ -174,9 +174,9 @@ public sealed class MainWindowLayoutState
         }
 
         var displayLimit = Math.Max(1, checked((int)Math.Floor(availableLogicalHeight)));
-        if (_manualSizes.TryGetValue(Surface, out var manualSize))
+        if (_manualSize is { } manualSize)
         {
-            // User-sized windows keep their viewport; taller content remains available through scrolling.
+            // Navigation and content changes preserve the user's main-window viewport; taller content scrolls.
             return Math.Min(manualSize.Height, displayLimit);
         }
 

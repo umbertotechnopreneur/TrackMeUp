@@ -45,7 +45,7 @@ public sealed class ActivityCalendarSurfaceContractTests
         Assert.True(
             source.IndexOf("TryApplySnapshot(result.Value)", StringComparison.Ordinal) <
             source.IndexOf("ActivityCalendarView.MinDate = ToCalendarDate(from)", StringComparison.Ordinal));
-        Assert.Contains("ExpectedReportContractVersion = 5", source, StringComparison.Ordinal);
+        Assert.Contains("ExpectedReportContractVersion = 6", source, StringComparison.Ordinal);
         Assert.Contains("cell.ActivityScore", source, StringComparison.Ordinal);
         Assert.Contains("cell.Installations", source, StringComparison.Ordinal);
         Assert.Contains("InstallationAppearance.CreateAccentBrush", source, StringComparison.Ordinal);

@@ -36,7 +36,11 @@ public sealed partial class PrivacyOperationsControl : UserControl
             dialogs,
             ownerWindow,
             banner,
-            Progress,
+            active =>
+            {
+                Progress.IsActive = active;
+                Progress.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+            },
             SectionBody,
             key => _strings.TryTranslate(key, out var value) ? value : null);
 

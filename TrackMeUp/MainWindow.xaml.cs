@@ -1079,9 +1079,21 @@ public sealed partial class MainWindow : Window
         AiPricingMenuItem.IsEnabled = false;
         try
         {
-            var result = await _application.GetAiPricingOverviewAsync(CancellationToken.None);
+            var result = await _dialogs.RunWithProgressAsync(
+                _application,
+                this,
+                RootGrid.RequestedTheme,
+                T("AiPricing.Title"),
+                T("AiPricing.Subtitle"),
+                static (application, token) => application.GetAiPricingOverviewAsync(token));
+            if (_lifecycle.IsCancellationRequested)
+            {
+                return;
+            }
+
             if (result.Succeeded && result.Value is not null)
             {
+                // Release the progress session before entering the same queue for the pricing results.
                 await _dialogs.ShowPricingAsync(_application, this, result.Value, RootGrid.RequestedTheme, _strings);
                 return;
             }
@@ -1093,9 +1105,27 @@ public sealed partial class MainWindow : Window
                     T("AiPricing.UnavailableMessage"),
                     T("Dialog.Ok")));
         }
+        catch (OperationCanceledException) when (_lifecycle.IsCancellationRequested)
+        {
+            // Owner shutdown cancels progress; do not open a result or error surface afterward.
+        }
+        catch (Exception)
+        {
+            if (!_lifecycle.IsCancellationRequested)
+            {
+                // Failed loading or presentation uses the existing localized error without exposing internals.
+                _dialogs.Notifications.ShowError(
+                    MainNotificationBanner,
+                    T("AiPricing.UnavailableTitle"),
+                    T("AiPricing.UnavailableMessage"));
+            }
+        }
         finally
         {
-            AiPricingMenuItem.IsEnabled = _menuSettings is not null && IsOpenAiPricingAvailable(_menuSettings);
+            if (!_lifecycle.IsCancellationRequested)
+            {
+                AiPricingMenuItem.IsEnabled = _menuSettings is not null && IsOpenAiPricingAvailable(_menuSettings);
+            }
         }
     }
 

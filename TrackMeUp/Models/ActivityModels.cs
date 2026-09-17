@@ -136,7 +136,9 @@ public sealed record AppSettings(
     bool WorldClockWindowShowInTaskbar = true,
     IReadOnlyDictionary<string, bool>? WindowOpenStates = null,
     TrackMeUp.Application.OcrTextWindowSource? OcrTextWindowSource = null,
-    bool AutoHideTitleBar = true);
+    bool AutoHideTitleBar = true,
+    bool WorldMapWindowShowInTaskbar = true,
+    bool LunarPhaseWindowShowInTaskbar = true);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

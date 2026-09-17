@@ -573,6 +573,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow.WorldMapRequested += WorldClockWindow_WorldMapRequested;
             _worldClockWindow.LunarPhaseRequested += WorldClockWindow_LunarPhaseRequested;
             _worldClockWindow.ProjectionChanged += WorldClockWindow_ProjectionChanged;
+            _worldClockWindow.SettingsSaved += ApplyAstronomyWindowSettings;
             _worldClockWindow.Closed += WorldClockWindow_Closed;
             _worldClockWindow.Activate();
         }
@@ -594,6 +595,11 @@ public partial class App : Microsoft.UI.Xaml.Application
     private void ApplyWorldClockWindowSettings(AppSettings settings)
     {
         _worldClockWindow?.ApplySettings(settings);
+        ApplyAstronomyWindowSettings(settings);
+    }
+
+    private void ApplyAstronomyWindowSettings(AppSettings settings)
+    {
         _worldMapWindow?.ApplySettings(settings);
         _lunarPhaseWindow?.ApplySettings(settings);
     }
@@ -861,6 +867,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow.WorldMapRequested -= WorldClockWindow_WorldMapRequested;
             _worldClockWindow.LunarPhaseRequested -= WorldClockWindow_LunarPhaseRequested;
             _worldClockWindow.ProjectionChanged -= WorldClockWindow_ProjectionChanged;
+            _worldClockWindow.SettingsSaved -= ApplyAstronomyWindowSettings;
             _worldClockWindow = null;
         }
     }
@@ -910,6 +917,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow.WorldMapRequested -= WorldClockWindow_WorldMapRequested;
             _worldClockWindow.LunarPhaseRequested -= WorldClockWindow_LunarPhaseRequested;
             _worldClockWindow.ProjectionChanged -= WorldClockWindow_ProjectionChanged;
+            _worldClockWindow.SettingsSaved -= ApplyAstronomyWindowSettings;
             _worldClockWindow.CloseForShutdown();
             _worldClockWindow = null;
         }

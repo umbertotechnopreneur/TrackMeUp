@@ -8,24 +8,34 @@ namespace TrackMeUp.Presentation.Tests;
 
 public sealed class MainWindowLayoutStateTests
 {
-    /// <summary>Checks that content updates and surface changes do not overwrite the user's viewport.</summary>
-    [Fact]
-    public void ManualViewport_SurvivesContentChangesAndSurfaceSwitches()
+    /// <summary>Checks that resizing on any page keeps the same viewport through navigation and content updates.</summary>
+    [Theory]
+    [InlineData(MainWindowSurface.Player)]
+    [InlineData(MainWindowSurface.Options)]
+    [InlineData(MainWindowSurface.Operations)]
+    public void ManualViewport_SurvivesContentChangesAndSurfaceSwitches(MainWindowSurface resizedSurface)
     {
         var state = new MainWindowLayoutState();
-        state.RecordManualSize(510, 390);
-        state.RecordMeasuredHeight(1600);
-        Assert.Equal(510, state.ResolveLogicalWidth(1200, 576));
-        Assert.Equal(390, state.ResolveLogicalHeight(900, 20));
-
-        state.ShowSurface(MainWindowSurface.Options);
-        Assert.Equal(760, state.ResolveLogicalWidth(1200, 760));
+        state.ShowSurface(resizedSurface);
         state.RecordManualSize(820, 630);
-        Assert.Equal(630, state.ResolveLogicalHeight(900, 20));
 
+        foreach (var surface in Enum.GetValues<MainWindowSurface>())
+        {
+            state.ShowSurface(surface);
+            var preferredWidth = surface == MainWindowSurface.Player ? 576 : 760;
+            foreach (var contentHeight in new[] { 1600d, 240d, 0d })
+            {
+                state.RecordMeasuredHeight(contentHeight);
+                Assert.Equal(820, state.ResolveLogicalWidth(1200, preferredWidth));
+                Assert.Equal(630, state.ResolveLogicalHeight(900, 20));
+            }
+        }
+
+        // A later resize on a secondary page becomes the viewport when navigating back as well.
+        state.RecordManualSize(900, 710);
         state.ShowSurface(MainWindowSurface.Player);
-        Assert.Equal(510, state.ResolveLogicalWidth(1200, 576));
-        Assert.Equal(390, state.ResolveLogicalHeight(900, 20));
+        Assert.Equal(900, state.ResolveLogicalWidth(1200, 576));
+        Assert.Equal(710, state.ResolveLogicalHeight(900, 20));
     }
 
     /// <summary>Checks that a smaller display constrains bounds without losing the preferred viewport.</summary>
@@ -34,8 +44,10 @@ public sealed class MainWindowLayoutStateTests
     {
         var state = new MainWindowLayoutState();
         state.RecordManualSize(820, 630);
+        state.ShowSurface(MainWindowSurface.Operations);
         Assert.Equal(500, state.ResolveLogicalWidth(500.8, 576));
         Assert.Equal(400, state.ResolveLogicalHeight(400.9, 20));
+        state.ShowSurface(MainWindowSurface.Options);
         Assert.Equal(820, state.ResolveLogicalWidth(1200, 576));
         Assert.Equal(630, state.ResolveLogicalHeight(900, 20));
     }

@@ -26,6 +26,8 @@ public sealed partial class WorldClockOptionsControl : UserControl
     private int _worldClockOpacityPercent = 100;
     private int _pendingWorldClockOpacityPercent = 100;
     private bool _worldClockShowInTaskbar = true;
+    private bool _worldMapShowInTaskbar = true;
+    private bool _lunarPhaseShowInTaskbar = true;
 
     /// <summary>Creates the passive world-clock options surface.</summary>
     public WorldClockOptionsControl() => InitializeComponent();
@@ -94,8 +96,12 @@ public sealed partial class WorldClockOptionsControl : UserControl
             _worldClockOpacityPercent = settings.WorldClockWindowOpacityPercent;
             _pendingWorldClockOpacityPercent = _worldClockOpacityPercent;
             _worldClockShowInTaskbar = settings.WorldClockWindowShowInTaskbar;
+            _worldMapShowInTaskbar = settings.WorldMapWindowShowInTaskbar;
+            _lunarPhaseShowInTaskbar = settings.LunarPhaseWindowShowInTaskbar;
             WorldClockOpacitySlider.Value = _worldClockOpacityPercent;
             WorldClockShowInTaskbarSwitch.IsOn = _worldClockShowInTaskbar;
+            WorldMapShowInTaskbarSwitch.IsOn = _worldMapShowInTaskbar;
+            LunarPhaseShowInTaskbarSwitch.IsOn = _lunarPhaseShowInTaskbar;
             AlwaysOnTopSwitch.IsOn = alwaysOnTop;
         }
         finally
@@ -288,18 +294,32 @@ public sealed partial class WorldClockOptionsControl : UserControl
         }
     }
 
-    private async Task SaveWindowPresentationAsync(int opacityPercent, bool showInTaskbar)
+    private async void AstronomyShowInTaskbarSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_updatingControls || _application is null || _busy) return;
+        var toggle = (ToggleSwitch)sender;
+        var key = ReferenceEquals(toggle, WorldMapShowInTaskbarSwitch)
+            ? "window.world_map.show_in_taskbar"
+            : "window.lunar_phase.show_in_taskbar";
+        await SaveWindowPresentationAsync(new SettingsPatch(new Dictionary<string, string?>
+        {
+            [key] = toggle.IsOn ? "true" : "false"
+        }));
+    }
+
+    private Task SaveWindowPresentationAsync(int opacityPercent, bool showInTaskbar) =>
+        SaveWindowPresentationAsync(new SettingsPatch(new Dictionary<string, string?>
+        {
+            ["window.world_clocks.opacity_percent"] = opacityPercent.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["window.world_clocks.show_in_taskbar"] = showInTaskbar ? "true" : "false"
+        }));
+
+    private async Task SaveWindowPresentationAsync(SettingsPatch patch)
     {
         SetBusy(true);
         try
         {
-            var result = await _application!.PatchSettingsAsync(
-                new SettingsPatch(new Dictionary<string, string?>
-                {
-                    ["window.world_clocks.opacity_percent"] = opacityPercent.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    ["window.world_clocks.show_in_taskbar"] = showInTaskbar ? "true" : "false"
-                }),
-                _lifetimeToken);
+            var result = await _application!.PatchSettingsAsync(patch, _lifetimeToken);
             if (result.Succeeded && result.Value is not null)
             {
                 SettingsSaved?.Invoke(result.Value);
@@ -330,6 +350,8 @@ public sealed partial class WorldClockOptionsControl : UserControl
         _pendingWorldClockOpacityPercent = _worldClockOpacityPercent;
         WorldClockOpacitySlider.Value = _worldClockOpacityPercent;
         WorldClockShowInTaskbarSwitch.IsOn = _worldClockShowInTaskbar;
+        WorldMapShowInTaskbarSwitch.IsOn = _worldMapShowInTaskbar;
+        LunarPhaseShowInTaskbarSwitch.IsOn = _lunarPhaseShowInTaskbar;
         _updatingControls = false;
     }
 
@@ -570,6 +592,8 @@ public sealed partial class WorldClockOptionsControl : UserControl
         AlwaysOnTopSwitch.IsEnabled = !busy;
         WorldClockOpacitySlider.IsEnabled = !busy;
         WorldClockShowInTaskbarSwitch.IsEnabled = !busy;
+        WorldMapShowInTaskbarSwitch.IsEnabled = !busy;
+        LunarPhaseShowInTaskbarSwitch.IsEnabled = !busy;
     }
 
     private void ShowWeatherActionStatus(string key)

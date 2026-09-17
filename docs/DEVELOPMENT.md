@@ -141,7 +141,7 @@ For a separate unpackaged-artifact task:
 pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ```
 
-This publishes `Release-Unpackaged` to `artifacts/unpackaged/x64/`, using the [x64 publish profile](../TrackMeUp/Properties/PublishProfiles/win-x64.pubxml). It replaces that generated output directory and includes the self-contained .NET/Windows App SDK deployment. It does not launch the executable. Build reports first if their sources changed; this action does not run `BuildReports`.
+This builds the report assets and publishes `Release-Unpackaged` to a fresh directory under `artifacts/unpackaged/local/x64/`, using the [x64 publish profile](../TrackMeUp/Properties/PublishProfiles/win-x64.pubxml). It includes the self-contained .NET/Windows App SDK deployment and does not launch the executable. Supply `-ReleaseVersion X.Y.Z -PublishOutputPath <empty-directory-under-artifacts>` for release preparation. See [RELEASING.md](RELEASING.md) for portable ZIPs, the WebView2 Runtime prerequisite, and the MSIX requirement for on-device screenshot OCR.
 
 For a separate local MSIX packaging task:
 

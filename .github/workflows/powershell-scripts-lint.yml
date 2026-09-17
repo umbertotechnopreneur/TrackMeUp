@@ -8,6 +8,9 @@ on:
       - 'scripts/**/*.ps1'
       - 'scripts/**/*.psm1'
       - 'scripts/**/*.psd1'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/powershell-scripts-lint.yml'
+      - 'TrackMeUp/TrackMeUp.csproj'
   pull_request:
     branches:
       - main
@@ -15,6 +18,9 @@ on:
       - 'scripts/**/*.ps1'
       - 'scripts/**/*.psm1'
       - 'scripts/**/*.psd1'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/powershell-scripts-lint.yml'
+      - 'TrackMeUp/TrackMeUp.csproj'
 
 jobs:
   parse:
@@ -25,7 +31,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Parse PowerShell files
-        shell: pwsh
+        shell: pwsh -NoProfile -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
 
@@ -59,3 +65,9 @@ jobs:
           }
 
           Write-Host "PowerShell parser checks passed for $($files.Count) files."
+
+      - name: Test release packaging safeguards
+        shell: pwsh -NoProfile -File {0}
+        run: |
+          ./scripts/Test-ReleasePackaging.ps1
+          ./scripts/Test-PortableReleasePackaging.ps1

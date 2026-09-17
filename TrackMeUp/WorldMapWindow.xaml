@@ -10,7 +10,7 @@
         <local:GlassBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid x:Name="RootGrid" Background="Transparent">
+    <Grid x:Name="RootGrid" Background="Transparent" SizeChanged="RootGrid_SizeChanged">
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
             <RowDefinition Height="*" />
@@ -29,6 +29,7 @@
                 <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
             </Grid.ColumnDefinitions>
             <Image
+                x:Name="TitleBarLogo"
                 Grid.Column="1"
                 Margin="16,0,10,0"
                 Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
@@ -45,7 +46,9 @@
                 Margin="0,0,16,0"
                 VerticalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                FontSize="13" />
+                FontSize="13"
+                MaxWidth="200"
+                TextTrimming="CharacterEllipsis" />
         </Grid>
 
         <controls:WorldDayNightMapControl

@@ -59,14 +59,77 @@ describe('locale-aware report formatting', () => {
 })
 
 describe('localized report-envelope validation', () => {
-  it('requires version 5 hourly scores and counters', () => {
-    const envelope = structuredClone(buildDevelopmentEnvelope()) as any
-    envelope.snapshot.contractVersion = 4
+  it.each([4, 5, 7])('rejects unsupported report contract version %s', (version) => {
+    const envelope = structuredClone(buildDevelopmentEnvelope())
+    envelope.snapshot.contractVersion = version
     expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
-    envelope.snapshot.contractVersion = 5
+  })
+
+  it('requires version 6 hourly scores and counters', () => {
+    const envelope = structuredClone(buildDevelopmentEnvelope()) as any
+    expect(envelope.snapshot.contractVersion).toBe(6)
     delete envelope.snapshot.hourOfWeek[0].sampleCount
     expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
   })
+
+  it('accepts distinct hourly source profiles and empty unobserved hours', () => {
+    const envelope = structuredClone(buildDevelopmentEnvelope())
+    const observedHour = envelope.snapshot.hourOfWeek.find((cell) => cell.installations.length === 2)!
+    const emptyHour = envelope.snapshot.hourOfWeek.find((cell) => !cell.hasData)!
+    expect(observedHour.installations.map((profile) => profile.machineName)).toEqual(['DEMO-DESKTOP', 'DEMO-LAPTOP'])
+    expect(emptyHour.installations).toEqual([])
+    const result = validateReportEnvelope(envelope)
+    expect(result.error).toBeUndefined()
+    expect(result.envelope?.snapshot.hourOfWeek).toEqual(envelope.snapshot.hourOfWeek)
+  })
+
+  it.each(['missing', 'null', 'empty', 'duplicate', 'null entry'])('rejects %s hourly provenance on an observed hour', (invalidKind) => {
+    const envelope = structuredClone(buildDevelopmentEnvelope())
+    const observedHour = envelope.snapshot.hourOfWeek.find((cell) => cell.hasData)! as any
+    const profile = observedHour.installations[0]
+    if (invalidKind === 'missing') delete observedHour.installations
+    if (invalidKind === 'null') observedHour.installations = null
+    if (invalidKind === 'empty') observedHour.installations = []
+    if (invalidKind === 'duplicate') observedHour.installations = [profile, { ...profile, friendlyName: 'Another name' }]
+    if (invalidKind === 'null entry') observedHour.installations = [null]
+    expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
+  })
+
+  it('rejects source profiles on an hour without data', () => {
+    const envelope = structuredClone(buildDevelopmentEnvelope())
+    const observedHour = envelope.snapshot.hourOfWeek.find((cell) => cell.hasData)!
+    const emptyHour = envelope.snapshot.hourOfWeek.find((cell) => !cell.hasData)!
+    emptyHour.installations = observedHour.installations
+    expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
+  })
+
+  it.each([
+    ['installationId', 'invalid-id'],
+    ['machineName', ''],
+    ['friendlyName', ' untrimmed '],
+    ['color', '#FFFFFF'],
+    ['icon', 'unsupported'],
+    ['firstSeenAt', null],
+    ['updatedAt', '2026-02-30T00:00:00Z'],
+    ['updatedAt', '2026-07-22T00:00:00Z'],
+    ['revision', 0],
+    ['isCurrent', null],
+  ])('rejects invalid installation profile field %s = %s', (field, value) => {
+    const envelope = structuredClone(buildDevelopmentEnvelope())
+    const observedHour = envelope.snapshot.hourOfWeek.find((cell) => cell.hasData)!
+    const profile = observedHour.installations[0] as any
+    profile[field as string] = value
+    expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
+  })
+
+  it.each(['installationId', 'machineName', 'friendlyName', 'color', 'icon', 'firstSeenAt', 'updatedAt', 'revision', 'isCurrent'])(
+    'requires installation profile field %s', (field) => {
+      const envelope = structuredClone(buildDevelopmentEnvelope())
+      const observedHour = envelope.snapshot.hourOfWeek.find((cell) => cell.hasData)!
+      delete (observedHour.installations[0] as any)[field]
+      expect(validateReportEnvelope(envelope).envelope).toBeUndefined()
+    },
+  )
 
   it('accepts every supported AI origin in the development fixture', () => {
     setReportLanguage('en-US')
