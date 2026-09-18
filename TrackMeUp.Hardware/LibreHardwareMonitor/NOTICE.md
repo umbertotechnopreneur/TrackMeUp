@@ -18,6 +18,9 @@ This helper uses LibreHardwareMonitor 0.9.6, source commit
   capacities and AMD VRAM capacity retain their documented metadata semantics.
 - When low-level access is unavailable, AMD CPUs use the upstream GenericCpu
   implementation for load sensors, avoiding constructors that require PawnIO.
+- NVIDIA utilization, memory, power and D3D load sensors use separate index ranges.
+  This prevents duplicate identifiers, including on GPUs with missing utilization
+  domains. The modified `NvidiaGpu.cs` is included with the helper's source notices.
 - All other upstream sources retain their original notices. The build definition
   and replacement source live in TrackMeUp.Hardware/LibreHardwareMonitor.
 - No PawnIO driver or installer is included, downloaded at runtime, or installed.

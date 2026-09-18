@@ -1,35 +1,32 @@
-# Hardware telemetry
+# Device readings
 
-TrackMeUp uses one application-owned `HardwareTelemetryService` and one isolated
-LibreHardwareMonitor collector. The shared `SystemSnapshot` model is used by
-capture, persistence, diagnostics, screenshot details, CLI output and AI context.
-By default each capture stores its available snapshot even when AI is disabled.
-Reanalysis uses that saved snapshot; it does not substitute the machine's current
-readings. Activity interval averages remain separate from capture-time readings.
+See how your computer was running when a screenshot was taken: processor and
+graphics load, memory use, battery, storage, and network activity. Available
+readings are saved with captures by default, even with AI off. Later AI analysis
+uses those saved readings, so it describes the computer at capture time.
+
+Availability varies by device. Missing readings are shown as unavailable, never
+as zero. Native ARM64 sensor collection is currently unsupported; the ARM64 app
+itself remains supported.
 
 ## Settings and saved data
 
-The shared settings catalog exposes four independent preferences, with changes
-applied without an application restart:
+Choose what to collect and save. Changes take effect without restarting:
 
-| Public key | Default | Meaning |
+| Setting key | Default | What it does |
 | --- | --- | --- |
 | `sensors.enabled` | `true` | Enable hardware sensor collection |
 | `sensors.advanced` | `false` | Opt into the optional advanced-sensor helper, subject to explicit administrator consent |
 | `sensors.save_snapshots` | `true` | Save raw hardware readings with future captures |
 | `sensors.sampling_profile` | `normal` | Select `slow`, `normal`, `fast` or `fastest` polling |
 
-Disabling sensors stops collection without clearing the advanced, save or profile
-preferences; those preferences are inactive while sensors are disabled. Unknown
-sampling profile identifiers are rejected, including when loaded from settings.
+Turning sensors off stops collection and keeps your other sensor preferences for
+next time. Unsupported sampling profiles are rejected.
 
-With snapshot saving disabled, a fresh reading can still be used in memory for
-immediate AI analysis, but raw sensor readings are not retained in the capture
-database or in stored AI results. Deferred analysis and reanalysis cannot recover
-an unsaved reading and do not poll current hardware as a substitute. Existing
-saved snapshots remain unchanged; disabling saving is not a historical-data
-deletion action. Interval CPU/GPU usage aggregates are a separate data stream and
-are not controlled by the raw-snapshot saving preference.
+With snapshot saving off, immediate AI analysis can still use a fresh reading,
+but it is not kept in capture records or saved AI results. Later analysis cannot
+recover it. Existing snapshots remain saved. CPU/GPU averages over activity
+intervals are separate and are not controlled by this setting.
 
 ## Available readings
 
@@ -54,9 +51,8 @@ a universal guarantee that no bus access occurs inside a vendor driver.
 
 ## Sampling and availability
 
-Tracking enables a shared polling loop using the selected profile. Other
-consumers reuse its recent immutable snapshot or request a bounded on-demand
-reading. Intervals are in seconds:
+Choose how often readings refresh while tracking. Faster profiles increase
+sensor work without changing the screenshot schedule. Intervals are in seconds:
 
 | Profile | CPU/GPU | Memory | Battery | Storage | Network |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -65,9 +61,14 @@ reading. Intervals are in seconds:
 | `fast` | 1 | 5 | 10 | 30 | 1 |
 | `fastest` | 0.5 | 2 | 5 | 30 | 0.5 |
 
-Faster polling increases collector work and does not change the screenshot
-schedule. Reused readings retain their original device timestamp. Missing or
-failed telemetry remains explicit and does not prevent screenshot capture.
+Unavailable readings do not prevent screenshot capture. Reused readings keep
+their original time so they are not mistaken for a fresh measurement.
+
+### Details for contributors
+
+One Core `HardwareTelemetryService` shares readings from an isolated
+LibreHardwareMonitor collector through `SystemSnapshot`. Capture, reports,
+diagnostics, the CLI, and AI use this same model.
 
 `CollectionStartedAt` and `Timestamp` describe the collection window;
 `HardwareDeviceSnapshot.SampledAt` describes each device's polling time. They are
@@ -81,16 +82,18 @@ error code. A partial snapshot remains useful. Native ARM64 telemetry currently
 returns explicit `unsupported` status before initializing the collector; ARM64
 application builds remain supported.
 
-## Optional PawnIO
+## Advanced sensors
 
-Standard mode explicitly disables PawnIO access, including when the application
-was started with elevated privileges. TrackMeUp neither downloads nor installs a
-kernel driver. Install the [official signed PawnIO distribution](https://pawnio.eu/)
-separately if desired, then use the UI's advanced-sensor action to request Windows
-administrator consent for the sensor helper. The application UI remains at its
-existing privilege level. Missing prerequisites are reported before requesting
-consent; a failed or disconnected advanced session does not trigger automatic UAC
-prompts. No fan, voltage, clock or power-limit controls are exposed.
+Some readings need the optional PawnIO driver and administrator consent. Standard
+mode leaves driver access off, even if TrackMeUp was started as administrator.
+The app does not download or install a driver, or change fan speed, voltage,
+clocks, or power limits.
+
+To opt in, install the [official signed PawnIO distribution](https://pawnio.eu/)
+separately, then use the advanced-sensor action in TrackMeUp. Windows requests
+consent for the sensor helper only; the main app keeps its existing privileges.
+Missing prerequisites are reported first. A failed session does not trigger
+repeated consent prompts.
 
 The helper uses same-user pipe permissions, reciprocal process-ID checks,
 versioned messages and a 512 KiB frame limit. It contains no tracking runtime.

@@ -21,7 +21,7 @@ if (-not $resolvedDestination.StartsWith($allowedRoot + [IO.Path]::DirectorySepa
 }
 
 $sourceRoot = Join-Path $resolvedDestination "LibreHardwareMonitor-$revision"
-$markerPath = Join-Path $resolvedDestination 'verified-v4.sha256'
+$markerPath = Join-Path $resolvedDestination 'verified-v5.sha256'
 if ((Test-Path -LiteralPath $markerPath) -and
     (Test-Path -LiteralPath (Join-Path $sourceRoot 'LibreHardwareMonitorLib/Hardware/Computer.cs')) -and
     ([IO.File]::ReadAllText($markerPath).Trim() -ceq $expectedHash)) {
@@ -102,4 +102,34 @@ if ($cpuGroupSource.Split([string[]]@($cpuBefore), [StringSplitOptions]::None).C
     throw 'The audited optional-driver CPU patch no longer matches the pinned source.'
 }
 [IO.File]::WriteAllText($cpuGroupPath, $cpuGroupSource.Replace($cpuBefore, $cpuAfter), [Text.UTF8Encoding]::new($false))
+
+$nvidiaPath = Join-Path $sourceRoot 'LibreHardwareMonitorLib/Hardware/Gpu/NvidiaGpu.cs'
+$nvidiaSource = [IO.File]::ReadAllText($nvidiaPath).Replace("`r`n", "`n")
+$nvidiaPatches = @(
+    @{
+        Before = '        // Power.'
+        After = @'
+        // TrackMeUp: reserve every native utilization index, including domains absent on this GPU.
+        // Memory, power and D3D loads must have distinct identifiers or the snapshot is invalid.
+        int memoryLoadIndex = Enum.GetValues<NvApi.NvUtilizationDomain>().Max(domain => (int)domain) + 1;
+        int powerLoadIndex = memoryLoadIndex + 1;
+
+        // Power.
+'@
+    },
+    @{ Before = 'i + (_loads?.Length ?? 0), SensorType.Load'; After = 'i + powerLoadIndex, SensorType.Load' },
+    @{
+        Before = "                                        int sensorCount = (_loads?.Length ?? 0) + (_powers?.Length ?? 0);`n                                        int loadSensorIndex = sensorCount > 0 ? sensorCount + 1 : 0;"
+        After = '                                        int loadSensorIndex = powerLoadIndex + (_powers?.Length ?? 0);'
+    },
+    @{ Before = 'new Sensor("GPU Memory", 3, SensorType.Load'; After = 'new Sensor("GPU Memory", memoryLoadIndex, SensorType.Load' }
+)
+foreach ($patch in $nvidiaPatches) {
+    if ($nvidiaSource.Split([string[]]@($patch.Before), [StringSplitOptions]::None).Count -ne 2) {
+        # Reject upstream drift instead of publishing an incompletely patched collector.
+        throw 'The audited NVIDIA sensor identity patch no longer matches the pinned source.'
+    }
+    $nvidiaSource = $nvidiaSource.Replace($patch.Before, $patch.After)
+}
+[IO.File]::WriteAllText($nvidiaPath, $nvidiaSource, [Text.UTF8Encoding]::new($false))
 [IO.File]::WriteAllText($markerPath, $expectedHash)

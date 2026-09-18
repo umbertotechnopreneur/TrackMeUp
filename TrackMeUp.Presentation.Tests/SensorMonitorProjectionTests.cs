@@ -38,8 +38,7 @@ public sealed class SensorMonitorProjectionTests
         Assert.Null(row.Percent);
         Assert.Equal(Strings.Translate("Common.NotAvailable"), row.Value);
         Assert.Contains("62 %", row.Details);
-        Assert.Equal(62, row.CapacityPercent);
-        Assert.Contains("62 %", row.CapacityText);
+        Assert.Equal($"{Strings.Translate("Common.NotAvailable")} liberi / {Strings.Translate("Common.NotAvailable")} totali", row.CapacityText);
         Assert.Contains("41 °C", row.Temperature);
     }
 
@@ -81,7 +80,6 @@ public sealed class SensorMonitorProjectionTests
         Assert.Contains("D3D 3D", second.Source);
         Assert.Equal(first.SensorId, second.SensorId);
         Assert.Equal("2,8 / 16 GiB", first.CapacityText);
-        Assert.Equal(17.578125, first.CapacityPercent);
         var history = new SensorTraceHistory();
         history.Update(first, Now);
         Assert.Equal(2, history.Update(second, Now.AddSeconds(2)).Count);
@@ -100,7 +98,6 @@ public sealed class SensorMonitorProjectionTests
         var row = Assert.Single(SensorMonitorProjection.Create(snapshot, Strings.Culture, Strings.Translate));
         Assert.Equal("/ram", row.Id);
         Assert.Equal("20 / 32 GiB", row.CapacityText);
-        Assert.Equal(62.5, row.CapacityPercent);
         Assert.Equal(62.5, row.Percent);
     }
 
@@ -125,8 +122,7 @@ public sealed class SensorMonitorProjectionTests
             new("free", "Free Space", "Data", "GiB", 380),
             new("read", "Read Rate", "Throughput", "B/s", 2097152));
         Assert.Equal(7, row.Percent);
-        Assert.Equal(62, row.CapacityPercent);
-        Assert.Equal("620 / 1000 GiB", row.CapacityText);
+        Assert.Equal("380 GiB liberi / 1000 GiB totali", row.CapacityText);
         Assert.Equal("Lettura 2 MiB/s", row.SecondaryValue);
     }
 

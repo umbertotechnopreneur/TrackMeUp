@@ -20,13 +20,27 @@
                 <FontIcon Glyph="&#xE712;" FontSize="19" AutomationProperties.AccessibilityView="Raw"/>
             </Button>
         </Grid>
-        <Grid x:Name="MonitorSurface" Grid.Row="1" Margin="16,4,16,8">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid x:Name="MonitorSurface" Grid.Row="1" Margin="24,8,24,8">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <TextBlock x:Name="StatusText" Visibility="Collapsed" Margin="0,4,0,4" FontSize="12" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-            <Grid x:Name="TracksHost" Grid.Row="1" SizeChanged="TracksHost_SizeChanged"/>
-            <Grid Grid.Row="2" Height="32">
+            <StackPanel Grid.Row="1" Spacing="12" Margin="0,8,0,0">
+                <TextBlock x:Name="HistoryText" Tag="Sensors.HistoryShort" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Grid x:Name="ColumnHeaders" ColumnSpacing="16" Padding="0,0,0,10" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28"/><ColumnDefinition x:Name="DeviceHeaderColumn" Width="280"/>
+                        <ColumnDefinition x:Name="LoadHeaderColumn" Width="130"/><ColumnDefinition x:Name="TemperatureHeaderColumn" Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.ColumnSpan="2" Tag="Sensors.Device" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Grid.Column="2" Tag="Sensors.CurrentLoad" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Grid.Column="3" Tag="Sensors.Temperature" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Grid.Column="4" Tag="Sensors.Activity" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </Grid>
+            </StackPanel>
+            <Grid x:Name="TracksHost" Grid.Row="2" SizeChanged="TracksHost_SizeChanged"/>
+            <Grid Grid.Row="3" MinHeight="36" ColumnSpacing="12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock x:Name="HistoryText" Tag="Sensors.HistoryShort" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Tag="Sensors.TemperatureHint" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 <StackPanel x:Name="PageNavigation" Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Visibility="Collapsed">
                     <Button x:Name="PreviousPageButton" Width="28" Height="28" MinWidth="28" MinHeight="28" Padding="0" Background="Transparent" BorderThickness="0" Click="PreviousPageButton_Click"
                         Tag="Sensors.PreviousPage" AutomationProperties.Name="Previous devices" ToolTipService.ToolTip="Previous devices">

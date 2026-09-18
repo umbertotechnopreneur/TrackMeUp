@@ -11,34 +11,34 @@ namespace TrackMeUp.Presentation.Tests;
 public sealed class SensorMonitorLayoutTests
 {
     [Theory]
-    [InlineData(476, 100, true)]
+    [InlineData(476, 192, true)]
     [InlineData(952, 124, false)]
-    [InlineData(352, 64, false)]
+    [InlineData(352, 192, true)]
     public void Rows_ReflowWithinTheirAllocatedHeight(double width, double height, bool stacked)
     {
-        var layout = SensorMonitorLayout.ResolveTrack(width, height, true, true);
+        var layout = SensorMonitorLayout.ResolveTrack(width, height);
         Assert.Equal(stacked, layout.Stacked);
-        var occupied = layout.Padding * 2 + (layout.Stacked ? 56 : 0) + layout.GraphHeight + 10
-            + (layout.ShowCapacityCaption ? 20 : 0) + (layout.ShowSecondary ? 20 : 0);
+        var occupied = layout.Padding * 2 + (layout.Stacked ? 124 : 0) + layout.GraphHeight;
         Assert.True(occupied <= height, $"Row requires {occupied} but only has {height}.");
-        Assert.False(layout.ShowSecondary); // Capacity and its units already occupy the metadata line.
+        if (!stacked) Assert.True(layout.NameWidth + layout.ValueWidth + layout.TemperatureWidth + 92 < width);
     }
 
     [Fact]
     public void NormalLaptopViewport_KeepsCpuRamGpuDisksAndBatteryOnOnePage()
     {
-        Assert.Equal(5, SensorMonitorLayout.PageSize(360, 5));
-        Assert.Equal(4, SensorMonitorLayout.PageSize(240, 4));
-        Assert.Equal(5, SensorMonitorLayout.PageSize(240, 5));
-        Assert.Equal(5, SensorMonitorLayout.PageSize(240, 8));
-        Assert.Equal(0, SensorMonitorLayout.PageSize(240, 0));
+        Assert.Equal(7, SensorMonitorLayout.PageSize(700, 1000, 7));
+        Assert.Equal(2, SensorMonitorLayout.PageSize(240, 1000, 8));
+        Assert.Equal(3, SensorMonitorLayout.PageSize(700, 476, 7));
+        Assert.Equal(1, SensorMonitorLayout.PageSize(100, 476, 7));
+        Assert.Equal(0, SensorMonitorLayout.PageSize(240, 1000, 0));
     }
 
     [Fact]
     public void Geometry_RejectsInvalidSizes()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => SensorMonitorLayout.ResolveTrack(double.NaN, 100, false, false));
-        Assert.Throws<ArgumentOutOfRangeException>(() => SensorMonitorLayout.PageSize(-1, 4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => SensorMonitorLayout.ResolveTrack(double.NaN, 100));
+        Assert.Throws<ArgumentOutOfRangeException>(() => SensorMonitorLayout.PageSize(-1, 1000, 4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => SensorMonitorLayout.PageSize(100, double.NaN, 4));
     }
 
     [Fact]

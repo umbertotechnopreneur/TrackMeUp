@@ -1,6 +1,8 @@
-# TrackMeUp Manual Validation Guide
+# Check the app experience
 
-Use these checks for behavior and visual acceptance after changing the corresponding product surface. Run destructive checks only with disposable data.
+Use the relevant section after changing a feature. Check what people see and
+what their actions do, including keyboard access and error states. Run deletion
+and reset checks only with disposable data.
 
 ## Screenshot viewer
 
@@ -23,7 +25,7 @@ Use these checks for behavior and visual acceptance after changing the correspon
 
 - With clean settings, open the detached **World clocks** window and confirm that current weather is on by default. Without `TRACKMEUP_OPENWEATHER_API_KEY`, the clocks and astronomy must remain visible while the weather state says setup is required; it must not claim that the user disabled weather and it must not send a provider request.
 - Reach the icon-only three-dot options action by keyboard. Its localized tooltip and accessible name must be identical. Activating it must show one full options layer over the clock canvas in the same window; the localized icon-only Back action must return to the clocks and restore focus to the opener.
-- In options, turn weather off and on, change always-on-top, add or remove a city, and change the reference city. Each mutation must use the shared application facade, survive a refresh where applicable, preserve the one-to-four-clock bounds, and keep every icon-only action's localized tooltip equal to its accessible name.
+- In options, turn weather off and on, change always-on-top, add or remove a city, and change the reference city. Saved choices must survive a refresh, the window must keep between one and four clocks, and icon-only actions must have matching localized tooltips and accessible names.
 - Enter an invalid weather key and confirm that it is rejected without being retained. Enter a plausible key and confirm that it is written only to the fixed Windows user/process environment variable, the password field is cleared, the success state is localized, and the live projection refreshes without restarting TrackMeUp. The key must not appear in settings, logs, history, exception text, command lines, or IPC diagnostics.
 - Repeat clocks and options in light, dark, High Contrast, and with Windows transparency effects disabled. Desktop Acrylic must remain visible through transparent theme-aware content or yield to the readable Windows fallback; no opaque full-window veil may hide it.
 - Inspect the city image stack through dawn, day, sunset, and night plus clear, cloud, rain, fog, snow, mixed-precipitation, and lightning states. Astronomical, cloud, and lightning backdrops must remain behind the skyline; the scene fade and celestial body must remain above it; rain, fog, snow, and mixed-precipitation foreground layers must remain in front without flattening the compositing order.
@@ -31,9 +33,9 @@ Use these checks for behavior and visual acceptance after changing the correspon
 
 ## Native system messages
 
-- Trigger informational, warning, and error notifications that require acknowledgement. Each must be one owned native Windows message box opened on its owner UI thread, with the standard Windows-localized **OK** action and the appropriate system icon.
+- Trigger information, warning, and error messages that need acknowledgement. Each must appear over its app window as a native Windows message box, with the Windows-localized **OK** action and appropriate icon.
 - Trigger schedule replacement, retention deletion, installation merge, both atomic-reset gates, and application close. Each must use the native **OK/Cancel** layout with **Cancel** selected by default; pressing Escape, closing the message, or choosing Cancel must leave state unchanged.
-- While one message is open, trigger another eligible prompt and confirm that the shared dialog coordinator serializes them. The owner HWND must remain modal and peer windows must regain interaction after every completion or interop failure.
+- While one message is open, trigger another prompt. Messages must appear one at a time, and the app must become usable again after each message closes or fails to open.
 - Confirm that rich surfaces—city picker, pricing, activity calendar, AI connection test, screenshot reprocessing, and storage migration—remain dedicated accessible windows rather than being reduced to a system message.
 
 ## Screen captures and AI
@@ -72,9 +74,9 @@ Use these checks for behavior and visual acceptance after changing the correspon
 ### Results
 
 - Pause for 700 ms and confirm that the window grows according to the number of results without exceeding 78% of the monitor work-area height.
-- Confirm that no result-count label is shown, results are ordered by descending Lucene relevance, and each row shows a compact coral percentage chip normalized against the best hit in the current query.
+- Confirm that no result-count label is shown, the best matches appear first, and each row shows a compact coral percentage relative to the best match in that search.
 - Confirm that the virtualized list starts directly beneath the query area.
-- Each result must show a compact 260 x 146 snapshot thumbnail with soft resting elevation and a stronger shadow on pointer hover, without a translation-access exception.
+- Each result must show a compact 260 x 146 thumbnail with a stronger shadow on pointer hover, without errors.
 - Confirm that the entire image remains visible at its original aspect ratio.
 - Confirm that the highlighted matching passage, active window, timestamp, clicks, and available CPU/GPU telemetry are distributed clearly across the row. Unavailable historical telemetry must display an em dash.
 - Clear the query or run a query with no matches and confirm that the window returns to its command-palette height.

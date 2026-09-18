@@ -1,4 +1,11 @@
 {
+  "Sensors.TemperatureUnavailable": "Indisponível",
+  "Sensors.Device": "Dispositivo",
+  "Sensors.CurrentLoad": "Carga atual",
+  "Sensors.Activity": "Atividade · 2 min",
+  "Sensors.TemperatureHint": "As temperaturas aparecem quando existe uma leitura disponível.",
+  "Sensors.SpaceSummary": "{0} livres / {1} no total",
+  "Sensors.SystemMemory": "Memória do sistema",
   "Sensors.HistoryShort": "Últimos 2 minutos",
   "Sensors.PreviousPage": "Dispositivos anteriores",
   "Sensors.NextPage": "Dispositivos seguintes",

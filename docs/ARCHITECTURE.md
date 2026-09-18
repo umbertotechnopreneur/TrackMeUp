@@ -1,9 +1,12 @@
 # TrackMeUp architecture
 
 TrackMeUp is a Windows app that stores your history on your PC by default.
-Each installation runs one tracker. The desktop app, CLI, taskbar, search,
-text recognition (OCR), and reports use the same application services through
-`ITrackMeUpApplication`. This keeps their behavior in one place.
+Each installation runs one tracker, so the desktop app and CLI share the same
+activity, settings, and privacy choices. Search, text recognition (OCR), and
+reports work with local data; AI analysis is optional.
+
+The contributor details below explain how shared services keep that experience
+consistent through `ITrackMeUpApplication`.
 
 ## How the pieces fit together
 

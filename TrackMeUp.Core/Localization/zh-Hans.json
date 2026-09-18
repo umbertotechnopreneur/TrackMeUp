@@ -1,4 +1,11 @@
 {
+  "Sensors.TemperatureUnavailable": "不可用",
+  "Sensors.Device": "设备",
+  "Sensors.CurrentLoad": "当前负载",
+  "Sensors.Activity": "活动 · 2 分钟",
+  "Sensors.TemperatureHint": "传感器读数可用时显示温度。",
+  "Sensors.SpaceSummary": "可用 {0} / 总计 {1}",
+  "Sensors.SystemMemory": "系统内存",
   "Sensors.HistoryShort": "最近 2 分钟",
   "Sensors.PreviousPage": "上一组设备",
   "Sensors.NextPage": "下一组设备",

@@ -1,4 +1,11 @@
 {
+  "Sensors.TemperatureUnavailable": "Không có dữ liệu",
+  "Sensors.Device": "Thiết bị",
+  "Sensors.CurrentLoad": "Tải hiện tại",
+  "Sensors.Activity": "Hoạt động · 2 phút",
+  "Sensors.TemperatureHint": "Nhiệt độ hiển thị khi có dữ liệu cảm biến.",
+  "Sensors.SpaceSummary": "{0} trống / {1} tổng",
+  "Sensors.SystemMemory": "Bộ nhớ hệ thống",
   "Sensors.HistoryShort": "2 phút gần nhất",
   "Sensors.PreviousPage": "Thiết bị trước",
   "Sensors.NextPage": "Thiết bị tiếp theo",

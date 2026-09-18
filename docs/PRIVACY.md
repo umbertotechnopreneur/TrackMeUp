@@ -20,8 +20,9 @@ release. For privacy questions, email **hello@umbertogiacobbi.biz**.
 - With AI enabled, scheduled screenshots are analyzed right after capture. A screenshot taken from the player waits 30 seconds, giving you time to delete it before anything is sent. If you keep it, analysis starts after that window closes.
 - Your AI provider key is read from Windows environment variables on this PC. It isn't copied into TrackMeUp settings or history.
 - You don't need a TrackMeUp cloud account. The app doesn't send your data to a TrackMeUp-operated cloud service. Requests to other services and sharing options are listed below.
-- World clocks calculate time, sun, moon, and moon phases on your PC using the included city list. Weather is on by default, but sends nothing until `TRACKMEUP_OPENWEATHER_API_KEY` is set in the Windows environment. With a key, requests include only the selected cities' coordinates and only show current weather. Looking at a past or future time doesn't request weather.
-- Information and confirmation messages use native Windows message boxes with buttons in the Windows language. TrackMeUp doesn't save a history of those dialogs or make network requests for them.
+- World clocks calculate time, sun, and moon information locally. Weather sends
+  selected city coordinates to OpenWeather only after a weather key is configured.
+  Past and future views make no weather requests.
 - Sentry diagnostics are optional. They are sent only if the person managing the installation sets a Sentry DSN, which tells the app which Sentry project to use.
 - You can read the app's source code under the MIT License and inspect the list of packages it uses.
 
@@ -69,9 +70,8 @@ Pausing cancels pending live AI work. Turning AI off also prevents new requests
 and cancels pending live analysis without waiting for a slow provider. It can't
 take back data that's already been sent.
 
-The three-dot **World clocks** button opens options in the same window. Themes,
-transparency, and city artwork only affect how it looks; they don't change what
-is saved or sent.
+Themes, transparency, and city artwork only affect appearance. Native Windows
+information and confirmation messages create no dialog history or network requests.
 
 ## What can leave the PC
 
@@ -131,11 +131,14 @@ usage terms.
 
 ## Packages and services the app uses
 
-These are the packages used directly by the app and its build tools that matter
-for how data is handled, as recorded at the time of review. Packages used only
-for tests are listed in [Third-Party Notices](../THIRD_PARTY_NOTICES.md).
-Dependencies of these packages are resolved through NuGet/npm lock files and
-package restore; they also need to be considered when checking data behavior.
+Storage, search, image processing, and reports use components on your PC. Optional
+network services are described above. The inventory below records package roles
+and versions at the time of review; [Third-Party Notices](../THIRD_PARTY_NOTICES.md)
+also covers test dependencies. A technical review should include indirect
+dependencies resolved by NuGet and npm.
+
+<details>
+<summary>Technical package inventory</summary>
 
 ### Windows app and shared services
 
@@ -170,6 +173,8 @@ package restore; they also need to be considered when checking data behavior.
 | `@mdi/js` | 7.4.47 | Bundled SVG icon paths. |
 | `vite`, `@vitejs/plugin-vue`, `vite-plugin-vuetify`, `typescript`, `vue-tsc` | Pinned in `package.json` | Build and type-check tooling; not runtime services. |
 
+</details>
+
 ### AI providers
 
 TrackMeUp makes AI requests with .NET `HttpClient`. You can find the provider
@@ -201,6 +206,9 @@ Sentry can receive error reports over the network. It's off by default and needs
 - redact paths, secrets, tokens, authorization text, DSNs, and raw installation identifiers from diagnostic text;
 - spend no more than two seconds sending pending diagnostics when the app shuts down.
 
+<details>
+<summary>Set up or turn off Sentry diagnostics</summary>
+
 To set it up on a local or managed Windows installation, run this in PowerShell
 7 to save the DSN and environment for your Windows user. Then restart TrackMeUp
 so it picks them up:
@@ -220,6 +228,8 @@ An invalid DSN or environment keeps remote reporting off and shows an `invalid`
 diagnostics status. The app won't silently send events under a different label.
 To turn Sentry off again, set `TRACKMEUP_SENTRY_DSN` to `null` for the Windows
 user and restart the app.
+
+</details>
 
 You can check the exact behavior in the source. New error messages still need
 to be reviewed for private information before they are logged or sent to an
@@ -249,11 +259,10 @@ also been updated.
 This removes data from use in the app. It doesn't guarantee that someone can't
 recover traces from SQLite database pages, Lucene index files, backups, or the disk.
 
-Search uses one local index (`lucene-v4`), updated once per second. Queries read
-the last completed update. Deletion and cleanup update search before reporting
-success. If indexing fails, you need to rebuild the index manually. Communication
-between local processes (IPC) is limited to four requests and is available only
-to the same Windows user, with no remote or cross-user access.
+Local search refreshes once per second and uses the last completed update.
+Deletion and cleanup update search before reporting success. If indexing fails,
+rebuild the index manually. Local app communication allows up to four requests
+at a time from the same Windows user, with no remote or cross-user access.
 
 The full reset asks for separate confirmation, checks the current installation's
 TrackMeUp data folder, removes it along with TrackMeUp-owned screenshots, and

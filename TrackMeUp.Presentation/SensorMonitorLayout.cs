@@ -2,34 +2,31 @@
 
 namespace TrackMeUp.Presentation;
 
-/// <summary>Contains bounded track geometry for a measured viewport, without scaling the text.</summary>
-public sealed record SensorTrackLayout(bool Stacked, bool Dense, bool ShowSecondary, bool ShowCapacityCaption,
+/// <summary>Shares column widths and bounded row geometry between the monitor header and its devices.</summary>
+public sealed record SensorTrackLayout(bool Stacked, double NameWidth, double ValueWidth, double TemperatureWidth,
     double Padding, double GraphHeight);
 
-/// <summary>Fits live devices to the available height and width instead of measuring an unbounded scrolling stack.</summary>
+/// <summary>Keeps identity, capacity and temperature readable by paging short or narrow windows.</summary>
 public static class SensorMonitorLayout
 {
-    /// <summary>Computes one row's content budget, retaining readable values even in a short window.</summary>
-    public static SensorTrackLayout ResolveTrack(double width, double height, bool capacity, bool secondary)
+    /// <summary>Computes aligned desktop columns or a three-line layout for narrow windows.</summary>
+    public static SensorTrackLayout ResolveTrack(double width, double height)
     {
         Validate(width);
         Validate(height);
-        var dense = height < 96;
-        var stacked = width < 720 && !dense;
-        var padding = dense ? 5d : 8d;
-        var showSecondary = secondary && !capacity && !dense && height >= (stacked ? 112 : 80);
-        var showCapacityCaption = capacity && !dense && height >= (stacked ? 120 : 86);
-        var budget = height - padding * 2 - (stacked ? 56 : 0) - (showSecondary ? 20 : 0)
-            - (capacity ? 10 : 0) - (showCapacityCaption ? 20 : 0);
-        return new(stacked, dense, showSecondary, showCapacityCaption, padding, Math.Clamp(budget, 12, 80));
+        var stacked = width < 860;
+        return new(stacked, Math.Clamp(width * .30, 220, 340), stacked ? 110 : Math.Clamp(width * .14, 116, 160),
+            stacked ? 132 : Math.Clamp(width * .16, 132, 180), 10,
+            Math.Clamp(height - 20 - (stacked ? 124 : 0), 12, 64));
     }
 
-    /// <summary>Gets the number of readable device rows on one page; normal laptop layouts fit in a single page.</summary>
-    public static int PageSize(double viewportHeight, int deviceCount)
+    /// <summary>Pages devices before their metadata would need to be hidden or text scaled down.</summary>
+    public static int PageSize(double viewportHeight, double viewportWidth, int deviceCount)
     {
         Validate(viewportHeight);
+        Validate(viewportWidth);
         ArgumentOutOfRangeException.ThrowIfNegative(deviceCount);
-        return Math.Min(deviceCount, Math.Max(1, (int)(viewportHeight / 48)));
+        return Math.Min(deviceCount, Math.Max(1, (int)(viewportHeight / (viewportWidth < 860 ? 192 : 96))));
     }
 
     private static void Validate(double value)

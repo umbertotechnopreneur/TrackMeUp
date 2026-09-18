@@ -22,32 +22,22 @@ The workflow pins its actions by commit, grants package jobs read-only repositor
 access, and gives only the draft-creation job `contents: write`. No signing secrets
 or development certificates are used or exported.
 
-## Local preparation
+## Prepare a release
 
-Use PowerShell 7, the .NET SDK selected by `global.json`, Windows SDK build tools,
-and Node.js 24.16.0. Run these commands sequentially from the repository root:
+1. Merge the reviewed version changes to `main` after required checks pass.
+2. Run **release packages** in GitHub Actions for the agreed version. For a draft
+   Release, create an approved annotated `vX.Y.Z` tag only after that version is
+   on `main`.
+3. Review the x64 and ARM64 packages, portable ZIPs, metadata, and checksums.
+4. Complete signing and clean-machine checks before explicitly publishing.
 
-```powershell
-$releaseVersion = '1.2.3'
-foreach ($releasePlatform in @('x64', 'ARM64')) {
-    $packageDirectory = "./artifacts/release-packages/$releaseVersion/$releasePlatform"
-    pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PackageMsix -Platform $releasePlatform -ReleaseVersion $releaseVersion -Unsigned -PackageOutputPath $packageDirectory
-    if ($LASTEXITCODE -ne 0) { throw "Packaging failed: $releasePlatform" }
-    pwsh -NoProfile -File ./scripts/New-ReleaseArchive.ps1 -PackageDirectory $packageDirectory -Version $releaseVersion -Platform $releasePlatform
-    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed: $releasePlatform" }
-    $publishDirectory = "./artifacts/portable-publish/$releaseVersion/$releasePlatform"
-    pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PublishUnpackaged -Platform $releasePlatform -ReleaseVersion $releaseVersion -PublishOutputPath $publishDirectory
-    if ($LASTEXITCODE -ne 0) { throw "Portable publish failed: $releasePlatform" }
-    pwsh -NoProfile -File ./scripts/New-PortableReleaseArchive.ps1 -PublishDirectory $publishDirectory -Version $releaseVersion -Platform $releasePlatform
-    if ($LASTEXITCODE -ne 0) { throw "Portable archive creation failed: $releasePlatform" }
-}
-```
+Follow [AGENTS.md](../AGENTS.md): release artifacts are built through GitHub
+Actions, not built, signed, uploaded, or published locally. A local MSIX for an
+explicit installation task is separate from publishing a release; see
+[development](DEVELOPMENT.md).
 
-Explicit packaging directories must be empty. Archive output directories must not
-already exist; choose a fresh `-OutputDirectory` for repeat verification. Existing
-validated artifacts are never silently overwritten. Local builds share generated
-project files, so do not package both architectures concurrently in one checkout.
-GitHub matrix jobs use separate checkouts.
+The workflow uses fresh output folders and separate checkouts for each
+architecture. Existing validated archives must not be overwritten silently.
 
 Release builds generate their manifest and `BuildInfo.json` under
 `TrackMeUp/obj/release/<version>/<platform>/`; they do not advance the local build
@@ -111,10 +101,8 @@ to use interactive reports; use the MSIX edition for supported on-device OCR.
 See Microsoft's [WebView2 distribution guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)
 for the distinction between SDK libraries and the browser Runtime.
 
-This behavior is grounded in the current startup and error-handling paths:
-`ReportsWindow.InitializeWebViewAsync` handles report initialization failures, and
-`ScreenshotTextExtractionCoordinator.AttachAsync` records typed OCR failures.
-Neither engine is initialized by the OCR service constructor or the basic player path.
+For implementation details, see `ReportsWindow.InitializeWebViewAsync` and
+`ScreenshotTextExtractionCoordinator.AttachAsync`.
 
 For `v1.0.900`, the extracted x64 portable passed `TrackMeUp.exe --version` with exit
 code zero and reported `1.0.900` on the development workstation. This exercises the
