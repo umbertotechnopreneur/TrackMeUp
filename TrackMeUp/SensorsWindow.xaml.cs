@@ -4,7 +4,6 @@ using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
@@ -69,10 +68,10 @@ public sealed partial class SensorsWindow : Window
         RootGrid.RequestedTheme = settings.Theme switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
         Title = T("Sensors.Title");
         UiLocalization.Apply(RootGrid, _strings);
-        SetLabel(OptionsButton, "Sensors.Options.Open");
-        SetLabel(BackButton, "Sensors.Back");
-        SetLabel(PreviousPageButton, "Sensors.PreviousPage");
-        SetLabel(NextPageButton, "Sensors.NextPage");
+        UiLocalization.SetAccessibleLabel(OptionsButton, T("Sensors.Options.Open"));
+        UiLocalization.SetAccessibleLabel(BackButton, T("Sensors.Back"));
+        UiLocalization.SetAccessibleLabel(PreviousPageButton, T("Sensors.PreviousPage"));
+        UiLocalization.SetAccessibleLabel(NextPageButton, T("Sensors.NextPage"));
         UpdateHistoryTooltip();
         HeaderText.Text = T(_optionsVisible ? "Sensors.Options.Title" : "Sensors.Title");
         SensorOptions.ApplyState(settings);
@@ -279,12 +278,6 @@ public sealed partial class SensorsWindow : Window
         _placement.Dispose();
         ClearTracks();
         _lifetime.Dispose();
-    }
-
-    private void SetLabel(Control control, string key)
-    {
-        AutomationProperties.SetName(control, T(key));
-        ToolTipService.SetToolTip(control, T(key));
     }
 
     private string T(string key) => _strings.Translate(key);

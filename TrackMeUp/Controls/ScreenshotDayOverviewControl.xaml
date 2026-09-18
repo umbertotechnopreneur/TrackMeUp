@@ -37,14 +37,11 @@
             <Setter Property="CornerRadius" Value="4,4,2,2" />
             <Setter Property="UseSystemFocusVisuals" Value="True" />
         </Style>
-        <Style x:Key="SelectedDayMarkerButtonStyle" TargetType="Button">
-            <Setter Property="MinWidth" Value="0" />
-            <Setter Property="Padding" Value="0" />
+        <Style x:Key="SelectedDayMarkerButtonStyle" TargetType="Button" BasedOn="{StaticResource DayMarkerButtonStyle}">
             <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="5,5,2,2" />
-            <Setter Property="UseSystemFocusVisuals" Value="True" />
         </Style>
     </UserControl.Resources>
 

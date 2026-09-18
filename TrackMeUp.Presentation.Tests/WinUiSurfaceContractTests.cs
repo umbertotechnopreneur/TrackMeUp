@@ -905,7 +905,7 @@ public sealed class WinUiSurfaceContractTests
         var minimizeToTrayButton = player.Descendants().Single(element => HasName(element, "TitleBarMinimizeToTrayButton"));
         var closeButton = player.Descendants().Single(element => HasName(element, "TitleBarCloseButton"));
         var closeStart = mainSource.IndexOf("private async void AppWindow_Closing", StringComparison.Ordinal);
-        var closeEnd = mainSource.IndexOf("private static void FadeIn", closeStart, StringComparison.Ordinal);
+        var closeEnd = mainSource.IndexOf("private void ResizeForLogicalContent", closeStart, StringComparison.Ordinal);
         Assert.True(closeStart >= 0 && closeEnd > closeStart, "Main-window close lifecycle source contract was not found.");
         var closeSource = mainSource[closeStart..closeEnd];
 
@@ -922,7 +922,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("presenter.IsMaximizable = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);", mainSource, StringComparison.Ordinal);
-        Assert.Contains("SetIconButtonLabel(TitleBarCloseButton, \"Tray.CloseApplication\");", mainSource, StringComparison.Ordinal);
+        Assert.Contains("UiLocalization.SetAccessibleLabel(TitleBarCloseButton, T(\"Tray.CloseApplication\"));", mainSource, StringComparison.Ordinal);
         Assert.Contains("private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();", mainSource, StringComparison.Ordinal);
         Assert.Contains("PlayerBackgroundSurface.Visibility = Visibility.Collapsed;", mainSource, StringComparison.Ordinal);
         Assert.Contains("PlayerBackgroundSurface.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);

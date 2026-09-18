@@ -13,15 +13,18 @@ public sealed record TrayIconMenuLabels(string ShowMainWindow, string HideMainWi
 public sealed class TrayIconService : IDisposable
 {
     private const uint NotificationIconAdd = 0x00000000;
+    private const uint NotificationIconModify = 0x00000001;
     private const uint NotificationIconDelete = 0x00000002;
     private const uint NotificationIconSetVersion = 0x00000004;
     private const uint NotificationIconMessage = 0x00000001;
     private const uint NotificationIconIcon = 0x00000002;
     private const uint NotificationIconTip = 0x00000004;
+    private const uint NotificationIconShowTip = 0x00000080;
     private const uint NotificationIconVersion4 = 4;
     private const uint TrayCallbackMessage = 0x8000 + 0x350;
-    private const uint LeftButtonUpMessage = 0x0202;
-    private const uint RightButtonUpMessage = 0x0205;
+    private const uint IconSelectMessage = 0x0400;
+    private const uint IconKeySelectMessage = 0x0401;
+    private const uint ContextMenuMessage = 0x007B;
     private const uint ImageIcon = 1;
     private const uint LoadImageFromFile = 0x0010;
     private const uint MenuString = 0x0000;
@@ -37,17 +40,26 @@ public sealed class TrayIconService : IDisposable
     private static readonly UIntPtr SubclassId = new(1);
     private static readonly SubclassProcDelegate SubclassProcedure = WindowSubclassProcedure;
     private readonly ILogger _logger;
+    private readonly NotifyIconDelegate _notifyIcon;
     private GCHandle _selfHandle;
     private IntPtr _windowHandle;
     private IntPtr _iconHandle;
     private TrayIconMenuLabels? _menuLabels;
+    private string _toolTip = string.Empty;
+    private uint _taskbarCreatedMessage;
     private bool _iconRegistered;
     private bool _disposed;
 
     /// <summary>Creates the native notification-area owner with process-local diagnostics.</summary>
     public TrayIconService(ILogger logger)
+        : this(logger, ShellNotifyIcon)
+    {
+    }
+
+    internal TrayIconService(ILogger logger, NotifyIconDelegate notifyIcon)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _notifyIcon = notifyIcon ?? throw new ArgumentNullException(nameof(notifyIcon));
     }
 
     /// <summary>Occurs after the user explicitly selects Close app in the notification-area context menu.</summary>
@@ -72,35 +84,7 @@ public sealed class TrayIconService : IDisposable
         }
 
         _disposed = true;
-        if (_iconRegistered)
-        {
-            var notification = CreateNotificationData();
-            if (!ShellNotifyIcon(NotificationIconDelete, ref notification))
-            {
-                _logger.LogWarning("The notification-area icon could not be removed during window shutdown. Win32Error={Win32Error}", Marshal.GetLastWin32Error());
-            }
-
-            _iconRegistered = false;
-        }
-
-        if (_windowHandle != IntPtr.Zero)
-        {
-            _ = RemoveWindowSubclass(_windowHandle, SubclassProcedure, SubclassId);
-        }
-
-        if (_iconHandle != IntPtr.Zero)
-        {
-            _ = DestroyIcon(_iconHandle);
-            _iconHandle = IntPtr.Zero;
-        }
-
-        if (_selfHandle.IsAllocated)
-        {
-            _selfHandle.Free();
-        }
-
-        _windowHandle = IntPtr.Zero;
-        _menuLabels = null;
+        ReleaseNativeResources();
     }
 
     private void EnsureAttached(IntPtr windowHandle, string iconPath, string toolTip, TrayIconMenuLabels menuLabels)
@@ -128,7 +112,7 @@ public sealed class TrayIconService : IDisposable
             throw new ArgumentException("Every notification-area context-menu label is required.", nameof(menuLabels));
         }
 
-        if (_iconRegistered)
+        if (_windowHandle != IntPtr.Zero)
         {
             if (_windowHandle != windowHandle)
             {
@@ -136,6 +120,19 @@ public sealed class TrayIconService : IDisposable
             }
 
             _menuLabels = menuLabels;
+            _toolTip = toolTip;
+            try
+            {
+                // Explorer may have lost the icon even when no TaskbarCreated callback has reached this window yet.
+                EnsureIconRegistered();
+            }
+            catch (Exception exception)
+            {
+                RestoreMainWindowIfHidden();
+                _logger.LogError(exception, "Notification-area icon verification failed; the main window remains available.");
+                throw;
+            }
+
             return;
         }
 
@@ -146,9 +143,16 @@ public sealed class TrayIconService : IDisposable
 
         _windowHandle = windowHandle;
         _menuLabels = menuLabels;
+        _toolTip = toolTip;
         _selfHandle = GCHandle.Alloc(this);
         try
         {
+            _taskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
+            if (_taskbarCreatedMessage == 0)
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not register for taskbar recreation messages.");
+            }
+
             if (!SetWindowSubclass(_windowHandle, SubclassProcedure, SubclassId, GCHandle.ToIntPtr(_selfHandle)))
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not receive notification-area icon activation messages.");
@@ -160,47 +164,30 @@ public sealed class TrayIconService : IDisposable
                 throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not load its notification-area icon.");
             }
 
-            var notification = CreateNotificationData(toolTip);
-            if (!ShellNotifyIcon(NotificationIconAdd, ref notification))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not add its notification-area icon.");
-            }
-
-            _iconRegistered = true;
-            if (!ShellNotifyIcon(NotificationIconSetVersion, ref notification))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not configure notification-area icon activation.");
-            }
-
-            _logger.LogInformation("Notification-area icon attached to the TrackMeUp main window.");
+            EnsureIconRegistered();
         }
         catch (Exception exception)
         {
             // A failed registration leaves the player visible and removes every partially registered native resource.
-            CleanupFailedAttach();
+            ReleaseNativeResources();
             _logger.LogError(exception, "Notification-area icon initialization failed.");
             throw;
         }
     }
 
-    private void CleanupFailedAttach()
+    private void ReleaseNativeResources()
     {
-        if (_iconRegistered)
+        RemoveNotificationIcon();
+
+        if (_windowHandle != IntPtr.Zero)
         {
-            var notification = CreateNotificationData();
-            _ = ShellNotifyIcon(NotificationIconDelete, ref notification);
-            _iconRegistered = false;
+            _ = RemoveWindowSubclass(_windowHandle, SubclassProcedure, SubclassId);
         }
 
         if (_iconHandle != IntPtr.Zero)
         {
             _ = DestroyIcon(_iconHandle);
             _iconHandle = IntPtr.Zero;
-        }
-
-        if (_windowHandle != IntPtr.Zero)
-        {
-            _ = RemoveWindowSubclass(_windowHandle, SubclassProcedure, SubclassId);
         }
 
         if (_selfHandle.IsAllocated)
@@ -210,6 +197,84 @@ public sealed class TrayIconService : IDisposable
 
         _windowHandle = IntPtr.Zero;
         _menuLabels = null;
+        _toolTip = string.Empty;
+    }
+
+    private void EnsureIconRegistered()
+    {
+        var notification = CreateNotificationData();
+        if (_iconRegistered)
+        {
+            if (_notifyIcon(NotificationIconModify, ref notification))
+            {
+                return;
+            }
+
+            // A successful earlier NIM_ADD describes the old shell; only a current shell response permits hiding.
+            _iconRegistered = false;
+            _logger.LogWarning("The notification-area icon is no longer available; registering it again. Win32Error={Win32Error}", Marshal.GetLastWin32Error());
+        }
+
+        if (!_notifyIcon(NotificationIconAdd, ref notification))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMeUp could not add its notification-area icon.");
+        }
+
+        _iconRegistered = true;
+        if (!_notifyIcon(NotificationIconSetVersion, ref notification))
+        {
+            var error = Marshal.GetLastWin32Error();
+            // A partially configured icon must not strand the player with unusable activation messages.
+            RemoveNotificationIcon();
+            throw new Win32Exception(error, "TrackMeUp could not configure notification-area icon activation.");
+        }
+
+        _logger.LogInformation("Notification-area icon attached to the TrackMeUp main window.");
+    }
+
+    private void RemoveNotificationIcon()
+    {
+        if (!_iconRegistered)
+        {
+            return;
+        }
+
+        var notification = CreateNotificationData();
+        if (!_notifyIcon(NotificationIconDelete, ref notification))
+        {
+            // Cleanup cannot retain ownership indefinitely when the shell is shutting down or unavailable.
+            _logger.LogWarning("The notification-area icon could not be removed. Win32Error={Win32Error}", Marshal.GetLastWin32Error());
+        }
+
+        _iconRegistered = false;
+    }
+
+    private void OnTaskbarCreated()
+    {
+        try
+        {
+            // Reuse the live window subclass and HICON; repeated broadcasts must not create duplicate native owners.
+            EnsureIconRegistered();
+            _logger.LogInformation("Notification-area icon verified after taskbar recreation.");
+        }
+        catch (Exception exception)
+        {
+            // Recovery is best-effort inside a native callback. Expose the player and keep its owner attached for a later retry.
+            RestoreMainWindowIfHidden();
+            _logger.LogError(exception, "Notification-area icon recovery after taskbar recreation failed; the main window remains available.");
+        }
+    }
+
+    private void RestoreMainWindowIfHidden()
+    {
+        if (!IsWindowVisible(_windowHandle))
+        {
+            _ = ShowWindow(_windowHandle, ShowWindowNormal);
+            if (!IsWindowVisible(_windowHandle))
+            {
+                _logger.LogError("The main window could not be restored after notification-area icon failure.");
+            }
+        }
     }
 
     private void ToggleMainWindowVisibility()
@@ -221,6 +286,7 @@ public sealed class TrayIconService : IDisposable
 
         if (IsWindowVisible(_windowHandle))
         {
+            EnsureIconRegistered();
             _ = ShowWindow(_windowHandle, ShowWindowHide);
             return;
         }
@@ -284,17 +350,17 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private NotifyIconData CreateNotificationData(string toolTip = "") => new()
+    private NotifyIconData CreateNotificationData() => new()
     {
         Size = Marshal.SizeOf<NotifyIconData>(),
         WindowHandle = _windowHandle,
         Id = 1,
         Flags = _iconHandle == IntPtr.Zero
             ? NotificationIconMessage
-            : NotificationIconMessage | NotificationIconIcon | NotificationIconTip,
+            : NotificationIconMessage | NotificationIconIcon | NotificationIconTip | NotificationIconShowTip,
         CallbackMessage = TrayCallbackMessage,
         IconHandle = _iconHandle,
-        ToolTip = toolTip,
+        ToolTip = _toolTip,
         Info = string.Empty,
         InfoTitle = string.Empty,
         Version = NotificationIconVersion4
@@ -308,18 +374,25 @@ public sealed class TrayIconService : IDisposable
         UIntPtr subclassId,
         IntPtr referenceData)
     {
-        if (message == TrayCallbackMessage && referenceData != IntPtr.Zero)
+        if (referenceData != IntPtr.Zero
+            && GCHandle.FromIntPtr(referenceData).Target is TrayIconService service
+            && !service._disposed)
         {
             try
             {
-                var activationMessage = (uint)lParam.ToInt64() & 0xFFFF;
-                if (GCHandle.FromIntPtr(referenceData).Target is TrayIconService service)
+                if (message == service._taskbarCreatedMessage)
                 {
-                    if (activationMessage == LeftButtonUpMessage)
+                    service.OnTaskbarCreated();
+                }
+                else if (message == TrayCallbackMessage)
+                {
+                    var activationMessage = (uint)lParam.ToInt64() & 0xFFFF;
+                    // Version 4 emits semantic selection/context-menu events; handling raw button-up as well toggles twice.
+                    if (activationMessage is IconSelectMessage or IconKeySelectMessage)
                     {
                         service.ToggleMainWindowVisibility();
                     }
-                    else if (activationMessage == RightButtonUpMessage)
+                    else if (activationMessage == ContextMenuMessage)
                     {
                         service.ShowContextMenu();
                     }
@@ -328,10 +401,7 @@ public sealed class TrayIconService : IDisposable
             catch (Exception exception)
             {
                 // Native window callbacks must always return control to Windows, even if the tray state is no longer usable.
-                if (GCHandle.FromIntPtr(referenceData).Target is TrayIconService service)
-                {
-                    service._logger.LogError(exception, "Notification-area icon activation failed.");
-                }
+                service._logger.LogError(exception, "Notification-area icon activation failed.");
             }
         }
 
@@ -344,7 +414,7 @@ public sealed class TrayIconService : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct NotifyIconData
+    internal struct NotifyIconData
     {
         public int Size;
         public IntPtr WindowHandle;
@@ -393,6 +463,11 @@ public sealed class TrayIconService : IDisposable
         IntPtr lParam,
         UIntPtr subclassId,
         IntPtr referenceData);
+
+    internal delegate bool NotifyIconDelegate(uint message, ref NotifyIconData notificationData);
+
+    [DllImport("user32.dll", EntryPoint = "RegisterWindowMessageW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterWindowMessage(string message);
 
     [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

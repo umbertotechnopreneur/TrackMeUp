@@ -12,6 +12,15 @@ namespace TrackMeUp;
 /// <summary>Applies the resolved application language to tagged WinUI presentation elements.</summary>
 internal static class UiLocalization
 {
+    /// <summary>Gives an icon or visual-content command the same localized name and tooltip.</summary>
+    public static void SetAccessibleLabel(DependencyObject element, string label)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        AutomationProperties.SetName(element, label);
+        ToolTipService.SetToolTip(element, label);
+    }
+
     /// <summary>Localizes one visual subtree without performing persistence or environment access.</summary>
     public static void Apply(DependencyObject root, LocalizationService strings)
     {
@@ -213,11 +222,7 @@ internal static class UiLocalization
                 });
                 break;
             case Thumb thumb:
-                SetIfTranslated(strings, key, value =>
-                {
-                    AutomationProperties.SetName(thumb, value);
-                    ToolTipService.SetToolTip(thumb, value);
-                });
+                SetIfTranslated(strings, key, value => SetAccessibleLabel(thumb, value));
                 break;
         }
     }
@@ -229,14 +234,13 @@ internal static class UiLocalization
             if (button.Content is string)
             {
                 button.Content = value;
+                AutomationProperties.SetName(button, value);
             }
             else
             {
                 // Icon-only and visual-content commands retain their content; their label is exposed accessibly.
-                ToolTipService.SetToolTip(button, value);
+                SetAccessibleLabel(button, value);
             }
-
-            AutomationProperties.SetName(button, value);
         });
     }
 
