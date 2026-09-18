@@ -145,7 +145,7 @@ public static class SensorMonitorProjection
         {
             var divisor = total.Unit == "MiB" && total.Value >= 1024 ? 1024 : 1;
             var unit = divisor == 1024 ? "GiB" : total.Unit;
-            return $"{(used.Value.Value / divisor).ToString("0.#", culture)} / {(total.Value.Value / divisor).ToString("0.#", culture)} {unit}";
+            return $"{(used.Value.Value / divisor).ToString("0", culture)} / {(total.Value.Value / divisor).ToString("0", culture)} {unit}";
         }
         return string.Empty;
     }
@@ -161,7 +161,7 @@ public static class SensorMonitorProjection
             "s" when value >= 60 => (value / 60, "min"),
             _ => (value, sensor.Unit)
         };
-        return $"{number.ToString("0.#", culture)} {unit}";
+        return $"{number.ToString("0", culture)} {unit}";
     }
 
     private static string SensorLabel(string name, Func<string, string> translate) => name switch

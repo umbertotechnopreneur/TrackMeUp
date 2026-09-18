@@ -25,7 +25,7 @@ public sealed class SensorMonitorProjectionTests
         Assert.Equal("Temperatura: 61 °C", row.Temperature);
         Assert.Equal("61 °C", row.TemperatureValue);
         Assert.True(row.HasTemperature);
-        Assert.Contains("25,5 W", row.Details);
+        Assert.Contains("26 W", row.Details);
         Assert.DoesNotContain("43,5", row.Details);
         Assert.DoesNotContain("18 W", row.Details);
     }
@@ -79,7 +79,7 @@ public sealed class SensorMonitorProjectionTests
         Assert.Equal(42, second.Percent);
         Assert.Contains("D3D 3D", second.Source);
         Assert.Equal(first.SensorId, second.SensorId);
-        Assert.Equal("2,8 / 16 GiB", first.CapacityText);
+        Assert.Equal("3 / 16 GiB", first.CapacityText);
         var history = new SensorTraceHistory();
         history.Update(first, Now);
         Assert.Equal(2, history.Update(second, Now.AddSeconds(2)).Count);
@@ -99,6 +99,21 @@ public sealed class SensorMonitorProjectionTests
         Assert.Equal("/ram", row.Id);
         Assert.Equal("20 / 32 GiB", row.CapacityText);
         Assert.Equal(62.5, row.Percent);
+    }
+
+    [Fact]
+    public void SensorValues_RoundDisplayedMeasurementsToWholeUnits()
+    {
+        var row = Project("Cpu",
+            new("load", "CPU Total", "Load", "%", 13.6),
+            new("temperature", "CPU Package", "Temperature", "°C", 61.5),
+            new("power", "CPU Package", "Power", "W", 25.5),
+            new("clock", "CPU Core #1", "Clock", "MHz", 3150));
+
+        Assert.Equal("14 %", row.Value);
+        Assert.Equal("Temperatura: 62 °C", row.Temperature);
+        Assert.Contains("26 W", row.SecondaryValue);
+        Assert.Contains("3 GHz", row.SecondaryValue);
     }
 
     [Fact]
