@@ -1327,7 +1327,7 @@ public sealed partial class MainWindow : Window
         if (isVisible)
         {
             await RefreshLastSessionIfDueAsync(force: true);
-            FadeIn(DetailsPanel);
+            UiTransitions.FadeIn(DetailsPanel);
         }
     }
 
@@ -1339,7 +1339,7 @@ public sealed partial class MainWindow : Window
         UpdateActivityScoreAccessibility();
         if (isVisible)
         {
-            FadeIn(ActivityScorePanel);
+            UiTransitions.FadeIn(ActivityScorePanel);
         }
     }
 
@@ -1432,7 +1432,7 @@ public sealed partial class MainWindow : Window
         TitleBarSearchButton.Visibility = Visibility.Collapsed;
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        FadeIn(panel);
+        UiTransitions.FadeIn(panel);
         _titleBar.QueueLayoutUpdate();
     }
 
@@ -1452,7 +1452,7 @@ public sealed partial class MainWindow : Window
         TitleBarSearchButton.Visibility = Visibility.Visible;
         ResizeForCurrentLayout(animate: false);
         _placement.KeepCurrentBoundsInWorkArea(RootGrid);
-        FadeIn(PlayerPanel);
+        UiTransitions.FadeIn(PlayerPanel);
         _titleBar.QueueLayoutUpdate();
     }
 
@@ -2076,27 +2076,20 @@ public sealed partial class MainWindow : Window
 
     private void ApplyMainAccessibility()
     {
-        SetIconButtonLabel(TitleBarBackButton, "QuickSetup.Back");
-        SetIconButtonLabel(MoreButton, "Main.Menu.Open");
-        SetIconButtonLabel(TitleBarMoreButton, "Main.Menu.Open");
-        SetIconButtonLabel(TitleBarSearchButton, "Search.Title");
-        SetIconButtonLabel(TitleBarReportButton, "Reports.Title");
-        SetIconButtonLabel(TitleBarMinimizeToTrayButton, "Main.Menu.MinimizeToTray");
-        SetIconButtonLabel(TitleBarCloseButton, "Tray.CloseApplication");
-        SetIconButtonLabel(WorldClockButton, "WorldClock.OpenWindow");
-        SetIconButtonLabel(SensorsButton, "Sensors.Open");
-        SetIconButtonLabel(TrackingButton, _isTracking ? "TrackingActionPause" : "TrackingActionStart");
-        SetIconButtonLabel(TakeScreenshotButton, "Snapshot.Take");
+        UiLocalization.SetAccessibleLabel(TitleBarBackButton, T("QuickSetup.Back"));
+        UiLocalization.SetAccessibleLabel(MoreButton, T("Main.Menu.Open"));
+        UiLocalization.SetAccessibleLabel(TitleBarMoreButton, T("Main.Menu.Open"));
+        UiLocalization.SetAccessibleLabel(TitleBarSearchButton, T("Search.Title"));
+        UiLocalization.SetAccessibleLabel(TitleBarReportButton, T("Reports.Title"));
+        UiLocalization.SetAccessibleLabel(TitleBarMinimizeToTrayButton, T("Main.Menu.MinimizeToTray"));
+        UiLocalization.SetAccessibleLabel(TitleBarCloseButton, T("Tray.CloseApplication"));
+        UiLocalization.SetAccessibleLabel(WorldClockButton, T("WorldClock.OpenWindow"));
+        UiLocalization.SetAccessibleLabel(SensorsButton, T("Sensors.Open"));
+        UiLocalization.SetAccessibleLabel(TrackingButton, T(_isTracking ? "TrackingActionPause" : "TrackingActionStart"));
+        UiLocalization.SetAccessibleLabel(TakeScreenshotButton, T("Snapshot.Take"));
         AutomationProperties.SetName(TrackingStatusToast, T("Main.TrackingStatus"));
         AutomationProperties.SetName(ActivityScoreBarHost, T("Activity.LastThirtyMinutes"));
         UpdateScreenshotPreviewAccessibility();
-    }
-
-    private void SetIconButtonLabel(Button button, string key)
-    {
-        var label = T(key);
-        AutomationProperties.SetName(button, label);
-        ToolTipService.SetToolTip(button, label);
     }
 
     private void UpdateScreenshotPreviewAccessibility()
@@ -2333,7 +2326,7 @@ public sealed partial class MainWindow : Window
         _currentWorkArea = CurrentWorkArea();
         _windowSizingReady = true;
         _lifecycle.SignalLoaded();
-        FadeIn(PlayerPanel);
+        UiTransitions.FadeIn(PlayerPanel);
     }
 
     /// <summary>Keeps the requested WinUI logical size stable when the window crosses displays with different DPI.</summary>
@@ -2429,18 +2422,6 @@ public sealed partial class MainWindow : Window
         {
             _closeConfirmationInProgress = false;
         }
-    }
-
-    /// <summary>Fades a view into the compact player without changing geometry on pointer interaction.</summary>
-    private static void FadeIn(FrameworkElement element)
-    {
-        element.Opacity = 0;
-        var animation = new DoubleAnimation { From = 0, To = 1, Duration = new Duration(TimeSpan.FromMilliseconds(180)) };
-        Storyboard.SetTarget(animation, element);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
     }
 
     /// <summary>Converts the compact surface size from WinUI DIPs to the physical pixels required by AppWindow.</summary>

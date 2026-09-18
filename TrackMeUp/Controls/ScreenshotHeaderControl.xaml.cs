@@ -178,8 +178,7 @@ public sealed partial class ScreenshotHeaderControl : UserControl
                 break;
         }
 
-        AutomationProperties.SetName(command, label);
-        ToolTipService.SetToolTip(command, label);
+        UiLocalization.SetAccessibleLabel(command, label);
     }
 
     private void UpdateMetadataAccessibility()

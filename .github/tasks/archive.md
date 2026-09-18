@@ -2,6 +2,17 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Recover notification-area icons and consolidate shared code
+
+- [x] Verify the live shell before hiding the player and restore lost icons on `TaskbarCreated`. Keep the player available after recovery failure and allow a later retry. Use version-4 selection/context-menu events and standard tooltips.
+- [x] Add 11 scenarios using real native window callbacks with simulated shell registration, covering icon loss, repeated recreation, visibility, partial registration failures, retry, disposal, and activation.
+- [x] Share native-resource cleanup, persisted installation-ID reads, accessible command labels, panel fade transitions, and screenshot style setters. Record broader AI-telemetry and application-facade follow-ups in the task list.
+- [x] Require user approval before tests, including pushes that trigger CI, and prevent unapproved tests in command chains.
+
+Validation: Core passed 707 tests with analyzers and warnings-as-errors. Formatting and verification passed; all six affected screenshot styles retain equivalent effective setters. Presentation passed 362 tests and failed one source-contract assertion referencing an extracted helper; the assertion was updated. Further local tests were stopped at the user's request. At the user's subsequent request, built and installed signed Release x64 MSIX 0.0.5.0 and verified matching application/Core/Presentation assembly hashes. The updated local Presentation suite and manual tray/UI scenarios remain pending in `todo.md`; no performance gain is claimed without measurement.
+
+---
+
 ## [2026-09-18] Implement the approved Sensors layout
 
 - [x] Group device identity and capacity on the left, show temperature in a dedicated column, and simplify activity graphs. Retain Acrylic as requested.

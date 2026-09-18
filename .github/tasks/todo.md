@@ -1,7 +1,15 @@
 # TrackMeUp performance and footprint optimization handoff
 
-## Focused code-review follow-ups (2026-09-16)
+## Notification-area recovery validation (2026-09-19)
 
+- [ ] After explicit user approval, rerun the Presentation suite with the updated shared-accessibility assertions. Core passed 707 tests; the last local Presentation run had 362 passing tests and one assertion tied to the removed helper, now updated. The user subsequently authorized building/installing the x64 MSIX and pushing the branch: MSIX 0.0.5.0 was built and installed with matching application/Core/Presentation assembly hashes. Complete the manual tray/UI scenarios before claiming end-to-end validation.
+
+## Quality review follow-ups (2026-09-19)
+
+- [ ] Consolidate the AI usage-record projection in `OpenAiAnalysisService.CreateUsageRecord` and `OpenAiOcrRefinementService.CreateUsage` after covering success, provider failure, cancellation, and usage-persistence failure. Preserve their distinct origin/operation fields and failure semantics.
+- [ ] Review the remaining direct infrastructure dependencies in `MainWindow` (including tray ownership) against the passive-view rule. Define the application facade's window-lifecycle contract before moving ownership; preserve dispatcher-thread affinity and shutdown order.
+
+## Focused code-review follow-ups (2026-09-16)
 - [ ] Consider a single live astronomy snapshot coordinator shared by clocks, map, and Moon. Each currently owns a refresh request; a shared subscription should continue working when World Clocks is closed and avoid fetching weather for the Moon alone. Measure request counts before changing the ownership model.
 - [ ] Reduce remaining window-placement persistence I/O by skipping unchanged open-state writes. Placement now returns committed settings to the facade without a second read. Preserve serialization and close/shutdown ordering; this review found redundant I/O, not a demonstrated lost-update bug.
 - [ ] Consolidate capture-ID parsing in archive export, screenshot storage layout, and LocalStore. Define GUID casing once and test malformed/uppercase identifiers while preserving each caller's strict failure behavior.

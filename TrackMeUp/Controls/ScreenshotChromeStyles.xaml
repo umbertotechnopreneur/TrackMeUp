@@ -63,7 +63,7 @@
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 
-    <Style x:Key="ScreenshotToolbarButtonStyle" TargetType="Button">
+    <Style x:Key="ScreenshotToolbarBaseStyle" TargetType="Control">
         <Setter Property="Width" Value="36" />
         <Setter Property="Height" Value="36" />
         <Setter Property="Padding" Value="0" />
@@ -75,6 +75,9 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="18" />
         <Setter Property="UseSystemFocusVisuals" Value="True" />
+    </Style>
+
+    <Style x:Key="ScreenshotToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource ScreenshotToolbarBaseStyle}">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -121,18 +124,7 @@
         </Setter>
     </Style>
 
-    <Style x:Key="ScreenshotToolbarToggleButtonStyle" TargetType="ToggleButton">
-        <Setter Property="Width" Value="36" />
-        <Setter Property="Height" Value="36" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="18" />
-        <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Style x:Key="ScreenshotToolbarToggleButtonStyle" TargetType="ToggleButton" BasedOn="{StaticResource ScreenshotToolbarBaseStyle}">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">

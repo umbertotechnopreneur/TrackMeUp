@@ -8,7 +8,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
@@ -144,10 +143,10 @@ public sealed partial class WorldClockWindow : Window
         UpdateHeaderForSurface();
         NowButton.Content = T("WorldClock.RestoreNow");
         ApplyReferenceButton.Content = T("WorldClock.Apply");
-        SetIconButtonLabel(OptionsButton, "WorldClock.Options.Open");
-        SetIconButtonLabel(HeaderBackButton, "WorldClock.Options.Back");
-        SetIconButtonLabel(WorldMapButton, "WorldClock.Map.Open");
-        SetIconButtonLabel(LunarPhaseButton, "WorldClock.MoonPhase.Open");
+        UiLocalization.SetAccessibleLabel(OptionsButton, T("WorldClock.Options.Open"));
+        UiLocalization.SetAccessibleLabel(HeaderBackButton, T("WorldClock.Options.Back"));
+        UiLocalization.SetAccessibleLabel(WorldMapButton, T("WorldClock.Map.Open"));
+        UiLocalization.SetAccessibleLabel(LunarPhaseButton, T("WorldClock.MoonPhase.Open"));
         UpdatePresentationModeCommand();
         ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");
         ReferenceDatePicker.Header = T("WorldClock.ReferenceDate");
@@ -216,7 +215,7 @@ public sealed partial class WorldClockWindow : Window
         UpdateHeaderForSurface();
         UpdateRefreshTimerState();
         _dialogs.Notifications.Hide(WorldClockNotificationBanner);
-        FadeIn(OptionsPanel);
+        UiTransitions.FadeIn(OptionsPanel);
         _ = HeaderBackButton.Focus(FocusState.Programmatic);
         _titleBar.QueueLayoutUpdate();
     }
@@ -234,7 +233,7 @@ public sealed partial class WorldClockWindow : Window
         }
 
         UpdateHeaderForSurface();
-        FadeIn(ClocksSurface);
+        UiTransitions.FadeIn(ClocksSurface);
         _ = OptionsButton.Focus(FocusState.Programmatic);
         _titleBar.QueueLayoutUpdate();
         if (_isLive)
@@ -356,7 +355,7 @@ public sealed partial class WorldClockWindow : Window
         PresentationModeIcon.Glyph = _layoutState.PresentationMode == WorldClockPresentationMode.Compact
             ? "\uE73F"
             : "\uE740";
-        SetIconButtonLabel(PresentationModeButton, key);
+        UiLocalization.SetAccessibleLabel(PresentationModeButton, T(key));
     }
 
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -385,29 +384,6 @@ public sealed partial class WorldClockWindow : Window
         // Constrain the child as well as its presenter; only the fields scroll, leaving both actions reachable.
         ReferenceInstantFlyoutContent.Width = bounds.ContentWidth;
         ReferenceInstantFlyoutContent.MaxHeight = bounds.ContentMaxHeight;
-    }
-
-    private void SetIconButtonLabel(Button button, string key)
-    {
-        var label = T(key);
-        AutomationProperties.SetName(button, label);
-        ToolTipService.SetToolTip(button, label);
-    }
-
-    private static void FadeIn(FrameworkElement element)
-    {
-        element.Opacity = 0d;
-        var animation = new DoubleAnimation
-        {
-            From = 0d,
-            To = 1d,
-            Duration = new Duration(TimeSpan.FromMilliseconds(180))
-        };
-        Storyboard.SetTarget(animation, element);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
     }
 
     /// <summary>Closes immediately while the composition root is already shutting down.</summary>

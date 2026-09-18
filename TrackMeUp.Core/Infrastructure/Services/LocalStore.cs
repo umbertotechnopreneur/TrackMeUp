@@ -1929,7 +1929,7 @@ public sealed class LocalStore
                 throw new TimeoutException("Timed out while initializing the TrackMeUp installation identity.");
             }
 
-            var persistedInstallationId = TryReadPersistedInstallationId();
+            var persistedInstallationId = TryLoadInstallationId();
             if (persistedInstallationId is not null)
             {
                 return settings with { InstallationId = persistedInstallationId };
@@ -1979,23 +1979,6 @@ public sealed class LocalStore
                 settingsMutex.ReleaseMutex();
             }
         }
-    }
-
-    private string? TryReadPersistedInstallationId()
-    {
-        if (!File.Exists(_settingsPath))
-        {
-            return null;
-        }
-
-        var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(_settingsPath), _json)
-            ?? throw new InvalidOperationException("The TrackMeUp settings file must contain a JSON object.");
-        if (!IsValidInstallationId(settings.InstallationId))
-        {
-            throw new InvalidOperationException("The TrackMeUp settings file has an invalid installation identity.");
-        }
-
-        return settings.InstallationId;
     }
 
     private static bool IsValidInstallationId(string? value) =>

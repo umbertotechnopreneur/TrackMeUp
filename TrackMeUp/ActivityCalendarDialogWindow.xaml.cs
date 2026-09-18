@@ -586,8 +586,8 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         CurrentWeekButton.Content = T("ActivityCalendar.CurrentWeek");
         WeekRetryButton.Content = T("ActivityCalendar.Retry");
         NoDataLegendText.Text = T("ActivityCalendar.NoDataLegend");
-        ApplyButtonAccessibility(PreviousWeekButton, "ActivityCalendar.PreviousWeek");
-        ApplyButtonAccessibility(NextWeekButton, "ActivityCalendar.NextWeek");
+        UiLocalization.SetAccessibleLabel(PreviousWeekButton, T("ActivityCalendar.PreviousWeek"));
+        UiLocalization.SetAccessibleLabel(NextWeekButton, T("ActivityCalendar.NextWeek"));
         CalendarHintText.Text = T("ActivityCalendar.CalendarHint");
         StatusText.Text = T("ActivityCalendar.Loading");
         ScoreLabelText.Text = T("ActivityCalendar.Score");
@@ -600,19 +600,13 @@ internal sealed partial class ActivityCalendarDialogWindow : Window
         InstallationLegendTitleText.Text = T("Operations.InstallationTransfer.Installations.List");
         ReprocessAiButtonText.Text = T("ActivityCalendar.Reprocess");
         CloseButton.Content = T("About.Close");
-        ApplyButtonAccessibility(TitleBarCloseButton, "About.Close");
+        UiLocalization.SetAccessibleLabel(TitleBarCloseButton, T("About.Close"));
         AutomationProperties.SetName(RootGrid, T("ActivityCalendar.Title"));
         AutomationProperties.SetName(DialogTitleText, DialogTitleText.Text);
         AutomationProperties.SetName(DialogSubtitleText, DialogSubtitleText.Text);
         AutomationProperties.SetName(ActivityCalendarView, T("ActivityCalendar.Title"));
         AutomationProperties.SetName(ReprocessAiButton, ReprocessAiButtonText.Text);
         AutomationProperties.SetName(CloseButton, T("About.Close"));
-    }
-
-    private void ApplyButtonAccessibility(Button button, string key)
-    {
-        AutomationProperties.SetName(button, T(key));
-        ToolTipService.SetToolTip(button, T(key));
     }
 
     private void ShowError(string message)
