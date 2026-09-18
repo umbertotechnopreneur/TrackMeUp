@@ -1,6 +1,8 @@
 # CLI examples
 
-Use these examples on Windows with PowerShell 7 and the installed `trackmeup.exe` execution alias. Each command starts PowerShell with `-NoProfile` and preserves the application's exit code. If you run an unpackaged build, replace `trackmeup.exe` with its quoted executable path after `&`.
+Check activity, control tracking, and create reports from PowerShell 7. These
+examples use the installed `trackmeup.exe` command and preserve its exit code.
+For an unpackaged build, replace it with the quoted executable path after `&`.
 
 The CLI uses the same runtime as the desktop app. Commands can start that runtime when it is absent, applying its saved startup settings. Help and version commands do not connect to the runtime. The expected results below describe the output; they are not output captured from a user's installation.
 
@@ -14,7 +16,10 @@ pwsh -NoProfile -Command '& trackmeup.exe -cli runtime health --format plain; ex
 pwsh -NoProfile -Command '& trackmeup.exe -cli doctor --format plain; exit $LASTEXITCODE'
 ```
 
-`status` shows tracking state, activity counters, and the current context. `runtime health` reports ownership, protocol, capabilities, and observability status. `doctor` reads runtime, tracking, AI provider, retention, startup, and plugin status. A complete diagnostic result uses `doctor.healthy`; a partial result uses `doctor.partial` and exit code `10`.
+`status` shows tracking and current activity. `runtime health` checks the shared
+tracker; `doctor` adds AI, retention, startup, and plugin checks. A complete
+diagnostic result uses `doctor.healthy`; a partial result uses `doctor.partial`
+and exit code `10`.
 
 For a dashboard refreshed every five seconds:
 
@@ -36,13 +41,15 @@ pwsh -NoProfile -Command '& trackmeup.exe -cli tracking toggle --format plain; e
 
 Each successful command returns the resulting dashboard state. `toggle` switches from the current state, so use `start` or `pause` when a script needs a specific outcome. `--start`, `--pause`, and `--toggle` are equivalent shortcuts after `-cli`.
 
-## AI provider status without credentials
+## Check AI setup
 
 ```powershell
 pwsh -NoProfile -Command '& trackmeup.exe -cli ai status --format plain; exit $LASTEXITCODE'
 ```
 
-The result describes whether AI provider features are enabled, the selected provider/model/endpoint, the configured key-variable name, whether a key is available, and the cost gate. It does not print the key value or request an analysis. No credential is needed in a command argument.
+See whether AI is on, which provider and model are selected, and whether the key
+and cost allowance are ready. This command shows no key value and sends no
+analysis request.
 
 ## Retain a local screenshot
 
@@ -100,9 +107,17 @@ pwsh -NoProfile -Command '& trackmeup.exe -cli retention status --format plain; 
 pwsh -NoProfile -Command '& trackmeup.exe -cli retention preview --json; exit $LASTEXITCODE'
 ```
 
-The preview returns `fileCount`, `totalBytes`, and `paths` without deleting data. Despite its name, `fileCount` combines expired screenshot artifacts and database records: activity samples, AI requests/results, OCR snapshots, and screenshot telemetry. `totalBytes` combines screenshot sizes with database-content estimates; it does not predict disk space reclaimed. `paths` identifies affected screenshots and, when applicable, the activity database. Retention removes expired database records, not the whole database file. Review both retention periods before deciding to execute it.
+The preview deletes nothing. Read its fields as follows:
 
-Deletion is a separate operator decision. The command-specific help documents the explicit `retention run --yes` confirmation boundary:
+- `fileCount` counts both expired screenshots and database records, including
+  activity, AI, OCR, and saved device readings.
+- `totalBytes` estimates the affected content, not the disk space you will regain.
+- `paths` lists affected screenshots and, where relevant, the activity database.
+  Cleanup removes expired records, not the entire database.
+
+Review both retention periods before running cleanup.
+
+Use command help before confirming deletion with `retention run --yes`:
 
 ```powershell
 pwsh -NoProfile -Command '& trackmeup.exe -cli retention --help --format plain; exit $LASTEXITCODE'

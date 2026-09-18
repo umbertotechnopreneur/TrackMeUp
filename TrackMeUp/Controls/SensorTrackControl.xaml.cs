@@ -32,11 +32,19 @@ public sealed partial class SensorTrackControl : UserControl
         DeviceIcon.Foreground = _accent;
         LevelBarFill.Background = _accent;
         DeviceIcon.Glyph = row.Category switch { "Cpu" => "\uE950", "Memory" => "\uE964", "Gpu" => "\uE7F4", "Storage" => "\uEDA2", _ => "\uE850" };
-        CategoryText.Text = strings.Translate("Hardware.Category." + row.Category).ToUpper(strings.Culture);
-        NameText.Text = row.Name;
+        CategoryText.Text = strings.Translate("Hardware.Category." + row.Category).ToUpper(strings.Culture)
+            + (row.Category == "Storage" ? $" ({row.Name})" : string.Empty);
+        NameText.Text = row.Category == "Memory" && row.Name == "Total Memory" ? strings.Translate("Sensors.SystemMemory") : row.Name;
+        NameText.Visibility = row.Category == "Storage" ? Visibility.Collapsed : Visibility.Visible;
         ValueText.Text = row.Value;
         CapacityText.Text = row.CapacityText;
         SecondaryText.Text = row.SecondaryValue;
+        TemperatureLabel.Text = strings.Translate("Sensors.Temperature");
+        TemperatureText.Text = row.HasTemperature ? row.TemperatureValue : "—";
+        TemperatureIcon.Foreground = _accent;
+        TemperatureIcon.Visibility = row.HasTemperature ? Visibility.Visible : Visibility.Collapsed;
+        TemperatureStatus.Text = strings.Translate("Sensors.TemperatureUnavailable");
+        TemperatureStatus.Visibility = !row.HasTemperature && row.Category != "Memory" ? Visibility.Visible : Visibility.Collapsed;
         NoTraceText.Text = row.Percent is null ? strings.Translate("Common.NotAvailable") : strings.Translate("Sensors.Collecting");
         var updated = string.Format(strings.Culture, strings.Translate("Hardware.DeviceUpdated"), row.SampledAt.ToLocalTime().ToString("T", strings.Culture));
         var description = string.Join(" · ", new[] { CategoryText.Text, row.Name, row.Value, row.Temperature, row.Details, updated }.Where(text => text.Length > 0));
@@ -52,49 +60,37 @@ public sealed partial class SensorTrackControl : UserControl
     {
         if (_row is not { } row) return;
         var battery = row.Category == "Battery";
-        var capacity = !battery && row.CapacityPercent.HasValue;
-        var layout = SensorMonitorLayout.ResolveTrack(Track.ActualWidth, Track.ActualHeight, capacity, row.SecondaryValue.Length > 0);
+        var layout = SensorMonitorLayout.ResolveTrack(Track.ActualWidth, Track.ActualHeight);
         Track.Padding = new Thickness(0, layout.Padding, 0, layout.Padding);
-        Track.ColumnSpacing = layout.Dense ? 8 : 14;
-        Track.RowSpacing = layout.Stacked ? 4 : 0;
-        IconColumn.Width = new GridLength(layout.Dense ? 22 : 32);
-        NameColumn.Width = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(layout.Dense ? 76 : 155);
-        ValueColumn.Width = new GridLength(layout.Dense ? 78 : 108);
+        NameColumn.Width = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(layout.NameWidth);
+        ValueColumn.Width = new GridLength(layout.ValueWidth);
+        TemperatureColumn.Width = layout.Stacked ? new GridLength(0) : new GridLength(layout.TemperatureWidth);
         ChartColumn.Width = layout.Stacked ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-        HeaderRow.Height = layout.Stacked ? new GridLength(52) : new GridLength(1, GridUnitType.Star);
+        HeaderRow.Height = layout.Stacked ? new GridLength(60) : new GridLength(1, GridUnitType.Star);
+        MetricsRow.Height = layout.Stacked ? new GridLength(64) : new GridLength(0);
         GraphRow.Height = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        Grid.SetRow(GraphPanel, layout.Stacked ? 1 : 0);
-        Grid.SetColumn(GraphPanel, layout.Stacked ? 1 : 3);
-        Grid.SetColumnSpan(GraphPanel, layout.Stacked ? 3 : 1);
-        Grid.SetColumnSpan(Values, layout.Stacked ? 2 : 1);
-        Values.HorizontalAlignment = layout.Stacked ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
-        DeviceIcon.FontSize = layout.Dense ? 20 : 27;
-        CategoryText.FontSize = layout.Dense ? 10 : 12;
-        CategoryText.CharacterSpacing = layout.Dense ? 0 : 80;
-        NameText.Visibility = layout.Dense ? Visibility.Collapsed : Visibility.Visible;
-        ValueText.FontSize = layout.Dense ? 20 : layout.Stacked ? 26 : 28;
-
-        // Secondary readings stay beside the value when the row cannot also fit a chart caption.
-        var showCapacityCaption = capacity && layout.ShowCapacityCaption;
-        MetricDetailText.Text = row.HasTemperature ? row.TemperatureValue
-            : capacity && !showCapacityCaption ? row.CapacityText
-            : row.SecondaryValue;
-        MetricDetailText.Visibility = !layout.Dense && MetricDetailText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        CapacityText.Visibility = showCapacityCaption ? Visibility.Visible : Visibility.Collapsed;
-        SecondaryText.Visibility = ((!layout.Dense && layout.ShowSecondary && row.HasTemperature) || (battery && !layout.Dense))
-            && row.SecondaryValue.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (battery) MetricDetailText.Visibility = row.HasTemperature && !layout.Dense ? Visibility.Visible : Visibility.Collapsed;
+        Grid.SetColumnSpan(IdentityPanel, layout.Stacked ? 4 : 1);
+        Grid.SetRow(Values, layout.Stacked ? 1 : 0);
+        Grid.SetColumn(Values, layout.Stacked ? 1 : 2);
+        Grid.SetRow(TemperaturePanel, layout.Stacked ? 1 : 0);
+        Grid.SetColumn(TemperaturePanel, layout.Stacked ? 2 : 3);
+        Grid.SetColumnSpan(TemperaturePanel, layout.Stacked ? 3 : 1);
+        Grid.SetRow(GraphPanel, layout.Stacked ? 2 : 0);
+        Grid.SetColumn(GraphPanel, layout.Stacked ? 1 : 4);
+        Grid.SetColumnSpan(GraphPanel, layout.Stacked ? 4 : 1);
+        TemperatureLabel.Visibility = layout.Stacked ? Visibility.Visible : Visibility.Collapsed;
+        ValueText.FontSize = layout.Stacked ? 22 : 28;
+        CapacityText.Visibility = row.CapacityText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SecondaryText.Visibility = row.SecondaryValue.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         TraceHost.Visibility = battery ? Visibility.Collapsed : Visibility.Visible;
         TraceHost.Height = layout.GraphHeight;
-        LevelBarTrack.Visibility = (battery && row.Percent.HasValue) || capacity ? Visibility.Visible : Visibility.Collapsed;
-        LevelBarTrack.Height = battery ? 9 : 6;
+        LevelBarTrack.Visibility = battery && row.Percent.HasValue ? Visibility.Visible : Visibility.Collapsed;
         UpdateLevelBar();
     }
 
     private void LevelBarTrack_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateLevelBar();
 
-    private void UpdateLevelBar() => LevelBarFill.Width = LevelBarTrack.ActualWidth
-        * (_row?.Category == "Battery" ? _row.Percent ?? 0 : _row?.CapacityPercent ?? 0) / 100;
+    private void UpdateLevelBar() => LevelBarFill.Width = LevelBarTrack.ActualWidth * (_row?.Percent ?? 0) / 100;
 
     private void TraceCanvas_SizeChanged(object sender, SizeChangedEventArgs e) => DrawTrace();
 
@@ -122,7 +118,7 @@ public sealed partial class SensorTrackControl : UserControl
         if (points.Count < 2) return;
         var color = _accent.Color;
         var gradient = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
-        gradient.GradientStops.Add(new GradientStop { Offset = 0, Color = Windows.UI.Color.FromArgb(110, color.R, color.G, color.B) });
+        gradient.GradientStops.Add(new GradientStop { Offset = 0, Color = Windows.UI.Color.FromArgb(60, color.R, color.G, color.B) });
         gradient.GradientStops.Add(new GradientStop { Offset = 1, Color = Windows.UI.Color.FromArgb(0, color.R, color.G, color.B) });
         var fill = new Polygon { Fill = gradient };
         fill.Points.Add(new Point(points[0].X, height));

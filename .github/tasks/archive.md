@@ -2,6 +2,25 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-18] Implement the approved Sensors layout
+
+- [x] Group device identity and capacity on the left, show temperature in a dedicated column, and simplify activity graphs. Retain Acrylic as requested.
+- [x] Show explicit unavailable temperatures and localized labels in all ten languages; reflow narrow windows and page devices instead of hiding their identity.
+- [x] Remove obsolete capacity-bar presentation data; preserve the battery charge indicator and existing hardware collection.
+
+Validation: 17 focused presentation tests passed; formatting, localization and XAML checks passed. Wide and narrow layouts were inspected on the installed app before the final Acrylic and unavailable-label refinements. The user stopped further UI automation with Escape. Built and installed x64 MSIX 0.0.7.0 and verified all three updated application binary hashes; final refinements were build-verified, not visually rechecked.
+
+---
+
+## [2026-09-18] Show disk space as text
+
+- [x] Replace disk capacity bars with localized free/total space labels while retaining activity graphs and memory capacity bars.
+- [x] Keep unavailable capacity explicit instead of substituting an occupancy percentage.
+
+Validation: formatting and verification passed; 17 sensor presentation tests passed. Built and installed x64 MSIX 0.0.4.0, verified installed binary hashes, and checked all four disk labels in the installed Sensors window.
+
+---
+
 ## [2026-09-18] Reduce agent context and redundant verification
 
 - [x] Consolidate repository rules in `AGENTS.md`, preserving unique Copilot safety, architecture, licensing, and UI guidance; replace duplicate Copilot instructions with a reference.

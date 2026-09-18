@@ -1,6 +1,8 @@
-# Screenshot schedule grid variants
+# Screenshot schedule design options
 
-Four ImageGen explorations for the same WinUI 3 screenshot-schedule dialog. All variants retain seven days, 15-minute precision, the dark Mica surface, and fixed cancel/start actions.
+Four generated design explorations for choosing when screenshots are taken.
+Each shows a full week in 15-minute steps, with Cancel and Start always visible.
+The day-card option was selected for implementation.
 
 | Variant | File | Selection model |
 | --- | --- | --- |

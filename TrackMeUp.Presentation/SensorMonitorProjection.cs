@@ -15,10 +15,8 @@ public sealed record SensorMonitorRow(string Id, string Category, string Name, s
     public bool HasTemperature => TemperatureValue.Length > 0;
     /// <summary>Contains the compact power, clock, transfer or battery information shown next to the primary reading.</summary>
     public string SecondaryValue { get; init; } = string.Empty;
-    /// <summary>Contains the used and total capacity, or the available occupied-space percentage.</summary>
+    /// <summary>Contains free/total disk space or used/total memory capacity, with localized labels and units.</summary>
     public string CapacityText { get; init; } = string.Empty;
-    /// <summary>Contains capacity occupancy, kept separate from utilization/activity.</summary>
-    public double? CapacityPercent { get; init; }
 }
 
 /// <summary>Selects representative readings without summing overlapping package, core or engine sensors.</summary>
@@ -78,8 +76,7 @@ public static class SensorMonitorProjection
                 {
                     TemperatureValue = temperature is null ? string.Empty : Format(temperature, culture),
                     SecondaryValue = Secondary(category, readings, power, clock, culture, translate),
-                    CapacityText = capacity.Text,
-                    CapacityPercent = capacity.Percent
+                    CapacityText = capacity
                 };
             }).ToArray();
     }
@@ -108,10 +105,10 @@ public static class SensorMonitorProjection
                 if (Pick(readings, "Throughput", name) is { } rate)
                     values.Add($"{SensorLabel(name, translate)} {Format(rate, culture)}");
         }
-        return string.Join(" · ", values);
+        return string.Join(category == "Storage" ? "\n" : " · ", values);
     }
 
-    private static (string Text, double? Percent) Capacity(string category, HardwareSensorSnapshot[] readings,
+    private static string Capacity(string category, HardwareSensorSnapshot[] readings,
         CultureInfo culture, Func<string, string> translate)
     {
         HardwareSensorSnapshot? used = null;
@@ -137,20 +134,20 @@ public static class SensorMonitorProjection
         {
             total = Pick(readings, "Data", "Total Space");
             var free = Pick(readings, "Data", "Free Space");
-            if (total?.Unit == free?.Unit && total?.Value is > 0 && free?.Value is >= 0 && free.Value <= total.Value)
-                used = total with { Value = total.Value - free.Value };
+            var missing = translate("Common.NotAvailable");
+            var totalText = total?.Value is > 0 ? Format(total, culture) : missing;
+            var freeText = free?.Value is >= 0 && (total is null || free.Unit == total.Unit && free.Value <= total.Value)
+                ? Format(free, culture) : missing;
+            // Disk space is a text label; missing capacity must not become zero or an activity percentage.
+            return string.Format(culture, translate("Sensors.SpaceSummary"), freeText, totalText);
         }
         if (used?.Unit == total?.Unit && used?.Value is >= 0 && total?.Value is > 0 && used.Value <= total.Value)
         {
             var divisor = total.Unit == "MiB" && total.Value >= 1024 ? 1024 : 1;
             var unit = divisor == 1024 ? "GiB" : total.Unit;
-            return ($"{(used.Value.Value / divisor).ToString("0.#", culture)} / {(total.Value.Value / divisor).ToString("0.#", culture)} {unit}",
-                used.Value.Value / total.Value.Value * 100);
+            return $"{(used.Value.Value / divisor).ToString("0.#", culture)} / {(total.Value.Value / divisor).ToString("0.#", culture)} {unit}";
         }
-        // Storage drivers can provide occupancy without size; it never substitutes for disk activity.
-        var occupancy = category == "Storage" ? Pick(readings, "Load", "Used Space") : null;
-        return occupancy is { Unit: "%", Value: >= 0 and <= 100 }
-            ? ($"{translate("Sensors.UsedSpace")} {Format(occupancy, culture)}", occupancy.Value) : (string.Empty, null);
+        return string.Empty;
     }
 
     private static string Format(HardwareSensorSnapshot sensor, CultureInfo culture)

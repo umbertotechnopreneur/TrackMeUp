@@ -197,8 +197,14 @@ public sealed partial class SensorsWindow : Window
 
     private void RenderPage()
     {
-        if (_closed || _rows.Count == 0 || TracksHost.ActualHeight <= 0) return;
-        var pageSize = SensorMonitorLayout.PageSize(TracksHost.ActualHeight, _rows.Count);
+        if (_closed || TracksHost.ActualHeight <= 0) return;
+        var layout = SensorMonitorLayout.ResolveTrack(TracksHost.ActualWidth, TracksHost.ActualHeight);
+        ColumnHeaders.Visibility = layout.Stacked ? Visibility.Collapsed : Visibility.Visible;
+        DeviceHeaderColumn.Width = new GridLength(layout.NameWidth);
+        LoadHeaderColumn.Width = new GridLength(layout.ValueWidth);
+        TemperatureHeaderColumn.Width = new GridLength(layout.TemperatureWidth);
+        if (_rows.Count == 0) return;
+        var pageSize = SensorMonitorLayout.PageSize(TracksHost.ActualHeight, TracksHost.ActualWidth, _rows.Count);
         var pageCount = (_rows.Count + pageSize - 1) / pageSize;
         _pageIndex = Math.Clamp(_pageIndex, 0, pageCount - 1);
         var visible = _rows.Skip(_pageIndex * pageSize).Take(pageSize).Select(row => _tracks[row.Id]).ToArray();
@@ -209,11 +215,12 @@ public sealed partial class SensorsWindow : Window
             TracksHost.RowDefinitions.Clear();
             for (var index = 0; index < visible.Length; index++)
             {
-                TracksHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                TracksHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MaxHeight = layout.Stacked ? 220 : 128 });
                 Grid.SetRow(visible[index], index);
                 TracksHost.Children.Add(visible[index]);
             }
         }
+        foreach (var definition in TracksHost.RowDefinitions) definition.MaxHeight = layout.Stacked ? 220 : 128;
         PageNavigation.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
         PreviousPageButton.IsEnabled = _pageIndex > 0;
         NextPageButton.IsEnabled = _pageIndex < pageCount - 1;

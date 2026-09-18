@@ -28,36 +28,42 @@
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
-    <Grid x:Name="Track" Padding="0,8" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" ColumnSpacing="14" RowSpacing="4" SizeChanged="Track_SizeChanged">
+    <Grid x:Name="Track" Padding="0,10" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" ColumnSpacing="16" SizeChanged="Track_SizeChanged">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="IconColumn" Width="32"/>
-            <ColumnDefinition x:Name="NameColumn" Width="155"/>
-            <ColumnDefinition x:Name="ValueColumn" Width="108"/>
+            <ColumnDefinition Width="28"/>
+            <ColumnDefinition x:Name="NameColumn" Width="280"/>
+            <ColumnDefinition x:Name="ValueColumn" Width="130"/>
+            <ColumnDefinition x:Name="TemperatureColumn" Width="150"/>
             <ColumnDefinition x:Name="ChartColumn" Width="*"/>
         </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition x:Name="HeaderRow" Height="*"/><RowDefinition x:Name="GraphRow" Height="0"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition x:Name="HeaderRow" Height="*"/><RowDefinition x:Name="MetricsRow" Height="0"/><RowDefinition x:Name="GraphRow" Height="0"/></Grid.RowDefinitions>
         <FontIcon x:Name="DeviceIcon" FontFamily="Segoe Fluent Icons" FontSize="27" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw"/>
         <StackPanel x:Name="IdentityPanel" Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-            <TextBlock x:Name="CategoryText" FontSize="12" CharacterSpacing="80" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-            <TextBlock x:Name="NameText" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="CategoryText" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="NameText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="CapacityText" FontSize="11" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
         <StackPanel x:Name="Values" Grid.Column="2" Spacing="2" VerticalAlignment="Center">
             <TextBlock x:Name="ValueText" FontSize="28" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-            <TextBlock x:Name="MetricDetailText" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <TextBlock x:Name="SecondaryText" FontSize="11" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
-        <StackPanel x:Name="GraphPanel" Grid.Column="3" VerticalAlignment="Center" Spacing="4">
+        <StackPanel x:Name="TemperaturePanel" Grid.Column="3" VerticalAlignment="Center" Spacing="3">
+            <TextBlock x:Name="TemperatureLabel" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="Collapsed"/>
+            <StackPanel Orientation="Horizontal" Spacing="7">
+                <FontIcon x:Name="TemperatureIcon" Glyph="&#xE9CA;" FontSize="18" AutomationProperties.AccessibilityView="Raw"/>
+                <TextBlock x:Name="TemperatureText" FontSize="18" FontWeight="SemiBold"/>
+            </StackPanel>
+            <TextBlock x:Name="TemperatureStatus" FontSize="11" TextWrapping="Wrap" MaxLines="2" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+        <StackPanel x:Name="GraphPanel" Grid.Column="4" VerticalAlignment="Center" Spacing="4">
             <Grid x:Name="TraceHost" Height="64">
-                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Margin="0,0,30,0"/>
-                <Canvas x:Name="TraceCanvas" Margin="0,0,30,0" SizeChanged="TraceCanvas_SizeChanged" AutomationProperties.AccessibilityView="Raw"/>
-                <TextBlock Text="100%" HorizontalAlignment="Right" VerticalAlignment="Top" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                <TextBlock Text="0%" HorizontalAlignment="Right" VerticalAlignment="Bottom" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1"/>
+                <Canvas x:Name="TraceCanvas" SizeChanged="TraceCanvas_SizeChanged" AutomationProperties.AccessibilityView="Raw"/>
                 <TextBlock x:Name="NoTraceText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
             </Grid>
             <Border x:Name="LevelBarTrack" Height="6" CornerRadius="3" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Visibility="Collapsed" SizeChanged="LevelBarTrack_SizeChanged" AutomationProperties.AccessibilityView="Raw">
                 <Border x:Name="LevelBarFill" HorizontalAlignment="Left" CornerRadius="3"/>
             </Border>
-            <TextBlock x:Name="CapacityText" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-            <TextBlock x:Name="SecondaryText" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </StackPanel>
     </Grid>
 </UserControl>

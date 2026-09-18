@@ -1,4 +1,11 @@
 {
+  "Sensors.TemperatureUnavailable": "사용할 수 없음",
+  "Sensors.Device": "장치",
+  "Sensors.CurrentLoad": "현재 부하",
+  "Sensors.Activity": "활동 · 2분",
+  "Sensors.TemperatureHint": "센서 측정값이 있으면 온도가 표시됩니다.",
+  "Sensors.SpaceSummary": "여유 {0} / 전체 {1}",
+  "Sensors.SystemMemory": "시스템 메모리",
   "Sensors.HistoryShort": "최근 2분",
   "Sensors.PreviousPage": "이전 장치",
   "Sensors.NextPage": "다음 장치",
