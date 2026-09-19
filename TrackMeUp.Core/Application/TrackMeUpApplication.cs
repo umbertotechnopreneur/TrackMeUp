@@ -204,7 +204,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _tracking = tracking;
         _capture = capture;
         _snapshot = snapshot;
-        // Loading preferences never requests elevation or starts hardware reads.
+        // Restore saved advanced-sensor access once when the driver is already installed; Core owns Windows consent.
         _snapshot.ConfigureAsync(HardwareConfiguration(_settingsSnapshot.Value), CancellationToken.None).GetAwaiter().GetResult();
         _deviceContext = deviceContext ?? new DeviceContextService();
         _screenshotShare = screenshotShare ?? new ScreenshotShareService();
@@ -421,7 +421,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         try
         {
-            // Driver installation and collector elevation are initiated only by this explicit user operation.
+            // Explicit activation may install the driver or retry a session that was not restored at startup.
             await _snapshot.EnableAdvancedAsync(cancellationToken).ConfigureAwait(false);
             return await CaptureSystemSnapshotAsync(cancellationToken).ConfigureAwait(false);
         }

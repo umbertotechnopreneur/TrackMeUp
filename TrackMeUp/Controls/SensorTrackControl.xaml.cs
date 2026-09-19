@@ -51,36 +51,33 @@ public sealed partial class SensorTrackControl : UserControl
         var description = string.Join(" · ", new[] { CategoryText.Text, row.Name, row.Value, row.Temperature, row.Details, updated, traceStatus }.Where(text => text.Length > 0));
         AutomationProperties.SetName(this, description);
         ToolTipService.SetToolTip(this, description + "\n" + row.Source);
-        ArrangeTrack();
+        CapacityText.Visibility = row.CapacityText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SecondaryText.Visibility = row.SecondaryValue.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        TraceHost.Visibility = row.Category == "Battery" ? Visibility.Collapsed : Visibility.Visible;
+        LevelBarTrack.Visibility = row.Category == "Battery" && row.Percent.HasValue ? Visibility.Visible : Visibility.Collapsed;
+        UpdateLevelBar();
         DrawTrace();
     }
 
-    private void Track_SizeChanged(object sender, SizeChangedEventArgs e) => ArrangeTrack();
-
-    private void ArrangeTrack()
+    /// <summary>Measures text at the window's available width, including accessibility text scaling.</summary>
+    public double MeasureForViewport(double width)
     {
-        if (_row is not { } row) return;
-        var battery = row.Category == "Battery";
-        var layout = SensorMonitorLayout.ResolveTrack(Track.ActualWidth);
+        var layout = SensorMonitorLayout.ResolveTrack(width);
+        // A child's desired size must not feed back into its breakpoint or expand the background past the window.
+        Width = width;
+        Track.MinHeight = layout.RowHeight;
         Track.Padding = new Thickness(0, layout.Padding, 0, layout.Padding);
-        NameColumn.Width = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(layout.NameWidth);
+        ContentGrid.ColumnSpacing = layout.Stacked ? 0 : 16;
+        MetricsColumn.Width = new GridLength(layout.Stacked ? 0 : layout.ValueWidth + layout.TemperatureWidth + 16);
         ValueColumn.Width = new GridLength(layout.ValueWidth);
-        TemperatureColumn.Width = layout.Stacked ? new GridLength(0) : new GridLength(layout.TemperatureWidth);
-        HeaderRow.Height = layout.Stacked ? new GridLength(60) : new GridLength(1, GridUnitType.Star);
-        MetricsRow.Height = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        Grid.SetColumnSpan(IdentityPanel, layout.Stacked ? 3 : 1);
-        Grid.SetRow(Values, layout.Stacked ? 1 : 0);
-        Grid.SetColumn(Values, layout.Stacked ? 1 : 2);
-        Grid.SetRow(TemperaturePanel, layout.Stacked ? 1 : 0);
-        Grid.SetColumn(TemperaturePanel, layout.Stacked ? 2 : 3);
-        Grid.SetColumnSpan(TemperaturePanel, layout.Stacked ? 2 : 1);
+        TemperatureColumn.Width = new GridLength(layout.TemperatureWidth);
+        Grid.SetRow(MetricsGrid, layout.Stacked ? 1 : 0);
+        Grid.SetColumn(MetricsGrid, layout.Stacked ? 0 : 1);
+        MetricsGrid.Margin = layout.Stacked ? new Thickness(44, 12, 0, 0) : new Thickness(0);
         TemperatureLabel.Visibility = layout.Stacked ? Visibility.Visible : Visibility.Collapsed;
         ValueText.FontSize = layout.Stacked ? 22 : 28;
-        CapacityText.Visibility = row.CapacityText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        SecondaryText.Visibility = row.SecondaryValue.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        TraceHost.Visibility = battery ? Visibility.Collapsed : Visibility.Visible;
-        LevelBarTrack.Visibility = battery && row.Percent.HasValue ? Visibility.Visible : Visibility.Collapsed;
-        UpdateLevelBar();
+        Measure(new Size(width, double.PositiveInfinity));
+        return DesiredSize.Height;
     }
 
     private void LevelBarTrack_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateLevelBar();

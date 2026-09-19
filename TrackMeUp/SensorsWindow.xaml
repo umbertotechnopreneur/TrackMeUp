@@ -35,7 +35,10 @@
                     <TextBlock Grid.Column="3" Tag="Sensors.Temperature" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </Grid>
             </StackPanel>
-            <Grid x:Name="TracksHost" Grid.Row="2" SizeChanged="TracksHost_SizeChanged"/>
+            <ScrollViewer x:Name="TracksViewport" Grid.Row="2" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top" SizeChanged="TracksViewport_SizeChanged">
+                <Grid x:Name="TracksHost" VerticalAlignment="Top"/>
+            </ScrollViewer>
             <Grid Grid.Row="3" MinHeight="36" ColumnSpacing="12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <TextBlock Tag="Sensors.TemperatureHint" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>

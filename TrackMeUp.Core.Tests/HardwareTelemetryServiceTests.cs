@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -192,7 +193,7 @@ public sealed class HardwareTelemetryServiceTests
     }
 
     [Fact]
-    public async Task AdvancedPreference_DoesNotRequestElevationOrCollect()
+    public async Task MissingDriver_LeavesAdvancedActivationExplicitWithoutCollecting()
     {
         var clock = new TestClock();
         var reads = 0;
@@ -210,6 +211,143 @@ public sealed class HardwareTelemetryServiceTests
         Assert.Equal(1, reads);
     }
 
+    [Theory]
+    [InlineData("2.2.0")]
+    [InlineData("2.2.0.0")]
+    [InlineData("3.0.0")]
+    public async Task InstalledDriver_RestoresSavedAdvancedPreferenceOnceWithoutSetup(string version)
+    {
+        var clock = new TestClock();
+        var launches = 0;
+        var reads = 0;
+        await using var service = Create(clock, _ =>
+        {
+            reads++;
+            return ValueTask.FromResult(new SystemSnapshot(clock.GetUtcNow(), "partial", [], "active"));
+        }, Version.Parse(version), _ => { launches++; return Task.CompletedTask; });
+
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+        Assert.Equal(1, launches);
+        Assert.Equal(0, reads);
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+        await service.ConfigureAsync(new(UseAdvancedSensors: true, SamplingProfile: "fast"), CancellationToken.None);
+        Assert.Equal("active", (await service.CaptureAsync(CancellationToken.None)).DriverStatus);
+        Assert.Equal(1, launches);
+    }
+
+    [Theory]
+    [InlineData(false, true, "2.2.0")]
+    [InlineData(true, false, "2.2.0")]
+    [InlineData(true, true, null)]
+    [InlineData(true, true, "2.1.0")]
+    public async Task Startup_DoesNotLaunchForDisabledPreferencesOrMissingPrerequisites(bool enabled, bool advanced, string? version)
+    {
+        var clock = new TestClock();
+        await using var service = Create(clock, _ => throw new InvalidOperationException("Startup must not sample hardware."),
+            version is null ? null : Version.Parse(version));
+
+        await service.ConfigureAsync(new(Enabled: enabled, UseAdvancedSensors: advanced), CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ConcurrentInitialConfiguration_SharesOneConsentRequest()
+    {
+        var clock = new TestClock();
+        var consent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var launches = 0;
+        await using var service = Create(clock, _ => throw new InvalidOperationException(), new Version(2, 2, 0), _ =>
+        {
+            launches++;
+            return consent.Task;
+        });
+        var first = service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None).AsTask();
+        var second = service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None).AsTask();
+        Assert.Equal(1, launches);
+        Assert.False(second.IsCompleted);
+        consent.SetResult();
+        await Task.WhenAll(first, second);
+        Assert.Equal(1, launches);
+    }
+
+    [Theory]
+    [InlineData(true, "advanced-consent-cancelled")]
+    [InlineData(false, "collector-timeout")]
+    public async Task FailedStartup_ReportsFailureThenUsesBasicReadingsWithoutRepeatingConsent(bool declined, string expectedCode)
+    {
+        var clock = new TestClock();
+        var launches = 0;
+        var reads = 0;
+        await using var service = Create(clock, _ =>
+        {
+            reads++;
+            return ValueTask.FromResult(new SystemSnapshot(clock.GetUtcNow(), "partial", [], "available"));
+        }, new Version(2, 2, 0), _ =>
+        {
+            launches++;
+            return Task.FromException(declined ? new Win32Exception(1223) : new OperationCanceledException());
+        });
+
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+        var failed = await service.CaptureAsync(CancellationToken.None);
+        Assert.Equal("unavailable", failed.Status);
+        Assert.Equal(expectedCode, failed.ErrorCode);
+        Assert.Equal(0, reads);
+        clock.Advance(TimeSpan.FromSeconds(11));
+        Assert.Equal("partial", (await service.CaptureAsync(CancellationToken.None)).Status);
+        await service.ConfigureAsync(new(UseAdvancedSensors: true, SamplingProfile: "fast"), CancellationToken.None);
+        await service.ConfigureAsync(new(UseAdvancedSensors: false), CancellationToken.None);
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+        Assert.Equal(1, launches);
+
+        // A retry remains available through the existing explicit action.
+        if (declined) await Assert.ThrowsAsync<Win32Exception>(() => service.EnableAdvancedAsync(CancellationToken.None));
+        else await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.EnableAdvancedAsync(CancellationToken.None));
+        Assert.Equal(2, launches);
+    }
+
+    [Fact]
+    public async Task SettingsOptInAfterStartup_DoesNotRequestUnexpectedConsent()
+    {
+        await using var service = Create(new TestClock(), _ => throw new InvalidOperationException(), new Version(2, 2, 0));
+        await service.ConfigureAsync(new(), CancellationToken.None);
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task InvalidInstalledVersion_IsReportedWithoutPreventingStartup()
+    {
+        var clock = new TestClock();
+        var installer = new PawnIoInstaller(Path.Combine(Path.GetTempPath(), "PawnIO.UnitTests.exe"),
+            () => throw new InvalidDataException("Invalid installation metadata."),
+            _ => throw new InvalidOperationException("Startup must not run setup."));
+        await using var service = new HardwareTelemetryService(Path.Combine(Path.GetTempPath(), "TrackMeUp.Hardware.UnitTests.exe"),
+            clock, installer: installer, startCollector: _ => throw new InvalidOperationException("No launch was expected."));
+
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+        var failed = await service.CaptureAsync(CancellationToken.None);
+        Assert.Equal("unavailable", failed.Status);
+        Assert.Equal("advanced-start-failed", failed.ErrorCode);
+        Assert.Equal("blocked", failed.DriverStatus);
+    }
+
+    [Fact]
+    public async Task CancelledInitialization_PropagatesCancellationWithoutAnAutomaticRetry()
+    {
+        var clock = new TestClock();
+        var launches = 0;
+        using var cancellation = new CancellationTokenSource();
+        await using var service = Create(clock, _ => throw new InvalidOperationException(), new Version(2, 2, 0), token =>
+        {
+            launches++;
+            cancellation.Cancel();
+            return Task.FromCanceled(token);
+        });
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            service.ConfigureAsync(new(UseAdvancedSensors: true), cancellation.Token).AsTask());
+        await service.ConfigureAsync(new(UseAdvancedSensors: true), CancellationToken.None);
+        Assert.Equal(1, launches);
+    }
+
     [Fact]
     public async Task InvalidConfiguration_IsRejectedWithoutChangingTheService()
     {
@@ -220,8 +358,12 @@ public sealed class HardwareTelemetryServiceTests
         Assert.Equal("disabled", (await service.CaptureAsync(CancellationToken.None)).Status);
     }
 
-    private static HardwareTelemetryService Create(TestClock clock, Func<CancellationToken, ValueTask<SystemSnapshot>> read) =>
-        new(Path.Combine(Path.GetTempPath(), "TrackMeUp.Hardware.UnitTests.exe"), clock, reader: read);
+    private static HardwareTelemetryService Create(TestClock clock, Func<CancellationToken, ValueTask<SystemSnapshot>> read,
+        Version? installedVersion = null, Func<CancellationToken, Task>? startCollector = null) =>
+        new(Path.Combine(Path.GetTempPath(), "TrackMeUp.Hardware.UnitTests.exe"), clock, reader: read,
+            installer: new PawnIoInstaller(Path.Combine(Path.GetTempPath(), "PawnIO.UnitTests.exe"), () => installedVersion,
+                _ => throw new InvalidOperationException("Automatic startup must never run driver setup.")),
+            startCollector: startCollector ?? (_ => throw new InvalidOperationException("No collector launch was expected.")));
 
     private sealed class TestClock : TimeProvider
     {

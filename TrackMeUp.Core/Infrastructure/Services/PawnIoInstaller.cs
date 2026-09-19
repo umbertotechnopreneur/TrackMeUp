@@ -26,6 +26,10 @@ internal sealed class PawnIoInstaller
         _install = install ?? InstallBundledAsync;
     }
 
+    /// <summary>Checks the installed prerequisite without starting setup or accepting a pending restart.</summary>
+    internal bool CanActivateWithoutSetup => !_restartRequired && _installation is null
+        && _readVersion() is { } installed && installed >= Distribution.Version;
+
     internal async Task EnsureInstalledAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

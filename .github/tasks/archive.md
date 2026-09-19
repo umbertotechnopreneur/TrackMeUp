@@ -2,6 +2,14 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Create a local installer and update the installed app
+
+- [x] Build a signed local x64 MSIX from the current workspace at the user's request, preserving existing source edits. The packaging route's explicitly approved report run passed all 60 tests; production report checks and package creation succeeded.
+- [x] Update the installed package from 0.0.7.0 to 0.0.9.0 and reopen the updated app. Windows reports `Ok`; SHA-256 verification confirms all 1,317 checked payload files match the installer. Preserve the installer, dependencies, and deployment verification record under `artifacts/installers/local-update-20260919/`.
+- [x] Clean the x64 Release build outputs and remove superseded package staging/installer directories only after validating their resolved paths under repository `artifacts/`. No additional .NET test suite or manual UI scenario was run; those pending checks remain in `todo.md`.
+
+---
+
 ## [2026-09-19] Place sensor graphs behind compact component rows
 
 - [x] Render each activity trace as a muted background behind identity, value and temperature, removing the separate graph row/column. Keep battery charge in a slim level bar and hide decorative traces in high contrast.

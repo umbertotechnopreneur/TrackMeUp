@@ -2,7 +2,7 @@
 
 namespace TrackMeUp.Services;
 
-/// <summary>Configures optional collection without granting consent to elevate a helper process.</summary>
+/// <summary>Configures optional collection and the saved preference for requesting advanced access at startup.</summary>
 public sealed record HardwareTelemetryConfiguration(bool Enabled = true, bool UseAdvancedSensors = false, string SamplingProfile = "normal");
 
 /// <summary>Contains one immutable library reading; a null value means no usable measurement.</summary>
@@ -32,7 +32,7 @@ public sealed record SystemSnapshot(
 /// <summary>Owns the sole sensor collector and its optional explicitly elevated mode.</summary>
 public interface IHardwareTelemetryService : IAsyncDisposable
 {
-    /// <summary>Applies validated sensor settings live without requesting Windows elevation.</summary>
+    /// <summary>Applies validated settings; initial opted-in configuration restores installed advanced sensors with Windows consent.</summary>
     ValueTask ConfigureAsync(HardwareTelemetryConfiguration configuration, CancellationToken cancellationToken);
 
     /// <summary>Gets a bounded immutable snapshot, including explicit unavailable or failed states.</summary>

@@ -1,12 +1,16 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Restore installed advanced sensors at startup (2026-09-19)
+
+- [ ] Run the new focused startup scenarios after the pending explicit test approval. Implementation now restores compatible installed PawnIO once when saved sensor/advanced preferences are enabled; the user accepted Windows UAC. Missing prerequisites never launch setup automatically, and failed/declined activation is reported before basic readings resume without repeated consent. The x64 Release Core/test-project build passed with zero warnings/errors; formatting verification, localization JSON parsing and scoped diff checks passed. The installed app remains 0.0.10.0 and does not yet include this change.
+
 ## Compact sensor background graphs (2026-09-19)
 
-- [ ] Verify the README background-graph scenario in the installed app after the next deployment. The implementation overlays each trace behind the component's text and shares compact row heights with pagination; the currently installed MSIX predates this change. The updated layout scenarios are included for required PR CI; no additional local test run or installation was requested.
+- [ ] Correct the installed 0.0.9.0 sensor layout regression: constrain rows to the window viewport, render the trace independently behind the foreground, and page using measured text height. The user approved focused sensor tests, the packaging report tests, and installing the corrected local x64 MSIX. Verify the actual narrow/wide window before completing the update; required PR CI remains pending.
 
 ## Activity calendar startup correction (2026-09-19)
 
-- [ ] Verify the calendar remains closed at startup even with a saved open flag, while explicit menu opening and other workspace restoration still work. `main` and `origin/main` were aligned at `9b31eb1`; both still classified the calendar as restorable. The correction removes it from session restoration and the main-window startup action. The user requested adding this fix only to the PR: no additional local tests or reinstall were run, and the installed app still has the prior calendar behavior. Required CI and a future installed-app check remain pending.
+- [ ] Verify the calendar remains closed at startup even with a saved open flag, while explicit menu opening and other workspace restoration still work. The correction removes it from session restoration and the main-window startup action and is now included in installed MSIX 0.0.9.0. Required CI and the manual installed-app scenario remain pending.
 
 ## Bundled advanced-sensor prerequisite (2026-09-19)
 

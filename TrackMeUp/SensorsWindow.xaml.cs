@@ -33,6 +33,7 @@ public sealed partial class SensorsWindow : Window
     private bool _refreshing;
     private bool _optionsVisible;
     private bool _placementFailed;
+    private bool _arrangingTracks;
 
     /// <summary>Publishes confirmed settings to the main window and its sibling surfaces.</summary>
     internal event Action<AppSettings>? SettingsSaved;
@@ -192,38 +193,50 @@ public sealed partial class SensorsWindow : Window
     private void UpdateHistoryTooltip() => ToolTipService.SetToolTip(HistoryText,
         string.Join("\n", new[] { T("Sensors.History"), _snapshotStatus }.Where(value => value.Length > 0)));
 
-    private void TracksHost_SizeChanged(object sender, SizeChangedEventArgs e) => RenderPage();
+    private void TracksViewport_SizeChanged(object sender, SizeChangedEventArgs e) => RenderPage();
 
     private void RenderPage()
     {
-        if (_closed || TracksHost.ActualHeight <= 0) return;
-        var layout = SensorMonitorLayout.ResolveTrack(TracksHost.ActualWidth);
-        ColumnHeaders.Visibility = layout.Stacked ? Visibility.Collapsed : Visibility.Visible;
-        DeviceHeaderColumn.Width = new GridLength(layout.NameWidth);
-        LoadHeaderColumn.Width = new GridLength(layout.ValueWidth);
-        TemperatureHeaderColumn.Width = new GridLength(layout.TemperatureWidth);
-        if (_rows.Count == 0) return;
-        var pageSize = SensorMonitorLayout.PageSize(TracksHost.ActualHeight, TracksHost.ActualWidth, _rows.Count);
-        var pageCount = (_rows.Count + pageSize - 1) / pageSize;
-        _pageIndex = Math.Clamp(_pageIndex, 0, pageCount - 1);
-        var visible = _rows.Skip(_pageIndex * pageSize).Take(pageSize).Select(row => _tracks[row.Id]).ToArray();
-        if (!TracksHost.Children.SequenceEqual(visible))
+        if (_closed || _arrangingTracks || TracksViewport.ActualHeight <= 0) return;
+        // Derive the constraint from the window, never from a child's potentially overflowing desired size.
+        var width = Math.Max(0, RootGrid.ActualWidth - MonitorSurface.Margin.Left - MonitorSurface.Margin.Right);
+        if (width <= 0) return;
+        _arrangingTracks = true;
+        try
         {
-            // Reparent only when the page changes; every device keeps receiving samples while off-page.
-            TracksHost.Children.Clear();
-            TracksHost.RowDefinitions.Clear();
-            for (var index = 0; index < visible.Length; index++)
+            var layout = SensorMonitorLayout.ResolveTrack(width);
+            ColumnHeaders.Width = width;
+            ColumnHeaders.Visibility = layout.Stacked ? Visibility.Collapsed : Visibility.Visible;
+            DeviceHeaderColumn.Width = new GridLength(layout.NameWidth);
+            LoadHeaderColumn.Width = new GridLength(layout.ValueWidth);
+            TemperatureHeaderColumn.Width = new GridLength(layout.TemperatureWidth);
+            TracksHost.Width = width;
+            if (_rows.Count == 0) return;
+            var rowHeight = _tracks.Values.Max(track => track.MeasureForViewport(width));
+            var pageSize = SensorMonitorLayout.PageSize(TracksViewport.ActualHeight, rowHeight, _rows.Count);
+            var pageCount = (_rows.Count + pageSize - 1) / pageSize;
+            _pageIndex = Math.Clamp(_pageIndex, 0, pageCount - 1);
+            var visible = _rows.Skip(_pageIndex * pageSize).Take(pageSize).Select(row => _tracks[row.Id]).ToArray();
+            if (!TracksHost.Children.SequenceEqual(visible))
             {
-                TracksHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MaxHeight = layout.RowHeight });
-                Grid.SetRow(visible[index], index);
-                TracksHost.Children.Add(visible[index]);
+                // Reparent only when the page changes; every device keeps receiving samples while off-page.
+                TracksHost.Children.Clear();
+                TracksHost.RowDefinitions.Clear();
+                for (var index = 0; index < visible.Length; index++)
+                {
+                    TracksHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(rowHeight) });
+                    Grid.SetRow(visible[index], index);
+                    TracksHost.Children.Add(visible[index]);
+                }
+                TracksViewport.ChangeView(null, 0, null, disableAnimation: true);
             }
+            foreach (var definition in TracksHost.RowDefinitions) definition.Height = new GridLength(rowHeight);
+            PageNavigation.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+            PreviousPageButton.IsEnabled = _pageIndex > 0;
+            NextPageButton.IsEnabled = _pageIndex < pageCount - 1;
+            PageText.Text = string.Format(_strings.Culture, "{0} / {1}", _pageIndex + 1, pageCount);
         }
-        foreach (var definition in TracksHost.RowDefinitions) definition.MaxHeight = layout.RowHeight;
-        PageNavigation.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
-        PreviousPageButton.IsEnabled = _pageIndex > 0;
-        NextPageButton.IsEnabled = _pageIndex < pageCount - 1;
-        PageText.Text = string.Format(_strings.Culture, "{0} / {1}", _pageIndex + 1, pageCount);
+        finally { _arrangingTracks = false; }
     }
 
     private void PreviousPageButton_Click(object sender, RoutedEventArgs e) { _pageIndex--; RenderPage(); }
