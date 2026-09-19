@@ -2,6 +2,12 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Install the celestial development MSIX
+
+- [x] With explicit authorization for a local signed development package and version alignment, build and install x64 MSIX 0.0.11.0 over 0.0.10.0 using the existing trusted test certificate. No public release or tag was created.
+- [x] Verify the source commit, package signature, twelve zodiac PNGs, celestial artwork, Windows package status `Ok`, and SHA-256 equality for all 1,337 checked installed payload files. The packaging report suite passed 60 tests. Preserve the final installer and matching dependencies under `artifacts/installers/celestial-0.0.11/`.
+- [x] Complete PR #39 with all required x64/ARM64, lint and reports checks passing, squash merge to `main`, and delete its branch. Clean Release project outputs; installed-app visual scenarios remain open in todo.md. Deletion of the superseded intermediate package was blocked by the execution policy, so it remains under `artifacts/installers/celestial-20260919/`.
+
 ## [2026-09-19] Shared astronomical model and celestial desktop windows
 
 - [x] Implement independent local sky, astronomical agenda and Earth windows with existing Acrylic, light typography, accent colors and the shared auto-hiding title bar. Add an astronomy launcher menu and independent saved window placement/session restoration. Preserve the original day/night map surface; only the new Earth window switches flat/globe.
