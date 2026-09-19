@@ -44,7 +44,7 @@ public sealed class CelestialMapControl : UserControl
         if (version == _renderVersion)
         {
             _image.Source = bitmap;
-            AutomationProperties.SetName(this, strings.Translate("WorldClock.Map.Title"));
+            AutomationProperties.SetName(this, strings.Translate("Celestial.Map.Title"));
         }
     }
 }

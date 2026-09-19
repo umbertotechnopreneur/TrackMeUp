@@ -1,9 +1,18 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Fixed celestial sky and refresh (2026-09-19)
+
+- [ ] Visually validate the fixed, centered sky with no zoom slider, pinch zoom, panning or scrollbars. Check responsive centering when resized, the bottom inline explanation and correctly clipped planet thumbnails. Verify no blanking/selection reset across duplicate live-minute updates and correct cancellation during rapid resize, city changes and explicit time changes. No tests, branch, push or CI are authorized for these local refinements.
+- [ ] Verify the shortened flat-map menu label and Moon-only layout below 300 DIP in either content dimension, with labels restored when enlarged and accessibility retained. Verify saved normal placement/open state on individual close and ordinary application exit; maximized/minimized state is not saved.
+
+## Celestial bottom controls and separate globe correction (2026-09-19)
+
+- [ ] Visually validate the local correction: keep the original flat map full-window, make the separate Earth window globe-only, and put all three celestial windows' city controls at the bottom. Remove repeated reference date/time without removing agenda event dates. The user authorized the later build/install but requested no branch, tests or push; these source changes remain local.
+
 ## Celestial desktop windows (2026-09-19)
 
 - Automated validation: x64 WinUI build passed with zero warnings/errors; Core 770, Presentation 372 and CLI 96 tests passed. Shared phases, polar/DST cases, map illumination, IPC, independent restoration, conjunctions, meteor estimates, zodiac boundaries and the 24 interpolated sky palettes are covered. Required CI results are recorded on PR #39.
-- [ ] Complete the README visual scenarios for local sky, agenda and the new planar/spherical Earth window: Acrylic/accent, disappearing title bars, resizing at 100–200% scaling and keyboard navigation. No installed-app visual validation has been performed in this task.
+- [ ] Complete the README visual scenarios for local sky, agenda and the separate Earth globe window: Acrylic/accent, disappearing title bars, resizing at 100–200% scaling and keyboard navigation. No installed-app visual validation has been performed in this task.
 
 ## Restore installed advanced sensors at startup (2026-09-19)
 

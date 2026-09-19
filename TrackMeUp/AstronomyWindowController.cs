@@ -116,6 +116,9 @@ internal sealed class AstronomyWindowController
         _titleBar.QueueLayoutUpdate();
     }
 
+    /// <summary>Gets whether the current reference follows live time rather than an explicitly selected instant.</summary>
+    internal bool IsLive => _isLive;
+
     /// <summary>Mirrors the clock reference instant, including its live or explicitly selected time mode.</summary>
     internal void ApplySnapshot(WorldClockSnapshot snapshot, bool isLive)
     {
@@ -128,8 +131,11 @@ internal sealed class AstronomyWindowController
         _projectionVersion++;
         _snapshot = snapshot;
         _isLive = isLive;
-        _loadingIndicator.IsActive = false;
-        _loadingIndicator.Visibility = Visibility.Collapsed;
+        if (!_celestialReferenceOnly)
+        {
+            _loadingIndicator.IsActive = false;
+            _loadingIndicator.Visibility = Visibility.Collapsed;
+        }
         _renderSnapshot(snapshot);
         ScheduleRefresh();
     }
@@ -228,7 +234,8 @@ internal sealed class AstronomyWindowController
             _refreshInProgress = false;
             if (!_closed && !_lifetimeCancellation.IsCancellationRequested)
             {
-                if (!_celestialReferenceOnly || version == _projectionVersion)
+                // Once a celestial reference exists, its view owns the spinner for independent city/size projections.
+                if (!_celestialReferenceOnly || _snapshot is null)
                 {
                     _loadingIndicator.IsActive = false;
                     _loadingIndicator.Visibility = Visibility.Collapsed;

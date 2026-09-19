@@ -12,7 +12,7 @@ using Windows.Foundation;
 
 namespace TrackMeUp.Controls;
 
-/// <summary>Plots Core-computed horizontal sky coordinates on a responsive, zoomable all-sky chart.</summary>
+/// <summary>Plots Core-computed horizontal sky coordinates on a centered, responsive all-sky chart.</summary>
 public sealed partial class LocalSkyControl : UserControl
 {
     private CelestialSnapshot? _snapshot;
@@ -20,6 +20,8 @@ public sealed partial class LocalSkyControl : UserControl
     private double _centerX;
     private double _centerY;
     private double _radius;
+    private double _viewportWidth;
+    private double _viewportHeight;
     private readonly List<Rect> _labelBounds = [];
 
     /// <summary>Creates a passive sky chart without location, clock, or astronomy services.</summary>
@@ -41,24 +43,23 @@ public sealed partial class LocalSkyControl : UserControl
         Render();
     }
 
-    /// <summary>Changes presentation magnification while retaining the physical sky coordinates.</summary>
-    internal void SetZoom(double zoom) => SkyViewport.ChangeView(null, null, (float)zoom);
-
     private void SkyViewport_SizeChanged(object sender, SizeChangedEventArgs e) => Render();
 
     private void Render()
     {
         SkyCanvas.Children.Clear();
         _labelBounds.Clear();
-        var width = Math.Max(0d, SkyViewport.ActualWidth - 8d);
-        var height = Math.Max(0d, SkyViewport.ActualHeight - 8d);
+        var width = Math.Max(0d, SkyViewport.ActualWidth);
+        var height = Math.Max(0d, SkyViewport.ActualHeight);
+        _viewportWidth = width;
+        _viewportHeight = height;
+        // The canvas follows its bounded viewport instead of carrying a scroll extent or a zoom transform.
+        SkyCanvas.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, width, height) };
         if (_snapshot is null || width < 60d || height < 60d)
         {
             return;
         }
 
-        SkyCanvas.Width = width;
-        SkyCanvas.Height = height;
         _centerX = width / 2d;
         _centerY = height / 2d;
         _radius = Math.Max(1d, (Math.Min(width, height) / 2d) - 32d);
@@ -242,19 +243,19 @@ public sealed partial class LocalSkyControl : UserControl
             FontSize = size,
             FontWeight = FontWeights.Light,
             Foreground = foreground,
-            MaxWidth = Math.Max(20d, SkyCanvas.Width - 12d),
+            MaxWidth = Math.Max(20d, _viewportWidth - 12d),
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsHitTestVisible = false
         };
         label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var width = Math.Min(SkyCanvas.Width, label.DesiredSize.Width + 8d);
+        var width = Math.Min(_viewportWidth, label.DesiredSize.Width + 8d);
         var height = label.DesiredSize.Height + 2d;
-        var left = x + width > SkyCanvas.Width ? x - width - 12d : x;
-        left = Math.Clamp(left, 0d, Math.Max(0d, SkyCanvas.Width - width));
-        var top = Math.Clamp(y, 0d, Math.Max(0d, SkyCanvas.Height - height));
+        var left = x + width > _viewportWidth ? x - width - 12d : x;
+        left = Math.Clamp(left, 0d, Math.Max(0d, _viewportWidth - width));
+        var top = Math.Clamp(y, 0d, Math.Max(0d, _viewportHeight - height));
         foreach (var offset in new[] { 0d, -height, height, -2d * height, 2d * height })
         {
-            var candidateTop = Math.Clamp(top + offset, 0d, Math.Max(0d, SkyCanvas.Height - height));
+            var candidateTop = Math.Clamp(top + offset, 0d, Math.Max(0d, _viewportHeight - height));
             var candidate = new Rect(left, candidateTop, width, height);
             if (_labelBounds.All(existing => !Intersects(existing, candidate)))
             {

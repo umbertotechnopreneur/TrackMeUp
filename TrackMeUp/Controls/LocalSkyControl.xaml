@@ -22,8 +22,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <!-- Physical sky colors are independent of the enclosing acrylic theme; chart text stays light. -->
-    <Grid CornerRadius="22" RequestedTheme="Dark" Background="{ThemeResource LayerFillColorDefaultBrush}"
-          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="1">
+    <Grid RequestedTheme="Dark" Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid x:Name="SkyDecorations" Opacity="{ThemeResource SkyArtworkOpacity}" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw">
             <Grid.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -52,11 +51,8 @@
         <Border x:Name="AccentPalette" Background="{ThemeResource AccentTextFillColorPrimaryBrush}" Visibility="Collapsed" />
         <Border x:Name="DividerPalette" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Visibility="Collapsed" />
         <Border x:Name="LabelPalette" Background="{ThemeResource SkyLabelBackdropBrush}" Visibility="Collapsed" />
-        <ScrollViewer x:Name="SkyViewport" ZoomMode="Enabled" MinZoomFactor="1" MaxZoomFactor="2.5"
-                  HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled"
-                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                  SizeChanged="SkyViewport_SizeChanged">
-        <Canvas x:Name="SkyCanvas" Background="Transparent" />
-        </ScrollViewer>
+        <Grid x:Name="SkyViewport" SizeChanged="SkyViewport_SizeChanged">
+            <Canvas x:Name="SkyCanvas" Background="Transparent" />
+        </Grid>
     </Grid>
 </UserControl>

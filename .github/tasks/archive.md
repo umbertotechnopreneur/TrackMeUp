@@ -2,6 +2,23 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Remove sky zoom and keep the scene centered
+
+- [x] Remove the sky zoom slider, gesture handling, synchronization events and obsolete localized labels. Replace the scroll/zoom viewport with a bounded grid and stretch canvas, using the actual viewport center and explicit clipping. The full sky now adapts to window size without panning or magnification. Update the manual scenarios; no test suite was run.
+- [x] Shorten the original flat-map menu label to “Mappa giorno/notte” with localized equivalents, without changing its window title or opening tooltip. Collapse lunar phase/date labels and margins below 300 DIP of available width or height, restoring them at larger sizes and retaining accessible descriptions/tooltips. Confirm the shared close/shutdown paths save normal placement plus open/closed state; maximized/minimized state is not persisted.
+- [x] Build and install signed x64 development MSIX 0.0.14.0 with the existing trusted certificate. Windows reports `Ok`; all 1,337 checked installed payload files match their MSIX SHA-256 hashes. Formatting, static XAML/localization review and compilation with analyzers passed; no test suite, push or CI was run. Preserve the installer under `artifacts/installers/celestial-compact-0.0.14/`. Include the accumulated celestial UI refinements in the user's requested local checkpoint; installed visual scenarios remain pending.
+
+## [2026-09-19] Simplify the sky surface and coalesce celestial refreshes
+
+- [x] Remove the upper sky card/border, extend its scene to the window edges and place the explanatory text next to the bottom city picker, preserving the full text in its accessible name/tooltip. Add a localized visible Zoom label and synchronize the slider with touch zoom. Replace atlas brush transforms with a fixed clipped image viewport for planetary/event thumbnails.
+- [x] Coalesce duplicate live-minute renders from the independent timer and World Clocks while keeping exact explicit instants. Keep same-observer content visible during updates, preserve city-picker items, and distinguish pending/completed render keys; cancel obsolete resize requests without suppressing later work. Leave projection spinner ownership with the celestial view. A read-only check found the installed process responsive and no recent astronomy-related log errors; visual refresh confirmation remains pending. No test suite was executed.
+- [x] At the user's request, compile and install signed x64 development MSIX 0.0.13.0 with the existing trusted certificate. Windows reports `Ok`; all 1,337 checked installed payload files match the MSIX hashes. Formatting/static review and compilation with analyzers passed; no branch, commit, push, CI or test suite was run. Clean Release outputs and preserve the installer/dependencies under `artifacts/installers/celestial-sky-0.0.13/`.
+
+## [2026-09-19] Move celestial controls below the views and separate the globe
+
+- [x] Locally remove the new Earth's flat/globe switch and render only the sphere. Move city/zoom controls to the bottom of all three celestial windows and remove their redundant reference date/time, while retaining agenda event dates. Measure the actual globe viewport and preserve the existing full-window flat map and shared disappearing title bar. Clarify the globe menu/window title in all UI locales and remove obsolete switch strings.
+- [x] At the user's subsequent request, compile and install signed development MSIX 0.0.12.0 over 0.0.11.0, reusing the existing trusted certificate and unchanged, previously validated report assets. Verify Windows status `Ok` and SHA-256 equality for all 1,337 checked installed payload files. Formatting, XAML/JSON parsing and scoped diff checks passed; no test suite, branch, commit, push or CI was run for this correction. Clean Release outputs and preserve the installer/dependencies under `artifacts/installers/celestial-layout-0.0.12/`. Live visual validation remains in todo.md.
+
 ## [2026-09-19] Install the celestial development MSIX
 
 - [x] With explicit authorization for a local signed development package and version alignment, build and install x64 MSIX 0.0.11.0 over 0.0.10.0 using the existing trusted test certificate. No public release or tag was created.

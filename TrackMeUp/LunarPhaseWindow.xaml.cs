@@ -2,6 +2,7 @@
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using TrackMeUp.Application;
 using TrackMeUp.Presentation;
@@ -50,9 +51,24 @@ internal sealed partial class LunarPhaseWindow : Window
         var compactTitle = e.NewSize.Width < 320d;
         TitleBarLogo.Margin = compactTitle ? new Thickness(8, 0, 8, 0) : new Thickness(16, 0, 10, 0);
         TitleBarText.Visibility = compactTitle ? Visibility.Collapsed : Visibility.Visible;
-        // Short, wide windows need compact text too, otherwise the automatic rows consume the Moon's space.
-        var compact = compactTitle || e.NewSize.Height < 320d;
-        MoonContent.Margin = compact ? new Thickness(8, 0, 8, 12) : new Thickness(20, 0, 20, 24);
+        UpdateMoonLayout();
+    }
+
+    private void MoonContent_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateMoonLayout();
+
+    private void UpdateMoonLayout()
+    {
+        // Use the actual content slot so caption overlay changes and display scaling need no special-case geometry.
+        // Adding the current margins keeps the thresholds stable when the responsive layout changes those margins.
+        var availableWidth = MoonContent.ActualWidth + MoonContent.Margin.Left + MoonContent.Margin.Right;
+        var availableHeight = MoonContent.ActualHeight + MoonContent.Margin.Top + MoonContent.Margin.Bottom;
+        var moonOnly = availableWidth < 300d || availableHeight < 300d;
+        var compact = availableWidth < 400d || availableHeight < 400d;
+        MoonContent.Margin = moonOnly ? new Thickness(0)
+            : compact ? new Thickness(8, 0, 8, 12) : new Thickness(20, 0, 20, 24);
+        PhaseSummaryText.Visibility = moonOnly ? Visibility.Collapsed : Visibility.Visible;
+        ReferenceInstantText.Visibility = moonOnly ? Visibility.Collapsed : Visibility.Visible;
+        AutomationProperties.SetAccessibilityView(MoonPhaseControl, moonOnly ? AccessibilityView.Content : AccessibilityView.Raw);
         PhaseSummaryText.FontSize = compact ? 16d : 22d;
         PhaseSummaryText.TextWrapping = compact ? TextWrapping.NoWrap : TextWrapping.Wrap;
         ReferenceInstantText.FontSize = compact ? 10d : 12d;
@@ -70,6 +86,10 @@ internal sealed partial class LunarPhaseWindow : Window
         var label = $"{_strings.Translate("WorldClock.ReferenceInstant")}: {ReferenceInstantText.Text}";
         AutomationProperties.SetName(ReferenceInstantText, label);
         ToolTipService.SetToolTip(ReferenceInstantText, label);
+        var moonDescription = $"{Title}. {PhaseSummaryText.Text}. {label}";
+        AutomationProperties.SetName(MoonPhaseControl, moonDescription);
+        ToolTipService.SetToolTip(MoonContent, moonDescription);
         MoonContent.Visibility = Visibility.Visible;
+        UpdateMoonLayout();
     }
 }

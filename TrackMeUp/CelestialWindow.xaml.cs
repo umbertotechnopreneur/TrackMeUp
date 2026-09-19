@@ -4,7 +4,6 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
@@ -28,8 +27,10 @@ internal sealed partial class CelestialWindow : Window
     private WorldClockSnapshot? _reference;
     private bool _changingCities;
     private bool _closed;
+    private RenderRequestKey? _pendingRender;
+    private RenderRequestKey? _displayedRender;
 
-    /// <summary>Creates a sky, agenda, or new flat/spherical Earth window over the application facade.</summary>
+    /// <summary>Creates a sky, agenda, or Earth globe window over the application facade.</summary>
     internal CelestialWindow(ITrackMeUpApplication application, MicaDialogService dialogs, AppSettings settings, string windowKey)
     {
         _application = application ?? throw new ArgumentNullException(nameof(application));
@@ -41,6 +42,14 @@ internal sealed partial class CelestialWindow : Window
         }
 
         InitializeComponent();
+        if (windowKey is WindowStateKeys.CelestialMap or WindowStateKeys.LocalSky)
+        {
+            // Sky and globe reach the window edges; only their lower information and controls use insets.
+            ContentGrid.Margin = new Thickness(0);
+            Toolbar.Margin = new Thickness(16, 0, 16, 12);
+            Footer.Margin = new Thickness(16, 0, 16, 0);
+        }
+
         _resizeTimer = DispatcherQueue.CreateTimer();
         _resizeTimer.IsRepeating = false;
         _resizeTimer.Interval = TimeSpan.FromMilliseconds(250);
@@ -60,6 +69,8 @@ internal sealed partial class CelestialWindow : Window
     {
         ArgumentNullException.ThrowIfNull(settings);
         _strings = new LocalizationService(settings.UiLanguage);
+        _pendingRender = null;
+        _displayedRender = null;
         Title = T(_windowKey switch
         {
             WindowStateKeys.LocalSky => "Celestial.Sky.Title",
@@ -69,12 +80,6 @@ internal sealed partial class CelestialWindow : Window
         TitleBarText.Text = Title.ToUpper(_strings.Culture);
         CitySelector.PlaceholderText = T("Celestial.SelectCity");
         UiLocalization.SetAccessibleLabel(CitySelector, T(_windowKey == WindowStateKeys.CelestialMap ? "Celestial.Map.CenterCity" : "Celestial.Observer"));
-        GlobeSwitch.OffContent = T("Celestial.Map.Flat");
-        GlobeSwitch.OnContent = T("Celestial.Map.Globe");
-        UiLocalization.SetAccessibleLabel(GlobeSwitch, T("Celestial.Map.Projection"));
-        UiLocalization.SetAccessibleLabel(SkyZoom, T("Celestial.Sky.Zoom"));
-        GlobeSwitch.Visibility = _windowKey == WindowStateKeys.CelestialMap ? Visibility.Visible : Visibility.Collapsed;
-        SkyZoom.Visibility = _windowKey == WindowStateKeys.LocalSky ? Visibility.Visible : Visibility.Collapsed;
         BodiesScroll.Visibility = _windowKey == WindowStateKeys.LocalSky ? Visibility.Visible : Visibility.Collapsed;
         BodiesFrame.Visibility = BodiesScroll.Visibility;
         AboveHorizonText.Text = T("Celestial.Sky.AboveHorizon");
@@ -98,9 +103,15 @@ internal sealed partial class CelestialWindow : Window
         _changingCities = true;
         try
         {
-            CitySelector.ItemsSource = snapshot.Clocks;
-            CitySelector.SelectedValue = snapshot.Clocks.Any(city => city.CityId == selectedId)
-                ? selectedId : snapshot.Clocks.FirstOrDefault()?.CityId;
+            // Minute updates must not rebuild an open city picker or reset its selection.
+            if (CitySelector.ItemsSource is not IEnumerable<WorldClockItem> currentCities
+                || !currentCities.Select(city => (city.CityId, city.CityName))
+                    .SequenceEqual(snapshot.Clocks.Select(city => (city.CityId, city.CityName))))
+            {
+                CitySelector.ItemsSource = snapshot.Clocks;
+                CitySelector.SelectedValue = snapshot.Clocks.Any(city => city.CityId == selectedId)
+                    ? selectedId : snapshot.Clocks.FirstOrDefault()?.CityId;
+            }
         }
         finally
         {
@@ -118,10 +129,6 @@ internal sealed partial class CelestialWindow : Window
         }
     }
 
-    private void GlobeSwitch_Toggled(object sender, RoutedEventArgs e) => RefreshProjection();
-
-    private void SkyZoom_ValueChanged(object sender, RangeBaseValueChangedEventArgs e) => SkyControl?.SetZoom(e.NewValue);
-
     private async void RefreshProjection()
     {
         if (_closed || _reference is null)
@@ -129,50 +136,61 @@ internal sealed partial class CelestialWindow : Window
             return;
         }
 
-        _projectionCancellation?.Cancel();
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
-        _projectionCancellation = cancellation;
         var snapshot = _reference;
         var selectedCity = CitySelector.SelectedItem as WorldClockItem;
         var isMap = _windowKey == WindowStateKeys.CelestialMap;
+        var pixelWidth = isMap ? Math.Clamp((int)Math.Round(Math.Max(256d, SurfaceGrid.ActualWidth)), 256, 1440) : 0;
+        var pixelHeight = isMap ? Math.Clamp((int)Math.Round(Math.Max(160d, SurfaceGrid.ActualHeight)), 160, 960) : 0;
+        // Both the independent timer and World Clocks can publish the same live minute. This is rendering
+        // coalescing only: explicit reference instants retain their exact ticks and Core receives the original time.
+        var isLive = _controller.IsLive;
+        var timeSlot = isLive ? snapshot.InstantUtc.UtcTicks / TimeSpan.TicksPerMinute : snapshot.InstantUtc.UtcTicks;
+        var requestKey = new RenderRequestKey(selectedCity?.CityId, timeSlot, isLive, pixelWidth, pixelHeight);
+        if (requestKey == _pendingRender)
+        {
+            return;
+        }
+
+        if (requestKey == _displayedRender)
+        {
+            // A resize can return to the displayed geometry while another size is still rendering.
+            _projectionCancellation?.Cancel();
+            _pendingRender = null;
+            return;
+        }
+
+        _projectionCancellation?.Cancel();
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        _projectionCancellation = cancellation;
+        _pendingRender = requestKey;
+        var retainContent = _displayedRender is { } displayed && displayed.CityId == requestKey.CityId
+            && displayed.IsLive == isLive && (isLive || displayed.TimeSlot == timeSlot);
         EmptyState.Visibility = Visibility.Collapsed;
-        SkyControl.Visibility = Visibility.Collapsed;
-        AgendaScroll.Visibility = Visibility.Collapsed;
-        EarthControl.Visibility = Visibility.Collapsed;
-        BodyItems.Children.Clear();
-        StatusText.Text = string.Empty;
-        ZodiacExpander.Visibility = Visibility.Collapsed;
+        if (!retainContent)
+        {
+            ClearRenderedContent();
+        }
+
         if (!isMap && selectedCity is null)
         {
-            SkyControl.Visibility = Visibility.Collapsed;
-            AgendaScroll.Visibility = Visibility.Collapsed;
-            BodyItems.Children.Clear();
-            StatusText.Text = string.Empty;
             EmptyState.Text = T("Celestial.NoCity");
             EmptyState.Visibility = Visibility.Visible;
             LoadingIndicator.IsActive = false;
             LoadingIndicator.Visibility = Visibility.Collapsed;
             _projectionCancellation = null;
+            _pendingRender = null;
             return;
         }
 
-        ReferenceInstantText.Text = selectedCity is null
-            ? $"{snapshot.InstantUtc.ToString("g", _strings.Culture)} UTC"
-            : selectedCity.LocalTime.ToString("f", _strings.Culture);
-        UiLocalization.SetAccessibleLabel(ReferenceInstantText, $"{T("WorldClock.ReferenceInstant")}: {ReferenceInstantText.Text}");
-        LoadingIndicator.IsActive = true;
-        LoadingIndicator.Visibility = Visibility.Visible;
+        LoadingIndicator.IsActive = !retainContent;
+        LoadingIndicator.Visibility = retainContent ? Visibility.Collapsed : Visibility.Visible;
         try
         {
             if (isMap)
             {
                 var center = snapshot.Map.Cities.FirstOrDefault(city => city.CityId == selectedCity?.CityId);
-                var pixelWidth = Math.Clamp((int)Math.Round(Math.Max(256d, ContentGrid.ActualWidth)), 256, 1440);
-                var pixelHeight = GlobeSwitch.IsOn
-                    ? Math.Clamp((int)Math.Round(Math.Max(160d, ContentGrid.ActualHeight - 100d)), 160, 960)
-                    : pixelWidth / 2;
                 var request = new CelestialMapRequest(snapshot.InstantUtc,
-                    GlobeSwitch.IsOn ? CelestialMapProjection.Globe : CelestialMapProjection.Flat,
+                    CelestialMapProjection.Globe,
                     pixelWidth, pixelHeight,
                     center?.Latitude ?? 20d, center?.Longitude ?? 15d);
                 // The application owns textures, solar calculations, and image generation; this window only presents its DTO.
@@ -215,6 +233,8 @@ internal sealed partial class CelestialWindow : Window
                     SetStatus("Celestial.Agenda.Note");
                 }
             }
+
+            _displayedRender = requestKey;
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -232,6 +252,7 @@ internal sealed partial class CelestialWindow : Window
             if (ReferenceEquals(_projectionCancellation, cancellation))
             {
                 _projectionCancellation = null;
+                _pendingRender = null;
                 LoadingIndicator.IsActive = false;
                 LoadingIndicator.Visibility = Visibility.Collapsed;
             }
@@ -528,12 +549,19 @@ internal sealed partial class CelestialWindow : Window
         var compact = e.NewSize.Width < 400d || e.NewSize.Height < 320d;
         if (ContentGrid is not null)
         {
-            ContentGrid.Margin = compact ? new Thickness(8, 4, 8, 8) : new Thickness(20, 8, 20, 16);
+            var edgeToEdge = _windowKey is WindowStateKeys.CelestialMap or WindowStateKeys.LocalSky;
+            ContentGrid.Margin = edgeToEdge ? new Thickness(0)
+                : compact ? new Thickness(8, 4, 8, 8) : new Thickness(20, 8, 20, 16);
+            if (edgeToEdge)
+            {
+                var inset = compact ? 8d : 16d;
+                Toolbar.Margin = new Thickness(inset, 0, inset, compact ? 8d : 12d);
+                Footer.Margin = new Thickness(inset, 0, inset, 0);
+            }
+
             ContentGrid.RowSpacing = compact ? 6d : 12d;
             TitleBarLogo.Margin = compact ? new Thickness(8, 0, 8, 0) : new Thickness(16, 0, 10, 0);
             TitleBarText.Visibility = e.NewSize.Width < 280d ? Visibility.Collapsed : Visibility.Visible;
-            ReferenceInstantText.Visibility = e.NewSize.Height < 260d ? Visibility.Collapsed : Visibility.Visible;
-            SkyZoom.Width = e.NewSize.Width < 360d ? 60d : 96d;
             ZodiacSummaryText.MaxWidth = Math.Max(60d, e.NewSize.Width - 160d);
             ZodiacContentScroll.MaxHeight = Math.Clamp(e.NewSize.Height * 0.3d, 80d, 220d);
             Footer.Visibility = e.NewSize.Height < 300d ? Visibility.Collapsed : Visibility.Visible;
@@ -560,15 +588,22 @@ internal sealed partial class CelestialWindow : Window
         }
 
         // Hide obsolete content on failure so a new observer or reference label cannot describe an older projection.
+        ClearRenderedContent();
+        EmptyState.Text = T("Celestial.Unavailable");
+        EmptyState.Visibility = Visibility.Visible;
+        var message = exception is null ? T(key) : $"{T(key)} ({exception.GetType().Name})";
+        _dialogs.Notifications.ShowError(NotificationBanner, Title, message);
+    }
+
+    private void ClearRenderedContent()
+    {
+        _displayedRender = null;
         SkyControl.Visibility = Visibility.Collapsed;
         AgendaScroll.Visibility = Visibility.Collapsed;
         EarthControl.Visibility = Visibility.Collapsed;
         BodyItems.Children.Clear();
         StatusText.Text = string.Empty;
-        EmptyState.Text = T("Celestial.Unavailable");
-        EmptyState.Visibility = Visibility.Visible;
-        var message = exception is null ? T(key) : $"{T(key)} ({exception.GetType().Name})";
-        _dialogs.Notifications.ShowError(NotificationBanner, Title, message);
+        ZodiacExpander.Visibility = Visibility.Collapsed;
     }
 
     private void CelestialWindow_Closed(object sender, WindowEventArgs args)
@@ -592,4 +627,6 @@ internal sealed partial class CelestialWindow : Window
     };
 
     private string T(string key) => _strings.Translate(key);
+
+    private sealed record RenderRequestKey(string? CityId, long TimeSlot, bool IsLive, int PixelWidth, int PixelHeight);
 }

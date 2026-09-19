@@ -34,28 +34,23 @@
         </Grid>
         <Grid x:Name="ContentGrid" Grid.Row="1" Margin="20,8,20,16" RowSpacing="12">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Grid x:Name="Toolbar" ColumnSpacing="12">
+            <Grid x:Name="Toolbar" Grid.Row="2" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="3*" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Spacing="4">
-                    <ComboBox x:Name="CitySelector" DisplayMemberPath="CityName" SelectedValuePath="CityId"
-                              HorizontalAlignment="Stretch" MaxWidth="400" HorizontalContentAlignment="Left"
-                              FontWeight="Light" SelectionChanged="CitySelector_SelectionChanged" />
-                    <TextBlock x:Name="ReferenceInstantText" FontSize="12" FontWeight="Light"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
-                </StackPanel>
-                <ToggleSwitch x:Name="GlobeSwitch" Grid.Column="1" Visibility="Collapsed"
-                              VerticalAlignment="Center" Toggled="GlobeSwitch_Toggled" />
-                <Slider x:Name="SkyZoom" Grid.Column="1" Width="96" Minimum="1" Maximum="2.5" Value="1"
-                        VerticalAlignment="Center" ValueChanged="SkyZoom_ValueChanged" />
+                <ComboBox x:Name="CitySelector" DisplayMemberPath="CityName" SelectedValuePath="CityId"
+                          MinWidth="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" VerticalAlignment="Center"
+                          FontWeight="Light" SelectionChanged="CitySelector_SelectionChanged" />
+                <TextBlock x:Name="StatusText" Grid.Column="1" FontSize="12" FontWeight="Light"
+                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </Grid>
-            <Grid Grid.Row="1">
+            <Grid x:Name="SurfaceGrid" Grid.Row="0">
                 <controls:LocalSkyControl x:Name="SkyControl" Visibility="Collapsed" />
                 <controls:CelestialMapControl x:Name="EarthControl" Visibility="Collapsed" />
                 <ScrollViewer x:Name="AgendaScroll" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled"
@@ -65,7 +60,7 @@
                 <TextBlock x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
                            FontSize="18" FontWeight="Light" TextWrapping="Wrap" TextAlignment="Center" />
             </Grid>
-            <StackPanel x:Name="Footer" Grid.Row="2" Spacing="6">
+            <StackPanel x:Name="Footer" Grid.Row="1" Spacing="6">
                 <Border x:Name="BodiesFrame" CornerRadius="18" BorderThickness="1" Padding="14,10"
                         BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                         Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
@@ -102,8 +97,6 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Expander>
-                <TextBlock x:Name="StatusText" FontSize="12" FontWeight="Light" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Grid>
         <ProgressRing x:Name="LoadingIndicator" Grid.Row="1" Width="32" Height="32"
