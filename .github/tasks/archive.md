@@ -2,6 +2,11 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Replace the celestial rendering with actual screenshots
+
+- [x] Replace the inaccurate generated panorama with four distinct screenshots supplied by the owner: astronomical agenda, local sky, Earth globe and the separate flat day/night map. Copy the original PNGs byte-for-byte, verify their SHA-256 hashes and omit the duplicate globe attachment. Arrange them in a three-column README strip with alternative text and links to the full-size originals; retain the description and optional snap guidance below.
+- [x] Replace the obsolete generated image/provenance with an original-screenshot provenance record. The previous rendering remains recoverable at checkpoint `1302c51`. Review the scoped documentation diff, image references and markup only; no app build, tests, installer update or push.
+
 ## [2026-09-19] Add the celestial desktop README showcase
 
 - [x] Create and visually inspect a 3:1 ImageGen product strip blending world clocks, Moon, local sky, agenda, globe and the separate flat map. Refine the blue-hour and Moon–planet illustrations, then copy the final PNG without local pixel edits. Record both prompts, dimensions, hash and brand-artwork provenance beside the asset.

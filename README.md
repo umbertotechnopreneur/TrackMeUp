@@ -103,11 +103,31 @@ These previews use made-up demo data and show the app in English, Italian, and V
 
 ### A little sky on your desktop
 
-<p align="center">
-  <img src="docs/images/readme/trackmeup-celestial-desktop-strip-v1.png" alt="Illustrated acrylic desktop collage of world clocks, Moon phase, local sky, astronomical agenda, Earth globe and a separate flat day/night map" width="100%" />
-  <br />
-  <sub>AI-generated product rendering, not an in-app screenshot. Sky positions and event illustrations are illustrative.</sub>
-</p>
+<table>
+  <tr>
+    <td width="24%" valign="top">
+      <a href="docs/images/readme/trackmeup-astronomical-agenda-it.png"><img src="docs/images/readme/trackmeup-astronomical-agenda-it.png" alt="Actual Italian astronomical agenda showing twilight, blue-hour, sunrise and sunset times, the tropical zodiac and the Ho Chi Minh City selector" width="100%" /></a>
+      <br />
+      <sub><strong>Astronomical agenda</strong></sub>
+    </td>
+    <td width="44%" valign="top">
+      <a href="docs/images/readme/trackmeup-local-sky-it.png"><img src="docs/images/readme/trackmeup-local-sky-it.png" alt="Actual Italian local-sky window with its circular chart, Moon, Saturn and Neptune, above-horizon list and bottom city controls" width="100%" /></a>
+      <br />
+      <sub><strong>Local sky</strong></sub>
+    </td>
+    <td width="32%" valign="top">
+      <a href="docs/images/readme/trackmeup-earth-globe-it.png"><img src="docs/images/readme/trackmeup-earth-globe-it.png" alt="Actual Earth globe window centered on Asia at night, with the city selector and explanatory note below" width="100%" /></a>
+      <br />
+      <sub><strong>Earth globe</strong></sub>
+      <br /><br />
+      <a href="docs/images/readme/trackmeup-day-night-map-it.png"><img src="docs/images/readme/trackmeup-day-night-map-it.png" alt="Actual separate flat day/night map with city markers, Sun and Moon, reference time and the night-dawn-day-sunset legend" width="100%" /></a>
+      <br />
+      <sub><strong>Flat day/night map</strong></sub>
+    </td>
+  </tr>
+</table>
+
+<p><sub>Actual screenshots supplied by the project owner, shown in Italian and arranged here for the README. The original images are unchanged; select one to view it at full size.</sub></p>
 
 Bring world clocks, Moon phases, the local sky, an astronomical agenda, and Earth's day/night views together on your desktop. Acrylic backgrounds, light typography, and disappearing title bars help the independent windows blend into your workspace. The sky follows your selected city and reference time; the agenda combines solar and lunar events, planetary conjunctions, and clearly marked meteor-shower estimates. The globe and flat map remain separate windows.
 
