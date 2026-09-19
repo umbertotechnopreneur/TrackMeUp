@@ -15,6 +15,14 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <LhmSourceRoot>$(MSBuildProjectDirectory)\LibreHardwareMonitor\obj\upstream\LibreHardwareMonitor-3d331e3370efb858411f19511373eff65a218701</LhmSourceRoot>
   </PropertyGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <Content Include="obj\pawnio\PawnIO_setup.exe" Link="PawnIO\PawnIO_setup.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="PawnIO\distribution.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="PawnIO\NOTICE.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="RestorePawnIoInstaller" BeforeTargets="PrepareForBuild" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\Restore-PawnIoInstaller.ps1&quot; -Destination &quot;$(MSBuildProjectDirectory)\obj\pawnio&quot;" />
+  </Target>
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="LibreHardwareTelemetryCollector.cs" />

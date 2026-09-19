@@ -141,7 +141,10 @@ TrackMeUp $Version - $Platform - PORTABLE UNSIGNED BUILD
 Extract the entire ZIP into a folder and run TrackMeUp.exe from that folder.
 Keep all DLLs, resources, and subfolders beside the executable; do not copy only the EXE.
 Use the archive matching your Windows architecture ($Platform).
-No MSIX installation, administrator access, certificate import, or CLI alias is provided.
+Basic startup needs no MSIX installation, administrator access, or certificate import.
+No CLI alias is registered. On x64, the included PawnIO driver can be installed offline
+from Sensors options with Windows administrator consent for advanced sensor access.
+The shared driver remains installed after this portable folder is removed.
 This unsigned prerelease preparation artifact may trigger Windows security prompts.
 Follow your organization's policy for unsigned software; do not disable security checks.
 

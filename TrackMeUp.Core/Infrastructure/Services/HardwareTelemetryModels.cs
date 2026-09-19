@@ -41,7 +41,7 @@ public interface IHardwareTelemetryService : IAsyncDisposable
     /// <summary>Enables background polling only while tracking is active.</summary>
     ValueTask SetTrackingAsync(bool isTracking, CancellationToken cancellationToken);
 
-    /// <summary>Requests the advanced collector; Windows consent is only requested through this explicit action.</summary>
+    /// <summary>Installs the bundled driver when needed and requests the advanced collector, with explicit Windows consent.</summary>
     Task EnableAdvancedAsync(CancellationToken cancellationToken);
 }
 

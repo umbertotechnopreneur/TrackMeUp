@@ -188,8 +188,8 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
-    // Allow explicit Windows consent plus bounded helper startup and its first sensor read.
-    internal static readonly TimeSpan HardwareAdvancedTimeout = TimeSpan.FromSeconds(90);
+    // Allow up to five minutes for driver setup, followed by consent, helper startup, and its first read.
+    internal static readonly TimeSpan HardwareAdvancedTimeout = TimeSpan.FromMinutes(7);
     internal static readonly TimeSpan HardwareSnapshotTimeout = TimeSpan.FromSeconds(30);
     internal static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(60);
     internal static readonly TimeSpan ScreenshotImageTimeout = TimeSpan.FromSeconds(15);

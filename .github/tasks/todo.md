@@ -1,5 +1,10 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Bundled advanced-sensor prerequisite (2026-09-19)
+
+- [ ] Follow the required PR checks for the bundled PawnIO change. Local MSIX deployment, focused tests (33), packaging checks (63), and the packaging route's reports tests (60) passed.
+- [ ] Verify the README installation scenario on the installed app: real UAC consent, offline PawnIO installation, first advanced reading, required restart, and localized wrapping at narrow widths/200% text scaling. Automated setup tests use simulated process outcomes and do not replace these checks.
+
 ## Notification-area recovery validation (2026-09-19)
 
 - [ ] After explicit user approval, rerun the Presentation suite with the updated shared-accessibility assertions. Core passed 707 tests; the last local Presentation run had 362 passing tests and one assertion tied to the removed helper, now updated. The user subsequently authorized building/installing the x64 MSIX and pushing the branch: MSIX 0.0.5.0 was built and installed with matching application/Core/Presentation assembly hashes. Complete the manual tray/UI scenarios before claiming end-to-end validation.

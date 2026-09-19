@@ -421,13 +421,19 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         try
         {
-            // Elevation is only initiated by this explicit user operation; driver installation is external.
+            // Driver installation and collector elevation are initiated only by this explicit user operation.
             await _snapshot.EnableAdvancedAsync(cancellationToken).ConfigureAwait(false);
             return await CaptureSystemSnapshotAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (PawnIoSetupException exception)
+        {
+            // Setup cancellation, failure, and a required restart each provide a specific next step.
+            _logger.LogWarning("Advanced hardware setup incomplete. MessageKey={MessageKey}", exception.MessageKey);
+            return OperationResult<SystemSnapshot>.Failure("hardware.advanced.setup.failed", exception.MessageKey);
         }
         catch (Exception exception)
         {

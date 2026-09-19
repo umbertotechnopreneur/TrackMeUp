@@ -8,7 +8,6 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Win32;
 
 namespace TrackMeUp.Services;
 
@@ -20,6 +19,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
     private readonly SemaphoreSlim _trackingGate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private readonly string _helperPath;
+    private readonly PawnIoInstaller _installer;
     private readonly ILogger<HardwareTelemetryService> _logger;
     private readonly TimeProvider _time;
     private readonly Func<CancellationToken, ValueTask<SystemSnapshot>>? _testReader;
@@ -44,6 +44,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(helperPath);
         _helperPath = Path.GetFullPath(helperPath);
+        _installer = new PawnIoInstaller(Path.Combine(Path.GetDirectoryName(_helperPath)!, "PawnIO", "PawnIO_setup.exe"));
         _time = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _logger = logger ?? NullLogger<HardwareTelemetryService>.Instance;
         _testReader = reader;
@@ -162,7 +163,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         finally { _trackingGate.Release(); }
     }
 
-    /// <summary>Explicitly requests Windows elevation for this collector session after checking the prerequisite.</summary>
+    /// <summary>Installs the bundled driver if needed and explicitly requests elevation for this collector session.</summary>
     public async Task EnableAdvancedAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -173,8 +174,11 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
             if (!_configuration.Enabled || !_configuration.UseAdvancedSensors)
                 throw new InvalidOperationException("Advanced telemetry requires enabled sensors and explicit advanced-sensor configuration.");
             if (RuntimeInformation.ProcessArchitecture != Architecture.X64) throw new PlatformNotSupportedException("Advanced hardware telemetry requires x64.");
-            if (GetDriverStatus() == "not-installed") throw new InvalidOperationException("PawnIO is not installed.");
             if (_advanced && _pipe is { IsConnected: true }) return;
+            // The installer is bundled for offline use and is launched only by this explicit action.
+            using var setupDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+            setupDeadline.CancelAfter(TimeSpan.FromMinutes(5));
+            await _installer.EnsureInstalledAsync(setupDeadline.Token).ConfigureAwait(false);
             await StopCollectorAsync().ConfigureAwait(false);
             _advanced = true;
             _snapshot = null;
@@ -337,10 +341,5 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         }
     }
 
-    private static string GetDriverStatus()
-    {
-        using var registry = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-        using var key = registry.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO");
-        return key?.GetValue("DisplayVersion") is string version && Version.TryParse(version, out _) ? "available" : "not-installed";
-    }
+    private static string GetDriverStatus() => PawnIoInstaller.ReadInstalledVersion() is null ? "not-installed" : "available";
 }

@@ -128,7 +128,7 @@ public sealed partial class SensorOptionsControl : UserControl
             if (_lifetime.IsCancellationRequested) return;
             HardwareActivationStatusText.Text = result is { Succeeded: true, Value: { } snapshot }
                 ? HardwareSnapshotProjection.Create(snapshot, _strings.Culture, _strings.Translate).DriverStatus
-                : _strings.Translate("HardwareAdvancedFailed");
+                : _strings.Translate(result.MessageKey);
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { /* The window closed during explicit activation. */ }
         catch (Exception)
