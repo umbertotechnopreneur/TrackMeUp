@@ -20,6 +20,12 @@ internal enum RuntimeOperation
     DashboardGet,
     [RuntimeOperationWireName("world_clocks.get.v3")]
     WorldClocksGetV3,
+    [RuntimeOperationWireName("celestial.reference.v1")]
+    CelestialReferenceV1,
+    [RuntimeOperationWireName("celestial.get.v1")]
+    CelestialGetV1,
+    [RuntimeOperationWireName("celestial.map.v1")]
+    CelestialMapV1,
     [RuntimeOperationWireName("world_clocks.convert.v2")]
     WorldClocksConvertV2,
     [RuntimeOperationWireName("world_clocks.catalog.v1")]

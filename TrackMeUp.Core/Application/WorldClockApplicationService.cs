@@ -72,6 +72,16 @@ internal sealed class WorldClockApplicationService : IDisposable
         }
     }
 
+    internal async Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var selection = _settingsSnapshot.Value.WorldClockCityIds;
+        // Catalog I/O and first-use day crossings must not block an in-process WinUI caller.
+        var snapshot = await Task.Run(() => _worldClocks.BuildCurrentCelestialSnapshot(selection), cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return OperationResult<WorldClockSnapshot>.Success("celestial.reference.loaded", "WorldClocksLoaded", snapshot);
+    }
+
     internal string NormalizeAndValidateCityId(string cityId)
     {
         var normalizedId = cityId?.Trim().ToLowerInvariant() ?? string.Empty;

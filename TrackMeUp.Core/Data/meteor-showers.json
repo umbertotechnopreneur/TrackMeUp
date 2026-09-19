@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "referenceYear": 2026,
+  "sourceUrl": "https://www.imo.net/files/meteor-shower/cal2026.pdf",
+  "solarLongitudeFrame": "J2000",
+  "showers": [
+    { "id": "Quadrantids", "iauCode": "QUA", "startMonth": 12, "startDay": 28, "endMonth": 1, "endDay": 12, "peakSolarLongitudeDegrees": 283.15 },
+    { "id": "Lyrids", "iauCode": "LYR", "startMonth": 4, "startDay": 14, "endMonth": 4, "endDay": 30, "peakSolarLongitudeDegrees": 32.32 },
+    { "id": "EtaAquariids", "iauCode": "ETA", "startMonth": 4, "startDay": 19, "endMonth": 5, "endDay": 28, "peakSolarLongitudeDegrees": 45.5 },
+    { "id": "Perseids", "iauCode": "PER", "startMonth": 7, "startDay": 17, "endMonth": 8, "endDay": 24, "peakSolarLongitudeDegrees": 140.0 },
+    { "id": "Orionids", "iauCode": "ORI", "startMonth": 10, "startDay": 2, "endMonth": 11, "endDay": 7, "peakSolarLongitudeDegrees": 208.0 },
+    { "id": "Leonids", "iauCode": "LEO", "startMonth": 11, "startDay": 6, "endMonth": 11, "endDay": 30, "peakSolarLongitudeDegrees": 235.27 },
+    { "id": "Geminids", "iauCode": "GEM", "startMonth": 12, "startDay": 4, "endMonth": 12, "endDay": 20, "peakSolarLongitudeDegrees": 262.2 },
+    { "id": "Ursids", "iauCode": "URS", "startMonth": 12, "startDay": 17, "endMonth": 12, "endDay": 26, "peakSolarLongitudeDegrees": 270.7 }
+  ]
+}

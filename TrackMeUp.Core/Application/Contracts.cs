@@ -694,6 +694,15 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Gets the current world clocks with all sun and moon data calculated locally.</summary>
     Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken);
 
+    /// <summary>Gets the current selected cities and reference instant without querying weather providers.</summary>
+    Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken);
+
+    /// <summary>Calculates the observer's sky and upcoming astronomical events locally.</summary>
+    Task<OperationResult<CelestialSnapshot>> GetCelestialAsync(CelestialRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Renders the requested day/night Earth projection using packaged geographic textures.</summary>
+    Task<OperationResult<CelestialMapImage>> GetCelestialMapAsync(CelestialMapRequest request, CancellationToken cancellationToken);
+
     /// <summary>Converts one selected city's local civil time into the shared world-clock projection.</summary>
     Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken);
 

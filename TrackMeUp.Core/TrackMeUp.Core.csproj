@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Localization\*.json" LogicalName="TrackMeUp.Localization.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Data\meteor-showers.json" LogicalName="TrackMeUp.Data.meteor-showers.json" />
     <EmbeddedResource Include="..\TrackMeUp.Hardware\PawnIO\distribution.json" LogicalName="TrackMeUp.PawnIO.distribution.json" />
   </ItemGroup>
 
@@ -33,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CosineKitty.AstronomyEngine" Version="2.1.19" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />

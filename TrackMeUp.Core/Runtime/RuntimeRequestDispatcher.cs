@@ -45,6 +45,11 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.TrackingToggle => ToResponse(request, await _application.ToggleTrackingAsync(cancellationToken)),
                 RuntimeOperation.DashboardGet => ToResponse(request, await _application.GetDashboardAsync(cancellationToken)),
                 RuntimeOperation.WorldClocksGetV3 => ToResponse(request, await _application.GetWorldClocksAsync(cancellationToken)),
+                RuntimeOperation.CelestialReferenceV1 => ToResponse(request, await _application.GetCelestialReferenceAsync(cancellationToken)),
+                RuntimeOperation.CelestialGetV1 => ToResponse(request, await _application.GetCelestialAsync(
+                    Read<CelestialRequest>(request.Payload) ?? throw new InvalidDataException("A celestial request is required."), cancellationToken)),
+                RuntimeOperation.CelestialMapV1 => ToResponse(request, await _application.GetCelestialMapAsync(
+                    Read<CelestialMapRequest>(request.Payload) ?? throw new InvalidDataException("An Earth projection request is required."), cancellationToken)),
                 RuntimeOperation.WorldClocksConvertV2 => ToResponse(request, await _application.ConvertWorldClocksAsync(
                     Read<WorldClockConversionRequest>(request.Payload)
                         ?? throw new InvalidDataException("A world-clock conversion request is required."),

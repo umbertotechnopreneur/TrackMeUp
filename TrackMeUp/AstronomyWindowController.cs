@@ -25,6 +25,7 @@ internal sealed class AstronomyWindowController
     private readonly MicaDialogService _dialogs;
     private readonly AppWindow _appWindow;
     private readonly string _windowKey;
+    private readonly bool _celestialReferenceOnly;
     private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -52,7 +53,9 @@ internal sealed class AstronomyWindowController
         string windowKey,
         int defaultWidth,
         int defaultHeight,
-        Action<WorldClockSnapshot> renderSnapshot)
+        Action<WorldClockSnapshot> renderSnapshot,
+        bool celestialReferenceOnly = false,
+        Func<IEnumerable<FrameworkElement>>? interactiveElements = null)
     {
         _window = window ?? throw new ArgumentNullException(nameof(window));
         _root = root ?? throw new ArgumentNullException(nameof(root));
@@ -62,6 +65,7 @@ internal sealed class AstronomyWindowController
         _application = application ?? throw new ArgumentNullException(nameof(application));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _windowKey = windowKey;
+        _celestialReferenceOnly = celestialReferenceOnly;
         _appWindow = AppWindow.GetFromWindowId(
             Win32Interop.GetWindowIdFromWindow(WinRT.Interop.WindowNative.GetWindowHandle(window)));
         _titleBar = new CustomTitleBarController(
@@ -71,7 +75,7 @@ internal sealed class AstronomyWindowController
             titleBarRegion,
             leftInset,
             rightInset,
-            () => [],
+            interactiveElements ?? (() => []),
             overlayContent: true);
         _placement = new WindowPlacementService(
             application, window, _appWindow, windowKey, defaultWidth, defaultHeight, 24);
@@ -92,6 +96,7 @@ internal sealed class AstronomyWindowController
         {
             WindowStateKeys.WorldMap => settings.WorldMapWindowShowInTaskbar,
             WindowStateKeys.LunarPhase => settings.LunarPhaseWindowShowInTaskbar,
+            WindowStateKeys.LocalSky or WindowStateKeys.AstronomyAgenda or WindowStateKeys.CelestialMap => settings.WorldClockWindowShowInTaskbar,
             _ => throw new InvalidOperationException("Unsupported astronomical window.")
         };
         _strings = new LocalizationService(settings.UiLanguage);
@@ -123,9 +128,9 @@ internal sealed class AstronomyWindowController
         _projectionVersion++;
         _snapshot = snapshot;
         _isLive = isLive;
-        _renderSnapshot(snapshot);
         _loadingIndicator.IsActive = false;
         _loadingIndicator.Visibility = Visibility.Collapsed;
+        _renderSnapshot(snapshot);
         ScheduleRefresh();
     }
 
@@ -193,7 +198,9 @@ internal sealed class AstronomyWindowController
         var version = _projectionVersion;
         try
         {
-            var result = await _application.GetWorldClocksAsync(_lifetimeCancellation.Token);
+            var result = _celestialReferenceOnly
+                ? await _application.GetCelestialReferenceAsync(_lifetimeCancellation.Token)
+                : await _application.GetWorldClocksAsync(_lifetimeCancellation.Token);
             if (_closed || _lifetimeCancellation.IsCancellationRequested || version != _projectionVersion)
             {
                 // A newer clock reference or a closed window invalidates this pending live projection.
@@ -221,8 +228,11 @@ internal sealed class AstronomyWindowController
             _refreshInProgress = false;
             if (!_closed && !_lifetimeCancellation.IsCancellationRequested)
             {
-                _loadingIndicator.IsActive = false;
-                _loadingIndicator.Visibility = Visibility.Collapsed;
+                if (!_celestialReferenceOnly || version == _projectionVersion)
+                {
+                    _loadingIndicator.IsActive = false;
+                    _loadingIndicator.Visibility = Visibility.Collapsed;
+                }
                 // A failed request visibly reports the error, retains the last complete map, and retries in one minute.
                 ScheduleRefresh(useRetryDelay: version == _projectionVersion);
             }
