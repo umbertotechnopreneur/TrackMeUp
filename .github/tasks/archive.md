@@ -2,6 +2,11 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Add the celestial desktop README showcase
+
+- [x] Create and visually inspect a 3:1 ImageGen product strip blending world clocks, Moon, local sky, agenda, globe and the separate flat map. Refine the blue-hour and Moon–planet illustrations, then copy the final PNG without local pixel edits. Record both prompts, dimensions, hash and brand-artwork provenance beside the asset.
+- [x] Add a responsive full-width image after the existing gallery, explicit rendering disclosure, alternative text and a description below covering the independent Acrylic windows and optional five-pixel snap/escape behavior. Correct nearby outdated menu/title-bar guidance and clarify that the 35-day horizon applies to conjunctions. Review documentation and local references only; no application build, tests, installer update or push.
+
 ## [2026-09-19] Add optional magnetic window snapping
 
 - [x] Add a shared Core geometry engine and owning-thread native registrations through the application facade. Snap visible window edges within five physical pixels to app peers or the monitor work area, with raw cursor anchoring to avoid cumulative drift. Crossing the starting monitor's physical bounds suppresses snap until the next drag; intentional off-screen/edge placement is not clamped back by subsequent DPI layout. The disabled setting leaves native movement untouched. Closed/hidden/minimized/maximized/cloaked peers are excluded, native failures are reported after dragging, and subclass cleanup remains on its owner thread.
