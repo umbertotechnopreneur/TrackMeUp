@@ -2261,12 +2261,6 @@ public sealed partial class MainWindow : Window
         {
             _aboutWindow!.ShowLicenses();
         }
-
-        if (windowKeys.Contains(WindowStateKeys.ActivityCalendar))
-        {
-            // Calendar owns a modal interaction; its close must not block startup of other work windows.
-            _ = ShowActivityCalendarAsync();
-        }
     }
 
     /// <summary>Closes the player for an application-owned shutdown that must not prompt the user.</summary>

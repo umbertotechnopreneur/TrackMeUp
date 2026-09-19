@@ -54,7 +54,7 @@ public sealed class HardwareTelemetryRuntimeTests
         Assert.Equal(25, HardwareUsageProjection.Read(result.Value).Cpu);
         Assert.Equal(advanced ? nameof(ITrackMeUpApplication.EnableAdvancedHardwareTelemetryAsync)
             : nameof(ITrackMeUpApplication.CaptureSystemSnapshotAsync), ((HardwareRuntimeProxy)application).Operation);
-        Assert.True(RuntimeClient.HardwareAdvancedTimeout > TimeSpan.FromSeconds(60));
+        Assert.True(RuntimeClient.HardwareAdvancedTimeout > TimeSpan.FromMinutes(6));
         Assert.True(RuntimeClient.HardwareSnapshotTimeout > TimeSpan.FromSeconds(8));
         Assert.True(RuntimeClient.ScreenshotCaptureTimeout > RuntimeClient.HardwareSnapshotTimeout);
     }

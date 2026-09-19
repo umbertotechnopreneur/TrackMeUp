@@ -2,6 +2,32 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Place sensor graphs behind compact component rows
+
+- [x] Render each activity trace as a muted background behind identity, value and temperature, removing the separate graph row/column. Keep battery charge in a slim level bar and hide decorative traces in high contrast.
+- [x] Share the 148 px narrow / 96 px wide row heights with pagination, so a 476 × 476 logical-pixel track area fits three devices. Preserve missing-sample gaps and accessible collection status.
+- [x] Update existing layout scenarios and the README manual checklist. The x64 Debug app build passed with zero warnings/errors; formatting verification and scoped diff review passed. No further local test run or app installation was performed; required PR CI and the installed-app visual check remain pending.
+
+---
+
+## [2026-09-19] Keep the activity calendar closed at startup
+
+- [x] Confirm local `main`, `origin/main`, and the installed app's base commit match `9b31eb1`; the unwanted restore behavior was present on main.
+- [x] Classify the activity calendar as a transient dialog and remove its startup opening path. Existing saved open flags no longer reopen it; the menu command and other workspace windows are unchanged.
+- [x] Update the existing restoration scenario and README checklist. Formatting and diff review passed. Per the user's instruction, this correction is for the PR only; no further local tests or installation were performed.
+
+---
+
+## [2026-09-19] Bundle PawnIO and clarify advanced-sensor activation
+
+- [x] Bundle the unmodified, signed PawnIO 2.2.0 installer in x64 hardware output, with a pinned download/hash and distribution notice. Builds verify it without execution; ARM64 remains excluded.
+- [x] Install missing/older PawnIO from the signed-release installation helper or the explicit sensor activation action. Verify installation, preserve equal/newer versions, report consent cancellation/failure/restart, and retain ongoing setup when its caller closes. Allow setup time in the existing IPC deadline.
+- [x] Explain administrator access and the included component in all ten supported languages. Use a wrapped **Install and activate advanced sensors** label with localized tooltip/accessibility text, keep the existing isolated collector, and document offline installation and manual verification.
+
+Validation: x64 Debug build passed with zero warnings/errors; the app output includes the pinned installer with a valid namazso signature and matching SHA-256. The approved run passed 26 focused Core tests, 7 Presentation tests, 23 release-packaging checks, and 40 portable-packaging checks. The local signed Release MSIX was built and installed at the user's request; application/Core/Presentation/PawnIO hashes match the package and Windows reports a healthy installation. Its required reports build also passed 60 web tests. Formatting verification and PowerShell/XML/JSON parsing passed. Driver installation itself still requires real Windows consent; the remaining manual scenario is tracked in `todo.md`.
+
+---
+
 ## [2026-09-19] Recover notification-area icons and consolidate shared code
 
 - [x] Verify the live shell before hiding the player and restore lost icons on `TaskbarCreated`. Keep the player available after recovery failure and allow a later retry. Use version-4 selection/context-menu events and standard tooltips.

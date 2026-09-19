@@ -159,6 +159,7 @@
       <_HardwareCollectorDirectory>@(_HardwareCollectorTarget->'%(RootDir)%(Directory)')</_HardwareCollectorDirectory>
     </PropertyGroup>
     <Error Condition="!Exists('$(_HardwareCollectorDirectory)\TrackMeUp.Hardware.exe')" Text="The hardware collector executable was not built." />
+    <Error Condition="'$(Platform)' == 'x64' and !Exists('$(_HardwareCollectorDirectory)\PawnIO\PawnIO_setup.exe')" Text="The bundled PawnIO installer is missing from the x64 hardware output." />
     <ItemGroup>
       <_HardwareCollectorFile Include="$(_HardwareCollectorDirectory)\**\*" Exclude="$(_HardwareCollectorDirectory)\**\*.pdb" />
       <ContentWithTargetPath Include="@(_HardwareCollectorFile)">

@@ -23,10 +23,10 @@ This helper uses LibreHardwareMonitor 0.9.6, source commit
   domains. The modified `NvidiaGpu.cs` is included with the helper's source notices.
 - All other upstream sources retain their original notices. The build definition
   and replacement source live in TrackMeUp.Hardware/LibreHardwareMonitor.
-- No PawnIO driver or installer is included, downloaded at runtime, or installed.
-  Optional advanced readings use the separately installed official signed PawnIO
-  distribution: https://pawnio.eu/ . PawnIO has its own license and IOCTL exception:
-  https://github.com/namazso/PawnIO#license .
+- TrackMeUp x64 includes the official signed PawnIO installer for offline setup
+  with explicit Windows consent. Its pin and redistribution notice are in the
+  sibling PawnIO directory. The installer is not downloaded at runtime; driver
+  source terms and the official binary edition's terms are recorded separately.
 - Embedded upstream PawnIO modules retain their original licenses; upstream
   module sources: https://github.com/namazso/PawnIO.Modules .
 

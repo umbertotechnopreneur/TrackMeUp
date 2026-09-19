@@ -67,6 +67,17 @@ has been prepared, it verifies package hashes, signatures, architecture, version
 and dependency coverage before registering the app with `Add-AppxPackage`. It never
 imports a certificate or changes certificate trust. The helper needs PowerShell 7.
 
+On x64, the application package also contains the pinned, official PawnIO sensor
+installer under `Hardware/PawnIO`. Its SHA-256 and Authenticode signature are
+verified during the build; the build never executes it. After app registration,
+`Install.ps1` installs PawnIO with Windows administrator consent if it is missing
+or older than the bundled version. Errors are reported explicitly even though
+the app has already been installed, and a required Windows restart is reported.
+Direct MSIX installation can complete the same prerequisite from Sensors options
+using **Install and activate advanced sensors**. MSIX itself cannot install drivers.
+PawnIO is shared with other applications and is not removed with TrackMeUp.
+ARM64 does not bundle or install PawnIO because advanced collection is unsupported.
+
 ## Portable archives
 
 Each `artifacts/releases/<version>/<platform>/portable/TrackMeUp-<version>-<platform>-portable-unsigned.zip`
@@ -77,8 +88,11 @@ runtimes, mismatched version/architecture metadata, and an existing output direc
 
 Extract the entire ZIP and run `TrackMeUp.exe`. Keep the executable with all DLLs,
 resources, and subfolders; copying only the EXE is not a supported deployment.
-No MSIX registration, certificate
-import, runtime installer, or administrator access is part of this portable route.
+Basic portable startup requires no MSIX registration, certificate import, runtime
+installer, or administrator access. On x64, the optional advanced-sensor action
+installs the bundled PawnIO driver with administrator consent when needed, then
+starts the elevated sensor collector. This system driver remains installed after
+the portable folder is removed; subsequent sessions reuse it.
 Use `./TrackMeUp.exe --version` for the CLI; portable ZIPs do not register an execution alias.
 Unsigned executables may show a Windows security prompt.
 

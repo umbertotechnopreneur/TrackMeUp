@@ -197,7 +197,7 @@ public sealed partial class SensorsWindow : Window
     private void RenderPage()
     {
         if (_closed || TracksHost.ActualHeight <= 0) return;
-        var layout = SensorMonitorLayout.ResolveTrack(TracksHost.ActualWidth, TracksHost.ActualHeight);
+        var layout = SensorMonitorLayout.ResolveTrack(TracksHost.ActualWidth);
         ColumnHeaders.Visibility = layout.Stacked ? Visibility.Collapsed : Visibility.Visible;
         DeviceHeaderColumn.Width = new GridLength(layout.NameWidth);
         LoadHeaderColumn.Width = new GridLength(layout.ValueWidth);
@@ -214,12 +214,12 @@ public sealed partial class SensorsWindow : Window
             TracksHost.RowDefinitions.Clear();
             for (var index = 0; index < visible.Length; index++)
             {
-                TracksHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MaxHeight = layout.Stacked ? 220 : 128 });
+                TracksHost.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MaxHeight = layout.RowHeight });
                 Grid.SetRow(visible[index], index);
                 TracksHost.Children.Add(visible[index]);
             }
         }
-        foreach (var definition in TracksHost.RowDefinitions) definition.MaxHeight = layout.Stacked ? 220 : 128;
+        foreach (var definition in TracksHost.RowDefinitions) definition.MaxHeight = layout.RowHeight;
         PageNavigation.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
         PreviousPageButton.IsEnabled = _pageIndex > 0;
         NextPageButton.IsEnabled = _pageIndex < pageCount - 1;

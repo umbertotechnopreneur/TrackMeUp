@@ -75,11 +75,17 @@ The [integration notice](TrackMeUp.Hardware/LibreHardwareMonitor/NOTICE.md) reco
 the complete source pin and modifications. First-party collector, IPC and
 application integration code remains MIT-licensed.
 
-The PawnIO kernel driver and its installer are **not distributed or installed**
-by TrackMeUp. Advanced telemetry can use a separately installed
-[official signed PawnIO distribution](https://pawnio.eu/), with explicit Windows
-elevation of the sensor helper. PawnIO is a separate component governed by its
-[own GPL license and IOCTL exception](https://github.com/namazso/PawnIO#license).
+TrackMeUp x64 includes the unmodified [official signed PawnIO 2.2.0 installer](https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0).
+The official binary edition is proprietary; the author explicitly permits
+[redistribution of the installer](https://github.com/namazso/PawnIO.Modules/wiki/Using-PawnIO-Modules#licensing-considerations).
+Its version, source URL, and SHA-256 are pinned in `TrackMeUp.Hardware/PawnIO/distribution.json`;
+the adjacent `NOTICE.md` accompanies the bundled installer. Builds verify its hash
+and signature without executing it. The signed-release installation helper and
+the explicit advanced-sensor action install it with Windows administrator consent
+when needed. Existing equal/newer installations are preserved; app removal does
+not uninstall this shared system component. ARM64 sensor collection remains unsupported.
+The separately published PawnIO source retains its
+[GPL license and IOCTL exception](https://github.com/namazso/PawnIO#license).
 
 ## Test-Only Dependencies
 

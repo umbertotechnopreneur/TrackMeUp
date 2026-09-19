@@ -22,7 +22,6 @@ public sealed class WorkspaceWindowStateTests
     [InlineData(WindowStateKeys.Main, false, false)]
     [InlineData(WindowStateKeys.Main, true, true)]
     [InlineData(WindowStateKeys.About, false, true)]
-    [InlineData(WindowStateKeys.ActivityCalendar, false, true)]
     [InlineData(WindowStateKeys.WorldMap, false, true)]
     [InlineData(WindowStateKeys.LunarPhase, true, true)]
     public void LiveWindowState_DistinguishesMainTrayHidingFromAnOpenAuxiliary(string key, bool isVisible, bool expected)
@@ -83,6 +82,7 @@ public sealed class WorkspaceWindowStateTests
     [Theory]
     [InlineData(WindowStateKeys.QuickSetup)]
     [InlineData(WindowStateKeys.Dialog)]
+    [InlineData(WindowStateKeys.ActivityCalendar)]
     [InlineData(WindowStateKeys.SearchIndexing)]
     [InlineData(WindowStateKeys.WorldClockCityPicker)]
     [InlineData(WindowStateKeys.AiScreenshotReprocessing)]

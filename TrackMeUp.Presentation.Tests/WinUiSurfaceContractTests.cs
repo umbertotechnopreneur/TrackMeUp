@@ -184,7 +184,13 @@ public sealed class WinUiSurfaceContractTests
         }
         Assert.Contains("HardwareSensorsEnabledSwitch.IsEnabled = !_busy;", source, StringComparison.Ordinal);
         Assert.Contains("HardwareActivationStatusText.Text = string.Empty;", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("PawnIO", sensors.ToString(), StringComparison.Ordinal);
+        var prerequisite = sensors.Descendants().Single(element => element.Attribute("Tag")?.Value == "Hardware.Advanced.Description");
+        Assert.Contains("PawnIO", prerequisite.Attribute("Text")?.Value, StringComparison.Ordinal);
+        var activationButton = sensors.Descendants().Single(element => HasName(element, "ActivateAdvancedSensorsButton"));
+        var activationLabel = activationButton.Elements().Single();
+        Assert.Equal("Hardware.Advanced.Action", activationLabel.Attribute("Tag")?.Value);
+        Assert.Equal("Wrap", activationLabel.Attribute("TextWrapping")?.Value);
+        Assert.Contains("_strings.Translate(result.MessageKey)", activation, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -19,8 +19,7 @@ public static class WorkspaceWindowState
         WindowStateKeys.OcrText,
         WindowStateKeys.Schedule,
         WindowStateKeys.About,
-        WindowStateKeys.Licenses,
-        WindowStateKeys.ActivityCalendar
+        WindowStateKeys.Licenses
     ];
 
     /// <summary>Identifies a window that can reopen without replaying a configuration or background operation.</summary>

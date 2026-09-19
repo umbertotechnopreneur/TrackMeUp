@@ -29,12 +29,10 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="28"/><ColumnDefinition x:Name="DeviceHeaderColumn" Width="280"/>
                         <ColumnDefinition x:Name="LoadHeaderColumn" Width="130"/><ColumnDefinition x:Name="TemperatureHeaderColumn" Width="150"/>
-                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.ColumnSpan="2" Tag="Sensors.Device" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Grid.Column="2" Tag="Sensors.CurrentLoad" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <TextBlock Grid.Column="3" Tag="Sensors.Temperature" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                    <TextBlock Grid.Column="4" Tag="Sensors.Activity" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </Grid>
             </StackPanel>
             <Grid x:Name="TracksHost" Grid.Row="2" SizeChanged="TracksHost_SizeChanged"/>
