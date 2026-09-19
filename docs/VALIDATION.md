@@ -15,7 +15,7 @@ and reset checks only with disposable data.
 
 ## Settings and operational tools
 
-- From App options, open each of the five local-data links. Screen captures and AI, reports, privacy, data retention, and app details must each appear as a separate scrollable page.
+- From App options, open the local-data links. Screen captures and AI, privacy, and data retention must each appear as a separate scrollable page; Reports, App status, and PC data must be absent.
 - In Extra app details, confirm that all plugins load on entry without Refresh. Each row must have one switch reflecting the saved state; successful changes must persist and failed changes must restore the previous switch state.
 - Confirm that Privacy is presented as a title and description followed by a textual link with a right chevron, and that Back returns directly to App options.
 - Open Tools and diagnostics from the main menu, enter one focused page, and confirm that Back first returns to the tools overview and then to the player.
@@ -98,5 +98,5 @@ and reset checks only with disposable data.
 - In Tools and diagnostics, scroll to the final Atomic nuke section. Confirm that its warning copy and destructive action remain visible and keyboard accessible.
 - Cancel the first warning and verify that nothing changes.
 - Repeat by accepting the first warning and cancelling the final warning. Verify again that nothing changes.
-- Accept both warnings and confirm that TrackMeUp closes, removes its database, retained screenshots, settings, reports, logs, search indexes, and metadata, disables its startup entry, and relaunches with default settings.
+- Accept both warnings and confirm that TrackMeUp closes, removes its database, retained screenshots, settings, logs, search indexes, and metadata, disables its startup entry, and relaunches with default settings.
 - When screenshots were stored in a custom directory, confirm that TrackMeUp-owned captures are removed while unrelated files in that directory remain intact.

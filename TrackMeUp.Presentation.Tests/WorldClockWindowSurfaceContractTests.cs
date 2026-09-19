@@ -712,7 +712,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         var mapControl = detachedWindow.Descendants().Single(element => HasName(element, "WorldMapControl"));
 
         Assert.Equal("WorldClock.Map.Open", openButton.Attribute("Tag")?.Value);
-        Assert.Equal("WorldMapButton_Click", openButton.Attribute("Click")?.Value);
+        Assert.Equal("WorldMapButton_Click", window.Descendants().Single(element => HasName(element, "WorldMapMenuItem")).Attribute("Click")?.Value);
         Assert.Equal("True", openButton.Attribute("IsTabStop")?.Value);
         Assert.Equal("True", openButton.Attribute("AllowFocusOnInteraction")?.Value);
         Assert.Equal(AttributeValue(openButton, "AutomationProperties.Name"), AttributeValue(openButton, "ToolTipService.ToolTip"));
@@ -824,7 +824,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
         Assert.Contains("UiLocalization.SetAccessibleLabel(OptionsButton, T(\"WorldClock.Options.Open\"));", windowSource, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.SetAccessibleLabel(HeaderBackButton, T(\"WorldClock.Options.Back\"));", windowSource, StringComparison.Ordinal);
-        Assert.Contains("UiLocalization.SetAccessibleLabel(WorldMapButton, T(\"WorldClock.Map.Open\"));", windowSource, StringComparison.Ordinal);
+        Assert.Contains("UiLocalization.SetAccessibleLabel(WorldMapButton, T(\"Celestial.Windows\"));", windowSource, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.SetAccessibleLabel(LunarPhaseButton, T(\"WorldClock.MoonPhase.Open\"));", windowSource, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.SetAccessibleLabel(PresentationModeButton, T(key));", windowSource, StringComparison.Ordinal);
         var localizationSource = File.ReadAllText(RepositoryFile("TrackMeUp", "UiLocalization.cs"));

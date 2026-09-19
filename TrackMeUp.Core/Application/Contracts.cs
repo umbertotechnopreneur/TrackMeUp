@@ -447,9 +447,6 @@ public sealed record QuickSetupProfileRequest(string ProfileId, bool StartWithWi
 /// <summary>Requests a retention preview or confirmed cleanup.</summary>
 public sealed record RetentionRequest(bool Execute, bool Confirmed);
 
-/// <summary>Requests a dated daily digest without exposing presentation-specific arguments.</summary>
-public sealed record GenerateDailyDigestRequest(DateOnly Date, bool Open);
-
 /// <summary>Describes the runtime reachable through the local IPC host.</summary>
 public sealed record RuntimeHealth(
     string ProductVersion,
@@ -673,6 +670,12 @@ public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, stri
 /// <summary>Exposes every frontend capability through UI-independent requests and result DTOs.</summary>
 public interface ITrackMeUpApplication : IAsyncDisposable
 {
+    /// <summary>Registers local native drag handling on the window's UI thread; the returned registration must be disposed on that thread.</summary>
+    IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure);
+
+    /// <summary>Applies the persisted snapping preference to this frontend's windows without starting a second tracking runtime.</summary>
+    void ConfigureWindowSnapping(bool enabled);
+
     /// <summary>Occurs after tracking state or dashboard data changes.</summary>
     event EventHandler<RuntimeStateChangedEventArgs>? RuntimeStateChanged;
 
@@ -693,6 +696,15 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets the current world clocks with all sun and moon data calculated locally.</summary>
     Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets the current selected cities and reference instant without querying weather providers.</summary>
+    Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken);
+
+    /// <summary>Calculates the observer's sky and upcoming astronomical events locally.</summary>
+    Task<OperationResult<CelestialSnapshot>> GetCelestialAsync(CelestialRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Renders the requested day/night Earth projection using packaged geographic textures.</summary>
+    Task<OperationResult<CelestialMapImage>> GetCelestialMapAsync(CelestialMapRequest request, CancellationToken cancellationToken);
 
     /// <summary>Converts one selected city's local civil time into the shared world-clock projection.</summary>
     Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken);
@@ -873,15 +885,6 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Runs an immediate, policy-enforced AI analysis.</summary>
     Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken);
-
-    /// <summary>Generates today's report.</summary>
-    Task<OperationResult<string>> GenerateTodayReportAsync(string? outputDirectory, bool open, CancellationToken cancellationToken);
-
-    /// <summary>Generates the daily digest for the requested local date.</summary>
-    Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken);
-
-    /// <summary>Opens the reports folder.</summary>
-    Task<OperationResult<string>> OpenReportsFolderAsync(CancellationToken cancellationToken);
 
     /// <summary>Launches the WinUI frontend for the shared runtime.</summary>
     Task<OperationResult<string>> OpenUserInterfaceAsync(CancellationToken cancellationToken);

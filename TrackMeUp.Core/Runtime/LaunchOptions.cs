@@ -9,8 +9,6 @@ public enum LaunchMode
 {
     /// <summary>Starts the standard WinUI player.</summary>
     Ui,
-    /// <summary>Starts the dedicated WinUI reports surface.</summary>
-    Reports,
     /// <summary>Starts the Spectre.Console CLI frontend.</summary>
     Cli,
     /// <summary>Starts the invisible local runtime host.</summary>
@@ -55,7 +53,9 @@ public sealed record LaunchOptions(
             {
                 case "-cli":
                 case "--cli": mode = LaunchMode.Cli; break;
-                case "reports" when !cliRequested && mode == LaunchMode.Ui: mode = LaunchMode.Reports; break;
+                case "reports" when !cliRequested:
+                    // Removed entry points must fail explicitly instead of opening an unrelated window.
+                    throw new ArgumentException("Unsupported launch argument 'reports'.", nameof(arguments));
                 case "--background": mode = LaunchMode.Background; break;
                 case "--ui": mode = LaunchMode.Ui; break;
                 case "-h":

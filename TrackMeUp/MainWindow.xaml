@@ -9,7 +9,6 @@
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="P" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="F3" Invoked="MainKeyboardAccelerator_Invoked" />
-            <KeyboardAccelerator Key="R" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="G" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="O" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
             <KeyboardAccelerator Key="S" Modifiers="Control, Shift" Invoked="MainKeyboardAccelerator_Invoked" />
@@ -64,7 +63,6 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition x:Name="TitleBarCaptionColumn" Width="*" MinWidth="64" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -160,23 +158,8 @@
                         Glyph="&#xE721;" />
                 </Button>
                 <Button
-                    x:Name="TitleBarReportButton"
-                    Grid.Column="8"
-                    AutomationProperties.Name="Activity reports"
-                    Click="TitleBarReportButton_Click"
-                    Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
-                    Tag="Reports.Title"
-                    ToolTipService.ToolTip="Activity reports"
-                    Visibility="Collapsed">
-                    <FontIcon
-                        AutomationProperties.AccessibilityView="Raw"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="17"
-                        Glyph="&#xE9F9;" />
-                </Button>
-                <Button
                     x:Name="TitleBarMinimizeToTrayButton"
-                    Grid.Column="9"
+                    Grid.Column="8"
                     AutomationProperties.Name="Minimize to notification area"
                     Click="MinimizeToTrayButton_Click"
                     Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
@@ -191,7 +174,7 @@
                 </Button>
                 <Button
                     x:Name="TitleBarCloseButton"
-                    Grid.Column="10"
+                    Grid.Column="9"
                     Width="48"
                     AutomationProperties.Name="Close app"
                     Click="TitleBarCloseButton_Click"
@@ -376,11 +359,11 @@
 
                                     <MenuFlyoutSubItem
                                         x:Name="ActivityMenu"
-                                        AutomationProperties.HelpText="Search your history or open reports, calendar, and captured screenshots."
+                                        AutomationProperties.HelpText="Search your history or open the calendar and captured screenshots."
                                         AutomationProperties.Name="History and insights"
                                         Tag="Main.Menu.Activity"
                                         Text="History and insights"
-                                        ToolTipService.ToolTip="Search your history or open reports, calendar, and captured screenshots.">
+                                        ToolTipService.ToolTip="Search your history or open the calendar and captured screenshots.">
                                         <MenuFlyoutSubItem.Icon>
                                             <FontIcon Glyph="&#xE81C;" />
                                         </MenuFlyoutSubItem.Icon>
@@ -395,17 +378,6 @@
                                                 <FontIcon Foreground="#FFDB8D72" Glyph="&#xE721;" />
                                             </MenuFlyoutItem.Icon>
                                         </MenuFlyoutItem>
-                                        <MenuFlyoutItem
-                                            x:Name="ReportsMenuItem"
-                                            Tag="Reports.Title"
-                                            Text="Activity reports"
-                                            ToolTipService.ToolTip="Review activity summaries and trends for a selected period."
-                                            KeyboardAcceleratorTextOverride="Ctrl+Shift+R"
-                                            Click="ReportsMenuItem_Click">
-                                        <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE9F9;" />
-                                        </MenuFlyoutItem.Icon>
-                                    </MenuFlyoutItem>
                                     <MenuFlyoutItem
                                         x:Name="ActivityCalendarMenuItem"
                                         Tag="ActivityCalendar.MenuTitle"

@@ -54,7 +54,6 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             "system" => await SystemAsync(arguments, cancellationToken),
             "screenshot" => await ScreenshotAsync(arguments, cancellationToken),
             "ai" => await AiAsync(arguments, cancellationToken),
-            "report" => await ReportAsync(arguments, cancellationToken),
             "privacy" => await PrivacyAsync(arguments, cancellationToken),
             "retention" => await RetentionAsync(arguments, cancellationToken),
             "plugins" => await PluginsAsync(arguments, cancellationToken),
@@ -227,38 +226,6 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
         }
     }
 
-    private async Task<int> ReportAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
-    {
-        var action = arguments.ElementAtOrDefault(1)?.ToLowerInvariant();
-        if (action == "today")
-        {
-            if (!TryParseOptions(arguments, 2, ["--open"], ["--output"], out var options))
-            {
-                return InvalidArguments();
-            }
-
-            return await WriteAsync(_application.GenerateTodayReportAsync(options.Value("--output"), options.Contains("--open"), cancellationToken));
-        }
-
-        if (action != "digest")
-        {
-            return InvalidCommand();
-        }
-
-        if (!TryParseOptions(arguments, 2, ["--open"], ["--date"], out var digestOptions))
-        {
-            return InvalidArguments();
-        }
-
-        var rawDate = digestOptions.Value("--date") ?? DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
-        if (!DateOnly.TryParseExact(rawDate, "yyyy-MM-dd", out var date))
-        {
-            return WriteResult(OperationResult<object>.Failure("command.arguments.invalid", "InvalidDigestDate", new ValidationIssue("date", "invalid", "InvalidDigestDate")));
-        }
-
-        return await WriteAsync(_application.GenerateDailyDigestAsync(date, digestOptions.Contains("--open"), cancellationToken));
-    }
-
     private async Task<int> PrivacyAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
         switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
@@ -389,7 +356,6 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
     private async Task<int> OpenAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken) => arguments.ElementAtOrDefault(1)?.ToLowerInvariant() switch
     {
-        "reports" when arguments.Count == 2 => await WriteAsync(_application.OpenReportsFolderAsync(cancellationToken)),
         "screenshots" when arguments.Count == 2 => await WriteAsync(_application.OpenScreenshotFolderAsync(cancellationToken)),
         "ui" when arguments.Count == 2 => await WriteAsync(_application.OpenUserInterfaceAsync(cancellationToken)),
         _ => InvalidCommand()
@@ -525,7 +491,6 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             new ShellAction("toggle", _output.Text("action.toggle"), ["tracking", "toggle"]),
             aiAction,
             new ShellAction("capture", _output.Text("action.capture"), ["screenshot", "capture"]),
-            new ShellAction("report", _output.Text("action.report"), ["report", "today"]),
             new ShellAction("doctor", _output.Text("action.doctor"), ["doctor"]),
             new ShellAction("settings", _output.Text("action.settings"), ["config", "wizard"]),
             new ShellAction("open", _output.Text("action.open"), ["open", "ui"]),

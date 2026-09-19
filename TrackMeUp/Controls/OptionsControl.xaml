@@ -196,6 +196,19 @@
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Applies to all windows. Turn off to keep title bars visible."
                             TextWrapping="Wrap" />
+                        <ToggleSwitch
+                            x:Name="WindowSnappingSwitch"
+                            Header="Window snapping"
+                            IsOn="True"
+                            OffContent=""
+                            OnContent=""
+                            Tag="Options.Window.Snapping" />
+                        <TextBlock
+                            Tag="Options.Window.Snapping.Description"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Snap within 5 pixels of other TrackMeUp windows or monitor edges. Leaving the monitor disables snapping for the rest of that drag."
+                            TextWrapping="Wrap" />
                         <Slider
                             x:Name="MainWindowOpacitySlider"
                             Header="Window opacity"
@@ -406,7 +419,7 @@
                             Tag="Options.Operations.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="Capture context, create reports, and manage the local rules and extensions that shape stored activity data."
+                            Text="Capture context and manage the local rules and extensions that shape stored activity data."
                             TextWrapping="Wrap"
                             Visibility="Collapsed" />
                     </StackPanel>
@@ -442,48 +455,6 @@
                                     Grid.Column="1"
                                     Tag="Options.Navigation.SnapshotAi.Action"
                                     Text="Open screen-capture and AI tools"
-                                    TextWrapping="Wrap" />
-                                <FontIcon
-                                    Grid.Column="2"
-                                    AutomationProperties.AccessibilityView="Raw"
-                                    FontFamily="Segoe Fluent Icons"
-                                    FontSize="12"
-                                    Glyph="&#xE76C;" />
-                            </Grid>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <StackPanel Margin="0" Spacing="0">
-                        <TextBlock
-                            Tag="Options.Navigation.Reports.Title"
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="Reports and digest"
-                            Visibility="Collapsed" />
-                        <TextBlock
-                            Tag="Options.Navigation.Reports.Description"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="Create today's report or a digest for a selected date from data stored on this PC."
-                            TextWrapping="Wrap"
-                            Visibility="Collapsed" />
-                        <HyperlinkButton
-                            x:Name="ReportsOperationsLink"
-                            MinHeight="36"
-                            Padding="0,8"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            Click="ReportsOperationsLink_Click">
-                            <Grid ColumnSpacing="7">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF7D9FF8" Glyph="&#xE787;" />
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Tag="Options.Navigation.Reports.Action"
-                                    Text="Open reports and digest"
                                     TextWrapping="Wrap" />
                                 <FontIcon
                                     Grid.Column="2"

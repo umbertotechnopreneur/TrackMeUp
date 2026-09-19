@@ -7,28 +7,26 @@ Each third-party component, data set, or asset retains its own license terms;
 this inventory does not relicense third-party material as MIT.
 
 This file inventories the direct `PackageReference` dependencies declared in
-tracked `.csproj` files, the production dependency closure used to build the
-tracked web report bundle, and distributed world-clock data/media assets.
+tracked `.csproj` files and distributed world-clock data/media assets.
 
 - NuGet scope: direct dependencies declared in tracked project files as of 2026-09-17. Transitive NuGet packages are not included yet.
-- Web scope: all production packages resolved by `TrackMeUp.Reports.Web/package-lock.json`; development-only packages are excluded.
-- Source of truth: repository `*.csproj` files, official NuGet package metadata, the npm lockfile, and installed package license/notice files.
+- Source of truth: repository `*.csproj` files, official NuGet package metadata, and installed package license/notice files.
 - Special cases: packages that publish a bundled license file instead of a NuGet SPDX expression are called out explicitly below.
 - Binary-release boundary: before distributing a self-contained installer, generate and package notices for the complete published runtime closure, including transitive NuGet/runtime/native components. This source inventory alone is not a complete binary-distribution notice bundle.
 
 ## Summary
 
-- Runtime dependencies: 24 unique packages, plus the pinned LibreHardwareMonitor source build below.
+- Runtime dependencies: 26 unique packages, plus the pinned LibreHardwareMonitor source build below.
 - Build-only hardware source generator: Microsoft.Windows.CsWin32 0.3.269 (MIT).
 - Test-only dependencies: 4 unique packages.
-- Web report production dependencies: 29 unique packages.
-- Open-source licenses observed: `MIT`, `Apache-2.0`, `MPL-2.0`, `LGPL-2.1` (upstream embedded PawnIO modules), `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `0BSD`, plus the separately recorded Creative Commons/public-domain asset terms.
+- Open-source licenses observed: `MIT`, `Apache-2.0`, `MPL-2.0`, `LGPL-2.1` (upstream embedded PawnIO modules), plus the separately recorded Creative Commons/public-domain asset terms.
 - Additional Microsoft package terms observed: `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`.
 
 ## Runtime Dependencies
 
 | Package | Badges | License / terms | Used by |
 | --- | --- | --- | --- |
+| [CosineKitty.AstronomyEngine 2.1.19](https://www.nuget.org/packages/CosineKitty.AstronomyEngine/2.1.19) | NuGet | [MIT](https://github.com/cosinekitty/astronomy/blob/v2.1.19/LICENSE) | TrackMeUp.Core; shared solar/lunar/planet ephemerides, rise/set, twilight, lunar quarters and seasons |
 | [Lucene.Net](https://www.nuget.org/packages/Lucene.Net/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net?label=NuGet)](https://www.nuget.org/packages/Lucene.Net/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
 | [Lucene.Net.Analysis.Common](https://www.nuget.org/packages/Lucene.Net.Analysis.Common/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net.Analysis.Common?label=NuGet)](https://www.nuget.org/packages/Lucene.Net.Analysis.Common/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
 | [Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Data.Sqlite?label=NuGet)](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
@@ -42,6 +40,7 @@ tracked web report bundle, and distributed world-clock data/media assets.
 | [Serilog.Extensions.Logging](https://www.nuget.org/packages/Serilog.Extensions.Logging/10.0.0) | [![NuGet](https://img.shields.io/nuget/v/Serilog.Extensions.Logging?label=NuGet)](https://www.nuget.org/packages/Serilog.Extensions.Logging/10.0.0) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
 | [Serilog.Sinks.Console](https://www.nuget.org/packages/Serilog.Sinks.Console/6.1.1) | [![NuGet](https://img.shields.io/nuget/v/Serilog.Sinks.Console?label=NuGet)](https://www.nuget.org/packages/Serilog.Sinks.Console/6.1.1) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
 | [Serilog.Sinks.File](https://www.nuget.org/packages/Serilog.Sinks.File/7.0.0) | [![NuGet](https://img.shields.io/nuget/v/Serilog.Sinks.File?label=NuGet)](https://www.nuget.org/packages/Serilog.Sinks.File/7.0.0) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp |
+| [SGP.NET 1.5.0](https://www.nuget.org/packages/SGP.NET/1.5.0) | NuGet | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core; satellite propagation from public orbital elements |
 | [SkiaSharp](https://www.nuget.org/packages/SkiaSharp/4.151.0) | [![NuGet](https://img.shields.io/nuget/v/SkiaSharp?label=NuGet)](https://www.nuget.org/packages/SkiaSharp/4.151.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
 | [SkiaSharp.NativeAssets.Win32](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/4.151.0) | [![NuGet](https://img.shields.io/nuget/v/SkiaSharp.NativeAssets.Win32?label=NuGet)](https://www.nuget.org/packages/SkiaSharp.NativeAssets.Win32/4.151.0) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
 | [Spectre.Console](https://www.nuget.org/packages/Spectre.Console/0.57.2) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console?label=NuGet)](https://www.nuget.org/packages/Spectre.Console/0.57.2) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli |
@@ -53,6 +52,66 @@ tracked web report bundle, and distributed world-clock data/media assets.
 | [Mono.Posix.NETStandard 1.0.0](https://www.nuget.org/packages/Mono.Posix.NETStandard/1.0.0) | NuGet | [Package license terms](https://go.microsoft.com/fwlink/?linkid=869050) (legacy licenseUrl, no SPDX expression) | LibreHardwareMonitor source build |
 | [System.IO.FileSystem.AccessControl 5.0.0](https://www.nuget.org/packages/System.IO.FileSystem.AccessControl/5.0.0) | NuGet | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
 | [System.IO.Ports 10.0.3](https://www.nuget.org/packages/System.IO.Ports/10.0.3) | NuGet | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
+
+## Celestial star catalog subset
+
+`TrackMeUp.Core/Data/sky-catalog.json` includes 83 J2000 ICRS stellar coordinates and available V-band
+magnitudes retrieved from the [SIMBAD astronomical database, CDS, Strasbourg](https://simbad.cds.unistra.fr/)
+on 2026-09-19 through its [TAP service](https://simbad.cds.unistra.fr/simbad/sim-tap).
+This small selection of scientific facts is attributed to SIMBAD and its original
+catalog references; it does not relicense the SIMBAD database. SIMBAD reference:
+Wenger et al. (2000), Astronomy & Astrophysics Supplement 143, 9,
+[2000A&AS..143....9W](https://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2000A%26AS..143....9W).
+
+The selection covers Orion, Cassiopeia, the Big Dipper in Ursa Major, the Little
+Dipper in Ursa Minor, Crux and twelve zodiac constellation figures. The seven
+Little Dipper stars use the SIMBAD identifiers `* alf UMi`, `* bet UMi`, `* gam UMi`,
+`* del UMi`, `* eps UMi`, `* zet UMi` and `* eta UMi`; their coordinates and available
+V magnitudes were queried from the TAP `basic` and `allfluxes` tables on the same date.
+Missing system-level V magnitudes, including Mizar, Acrux and Eta Ursae Minoris,
+remain absent. Coordinates are rounded to six decimal degrees. Proper
+motion and stellar aberration are omitted in this schematic bright-star view;
+precession, nutation and standard atmospheric refraction are applied. The
+17 connecting figures are project-authored schematic line segments, not IAU
+constellation boundaries. Astronomy Engine's MIT-licensed algorithms calculate
+the dynamic solar-system and event data; no event is inferred from a decorative image.
+
+The sky catalog records ISS (NORAD 25544) and the Chinese Tiangong/CSS Tianhe
+(NORAD 48274) identities. Current orbital elements are requested from
+[CelesTrak's public GP STATIONS group](https://celestrak.org/NORAD/documentation/gp-data-formats.php)
+subject to its [usage policy](https://celestrak.org/usage-policy.php). They are
+not bundled, redistributed or a source of historical orbital positions. SGP.NET
+propagates recent elements for an approximate local-sky marker; this does not
+establish optical visibility or a predicted pass. The 24 project-authored
+decorative sky keyframes and glow colors are stored separately in
+`TrackMeUp.Core/Data/sky-palette.json`.
+
+## Curated annual meteor shower data and celestial event definitions
+
+`TrackMeUp.Core/Data/meteor-showers.json` contains eight selected activity periods
+and peak solar longitudes from the International Meteor Organization's
+[2026 Meteor Shower Calendar, Table 5](https://www.imo.net/files/meteor-shower/cal2026.pdf):
+Quadrantids, April Lyrids, eta-Aquariids, Perseids, Orionids, Leonids, Geminids and
+Ursids. This small selection of factual catalog parameters is attributed to IMO
+and the calendar's contributing observers; the calendar itself is not
+redistributed or relicensed. The upstream site's maintenance state can affect
+availability of the source link.
+
+Solar longitudes are evaluated in the catalog's J2000 ecliptic frame. Each entry
+is an approximate recurring annual peak, not a year-specific forecast,
+outburst prediction or promise of visibility. Fixed activity month/day ranges
+are approximate and may change as meteor streams evolve. Runtime presentation
+must preserve the expected/approximate distinction. The application uses this
+catalog parametrically across its supported 1900–2100 request range; historical
+or future activity is not asserted to have been observed or predicted by IMO.
+
+Moon/planet conjunctions are computed by Astronomy Engine as equality of
+geocentric ecliptic longitude, with geocentric angular separation reported at
+that instant. They are not necessarily the instant of minimum separation and
+do not establish local observability. Tropical zodiac signs are twelve equal
+30-degree sectors measured from the March equinox, distinct from the
+[IAU's astronomical constellation boundaries](https://iauarchive.eso.org/public/themes/constellations/).
+They are informational coordinate labels, not astrological predictions.
 
 ## Hardware telemetry source and optional driver
 
@@ -95,28 +154,6 @@ The separately published PawnIO source retains its
 | [Spectre.Console.Testing](https://www.nuget.org/packages/Spectre.Console.Testing/0.57.2) | [![NuGet](https://img.shields.io/nuget/v/Spectre.Console.Testing?label=NuGet)](https://www.nuget.org/packages/Spectre.Console.Testing/0.57.2) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Cli.Tests |
 | [xunit](https://www.nuget.org/packages/xunit/2.9.3) | [![NuGet](https://img.shields.io/nuget/v/xunit?label=NuGet)](https://www.nuget.org/packages/xunit/2.9.3) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
 | [xunit.runner.visualstudio](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) | [![NuGet](https://img.shields.io/nuget/v/xunit.runner.visualstudio?label=NuGet)](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) | TrackMeUp.Cli.Tests, TrackMeUp.Core.Tests, TrackMeUp.Ocr.Tests, TrackMeUp.Presentation.Tests, TrackMeUp.Search.Tests |
-
-## Embedded web report production bundle
-
-The tracked `TrackMeUp.Reports.Web/dist` output is packaged with the Windows
-application. Its complete 29-package production dependency closure contains:
-
-| Declared license | Package count |
-| --- | ---: |
-| `MIT` | 22 |
-| `Apache-2.0` | 2 |
-| `BSD-2-Clause` | 1 |
-| `BSD-3-Clause` | 2 |
-| `ISC` | 1 |
-| `0BSD` | 1 |
-
-Exact package names, versions, declared licenses, copyright/license texts, and
-the ECharts `NOTICE` are generated into
-[`TrackMeUp.Reports.Web/dist/THIRD_PARTY_NOTICES.md`](TrackMeUp.Reports.Web/dist/THIRD_PARTY_NOTICES.md).
-Regenerate that file deterministically with `npm run notices:production` from
-`TrackMeUp.Reports.Web`; the generator fails when the lockfile, installed
-package metadata, or required license/notice files are unavailable or
-inconsistent.
 
 ## Distributed world-clock data, weather, and media
 

@@ -72,13 +72,6 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24.16.0
-          cache: npm
-          cache-dependency-path: TrackMeUp.Reports.Web/package-lock.json
-
       - name: Test release safeguards
         if: matrix.platform == 'x64' && matrix.distribution == 'msix'
         run: |
@@ -167,7 +160,7 @@ jobs:
 
           **Unsigned preparation artifacts.** MSIX packages require signing before installation.
           Portable ZIPs can be extracted and run through TrackMeUp.exe and include .NET and Windows App SDK.
-          Reports require the Microsoft Edge WebView2 Runtime; application data remains in LocalAppData.
+          Application data remains in LocalAppData.
           On-device screenshot OCR requires the MSIX edition and is unavailable in the portable build.
           MSIX ZIPs include the matching Microsoft-signed Windows App Runtime dependencies.
           x64 packages include the official PawnIO installer for advanced sensors; installation requires Windows administrator consent.

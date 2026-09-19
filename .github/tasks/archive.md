@@ -1,6 +1,68 @@
 # Task Archive
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
+## [2026-09-19] Unify desktop UI fixes and retire activity reports
+
+- [x] Combine maintenance/settings and celestial changes on the single existing `codex/clarify-advanced-sensors` branch. Clarify screenshot/AI wording, remove App/PC diagnostics, add responsive privacy actions and accents, load retention criteria automatically on one wrapping row, preserve results across language/theme changes, and give the complete toast frame an opaque theme surface.
+- [x] Replace the above-horizon scrollbar with accessible localized arrow controls. Improve constellation contrast and label placement, add the seven-star Little Dipper alongside the complete Big Dipper, and use the requested Italian IIS label. Preserve the existing celestial catalog, orbital markers, window layouts and optional magnetic snapping.
+- [x] Remove the interactive and HTML report windows, menu/CLI/facade/runtime routes, digest preferences, Vue/Node sources and build/package/CI integration. Retire only the removed report preferences/window state atomically; preserve activity-calendar aggregation and existing user data/files. Update all ten catalogs and documentation.
+- [x] Validate x64 app and test-project compilation with zero warnings/errors; verify C# formatting. The approved full run passed 1,261 of 1,263 tests and all 61 packaging checks. Correct the two identified regressions and pass the separately authorized recheck of 53 settings tests plus the affected presentation test. Required CI and installed-app visual verification remain tracked in todo.md.
+
+## [2026-09-19] Install the enriched celestial development build
+
+- [x] Build and install a locally signed x64 development MSIX 0.0.20.0 over 0.0.16.0, using the existing trusted test certificate. Windows reports `Ok`; the installed executable, Core assembly and reports entry point match the package SHA-256 hashes. Reopen the updated application and retain the validated installer under `artifacts/packages/local/x64/celestial-catalog-20260919-signed/`.
+- [x] The initial packaging entry point unexpectedly ran its bundled 60 web-report tests before it could be interrupted; all passed. Finish packaging directly without invoking further test suites. Clean Release outputs; no push or CI was run. Two failed/interrupted package staging directories remain under `artifacts/packages/local/x64/` because cleanup was denied by execution policy.
+
+## [2026-09-19] Enrich the local sky from catalog data
+
+- [x] Move stellar coordinates, schematic constellation links, conjunction-body selection, satellite identities and 24 sky palettes out of C# and into strict embedded JSON. Expand the attributed SIMBAD subset to 76 stars and 16 figures, including all twelve zodiac constellations. Keep city/time-zone data in its existing SQLite catalog rather than duplicating it.
+- [x] Add optional ISS/Tiangong projection from recent CelesTrak elements through SGP4. Request it only for Local sky; limit refresh to two hours, stop after non-200 responses, and omit stale, historical or below-horizon markers without disturbing offline ephemerides. Show localized symbols/names, additional bright-star labels, satellite markers and horizon entries.
+- [x] Audit the recent celestial changes for embedded catalog facts, update source/license notices and README scenarios. C# formatter and verification passed; x64 Debug app build passed with zero warnings/errors. No test suite, installation, push or CI was run. Installed-app visual validation remains pending.
+
+## [2026-09-19] Replace the celestial rendering with actual screenshots
+
+- [x] Replace the inaccurate generated panorama with four distinct screenshots supplied by the owner: astronomical agenda, local sky, Earth globe and the separate flat day/night map. Copy the original PNGs byte-for-byte, verify their SHA-256 hashes and omit the duplicate globe attachment. Arrange them in a three-column README strip with alternative text and links to the full-size originals; retain the description and optional snap guidance below.
+- [x] Replace the obsolete generated image/provenance with an original-screenshot provenance record. The previous rendering remains recoverable at checkpoint `1302c51`. Review the scoped documentation diff, image references and markup only; no app build, tests, installer update or push.
+
+## [2026-09-19] Add the celestial desktop README showcase
+
+- [x] Create and visually inspect a 3:1 ImageGen product strip blending world clocks, Moon, local sky, agenda, globe and the separate flat map. Refine the blue-hour and Moon–planet illustrations, then copy the final PNG without local pixel edits. Record both prompts, dimensions, hash and brand-artwork provenance beside the asset.
+- [x] Add a responsive full-width image after the existing gallery, explicit rendering disclosure, alternative text and a description below covering the independent Acrylic windows and optional five-pixel snap/escape behavior. Correct nearby outdated menu/title-bar guidance and clarify that the 35-day horizon applies to conjunctions. Review documentation and local references only; no application build, tests, installer update or push.
+
+## [2026-09-19] Add optional magnetic window snapping
+
+- [x] Add a shared Core geometry engine and owning-thread native registrations through the application facade. Snap visible window edges within five physical pixels to app peers or the monitor work area, with raw cursor anchoring to avoid cumulative drift. Crossing the starting monitor's physical bounds suppresses snap until the next drag; intentional off-screen/edge placement is not clamped back by subsequent DPI layout. The disabled setting leaves native movement untouched. Closed/hidden/minimized/maximized/cloaked peers are excluded, native failures are reported after dragging, and subclass cleanup remains on its owner thread.
+- [x] Add enabled-by-default `window.snapping.enabled` with a persisted Settings toggle, immediate application to open windows, accessibility and all ten UI translations. Add geometry/settings unit scenarios and the README manual checklist. Source review, formatting verification and XAML/localization parsing completed; no test suite or push/CI was run. The user requested a local post-implementation checkpoint followed by a signed development MSIX build and in-place update; installer verification is recorded beside the generated package, while visual validation remains in `todo.md`.
+
+## [2026-09-19] Remove sky zoom and keep the scene centered
+
+- [x] Remove the sky zoom slider, gesture handling, synchronization events and obsolete localized labels. Replace the scroll/zoom viewport with a bounded grid and stretch canvas, using the actual viewport center and explicit clipping. The full sky now adapts to window size without panning or magnification. Update the manual scenarios; no test suite was run.
+- [x] Shorten the original flat-map menu label to “Mappa giorno/notte” with localized equivalents, without changing its window title or opening tooltip. Collapse lunar phase/date labels and margins below 300 DIP of available width or height, restoring them at larger sizes and retaining accessible descriptions/tooltips. Confirm the shared close/shutdown paths save normal placement plus open/closed state; maximized/minimized state is not persisted.
+- [x] Build and install signed x64 development MSIX 0.0.14.0 with the existing trusted certificate. Windows reports `Ok`; all 1,337 checked installed payload files match their MSIX SHA-256 hashes. Formatting, static XAML/localization review and compilation with analyzers passed; no test suite, push or CI was run. Preserve the installer under `artifacts/installers/celestial-compact-0.0.14/`. Include the accumulated celestial UI refinements in the user's requested local checkpoint; installed visual scenarios remain pending.
+
+## [2026-09-19] Simplify the sky surface and coalesce celestial refreshes
+
+- [x] Remove the upper sky card/border, extend its scene to the window edges and place the explanatory text next to the bottom city picker, preserving the full text in its accessible name/tooltip. Add a localized visible Zoom label and synchronize the slider with touch zoom. Replace atlas brush transforms with a fixed clipped image viewport for planetary/event thumbnails.
+- [x] Coalesce duplicate live-minute renders from the independent timer and World Clocks while keeping exact explicit instants. Keep same-observer content visible during updates, preserve city-picker items, and distinguish pending/completed render keys; cancel obsolete resize requests without suppressing later work. Leave projection spinner ownership with the celestial view. A read-only check found the installed process responsive and no recent astronomy-related log errors; visual refresh confirmation remains pending. No test suite was executed.
+- [x] At the user's request, compile and install signed x64 development MSIX 0.0.13.0 with the existing trusted certificate. Windows reports `Ok`; all 1,337 checked installed payload files match the MSIX hashes. Formatting/static review and compilation with analyzers passed; no branch, commit, push, CI or test suite was run. Clean Release outputs and preserve the installer/dependencies under `artifacts/installers/celestial-sky-0.0.13/`.
+
+## [2026-09-19] Move celestial controls below the views and separate the globe
+
+- [x] Locally remove the new Earth's flat/globe switch and render only the sphere. Move city/zoom controls to the bottom of all three celestial windows and remove their redundant reference date/time, while retaining agenda event dates. Measure the actual globe viewport and preserve the existing full-window flat map and shared disappearing title bar. Clarify the globe menu/window title in all UI locales and remove obsolete switch strings.
+- [x] At the user's subsequent request, compile and install signed development MSIX 0.0.12.0 over 0.0.11.0, reusing the existing trusted certificate and unchanged, previously validated report assets. Verify Windows status `Ok` and SHA-256 equality for all 1,337 checked installed payload files. Formatting, XAML/JSON parsing and scoped diff checks passed; no test suite, branch, commit, push or CI was run for this correction. Clean Release outputs and preserve the installer/dependencies under `artifacts/installers/celestial-layout-0.0.12/`. Live visual validation remains in todo.md.
+
+## [2026-09-19] Install the celestial development MSIX
+
+- [x] With explicit authorization for a local signed development package and version alignment, build and install x64 MSIX 0.0.11.0 over 0.0.10.0 using the existing trusted test certificate. No public release or tag was created.
+- [x] Verify the source commit, package signature, twelve zodiac PNGs, celestial artwork, Windows package status `Ok`, and SHA-256 equality for all 1,337 checked installed payload files. The packaging report suite passed 60 tests. Preserve the final installer and matching dependencies under `artifacts/installers/celestial-0.0.11/`.
+- [x] Complete PR #39 with all required x64/ARM64, lint and reports checks passing, squash merge to `main`, and delete its branch. Clean Release project outputs; installed-app visual scenarios remain open in todo.md. Deletion of the superseded intermediate package was blocked by the execution policy, so it remains under `artifacts/installers/celestial-20260919/`.
+
+## [2026-09-19] Shared astronomical model and celestial desktop windows
+
+- [x] Implement independent local sky, astronomical agenda and Earth windows with existing Acrylic, light typography, accent colors and the shared auto-hiding title bar. Add an astronomy launcher menu and independent saved window placement/session restoration. Preserve the original day/night map surface; only the new Earth window switches flat/globe.
+- [x] Replace duplicate approximate solar/lunar calculations with one Core Astronomy Engine model and bounded caches, shared by existing clocks/Moon/maps and new views. Add source-attributed stars, computed events, offline Earth texture rendering, passive UI DTOs and versioned operations on the existing runtime.
+- [x] Add computed Moon/planet conjunctions, a source-attributed eight-shower meteor catalog with explicitly approximate peaks, and informational tropical zodiac sectors. Create twelve individual transparent zodiac PNGs, planetary/event artwork and a transparent landscape; record generation prompts and provenance. Render dawn/day/dusk/night with 24 smoothly interpolated palettes driven by actual solar elevation.
+- [x] Validate x64 WinUI compilation (zero warnings/errors), 770 Core tests, 372 Presentation tests and 96 CLI tests. All ten localization catalogs have matching keys/placeholders. CI results are recorded on PR #39; installed visual checks remain tracked in todo.md.
 
 ## [2026-09-19] Create a local installer and update the installed app
 

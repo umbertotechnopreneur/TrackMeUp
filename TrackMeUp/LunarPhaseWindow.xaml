@@ -37,7 +37,8 @@
                 TextTrimming="CharacterEllipsis" />
         </Grid>
 
-        <Grid x:Name="MoonContent" Grid.Row="1" Margin="20,0,20,24" Visibility="Collapsed">
+        <Grid x:Name="MoonContent" Grid.Row="1" Margin="20,0,20,24" Background="Transparent"
+              Visibility="Collapsed" SizeChanged="MoonContent_SizeChanged">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />

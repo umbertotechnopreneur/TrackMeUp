@@ -326,12 +326,20 @@
                         x:Name="WorldMapButton"
                         Grid.Column="1"
                         AutomationProperties.Name="Open world day and night map in a new window"
-                        Click="WorldMapButton_Click"
                         IsTabStop="True"
                         AllowFocusOnInteraction="True"
                         Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
                         Tag="WorldClock.Map.Open"
                         ToolTipService.ToolTip="Open world day and night map in a new window">
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem x:Name="LocalSkyMenuItem" Click="LocalSkyMenuItem_Click" />
+                                <MenuFlyoutItem x:Name="AstronomyAgendaMenuItem" Click="AstronomyAgendaMenuItem_Click" />
+                                <MenuFlyoutItem x:Name="CelestialMapMenuItem" Click="CelestialMapMenuItem_Click" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem x:Name="WorldMapMenuItem" Click="WorldMapButton_Click" />
+                            </MenuFlyout>
+                        </Button.Flyout>
                         <FontIcon
                             AutomationProperties.AccessibilityView="Raw"
                             FontFamily="Segoe Fluent Icons"

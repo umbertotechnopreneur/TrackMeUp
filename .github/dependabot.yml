@@ -29,22 +29,6 @@ updates:
           - minor
           - patch
 
-  - package-ecosystem: npm
-    directory: /TrackMeUp.Reports.Web
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:30"
-      timezone: Asia/Ho_Chi_Minh
-    open-pull-requests-limit: 5
-    groups:
-      reports-minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
-
   - package-ecosystem: github-actions
     directory: /
     schedule:

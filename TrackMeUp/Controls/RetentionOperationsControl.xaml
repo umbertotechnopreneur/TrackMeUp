@@ -8,29 +8,40 @@
     d:DesignHeight="520"
     d:DesignWidth="420"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <DataTemplate x:Key="WrappingActionLabelTemplate">
+            <TextBlock Text="{Binding}" TextAlignment="Center" TextWrapping="Wrap" />
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid>
-        <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" IsActive="False" Visibility="Collapsed" />
+        <ProgressRing x:Name="Progress" Canvas.ZIndex="1" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw" IsActive="False" Visibility="Collapsed" />
 
-        <StackPanel x:Name="SectionBody" Spacing="20">
+        <StackPanel x:Name="SectionBody" Spacing="16">
             <StackPanel Spacing="4">
-                <TextBlock Tag="Operations.Retention" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" />
-                <TextBlock Tag="Operations.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Review local retention rules, preview eligible items, then choose whether to permanently delete them. Preview never deletes data; deletion always asks for confirmation." TextWrapping="Wrap" />
+                <TextBlock Tag="Operations.Retention" Margin="0,0,32,0" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Data retention" TextWrapping="Wrap" />
+                <TextBlock Tag="Operations.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="See how long your activity data and screenshots are kept, then review older items before deleting them." TextWrapping="Wrap" />
             </StackPanel>
 
-            <StackPanel Spacing="10">
+            <StackPanel Spacing="8">
                 <StackPanel Spacing="3">
-                    <TextBlock Tag="Operations.Retention.Policy" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="1 · Current criteria" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE787;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" AutomationProperties.AccessibilityView="Raw" />
+                        <TextBlock Grid.Column="1" Tag="Operations.Retention.Policy" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Current retention periods" TextWrapping="Wrap" />
+                    </Grid>
                     <TextBlock
                         Tag="Operations.Retention.Policy.Description"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="Loads the configured retention periods and local screen-capture folder."
+                        Text="Loaded automatically from your settings when you open this page."
                         TextWrapping="Wrap" />
                 </StackPanel>
-                <Button Tag="Operations.Retention.LoadPolicyAction" Click="RetentionStatusButton_Click" Content="Load current criteria" HorizontalAlignment="Left" />
-                <TextBlock x:Name="RetentionStatusText" Tag="Operations.Initial.Retention" IsTextSelectionEnabled="True" Text="Policy not loaded yet." TextWrapping="Wrap" />
+                <TextBlock x:Name="RetentionStatusText" Tag="Operations.Initial.Retention" AutomationProperties.LiveSetting="Polite" FontWeight="SemiBold" IsTextSelectionEnabled="True" Text="Loading retention periods…" TextWrapping="Wrap" />
                 <StackPanel Spacing="2">
-                    <TextBlock Tag="Operations.Retention.Directory" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Screen-capture folder" />
+                    <TextBlock Tag="Operations.Retention.Directory" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Screenshots folder" />
                     <TextBlock
                         x:Name="RetentionDirectoryText"
                         Tag="Operations.Initial.RetentionDirectory"
@@ -39,28 +50,35 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         IsTextSelectionEnabled="True"
                         MaxLines="1"
-                        Text="Load the criteria to see the folder."
+                        Text="Loading folder…"
                         TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </StackPanel>
 
             <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-            <StackPanel Spacing="10">
+            <StackPanel Spacing="8">
                 <StackPanel Spacing="3">
-                    <TextBlock Tag="Operations.Retention.Preview" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="2 · Cleanup preview" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE890;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" AutomationProperties.AccessibilityView="Raw" />
+                        <TextBlock Grid.Column="1" Tag="Operations.Retention.Preview" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Review older items" TextWrapping="Wrap" />
+                    </Grid>
                     <TextBlock
                         Tag="Operations.Retention.Preview.Description"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="Lists records and files eligible under the current criteria. This step never deletes anything."
+                        Text="Shows which items are past the retention periods and how much space they use. Nothing is deleted."
                         TextWrapping="Wrap" />
                 </StackPanel>
-                <Button Tag="Operations.Retention.PreviewAction" Click="RetentionPreviewButton_Click" Content="Preview eligible deletions" HorizontalAlignment="Left" />
-                <TextBlock x:Name="RetentionPreviewText" Tag="Operations.Initial.RetentionPreview" IsTextSelectionEnabled="True" Text="Preview not calculated yet." TextWrapping="Wrap" />
+                <Button x:Name="RetentionPreviewButton" Tag="Operations.Retention.PreviewAction" Click="RetentionPreviewButton_Click" Content="Show cleanup preview" ContentTemplate="{StaticResource WrappingActionLabelTemplate}" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Left" IsEnabled="False" />
+                <TextBlock x:Name="RetentionPreviewText" Tag="Operations.Initial.RetentionPreview" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" Text="The preview will appear here." TextWrapping="Wrap" />
                 <ListView
                     x:Name="RetentionPathsList"
-                    MaxHeight="160"
+                    MaxHeight="120"
                     AutomationProperties.Name="Eligible cleanup paths"
                     SelectionMode="None">
                     <ListView.ItemTemplate>
@@ -81,17 +99,24 @@
 
             <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-            <StackPanel Spacing="10">
+            <StackPanel Spacing="8">
                 <StackPanel Spacing="3">
-                    <TextBlock Tag="Operations.Retention.Cleanup" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="3 · Permanent deletion" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE74D;" FontSize="18" Foreground="{ThemeResource SystemFillColorCriticalBrush}" AutomationProperties.AccessibilityView="Raw" />
+                        <TextBlock Grid.Column="1" Tag="Operations.Retention.Cleanup" AutomationProperties.HeadingLevel="Level3" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Delete permanently" TextWrapping="Wrap" />
+                    </Grid>
                     <TextBlock
                         Tag="Operations.Retention.Cleanup.Description"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="Refreshes the preview, then asks for confirmation. Nothing is deleted unless you approve."
+                        Text="Refreshes the preview and asks for confirmation before deleting. This action cannot be undone."
                         TextWrapping="Wrap" />
                 </StackPanel>
-                <Button Tag="Operations.Retention.CleanupAction" Click="RunRetentionButton_Click" Content="Review and permanently delete…" HorizontalAlignment="Left" />
+                <Button x:Name="RetentionCleanupButton" Tag="Operations.Retention.CleanupAction" Click="RunRetentionButton_Click" Content="Review and delete…" ContentTemplate="{StaticResource WrappingActionLabelTemplate}" HorizontalAlignment="Left" IsEnabled="False" />
             </StackPanel>
         </StackPanel>
     </Grid>

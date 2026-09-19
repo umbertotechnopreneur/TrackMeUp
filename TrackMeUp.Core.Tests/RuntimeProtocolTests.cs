@@ -54,12 +54,9 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
-    public void LaunchOptions_BareReportsVerbSelectsDedicatedWindow()
+    public void LaunchOptions_RejectsRemovedReportsWindow()
     {
-        var options = LaunchOptions.Parse(["reports"]);
-
-        Assert.Equal(LaunchMode.Reports, options.Mode);
-        Assert.Empty(options.RemainingArguments);
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["reports"]));
     }
 
     [Fact]
@@ -72,13 +69,9 @@ public sealed class RuntimeProtocolTests
     }
 
     [Fact]
-    public void LaunchOptions_ReportsPreservesThemeOverrideForTheNativeShell()
+    public void LaunchOptions_ThemeOverrideDoesNotRestoreRemovedReportsWindow()
     {
-        var options = LaunchOptions.Parse(["reports", "--theme", "dark"]);
-
-        Assert.Equal(LaunchMode.Reports, options.Mode);
-        Assert.Equal("dark", options.Theme);
-        Assert.Empty(options.RemainingArguments);
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["reports", "--theme", "dark"]));
     }
 
     [Theory]

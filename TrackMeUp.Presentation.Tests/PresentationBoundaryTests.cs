@@ -24,21 +24,6 @@ public sealed class PresentationBoundaryTests
     }
 
     [Fact]
-    public async Task ReportViewModel_DelegatesTypedQueryToSharedFacade()
-    {
-        var application = DispatchProxy.Create<ITrackMeUpApplication, RecordingApplicationProxy>();
-        var recorder = (RecordingApplicationProxy)(object)application;
-        var viewModel = new ReportViewModel(application);
-        var query = new ReportQuery(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 5), string.Empty, ReportView.HourOfWeek);
-
-        var result = await viewModel.LoadAsync(query, CancellationToken.None);
-
-        Assert.True(result.Succeeded);
-        Assert.Same(query, recorder.ReportQuery);
-        Assert.NotNull(result.Value);
-    }
-
-    [Fact]
     public async Task MainViewModel_StartsTrackingFromThePersistedLaunchPreferenceWithoutToggling()
     {
         var application = DispatchProxy.Create<ITrackMeUpApplication, StartupRecordingApplicationProxy>();
@@ -53,32 +38,6 @@ public sealed class PresentationBoundaryTests
         Assert.Equal(1, recorder.StartCalls);
         Assert.Equal(0, recorder.ToggleCalls);
         Assert.Equal("winui.launch", recorder.LastStartRequest?.Source);
-    }
-
-    public class RecordingApplicationProxy : DispatchProxy
-    {
-        public ReportQuery? ReportQuery { get; private set; }
-
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-        {
-            if (targetMethod?.Name == nameof(ITrackMeUpApplication.GetReportAsync))
-            {
-                ReportQuery = Assert.IsType<ReportQuery>(args![0]);
-                var snapshot = new ReportSnapshot(
-                    2,
-                    new ReportRange(ReportQuery.From, ReportQuery.ToInclusive, "SE Asia Standard Time", 5),
-                    new ReportTotals(0, 0, 0, 0, 0, 0),
-                    [],
-                    [],
-                    [],
-                    [],
-                    new ReportDataQuality(false, null, null, 0, 0, 432000, 0),
-                    AiUsageSummary.Empty);
-                return Task.FromResult(OperationResult<ReportSnapshot>.Success("report.query.ok", "ReportQueryOk", snapshot));
-            }
-
-            throw new NotSupportedException(targetMethod?.Name);
-        }
     }
 
     public class StartupRecordingApplicationProxy : DispatchProxy

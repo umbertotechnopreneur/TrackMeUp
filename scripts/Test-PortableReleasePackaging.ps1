@@ -83,12 +83,10 @@ function New-SyntheticPublish {
     param([string]$Name, [string]$Platform = 'x64')
 
     $directory = Join-Path $fixtureRoot $Name
-    [void][IO.Directory]::CreateDirectory((Join-Path $directory 'ReportsWeb/assets'))
     [void][IO.Directory]::CreateDirectory((Join-Path $directory 'empty-directory'))
     foreach ($file in @('TrackMeUp.dll', 'TrackMeUp.deps.json', 'hostpolicy.dll', 'System.Private.CoreLib.dll',
         'Microsoft.ui.xaml.dll', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.Windows.ApplicationModel.Resources.dll',
-        'TrackMeUp.pri', 'WebView2Loader.dll', 'Microsoft.Web.WebView2.Core.Projection.dll',
-        'ReportsWeb/index.html', 'ReportsWeb/THIRD_PARTY_NOTICES.md', 'ReportsWeb/assets/report.js', '.hidden-payload')) {
+        'TrackMeUp.pri', '.hidden-payload')) {
         [IO.File]::WriteAllText((Join-Path $directory $file), "Synthetic payload: $file", $utf8)
     }
     foreach ($file in @('TrackMeUp.exe', 'hostfxr.dll', 'coreclr.dll')) {
@@ -128,7 +126,7 @@ foreach ($platform in @('x64', 'ARM64')) {
         Assert-PortableTest ($null -ne $archive.GetEntry('TrackMeUp.exe') -and $null -eq $archive.GetEntry('Install.ps1')) "$platform archive is not directly extractable."
         Assert-PortableTest ($null -ne $archive.GetEntry('empty-directory/')) "$platform omitted an empty publish directory."
         $readme = Read-ZipText -Archive $archive -Name 'README.txt'
-        Assert-PortableTest ($readme -like '*LocalAppData*' -and $readme -like '*WebView2 Evergreen Runtime*' -and
+        Assert-PortableTest ($readme -like '*LocalAppData*' -and
             $readme -like '*On-device screenshot OCR requires the MSIX edition*') "$platform run instructions omit prerequisites or data behavior."
         $manifest = Read-ZipText -Archive $archive -Name 'SHA256SUMS.txt'
         $hashedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -181,7 +179,7 @@ foreach ($change in @(
     [IO.File]::WriteAllText($path, ($metadata | ConvertTo-Json), $utf8)
     Assert-Rejected -Name $change.Name -Source $source -Message 'Portable build information does not match'
 }
-foreach ($file in @('hostfxr.dll', 'coreclr.dll', 'Microsoft.WindowsAppRuntime.dll', 'WebView2Loader.dll', 'ReportsWeb/THIRD_PARTY_NOTICES.md')) {
+foreach ($file in @('hostfxr.dll', 'coreclr.dll', 'Microsoft.WindowsAppRuntime.dll')) {
     $name = 'missing-' + $file.Replace('/', '-')
     $source = New-SyntheticPublish -Name $name
     [IO.File]::Delete((Join-Path $source $file))

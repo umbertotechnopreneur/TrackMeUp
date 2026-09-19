@@ -40,7 +40,7 @@ public sealed class StartupInstanceContractTests
         Assert.Contains("HandleRedirectedActivation", app, StringComparison.Ordinal);
         Assert.Contains("_window.ShowFlyout();", app, StringComparison.Ordinal);
         Assert.Contains("WindowsLaunchArguments.Parse(launch.Arguments", program, StringComparison.Ordinal);
-        Assert.Contains("case LaunchMode.Reports:", app, StringComparison.Ordinal);
+        Assert.Contains("case LaunchMode.Ui:", app, StringComparison.Ordinal);
         Assert.Contains("lock (ActivationGate)", program, StringComparison.Ordinal);
         Assert.DoesNotContain("catch (ArgumentException)", program, StringComparison.Ordinal);
     }
@@ -68,13 +68,13 @@ public sealed class StartupInstanceContractTests
     }
 
     [Theory]
-    [InlineData("reports --theme dark")]
-    [InlineData("\"C:\\Synthetic Apps\\TrackMeUp.exe\" reports --theme dark")]
-    public void RedirectedReports_KeepModeAndTheme(string arguments)
+    [InlineData("--ui --theme dark")]
+    [InlineData("\"C:\\Synthetic Apps\\TrackMeUp.exe\" --ui --theme dark")]
+    public void RedirectedUi_KeepsTheme(string arguments)
     {
         var options = WindowsLaunchArguments.Parse(arguments, "TrackMeUp.exe");
 
-        Assert.Equal(LaunchMode.Reports, options.Mode);
+        Assert.Equal(LaunchMode.Ui, options.Mode);
         Assert.Equal("dark", options.Theme);
         Assert.Empty(options.RemainingArguments);
     }

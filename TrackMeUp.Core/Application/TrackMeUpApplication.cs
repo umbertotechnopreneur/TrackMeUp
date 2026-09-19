@@ -113,6 +113,15 @@ public static class TrackMeUpApplicationFactory
 /// <summary>Implements UI-independent use cases over the existing local infrastructure services.</summary>
 public sealed class TrackMeUpApplication : ITrackMeUpApplication
 {
+    private readonly WindowSnappingService _windowSnapping = new();
+
+    /// <inheritdoc />
+    public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
+        _windowSnapping.Register(windowHandle, reportFailure);
+
+    /// <inheritdoc />
+    public void ConfigureWindowSnapping(bool enabled) => _windowSnapping.Configure(enabled);
+
     private readonly LocalStore _store;
     private readonly SettingsSnapshot _settingsSnapshot;
     private readonly UtilityService _utilities;
@@ -137,6 +146,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly AiScreenshotReprocessingService _screenshotReprocessing;
     private readonly DataArchiveService _archives;
     private readonly WorldClockApplicationService _worldClockOperations;
+    private readonly CelestialMapService _celestialMap = new();
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -1958,44 +1968,6 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }, cancellationToken);
 
     /// <inheritdoc />
-    public Task<OperationResult<string>> GenerateTodayReportAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => MutateAsync(async () =>
-    {
-        var report = new HtmlReportService(_store, _utilities).ExportToday();
-        if (!string.IsNullOrWhiteSpace(outputDirectory))
-        {
-            var target = Path.Combine(_utilities.NormalizeDirectory(outputDirectory), Path.GetFileName(report));
-            File.Copy(report, target, true);
-            report = target;
-        }
-
-        if (open)
-        {
-            Process.Start(new ProcessStartInfo { FileName = report, UseShellExecute = true });
-        }
-
-        await Task.CompletedTask;
-        return OperationResult<string>.Success("report.today.generated", "TodayReportGenerated", report);
-    }, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken) => MutateAsync(async () =>
-    {
-        var report = new HtmlReportService(_store, _utilities).ExportDailyDigest(date);
-        var settings = _settingsSnapshot.Value with { LastDailyDigestDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) };
-        PersistSettings(settings);
-        if (open)
-        {
-            Process.Start(new ProcessStartInfo { FileName = report, UseShellExecute = true });
-        }
-
-        await Task.CompletedTask;
-        return OperationResult<string>.Success("report.digest.generated", "DailyDigestGenerated", report);
-    }, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<OperationResult<string>> OpenReportsFolderAsync(CancellationToken cancellationToken) => OpenFolderAsync(_utilities.ReportsDirectory, "report.folder.opened", "ReportFolderOpened", cancellationToken);
-
-    /// <inheritdoc />
     public Task<OperationResult<string>> OpenUserInterfaceAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -2221,6 +2193,37 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         cancellationToken.ThrowIfCancellationRequested();
         return await _worldClockOperations.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken) =>
+        _worldClockOperations.GetCelestialReferenceAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<OperationResult<CelestialSnapshot>> GetCelestialAsync(CelestialRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Ephemeris searches run off the presentation dispatcher; failures propagate without fabricated events.
+        var snapshot = await Task.Run(() =>
+        {
+            var catalog = _worldClockOperations.GetCatalog().Value
+                ?? throw new InvalidDataException("The celestial city catalog is unavailable.");
+            return CelestialService.Build(request, catalog, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
+        if (request.IncludeSatellites)
+            snapshot = snapshot with
+            {
+                Satellites = await CelestialSatelliteService.GetPositionsAsync(snapshot, cancellationToken).ConfigureAwait(false)
+            };
+        return OperationResult<CelestialSnapshot>.Success("celestial.loaded", "WorldClocksLoaded", snapshot);
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<CelestialMapImage>> GetCelestialMapAsync(CelestialMapRequest request, CancellationToken cancellationToken)
+    {
+        var image = await _celestialMap.RenderAsync(request, cancellationToken).ConfigureAwait(false);
+        return OperationResult<CelestialMapImage>.Success("celestial.map.loaded", "WorldClocksLoaded", image);
     }
 
     /// <inheritdoc />

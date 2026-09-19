@@ -107,8 +107,6 @@ public sealed record AppSettings(
     string PrivacyProcessNames = "",
     string PrivacyWindowTitles = "",
     string PrivacyWindowHints = "",
-    bool DailyDigestEnabled = true,
-    string DailyDigestDirectory = "",
     int DataRetentionDays = 30,
     int ScreenshotRetentionDays = 30,
     int OpenAiDailyLimit = 20,
@@ -116,7 +114,6 @@ public sealed record AppSettings(
     decimal EstimatedCostPerAnalysisUsd = 0.02m,
     decimal EstimatedCostPerScreenshotUsd = 0.003m,
     bool ShowCostGuardrailInStatus = true,
-    string LastDailyDigestDate = "",
     bool StartTrackingOnLaunch = false,
     bool TaskbarWidgetVisible = false,
     string TaskbarWidgetPosition = TaskbarWidgetPositions.Left,
@@ -142,7 +139,8 @@ public sealed record AppSettings(
     bool HardwareSaveSnapshots = true,
     string HardwareSamplingProfile = "normal",
     bool WorldMapWindowShowInTaskbar = true,
-    bool LunarPhaseWindowShowInTaskbar = true);
+    bool LunarPhaseWindowShowInTaskbar = true,
+    bool WindowSnappingEnabled = true);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

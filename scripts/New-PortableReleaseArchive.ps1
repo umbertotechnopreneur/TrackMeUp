@@ -67,8 +67,7 @@ foreach ($requiredFile in @(
     'TrackMeUp.exe', 'TrackMeUp.dll', 'TrackMeUp.deps.json', 'TrackMeUp.runtimeconfig.json', 'BuildInfo.json',
     'hostfxr.dll', 'hostpolicy.dll', 'coreclr.dll', 'System.Private.CoreLib.dll',
     'Microsoft.ui.xaml.dll', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.Windows.ApplicationModel.Resources.dll',
-    'TrackMeUp.pri', 'WebView2Loader.dll', 'Microsoft.Web.WebView2.Core.Projection.dll',
-    'ReportsWeb/index.html', 'ReportsWeb/THIRD_PARTY_NOTICES.md'
+    'TrackMeUp.pri'
 )) {
     $requiredPath = Join-Path $publishRoot $requiredFile
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf) -or (Get-Item -LiteralPath $requiredPath).Length -eq 0) {
@@ -149,14 +148,10 @@ This unsigned prerelease preparation artifact may trigger Windows security promp
 Follow your organization's policy for unsigned software; do not disable security checks.
 
 The .NET and Windows App SDK runtimes are included.
-Reports require the Microsoft Edge WebView2 Evergreen Runtime installed on Windows.
-The browser engine is not bundled in this ZIP.
-The main player does not initialize WebView2. Opening or restoring Reports without
-a usable Runtime shows a report initialization error rather than closing the app.
 On-device screenshot OCR requires the MSIX edition; it is unavailable in this portable build.
 OCR is initialized on extraction, not basic startup. An OCR failure is recorded on
 the capture without discarding the screenshot or terminating the application.
-These feature limitations do not by themselves prevent basic application startup.
+This feature limitation does not by itself prevent basic application startup.
 
 Portable describes application deployment, not a portable user profile.
 Settings, screenshots, history, and other application data use the normal LocalAppData

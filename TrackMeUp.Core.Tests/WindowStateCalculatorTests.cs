@@ -11,7 +11,6 @@ public sealed class WindowStateCalculatorTests
     public void WindowStateMinimumSizes_AreSharedByRestoreAndNativeSizing()
     {
         Assert.Equal(new WindowMinimumSize(470, 240), WindowStateService.GetMinimumSize(WindowStateKeys.Main));
-        Assert.Equal(new WindowMinimumSize(720, 520), WindowStateService.GetMinimumSize(WindowStateKeys.Reports));
         Assert.Equal(new WindowMinimumSize(760, 560), WindowStateService.GetMinimumSize(WindowStateKeys.ActivityCalendar));
         Assert.Equal(new WindowMinimumSize(640, 560), WindowStateService.GetMinimumSize(WindowStateKeys.AiScreenshotReprocessing));
         Assert.Equal(new WindowMinimumSize(760, 540), WindowStateService.GetMinimumSize(WindowStateKeys.Screenshots));

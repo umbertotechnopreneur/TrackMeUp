@@ -19,6 +19,7 @@
         </Grid.Shadow>
         <Border
             x:Name="BannerFrame"
+            Background="{ThemeResource ToastSurfaceBackgroundBrush}"
             BorderBrush="{ThemeResource ToastBorderBrush}"
             BorderThickness="1"
             CornerRadius="16">

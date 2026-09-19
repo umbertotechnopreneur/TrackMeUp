@@ -9,249 +9,113 @@
     d:DesignHeight="720"
     d:DesignWidth="420"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style x:Key="OperationsMetricLabelStyle" TargetType="TextBlock">
-            <Setter Property="CharacterSpacing" Value="80" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
-        </Style>
-        <Style x:Key="OperationsMetricValueStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="19" />
-            <Setter Property="FontWeight" Value="SemiLight" />
-            <Setter Property="IsTextSelectionEnabled" Value="True" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        </Style>
-        <Style x:Key="OperationsMetricDetailStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
-            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-        </Style>
-    </UserControl.Resources>
     <Grid x:Name="RootLayout">
         <ScrollViewer x:Name="OperationsScroll" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
-            <Grid x:Name="OperationsBody" Padding="0,0,28,20" RowSpacing="24">
-                <VisualStateManager.VisualStateGroups>
-                    <VisualStateGroup x:Name="WidthStates">
-                        <VisualState x:Name="Narrow"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers></VisualState>
-                        <VisualState x:Name="Wide">
-                            <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="760" /></VisualState.StateTriggers>
-                            <VisualState.Setters>
-                                <Setter Target="OperationsBody.ColumnSpacing" Value="32" />
-                                <Setter Target="SecondaryColumn.Width" Value="*" />
-                                <Setter Target="SecondarySections.(Grid.Row)" Value="0" />
-                                <Setter Target="SecondarySections.(Grid.Column)" Value="1" />
-                            </VisualState.Setters>
-                        </VisualState>
-                    </VisualStateGroup>
-                </VisualStateManager.VisualStateGroups>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="SecondaryColumn" Width="0" /></Grid.ColumnDefinitions>
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <StackPanel x:Name="OperationsBody" Padding="0,0,18,12" Spacing="14">
+                <StackPanel Spacing="4">
+                    <TextBlock Tag="Options.Operations.Section" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Local data and tools" />
+                    <TextBlock Tag="Options.Operations.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Open focused pages for captures, privacy rules, retention, and app-specific details." TextWrapping="Wrap" />
+                </StackPanel>
 
-                <StackPanel x:Name="PrimarySections" Spacing="24">
-                    <StackPanel Spacing="10">
-                        <StackPanel Spacing="2">
-                            <TextBlock Tag="Operations.Runtime" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="App and PC" />
-                            <TextBlock Tag="Operations.Runtime.Description" Style="{StaticResource BodyTextBlockStyle}" Text="Review the TrackMeUp runtime, protocol and capabilities, logging status, and a current snapshot of CPU, GPU, memory, network, and local storage. These diagnostics are read from this PC." TextWrapping="Wrap" />
+                <StackPanel Spacing="4">
+                    <TextBlock Tag="Options.Navigation.SnapshotAi.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Screen captures and AI" />
+                    <TextBlock Tag="Options.Navigation.SnapshotAi.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Capture or inspect images and request a description from the configured AI provider." TextWrapping="Wrap" />
+                    <HyperlinkButton x:Name="OpenSnapshotAiLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Open screen capture tools" Click="OpenSnapshotAiLink_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
+                            <TextBlock Tag="Options.Navigation.SnapshotAi.Action" Text="Open screen capture tools" />
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
                         </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="4">
+                    <TextBlock Tag="Options.Navigation.Privacy.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Privacy rules" />
+                    <TextBlock Tag="Options.Navigation.Privacy.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Choose which apps, window titles, and context details TrackMeUp must ignore before storing or sharing context." TextWrapping="Wrap" />
+                    <HyperlinkButton x:Name="OpenPrivacyLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Manage privacy rules" Click="OpenPrivacyLink_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFA97BEA" Glyph="&#xE72E;" />
+                            <TextBlock Tag="Options.Navigation.Privacy.Action" Text="Manage privacy rules" />
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
+                        </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="4">
+                    <TextBlock Tag="Options.Navigation.Retention.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Data retention" />
+                    <TextBlock Tag="Options.Navigation.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Preview what can be removed and run a confirmed cleanup of local activity data and screen captures." TextWrapping="Wrap" />
+                    <HyperlinkButton x:Name="OpenRetentionLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Review data retention" Click="OpenRetentionLink_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF85A8DB" Glyph="&#xE823;" />
+                            <TextBlock Tag="Options.Navigation.Retention.Action" Text="Review data retention" />
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
+                        </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="4">
+                    <TextBlock Tag="Options.Navigation.Plugins.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="App details" />
+                    <TextBlock Tag="Options.Navigation.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Choose which local app-specific context enrichers can add details to the timeline." TextWrapping="Wrap" />
+                    <HyperlinkButton x:Name="OpenPluginsLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Manage app details" Click="OpenPluginsLink_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF71CBB7" Glyph="&#xE90F;" />
+                            <TextBlock Tag="Options.Navigation.Plugins.Action" Text="Manage app details" />
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
+                        </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="4">
+                    <TextBlock Tag="Operations.InstallationTransfer.Navigation.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Installations and data transfer" />
+                    <TextBlock Tag="Operations.InstallationTransfer.Navigation.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Name each installation and export or preview and merge local data and screenshots from another system." TextWrapping="Wrap" />
+                    <HyperlinkButton
+                        x:Name="OpenInstallationTransferLink"
+                        Tag="Operations.InstallationTransfer.Navigation.Action"
+                        MinHeight="36"
+                        Padding="0,6"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.HelpText="Name installations and transfer local data and screenshots between systems."
+                        AutomationProperties.Name="Manage installations and archives"
+                        Click="OpenInstallationTransferLink_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF5CC2C7" Glyph="&#xE8B5;" />
+                            <TextBlock Tag="Operations.InstallationTransfer.Navigation.Action" Text="Manage installations and archives" />
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
+                        </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                <StackPanel Spacing="8">
+                    <TextBlock Tag="Operations.AtomicNuke.Title" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Atomic nuke" />
+                    <TextBlock Tag="Operations.AtomicNuke.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Permanently erase the TrackMeUp-owned local data for this installation—records, screenshots, configuration, logs, search indexes, and metadata—then restart the app with default settings." TextWrapping="Wrap" />
+                    <Button
+                        x:Name="AtomicNukeButton"
+                        MinHeight="40"
+                        Margin="0,4,0,0"
+                        Padding="14,8"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Nuclearize everything"
+                        Background="#FFC83B31"
+                        BorderBrush="#FFFF8A80"
+                        Click="AtomicNukeButton_Click"
+                        Foreground="White">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Tag="Operations.Health" AutomationProperties.Name="Health" Click="RuntimeHealthButton_Click" Content="Health" />
-                            <Button Tag="Operations.SystemSnapshot" AutomationProperties.Name="System snapshot" Click="SystemSnapshotButton_Click" Content="System snapshot" />
+                            <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Glyph="&#xE74D;" />
+                            <TextBlock Tag="Operations.AtomicNuke.Action" Text="Nuclearize everything" />
                         </StackPanel>
-                        <TextBlock x:Name="RuntimeHealthEmptyText" Tag="Operations.Initial.Health" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Health not acquired yet." TextWrapping="Wrap" />
-                        <StackPanel x:Name="RuntimeHealthSummary" Spacing="14" Visibility="Collapsed">
-                            <Grid ColumnSpacing="18">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                <StackPanel Spacing="2">
-                                    <TextBlock Tag="Operations.Runtime.Version" Style="{StaticResource OperationsMetricLabelStyle}" Text="VERSION" />
-                                    <TextBlock x:Name="RuntimeVersionValue" Style="{StaticResource OperationsMetricValueStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="2">
-                                    <TextBlock Tag="Operations.Runtime.Protocol" Style="{StaticResource OperationsMetricLabelStyle}" Text="PROTOCOL" />
-                                    <TextBlock x:Name="RuntimeProtocolValue" Style="{StaticResource OperationsMetricValueStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="2">
-                                    <TextBlock Tag="Operations.Runtime.Role" Style="{StaticResource OperationsMetricLabelStyle}" Text="ROLE" />
-                                    <TextBlock x:Name="RuntimeRoleValue" Style="{StaticResource OperationsMetricValueStyle}" />
-                                </StackPanel>
-                            </Grid>
-                            <StackPanel Spacing="6">
-                                <TextBlock Tag="Operations.Runtime.Capabilities" Style="{StaticResource OperationsMetricLabelStyle}" Text="CAPABILITIES" />
-                                <ItemsControl x:Name="RuntimeCapabilitiesList">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" /></ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Margin="0,0,14,6" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding}" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            <Border Height="1" Opacity="0.6" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                            <StackPanel Spacing="8">
-                                <TextBlock Tag="Operations.Runtime.Observability" Style="{StaticResource OperationsMetricLabelStyle}" Text="OBSERVABILITY" />
-                                <Grid ColumnSpacing="18" RowSpacing="10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                    <StackPanel Spacing="1"><TextBlock Tag="Operations.Runtime.Console" Style="{StaticResource OperationsMetricDetailStyle}" Text="Console logging" /><TextBlock x:Name="RuntimeConsoleValue" FontWeight="SemiBold" /></StackPanel>
-                                    <StackPanel Grid.Column="1" Spacing="1"><TextBlock Tag="Operations.Runtime.File" Style="{StaticResource OperationsMetricDetailStyle}" Text="File logging" /><TextBlock x:Name="RuntimeFileValue" FontWeight="SemiBold" /></StackPanel>
-                                    <StackPanel Grid.Row="1" Spacing="1"><TextBlock Text="Sentry" Style="{StaticResource OperationsMetricDetailStyle}" /><TextBlock x:Name="RuntimeSentryValue" FontWeight="SemiBold" TextWrapping="Wrap" /></StackPanel>
-                                    <StackPanel Grid.Row="1" Grid.Column="1" Spacing="1"><TextBlock Tag="Operations.Runtime.DefaultPii" Style="{StaticResource OperationsMetricDetailStyle}" Text="Default PII" /><TextBlock x:Name="RuntimePiiValue" FontWeight="SemiBold" /></StackPanel>
-                                </Grid>
-                                <TextBlock x:Name="ObservabilityUnavailableText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <TextBlock x:Name="SystemSnapshotEmptyText" Tag="Operations.Initial.SystemSnapshot" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="System snapshot not acquired yet." TextWrapping="Wrap" />
-                        <StackPanel x:Name="SystemSnapshotSummary" Spacing="12" Visibility="Collapsed">
-                            <TextBlock Tag="Operations.System.Live" Style="{StaticResource OperationsMetricLabelStyle}" Text="LIVE SYSTEM" />
-                            <TextBlock x:Name="SystemHardwareStatusText" Style="{StaticResource OperationsMetricDetailStyle}" />
-                            <TextBlock x:Name="SystemHardwareCollectedAtText" Style="{StaticResource OperationsMetricDetailStyle}" />
-                            <TextBlock x:Name="SystemHardwareDriverStatusText" Style="{StaticResource OperationsMetricDetailStyle}" />
-                            <ItemsControl x:Name="SystemHardwareSummaryList">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,4" Spacing="2">
-                                            <TextBlock Style="{StaticResource OperationsMetricLabelStyle}" Text="{Binding Label}" />
-                                            <TextBlock FontSize="13" IsTextSelectionEnabled="True" Text="{Binding Value}" TextWrapping="Wrap" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Expander x:Name="SystemHardwareSensorsExpander" HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0" IsExpanded="False">
-                                <Expander.Header><TextBlock Tag="Hardware.AllSensors" Text="All sensors" /></Expander.Header>
-                                <ItemsControl x:Name="SystemHardwareSensorsList">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate><TextBlock Margin="0,1" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsTextSelectionEnabled="True" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Expander>
-                            <TextBlock Tag="Hardware.PowerNote" Style="{StaticResource OperationsMetricDetailStyle}" Text="W measures component power. Battery capacity in mWh is not whole-PC energy use." />
-                        </StackPanel>
-                    </StackPanel>
-
+                    </Button>
                 </StackPanel>
-
-                <StackPanel x:Name="SecondarySections" Grid.Row="1" Spacing="14">
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Options.Operations.Section" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Local data and tools" />
-                        <TextBlock Tag="Options.Operations.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Open focused pages for captures, reports, privacy rules, retention, and app-specific details." TextWrapping="Wrap" />
-                    </StackPanel>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Options.Navigation.SnapshotAi.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Screen captures and AI" />
-                        <TextBlock Tag="Options.Navigation.SnapshotAi.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Capture or inspect images and request a description from the configured AI provider." TextWrapping="Wrap" />
-                        <HyperlinkButton x:Name="OpenSnapshotAiLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Open screen capture tools" Click="OpenSnapshotAiLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFE88F6B" Glyph="&#xE7ED;" />
-                                <TextBlock Tag="Options.Navigation.SnapshotAi.Action" Text="Open screen capture tools" />
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
-                            </StackPanel>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Options.Navigation.Reports.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Reports and digest" />
-                        <TextBlock Tag="Options.Navigation.Reports.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Create a report for today or a digest for a selected day from activity stored on this PC." TextWrapping="Wrap" />
-                        <HyperlinkButton x:Name="OpenReportsLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Open report tools" Click="OpenReportsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF7D9FF8" Glyph="&#xE787;" />
-                                <TextBlock Tag="Options.Navigation.Reports.Action" Text="Open report tools" />
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
-                            </StackPanel>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Options.Navigation.Privacy.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Privacy rules" />
-                        <TextBlock Tag="Options.Navigation.Privacy.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Choose which apps, window titles, and context details TrackMeUp must ignore before storing or sharing context." TextWrapping="Wrap" />
-                        <HyperlinkButton x:Name="OpenPrivacyLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Manage privacy rules" Click="OpenPrivacyLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FFA97BEA" Glyph="&#xE72E;" />
-                                <TextBlock Tag="Options.Navigation.Privacy.Action" Text="Manage privacy rules" />
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
-                            </StackPanel>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Options.Navigation.Retention.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Data retention" />
-                        <TextBlock Tag="Options.Navigation.Retention.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Preview what can be removed and run a confirmed cleanup of local activity data and screen captures." TextWrapping="Wrap" />
-                        <HyperlinkButton x:Name="OpenRetentionLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Review data retention" Click="OpenRetentionLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF85A8DB" Glyph="&#xE823;" />
-                                <TextBlock Tag="Options.Navigation.Retention.Action" Text="Review data retention" />
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
-                            </StackPanel>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Options.Navigation.Plugins.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="App details" />
-                        <TextBlock Tag="Options.Navigation.Plugins.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Choose which local app-specific context enrichers can add details to the timeline." TextWrapping="Wrap" />
-                        <HyperlinkButton x:Name="OpenPluginsLink" MinHeight="36" Padding="0,6" HorizontalAlignment="Left" AutomationProperties.Name="Manage app details" Click="OpenPluginsLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF71CBB7" Glyph="&#xE90F;" />
-                                <TextBlock Tag="Options.Navigation.Plugins.Action" Text="Manage app details" />
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
-                            </StackPanel>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="4">
-                        <TextBlock Tag="Operations.InstallationTransfer.Navigation.Title" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Installations and data transfer" />
-                        <TextBlock Tag="Operations.InstallationTransfer.Navigation.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Name each installation and export or preview and merge local data and screenshots from another system." TextWrapping="Wrap" />
-                        <HyperlinkButton
-                            x:Name="OpenInstallationTransferLink"
-                            Tag="Operations.InstallationTransfer.Navigation.Action"
-                            MinHeight="36"
-                            Padding="0,6"
-                            HorizontalAlignment="Left"
-                            AutomationProperties.HelpText="Name installations and transfer local data and screenshots between systems."
-                            AutomationProperties.Name="Manage installations and archives"
-                            Click="OpenInstallationTransferLink_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="#FF5CC2C7" Glyph="&#xE8B5;" />
-                                <TextBlock Tag="Operations.InstallationTransfer.Navigation.Action" Text="Manage installations and archives" />
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE76C;" />
-                            </StackPanel>
-                        </HyperlinkButton>
-                    </StackPanel>
-
-                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                    <StackPanel Spacing="8">
-                        <TextBlock Tag="Operations.AtomicNuke.Title" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Atomic nuke" />
-                        <TextBlock Tag="Operations.AtomicNuke.Description" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}" Text="Permanently erase the TrackMeUp-owned local data for this installation—records, screenshots, configuration, reports, logs, search indexes, and metadata—then restart the app with default settings." TextWrapping="Wrap" />
-                        <Button
-                            x:Name="AtomicNukeButton"
-                            MinHeight="40"
-                            Margin="0,4,0,0"
-                            Padding="14,8"
-                            HorizontalAlignment="Left"
-                            AutomationProperties.Name="Nuclearize everything"
-                            Background="#FFC83B31"
-                            BorderBrush="#FFFF8A80"
-                            Click="AtomicNukeButton_Click"
-                            Foreground="White">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon AutomationProperties.AccessibilityView="Raw" FontFamily="Segoe Fluent Icons" FontSize="16" Glyph="&#xE74D;" />
-                                <TextBlock Tag="Operations.AtomicNuke.Action" Text="Nuclearize everything" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </StackPanel>
-            </Grid>
+            </StackPanel>
         </ScrollViewer>
 
         <ScrollViewer x:Name="DetailScroll" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto" Visibility="Collapsed">
             <Grid Padding="0,0,18,12">
                 <ContentPresenter x:Name="SnapshotAiHost" />
-                <ContentPresenter x:Name="ReportsHost" />
                 <ContentPresenter x:Name="PrivacyHost" />
                 <ContentPresenter x:Name="RetentionHost" />
                 <ContentPresenter x:Name="PluginsHost" />

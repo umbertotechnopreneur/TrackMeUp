@@ -17,38 +17,6 @@ permissions:
   contents: read
 
 jobs:
-  reports-web:
-    name: reports web
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24.16.0
-          cache: npm
-          cache-dependency-path: TrackMeUp.Reports.Web/package-lock.json
-
-      - name: Install and build reports web assets
-        working-directory: TrackMeUp.Reports.Web
-        run: |
-          npm ci
-          npm run build
-
-      - name: Verify tracked reports distribution is current
-        shell: pwsh
-        run: |
-          $changes = @(git status --porcelain --untracked-files=all -- TrackMeUp.Reports.Web/dist)
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-          }
-          if ($changes.Count -gt 0) {
-            $changes | Write-Host
-            throw 'The tracked reports distribution does not match a clean production build.'
-          }
-
   lint:
     name: lint
     runs-on: windows-latest
@@ -99,7 +67,6 @@ jobs:
 
   build:
     name: release build (${{ matrix.platform }})
-    needs: reports-web
     runs-on: windows-latest
     strategy:
       fail-fast: false

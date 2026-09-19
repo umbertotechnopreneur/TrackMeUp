@@ -3,7 +3,7 @@
 TrackMeUp is a Windows app that stores your history on your PC by default.
 Each installation runs one tracker, so the desktop app and CLI share the same
 activity, settings, and privacy choices. Search, text recognition (OCR), and
-reports work with local data; AI analysis is optional.
+the activity calendar work with local data; AI analysis is optional.
 
 The contributor details below explain how shared services keep that experience
 consistent through `ITrackMeUpApplication`.
@@ -22,7 +22,7 @@ flowchart LR
     Services --> Search[Local search index]
     Services --> OCR[On-device OCR]
     Services --> Provider[Optional AI provider]
-    Services --> Reports[Local HTML reports]
+    Services --> Calendar[Activity calendar]
 ```
 
 An installation-specific mutex (a Windows lock) decides which process runs the
@@ -35,13 +35,12 @@ the installation ID, so their Windows object names don't expose the ID itself.
 | Project | What belongs here |
 | --- | --- |
 | `TrackMeUp/` | Windows, controls, app startup, and wiring services into the WinUI app. |
-| `TrackMeUp.Core/` | Shared app interface and data types, tracker ownership, storage, screenshots, cleanup, reports, Windows and network calls, and translations. |
+| `TrackMeUp.Core/` | Shared app interface and data types, tracker ownership, storage, screenshots, cleanup, activity aggregation, Windows and network calls, and translations. |
 | `TrackMeUp.Presentation/` | Data and view models used by the UI, without depending on a particular UI framework. |
 | `TrackMeUp.Cli/` | Spectre.Console commands and output, using the shared app interface. |
 | `TrackMeUp.Taskbar/` | Taskbar features that call Core services. |
 | `TrackMeUp.Search/` | The local search index, query checks, text analysis, and results. |
 | `TrackMeUp.Ocr/` | Reading text from screenshots with Windows OCR on the PC. |
-| `TrackMeUp.Reports.Web/` | Source and reproducible bundled files for local interactive reports. |
 | `TrackMeUp.*.Tests/` | Tests for Core, the UI models, CLI, search, and OCR, including checks for previously fixed bugs. |
 
 ## Where app behavior belongs
@@ -92,7 +91,7 @@ in tests and Release builds for every supported architecture.
 4. OCR and local search work without an AI provider.
 5. AI requests are built only for enabled features, with keys read from
    environment variables.
-6. Reports use saved local data and the web files included with the app.
+6. The activity calendar aggregates saved local data through Core services.
 
 See the [privacy guide](PRIVACY.md) for what is saved and what can leave the PC.
 

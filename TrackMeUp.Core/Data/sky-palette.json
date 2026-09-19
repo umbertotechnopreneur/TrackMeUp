@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "sunGlowCoreColor": "55FFDC8D",
+  "sunGlowEdgeColor": "00FFB666",
+  "frames": [
+    {
+      "altitudeDegrees": -90,
+      "zenithColor": "050A18",
+      "upperSkyColor": "080F20",
+      "horizonColor": "101A2C",
+      "starOpacity": 1,
+      "sunGlowOpacity": 0
+    },
+    {
+      "altitudeDegrees": -50,
+      "zenithColor": "060B1B",
+      "upperSkyColor": "091224",
+      "horizonColor": "111C31",
+      "starOpacity": 1,
+      "sunGlowOpacity": 0
+    },
+    {
+      "altitudeDegrees": -30,
+      "zenithColor": "070D21",
+      "upperSkyColor": "0C1730",
+      "horizonColor": "14213D",
+      "starOpacity": 1,
+      "sunGlowOpacity": 0
+    },
+    {
+      "altitudeDegrees": -24,
+      "zenithColor": "080F26",
+      "upperSkyColor": "101C3A",
+      "horizonColor": "1A2C50",
+      "starOpacity": 1,
+      "sunGlowOpacity": 0
+    },
+    {
+      "altitudeDegrees": -20,
+      "zenithColor": "09112D",
+      "upperSkyColor": "142245",
+      "horizonColor": "213961",
+      "starOpacity": 1,
+      "sunGlowOpacity": 0
+    },
+    {
+      "altitudeDegrees": -18,
+      "zenithColor": "0B1534",
+      "upperSkyColor": "19294E",
+      "horizonColor": "2B436F",
+      "starOpacity": 1,
+      "sunGlowOpacity": 0.02
+    },
+    {
+      "altitudeDegrees": -15,
+      "zenithColor": "101B3E",
+      "upperSkyColor": "22375D",
+      "horizonColor": "3D527D",
+      "starOpacity": 0.92,
+      "sunGlowOpacity": 0.06
+    },
+    {
+      "altitudeDegrees": -12,
+      "zenithColor": "15234A",
+      "upperSkyColor": "304369",
+      "horizonColor": "625C83",
+      "starOpacity": 0.78,
+      "sunGlowOpacity": 0.14
+    },
+    {
+      "altitudeDegrees": -9,
+      "zenithColor": "1A2B54",
+      "upperSkyColor": "464F73",
+      "horizonColor": "A47389",
+      "starOpacity": 0.52,
+      "sunGlowOpacity": 0.3
+    },
+    {
+      "altitudeDegrees": -6,
+      "zenithColor": "20355F",
+      "upperSkyColor": "625C7E",
+      "horizonColor": "D3948B",
+      "starOpacity": 0.22,
+      "sunGlowOpacity": 0.58
+    },
+    {
+      "altitudeDegrees": -4,
+      "zenithColor": "263E6A",
+      "upperSkyColor": "7B6986",
+      "horizonColor": "EDAD88",
+      "starOpacity": 0.09,
+      "sunGlowOpacity": 0.82
+    },
+    {
+      "altitudeDegrees": -2,
+      "zenithColor": "2B4774",
+      "upperSkyColor": "91788A",
+      "horizonColor": "F6C391",
+      "starOpacity": 0.02,
+      "sunGlowOpacity": 1
+    },
+    {
+      "altitudeDegrees": 0,
+      "zenithColor": "30517F",
+      "upperSkyColor": "9B8B99",
+      "horizonColor": "F9D69F",
+      "starOpacity": 0,
+      "sunGlowOpacity": 1
+    },
+    {
+      "altitudeDegrees": 2,
+      "zenithColor": "335B8C",
+      "upperSkyColor": "999FAF",
+      "horizonColor": "F6DDAE",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.94
+    },
+    {
+      "altitudeDegrees": 4,
+      "zenithColor": "326598",
+      "upperSkyColor": "90ACC1",
+      "horizonColor": "EFDFBC",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.8
+    },
+    {
+      "altitudeDegrees": 6,
+      "zenithColor": "2D6DA3",
+      "upperSkyColor": "84B8CF",
+      "horizonColor": "E0DFC7",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.65
+    },
+    {
+      "altitudeDegrees": 9,
+      "zenithColor": "2875AD",
+      "upperSkyColor": "79C0DA",
+      "horizonColor": "D0E1D3",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.46
+    },
+    {
+      "altitudeDegrees": 12,
+      "zenithColor": "237BB5",
+      "upperSkyColor": "70C3E1",
+      "horizonColor": "C4E3DC",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.32
+    },
+    {
+      "altitudeDegrees": 18,
+      "zenithColor": "1F7EBB",
+      "upperSkyColor": "65C1E4",
+      "horizonColor": "BAE3E3",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.18
+    },
+    {
+      "altitudeDegrees": 25,
+      "zenithColor": "1B79B8",
+      "upperSkyColor": "59B9E0",
+      "horizonColor": "B3E1E7",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.1
+    },
+    {
+      "altitudeDegrees": 35,
+      "zenithColor": "196FB0",
+      "upperSkyColor": "4DAEDA",
+      "horizonColor": "ACDFE8",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.06
+    },
+    {
+      "altitudeDegrees": 50,
+      "zenithColor": "18619E",
+      "upperSkyColor": "419FD2",
+      "horizonColor": "A9DDE8",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.04
+    },
+    {
+      "altitudeDegrees": 70,
+      "zenithColor": "17538C",
+      "upperSkyColor": "3592CA",
+      "horizonColor": "A9DDEB",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.02
+    },
+    {
+      "altitudeDegrees": 90,
+      "zenithColor": "174C82",
+      "upperSkyColor": "2E8CC6",
+      "horizonColor": "A9DDEA",
+      "starOpacity": 0,
+      "sunGlowOpacity": 0.02
+    }
+  ]
+}

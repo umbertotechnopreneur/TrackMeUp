@@ -26,8 +26,14 @@ public static class WindowStateKeys
     /// <summary>Identifies the independent lunar-phase window.</summary>
     public const string LunarPhase = "lunar-phase";
 
-    /// <summary>Identifies the reports window.</summary>
-    public const string Reports = "reports";
+    /// <summary>Identifies the observer's local sky window.</summary>
+    public const string LocalSky = "local-sky";
+
+    /// <summary>Identifies the astronomical event agenda.</summary>
+    public const string AstronomyAgenda = "astronomy-agenda";
+
+    /// <summary>Identifies the independent planar/spherical Earth window.</summary>
+    public const string CelestialMap = "celestial-map";
 
     /// <summary>Identifies the native activity-calendar dialog window.</summary>
     public const string ActivityCalendar = "activity-calendar";
@@ -97,7 +103,6 @@ public sealed class WindowStateService
         return windowKey switch
         {
             WindowStateKeys.Main => new(470, 240),
-            WindowStateKeys.Reports => new(720, 520),
             WindowStateKeys.ActivityCalendar => new(760, 560),
             WindowStateKeys.AiScreenshotReprocessing => new(640, 560),
             WindowStateKeys.Screenshots => new(760, 540),
@@ -113,6 +118,9 @@ public sealed class WindowStateService
             WindowStateKeys.Sensors => new(400, 360),
             WindowStateKeys.WorldMap => new(192, 160),
             WindowStateKeys.LunarPhase => new(192, 192),
+            WindowStateKeys.LocalSky => new(320, 320),
+            WindowStateKeys.AstronomyAgenda => new(280, 320),
+            WindowStateKeys.CelestialMap => new(320, 280),
             WindowStateKeys.WorldClockCityPicker => new(500, 560),
             WindowStateKeys.AiPricing => new(620, 430),
             WindowStateKeys.AiConnectionTest => new(480, 480),

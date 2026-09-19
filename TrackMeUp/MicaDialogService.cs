@@ -199,35 +199,6 @@ internal sealed class MicaDialogService
             });
     }
 
-    /// <summary>Shows screenshot-storage migration when a launch mode has no owner window yet.</summary>
-    internal async Task<OperationResult<ScreenshotStorageMigrationResult>> ShowStandaloneScreenshotStorageMigrationAsync(
-        ITrackMeUpApplication application,
-        ElementTheme theme,
-        LocalizationService strings)
-    {
-        ArgumentNullException.ThrowIfNull(application);
-        ArgumentNullException.ThrowIfNull(strings);
-        using var session = await _queue.EnterAsync();
-        if (session is null || _queue.IsShuttingDown)
-        {
-            return OperationResult<ScreenshotStorageMigrationResult>.Failure(
-                "operation.cancelled",
-                "ScreenshotStorageMigrationFailed");
-        }
-
-        var dialog = new ScreenshotStorageMigrationDialogWindow(
-            application,
-            theme,
-            strings,
-            ownerAppWindow: null,
-            ownerHandle: IntPtr.Zero);
-        return await ShowDialogWindowAsync(
-            dialog,
-            dialog.WindowHandle,
-            dialog.ShowAsync,
-            dialog.DisposePlacement);
-    }
-
     /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
     internal async Task ShowAiConnectionTestAsync(ITrackMeUpApplication application, Window owner, ElementTheme theme)
     {

@@ -24,6 +24,9 @@ public sealed class WorkspaceWindowStateTests
     [InlineData(WindowStateKeys.About, false, true)]
     [InlineData(WindowStateKeys.WorldMap, false, true)]
     [InlineData(WindowStateKeys.LunarPhase, true, true)]
+    [InlineData(WindowStateKeys.LocalSky, false, true)]
+    [InlineData(WindowStateKeys.AstronomyAgenda, false, true)]
+    [InlineData(WindowStateKeys.CelestialMap, false, true)]
     public void LiveWindowState_DistinguishesMainTrayHidingFromAnOpenAuxiliary(string key, bool isVisible, bool expected)
     {
         Assert.Equal(expected, WorkspaceWindowState.IsOpenWhileAlive(key, isVisible));
@@ -39,13 +42,29 @@ public sealed class WorkspaceWindowStateTests
             [WindowStateKeys.Main] = false,
             [WindowStateKeys.WorldClocks] = false,
             [WindowStateKeys.WorldMap] = true,
-            [WindowStateKeys.Reports] = true,
             [WindowStateKeys.Search] = false
         };
 
         Assert.Equal(
-            new[] { WindowStateKeys.Reports, WindowStateKeys.WorldMap, WindowStateKeys.LunarPhase },
+            new[] { WindowStateKeys.WorldMap, WindowStateKeys.LunarPhase },
             WorkspaceWindowState.GetWindowsToRestore(openStates));
+    }
+
+    /// <summary>New celestial windows restore independently of the clocks and original day/night map.</summary>
+    [Fact]
+    public void Restore_CelestialSurfacesDoNotOpenTheOriginalMapOrClocks()
+    {
+        var states = new Dictionary<string, bool>
+        {
+            [WindowStateKeys.CelestialMap] = true,
+            [WindowStateKeys.LocalSky] = true,
+            [WindowStateKeys.AstronomyAgenda] = true,
+            [WindowStateKeys.WorldMap] = false,
+            [WindowStateKeys.WorldClocks] = false
+        };
+        Assert.Equal(new[] { WindowStateKeys.LocalSky, WindowStateKeys.AstronomyAgenda, WindowStateKeys.CelestialMap },
+            WorkspaceWindowState.GetWindowsToRestore(states));
+        Assert.True(WindowStateService.GetMinimumSize(WindowStateKeys.LocalSky).Width > 0);
     }
 
     /// <summary>Verifies that retained child windows restore only after the owner needed to display them.</summary>

@@ -112,26 +112,3 @@ public sealed class MainViewModel
     public Task<OperationResult<LastSessionState?>> RefreshLastSessionAsync(CancellationToken cancellationToken) =>
         _application.GetLastSessionAsync(cancellationToken);
 }
-
-/// <summary>Provides typed report queries to a presentation view.</summary>
-public sealed class ReportViewModel
-{
-    private readonly ITrackMeUpApplication _application;
-
-    /// <summary>Initializes the report view model.</summary>
-    public ReportViewModel(ITrackMeUpApplication application) =>
-        _application = application ?? throw new ArgumentNullException(nameof(application));
-
-    /// <summary>Loads one aggregate report snapshot through the shared application facade.</summary>
-    public async Task<OperationResult<ReportSnapshot>> LoadAsync(ReportQuery query, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        var result = await _application.GetReportAsync(query, cancellationToken);
-        if (result.Succeeded && result.Value is null)
-        {
-            return OperationResult<ReportSnapshot>.Failure("report.snapshot.missing", "ReportSnapshotMissing");
-        }
-
-        return result;
-    }
-}

@@ -10,10 +10,12 @@ public static class WorkspaceWindowState
     private static readonly string[] RestoreOrder =
     [
         WindowStateKeys.Main,
-        WindowStateKeys.Reports,
         WindowStateKeys.WorldClocks,
         WindowStateKeys.WorldMap,
         WindowStateKeys.LunarPhase,
+        WindowStateKeys.LocalSky,
+        WindowStateKeys.AstronomyAgenda,
+        WindowStateKeys.CelestialMap,
         WindowStateKeys.Search,
         WindowStateKeys.Screenshots,
         WindowStateKeys.OcrText,

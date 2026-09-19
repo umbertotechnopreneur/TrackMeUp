@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 using System;
-using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
@@ -26,12 +24,10 @@ public sealed partial class OperationsControl : UserControl
     private bool _returnToOverviewOnBack;
     private Control? _lastLandingLink;
     private SnapshotAiOperationsControl? _snapshotAiSection;
-    private ReportsOperationsControl? _reportsSection;
     private PrivacyOperationsControl? _privacySection;
     private RetentionOperationsControl? _retentionSection;
     private PluginOperationsControl? _pluginsSection;
     private InstallationTransferOperationsControl? _installationTransferSection;
-    private SystemSnapshot? _systemSnapshot;
 
     /// <summary>Creates the passive operational surface.</summary>
     public OperationsControl() => InitializeComponent();
@@ -51,13 +47,11 @@ public sealed partial class OperationsControl : UserControl
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
         _snapshotAiSection?.ApplyLanguage(language);
-        _reportsSection?.ApplyLanguage(language);
         _privacySection?.ApplyLanguage(language);
         _retentionSection?.ApplyLanguage(language);
         _pluginsSection?.ApplyLanguage(language);
         _installationTransferSection?.ApplyLanguage(language);
         ApplyNavigationAccessibility(OpenSnapshotAiLink, "Options.Navigation.SnapshotAi.Action", "Options.Navigation.SnapshotAi.Description");
-        ApplyNavigationAccessibility(OpenReportsLink, "Options.Navigation.Reports.Action", "Options.Navigation.Reports.Description");
         ApplyNavigationAccessibility(OpenPrivacyLink, "Options.Navigation.Privacy.Action", "Options.Navigation.Privacy.Description");
         ApplyNavigationAccessibility(OpenRetentionLink, "Options.Navigation.Retention.Action", "Options.Navigation.Retention.Description");
         ApplyNavigationAccessibility(OpenPluginsLink, "Options.Navigation.Plugins.Action", "Options.Navigation.Plugins.Description");
@@ -70,10 +64,6 @@ public sealed partial class OperationsControl : UserControl
         AutomationProperties.SetName(OperationProgress, _strings.Translate("Operations.Status.InProgress.Title"));
         AutomationProperties.SetName(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Action"));
         AutomationProperties.SetHelpText(AtomicNukeButton, _strings.Translate("Operations.AtomicNuke.Description"));
-        if (_systemSnapshot is { } snapshot)
-        {
-            RenderSystemSnapshot(snapshot);
-        }
     }
 
     /// <summary>Connects the surface to the facade owned by the composition root.</summary>
@@ -97,7 +87,7 @@ public sealed partial class OperationsControl : UserControl
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Shows a focused operational page without executing any operation.</summary>
+    /// <summary>Shows a focused operational page and loads its current settings without mutating application state.</summary>
     internal void NavigateTo(OperationsSection section, bool returnToOverview = true)
     {
         _returnToOverviewOnBack = returnToOverview;
@@ -112,6 +102,10 @@ public sealed partial class OperationsControl : UserControl
         {
             _ = _pluginsSection!.LoadAsync();
         }
+        else if (section == OperationsSection.Retention)
+        {
+            _ = _retentionSection!.LoadAsync();
+        }
     }
 
     /// <summary>Shows the tools landing page without changing application state.</summary>
@@ -125,66 +119,8 @@ public sealed partial class OperationsControl : UserControl
 
     private TimedInfoBar OperationBanner => _notificationHost ?? throw new InvalidOperationException("OperationsControl must be initialized before use.");
 
-    private async void RuntimeHealthButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.GetRuntimeHealthAsync(token));
-        if (result is not { Succeeded: true, Value: { } health })
-        {
-            return;
-        }
-
-        RuntimeHealthEmptyText.Visibility = Visibility.Collapsed;
-        RuntimeHealthSummary.Visibility = Visibility.Visible;
-        RuntimeVersionValue.Text = health.ProductVersion;
-        RuntimeProtocolValue.Text = health.ProtocolVersion.ToString(CultureInfo.InvariantCulture);
-        RuntimeRoleValue.Text = _strings.Translate(health.IsRuntimeOwner
-            ? "Operations.Runtime.Role.Owner"
-            : "Operations.Runtime.Role.Client");
-        RuntimeCapabilitiesList.ItemsSource = health.Capabilities.OrderBy(capability => capability, StringComparer.OrdinalIgnoreCase).ToArray();
-
-        if (health.Observability is { } observability)
-        {
-            RuntimeConsoleValue.Text = EnabledDisabled(observability.ConsoleLoggingEnabled);
-            RuntimeFileValue.Text = EnabledDisabled(observability.FileLoggingEnabled);
-            RuntimeSentryValue.Text = observability.SentryStatus;
-            RuntimePiiValue.Text = YesNo(observability.SendsDefaultPii);
-            ObservabilityUnavailableText.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            RuntimeConsoleValue.Text = RuntimeFileValue.Text = RuntimeSentryValue.Text = RuntimePiiValue.Text = "—";
-            ObservabilityUnavailableText.Text = _strings.Translate("Operations.Runtime.ObservabilityUnavailable");
-            ObservabilityUnavailableText.Visibility = Visibility.Visible;
-        }
-    }
-
-    private async void SystemSnapshotButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = await ExecuteAsync((application, token) => application.CaptureSystemSnapshotAsync(token));
-        if (result is not { Succeeded: true, Value: { } snapshot })
-        {
-            return;
-        }
-
-        RenderSystemSnapshot(snapshot);
-    }
-
-    private void RenderSystemSnapshot(SystemSnapshot snapshot)
-    {
-        _systemSnapshot = snapshot;
-        var state = HardwareSnapshotProjection.Create(snapshot, _strings.Culture, _strings.Translate);
-        SystemSnapshotEmptyText.Visibility = Visibility.Collapsed;
-        SystemSnapshotSummary.Visibility = Visibility.Visible;
-        SystemHardwareStatusText.Text = state.Status;
-        SystemHardwareCollectedAtText.Text = state.CollectedAt;
-        SystemHardwareDriverStatusText.Text = state.DriverStatus;
-        SystemHardwareSummaryList.ItemsSource = state.Summary;
-        SystemHardwareSensorsList.ItemsSource = state.Details;
-    }
-
     private void OpenSnapshotAiLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.SnapshotAi, sender);
 
-    private void OpenReportsLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Reports, sender);
 
     private void OpenPrivacyLink_Click(object sender, RoutedEventArgs e) => OpenSection(OperationsSection.Privacy, sender);
 
@@ -287,7 +223,6 @@ public sealed partial class OperationsControl : UserControl
     private FrameworkElement EnsureSection(OperationsSection section) => section switch
     {
         OperationsSection.SnapshotAi => EnsureSnapshotAiSection(),
-        OperationsSection.Reports => EnsureReportsSection(),
         OperationsSection.Privacy => EnsurePrivacySection(),
         OperationsSection.Retention => EnsureRetentionSection(),
         OperationsSection.Plugins => EnsurePluginsSection(),
@@ -306,20 +241,6 @@ public sealed partial class OperationsControl : UserControl
         _snapshotAiSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
         _snapshotAiSection.ApplyLanguage(_strings.Language);
         return _snapshotAiSection;
-    }
-
-    private ReportsOperationsControl EnsureReportsSection()
-    {
-        if (_reportsSection is not null)
-        {
-            return _reportsSection;
-        }
-
-        _reportsSection = new ReportsOperationsControl();
-        ReportsHost.Content = _reportsSection;
-        _reportsSection.Initialize(Application, Dialogs, OwnerWindow, OperationBanner);
-        _reportsSection.ApplyLanguage(_strings.Language);
-        return _reportsSection;
     }
 
     private PrivacyOperationsControl EnsurePrivacySection()
@@ -381,7 +302,6 @@ public sealed partial class OperationsControl : UserControl
     private void HideDetailSections()
     {
         _snapshotAiSection?.Visibility = Visibility.Collapsed;
-        _reportsSection?.Visibility = Visibility.Collapsed;
         _privacySection?.Visibility = Visibility.Collapsed;
         _retentionSection?.Visibility = Visibility.Collapsed;
         _pluginsSection?.Visibility = Visibility.Collapsed;
@@ -494,10 +414,6 @@ public sealed partial class OperationsControl : UserControl
             ? localized
             : _strings.Translate(succeeded ? "Operations.Result.Success" : "Operations.Result.Failure");
     }
-
-    private string YesNo(bool value) => _strings.Translate(value ? "Common.Yes" : "Common.No");
-
-    private string EnabledDisabled(bool value) => _strings.Translate(value ? "Common.Enabled" : "Common.Disabled");
 
 }
 

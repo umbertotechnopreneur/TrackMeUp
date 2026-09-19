@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+using CosineKitty;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using TrackMeUp.Application;
@@ -206,6 +207,14 @@ public sealed class WorldClockService : IDisposable
                 city.IsCapital))
             .ToArray();
         return new WorldClockCityCatalog(cities, WorldClockSelection.MaximumClocks);
+    }
+
+    /// <summary>Builds a weather-free live celestial reference aligned to the UTC minute for shared-window cache reuse.</summary>
+    public WorldClockSnapshot BuildCurrentCelestialSnapshot(IReadOnlyList<string>? cityIds)
+    {
+        var now = _timeProvider.GetUtcNow();
+        var instant = new DateTimeOffset(now.UtcTicks - now.UtcTicks % TimeSpan.TicksPerMinute, TimeSpan.Zero);
+        return BuildSnapshot(cityIds, instant);
     }
 
     /// <summary>Builds a deterministic world-clock snapshot for the supplied UTC instant.</summary>
@@ -516,57 +525,80 @@ internal sealed class WorldClockConversionException(
     internal string ValidationCode { get; } = validationCode;
 }
 
+/// <summary>Shares the astronomical engine and bounded exact-instant caches across clocks, Moon, sky, and globe.</summary>
 internal static class LocalAstronomy
 {
-    private const double DegreesToRadians = Math.PI / 180d;
-    private const double RadiansToDegrees = 180d / Math.PI;
+    private static readonly object CacheGate = new();
+    private static readonly Dictionary<long, GlobalResult> GlobalCache = new();
+    private static readonly Dictionary<DayKey, (DateTimeOffset? Rise, DateTimeOffset? Set)> DayCache = new();
 
-    internal sealed record Result(
-        DateTimeOffset? Sunrise,
-        DateTimeOffset? Sunset,
-        double SunAltitudeDegrees,
-        double MoonPhaseAngleDegrees);
+    internal sealed record Result(DateTimeOffset? Sunrise, DateTimeOffset? Sunset, double SunAltitudeDegrees, double MoonPhaseAngleDegrees);
+    internal sealed record GlobalResult(double SunLatitude, double SunLongitude, double MoonLatitude, double MoonLongitude, double MoonPhaseAngleDegrees, double SolarEclipticLongitudeDegrees);
 
-    internal sealed record GlobalResult(
-        double SunLatitude,
-        double SunLongitude,
-        double MoonLatitude,
-        double MoonLongitude,
-        double MoonPhaseAngleDegrees);
-
-    /// <summary>Calculates apparent rise/set crossings and the lunar phase for one local civil day.</summary>
+    /// <summary>Calculates apparent rise/set crossings for the city-local date and the shared lunar phase.</summary>
     public static Result Calculate(double latitude, double longitude, TimeZoneInfo timeZone, DateTimeOffset utcNow)
     {
-        var localNow = TimeZoneInfo.ConvertTime(utcNow, timeZone);
-        var localDate = DateOnly.FromDateTime(localNow.DateTime);
+        ArgumentNullException.ThrowIfNull(timeZone);
+        var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(utcNow, timeZone).DateTime);
         var (startUtc, endUtc) = GetUtcDayBounds(localDate, timeZone);
+        var observer = new Observer(latitude, longitude, 0);
+        var key = new DayKey(latitude, longitude, startUtc, endUtc);
+        (DateTimeOffset? Rise, DateTimeOffset? Set) crossings;
+        lock (CacheGate)
+        {
+            if (!DayCache.TryGetValue(key, out crossings))
+            {
+                var start = new AstroTime(startUtc.UtcDateTime);
+                var limit = (endUtc - startUtc).TotalDays;
+                // No crossing on polar days is a genuine absent event, not a calculation failure.
+                var rise = Astronomy.SearchRiseSet(Body.Sun, observer, Direction.Rise, start, limit);
+                var set = Astronomy.SearchRiseSet(Body.Sun, observer, Direction.Set, start, limit);
+                crossings = (ToInstant(rise, endUtc), ToInstant(set, endUtc));
+                if (DayCache.Count >= 64) DayCache.Remove(DayCache.Keys.First());
+                DayCache.Add(key, crossings);
+            }
+        }
 
-        var sunCrossings = FindCrossings(startUtc, endUtc, instant => Altitude(SunPosition(JulianDay(instant)), latitude, longitude, instant) + 0.833);
-        var julianNow = JulianDay(utcNow);
-        var sun = SunPosition(julianNow);
-        var moon = MoonPosition(julianNow);
-        var phaseAngle = NormalizeDegrees(moon.EclipticLongitudeDegrees - sun.EclipticLongitudeDegrees);
-        return new Result(
-            ToLocal(sunCrossings.Rise, timeZone),
-            ToLocal(sunCrossings.Set, timeZone),
-            Altitude(sun, latitude, longitude, utcNow),
-            phaseAngle);
+        var time = new AstroTime(utcNow.UtcDateTime);
+        var equator = Astronomy.Equator(Body.Sun, time, observer, EquatorEpoch.OfDate, Aberration.Corrected);
+        // Retain geometric altitude for the existing daylight threshold and atmosphere contract.
+        var horizontal = Astronomy.Horizon(time, observer, equator.ra, equator.dec, Refraction.None);
+        return new Result(ToLocal(crossings.Rise, timeZone), ToLocal(crossings.Set, timeZone),
+            horizontal.altitude, CalculateGlobal(utcNow).MoonPhaseAngleDegrees);
     }
 
-    /// <summary>Calculates the subsolar and sublunar points for one UTC instant.</summary>
+    /// <summary>Returns cached geocentric subsolar/sublunar coordinates and lunar phase for an exact UTC instant.</summary>
     internal static GlobalResult CalculateGlobal(DateTimeOffset utcNow)
     {
-        var julianDay = JulianDay(utcNow);
-        var sun = SunPosition(julianDay);
-        var moon = MoonPosition(julianDay);
-        var sidereal = GreenwichSiderealDegrees(julianDay);
-        return new GlobalResult(
-            sun.DeclinationDegrees,
-            NormalizeSignedDegrees(sun.RightAscensionDegrees - sidereal),
-            moon.DeclinationDegrees,
-            NormalizeSignedDegrees(moon.RightAscensionDegrees - sidereal),
-            NormalizeDegrees(moon.EclipticLongitudeDegrees - sun.EclipticLongitudeDegrees));
+        lock (CacheGate)
+        {
+            if (GlobalCache.TryGetValue(utcNow.UtcTicks, out var cached)) return cached;
+            var time = new AstroTime(utcNow.UtcDateTime);
+            var rotation = Astronomy.Rotation_EQJ_EQD(time);
+            var sun = Astronomy.EquatorFromVector(Astronomy.RotateVector(rotation, Astronomy.GeoVector(Body.Sun, time, Aberration.Corrected)));
+            var moon = Astronomy.EquatorFromVector(Astronomy.RotateVector(rotation, Astronomy.GeoVector(Body.Moon, time, Aberration.Corrected)));
+            var sidereal = Astronomy.SiderealTime(time);
+            var result = new GlobalResult(sun.dec, SignedLongitude(15 * (sun.ra - sidereal)),
+                moon.dec, SignedLongitude(15 * (moon.ra - sidereal)), Astronomy.MoonPhase(time), Astronomy.SunPosition(time).elon);
+            if (GlobalCache.Count >= 32) GlobalCache.Remove(GlobalCache.Keys.First());
+            GlobalCache.Add(utcNow.UtcTicks, result);
+            return result;
+        }
     }
+
+    private static DateTimeOffset? ToInstant(AstroTime? time, DateTimeOffset exclusiveEnd)
+    {
+        if (time is null) return null;
+        var instant = new DateTimeOffset(time.ToUtcDateTime());
+        return instant < exclusiveEnd ? instant : null;
+    }
+
+    private static DateTimeOffset? ToLocal(DateTimeOffset? utc, TimeZoneInfo zone) =>
+        utc is { } instant ? TimeZoneInfo.ConvertTime(instant, zone) : null;
+
+    private static double SignedLongitude(double degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
+
+    private sealed record DayKey(double Latitude, double Longitude, DateTimeOffset StartUtc, DateTimeOffset EndUtc);
 
     /// <summary>Resolves the first UTC instant of one local date and the following local date.</summary>
     internal static (DateTimeOffset StartUtc, DateTimeOffset EndUtc) GetUtcDayBounds(
@@ -626,155 +658,4 @@ internal static class LocalAstronomy
             : timeZone.GetUtcOffset(localTime);
         return new DateTimeOffset(localTime, offset).ToUniversalTime();
     }
-
-    private static (DateTimeOffset? Rise, DateTimeOffset? Set) FindCrossings(
-        DateTimeOffset startUtc,
-        DateTimeOffset endUtc,
-        Func<DateTimeOffset, double> horizonFunction)
-    {
-        var step = TimeSpan.FromMinutes(5);
-        var previousTime = startUtc;
-        var previousValue = horizonFunction(previousTime);
-        DateTimeOffset? rise = null;
-        DateTimeOffset? set = null;
-        for (var currentTime = startUtc + step; currentTime <= endUtc; currentTime += step)
-        {
-            var currentValue = horizonFunction(currentTime);
-            if ((previousValue <= 0d && currentValue > 0d) || (previousValue > 0d && currentValue <= 0d))
-            {
-                var crossing = RefineCrossing(previousTime, currentTime, horizonFunction, previousValue <= 0d);
-                if (previousValue <= 0d)
-                {
-                    rise ??= crossing;
-                }
-                else
-                {
-                    set ??= crossing;
-                }
-            }
-
-            previousTime = currentTime;
-            previousValue = currentValue;
-        }
-
-        return (rise, set);
-    }
-
-    private static DateTimeOffset RefineCrossing(
-        DateTimeOffset lower,
-        DateTimeOffset upper,
-        Func<DateTimeOffset, double> horizonFunction,
-        bool rising)
-    {
-        for (var iteration = 0; iteration < 14; iteration++)
-        {
-            var midpoint = lower + TimeSpan.FromTicks((upper - lower).Ticks / 2);
-            var above = horizonFunction(midpoint) > 0d;
-            if (above == rising)
-            {
-                upper = midpoint;
-            }
-            else
-            {
-                lower = midpoint;
-            }
-        }
-
-        return lower + TimeSpan.FromTicks((upper - lower).Ticks / 2);
-    }
-
-    private static DateTimeOffset? ToLocal(DateTimeOffset? utc, TimeZoneInfo timeZone) =>
-        utc is null ? null : TimeZoneInfo.ConvertTime(utc.Value, timeZone);
-
-    private static EquatorialPosition SunPosition(double julianDay)
-    {
-        var days = julianDay - 2451545d;
-        var meanAnomaly = NormalizeDegrees(357.52911 + 0.98560028 * days);
-        var meanLongitude = NormalizeDegrees(280.46646 + 0.98564736 * days);
-        var longitude = NormalizeDegrees(meanLongitude
-            + 1.914602 * Sin(meanAnomaly)
-            + 0.019993 * Sin(2d * meanAnomaly)
-            + 0.000289 * Sin(3d * meanAnomaly));
-        return FromEcliptic(longitude, 0d, days);
-    }
-
-    private static EquatorialPosition MoonPosition(double julianDay)
-    {
-        var days = julianDay - 2451545d;
-        var meanLongitude = NormalizeDegrees(218.3164477 + 13.17639648 * days);
-        var meanAnomaly = NormalizeDegrees(134.9633964 + 13.06499295 * days);
-        var elongation = NormalizeDegrees(297.8501921 + 12.19074912 * days);
-        var argumentLatitude = NormalizeDegrees(93.272095 + 13.22935024 * days);
-        var solarAnomaly = NormalizeDegrees(357.5291092 + 0.98560028 * days);
-        var longitude = meanLongitude
-            + 6.289 * Sin(meanAnomaly)
-            + 1.274 * Sin(2d * elongation - meanAnomaly)
-            + 0.658 * Sin(2d * elongation)
-            + 0.214 * Sin(2d * meanAnomaly)
-            - 0.186 * Sin(solarAnomaly)
-            - 0.059 * Sin(2d * elongation - 2d * meanAnomaly)
-            - 0.057 * Sin(2d * elongation - solarAnomaly - meanAnomaly)
-            + 0.053 * Sin(2d * elongation + meanAnomaly)
-            + 0.046 * Sin(2d * elongation - solarAnomaly)
-            + 0.041 * Sin(solarAnomaly - meanAnomaly);
-        var latitude = 5.128 * Sin(argumentLatitude)
-            + 0.280 * Sin(meanAnomaly + argumentLatitude)
-            + 0.277 * Sin(meanAnomaly - argumentLatitude)
-            + 0.173 * Sin(2d * elongation - argumentLatitude)
-            + 0.055 * Sin(2d * elongation + argumentLatitude - meanAnomaly)
-            + 0.046 * Sin(2d * elongation - argumentLatitude - meanAnomaly)
-            + 0.033 * Sin(2d * elongation + argumentLatitude)
-            + 0.017 * Sin(2d * meanAnomaly + argumentLatitude);
-        return FromEcliptic(NormalizeDegrees(longitude), latitude, days);
-    }
-
-    private static EquatorialPosition FromEcliptic(double longitude, double latitude, double days)
-    {
-        var obliquity = (23.439291 - 0.00000036 * days) * DegreesToRadians;
-        var lon = longitude * DegreesToRadians;
-        var lat = latitude * DegreesToRadians;
-        var x = Math.Cos(lon) * Math.Cos(lat);
-        var y = Math.Sin(lon) * Math.Cos(lat) * Math.Cos(obliquity) - Math.Sin(lat) * Math.Sin(obliquity);
-        var z = Math.Sin(lon) * Math.Cos(lat) * Math.Sin(obliquity) + Math.Sin(lat) * Math.Cos(obliquity);
-        return new EquatorialPosition(
-            NormalizeDegrees(Math.Atan2(y, x) * RadiansToDegrees),
-            Math.Asin(z) * RadiansToDegrees,
-            longitude);
-    }
-
-    private static double Altitude(EquatorialPosition position, double latitude, double longitude, DateTimeOffset utc)
-    {
-        var julianDay = JulianDay(utc);
-        var sidereal = GreenwichSiderealDegrees(julianDay);
-        var hourAngle = NormalizeSignedDegrees(sidereal + longitude - position.RightAscensionDegrees) * DegreesToRadians;
-        var lat = latitude * DegreesToRadians;
-        var dec = position.DeclinationDegrees * DegreesToRadians;
-        return Math.Asin(Math.Sin(lat) * Math.Sin(dec) + Math.Cos(lat) * Math.Cos(dec) * Math.Cos(hourAngle)) * RadiansToDegrees;
-    }
-
-    private static double GreenwichSiderealDegrees(double julianDay)
-    {
-        var centuries = (julianDay - 2451545d) / 36525d;
-        return NormalizeDegrees(280.46061837
-            + 360.98564736629 * (julianDay - 2451545d)
-            + 0.000387933 * centuries * centuries
-            - centuries * centuries * centuries / 38710000d);
-    }
-
-    private static double JulianDay(DateTimeOffset instant) => instant.ToUniversalTime().ToUnixTimeMilliseconds() / 86400000d + 2440587.5d;
-
-    private static double Sin(double degrees) => Math.Sin(degrees * DegreesToRadians);
-
-    private static double NormalizeDegrees(double value) => (value % 360d + 360d) % 360d;
-
-    private static double NormalizeSignedDegrees(double value)
-    {
-        var normalized = NormalizeDegrees(value);
-        return normalized > 180d ? normalized - 360d : normalized;
-    }
-
-    private readonly record struct EquatorialPosition(
-        double RightAscensionDegrees,
-        double DeclinationDegrees,
-        double EclipticLongitudeDegrees);
 }

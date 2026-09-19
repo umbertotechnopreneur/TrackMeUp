@@ -89,7 +89,7 @@ public static class Program
             _ => throw new ArgumentException("Unsupported redirected TrackMeUp activation.", nameof(activation))
         };
 
-        if (options.Mode is not (LaunchMode.Ui or LaunchMode.Reports or LaunchMode.Background))
+        if (options.Mode is not (LaunchMode.Ui or LaunchMode.Background))
         {
             throw new ArgumentException("Unsupported redirected TrackMeUp launch mode.", nameof(activation));
         }

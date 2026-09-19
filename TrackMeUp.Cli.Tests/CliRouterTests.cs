@@ -196,18 +196,6 @@ public sealed class CliRouterTests
     }
 
     [Fact]
-    public async Task ReportDigest_RejectsMissingDateInsteadOfSilentlyUsingToday()
-    {
-        var application = new RecordingApplication();
-        var router = CreateRouter(application);
-
-        var exitCode = await router.RunAsync(["/report", "digest", "--date", "--open"], CancellationToken.None);
-
-        Assert.Equal(2, exitCode);
-        Assert.Equal(0, application.TotalCalls);
-    }
-
-    [Fact]
     public async Task ExactCommand_RejectsTrailingArgumentsBeforeCallingApplication()
     {
         var application = new RecordingApplication();
@@ -304,15 +292,15 @@ public sealed class CliRouterTests
     [Fact]
     public void TryTokenize_RejectsAnUnterminatedQuotedValue()
     {
-        Assert.False(CliRouter.TryTokenize("/report today --output \"C:\\Reports", out var tokens));
+        Assert.False(CliRouter.TryTokenize("/privacy add --type hint --value \"C:\\Private", out var tokens));
         Assert.Empty(tokens);
     }
 
     [Fact]
     public void TryTokenize_PreservesWhitespaceInsideBalancedQuotes()
     {
-        Assert.True(CliRouter.TryTokenize("/report today --output \"C:\\My Reports\"", out var tokens));
-        Assert.Equal(["/report", "today", "--output", "C:\\My Reports"], tokens);
+        Assert.True(CliRouter.TryTokenize("/privacy add --type hint --value \"C:\\Private Notes\"", out var tokens));
+        Assert.Equal(["/privacy", "add", "--type", "hint", "--value", "C:\\Private Notes"], tokens);
     }
 
     private static CliRouter CreateRouter(RecordingApplication application)
@@ -323,6 +311,12 @@ public sealed class CliRouterTests
 
     private sealed class RecordingApplication : ITrackMeUpApplication
     {
+        public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
+            throw new NotSupportedException("The CLI does not register native windows.");
+
+        public void ConfigureWindowSnapping(bool enabled) =>
+            throw new NotSupportedException("The CLI does not configure native windows.");
+
         public event EventHandler<RuntimeStateChangedEventArgs>? RuntimeStateChanged
         {
             add { }
@@ -383,6 +377,12 @@ public sealed class CliRouterTests
         public Task<OperationResult<bool>> SetWindowOpenStateAsync(string windowKey, bool isOpen, CancellationToken cancellationToken) => Unsupported<bool>();
         public Task<OperationResult<OcrTextWindowSource>> SetOcrTextWindowSourceAsync(string screenshotPath, DateTimeOffset capturedAt, CancellationToken cancellationToken) => Unsupported<OcrTextWindowSource>();
         public Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken) => Unsupported<WorldClockSnapshot>();
+
+        public Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken) => Unsupported<WorldClockSnapshot>();
+
+        public Task<OperationResult<CelestialSnapshot>> GetCelestialAsync(CelestialRequest request, CancellationToken cancellationToken) => Unsupported<CelestialSnapshot>();
+
+        public Task<OperationResult<CelestialMapImage>> GetCelestialMapAsync(CelestialMapRequest request, CancellationToken cancellationToken) => Unsupported<CelestialMapImage>();
         public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken) => Unsupported<WorldClockSnapshot>();
         public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken) => Unsupported<WorldClockCityCatalog>();
         public Task<OperationResult<WorldClockSelectionState>> AddWorldClockAsync(string cityId, CancellationToken cancellationToken) => Unsupported<WorldClockSelectionState>();
@@ -482,9 +482,6 @@ public sealed class CliRouterTests
         }
         public Task<OperationResult<string>> SetAiKeyAsync(string keyVariable, string secret, CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => Unsupported<AiAnalysis>();
-        public Task<OperationResult<string>> GenerateTodayReportAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => Unsupported<string>();
-        public Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken) => Unsupported<string>();
-        public Task<OperationResult<string>> OpenReportsFolderAsync(CancellationToken cancellationToken) => Unsupported<string>();
         public Task<OperationResult<string>> OpenUserInterfaceAsync(CancellationToken cancellationToken)
         {
             TotalCalls++;

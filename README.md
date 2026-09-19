@@ -57,7 +57,7 @@ You know you saw it today. Was it in the browser, a document, or another app? Tr
     </td>
     <td width="33%">
       <strong>See where your time went</strong><br />
-      Look back at the apps you used, time spent active or away, and daily reports. Compare days to spot patterns.
+      Look back at the apps you used and time spent active or away. Compare days in the activity calendar to spot patterns.
     </td>
   </tr>
 </table>
@@ -101,20 +101,52 @@ These previews use made-up demo data and show the app in English, Italian, and V
   </tr>
 </table>
 
+### A little sky on your desktop
+
+<table>
+  <tr>
+    <td width="24%" valign="top">
+      <a href="docs/images/readme/trackmeup-astronomical-agenda-it.png"><img src="docs/images/readme/trackmeup-astronomical-agenda-it.png" alt="Actual Italian astronomical agenda showing twilight, blue-hour, sunrise and sunset times, the tropical zodiac and the Ho Chi Minh City selector" width="100%" /></a>
+      <br />
+      <sub><strong>Astronomical agenda</strong></sub>
+    </td>
+    <td width="44%" valign="top">
+      <a href="docs/images/readme/trackmeup-local-sky-it.png"><img src="docs/images/readme/trackmeup-local-sky-it.png" alt="Actual Italian local-sky window with its circular chart, Moon, Saturn and Neptune, above-horizon list and bottom city controls" width="100%" /></a>
+      <br />
+      <sub><strong>Local sky</strong></sub>
+    </td>
+    <td width="32%" valign="top">
+      <a href="docs/images/readme/trackmeup-earth-globe-it.png"><img src="docs/images/readme/trackmeup-earth-globe-it.png" alt="Actual Earth globe window centered on Asia at night, with the city selector and explanatory note below" width="100%" /></a>
+      <br />
+      <sub><strong>Earth globe</strong></sub>
+      <br /><br />
+      <a href="docs/images/readme/trackmeup-day-night-map-it.png"><img src="docs/images/readme/trackmeup-day-night-map-it.png" alt="Actual separate flat day/night map with city markers, Sun and Moon, reference time and the night-dawn-day-sunset legend" width="100%" /></a>
+      <br />
+      <sub><strong>Flat day/night map</strong></sub>
+    </td>
+  </tr>
+</table>
+
+<p><sub>Actual screenshots supplied by the project owner, shown in Italian and arranged here for the README. The original images are unchanged; select one to view it at full size.</sub></p>
+
+Bring world clocks, Moon phases, the local sky, an astronomical agenda, and Earth's day/night views together on your desktop. Acrylic backgrounds, light typography, and disappearing title bars help the independent windows blend into your workspace. The sky follows your selected city and reference time; the agenda combines solar and lunar events, planetary conjunctions, and clearly marked meteor-shower estimates. The globe and flat map remain separate windows.
+
+Resize and arrange them into your own desktop collage. Optional **window snapping** aligns nearby edges within five physical pixels, without locking windows together. Move beyond the monitor edge to release snapping for the rest of that drag; it returns on the next one. Turn it on or off in **Settings → Window → Window snapping**. [More about the astronomical views](#celestial-desktop-windows).
+
 ## How TrackMeUp works
 
 1. **Track your day.** TrackMeUp saves active and idle time, app and window details, key-press and click counts, and selected system measurements on this PC.
 2. **Choose what else to save.** Screenshots, text recognition on your PC, and analysis by an AI provider are separate options. You can use the tracker without them.
-3. **Look back when you need to.** Search your history, open a screenshot, browse the timeline, or make a daily report and summary.
+3. **Look back when you need to.** Search your history, open a screenshot, browse the timeline, or compare days in the activity calendar.
 4. **Bring history from another installation.** Export a `.tmuarchive` with your history and, if you choose, saved screenshots. You can preview it before confirming an import. Each installation keeps its own identity, name, color, and icon so you can tell where the records came from.
 
 Prefer the terminal? There's also a command-line interface (CLI) for PowerShell and scripts. It controls the same tracker as the desktop app.
 
 ### Built for Windows
 
-TrackMeUp uses WinUI and native Windows controls. The desktop app doesn't need a browser running inside it, which helps keep it light. Interactive reports open when you need them and don't require WebView2 to stay running in the background.
+TrackMeUp uses WinUI and native Windows controls for the desktop app and activity calendar.
 
-The app, reports, and readable CLI output can follow your Windows language. You can also choose English, Italian, French, German, Spanish, Simplified Chinese, Vietnamese, Korean, European Portuguese, or Brazilian Portuguese.
+The app and readable CLI output can follow your Windows language. You can also choose English, Italian, French, German, Spanish, Simplified Chinese, Vietnamese, Korean, European Portuguese, or Brazilian Portuguese.
 
 You can choose separate languages for the interface, search, and text recognition (OCR). Search supports all the app's languages. OCR needs a supported Windows language pack installed on your PC. Vietnamese works for the interface and search, but isn't available for Windows OCR.
 
@@ -149,7 +181,7 @@ You can track your activity without taking screenshots or using AI. Turn on eith
 
 | Setup | What it adds | What leaves this PC |
 | --- | --- | --- |
-| **Activity timeline** | Active and idle time, app and window details, reports | Nothing unless optional diagnostics are enabled |
+| **Activity timeline** | Active and idle time, app and window details, activity calendar | Nothing unless optional diagnostics are enabled |
 | **Screenshots and text recognition** | Saved screenshots and text read from them on your PC | Nothing unless optional diagnostics are enabled |
 | **AI descriptions** | Descriptions or improved screenshot text from your chosen AI provider | The data included in each enabled provider request, plus optional diagnostics if enabled |
 
@@ -185,12 +217,12 @@ To produce a self-contained unpackaged build:
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action PublishUnpackaged -Platform x64
 ~~~
 
-The script builds the reports and writes to a fresh directory under `artifacts/unpackaged/<version>/<platform>/`. Use `-ReleaseVersion X.Y.Z -PublishOutputPath <empty-directory-under-artifacts>` for a deterministic release build. Extract the **entire** portable release ZIP and run `TrackMeUp.exe`; .NET, WinUI, and Windows App SDK are included. Keep the executable together with its DLLs, resources, and subfolders. Data remains in `%LOCALAPPDATA%\TrackMeUp`.
+The script publishes the app to a fresh directory under `artifacts/unpackaged/<version>/<platform>/`. Use `-ReleaseVersion X.Y.Z -PublishOutputPath <empty-directory-under-artifacts>` for a deterministic release build. Extract the **entire** portable release ZIP and run `TrackMeUp.exe`; .NET, WinUI, and Windows App SDK are included. Keep the executable together with its DLLs, resources, and subfolders. Data remains in `%LOCALAPPDATA%\TrackMeUp`.
 
 > [!IMPORTANT]
-> **Portable limitations:** interactive reports require the separately installed Microsoft Edge WebView2 Runtime. Without it, the reports window shows an initialization error. On-device screenshot OCR requires MSIX package identity and is unavailable in the portable edition; failed OCR is recorded without discarding the screenshot.
+> **Portable limitation:** on-device screenshot OCR requires MSIX package identity and is unavailable in the portable edition; failed OCR is recorded without discarding the screenshot.
 >
-> Neither feature is initialized just to open the main player, so these limitations are not missing-library requirements for basic startup. A restored reports window can show the same report error during startup. The x64 portable has passed an extracted `--version` launch check; full UI startup on clean x64/ARM64 machines remains a separate release check. See [portable requirements and verification](docs/RELEASING.md#portable-startup-and-feature-limitations).
+> OCR is initialized when text extraction is requested. The x64 portable has passed an extracted `--version` launch check; full UI startup on clean x64/ARM64 machines remains a separate release check. See [portable requirements and verification](docs/RELEASING.md#portable-startup-and-feature-limitations).
 
 > [!NOTE]
 > **MSIX installers are temporarily unavailable.** We're working on the code-signing certificate needed to distribute them. Use an unpackaged build for now.
@@ -201,19 +233,18 @@ The [release preparation guide](docs/RELEASING.md) describes the x64/ARM64 MSIX 
 
 ## Using the terminal
 
-See the [practical CLI examples](docs/CLI_EXAMPLES.md) for checking status, controlling tracking, taking screenshots, making reports, previewing cleanup, and using the app in scripts.
+See the [practical CLI examples](docs/CLI_EXAMPLES.md) for checking status, controlling tracking, taking screenshots, previewing cleanup, and using the app in scripts.
 
 Once the package is installed, try:
 
 ~~~powershell
 trackmeup.exe -cli status
 trackmeup.exe -cli tracking start
-trackmeup.exe -cli report today
 trackmeup.exe -cli ai status
 trackmeup.exe -cli retention preview
 ~~~
 
-Run `trackmeup.exe -cli` with no command in PowerShell 7 to open an interactive menu. From there you can check live activity, control tracking and AI, take screenshots, open reports, troubleshoot, or change settings. It connects to the same tracker as the desktop app.
+Run `trackmeup.exe -cli` with no command in PowerShell 7 to open an interactive menu. From there you can check live activity, control tracking and AI, take screenshots, troubleshoot, or change settings. It connects to the same tracker as the desktop app.
 
 ### CLI switches
 
@@ -228,7 +259,6 @@ Use `trackmeup.exe -cli --help` to see all commands. These shortcuts are handy f
 | `--ai-on` | `ai enable` | Enable the configured AI provider. |
 | `--ai-off` | `ai disable` | Disable AI analysis. |
 | `--capture` | `screenshot capture` | Capture a privacy-checked screenshot. |
-| `--report` | `report today` | Generate today's activity report. |
 | `--doctor` | `doctor` | Run read-only diagnostics. |
 | `--help` | `help` | Show help without connecting to the runtime. |
 | `--version` | `version` | Show CLI and protocol versions without connecting to the runtime. |
@@ -256,14 +286,9 @@ trackmeup.exe -cli /ai --help
 
 The repository script helps with builds, tests, and packaging:
 
-The `BuildReports` action uses Node.js 24.16.0 (the CI runtime). Install it before rebuilding the reports web assets.
-
-The Core report snapshot and web renderer use contract version 6. Every hourly cell includes a required `installations` list containing its distinct source profiles, or an empty list when the cell has no data. The renderer rejects older versions and invalid or missing hourly provenance.
-
 ~~~powershell
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1
 pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action BuildReports
 ~~~
 
 Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows setup guide](docs/DEVELOPMENT.md) walks you through getting a fresh copy, installing what you need, building and testing on x64, and fixing common setup problems. Use the [manual checks](docs/VALIDATION.md) to check how your changes look and behave.
@@ -283,8 +308,8 @@ Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows 
 - [ ] **Basic Windows storage:** if LibreHardwareMonitor discovers no physical disks (for example without administrator access), fixed ready logical volumes such as `C:` use Windows capacity/free-space and WMI activity/read/write counters within the same collector and storage sampling interval. Verify volume occupancy remains separate from activity (`100 - PercentIdleTime`), cached samples retain their timestamps, and SMART/temperature are never invented. Unavailable or disabled performance counters must leave activity/rates null with a partial snapshot and `windows-storage-read-failed`, while valid capacity remains visible. When library disks are available, no duplicate Windows volume source is added.
 - [ ] Change `sensors.enabled`, `sensors.advanced`, `sensors.save_snapshots` and all four `sensors.sampling_profile` choices through settings. Verify defaults are on/off/on/normal, disabled sensors retain subordinate preferences without collecting, and invalid profiles reject the entire patch and fail fast when persisted. Disable snapshot saving: future captures and stored AI results must not retain raw sensor readings, while immediate AI context, existing saved snapshots and independent interval usage remain distinct. Reopen settings to verify round-trip persistence and confirm profile changes affect polling without changing the screenshot schedule.
 - [ ] Run `pwsh -NoProfile -File ./scripts/Test-ReleasePackaging.ps1`; verify common x64/ARM64 release versions, unchanged local version state, invalid-input rejection, required framework dependency checks, and refusal to install unsigned archives. Before a public release, complete the clean-machine x64/ARM64 installation checks in [RELEASING.md](docs/RELEASING.md).
-- [ ] From a checkout without generated `bin/` or `obj/` files, run unsigned `PackageMsix` with an explicit release version for x64 and ARM64. Both first builds must resolve the WebView2 projection and produce packages with matching versions; no preliminary restore or second build should be necessary.
-- [ ] Run `pwsh -NoProfile -File ./scripts/Test-PortableReleasePackaging.ps1`. Publish and archive `Release-Unpackaged` for x64 and ARM64 with one explicit version; verify bundled runtimes, matching executable architecture and metadata, and complete payload/archive checksums. Extract each ZIP on a matching clean Windows machine, run `TrackMeUp.exe --version`, and verify the UI opens without installing .NET or Windows App SDK. Check report availability with the WebView2 Runtime and the documented MSIX requirement for on-device OCR.
+- [ ] From a checkout without generated `bin/` or `obj/` files, run unsigned `PackageMsix` with an explicit release version for x64 and ARM64. Both first builds must produce packages with matching versions; no preliminary restore or second build should be necessary.
+- [ ] Run `pwsh -NoProfile -File ./scripts/Test-PortableReleasePackaging.ps1`. Publish and archive `Release-Unpackaged` for x64 and ARM64 with one explicit version; verify bundled runtimes, matching executable architecture and metadata, and complete payload/archive checksums. Extract each ZIP on a matching clean Windows machine, run `TrackMeUp.exe --version`, and verify the UI opens without installing .NET or Windows App SDK. Check the documented MSIX requirement for on-device OCR.
 
 Search interaction check:
 
@@ -297,7 +322,12 @@ Search interaction check:
 - [ ] While tracking, switch between Spotify and another app: after each sample, verify a 16×16 Windows window icon precedes the matching foreground-app name. A window without an available icon (including a protected or unresponsive window), idle context, and privacy-suppressed activity must show no icon or reserved gap. Icons are live decoration only and must not enter saved activity history.
 - [ ] Open About for the first time from a non-primary display and verify that it centers on the player display with version, build date/time, and build commit all visible. Move it and reopen it: the saved placement must take precedence over centering.
 - [ ] Trigger informational, success, warning, and error feedback. Confirm every toast uses an opaque severity-colored surface and border, and its timeout bar stays inside the toast frame.
-- [ ] Set main-window and World Clocks opacity to 25%, including the Operations surface: toast text, fill, border, and countdown must remain fully opaque. Trigger a removal just before a minute boundary and verify the toast keeps its full timeout through the refresh.
+- [ ] Set main-window and World Clocks opacity to 25%, including the Operations surface: toast text, fill, border, and countdown must remain fully opaque. Trigger a removal just before a minute boundary and verify the toast keeps its full timeout through the refresh. Check informational, success, warning and error toasts over busy content in light, dark and high-contrast themes: the full rounded frame, including the countdown area, must have a solid background.
+- [ ] Open maintenance tools and verify App status, PC data, and Reports are absent and the remaining links fill the available width. In Italian, check that screenshot lookup shows a filename and AI capture help explains unchecked analysis without images. At narrow and wide widths and 200% text scaling, Privacy must keep labeled icon actions and saved-rule selection readable without exposing rule IDs.
+- [ ] Verify the app and CLI expose no HTML report viewer, report-generation commands, or daily-digest settings. Retired `report today`, `report digest`, and `--report` inputs must fail clearly without creating files. The activity calendar must still show saved activity, including imported archives, and screenshot/OCR exports must remain available. A clean build and package must require no Node.js installation or bundled report web assets.
+- [ ] Open Retention: current activity/screenshot periods load automatically on one wrapping row. Simulate a failed load and verify cleanup stays disabled. After successful, empty, and failed operations, change language/theme: criteria, screenshot lookup, AI summary, and preview results must remain coherent. Preview alone must not delete anything; cancellation at the final confirmation must leave data intact.
+- [ ] Load settings containing the retired report-window state and digest preferences in an isolated installation. Verify they are removed atomically while installation identity, other window preferences, activity history, and existing HTML files remain unchanged. Other unsupported window keys must still fail validation.
+- [ ] In Local sky, use the left/right arrow controls and keyboard to scroll the objects above the horizon without a visible horizontal scrollbar; boundary arrows must disable correctly after resizing or changing cities. In Italian verify IIS, Grande Carro, and Piccolo Carro. Each Dipper must have seven connected stars when above the horizon; repeat for northern/southern cities and day/night without showing objects below the horizon. Planet images and captions must leave constellation lines and labels readable.
 - [ ] Open a standard acknowledgement and a destructive confirmation. Confirm both are WinUI dialogs with localized `OK`/`Annulla` actions, and that dismissing a confirmation does not execute it.
 - [ ] Open the main menu and use both import/export commands under App settings. Confirm the main flyout and every submenu retain the shared 320 DIP minimum width at 100–200% display scaling; export opens the `.tmuarchive` destination picker, import opens the archive picker and preview, cancelling either picker changes no data, and a confirmed merge preserves the originating installation labels while skipping duplicate records.
 - [ ] Start with retained OCR/AI history that references missing screenshots in the former flat screenshot directory, including deleted raw images whose stored counterparts have already moved into calendar folders. Restart to complete the explicit storage migration; export with and without screenshots, then preview/import into an isolated installation. Verify that text and timestamps survive, only existing images are included, every reference uses the current calendar layout, and a second startup requires no migration. An unknown directory layout or missing capture date must fail without partially changing history.
@@ -320,16 +350,16 @@ Search interaction check:
 - [ ] In World Clocks, reach the layout icon with Tab and activate it with Space. Verify the OpenWeather logo floats at the bottom right over the scene, without a full-width footer band or overlap with UTC/daylight text; its localized tooltip and accessible name must identify the attribution. Resize manually, close/reopen, and wait through a minute refresh: the saved bounds must remain. With a custom reference instant, add/remove a city in options and return: content sizing must apply without switching back to live time.
 - [ ] Resize World Clocks repeatedly from wide/tall to the 480 × 240 DIP minimum, with two cities and at 100%, 150%, and 200% display scaling, including moving between monitors. Confirm skyline, atmosphere, and fade share the same bottom edge and stay clipped to their column; extra height must increase the space above the scene after its scale limit. In compact mode, no mandatory skyline spacer should prevent further height reduction; overflowing clock text must remain scrollable.
 - [ ] Open the reference-instant panel in a narrow/short World Clocks window, then resize while it is open. Confirm date and time share one row. At 200% text scaling and with long translated labels, verify the title, city, date, time, and time-zone text fit or scroll vertically, while Restore now and Apply remain visible and usable. Verify the title uses the selected UI language.
-- [ ] In World Clocks, use the globe icon in the title bar to open the separate Acrylic map window. Confirm the clocks contain no embedded map and keep their bounds. The map follows the selected reference instant and shows night, dawn, day, sunset, the photographic Sun and Moon, and selected cities. Use the Moon button to open the separate phase window; verify the phase and illuminated percentage follow the same instant. Close either window independently and reopen it without creating duplicates. Verify localized tooltips and accessible names for both buttons.
+- [ ] In World Clocks, use the globe icon in the title bar to open the astronomical windows menu, then choose the original day/night map. Confirm the separate Acrylic map opens while the clocks contain no embedded map and keep their bounds. The map follows the selected reference instant and shows night, dawn, day, sunset, the photographic Sun and Moon, and selected cities. Use the Moon button to open the separate phase window; verify the phase and illuminated percentage follow the same instant. Close either window independently and reopen it without creating duplicates. Verify localized tooltips and accessible names for both buttons.
 - [ ] Put the Moon, map, and World Clocks windows over contrasting desktop content. Check the blurred glass behind text and around the map, including after focusing another window or hiding the title bar. Switch the app theme and verify readable text. Disable Windows transparency or enable high contrast: the system's opaque fallback must remain legible. Restore those settings and confirm Acrylic returns. Close and reopen the windows to check backdrop cleanup and reconnection.
-- [ ] Compare Moon text with World Clocks: the phase summary uses the same light display font as clock values, and the reference instant uses the compact text font. Check wrapping in the smallest Moon window and at 200% text scaling.
-- [ ] Shrink the map to 192 × 160 DIP and the Moon to 192 × 192 DIP, then enlarge them again. At 100%, 150%, and 200% display scaling, verify that the map's timestamp hides first, title text gives way to the logo, and all native minimize/maximize/close buttons remain visible and clickable when the title bar is shown. Repeat with automatic hiding disabled. Check the two-row compact legend, compact lunar text/tooltips, and restored compact bounds after closing/reopening.
+- [ ] Compare Moon text with World Clocks: the phase summary uses the same light display font as clock values, and the reference instant uses the compact text font. Below 300 DIP of available width or height, verify both labels disappear and the Moon fills the space; enlarge the window and verify the labels return. Phase/illumination/reference information must remain available through the Moon's accessible name and tooltip. Check at 200% text scaling.
+- [ ] Shrink the map to 192 × 160 DIP and the Moon to 192 × 192 DIP, then enlarge them again. At 100%, 150%, and 200% display scaling, verify that the map's timestamp hides first, title text gives way to the logo, and all native minimize/maximize/close buttons remain visible and clickable when the title bar is shown. Repeat with automatic hiding disabled. Check the two-row compact legend, Moon-only compact presentation/tooltips, and restored compact bounds after closing/reopening.
 - [ ] In Maintenance, switch between Export, Import, and Installations. Check that an archive preview shows its filename, creation date, separately labeled activity/AI/screenshot totals, screenshot size, and source computers. Open import/export directly from the menu: only the chosen operation should start. Preview, import, export, and installation updates must use the same owned Mica progress dialog with a descriptive title and an indeterminate horizontal bar; completion or failure must close it and restore the owner. Verify narrow windows, 200% text scaling, keyboard navigation, and shutdown during an operation in an isolated test installation.
 - [ ] Run `DataArchiveServiceTests` with a temporary SQLite lock during export: the snapshot retries only busy/locked errors for up to five seconds, then produces an importable archive after the lock is released. Cancellation must interrupt the wait; a persistent lock or invalid database must fail without overwriting an existing archive or leaving a partial archive.
 - [ ] Resize the main window, then open Export and Import from its menu and through Settings/Maintenance. Preserve the chosen width and height while changing tabs, picking/cancelling a file, showing progress/results, and returning to the player. Resize again on a secondary page and confirm every page uses the latest size; smaller displays may constrain it, with content remaining scrollable.
-- [ ] Import an archive with overlapping samples from two PCs across an hour and midnight boundary. Confirm the activity calendar and reports open, shared tracked/active time is counted once, and per-computer attribution remains available. An import failure must require a fresh preview before another attempt.
+- [ ] Import an archive with overlapping samples from two PCs across an hour and midnight boundary. Confirm the activity calendar opens, shared tracked/active time is counted once, and per-computer attribution remains available. An import failure must require a fresh preview before another attempt.
 - [ ] Resize the activity calendar and weekly view vertically: the weekly grid fills the viewport with equal hourly rows of at least 20 DIPs, scrolling only below that minimum. Recorded cells show the contributing installation icons only when they fit; narrow cells retain full provenance in their tooltip, and calendar month navigation must not retain icons from recycled days. Check an hour with one PC and an overlapping hour with two PCs, plus text scaling and light/dark themes.
-- [ ] Generate a report or daily digest, preview/run a confirmed retention cleanup, retrieve AI pricing, and save a screenshot copy. Verify reuse of the owned Mica progress component and restoration of the owner after success/failure. Capture/current-activity analysis must keep the original foreground context; indexing and batch reprocessing must retain their detailed progress and cancellation controls.
+- [ ] Preview/run a confirmed retention cleanup, retrieve AI pricing, and save a screenshot copy. Verify reuse of the owned Mica progress component and restoration of the owner after success/failure. Capture/current-activity analysis must keep the original foreground context; indexing and batch reprocessing must retain their detailed progress and cancellation controls.
 - [ ] With the world map visible, resize between narrow/tall and wide/short windows at 100%, 150%, and 200% display scaling. Confirm the complete map stays centered at 2:1 with empty margins when needed, continents retain their proportions, and lighting/city/celestial markers stay aligned. Verify the photographic Sun and Moon, their localized tooltips, and the Moon's shadow at new, quarter, full, waxing, and waning reference instants.
 - [ ] In both light and dark themes, confirm the world-map legend has white labels on its dark translucent background and that saturated amber dawn and coral sunset gradients remain distinct with geographic detail visible underneath.
 - [ ] In world-clock options, expand Window and check localized opacity, taskbar visibility and always-on-top controls. Toggle Moon and world-map taskbar icons independently with both windows open; each setting must apply immediately and survive closing/reopening and restarting. Failed saves must restore the previous switch state.
@@ -337,16 +367,16 @@ Search interaction check:
 - [ ] Leave **Your activity** open, exit, and restart TrackMeUp, including a saved session containing `activity-calendar: true`. The calendar must stay closed during startup and still open normally from its menu command; other saved work windows must restore normally.
 - [ ] Move a work window, change an unrelated setting such as the theme, and restart: saved bounds and open/closed states must survive the settings change.
 - [ ] Open several work windows, hide some from the taskbar and minimize another, then switch to a different app and reactivate the TrackMeUp main window. Only already-open windows must become visible again, with keyboard focus remaining on the main window. Minimized windows return to their saved normal bounds; already-maximized windows and explicit always-on-top preferences must be preserved. Closed windows must stay closed, modal dialogs must retain focus, and switching away again must not make normal TrackMeUp windows permanently topmost.
-- [ ] In Options → Window, disable automatic title-bar hiding: all currently open windows and newly opened dialogs must keep their title bars visible; restart and confirm the preference persists. Re-enable it and move the mouse outside and back inside every window: after 300 ms of stable hover, the header fades over 150 ms without moving content or resizing the window. Brief crossings must cancel pending transitions. Verify a drag begun during the hide delay, menu interaction, native caption buttons, immediate keyboard access, and first-touch reveal during the show delay without accidentally activating a command. Repeat over report WebView content and owned dialogs. With Windows animations disabled, visibility changes must occur without fading.
-- [ ] With automatic hiding enabled, verify only World Clocks, the map, and the Moon have title bars over their content: hiding them leaves no empty top strip and showing them does not move the scene. At 100%, 150%, and 200% scaling, check header readability, native caption targets, keyboard access, and touch reveal. Open World Clocks options or disable automatic hiding: the header must reserve space again so top controls remain usable. Other work windows and dialogs retain their existing layout.
+- [ ] In Options → Window, disable automatic title-bar hiding: all currently open windows and newly opened dialogs must keep their title bars visible; restart and confirm the preference persists. Re-enable it and move the mouse outside and back inside every window: after 300 ms of stable hover, the header fades over 150 ms without moving content or resizing the window. Brief crossings must cancel pending transitions. Verify a drag begun during the hide delay, menu interaction, native caption buttons, immediate keyboard access, and first-touch reveal during the show delay without accidentally activating a command. Repeat over the activity calendar and owned dialogs. With Windows animations disabled, visibility changes must occur without fading.
+- [ ] With automatic hiding enabled, verify World Clocks, the original map, the Moon, Local sky, Astronomical agenda and Earth globe have title bars over their content: hiding them leaves no empty top strip and showing them does not move the scene. At 100%, 150%, and 200% scaling, check header readability, native caption targets, keyboard access, and touch reveal. Open World Clocks options or disable automatic hiding: the header must reserve space again so top controls remain usable. Other work windows and dialogs retain their existing layout.
 - [ ] Move and resize live World Clocks, map, and Moon windows across a minute boundary: refresh must not be postponed by movement. Minimize and restore them, and switch between a fixed reference instant and live time. Simulate a settings persistence failure in an isolated test installation: saving or closing a window must show an error, keep the window available, and allow a later retry without terminating the app.
 
 Privacy and runtime regression checks:
 
-- [ ] With the player, Search, reports, world clocks, and an owned dialog open, change Windows scaling through 100%, 150%, 200%, and back to 100%; repeat by moving between monitors. Confirm immediate reflow, aligned caption hit targets, usable minimum sizes, and preserved user-sized player bounds. Repeat during a player resize animation, with a maximized report, and with a window hidden/minimized; restore it and check layout. Close a window during a scale change and confirm clean shutdown.
+- [ ] With the player, Search, activity calendar, world clocks, and an owned dialog open, change Windows scaling through 100%, 150%, 200%, and back to 100%; repeat by moving between monitors. Confirm immediate reflow, aligned caption hit targets, usable minimum sizes, and preserved user-sized player bounds. Repeat during a player resize animation, with a maximized calendar, and with a window hidden/minimized; restore it and check layout. Close a window during a scale change and confirm clean shutdown.
 - [ ] Launch TrackMeUp twice from Start or its shortcut, including once while the player is hidden in the notification area. Confirm only one long-lived `TrackMeUp.exe` remains and the existing player is restored. Start the runtime through the CLI first, then launch the player and confirm the background owner becomes the UI process instead of leaving two processes running.
 - [ ] Hide the player in the notification area, restart Windows Explorer, and confirm the icon returns and still restores the same player. Verify its tooltip, mouse/keyboard activation, and right-click menu. Repeat with the player visible and after another Explorer restart; visibility must stay unchanged and only one icon may exist. Simulate failed icon registration: the player must become visible, the failure must be logged, and a later minimize must retry successfully once the shell is available.
-- [ ] With an instance running, launch `reports --theme dark`, a normal player launch, and `--background`: confirm each retains its requested surface and duplicate background launches stay headless. Promote a background instance with `--paused` or `--safe-mode` and verify automatic tracking stays disabled; invalid redirected arguments must fail before activation.
+- [ ] With an instance running, launch the player with `--theme dark`, a normal player launch, and `--background`: confirm theme arguments are applied and duplicate background launches stay headless. Promote a background instance with `--paused` or `--safe-mode` and verify automatic tracking stays disabled; invalid redirected arguments must fail before activation.
 - [ ] Exclude a synthetic process/title/context and verify no activity is stored; disable each detail provider and verify titles/attributes are absent.
 - [ ] With an excluded window on another monitor, verify the entire screenshot is blocked. Use only synthetic content for this manual Windows check.
 - [ ] Interrupt screenshot deletion after file removal, retry/restart, and verify OCR and active search documents disappear. Retention must also expire OCR whose image is already absent.
@@ -357,6 +387,31 @@ Privacy and runtime regression checks:
 </details>
 
 ## More about the project
+
+### Celestial desktop windows
+
+**Settings → Window → Window snapping** enables magnetic alignment for the app's independent windows (enabled by default). Visible edges snap within five physical pixels of other visible, non-minimized/non-maximized TrackMeUp windows and the current monitor's work-area edges, excluding the taskbar. There is no docking group or forced containment. Moving any visible edge outside the starting monitor's physical bounds releases snapping for the entire drag, even after re-entry; the next drag starts a fresh operation. Normal Windows window management remains available. Native failures are reported after the drag while free movement remains available; no settings reads or writes occur inside the drag callback.
+
+- [ ] Toggle window snapping off/on with multiple windows open, restart the app and verify the saved preference. Move edges to five and six physical pixels from peers/work-area borders; verify adjacency, aligned rows/columns, no remote unrelated targets, no drift and no change in size. Drag outside each physical screen edge and back without releasing: no snap or forced reposition until the next drag. Repeat on a monitor left/above the primary, at different DPI scales, from a maximized window and with hidden/minimized peers; subsequent layout changes must preserve deliberate off-screen/snapped placement. `WindowSnapSessionTests` and the snapping settings scenarios describe the corresponding automated checks; running them requires explicit approval.
+
+The globe command in World Clocks opens the astronomical windows menu: **Local sky**, **Astronomical agenda**, **Earth globe**, and the original day/night map. The three new independent Acrylic windows use the shared auto-hiding title bar, light typography, accent color and persisted workspace bounds. Their city controls sit at the bottom, without repeating the reference date/time already shown in World Clocks; agenda entries keep their event dates. The local sky stays centered and scales to its available area, with a fixed view and no zoom or pan. The Earth globe window shows only the sphere; the separate original flat map keeps its full-window surface. There is no projection switch.
+
+Core owns one offline astronomical engine for all clocks, lunar phases, maps and new windows. Matching instants share cached ephemerides; live celestial references use UTC-minute boundaries, while explicitly selected clock instants remain exact. City and time-zone records live in the existing SQLite database; `TrackMeUp.Core/Data/sky-catalog.json` holds 76 attributed stellar coordinates, 16 schematic constellation figures (including all twelve zodiac constellations), satellite identities and conjunction-body choices. Sun, Moon, planet and stellar positions are calculated for the selected city and instant. The 24 artistic sky palettes and glow colors live in `TrackMeUp.Core/Data/sky-palette.json` and interpolate continuously against actual solar elevation, so twilight follows location and season rather than a fixed civil hour. Dedicated planet/event illustrations and a transparent decorative horizon complement the real sky coordinates; they are not observations or local terrain.
+
+The local sky also projects the ISS and Tiangong from recent public CelesTrak orbital elements using SGP4. This optional network refresh runs only when the local sky requests satellites, no more than once every two hours; only above-horizon positions from elements no older than three days are shown. Historical or distant future instants, unavailable/stale orbital data and offline operation omit satellite markers without affecting the offline Sun/Moon/planet/star chart. An above-horizon marker is an approximate geometric position, not a visible-pass prediction: sunlight, weather, terrain and light pollution still matter. The zodiac figures are astronomical star patterns; the agenda's tropical signs remain separate equal sectors.
+
+The agenda lists computed solar crossings, blue-hour intervals, lunar quarters and equinoxes/solstices, alongside geocentric Moon–planet conjunctions within the next 35 days. A small embedded IMO-sourced catalog supplies the next expected annual peak and activity period for eight major meteor showers; these are explicitly recurring estimates, not a year-specific forecast. Above the horizon does not guarantee naked-eye visibility; weather, terrain and light pollution are not modeled. Blue hour is defined here by solar altitude −6° to −4°. The informational zodiac panel displays twelve transparent PNG glyphs and the Sun's current tropical 30° sector; these sectors differ from astronomical constellation boundaries and provide no astrological predictions. New sky/agenda dates are supported from 1900 through 2100.
+
+- [ ] Open all three windows, choose a city and change the clock reference date/time. Compare Moon phase across clocks, Moon and local sky; return to live mode and verify synchronized minute updates without weather requests from the celestial windows.
+- [ ] Move/resize each astronomical window and close it individually: its normal bounds must be retained while its open flag becomes false. Reopen it manually and verify those bounds. Exit the application normally with the desired windows still open; restart and verify the same windows reopen independently at their saved normal bounds. Maximized/minimized state is not part of the persisted placement contract.
+- [ ] Open the Earth globe and original flat day/night map simultaneously at the same reference instant and check consistent illumination, including the poles and dateline. Confirm the flat map still fills its original window and the new window always shows a sphere without a projection switch. In all three new windows, resize and keyboard-navigate the city controls at the bottom; the upper edge remains reserved for the shared disappearing title bar, with no repeated reference date/time. Agenda event dates must remain visible. Change the globe's center city and verify the flat map's layout and commands are unchanged.
+- [ ] In Local sky, verify the sky has no enclosing card/border and the explanatory note sits next to the city selector (its full text remains available as a tooltip). Resize through narrow, wide and short layouts: the complete fixed sky must remain centered and scale responsively, with no zoom control, pinch zoom, drag panning or scrollbars. Verify planetary thumbnails appear in the sky and the horizon list. Across a minute boundary with World Clocks also open, keep the city picker open: the existing scene must remain visible and retain the selection while the next snapshot arrives. Also check rapid globe resize A→B→A→B, explicit time changes, observer changes and failed refreshes: canceled requests must not suppress a later valid rendering or display stale data.
+- [ ] Resize each window to its minimum and to tall/wide layouts at 100%, 150% and 200% scaling. Verify readable controls, scrolling agenda, theme/accent changes, keyboard access and the shared title-bar hover reveal. Close/reopen and restart with different subsets of windows open; only those subsets should restore.
+- [ ] Verify polar-day/night missing solar crossings, a DST transition, an empty city selection, unsupported dates and a failed image load. Errors must be visible, and a canceled or superseded request must not update a closed window.
+- [ ] Scrub the reference instant across sunrise, sunset and midnight in different seasons/cities, including polar day/night. Verify smooth sky color transitions and fading stars; the decorative landscape must not substitute for real coordinate positions. Enable high contrast and verify illustrations/gradients yield to readable system colors.
+- [ ] In Local sky, inspect zodiac figures and added bright stars in different cities/seasons, checking that only above-horizon geometry is shown and labels do not crowd a compact window. With current orbital data, compare ISS and Tiangong markers and horizon entries; confirm they disappear when below the horizon, data is stale/offline, or the reference instant is outside the current-sky window, while the rest of the chart still updates. Verify satellite tooltips and accessible names.
+- [ ] Compare a Moon–planet conjunction with its stated angular separation, inspect meteor activity dates across December/January and confirm all meteor peaks are marked approximate. Expand the zodiac gallery, check all twelve transparent glyphs and verify the highlighted tropical sign changes at a 30° solar-longitude boundary rather than a hardcoded civil date.
+
 
 - [How your data is handled](docs/PRIVACY.md)
 - [Architecture](docs/ARCHITECTURE.md)
@@ -385,7 +440,6 @@ You can also open About in the app to find logs, report a problem, visit the pro
 - <code>TrackMeUp.Core/</code> — app behavior, storage, screenshots, AI connections, and the shared tracker.
 - <code>TrackMeUp.Presentation/</code> — models used by the desktop interface.
 - <code>TrackMeUp.Cli/</code> — command-line interface for PowerShell.
-- <code>TrackMeUp.Reports.Web/</code> — files used to display local reports.
 - <code>TrackMeUp.*.Tests/</code> — automated test projects.
 - <code>scripts/TrackMeUp.ps1</code> — script for builds, tests, and packaging.
 - <code>docs/</code> — privacy, testing, and development guides.

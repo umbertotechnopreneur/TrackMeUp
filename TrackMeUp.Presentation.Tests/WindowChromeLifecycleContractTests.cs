@@ -69,7 +69,6 @@ public sealed class WindowChromeLifecycleContractTests
         "AboutWindow",
         "OcrTextWindow",
         "QuickSetupWindow",
-        "ReportsWindow",
         "ScheduleWindow",
         "ScreenshotWindow",
         "SearchIndexingWindow",
