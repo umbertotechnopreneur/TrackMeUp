@@ -23,6 +23,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
     private readonly ILogger<HardwareTelemetryService> _logger;
     private readonly TimeProvider _time;
     private readonly Func<CancellationToken, ValueTask<SystemSnapshot>>? _testReader;
+    private readonly Func<CancellationToken, Task> _startCollector;
     private CancellationTokenSource? _polling;
     private Task? _pollTask;
     private NamedPipeServerStream? _pipe;
@@ -33,6 +34,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
     private HardwareSamplingProfile _profile = HardwareSamplingProfiles.Get("normal");
     private bool _trackingRequested;
     private bool _advanced;
+    private bool _configured;
     private volatile bool _disposed;
 
     /// <summary>Creates the application-owned collector with the packaged helper beside the executable.</summary>
@@ -40,17 +42,19 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         : this(Path.Combine(AppContext.BaseDirectory, "Hardware", "TrackMeUp.Hardware.exe"), TimeProvider.System, logger) { }
 
     internal HardwareTelemetryService(string helperPath, TimeProvider timeProvider, ILogger<HardwareTelemetryService>? logger = null,
-        Func<CancellationToken, ValueTask<SystemSnapshot>>? reader = null)
+        Func<CancellationToken, ValueTask<SystemSnapshot>>? reader = null, PawnIoInstaller? installer = null,
+        Func<CancellationToken, Task>? startCollector = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(helperPath);
         _helperPath = Path.GetFullPath(helperPath);
-        _installer = new PawnIoInstaller(Path.Combine(Path.GetDirectoryName(_helperPath)!, "PawnIO", "PawnIO_setup.exe"));
+        _installer = installer ?? new PawnIoInstaller(Path.Combine(Path.GetDirectoryName(_helperPath)!, "PawnIO", "PawnIO_setup.exe"));
         _time = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _logger = logger ?? NullLogger<HardwareTelemetryService>.Instance;
         _testReader = reader;
+        _startCollector = startCollector ?? StartCollectorAsync;
     }
 
-    /// <summary>Applies sampling and opt-in settings without launching an elevated collector.</summary>
+    /// <summary>Applies settings and, on initialization, restores opted-in advanced access when PawnIO is already installed.</summary>
     public async ValueTask ConfigureAsync(HardwareTelemetryConfiguration configuration, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -60,7 +64,7 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_configuration == configuration) return;
+            if (_configured && _configuration == configuration) return;
             // Stop only the timer, not an in-flight read: changing rates must retain an elevated session.
             await StopPollingAsync().ConfigureAwait(false);
             try
@@ -69,6 +73,9 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
                 try
                 {
                     ObjectDisposedException.ThrowIf(_disposed, this);
+                    var initializing = !_configured;
+                    // Consume the startup attempt before awaiting consent; later settings changes never repeat it.
+                    _configured = true;
                     var resetSnapshot = _configuration.Enabled != configuration.Enabled
                         || _configuration.SamplingProfile != configuration.SamplingProfile
                         || _advanced && !configuration.UseAdvancedSensors;
@@ -80,6 +87,9 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
                         _snapshot = new SystemSnapshot(_time.GetUtcNow(), "disabled", [], "disabled");
                     else if (resetSnapshot)
                         _snapshot = null;
+                    if (initializing && configuration.Enabled && configuration.UseAdvancedSensors
+                        && RuntimeInformation.ProcessArchitecture == Architecture.X64)
+                        await RestoreAdvancedSessionAsync(cancellationToken).ConfigureAwait(false);
                 }
                 finally { _gate.Release(); }
             }
@@ -179,24 +189,55 @@ public sealed class HardwareTelemetryService : IHardwareTelemetryService
             using var setupDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
             setupDeadline.CancelAfter(TimeSpan.FromMinutes(5));
             await _installer.EnsureInstalledAsync(setupDeadline.Token).ConfigureAwait(false);
-            await StopCollectorAsync().ConfigureAwait(false);
-            _advanced = true;
-            _snapshot = null;
-            try
-            {
-                // UAC consent is requested only through this explicit application action.
-                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
-                deadline.CancelAfter(TimeSpan.FromSeconds(60));
-                await StartCollectorAsync(deadline.Token).ConfigureAwait(false);
-            }
-            catch
-            {
-                _advanced = false;
-                await StopCollectorAsync().ConfigureAwait(false);
-                throw;
-            }
+            await StartAdvancedCollectorAsync(cancellationToken).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
+    }
+
+    private async Task RestoreAdvancedSessionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Startup only reuses a compatible installed driver. Setup remains an explicit user action.
+            if (_installer.CanActivateWithoutSetup)
+                await StartAdvancedCollectorAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || _lifetime.IsCancellationRequested) { throw; }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or Win32Exception or UnauthorizedAccessException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            // Optional sensor activation must not block app startup. Report the failure, then permit basic
+            // readings after the normal cooldown; no automatic UAC retry occurs in this service lifetime.
+            var code = exception switch
+            {
+                Win32Exception { NativeErrorCode: 1223 } => "advanced-consent-cancelled",
+                OperationCanceledException => "collector-timeout",
+                UnauthorizedAccessException => "collector-access-denied",
+                _ => "advanced-start-failed"
+            };
+            _logger.LogWarning("Advanced sensor startup failed. ErrorCode={ErrorCode} ExceptionType={ExceptionType}", code, exception.GetType().Name);
+            _lastAttempt = _time.GetUtcNow();
+            var driverStatus = code is "advanced-consent-cancelled" or "collector-access-denied" ? "access-denied" : "blocked";
+            _snapshot = new SystemSnapshot(_lastAttempt, "unavailable", [], driverStatus, code);
+        }
+    }
+
+    private async Task StartAdvancedCollectorAsync(CancellationToken cancellationToken)
+    {
+        await StopCollectorAsync().ConfigureAwait(false);
+        _advanced = true;
+        _snapshot = null;
+        try
+        {
+            // Windows still owns elevation consent, whether activation is explicit or restored at startup.
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+            deadline.CancelAfter(TimeSpan.FromSeconds(60));
+            await _startCollector(deadline.Token).ConfigureAwait(false);
+        }
+        catch
+        {
+            await StopCollectorAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>Stops polling, closes the pipe and releases the only helper owned by this service.</summary>

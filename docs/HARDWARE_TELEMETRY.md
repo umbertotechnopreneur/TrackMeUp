@@ -16,7 +16,7 @@ Choose what to collect and save. Changes take effect without restarting:
 | Setting key | Default | What it does |
 | --- | --- | --- |
 | `sensors.enabled` | `true` | Enable hardware sensor collection |
-| `sensors.advanced` | `false` | Opt into the optional advanced-sensor helper, subject to explicit administrator consent |
+| `sensors.advanced` | `false` | Restore the advanced-sensor helper at startup when PawnIO is installed, subject to Windows administrator consent |
 | `sensors.save_snapshots` | `true` | Save raw hardware readings with future captures |
 | `sensors.sampling_profile` | `normal` | Select `slow`, `normal`, `fast` or `fastest` polling |
 
@@ -86,14 +86,21 @@ application builds remain supported.
 
 Some readings need the optional PawnIO driver and administrator consent. Standard
 mode leaves driver access off, even if TrackMeUp was started as administrator.
-The app does not download or install a driver, or change fan speed, voltage,
-clocks, or power limits.
+The app never changes fan speed, voltage, clocks, or power limits.
 
-To opt in, install the [official signed PawnIO distribution](https://pawnio.eu/)
-separately, then use the advanced-sensor action in TrackMeUp. Windows requests
-consent for the sensor helper only; the main app keeps its existing privileges.
-Missing prerequisites are reported first. A failed session does not trigger
-repeated consent prompts.
+The advanced-sensor action installs the bundled [official signed PawnIO
+distribution](https://pawnio.eu/) if needed, then starts the helper. When both
+sensor preferences are saved as enabled, the next app startup automatically
+starts the helper if a compatible PawnIO version is already installed. There is
+no Settings button to press again. Windows can still request administrator
+consent for the helper; the main app keeps its existing privileges.
+
+Startup never installs or upgrades the driver. Disabled preferences, unsupported
+architectures and missing/older drivers do not trigger elevation. Cancelled
+consent or a failed startup attempt is reported as unavailable telemetry, then
+basic readings can resume after the ten-second cooldown. That session never
+requests consent again automatically; the explicit advanced-sensor action can
+retry. A new app session can make one new startup attempt.
 
 The helper uses same-user pipe permissions, reciprocal process-ID checks,
 versioned messages and a 512 KiB frame limit. It contains no tracking runtime.

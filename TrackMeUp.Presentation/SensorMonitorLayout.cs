@@ -14,20 +14,22 @@ public static class SensorMonitorLayout
     {
         Validate(width);
         var stacked = width < 860;
-        var valueWidth = stacked ? 132 : Math.Clamp(width * .18, 116, 160);
-        var temperatureWidth = stacked ? 0 : Math.Clamp(width * .20, 132, 180);
-        // The icon and three gutters occupy 76 px; the graph shares the entire row behind these columns.
-        return new(stacked, Math.Max(0, width - valueWidth - temperatureWidth - 76), valueWidth,
+        var valueWidth = stacked ? Math.Max(0, (width - 60) / 2) : Math.Clamp(width * .18, 116, 160);
+        var temperatureWidth = stacked ? valueWidth : Math.Clamp(width * .20, 132, 180);
+        // Compact metrics share a second line after the 44 px icon indent and a 16 px gutter.
+        var nameWidth = stacked ? width - 44 : width - valueWidth - temperatureWidth - 76;
+        return new(stacked, Math.Max(0, nameWidth), valueWidth,
             temperatureWidth, 10, stacked ? 148 : 96);
     }
 
-    /// <summary>Pages devices before their metadata would need to be hidden or text scaled down.</summary>
-    public static int PageSize(double viewportHeight, double viewportWidth, int deviceCount)
+    /// <summary>Pages using measured row height, so wrapped or enlarged text is never squeezed into a nominal row.</summary>
+    public static int PageSize(double viewportHeight, double rowHeight, int deviceCount)
     {
         Validate(viewportHeight);
-        Validate(viewportWidth);
+        Validate(rowHeight);
+        ArgumentOutOfRangeException.ThrowIfZero(rowHeight);
         ArgumentOutOfRangeException.ThrowIfNegative(deviceCount);
-        return Math.Min(deviceCount, Math.Max(1, (int)(viewportHeight / ResolveTrack(viewportWidth).RowHeight)));
+        return Math.Min(deviceCount, Math.Max(1, (int)(viewportHeight / rowHeight)));
     }
 
     private static void Validate(double value)
