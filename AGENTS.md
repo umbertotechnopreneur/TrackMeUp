@@ -11,6 +11,9 @@ These instructions apply to all changes in this repository.
 
 ## Context and token efficiency
 
+- Do not read more than five files for a task without explicit user approval. If additional context is needed, ask first; this limit prevents whole-repository reading.
+- Warn the user before an operation that could theoretically consume a large number of tokens, including broad repository reads, unbounded searches, or large output dumps.
+
 - Read only task-relevant files and documentation sections; expand scope when dependencies or uncertainty require it.
 - Reuse context already read. Re-read only when files changed, context is missing, or fresh evidence is needed.
 - Start with scoped `rg` searches, then read relevant excerpts. Exclude generated files and bound command output; retrieve more only when needed.
