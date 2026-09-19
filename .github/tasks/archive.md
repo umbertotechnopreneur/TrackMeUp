@@ -2,6 +2,14 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Keep the activity calendar closed at startup
+
+- [x] Confirm local `main`, `origin/main`, and the installed app's base commit match `9b31eb1`; the unwanted restore behavior was present on main.
+- [x] Classify the activity calendar as a transient dialog and remove its startup opening path. Existing saved open flags no longer reopen it; the menu command and other workspace windows are unchanged.
+- [x] Update the existing restoration scenario and README checklist. Formatting and diff review passed. Per the user's instruction, this correction is for the PR only; no further local tests or installation were performed.
+
+---
+
 ## [2026-09-19] Bundle PawnIO and clarify advanced-sensor activation
 
 - [x] Bundle the unmodified, signed PawnIO 2.2.0 installer in x64 hardware output, with a pinned download/hash and distribution notice. Builds verify it without execution; ARM64 remains excluded.

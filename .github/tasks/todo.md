@@ -1,5 +1,9 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Activity calendar startup correction (2026-09-19)
+
+- [ ] Verify the calendar remains closed at startup even with a saved open flag, while explicit menu opening and other workspace restoration still work. `main` and `origin/main` were aligned at `9b31eb1`; both still classified the calendar as restorable. The correction removes it from session restoration and the main-window startup action. The user requested adding this fix only to the PR: no additional local tests or reinstall were run, and the installed app still has the prior calendar behavior. Required CI and a future installed-app check remain pending.
+
 ## Bundled advanced-sensor prerequisite (2026-09-19)
 
 - [ ] Follow the required PR checks for the bundled PawnIO change. Local MSIX deployment, focused tests (33), packaging checks (63), and the packaging route's reports tests (60) passed.
