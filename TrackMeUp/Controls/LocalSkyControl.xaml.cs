@@ -5,6 +5,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
@@ -12,7 +13,7 @@ using Windows.Foundation;
 
 namespace TrackMeUp.Controls;
 
-/// <summary>Plots Core-computed horizontal sky coordinates on a responsive, zoomable all-sky chart.</summary>
+/// <summary>Plots Core-computed horizontal sky coordinates on a centered, responsive all-sky chart.</summary>
 public sealed partial class LocalSkyControl : UserControl
 {
     private CelestialSnapshot? _snapshot;
@@ -20,6 +21,8 @@ public sealed partial class LocalSkyControl : UserControl
     private double _centerX;
     private double _centerY;
     private double _radius;
+    private double _viewportWidth;
+    private double _viewportHeight;
     private readonly List<Rect> _labelBounds = [];
 
     /// <summary>Creates a passive sky chart without location, clock, or astronomy services.</summary>
@@ -41,24 +44,23 @@ public sealed partial class LocalSkyControl : UserControl
         Render();
     }
 
-    /// <summary>Changes presentation magnification while retaining the physical sky coordinates.</summary>
-    internal void SetZoom(double zoom) => SkyViewport.ChangeView(null, null, (float)zoom);
-
     private void SkyViewport_SizeChanged(object sender, SizeChangedEventArgs e) => Render();
 
     private void Render()
     {
         SkyCanvas.Children.Clear();
         _labelBounds.Clear();
-        var width = Math.Max(0d, SkyViewport.ActualWidth - 8d);
-        var height = Math.Max(0d, SkyViewport.ActualHeight - 8d);
+        var width = Math.Max(0d, SkyViewport.ActualWidth);
+        var height = Math.Max(0d, SkyViewport.ActualHeight);
+        _viewportWidth = width;
+        _viewportHeight = height;
+        // The canvas follows its bounded viewport instead of carrying a scroll extent or a zoom transform.
+        SkyCanvas.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, width, height) };
         if (_snapshot is null || width < 60d || height < 60d)
         {
             return;
         }
 
-        SkyCanvas.Width = width;
-        SkyCanvas.Height = height;
         _centerX = width / 2d;
         _centerY = height / 2d;
         _radius = Math.Max(1d, (Math.Min(width, height) / 2d) - 32d);
@@ -126,8 +128,8 @@ public sealed partial class LocalSkyControl : UserControl
                 X2 = to.X,
                 Y2 = to.Y,
                 Stroke = accent,
-                StrokeThickness = 1d,
-                Opacity = 0.42d * _snapshot.SkyAppearance.StarOpacity
+                StrokeThickness = 1.5d,
+                Opacity = 0.8d * _snapshot.SkyAppearance.StarOpacity
             });
         }
 
@@ -148,35 +150,21 @@ public sealed partial class LocalSkyControl : UserControl
             Add(dot, point.X - (diameter / 2d), point.Y - (diameter / 2d));
         }
 
-        if (_radius > 130d && _snapshot.SkyAppearance.StarOpacity > 0.15d)
-        {
-            foreach (var constellation in _snapshot.ConstellationSegments.GroupBy(segment => segment.ConstellationId))
-            {
-                var positions = constellation.SelectMany(segment => new[] { segment.StartStarId, segment.EndStarId })
-                    .Distinct().Select(id => stars[id]).Where(star => star.AltitudeDegrees > 5d).ToArray();
-                if (positions.Length < 3)
-                {
-                    continue;
-                }
-
-                var points = positions.Select(star => Project(star.AltitudeDegrees, star.AzimuthDegrees)).ToArray();
-                Label(_strings.Translate($"CelestialConstellation{constellation.Key}"),
-                    points.Average(point => point.X) + 8d, points.Average(point => point.Y) + 8d, secondary, 11d);
-            }
-        }
-
         foreach (var body in _snapshot.Bodies.Where(body => body.IsAboveHorizon))
         {
             var point = Project(body.AltitudeDegrees, body.AzimuthDegrees);
             var diameter = body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon
                 ? (_radius > 170d ? 44d : 30d)
                 : (_radius > 170d ? 34d : 24d);
+            // Keep the marker footprint free when placing constellation names later in this render.
+            _labelBounds.Add(new Rect(point.X - (diameter / 2d) - 4d, point.Y - (diameter / 2d) - 4d,
+                diameter + 8d, diameter + 8d));
             if (body.Kind == CelestialBodyKind.Sun)
             {
                 var glowSize = Math.Clamp(_radius * 0.9d, 60d, 220d);
                 var glow = new RadialGradientBrush();
-                glow.GradientStops.Add(new GradientStop { Color = Windows.UI.Color.FromArgb(85, 255, 220, 141), Offset = 0d });
-                glow.GradientStops.Add(new GradientStop { Color = Windows.UI.Color.FromArgb(0, 255, 182, 102), Offset = 1d });
+                glow.GradientStops.Add(new GradientStop { Color = ParseColor(_snapshot.SkyAppearance.SunGlowCoreColor), Offset = 0d });
+                glow.GradientStops.Add(new GradientStop { Color = ParseColor(_snapshot.SkyAppearance.SunGlowEdgeColor), Offset = 1d });
                 Add(new Ellipse
                 {
                     Width = glowSize,
@@ -187,8 +175,8 @@ public sealed partial class LocalSkyControl : UserControl
                 }, point.X - (glowSize / 2d), point.Y - (glowSize / 2d));
             }
 
-            Add(new Ellipse { Width = diameter * 2.5d, Height = diameter * 2.5d, Fill = accent, Opacity = 0.08d },
-                point.X - (diameter * 1.25d), point.Y - (diameter * 1.25d));
+            Add(new Ellipse { Width = diameter * 1.5d, Height = diameter * 1.5d, Fill = accent, Opacity = 0.05d },
+                point.X - (diameter * 0.75d), point.Y - (diameter * 0.75d));
             FrameworkElement dot = body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon
                 ? new CelestialPhaseControl
                 {
@@ -211,6 +199,70 @@ public sealed partial class LocalSkyControl : UserControl
                 Label(name, point.X + (diameter / 2d) + 5d, point.Y - 9d, Brush("TextFillColorPrimaryBrush"), _radius > 170d ? 14d : 12d);
             }
         }
+
+        foreach (var satellite in _snapshot.Satellites.Where(item => item.AltitudeDegrees > 0d))
+        {
+            var point = Project(satellite.AltitudeDegrees, satellite.AzimuthDegrees);
+            _labelBounds.Add(new Rect(point.X - 10d, point.Y - 10d, 20d, 20d));
+            var name = _strings.Translate($"CelestialSatellite{satellite.Id}");
+            var position = _strings.Format("Celestial.Sky.SatellitePosition", name,
+                satellite.AltitudeDegrees, satellite.AzimuthDegrees);
+            Add(new Ellipse { Width = 30d, Height = 30d, Fill = accent, Opacity = 0.12d }, point.X - 15d, point.Y - 15d);
+            var marker = new Rectangle
+            {
+                Width = 12d,
+                Height = 12d,
+                Fill = accent,
+                Stroke = Brush("TextFillColorPrimaryBrush"),
+                StrokeThickness = 1d,
+                RadiusX = 2d,
+                RadiusY = 2d,
+                RenderTransform = new RotateTransform { Angle = 45d },
+                RenderTransformOrigin = new Point(0.5d, 0.5d)
+            };
+            UiLocalization.SetAccessibleLabel(marker, position);
+            ToolTipService.SetToolTip(marker, position);
+            Add(marker, point.X - 6d, point.Y - 6d);
+            if (_radius > 130d)
+            {
+                Label(name, point.X + 12d, point.Y - 7d,
+                    Brush("TextFillColorPrimaryBrush"), 12d, avoidOverlap: true);
+            }
+        }
+        if (_radius > 130d && _snapshot.SkyAppearance.StarOpacity > 0.15d)
+        {
+            var figures = _snapshot.Constellations.ToDictionary(figure => figure.Id, StringComparer.Ordinal);
+            foreach (var constellation in _snapshot.ConstellationSegments.GroupBy(segment => segment.ConstellationId))
+            {
+                var positions = constellation
+                    .Where(segment => stars[segment.StartStarId].AltitudeDegrees >= 0d && stars[segment.EndStarId].AltitudeDegrees >= 0d)
+                    .SelectMany(segment => new[] { segment.StartStarId, segment.EndStarId })
+                    .Distinct().Select(id => stars[id]).ToArray();
+                if (positions.Length < 2)
+                {
+                    continue;
+                }
+
+                var points = positions.Select(star => Project(star.AltitudeDegrees, star.AzimuthDegrees)).ToArray();
+                var zodiac = figures.TryGetValue(constellation.Key, out var figure) ? figure.ZodiacSign : null;
+                var name = zodiac is null
+                    ? _strings.Translate($"CelestialConstellation{constellation.Key}")
+                    : _strings.Translate($"CelestialZodiac{zodiac.Value}");
+                Label(name, points.Average(point => point.X) + 8d,
+                    points.Average(point => point.Y) + 8d, Brush("TextFillColorPrimaryBrush"), 12d,
+                    zodiac, avoidOverlap: true);
+            }
+
+            if (_radius > 180d)
+            {
+                foreach (var star in _snapshot.Stars.Where(star => star.AltitudeDegrees > 8d && star.Magnitude is <= 1.5d))
+                {
+                    var position = Project(star.AltitudeDegrees, star.AzimuthDegrees);
+                    Label(star.Name, position.X + 7d, position.Y + 2d, secondary, 10d, avoidOverlap: true);
+                }
+            }
+        }
+
     }
 
     private Point Project(double altitude, double azimuth)
@@ -223,55 +275,99 @@ public sealed partial class LocalSkyControl : UserControl
 
     private static Windows.UI.Color ParseColor(string value)
     {
-        if (value.Length != 7 || value[0] != '#')
+        if (string.IsNullOrEmpty(value)
+            || !(value.Length == 7 && value[0] == '#' || value.Length == 8 && value.All(char.IsAsciiHexDigit)))
         {
-            throw new InvalidDataException("The sky palette must supply six-digit RGB colors.");
+            throw new InvalidDataException("The sky palette must supply #RRGGBB or AARRGGBB colors.");
         }
 
-        return Windows.UI.Color.FromArgb(255,
-            byte.Parse(value.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
-            byte.Parse(value.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
-            byte.Parse(value.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+        var rgbOffset = value.Length == 7 ? 1 : 2;
+        var alpha = value.Length == 7 ? byte.MaxValue : byte.Parse(value.AsSpan(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        return Windows.UI.Color.FromArgb(alpha,
+            byte.Parse(value.AsSpan(rgbOffset, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+            byte.Parse(value.AsSpan(rgbOffset + 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+            byte.Parse(value.AsSpan(rgbOffset + 4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
     }
 
-    private void Label(string text, double x, double y, Brush foreground, double size)
+    private void Label(string text, double x, double y, Brush foreground, double size,
+        TropicalZodiacSign? zodiacSign = null, bool avoidOverlap = false)
     {
         var label = new TextBlock
         {
             Text = text,
             FontSize = size,
-            FontWeight = FontWeights.Light,
+            FontWeight = FontWeights.Normal,
             Foreground = foreground,
-            MaxWidth = Math.Max(20d, SkyCanvas.Width - 12d),
+            MaxWidth = Math.Max(20d, _viewportWidth - 12d),
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsHitTestVisible = false
         };
-        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var width = Math.Min(SkyCanvas.Width, label.DesiredSize.Width + 8d);
-        var height = label.DesiredSize.Height + 2d;
-        var left = x + width > SkyCanvas.Width ? x - width - 12d : x;
-        left = Math.Clamp(left, 0d, Math.Max(0d, SkyCanvas.Width - width));
-        var top = Math.Clamp(y, 0d, Math.Max(0d, SkyCanvas.Height - height));
-        foreach (var offset in new[] { 0d, -height, height, -2d * height, 2d * height })
+        FrameworkElement content = label;
+        if (zodiacSign is { } sign)
         {
-            var candidateTop = Math.Clamp(top + offset, 0d, Math.Max(0d, SkyCanvas.Height - height));
-            var candidate = new Rect(left, candidateTop, width, height);
-            if (_labelBounds.All(existing => !Intersects(existing, candidate)))
+            var image = new Image
             {
-                top = candidateTop;
-                break;
+                Source = new BitmapImage(new Uri($"ms-appx:///Assets/Celestial/Zodiac/{sign.ToString().ToLowerInvariant()}.png")),
+                Width = 20d,
+                Height = 20d,
+                IsHitTestVisible = false
+            };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(image,
+                Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+            var pair = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4d, IsHitTestVisible = false };
+            pair.Children.Add(image);
+            pair.Children.Add(label);
+            content = pair;
+        }
+
+        content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var width = Math.Min(_viewportWidth, content.DesiredSize.Width + 8d);
+        var height = content.DesiredSize.Height + 2d;
+        var left = x + width > _viewportWidth ? x - width - 12d : x;
+        left = Math.Clamp(left, 0d, Math.Max(0d, _viewportWidth - width));
+        var top = Math.Clamp(y, 0d, Math.Max(0d, _viewportHeight - height));
+        var available = false;
+        foreach (var horizontalOffset in new[] { 0d, -width - 12d, width + 12d })
+        {
+            var candidateLeft = Math.Clamp(left + horizontalOffset, 0d, Math.Max(0d, _viewportWidth - width));
+            foreach (var offset in new[] { 0d, -height, height, -2d * height, 2d * height, -3d * height, 3d * height })
+            {
+                var candidateTop = Math.Clamp(top + offset, 0d, Math.Max(0d, _viewportHeight - height));
+                var candidate = new Rect(candidateLeft, candidateTop, width, height);
+                if (_labelBounds.All(existing => !Intersects(existing, candidate)))
+                {
+                    left = candidateLeft;
+                    top = candidateTop;
+                    available = true;
+                    break;
+                }
             }
+
+            if (available) break;
+        }
+
+        if (avoidOverlap && !available)
+        {
+            return;
         }
 
         _labelBounds.Add(new Rect(left, top, width, height));
-        Add(new Border
+        var border = new Border
         {
-            Child = label,
+            Child = content,
             Padding = new Thickness(4, 1, 4, 1),
             CornerRadius = new CornerRadius(4),
             Background = LabelPalette.Background,
-            IsHitTestVisible = false
-        }, left, top);
+            IsHitTestVisible = zodiacSign is not null
+        };
+        if (zodiacSign is not null)
+        {
+            UiLocalization.SetAccessibleLabel(border, text);
+            ToolTipService.SetToolTip(border, text);
+        }
+
+        Canvas.SetZIndex(border, 10);
+        Add(border, left, top);
     }
 
     private static bool Intersects(Rect first, Rect second) =>

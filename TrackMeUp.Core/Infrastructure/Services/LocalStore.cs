@@ -8,6 +8,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using TrackMeUp.Application;
 
 namespace TrackMeUp.Services;
@@ -744,14 +745,51 @@ public sealed class LocalStore
     /// </summary>
     public AppSettings LoadSettings() => WithSettingsMutex(() =>
     {
-        var settings = File.Exists(_settingsPath)
-            ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(_settingsPath), _json)
-                ?? throw new InvalidOperationException("The TrackMeUp settings file must contain a JSON object.")
-            : new AppSettings();
+        var settings = new AppSettings();
+        var retiredReportSettings = false;
+        if (File.Exists(_settingsPath))
+        {
+            var document = JsonSerializer.Deserialize<JsonObject>(File.ReadAllText(_settingsPath), _json)
+                ?? throw new InvalidOperationException("The TrackMeUp settings file must contain a JSON object.");
+            retiredReportSettings = RemoveRetiredReportSettings(document);
+            settings = document.Deserialize<AppSettings>(_json)
+                ?? throw new InvalidOperationException("The TrackMeUp settings file must contain a JSON object.");
+        }
 
         var normalized = SettingsCatalog.NormalizePersisted(settings, _utilities.GetDefaultScreenshotDirectory());
-        return EnsureInstallationId(normalized);
+        var payload = EnsureInstallationId(normalized);
+        if (retiredReportSettings)
+        {
+            // Commit the explicit report-settings migration only after validation; I/O failures propagate.
+            WriteSettingsFile(payload);
+        }
+
+        return payload;
     });
+
+    /// <summary>Retires the removed report feature's persisted preferences and window state.</summary>
+    private static bool RemoveRetiredReportSettings(JsonObject settings)
+    {
+        var changed = false;
+        foreach (var property in settings.ToArray())
+        {
+            if (property.Key.Equals("dailyDigestEnabled", StringComparison.OrdinalIgnoreCase)
+                || property.Key.Equals("dailyDigestDirectory", StringComparison.OrdinalIgnoreCase)
+                || property.Key.Equals("lastDailyDigestDate", StringComparison.OrdinalIgnoreCase))
+            {
+                changed |= settings.Remove(property.Key);
+            }
+            else if ((property.Key.Equals("windowStates", StringComparison.OrdinalIgnoreCase)
+                    || property.Key.Equals("windowOpenStates", StringComparison.OrdinalIgnoreCase))
+                && property.Value is JsonObject windows)
+            {
+                // Only the retired key is migrated. Other unsupported window keys still fail validation.
+                changed |= windows.Remove("reports");
+            }
+        }
+
+        return changed;
+    }
 
     /// <summary>
     /// Reads the persisted installation identifier without creating or rewriting settings.

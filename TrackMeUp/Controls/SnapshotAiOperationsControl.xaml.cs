@@ -14,6 +14,9 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
 {
     private LocalizationService _strings = new("system");
     private OperationsSectionContext? _context;
+    private bool _hasScreenshotResult;
+    private string? _latestScreenshotPath;
+    private AiAnalysis? _analysis;
 
     /// <summary>Creates the independent screen-capture and AI operations surface.</summary>
     public SnapshotAiOperationsControl() => InitializeComponent();
@@ -23,6 +26,14 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
     {
         _strings = new LocalizationService(language);
         UiLocalization.Apply(this, _strings);
+        if (_hasScreenshotResult)
+        {
+            RenderLatestScreenshot(_latestScreenshotPath);
+        }
+        if (_analysis is { } analysis)
+        {
+            RenderAnalysis(analysis);
+        }
     }
 
     /// <summary>Connects the passive surface to the application facade owned by the composition root.</summary>
@@ -58,6 +69,8 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
 
     private void RenderLatestScreenshot(string? screenshotPath)
     {
+        _hasScreenshotResult = true;
+        _latestScreenshotPath = screenshotPath;
         if (string.IsNullOrWhiteSpace(screenshotPath))
         {
             ScreenshotResultText.Text = _strings.Translate("Operations.Snapshot.None");
@@ -77,8 +90,14 @@ public sealed partial class SnapshotAiOperationsControl : UserControl
         var result = await Context.ExecuteAsync((application, token) => application.AnalyzeCurrentActivityAsync(request, token));
         if (result is { Succeeded: true, Value: { } analysis })
         {
-            AiAnalysisText.Text = $"{analysis.Application} · {analysis.Context}\n{analysis.Summary}";
+            RenderAnalysis(analysis);
         }
+    }
+
+    private void RenderAnalysis(AiAnalysis analysis)
+    {
+        _analysis = analysis;
+        AiAnalysisText.Text = $"{analysis.Application} · {analysis.Context}\n{analysis.Summary}";
     }
 
     private static string FileNameFromPath(string path)

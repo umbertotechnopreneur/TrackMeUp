@@ -43,7 +43,6 @@ public sealed class WinUiOperationsSurfaceContractTests
         var operations = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml"));
         var snapshots = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "SnapshotAiOperationsControl.xaml"));
         var snapshotSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "SnapshotAiOperationsControl.xaml.cs"));
-        var reports = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml"));
         var privacy = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PrivacyOperationsControl.xaml"));
         var retention = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
         var plugins = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "PluginOperationsControl.xaml"));
@@ -52,18 +51,17 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains(mainWindow.Descendants(), element => element.Name.LocalName == "ContentPresenter" && HasName(element, "OperationsHost"));
         Assert.DoesNotContain(mainWindow.Descendants(), element => element.Name.LocalName == "OperationsControl");
         Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ScrollViewer");
-        Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger");
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "TimedInfoBar");
         Assert.DoesNotContain(operations.Descendants(), element => element.Name.LocalName == "ToggleButton" && element.Attribute("Tag")?.Value.StartsWith("Operations.Section.", StringComparison.Ordinal) == true);
-        Assert.Contains(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
-        Assert.Contains(operations.Descendants(), element => HasName(element, "SystemHardwareSensorsList"));
+        Assert.DoesNotContain(operations.Descendants(), element => HasName(element, "RuntimeCapabilitiesList"));
+        Assert.DoesNotContain(operations.Descendants(), element => HasName(element, "SystemHardwareSensorsList"));
 
         var settingsLinks = options.Descendants()
             .Where(element => element.Name.LocalName == "HyperlinkButton" && element.Attributes().Any(attribute =>
                 attribute.Name.LocalName == "Name" && attribute.Value.EndsWith("OperationsLink", StringComparison.Ordinal)))
             .ToArray();
         Assert.True(settingsLinks.Length >= 3);
-        Assert.All(new[] { "SnapshotAiOperationsLink", "ReportsOperationsLink", "PrivacyOperationsLink", "RetentionOperationsLink", "PluginsOperationsLink" },
+        Assert.All(new[] { "SnapshotAiOperationsLink", "PrivacyOperationsLink", "RetentionOperationsLink", "PluginsOperationsLink" },
             name => Assert.Contains(settingsLinks, element => HasName(element, name)));
 
         var privacyLink = settingsLinks.Single(element => HasName(element, "PrivacyOperationsLink"));
@@ -75,7 +73,6 @@ public sealed class WinUiOperationsSurfaceContractTests
         var settingsLinkIcons = new[]
         {
             (Name: "SnapshotAiOperationsLink", Color: "#FFE88F6B", Glyph: "\uE7ED"),
-            (Name: "ReportsOperationsLink", Color: "#FF7D9FF8", Glyph: "\uE787"),
             (Name: "PrivacyOperationsLink", Color: "#FFA97BEA", Glyph: "\uE72E"),
             (Name: "RetentionOperationsLink", Color: "#FF85A8DB", Glyph: "\uE823"),
             (Name: "PluginsOperationsLink", Color: "#FF71CBB7", Glyph: "\uE90F")
@@ -91,7 +88,7 @@ public sealed class WinUiOperationsSurfaceContractTests
             Assert.Equal("\uE76C", icons[1].Attribute("Glyph")?.Value);
         });
 
-        Assert.All(new[] { snapshots, reports, privacy, retention, plugins, installationTransfer }, document =>
+        Assert.All(new[] { snapshots, privacy, retention, plugins, installationTransfer }, document =>
         {
             Assert.DoesNotContain(document.Descendants(), element => element.Name.LocalName == "InfoBar");
             Assert.Contains(document.Descendants(), element => element.Attribute("Tag")?.Value?.EndsWith(".Description", StringComparison.Ordinal) == true);
@@ -106,13 +103,13 @@ public sealed class WinUiOperationsSurfaceContractTests
         var analyzeButton = snapshots.Descendants().Single(element => HasName(element, "GenerateDescriptionButton"));
         Assert.Null(snapshotRoot.Attribute("Background"));
         Assert.Equal("Raw", snapshotProgress.Attribute("AutomationProperties.AccessibilityView")?.Value);
-        Assert.Equal("Find latest capture", latestButton.Attribute("Content")?.Value);
-        Assert.Equal("Open captures folder", folderButton.Attribute("Content")?.Value);
-        Assert.Equal("Generate AI description", analyzeButton.Attribute("Content")?.Value);
+        Assert.Equal("Find latest screenshot", latestButton.Attribute("Content")?.Value);
+        Assert.Equal("Open screenshots folder", folderButton.Attribute("Content")?.Value);
+        Assert.Equal("Describe activity with AI", analyzeButton.Attribute("Content")?.Value);
         Assert.Equal("{StaticResource AccentButtonStyle}", analyzeButton.Attribute("Style")?.Value);
-        Assert.Equal("CharacterEllipsis", latestCapture.Attribute("TextTrimming")?.Value);
-        Assert.Equal("NoWrap", latestCapture.Attribute("TextWrapping")?.Value);
-        Assert.Equal("1", latestCapture.Attribute("MaxLines")?.Value);
+        Assert.Null(latestCapture.Attribute("TextTrimming"));
+        Assert.Equal("Wrap", latestCapture.Attribute("TextWrapping")?.Value);
+        Assert.Null(latestCapture.Attribute("MaxLines"));
         Assert.Contains(snapshots.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.Snapshot.LatestLabel");
         Assert.All(snapshots.Descendants().Where(element => element.Name.LocalName == "Border"), divider =>
         {
@@ -123,7 +120,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("ToolTipService.SetToolTip(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(ScreenshotResultText, screenshotPath);", snapshotSource, StringComparison.Ordinal);
         Assert.DoesNotContain("Operations.Snapshot.FolderOpened", snapshotSource, StringComparison.Ordinal);
-        Assert.All(new[] { "SnapshotAiHost", "ReportsHost", "PrivacyHost", "RetentionHost", "PluginsHost", "InstallationTransferHost" },
+        Assert.All(new[] { "SnapshotAiHost", "PrivacyHost", "RetentionHost", "PluginsHost", "InstallationTransferHost" },
             name => Assert.Contains(operations.Descendants(), element => HasName(element, name)));
         Assert.All(
             operations.Descendants().Where(element => element.Name.LocalName == "ContentPresenter" && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value.EndsWith("Host", StringComparison.Ordinal))),
@@ -132,7 +129,6 @@ public sealed class WinUiOperationsSurfaceContractTests
         var operationLinkIcons = new[]
         {
             (Name: "OpenSnapshotAiLink", Color: "#FFE88F6B", Glyph: "\uE7ED"),
-            (Name: "OpenReportsLink", Color: "#FF7D9FF8", Glyph: "\uE787"),
             (Name: "OpenPrivacyLink", Color: "#FFA97BEA", Glyph: "\uE72E"),
             (Name: "OpenRetentionLink", Color: "#FF85A8DB", Glyph: "\uE823"),
             (Name: "OpenPluginsLink", Color: "#FF71CBB7", Glyph: "\uE90F"),
@@ -277,6 +273,11 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Equal("620", bannerSurface.Attribute("MaxWidth")?.Value);
         Assert.Equal("Stretch", bannerSurface.Attribute("HorizontalAlignment")?.Value);
         Assert.Equal("{ThemeResource ToastBorderBrush}", bannerFrame.Attribute("BorderBrush")?.Value);
+        Assert.Equal("{ThemeResource ToastSurfaceBackgroundBrush}", bannerFrame.Attribute("Background")?.Value);
+        var toastSurfaces = app.Descendants().Where(element => HasKey(element, "ToastSurfaceBackgroundBrush")).ToArray();
+        Assert.Equal(3, toastSurfaces.Length);
+        Assert.Equal(2, toastSurfaces.Count(element => element.Attribute("Color")?.Value.StartsWith("#FF", StringComparison.Ordinal) == true));
+        Assert.Single(toastSurfaces, element => element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
         Assert.Equal("1", bannerFrame.Attribute("BorderThickness")?.Value);
         Assert.Equal("16", bannerFrame.Attribute("CornerRadius")?.Value);
         Assert.DoesNotContain(banner.Descendants(), element => element.Name.LocalName == "InfoBar.Resources");
@@ -342,7 +343,7 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("_dialogs.Notifications.ShowError(MainNotificationBanner, title, message);", mainWindowSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.Notifications.ShowSuccess(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
         Assert.Contains("_dialogs.Notifications.ShowError(ScreenshotActionBanner, title, message);", screenshotSource, StringComparison.Ordinal);
-        Assert.Equal(6, CountOccurrences(operationsSource, "OwnerWindow, OperationBanner"));
+        Assert.Equal(5, CountOccurrences(operationsSource, "OwnerWindow, OperationBanner"));
     }
 
     /// <summary>Ensures every requested operation remains delegated through the shared facade.</summary>
@@ -353,7 +354,6 @@ public sealed class WinUiOperationsSurfaceContractTests
         {
             "OperationsControl.xaml.cs",
             "SnapshotAiOperationsControl.xaml.cs",
-            "ReportsOperationsControl.xaml.cs",
             "PrivacyOperationsControl.xaml.cs",
             "RetentionOperationsControl.xaml.cs",
             "PluginOperationsControl.xaml.cs",
@@ -362,14 +362,9 @@ public sealed class WinUiOperationsSurfaceContractTests
         var source = string.Join(Environment.NewLine, sources);
         string[] requiredFacadeCalls =
         [
-            "GetRuntimeHealthAsync",
-            "CaptureSystemSnapshotAsync",
             "GetLatestScreenshotAsync",
             "OpenScreenshotFolderAsync",
             "AnalyzeCurrentActivityAsync",
-            "GenerateTodayReportAsync",
-            "GenerateDailyDigestAsync",
-            "OpenReportsFolderAsync",
             "GetPrivacyRulesAsync",
             "AddPrivacyRuleAsync",
             "RemovePrivacyRuleAsync",
@@ -388,6 +383,8 @@ public sealed class WinUiOperationsSurfaceContractTests
         ];
 
         Assert.All(requiredFacadeCalls, call => Assert.Contains(call, source, StringComparison.Ordinal));
+        Assert.DoesNotContain("GetRuntimeHealthAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CaptureSystemSnapshotAsync", source, StringComparison.Ordinal);
         var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "SensorOptionsControl.xaml.cs"));
         Assert.Contains("_application.EnableAdvancedHardwareTelemetryAsync", optionsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("EnableAdvancedHardwareTelemetryAsync", source, StringComparison.Ordinal);
@@ -400,51 +397,13 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.DoesNotContain("ScreenCaptureService", source, StringComparison.Ordinal);
     }
 
-    /// <summary>Guards the report workflow hierarchy, localized date formatting, and compact path presentation.</summary>
-    [Fact]
-    public void ReportsSurface_SeparatesCreationAndFolderActionsWithoutOpaqueCards()
-    {
-        var surface = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml"));
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "ReportsOperationsControl.xaml.cs"));
-        var sectionTags = new[]
-        {
-            "Operations.Reports.Today.Title",
-            "Operations.Reports.Digest.Title",
-            "Operations.Reports.Folder.Title"
-        };
-
-        Assert.All(sectionTags, tag => Assert.Contains(surface.Descendants(), element =>
-            element.Attribute("Tag")?.Value == tag
-            && element.Attributes().Any(attribute =>
-                attribute.Name.LocalName == "AutomationProperties.HeadingLevel"
-                && attribute.Value == "Level3")));
-        Assert.True(surface.Descendants().Count(element => element.Name.LocalName == "Rectangle") >= 3);
-        Assert.DoesNotContain(surface.Descendants(), element => element.Name.LocalName == "Border");
-        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.OpenGenerated.Description");
-        Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.Reports.OpenFolder");
-
-        var digestButton = surface.Descendants().Single(element => element.Attribute("Tag")?.Value == "Operations.GenerateDigest");
-        var folderButton = surface.Descendants().Single(element => element.Attribute("Tag")?.Value == "Operations.Reports.OpenFolder");
-        Assert.NotSame(digestButton.Parent, folderButton.Parent);
-        Assert.Equal("Left", digestButton.Attribute("HorizontalAlignment")?.Value);
-        Assert.Equal("Left", folderButton.Attribute("HorizontalAlignment")?.Value);
-
-        var path = surface.Descendants().Single(element => HasName(element, "ReportResultPathText"));
-        Assert.Equal("CharacterEllipsis", path.Attribute("TextTrimming")?.Value);
-        Assert.Equal("1", path.Attribute("MaxLines")?.Value);
-        Assert.Contains("new DateTimeFormatter(\"shortdate\", [_strings.Language]).Patterns[0]", source, StringComparison.Ordinal);
-        Assert.Contains("DigestDatePicker.Language = _strings.Language", source, StringComparison.Ordinal);
-        Assert.Contains("ToolTipService.SetToolTip(ReportResultPathText, path)", source, StringComparison.Ordinal);
-        Assert.Contains("ShowResult(_strings.Translate(\"Operations.Reports.Today\"), path)", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("System.IO", source, StringComparison.Ordinal);
-    }
-
-    /// <summary>Guards the ordered retention workflow and compact full-path disclosure.</summary>
+    /// <summary>Guards automatic criteria loading, deliberate cleanup actions, and compact full-path disclosure.</summary>
     [Fact]
     public void RetentionSurface_SeparatesCriteriaPreviewAndConfirmedDeletion()
     {
         var surface = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "RetentionOperationsControl.xaml.cs"));
+        var operationsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OperationsControl.xaml.cs"));
         var sectionTags = new[]
         {
             "Operations.Retention.Policy",
@@ -464,14 +423,19 @@ public sealed class WinUiOperationsSurfaceContractTests
 
         Assert.All(new[]
         {
-            "Operations.Retention.LoadPolicyAction",
             "Operations.Retention.PreviewAction",
             "Operations.Retention.CleanupAction"
         }, tag =>
         {
-            var button = surface.Descendants().Single(element => element.Attribute("Tag")?.Value == tag);
+            var button = surface.Descendants().Single(element => element.Name.LocalName == "Button" && element.Attribute("Tag")?.Value == tag);
             Assert.Equal("Left", button.Attribute("HorizontalAlignment")?.Value);
+            Assert.Equal("False", button.Attribute("IsEnabled")?.Value);
+            Assert.Equal("{StaticResource WrappingActionLabelTemplate}", button.Attribute("ContentTemplate")?.Value);
         });
+
+        Assert.Equal(2, surface.Descendants().Count(element => element.Name.LocalName == "Button"));
+        Assert.Contains("internal async Task LoadAsync()", source, StringComparison.Ordinal);
+        Assert.Contains("_ = _retentionSection!.LoadAsync();", operationsSource, StringComparison.Ordinal);
 
         var directory = surface.Descendants().Single(element => HasName(element, "RetentionDirectoryText"));
         var candidatePath = surface.Descendants().Single(element =>

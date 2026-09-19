@@ -105,7 +105,7 @@ public sealed class CelestialServiceTests
         Assert.Equal(snapshot.Zodiac.CurrentSign, restored.Zodiac.CurrentSign);
         Assert.Equal(snapshot.SkyAppearance, restored.SkyAppearance);
         Assert.Equal(snapshot.Agenda, restored.Agenda);
-        Assert.Equal(23, restored.Stars.Count);
+        Assert.Equal(CelestialSkyCatalog.Current.Stars.Count, restored.Stars.Count);
         Assert.All(restored.Stars, star =>
         {
             Assert.InRange(star.AltitudeDegrees, -90, 90);
@@ -115,6 +115,29 @@ public sealed class CelestialServiceTests
         {
             Assert.Contains(restored.Stars, star => star.Id == segment.StartStarId);
             Assert.Contains(restored.Stars, star => star.Id == segment.EndStarId);
+        });
+    }
+
+    /// <summary>Both Dippers retain all seven stars and respect their northern sky visibility.</summary>
+    [Theory]
+    [InlineData("UrsaMajor")]
+    [InlineData("UrsaMinor")]
+    public void Snapshot_DippersHaveCompleteFiguresAndRespectObserverHemisphere(string constellationId)
+    {
+        var instant = new DateTimeOffset(2026, 9, 19, 0, 0, 0, TimeSpan.Zero);
+        var north = Build(London, instant);
+        var south = Build(London with { Id = "southern-observer", Latitude = -60, TimeZoneId = "UTC" }, instant);
+        var segments = north.ConstellationSegments.Where(segment => segment.ConstellationId == constellationId).ToArray();
+        var starIds = segments.SelectMany(segment => new[] { segment.StartStarId, segment.EndStarId }).Distinct().ToArray();
+
+        Assert.Contains(north.Constellations, figure => figure.Id == constellationId && figure.ZodiacSign is null);
+        Assert.Equal(7, segments.Length);
+        Assert.Equal(7, starIds.Length);
+        Assert.All(starIds, id =>
+        {
+            // Both figures are circumpolar at London's latitude and never rise at latitude 60 south.
+            Assert.True(Assert.Single(north.Stars, star => star.Id == id).AltitudeDegrees > 0);
+            Assert.True(Assert.Single(south.Stars, star => star.Id == id).AltitudeDegrees < 0);
         });
     }
 

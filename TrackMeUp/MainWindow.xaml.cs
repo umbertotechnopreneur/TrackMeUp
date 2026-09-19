@@ -115,9 +115,6 @@ public sealed partial class MainWindow : Window
     /// <summary>Occurs when a fully persisted settings snapshot has been applied to the player surface.</summary>
     public event Action<AppSettings>? SettingsApplied;
 
-    /// <summary>Occurs when the user requests the dedicated reports surface.</summary>
-    public event EventHandler? ReportsRequested;
-
     /// <summary>Occurs when the user requests the independent world-clock window.</summary>
     public event EventHandler? WorldClocksRequested;
 
@@ -189,7 +186,6 @@ public sealed partial class MainWindow : Window
                 SensorsButton,
                 TitleBarMoreButton,
                 TitleBarSearchButton,
-                TitleBarReportButton,
                 TitleBarMinimizeToTrayButton,
                 TitleBarCloseButton
             ]);
@@ -411,7 +407,6 @@ public sealed partial class MainWindow : Window
         MoreButton.IsEnabled = isReady;
         TitleBarMoreButton.IsEnabled = isReady;
         TitleBarSearchButton.IsEnabled = isReady;
-        TitleBarReportButton.IsEnabled = isReady;
         SensorsButton.IsEnabled = isReady;
         ScreenshotPreviewButton.IsEnabled = isReady;
         CaptureMenu.IsEnabled = isReady;
@@ -951,18 +946,6 @@ public sealed partial class MainWindow : Window
         QuickSetupRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Forwards report-window activation to the application composition root.</summary>
-    private void ReportsMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        MoreButton.Flyout.Hide();
-        RequestReports();
-    }
-
-    /// <summary>Opens reports directly from the first-class title-bar command.</summary>
-    private void TitleBarReportButton_Click(object sender, RoutedEventArgs e) => RequestReports();
-
-    private void RequestReports() => ReportsRequested?.Invoke(this, EventArgs.Empty);
-
     /// <summary>Forwards world-clock activation to the application composition root.</summary>
     private void WorldClockButton_Click(object sender, RoutedEventArgs e) =>
         WorldClocksRequested?.Invoke(this, EventArgs.Empty);
@@ -1023,9 +1006,6 @@ public sealed partial class MainWindow : Window
             case Windows.System.VirtualKey.F3:
             case Windows.System.VirtualKey.P:
                 RequestSearch();
-                break;
-            case Windows.System.VirtualKey.R:
-                RequestReports();
                 break;
             case Windows.System.VirtualKey.G:
                 RequestScreenshotGallery();
@@ -1271,7 +1251,6 @@ public sealed partial class MainWindow : Window
         ImportDataMenuItem.Text = T("Main.Menu.DataTransfer.Import");
         AiProviderMenu.Text = T("Main.Menu.AiProvider");
         SearchMenuItem.Text = T("Search.Title");
-        ReportsMenuItem.Text = T("Reports.Title");
         ActivityCalendarMenuItem.Text = T("ActivityCalendar.MenuTitle");
         ScreenshotsMenuItem.Text = T("Screenshots.Caption");
         ScheduleMenuItem.Text = T("Schedule.Snapshots");
@@ -1286,7 +1265,6 @@ public sealed partial class MainWindow : Window
 
         ApplyMenuAccessibility(ActivityMenu, "Main.Menu.Activity", "Main.Menu.Activity.Tooltip");
         ApplyMenuAccessibility(SearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
-        ApplyMenuAccessibility(ReportsMenuItem, "Reports.Title", "Main.Menu.Reports.Tooltip");
         ApplyMenuAccessibility(ActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
         ApplyMenuAccessibility(ScreenshotsMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
         ApplyMenuAccessibility(CaptureMenu, "Main.Menu.Capture", "Main.Menu.Capture.Tooltip");
@@ -2049,12 +2027,9 @@ public sealed partial class MainWindow : Window
         _searchIndexingWindow?.ApplyLanguage(settings.UiLanguage);
         UiLocalization.Apply(RootGrid, _strings);
         ApplyMainAccessibility();
-        var reportsLabel = T("Reports.Title");
         var searchLabel = T("Search.Title");
         AutomationProperties.SetName(TitleBarSearchButton, searchLabel);
         ToolTipService.SetToolTip(TitleBarSearchButton, searchLabel);
-        AutomationProperties.SetName(TitleBarReportButton, reportsLabel);
-        ToolTipService.SetToolTip(TitleBarReportButton, reportsLabel);
         UpdateActivityScoreAccessibility();
         UpdateDetailsAccessibility();
         UpdateOpenAiMenuAccessibility();
@@ -2080,7 +2055,6 @@ public sealed partial class MainWindow : Window
         UiLocalization.SetAccessibleLabel(MoreButton, T("Main.Menu.Open"));
         UiLocalization.SetAccessibleLabel(TitleBarMoreButton, T("Main.Menu.Open"));
         UiLocalization.SetAccessibleLabel(TitleBarSearchButton, T("Search.Title"));
-        UiLocalization.SetAccessibleLabel(TitleBarReportButton, T("Reports.Title"));
         UiLocalization.SetAccessibleLabel(TitleBarMinimizeToTrayButton, T("Main.Menu.MinimizeToTray"));
         UiLocalization.SetAccessibleLabel(TitleBarCloseButton, T("Tray.CloseApplication"));
         UiLocalization.SetAccessibleLabel(WorldClockButton, T("WorldClock.OpenWindow"));

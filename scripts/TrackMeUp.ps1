@@ -28,7 +28,6 @@ param(
         'Restore',
         'Build',
         'Test',
-        'BuildReports',
         'TestCli',
         'ValidateStoreListing',
         'GenerateAssets',
@@ -399,7 +398,6 @@ function Invoke-TrackMeUpPreflight {
     $requiredFiles = @(
         (Join-Path $script:RepositoryRoot 'TrackMeUp.slnx'),
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
-        (Join-Path $script:RepositoryRoot 'TrackMeUp.Reports.Web\package.json'),
         (Join-Path $script:RepositoryRoot 'store\listing.json')
     )
 
@@ -455,35 +453,6 @@ function Invoke-TrackMeUpTest {
     }
 
     Invoke-NativeCommand -FilePath 'dotnet' -Arguments $arguments
-}
-
-function Invoke-TrackMeUpBuildReports {
-    $webRoot = Join-Path $script:RepositoryRoot 'TrackMeUp.Reports.Web'
-    $manifestPath = Join-Path $webRoot 'package.json'
-    $outputIndex = Join-Path $webRoot 'dist\index.html'
-
-    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-        throw "Reports web manifest not found: $manifestPath"
-    }
-
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        throw 'npm was not found on PATH. Install Node.js 24.16.0 (the CI runtime) to build reports.'
-    }
-
-    Push-Location -LiteralPath $webRoot
-    try {
-        Invoke-NativeCommand -FilePath 'npm' -Arguments @('ci')
-        Invoke-NativeCommand -FilePath 'npm' -Arguments @('run', 'build')
-    }
-    finally {
-        Pop-Location
-    }
-
-    if (-not (Test-Path -LiteralPath $outputIndex -PathType Leaf)) {
-        throw "Reports web build completed without producing: $outputIndex"
-    }
-
-    Write-Host "Reports web assets ready at: $(Split-Path -Parent $outputIndex)"
 }
 
 function Invoke-TrackMeUpTestCli {
@@ -970,8 +939,6 @@ function Invoke-TrackMeUpUnpackagedPublish {
         # Publishing into a used directory can retain stale native files; never replace an existing artifact.
         throw "Unpackaged publish output directory must be empty: $publishDirectory"
     }
-    Invoke-TrackMeUpBuildReports
-
     $arguments = @(
         'publish',
         (Join-Path $script:RepositoryRoot 'TrackMeUp\TrackMeUp.csproj'),
@@ -1085,7 +1052,7 @@ function Assert-TrackMeUpPackageIntegrity {
             throw "MSIX package is not signed: $($PackageFile.FullName)"
         }
 
-        foreach ($requiredEntry in @('AppxManifest.xml', 'BuildInfo.json', 'ReportsWeb/index.html', 'ReportsWeb/THIRD_PARTY_NOTICES.md')) {
+        foreach ($requiredEntry in @('AppxManifest.xml', 'BuildInfo.json')) {
             if (-not $entries.ContainsKey($requiredEntry)) {
                 throw "MSIX package is missing required payload '$requiredEntry': $($PackageFile.FullName)"
             }
@@ -1111,33 +1078,6 @@ function Assert-TrackMeUpPackageIntegrity {
             (-not [string]::IsNullOrEmpty($ReleaseVersion) -and $identity.Version -ne "$ReleaseVersion.0")) {
             throw "MSIX manifest/build information does not match the requested package version: $($PackageFile.FullName)"
         }
-
-        $indexStream = $entries['ReportsWeb/index.html'].Open()
-        try {
-            $reader = [System.IO.StreamReader]::new($indexStream)
-            try {
-                $indexHtml = $reader.ReadToEnd()
-            }
-            finally {
-                $reader.Dispose()
-            }
-        }
-        finally {
-            $indexStream.Dispose()
-        }
-
-        # Every bundle referenced by the packaged entry point must exist in that same archive.
-        $assetMatches = [regex]::Matches($indexHtml, '(?:src|href)=["'']\./(?<path>assets/[^"'']+)["'']')
-        if ($assetMatches.Count -eq 0) {
-            throw "MSIX report entry point contains no local production asset references: $($PackageFile.FullName)"
-        }
-
-        foreach ($assetMatch in $assetMatches) {
-            $assetEntry = "ReportsWeb/$($assetMatch.Groups['path'].Value)"
-            if (-not $entries.ContainsKey($assetEntry)) {
-                throw "MSIX package is missing report bundle '$assetEntry': $($PackageFile.FullName)"
-            }
-        }
     }
     finally {
         $archive.Dispose()
@@ -1153,7 +1093,6 @@ function Invoke-TrackMeUpMsixPackage {
     }
 
     [System.IO.Directory]::CreateDirectory($packageDirectory) | Out-Null
-    Invoke-TrackMeUpBuildReports
 
     $runtime = Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform
     $arguments = @(
@@ -2336,7 +2275,6 @@ function Invoke-TrackMeUpAction {
         'Restore' { Invoke-TrackMeUpRestore }
         'Build' { Invoke-TrackMeUpBuild }
         'Test' { Invoke-TrackMeUpTest }
-        'BuildReports' { Invoke-TrackMeUpBuildReports }
         'TestCli' { Invoke-TrackMeUpTestCli }
         'ValidateStoreListing' { Invoke-TrackMeUpStoreListingValidation }
         'GenerateAssets' { Invoke-TrackMeUpAssetGeneration }
@@ -2391,17 +2329,16 @@ function Show-TrackMeUpMenu {
         Write-MenuItem -Key '1' -Label 'Restore solution'
         Write-MenuItem -Key '2' -Label 'Build solution (x64)'
         Write-MenuItem -Key '3' -Label 'Test solution (x64)'
-        Write-MenuItem -Key '4' -Label 'Build reports web assets'
-        Write-MenuItem -Key '5' -Label 'Run CLI smoke test'
-        Write-MenuItem -Key '6' -Label 'Validate Store listing'
-        Write-MenuItem -Key '7' -Label 'Generate Store/package assets'
-        Write-MenuItem -Key '8' -Label 'Publish unpackaged x64 build'
-        Write-MenuItem -Key '9' -Label 'Probe taskbar widget'
-        Write-MenuItem -Key '10' -Label 'DPAPI secret helper'
-        Write-MenuItem -Key '11' -Label 'YubiKey secret helper'
+        Write-MenuItem -Key '4' -Label 'Run CLI smoke test'
+        Write-MenuItem -Key '5' -Label 'Validate Store listing'
+        Write-MenuItem -Key '6' -Label 'Generate Store/package assets'
+        Write-MenuItem -Key '7' -Label 'Publish unpackaged x64 build'
+        Write-MenuItem -Key '8' -Label 'Probe taskbar widget'
+        Write-MenuItem -Key '9' -Label 'DPAPI secret helper'
+        Write-MenuItem -Key '10' -Label 'YubiKey secret helper'
         Write-MenuItem -Key '0' -Label 'Exit'
 
-        $choice = Read-MenuChoice -Prompt 'Select' -AllowedChoices @('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11')
+        $choice = Read-MenuChoice -Prompt 'Select' -AllowedChoices @('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10')
         if ($choice -eq '0') {
             Show-Footer -ScriptName $script:ScriptName -Status 'COMPLETED' -StartTime $script:StartedAt -EndTime (Get-Date)
             return
@@ -2411,14 +2348,13 @@ function Show-TrackMeUpMenu {
             '1' { 'Restore' }
             '2' { 'Build' }
             '3' { 'Test' }
-            '4' { 'BuildReports' }
-            '5' { 'TestCli' }
-            '6' { 'ValidateStoreListing' }
-            '7' { 'GenerateAssets' }
-            '8' { 'PublishUnpackaged' }
-            '9' { 'ProbeTaskbar' }
-            '10' { 'ProtectSecret' }
-            '11' { 'ProtectSecretYubiKey' }
+            '4' { 'TestCli' }
+            '5' { 'ValidateStoreListing' }
+            '6' { 'GenerateAssets' }
+            '7' { 'PublishUnpackaged' }
+            '8' { 'ProbeTaskbar' }
+            '9' { 'ProtectSecret' }
+            '10' { 'ProtectSecretYubiKey' }
         }
 
         try {

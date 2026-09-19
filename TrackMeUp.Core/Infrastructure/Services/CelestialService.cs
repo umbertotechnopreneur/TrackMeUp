@@ -11,49 +11,6 @@ public static class CelestialService
     private static readonly object SnapshotGate = new();
     private static readonly Dictionary<(WorldClockCitySummary City, long UtcTicks), CelestialSnapshot> SnapshotCache = new();
 
-    // J2000 ICRS coordinates and V magnitudes: SIMBAD/CDS, queried 2026-09-19.
-    // Coordinates are scientific facts; attribution and limitations are recorded in THIRD_PARTY_NOTICES.md.
-    private static readonly Star[] CatalogStars =
-    [
-        new("alf-ori", "Betelgeuse", 88.792939, 7.407064, 0.42),
-        new("bet-ori", "Rigel", 78.634467, -8.201638, 0.13),
-        new("gam-ori", "Bellatrix", 81.282764, 6.349703, 1.64),
-        new("del-ori", "Mintaka", 83.001667, -0.299095, 2.41),
-        new("eps-ori", "Alnilam", 84.053389, -1.201919, 1.69),
-        new("zet-ori", "Alnitak", 85.189694, -1.942574, 1.77),
-        new("kap-ori", "Saiph", 86.939120, -9.669605, 2.06),
-        new("alf-cas", "Schedar", 10.126846, 56.537329, 2.23),
-        new("bet-cas", "Caph", 2.294522, 59.149781, 2.27),
-        new("gam-cas", "Gamma Cassiopeiae", 14.177213, 60.716740, 2.39),
-        new("del-cas", "Ruchbah", 21.453964, 60.235284, 2.68),
-        new("eps-cas", "Segin", 28.598892, 63.670100, 3.37),
-        new("alf-uma", "Dubhe", 165.931965, 61.751035, 1.79),
-        new("bet-uma", "Merak", 165.460332, 56.382434, 2.37),
-        new("gam-uma", "Phecda", 178.457697, 53.694760, 2.44),
-        new("del-uma", "Megrez", 183.856499, 57.032617, 3.32),
-        new("eps-uma", "Alioth", 193.507290, 55.959823, 1.77),
-        new("zet-uma", "Mizar", 200.981419, 54.925352, null),
-        new("eta-uma", "Alkaid", 206.885157, 49.313267, 1.86),
-        new("alf-cru", "Acrux", 186.649563, -63.099093, null),
-        new("bet-cru", "Mimosa", 191.930287, -59.688772, 1.25),
-        new("gam-cru", "Gacrux", 187.791498, -57.113213, 1.64),
-        new("del-cru", "Imai", 183.786327, -58.748924, 2.752)
-    ];
-
-    private static readonly CelestialConstellationSegment[] Segments =
-    [
-        new("Orion", "alf-ori", "gam-ori"), new("Orion", "gam-ori", "del-ori"),
-        new("Orion", "del-ori", "eps-ori"), new("Orion", "eps-ori", "zet-ori"),
-        new("Orion", "zet-ori", "alf-ori"), new("Orion", "zet-ori", "kap-ori"),
-        new("Orion", "kap-ori", "bet-ori"), new("Orion", "bet-ori", "del-ori"),
-        new("Cassiopeia", "bet-cas", "alf-cas"), new("Cassiopeia", "alf-cas", "gam-cas"),
-        new("Cassiopeia", "gam-cas", "del-cas"), new("Cassiopeia", "del-cas", "eps-cas"),
-        new("UrsaMajor", "alf-uma", "bet-uma"), new("UrsaMajor", "bet-uma", "gam-uma"),
-        new("UrsaMajor", "gam-uma", "del-uma"), new("UrsaMajor", "del-uma", "alf-uma"),
-        new("UrsaMajor", "del-uma", "eps-uma"), new("UrsaMajor", "eps-uma", "zet-uma"),
-        new("UrsaMajor", "zet-uma", "eta-uma"), new("Crux", "alf-cru", "gam-cru"),
-        new("Crux", "bet-cru", "del-cru")
-    ];
 
     /// <summary>Builds ephemerides for a catalog city; rejects missing cities, invalid coordinates/time zones, and unsupported dates. Cancellation propagates.</summary>
     public static CelestialSnapshot Build(CelestialRequest request, WorldClockCityCatalog catalog, CancellationToken cancellationToken)
@@ -104,20 +61,25 @@ public static class CelestialService
             return new CelestialBodyPosition(kind, horizon.altitude, horizon.azimuth, horizon.altitude >= 0);
         }).ToArray();
 
+        var catalog = CelestialSkyCatalog.Current;
         var rotation = Astronomy.Rotation_EQJ_EQD(time);
-        var stars = CatalogStars.Select(star =>
+        var stars = catalog.Stars.Select(star =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var vector = Astronomy.VectorFromSphere(new Spherical(star.Declination, star.RightAscension, 1), time);
+            var vector = Astronomy.VectorFromSphere(new Spherical(star.DeclinationDegrees, star.RightAscensionDegrees, 1), time);
             var equator = Astronomy.EquatorFromVector(Astronomy.RotateVector(rotation, vector));
             var horizon = Astronomy.Horizon(time, observer, equator.ra, equator.dec, Refraction.Normal);
             return new CelestialStarPosition(star.Id, star.Name, horizon.altitude, horizon.azimuth, star.Magnitude);
         }).ToArray();
 
+        var segments = catalog.Constellations.SelectMany(figure => figure.Segments.Select(segment =>
+            new CelestialConstellationSegment(figure.Id, segment[0], segment[1]))).ToArray();
         return new CelestialSnapshot(city.Id, city.Name, city.TimeZoneId, instant, TimeZoneInfo.ConvertTime(instant, zone),
             city.Latitude, city.Longitude, LocalAstronomy.CalculateGlobal(instant).MoonPhaseAngleDegrees, bodies[0].AltitudeDegrees,
-            Array.AsReadOnly(bodies), Array.AsReadOnly(stars), Array.AsReadOnly(Segments), BuildAgenda(time, observer, zone, cancellationToken))
+            Array.AsReadOnly(bodies), Array.AsReadOnly(stars), Array.AsReadOnly(segments), BuildAgenda(time, observer, zone, cancellationToken))
         {
+            Constellations = Array.AsReadOnly(catalog.Constellations.Select(figure => new CelestialConstellationInfo(
+                figure.Id, figure.ZodiacSign is null ? null : Enum.Parse<TropicalZodiacSign>(figure.ZodiacSign))).ToArray()),
             Zodiac = CelestialEventService.BuildZodiac(instant),
             SkyAppearance = CelestialSkyPalette.Create(bodies[0].AltitudeDegrees)
         };
@@ -211,5 +173,4 @@ public static class CelestialService
         }
     }
 
-    private sealed record Star(string Id, string Name, double RightAscension, double Declination, double? Magnitude);
 }

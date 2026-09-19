@@ -69,6 +69,7 @@ public static class SettingsCatalog
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
         Boolean("window.titlebar.auto_hide", "Automatically hide title bars in all windows when the pointer leaves."),
+        Boolean("window.snapping.enabled", "Snap within 5 pixels of TrackMeUp windows or monitor edges; leaving the monitor disables snapping for that drag."),
         Integer("window.main.opacity_percent", "Player window opacity from 25 through 100 percent."),
         Boolean("window.main.show_in_taskbar", "Show the player window in the Windows taskbar."),
         Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
@@ -97,8 +98,6 @@ public static class SettingsCatalog
         Boolean("tracking.start_on_launch", "Start tracking on the next application launch.", requiresRestart: true),
         Integer("retention.screenshots_days", "Days to retain TrackMeUp-owned screenshot artifacts."),
         Integer("retention.data_days", "Days to retain completed local activity files."),
-        Boolean("digest.enabled", "Enable daily digest generation."),
-        Text("digest.directory", "Optional daily digest output directory.", "path"),
         Boolean("plugins.word.enabled", "Enable safe Microsoft Word context details."),
         Boolean("plugins.excel.enabled", "Enable safe Microsoft Excel context details."),
         Boolean("plugins.vscode.enabled", "Enable safe Visual Studio Code context details."),
@@ -150,6 +149,7 @@ public static class SettingsCatalog
             "theme" => settings.Theme,
             "position" => settings.FlyoutPosition,
             "window.titlebar.auto_hide" => settings.AutoHideTitleBar,
+            "window.snapping.enabled" => settings.WindowSnappingEnabled,
             "window.main.opacity_percent" => settings.MainWindowOpacityPercent,
             "window.main.show_in_taskbar" => settings.MainWindowShowInTaskbar,
             "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
@@ -164,8 +164,6 @@ public static class SettingsCatalog
             "tracking.start_on_launch" => settings.StartTrackingOnLaunch,
             "retention.screenshots_days" => settings.ScreenshotRetentionDays,
             "retention.data_days" => settings.DataRetentionDays,
-            "digest.enabled" => settings.DailyDigestEnabled,
-            "digest.directory" => settings.DailyDigestDirectory,
             "plugins.word.enabled" => settings.EnableWordDetailPlugin,
             "plugins.excel.enabled" => settings.EnableExcelDetailPlugin,
             "plugins.vscode.enabled" => settings.EnableVsCodeDetailPlugin,
@@ -273,6 +271,7 @@ public static class SettingsCatalog
                 case "language" when Canonical(ProductLanguageCatalog.UiChoices, value) is { } language: current = current with { UiLanguage = language }; break;
                 case "theme" when Canonical(Themes, value) is { } theme: current = current with { Theme = theme }; break;
                 case "window.titlebar.auto_hide" when TryBoolean(value, out var autoHideTitleBar): current = current with { AutoHideTitleBar = autoHideTitleBar }; break;
+                case "window.snapping.enabled" when TryBoolean(value, out var windowSnappingEnabled): current = current with { WindowSnappingEnabled = windowSnappingEnabled }; break;
                 case "position" when Canonical(FlyoutAnchors, value) is { } position: current = current with { FlyoutPosition = position }; break;
                 case "window.main.opacity_percent" when TryInteger(value, 25, 100, out var mainOpacity): current = current with { MainWindowOpacityPercent = mainOpacity }; break;
                 case "window.main.show_in_taskbar" when TryBoolean(value, out var mainShowInTaskbar): current = current with { MainWindowShowInTaskbar = mainShowInTaskbar }; break;
@@ -288,8 +287,6 @@ public static class SettingsCatalog
                 case "tracking.start_on_launch" when TryBoolean(value, out var startOnLaunch): current = current with { StartTrackingOnLaunch = startOnLaunch }; break;
                 case "retention.screenshots_days" when TryInteger(value, 0, 3650, out var screenshotDays): current = current with { ScreenshotRetentionDays = screenshotDays }; break;
                 case "retention.data_days" when TryInteger(value, 0, 3650, out var dataDays): current = current with { DataRetentionDays = dataDays }; break;
-                case "digest.enabled" when TryBoolean(value, out var digestEnabled): current = current with { DailyDigestEnabled = digestEnabled }; break;
-                case "digest.directory" when TryDirectory(value, allowEmpty: true, out var digestDirectory): current = current with { DailyDigestDirectory = digestDirectory }; break;
                 case "plugins.word.enabled" when TryBoolean(value, out var word): current = current with { EnableWordDetailPlugin = word }; break;
                 case "plugins.excel.enabled" when TryBoolean(value, out var excel): current = current with { EnableExcelDetailPlugin = excel }; break;
                 case "plugins.vscode.enabled" when TryBoolean(value, out var vscode): current = current with { EnableVsCodeDetailPlugin = vscode }; break;
@@ -324,9 +321,6 @@ public static class SettingsCatalog
         var screenshotDirectory = TryDirectory(settings.ScreenshotDirectory, allowEmpty: false, out var normalizedScreenshotDirectory)
             ? normalizedScreenshotDirectory
             : Path.GetFullPath(defaultScreenshotDirectory);
-        var digestDirectory = TryDirectory(settings.DailyDigestDirectory, allowEmpty: true, out var normalizedDigestDirectory)
-            ? normalizedDigestDirectory
-            : string.Empty;
 
         return settings with
         {
@@ -354,7 +348,6 @@ public static class SettingsCatalog
             WorldClockWindowOpacityPercent = Math.Clamp(settings.WorldClockWindowOpacityPercent, 25, 100),
             TaskbarWidgetPosition = Canonical(TaskbarAnchors, settings.TaskbarWidgetPosition) ?? TaskbarWidgetPositions.Left,
             SpanLabel = settings.SpanLabel is { Length: <= 20 } ? settings.SpanLabel.Trim() : string.Empty,
-            DailyDigestDirectory = digestDirectory,
             DataRetentionDays = Math.Clamp(settings.DataRetentionDays, 0, 3650),
             ScreenshotRetentionDays = Math.Clamp(settings.ScreenshotRetentionDays, 0, 3650),
             OpenAiDailyLimit = Math.Clamp(settings.OpenAiDailyLimit, MinimumAiDailyLimit, MaximumAiDailyLimit),

@@ -42,12 +42,11 @@ public sealed class WorkspaceWindowStateTests
             [WindowStateKeys.Main] = false,
             [WindowStateKeys.WorldClocks] = false,
             [WindowStateKeys.WorldMap] = true,
-            [WindowStateKeys.Reports] = true,
             [WindowStateKeys.Search] = false
         };
 
         Assert.Equal(
-            new[] { WindowStateKeys.Reports, WindowStateKeys.WorldMap, WindowStateKeys.LunarPhase },
+            new[] { WindowStateKeys.WorldMap, WindowStateKeys.LunarPhase },
             WorkspaceWindowState.GetWindowsToRestore(openStates));
     }
 

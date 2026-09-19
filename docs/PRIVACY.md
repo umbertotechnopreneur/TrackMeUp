@@ -37,7 +37,7 @@ release. For privacy questions, email **hello@umbertogiacobbi.biz**.
 | Screenshots | Off | Nowhere unless explicitly captured | `screenshots.enabled`, one-off capture controls |
 | AI analysis result | Only after AI is enabled and requested | Local SQLite history | Turn AI off; delete results through retention controls |
 | AI request usage | Saved to track costs and troubleshoot | Local SQLite history | Choose how long to keep it; usage records don't include prompts, images, headers, or keys |
-| Device measurements | Used for local reports and optional AI context | Local records and, only when AI is enabled, the selected provider request | Turn AI off; sharing your location needs a separate opt-in |
+| Device measurements | Used for local activity history and optional AI context | Local records and, only when AI is enabled, the selected provider request | Turn AI off; sharing your location needs a separate opt-in |
 | Windows location | Off | Only the selected AI request when enabled | Windows permission plus TrackMeUp setting |
 | Selected world-clock city IDs | Four initial cities | Local settings JSON only | Add or remove cities in World clocks options; maximum four |
 | Current world-clock weather | On; no request until `TRACKMEUP_OPENWEATHER_API_KEY` is available | The on/off setting stays local; the key stays in the Windows environment. Weather stays in memory, is checked again after 12 minutes, and expires after at most 45 minutes | Turn weather off or view a past or future time. To clear the key, remove the Windows user variable and restart |
@@ -92,7 +92,7 @@ Once data reaches an AI provider, OpenWeather, Sentry, or an app you choose in
 Windows Share, that service's privacy and data-retention terms apply. TrackMeUp
 can't delete copies held by those services.
 
-Reports are built from data on your PC. The included report viewer doesn't start a local HTTP server or contact a TrackMeUp service.
+The activity calendar reads saved data on your PC and does not contact a TrackMeUp service.
 
 ## API keys
 
@@ -131,11 +131,11 @@ usage terms.
 
 ## Packages and services the app uses
 
-Storage, search, image processing, and reports use components on your PC. Optional
+Storage, search, image processing, and the activity calendar use components on your PC. Optional
 network services are described above. The inventory below records package roles
 and versions at the time of review; [Third-Party Notices](../THIRD_PARTY_NOTICES.md)
 also covers test dependencies. A technical review should include indirect
-dependencies resolved by NuGet and npm.
+dependencies resolved by NuGet.
 
 <details>
 <summary>Technical package inventory</summary>
@@ -161,17 +161,11 @@ dependencies resolved by NuGet and npm.
 | `Microsoft.Extensions.DependencyInjection` / logging packages | 10.0.10 | Application wiring and logging abstractions; no product analytics. |
 | `Lucene.Net`, `Lucene.Net.Analysis.Common` | 4.8.0-beta00018 | Local full-text indexing and analysis; no network service. |
 
-### CLI and reports
+### CLI
 
 | Package | Version | Role and network behavior |
 | --- | ---: | --- |
 | `Spectre.Console` | 0.57.2 | Local terminal presentation. |
-| `vue` | 3.5.40 | Bundled reports UI. |
-| `vuetify` | 4.1.7 | Bundled reports components and styling. |
-| `echarts` | 6.1.0 | Bundled local charts. |
-| `vue-echarts` | 8.0.1 | Vue integration for local charts. |
-| `@mdi/js` | 7.4.47 | Bundled SVG icon paths. |
-| `vite`, `@vitejs/plugin-vue`, `vite-plugin-vuetify`, `typescript`, `vue-tsc` | Pinned in `package.json` | Build and type-check tooling; not runtime services. |
 
 </details>
 
@@ -281,7 +275,7 @@ Start from these files:
 - `TrackMeUp/Runtime/LoggingBootstrapper.cs` — Serilog and optional Sentry configuration.
 - `TrackMeUp.Core/Application/ObservabilityConfiguration.cs` — optional Sentry environment configuration.
 - `TrackMeUp.Core/Application/SettingsCatalog.cs` — provider endpoints and user-facing settings.
-- `TrackMeUp/TrackMeUp.csproj`, `TrackMeUp.Core/TrackMeUp.Core.csproj`, `TrackMeUp.Cli/TrackMeUp.Cli.csproj`, and `TrackMeUp.Reports.Web/package.json` — direct dependency inventory.
+- `TrackMeUp/TrackMeUp.csproj`, `TrackMeUp.Core/TrackMeUp.Core.csproj`, and `TrackMeUp.Cli/TrackMeUp.Cli.csproj` — direct dependency inventory.
 
 The project-authored repository source is open source under the
 [MIT License](../LICENSE), so these claims can be checked against the code.

@@ -36,6 +36,7 @@ internal sealed class WindowPlacementService : IDisposable
     private readonly WindowId _displayAnchorId;
     private readonly NativeWindowSubclassProc _subclassProc;
     private readonly nuint _subclassId;
+    private readonly IWindowSnappingRegistration _snapping;
     private bool _restoreAttempted;
     private bool _subclassInstalled;
     private bool _disposed;
@@ -57,6 +58,9 @@ internal sealed class WindowPlacementService : IDisposable
 
     /// <summary>Lets the composition root report recoverable persistence failures on the owning window.</summary>
     internal static event Func<Window, string, Exception, Task>? PersistenceFailed;
+
+    /// <summary>Lets the composition root report a failed native snap without interrupting free movement.</summary>
+    internal static event Func<Window, Exception, Task>? SnappingFailed;
 
     /// <summary>Snapshots the already-created peers on the UI dispatcher without reopening persisted workspace entries.</summary>
     internal static IReadOnlyList<long> GetOpenPeerWindowHandles(long mainWindowHandle) => s_preservingWorkspace
@@ -109,6 +113,38 @@ internal sealed class WindowPlacementService : IDisposable
         _saveTimer.Tick += SaveTimer_Tick;
         ActivePlacements.Add(this);
         AttachXamlRoot();
+        try
+        {
+            _snapping = _application.RegisterWindowSnapping(_windowHandle.ToInt64(), ReportSnappingFailure);
+        }
+        catch
+        {
+            // Do not retain event handlers or the existing minimum-size hook after a partial construction failure.
+            Dispose();
+            throw;
+        }
+    }
+
+    private void ReportSnappingFailure(Exception exception)
+    {
+        Trace.TraceError("Window snapping failed. WindowKey={0} Exception={1}", _windowKey, exception);
+        // A native callback only queues presentation; a modal notification must never run inside the drag hook.
+        if (!_root.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                if (!_disposed && SnappingFailed is { } report) await report(_window, exception);
+            }
+            catch (Exception notificationFailure)
+            {
+                // Closure or an unavailable dialog must not turn a recoverable drag failure into a dispatcher crash.
+                Trace.TraceError("Window snapping notification failed. WindowKey={0} Exception={1}", _windowKey, notificationFailure);
+            }
+        }))
+        {
+            // A stopping dispatcher cannot show UI; diagnostics still preserve the explicit failure.
+            Trace.TraceError("Window snapping notification could not be queued during dispatcher shutdown.");
+        }
     }
 
     /// <summary>Occurs after native and XAML DPI agree, before final layout and work-area clamping.</summary>
@@ -637,6 +673,13 @@ internal sealed class WindowPlacementService : IDisposable
     private void KeepCurrentBoundsInWorkArea(FrameworkElement root, RectInt32 area)
     {
         var scale = ResolveScale(root);
+        if (_snapping is { PreserveUserPosition: true })
+        {
+            // Native dragging and intentional off-screen/edge placement take precedence over layout clamping.
+            UpdateMinimumSize(scale, area);
+            return;
+        }
+
         if (_appWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored })
         {
             // Windows owns maximized and minimized geometry; only refresh the restore-size constraints.
@@ -695,6 +738,10 @@ internal sealed class WindowPlacementService : IDisposable
             _ = RemoveWindowSubclass(_windowHandle, _subclassProc, _subclassId);
             _subclassInstalled = false;
         }
+
+        // The existing timers/events are already detached if native snap removal reports a failure.
+        // Core retains a failed registration until WM_NCDESTROY makes its final owning-thread cleanup attempt.
+        _snapping?.Dispose();
     }
 
     private double ResolveScale(FrameworkElement root)

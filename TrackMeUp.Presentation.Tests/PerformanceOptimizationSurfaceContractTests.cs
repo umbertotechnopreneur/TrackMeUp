@@ -55,7 +55,7 @@ public sealed class PerformanceOptimizationSurfaceContractTests
         Assert.Contains("options.InitializeAsync(_application, AiState, _lifecycle.Token)", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("public async void Initialize", File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "OptionsControl.xaml.cs")), StringComparison.Ordinal);
 
-        string[] detailHosts = ["SnapshotAiHost", "ReportsHost", "PrivacyHost", "RetentionHost", "PluginsHost", "InstallationTransferHost"];
+        string[] detailHosts = ["SnapshotAiHost", "PrivacyHost", "RetentionHost", "PluginsHost", "InstallationTransferHost"];
         Assert.All(detailHosts, name => Assert.Contains(operations.Descendants(), element => element.Name.LocalName == "ContentPresenter" && HasName(element, name)));
         Assert.DoesNotContain(
             operations.Descendants(),

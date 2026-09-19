@@ -25,13 +25,12 @@ internal static class CliCommandCatalog
         new("system", "command.system", ["/system snapshot [--watch] [--interval <1-60>]"], ["detail.jsonSnapshot"], []),
         new("screenshot", "command.screenshot", ["/screenshot capture [--mode <all-screens|active-window>] [--keep]", "/screenshot latest", "/screenshot open-folder"], ["detail.screenshot"], []),
         new("ai", "command.ai", ["/ai status", "/ai enable", "/ai disable", "/ai configure [--provider <name>] [--model <name>] [--endpoint <uri>] [--output-detail <compact|balanced|detailed>] [--reasoning-effort <auto|none|low|medium|high|xhigh|max>]", "/ai analyze [--no-capture]", "/ai key set [--variable <allowed-name>]"], ["detail.aiKey"], []),
-        new("report", "command.report", ["/report today [--output <directory>] [--open]", "/report digest [--date <yyyy-MM-dd>] [--open]"], [], []),
         new("privacy", "command.privacy", ["/privacy list", "/privacy add --type <process|title|hint> --value <text>", "/privacy remove --id <id>", "/privacy test-current"], [], []),
         new("retention", "command.retention", ["/retention status", "/retention preview", "/retention run --yes"], ["detail.retention"], []),
         new("plugins", "command.plugins", ["/plugins list", "/plugins show <id>", "/plugins enable <id>", "/plugins disable <id>"], [], []),
         new("config", "command.config", ["/config list", "/config get <key>", "/config set <key> <value>", "/config wizard"], ["detail.configWritable", "detail.configExcluded"], ["settings"]),
         new("startup", "command.startup", ["/startup status", "/startup enable", "/startup disable"], [], []),
-        new("open", "command.open", ["/open ui", "/open reports", "/open screenshots"], [], []),
+        new("open", "command.open", ["/open ui", "/open screenshots"], [], []),
         new("about", "command.about", ["/about"], [], []),
         new("doctor", "command.doctor", ["/doctor"], ["detail.doctor"], ["diagnostics"]),
         new("version", "command.version", ["/version", "--version"], [], []),
@@ -49,7 +48,6 @@ internal static class CliCommandCatalog
         new("--ai-on", ["ai", "enable"], "action.aiOn"),
         new("--ai-off", ["ai", "disable"], "action.aiOff"),
         new("--capture", ["screenshot", "capture"], "action.capture"),
-        new("--report", ["report", "today"], "action.report"),
         new("--doctor", ["doctor"], "action.doctor")
     ];
 

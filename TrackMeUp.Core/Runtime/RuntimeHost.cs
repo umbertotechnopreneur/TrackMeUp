@@ -181,6 +181,15 @@ public sealed class RuntimeHost : IAsyncDisposable
 /// <summary>Provides a typed application facade backed by the local runtime pipe.</summary>
 public sealed class RuntimeClient : ITrackMeUpApplication
 {
+    private readonly WindowSnappingService _windowSnapping = new();
+
+    /// <inheritdoc />
+    public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
+        _windowSnapping.Register(windowHandle, reportFailure);
+
+    /// <inheritdoc />
+    public void ConfigureWindowSnapping(bool enabled) => _windowSnapping.Configure(enabled);
+
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotReprocessPreviewTimeout = TimeSpan.FromMinutes(2);
@@ -390,12 +399,6 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<string>> SetAiKeyAsync(string keyVariable, string secret, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.AiKeySet, new { keyVariable, secret }, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AiAnalysis>> AnalyzeCurrentActivityAsync(AnalyzeCurrentActivityRequest request, CancellationToken cancellationToken) => SendAsync<AiAnalysis>(RuntimeOperation.AiAnalyze, request, cancellationToken);
-    /// <inheritdoc />
-    public Task<OperationResult<string>> GenerateTodayReportAsync(string? outputDirectory, bool open, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ReportToday, new { outputDirectory, open }, cancellationToken);
-    /// <inheritdoc />
-    public Task<OperationResult<string>> GenerateDailyDigestAsync(DateOnly date, bool open, CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ReportDigest, new GenerateDailyDigestRequest(date, open), cancellationToken);
-    /// <inheritdoc />
-    public Task<OperationResult<string>> OpenReportsFolderAsync(CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.ReportOpenFolder, null, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<string>> OpenUserInterfaceAsync(CancellationToken cancellationToken) => SendAsync<string>(RuntimeOperation.UiOpen, null, cancellationToken);
     /// <inheritdoc />

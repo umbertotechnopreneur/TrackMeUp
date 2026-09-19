@@ -35,9 +35,6 @@ public static class WindowStateKeys
     /// <summary>Identifies the independent planar/spherical Earth window.</summary>
     public const string CelestialMap = "celestial-map";
 
-    /// <summary>Identifies the reports window.</summary>
-    public const string Reports = "reports";
-
     /// <summary>Identifies the native activity-calendar dialog window.</summary>
     public const string ActivityCalendar = "activity-calendar";
 
@@ -106,7 +103,6 @@ public sealed class WindowStateService
         return windowKey switch
         {
             WindowStateKeys.Main => new(470, 240),
-            WindowStateKeys.Reports => new(720, 520),
             WindowStateKeys.ActivityCalendar => new(760, 560),
             WindowStateKeys.AiScreenshotReprocessing => new(640, 560),
             WindowStateKeys.Screenshots => new(760, 540),

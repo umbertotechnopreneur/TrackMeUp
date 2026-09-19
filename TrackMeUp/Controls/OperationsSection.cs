@@ -6,7 +6,6 @@ namespace TrackMeUp.Controls;
 internal enum OperationsSection
 {
     SnapshotAi,
-    Reports,
     Privacy,
     Retention,
     Plugins

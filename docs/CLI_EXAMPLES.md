@@ -1,6 +1,6 @@
 # CLI examples
 
-Check activity, control tracking, and create reports from PowerShell 7. These
+Check activity, control tracking, and inspect saved screenshots from PowerShell 7. These
 examples use the installed `trackmeup.exe` command and preserve its exit code.
 For an unpackaged build, replace it with the quoted executable path after `&`.
 
@@ -79,24 +79,6 @@ Inspect the latest retained screenshot's details:
 ```powershell
 pwsh -NoProfile -Command '& trackmeup.exe -cli screenshot latest --format plain; exit $LASTEXITCODE'
 ```
-
-## Generate today's report
-
-```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli report today --format plain; exit $LASTEXITCODE'
-```
-
-This generates the local HTML activity report and returns its path with result code `report.today.generated`. The report uses the installation's activity data. Add `--open` to open the generated report. To copy it into a chosen directory, construct an absolute destination in the invoking terminal:
-
-```powershell
-pwsh -NoProfile -Command '
-    $reportDirectory = Join-Path -Path $PWD.Path -ChildPath "Daily reports"
-    & trackmeup.exe -cli report today --output $reportDirectory --format plain
-    exit $LASTEXITCODE
-'
-```
-
-Generated files at the same destination can be replaced. Relative `--output` paths are resolved by the shared runtime, whose working directory may differ from the terminal's.
 
 ## Preview retention before deciding on deletion
 

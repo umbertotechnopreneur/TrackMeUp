@@ -7,14 +7,14 @@
     AutomationProperties.AccessibilityView="Raw">
     <Viewbox Stretch="Uniform">
         <Border x:Name="ThumbnailFrame" Width="96" Height="96" CornerRadius="18">
-            <Border.Background>
-                <!-- One atlas cell is selected by a normalized visual transform; the asset remains unmodified. -->
-                <ImageBrush ImageSource="ms-appx:///Assets/Celestial/Artwork/celestial-atlas-v1.png" Stretch="Fill">
-                    <ImageBrush.RelativeTransform>
-                        <CompositeTransform x:Name="AtlasTransform" ScaleX="4" ScaleY="3" />
-                    </ImageBrush.RelativeTransform>
-                </ImageBrush>
-            </Border.Background>
+            <!-- A fixed-size viewport crops one cell in layout coordinates, independently of brush transforms. -->
+            <Canvas Width="96" Height="96">
+                <Canvas.Clip>
+                    <RectangleGeometry Rect="0,0,96,96" />
+                </Canvas.Clip>
+                <Image x:Name="AtlasImage" Width="384" Height="288" Stretch="Fill"
+                       Source="ms-appx:///Assets/Celestial/Artwork/celestial-atlas-v1.png" />
+            </Canvas>
         </Border>
     </Viewbox>
 </UserControl>

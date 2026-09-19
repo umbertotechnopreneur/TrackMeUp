@@ -118,9 +118,6 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.AiKeySet => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
                 RuntimeOperation.AiAnalyze => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
                 RuntimeOperation.ReportQueryV1 => await DispatchReportQueryAsync(request, cancellationToken),
-                RuntimeOperation.ReportToday => ToResponse(request, await _application.GenerateTodayReportAsync(ReadStringOrNull(request.Payload, "outputDirectory"), ReadBool(request.Payload, "open"), cancellationToken)),
-                RuntimeOperation.ReportDigest => await DispatchDailyDigestAsync(request, cancellationToken),
-                RuntimeOperation.ReportOpenFolder => ToResponse(request, await _application.OpenReportsFolderAsync(cancellationToken)),
                 RuntimeOperation.UiOpen => ToResponse(request, await _application.OpenUserInterfaceAsync(cancellationToken)),
                 RuntimeOperation.PrivacyList => ToResponse(request, await _application.GetPrivacyRulesAsync(cancellationToken)),
                 RuntimeOperation.PrivacyAdd => ToResponse(request, await _application.AddPrivacyRuleAsync(ReadString(request.Payload, "type"), ReadString(request.Payload, "value"), cancellationToken)),
@@ -236,19 +233,6 @@ internal sealed class RuntimeRequestDispatcher
         return previewRequest is null
             ? Failure(request, "ai.screenshot_reprocess.preview.invalid", "AiScreenshotReprocessInvalid")
             : ToResponse(request, await _application.PreviewAiScreenshotReprocessingAsync(previewRequest, cancellationToken));
-    }
-
-    private async Task<RuntimeResponseEnvelope> DispatchDailyDigestAsync(
-        RuntimeRequestEnvelope request,
-        CancellationToken cancellationToken)
-    {
-        var digest = Read<GenerateDailyDigestRequest>(request.Payload);
-        if (digest is null)
-        {
-            return Failure(request, "command.arguments.invalid", "InvalidDigestDate");
-        }
-
-        return ToResponse(request, await _application.GenerateDailyDigestAsync(digest.Date, digest.Open, cancellationToken));
     }
 
     private async Task<RuntimeResponseEnvelope> DispatchReportQueryAsync(

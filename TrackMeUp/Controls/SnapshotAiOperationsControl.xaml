@@ -8,6 +8,11 @@
     d:DesignHeight="600"
     d:DesignWidth="520"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <DataTemplate x:Key="WrappingActionLabelTemplate">
+            <TextBlock Text="{Binding}" TextAlignment="Center" TextWrapping="Wrap" />
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid RowSpacing="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -20,11 +25,11 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Spacing="4">
-                <TextBlock Tag="Operations.SnapshotAi" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Captures and AI descriptions" />
+                <TextBlock Tag="Operations.SnapshotAi" AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SubtitleTextBlockStyle}" Text="Screenshots and AI analysis" TextWrapping="Wrap" />
                 <TextBlock
                     Tag="Operations.SnapshotAi.Description"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="Find the latest capture, open its folder, or ask your AI provider to describe the current activity."
+                    Text="Browse saved screenshots or ask your AI provider for a summary of your current activity."
                     TextWrapping="Wrap" />
             </StackPanel>
             <ProgressRing
@@ -41,11 +46,18 @@
 
         <StackPanel x:Name="SectionBody" Grid.Row="1" Spacing="18">
             <StackPanel Spacing="10">
-                <TextBlock
-                    AutomationProperties.HeadingLevel="Level3"
-                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                    Tag="Operations.Snapshot.Section"
-                    Text="Saved captures" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontSize="18"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Glyph="&#xE91B;" />
+                    <TextBlock
+                        AutomationProperties.HeadingLevel="Level3"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Tag="Operations.Snapshot.Section"
+                        Text="Saved screenshots" />
+                </StackPanel>
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -55,18 +67,20 @@
                         x:Name="OpenLatestCaptureButton"
                         MinHeight="36"
                         HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Find latest capture"
+                        AutomationProperties.Name="Find latest screenshot"
                         Click="LatestScreenshotButton_Click"
-                        Content="Find latest capture"
+                        Content="Find latest screenshot"
+                        ContentTemplate="{StaticResource WrappingActionLabelTemplate}"
                         Tag="Operations.LatestSnapshot" />
                     <Button
                         x:Name="OpenCapturesFolderButton"
                         Grid.Column="1"
                         MinHeight="36"
                         HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Open captures folder"
+                        AutomationProperties.Name="Open screenshots folder"
                         Click="OpenScreenshotFolderButton_Click"
-                        Content="Open captures folder"
+                        Content="Open screenshots folder"
+                        ContentTemplate="{StaticResource WrappingActionLabelTemplate}"
                         Tag="Operations.OpenFolder" />
                 </Grid>
                 <StackPanel Spacing="2">
@@ -74,39 +88,58 @@
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Tag="Operations.Snapshot.LatestLabel"
-                        Text="Latest saved capture" />
+                        Text="Latest saved file name" />
                     <TextBlock
                         x:Name="ScreenshotResultText"
                         AutomationProperties.LiveSetting="Polite"
                         FontWeight="SemiBold"
                         IsTextSelectionEnabled="True"
-                        MaxLines="1"
                         Tag="Operations.Initial.Snapshot"
-                        Text="Latest capture not loaded."
-                        TextTrimming="CharacterEllipsis"
-                        TextWrapping="NoWrap" />
+                        Text="Choose Find latest screenshot to see the file name."
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </StackPanel>
 
             <Border Height="1" Opacity="0.65" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
             <StackPanel Spacing="10">
-                <TextBlock
-                    AutomationProperties.HeadingLevel="Level3"
-                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                    Tag="Operations.Analysis.Section"
-                    Text="AI description" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon
+                        AutomationProperties.AccessibilityView="Raw"
+                        FontSize="18"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Glyph="&#xE734;" />
+                    <TextBlock
+                        AutomationProperties.HeadingLevel="Level3"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Tag="Operations.Analysis.Section"
+                        Text="AI activity summary" />
+                </StackPanel>
                 <CheckBox
                     x:Name="AllowAiCaptureBox"
-                    Content="Take a new capture for this description"
+                    HorizontalContentAlignment="Stretch"
+                    Content="Include a new screenshot"
                     IsChecked="True"
-                    Tag="Operations.AllowCapture" />
+                    Tag="Operations.AllowCapture">
+                    <CheckBox.ContentTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                        </DataTemplate>
+                    </CheckBox.ContentTemplate>
+                </CheckBox>
+                <TextBlock
+                    Tag="Operations.AllowCapture.Description"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="Adds a new screenshot if screen capture is enabled in settings. When unchecked, the AI provider receives only the current activity's text context."
+                    TextWrapping="Wrap" />
                 <Button
                     x:Name="GenerateDescriptionButton"
                     HorizontalAlignment="Left"
-                    AutomationProperties.Name="Generate AI description"
+                    AutomationProperties.Name="Describe activity with AI"
                     Click="AnalyzeButton_Click"
-                    Content="Generate AI description"
+                    Content="Describe activity with AI"
+                    ContentTemplate="{StaticResource WrappingActionLabelTemplate}"
                     Style="{StaticResource AccentButtonStyle}"
                     Tag="Operations.Analyze" />
                 <TextBlock
@@ -115,7 +148,7 @@
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     IsTextSelectionEnabled="True"
                     Tag="Operations.Initial.Analysis"
-                    Text="No description generated."
+                    Text="Your generated summary will appear here."
                     TextWrapping="Wrap" />
             </StackPanel>
         </StackPanel>

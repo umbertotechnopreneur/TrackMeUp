@@ -82,7 +82,7 @@ ARM64 does not bundle or install PawnIO because advanced collection is unsupport
 
 Each `artifacts/releases/<version>/<platform>/portable/TrackMeUp-<version>-<platform>-portable-unsigned.zip`
 contains the complete `Release-Unpackaged` publish output, including .NET and Windows
-App SDK, report assets, build/release metadata, notices, and payload checksums.
+App SDK, build/release metadata, notices, and payload checksums.
 An adjacent `.zip.sha256` verifies the archive. The archive writer rejects missing
 runtimes, mismatched version/architecture metadata, and an existing output directory.
 
@@ -104,25 +104,18 @@ remain under `%LOCALAPPDATA%\TrackMeUp`.
 | Component or feature | Portable distribution | Effect on startup and use |
 | --- | --- | --- |
 | .NET, WinUI, and Windows App SDK | Included in the ZIP for the selected architecture. | These supply the application startup libraries. An incomplete extraction or the wrong architecture can prevent launch. |
-| Interactive reports | WebView2 SDK libraries are included; the browser Runtime is a separate prerequisite. | The main player does not initialize WebView2. Opening or restoring Reports initializes it; if initialization fails, the report window displays an error instead of closing the application. |
 | On-device screenshot OCR | The Windows OCR API requires MSIX package identity, which this portable build does not have. | The OCR engine is created only when text extraction is requested. OCR failures are recorded on the capture without discarding the screenshot or terminating the application. Enabling OCR in saved settings does not provide package identity. |
 
-The absence of the WebView2 Runtime and the lack of OCR package identity are feature
-limitations, not prerequisites for opening the main player. The application does
-not automatically install WebView2 or substitute another OCR engine. Install the
-[WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
-to use interactive reports; use the MSIX edition for supported on-device OCR.
-See Microsoft's [WebView2 distribution guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)
-for the distinction between SDK libraries and the browser Runtime.
-
-For implementation details, see `ReportsWindow.InitializeWebViewAsync` and
+Use the MSIX edition for supported on-device OCR. The lack of package identity
+limits OCR, while the main player can open without it. The application does not
+substitute another OCR engine. For implementation details, see
 `ScreenshotTextExtractionCoordinator.AttachAsync`.
 
 For `v1.0.900`, the extracted x64 portable passed `TrackMeUp.exe --version` with exit
 code zero and reported `1.0.900` on the development workstation. This exercises the
-WinUI application bootstrap and CLI route, not full player/report initialization.
-It does **not** establish full UI startup on a clean machine without WebView2 or
-preinstalled development runtimes. Native ARM64 execution has not been verified.
+WinUI application bootstrap and CLI route, not full player initialization.
+It does **not** establish full UI startup on a clean machine without preinstalled
+development runtimes. Native ARM64 execution has not been verified.
 
 Before publication, verify extraction, CLI and UI startup on clean Windows x64 and
 ARM64 machines without .NET or Windows App SDK preinstalled. Cross-compilation and

@@ -152,7 +152,7 @@ public sealed partial class WorldClockWindow : Window
         LocalSkyMenuItem.Text = T("Celestial.Sky.Title");
         AstronomyAgendaMenuItem.Text = T("Celestial.Agenda.Title");
         CelestialMapMenuItem.Text = T("Celestial.Map.Title");
-        WorldMapMenuItem.Text = T("WorldClock.Map.Open");
+        WorldMapMenuItem.Text = T("WorldClock.Map.MenuLabel");
         UiLocalization.SetAccessibleLabel(LunarPhaseButton, T("WorldClock.MoonPhase.Open"));
         UpdatePresentationModeCommand();
         ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");

@@ -3,7 +3,7 @@
 namespace TrackMeUp.Application;
 
 /// <summary>Requests a city-based ephemeris for an instant between 1900 and 2100 inclusive.</summary>
-public sealed record CelestialRequest(string CityId, DateTimeOffset InstantUtc);
+public sealed record CelestialRequest(string CityId, DateTimeOffset InstantUtc, bool IncludeSatellites = false);
 
 /// <summary>Identifies the Sun, Moon, or a planet visible from Earth.</summary>
 public enum CelestialBodyKind { Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune }
@@ -16,6 +16,12 @@ public sealed record CelestialStarPosition(string Id, string Name, double Altitu
 
 /// <summary>Connects catalog star identifiers in a schematic constellation figure, not an IAU boundary.</summary>
 public sealed record CelestialConstellationSegment(string ConstellationId, string StartStarId, string EndStarId);
+
+/// <summary>Identifies a drawn constellation figure and, where applicable, its related tropical sign without equating their boundaries.</summary>
+public sealed record CelestialConstellationInfo(string Id, TropicalZodiacSign? ZodiacSign);
+
+/// <summary>Contains an SGP4 satellite position from recent CelesTrak elements; above the horizon does not establish optical visibility.</summary>
+public sealed record CelestialSatellitePosition(string Id, double AltitudeDegrees, double AzimuthDegrees, DateTimeOffset ElementsEpochUtc);
 
 /// <summary>Identifies calculated solar, lunar, and seasonal events; blue hour uses geometric solar altitude from -6 to -4 degrees.</summary>
 public enum CelestialEventKind
@@ -51,6 +57,12 @@ public sealed record CelestialSnapshot(
     IReadOnlyList<CelestialBodyPosition> Bodies, IReadOnlyList<CelestialStarPosition> Stars,
     IReadOnlyList<CelestialConstellationSegment> ConstellationSegments, IReadOnlyList<CelestialAgendaEvent> Agenda)
 {
+    /// <summary>Describes the schematic constellation figures drawn from the embedded sky catalog.</summary>
+    public IReadOnlyList<CelestialConstellationInfo> Constellations { get; init; } = [];
+
+    /// <summary>Contains recent optional satellite positions; empty when current orbital elements are unavailable or the instant is historical.</summary>
+    public IReadOnlyList<CelestialSatellitePosition> Satellites { get; init; } = [];
+
     /// <summary>Provides the current tropical solar sector independently of astronomical constellation figures.</summary>
     public required CelestialZodiacSnapshot Zodiac { get; init; }
 

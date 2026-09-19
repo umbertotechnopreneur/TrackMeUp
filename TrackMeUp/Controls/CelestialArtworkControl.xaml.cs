@@ -35,9 +35,11 @@ public enum CelestialArtworkKind
     Seasons
 }
 
-/// <summary>Displays a reusable atlas thumbnail using native brush cropping, without asset I/O or scientific calculations.</summary>
+/// <summary>Displays a reusable atlas thumbnail through a clipped native image viewport, without asset I/O or scientific calculations.</summary>
 public sealed partial class CelestialArtworkControl : UserControl
 {
+    private const double CellSize = 96d;
+
     /// <summary>Identifies the selected decorative atlas cell.</summary>
     public static readonly DependencyProperty KindProperty = DependencyProperty.Register(
         nameof(Kind), typeof(CelestialArtworkKind), typeof(CelestialArtworkControl),
@@ -81,8 +83,9 @@ public sealed partial class CelestialArtworkControl : UserControl
         }
 
         var index = (int)Kind;
-        AtlasTransform.TranslateX = -(index % 4);
-        AtlasTransform.TranslateY = -(index / 4);
+        // Position the 4-by-3 atlas behind a one-cell clip; the Viewbox scales the already-cropped result.
+        Canvas.SetLeft(AtlasImage, -(index % 4) * CellSize);
+        Canvas.SetTop(AtlasImage, -(index / 4) * CellSize);
         ThumbnailFrame.CornerRadius = new CornerRadius(index < 7 && Kind != CelestialArtworkKind.Saturn ? 48 : 18);
     }
 }

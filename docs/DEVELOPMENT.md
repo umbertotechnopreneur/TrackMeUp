@@ -1,7 +1,7 @@
 # Windows contributor setup
 
 Build TrackMeUp on Windows and check your changes before sharing them. This path
-covers reports, an x64 app build, and automated tests. You do not need an AI
+covers an x64 app build and automated tests. You do not need an AI
 provider account or a running installation.
 
 Read [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md) before
@@ -16,8 +16,7 @@ editing. Run commands from the repository root unless a step says otherwise.
 | PowerShell | Install PowerShell 7 and make `pwsh` available on `PATH`. Every repository PowerShell invocation must use `-NoProfile`. Windows PowerShell 5.1 is unsupported. |
 | .NET SDK | Install a stable **10.0.4xx SDK**, as selected by [global.json](../global.json). A runtime alone is not enough. |
 | Windows/WinUI tools | Use a compatible Visual Studio 2026 installation with **WinUI application development**, C#, and Windows SDK components. See Microsoft's [WinUI setup guide](https://learn.microsoft.com/en-us/windows/apps/get-started/start-here#set-up-your-development-environment). |
-| Node.js and npm | Use **Node.js 24.16.0** with bundled npm to match [CI](../.github/workflows/build.yml). The [report package](../TrackMeUp.Reports.Web/package.json) lists supported engines; Node 20 is unsupported. |
-| Network access | Initial restore needs access to the configured NuGet and npm registries. No AI-provider account or API key is required for the build or automated tests. |
+| Network access | Initial restore needs access to the configured NuGet feeds. No AI-provider account or API key is required for the build or automated tests. |
 
 Restore the SDK package versions pinned in the [app project](../TrackMeUp/TrackMeUp.csproj).
 Fix missing local tools rather than changing project targets to work around them.
@@ -39,15 +38,13 @@ pwsh -NoProfile -Command 'git --version'
 pwsh -NoProfile -Command '$PSVersionTable.PSVersion'
 pwsh -NoProfile -Command 'dotnet --list-sdks'
 pwsh -NoProfile -Command 'dotnet --version'
-pwsh -NoProfile -Command 'node --version'
-pwsh -NoProfile -Command 'npm --version'
 pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action Preflight
 ```
 
-Expect PowerShell 7, the selected stable `10.0.4xx` SDK, and Node `v24.16.0`. Stop at a failed command and resolve it before continuing.
+Expect PowerShell 7 and the selected stable `10.0.4xx` SDK. Stop at a failed command and resolve it before continuing.
 
 `Preflight` checks the basic tools and repository files. Check the version output
-above too: it does not verify SDK selection, Node/npm, WinUI components, OCR
+above too: it does not verify SDK selection, WinUI components, OCR
 languages, or signing certificates.
 
 Enable the repository hook once per clone:
@@ -62,17 +59,13 @@ An existing custom hook configuration causes an explicit error. Integrate the fo
 
 Run this sequence once after setup, or once the changes being validated are complete. It uses the same Release-Unpackaged configuration and analyzer settings as the [release CI job](../.github/workflows/build.yml).
 
-First check the source contracts and build the report distribution:
+First check the source contracts:
 
 ```powershell
 pwsh -NoProfile -File ./scripts/Test-SourceLicenseHeaders.ps1
 pwsh -NoProfile -File ./scripts/Format-Code.ps1 -Verify
 pwsh -NoProfile -File ./scripts/Test-FormattingHooks.ps1
-pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action BuildReports
-pwsh -NoProfile -Command 'git status --short --untracked-files=all -- TrackMeUp.Reports.Web/dist'
 ```
-
-`BuildReports` runs `npm ci` and `npm run build`. The build includes TypeScript checking, Vitest tests, production bundling, third-party notices, and production-output validation. A clean clone should produce no changes in the final `git status` command. The distribution is tracked because it ships with the desktop app.
 
 Then restore, build, and test x64:
 
@@ -127,12 +120,11 @@ needs a diff and link review, not builds, tests, formatter runs, or cleanup.
 
 | Failure | Action |
 | --- | --- |
-| `pwsh`, `git`, `dotnet`, `node`, or `npm` is missing | Install the corresponding tool, reopen the terminal, and rerun its version command from the repository root. Passing Preflight does not establish Node/npm availability. |
+| `pwsh`, `git`, or `dotnet` is missing | Install the corresponding tool, reopen the terminal, and rerun its version command from the repository root. |
 | .NET reports that the SDK in `global.json` cannot be found, or `NETSDK1045` | Compare `dotnet --list-sdks` with `global.json`; install a stable compatible `10.0.4xx` SDK and check which `dotnet` is on `PATH`. A runtime-only installation is insufficient. Update the IDE if its MSBuild does not support the SDK. Do not edit `global.json` simply to use an older installation. |
 | Windows SDK, XAML compiler, packaging target, or WinUI component is missing | Repair the Visual Studio WinUI workload/Windows SDK components identified in the error and restore the solution again. Check [the app project](../TrackMeUp/TrackMeUp.csproj) for its actual targets. Restart the IDE after changing installed components. |
 | Unsupported solution configuration or platform | Use `Debug-Unpackaged` or `Release-Unpackaged` for the solution and x64 or ARM64 for the platform. `Debug` and `Release` are app-project MSIX configurations. |
-| NuGet or npm restore fails | Check the first registry/network/proxy/certificate error and the configured package sources. Keep the checked-in lockfile; do not replace `npm ci` with a dependency update to mask a clean-restore failure. |
-| A report entry point/production notice is missing, or CI says the tracked distribution is stale | Use Node 24.16.0, ensure report source files use LF as required by `.gitattributes`, and rerun `BuildReports`. Changing Git attributes does not rewrite existing working files; mixed line endings can change Vue's generated scope IDs and bundle hashes. The app build checks required files exist; CI additionally compares a clean rebuild with tracked `dist/`. Review generated changes together with the report source/lockfile changes that caused them. An unexplained difference on a clean clone should be reported with the commit and tool versions. |
+| NuGet restore fails | Check the first feed/network/proxy/certificate error and the configured package sources. Keep the pinned package versions while diagnosing a clean-restore failure. |
 | Formatting verification or the pre-commit hook fails | Run `Format-Code.ps1`, review the changes, then run `-Verify`. Check LF and staged `.editorconfig` rules. Resolve the failure without bypassing the hook; preserve unrelated unstaged edits. |
 | Tests cannot find assemblies after cleaning | Run the matching configuration/platform build before using `--no-build`. Solution `Release-Unpackaged` maps supporting/test projects to their `Release` builds; avoid guessing a test DLL path from the app's output directory. |
 | Windows OCR reports an unavailable language | Install the selected Windows OCR language capability, then reopen the app and select an available recognizer. Display language and OCR language are independent; Vietnamese UI support does not imply a Vietnamese Windows OCR recognizer. Explicit unsupported OCR languages fail instead of silently selecting another. |
@@ -150,7 +142,7 @@ Windows exposes installed recognizers through `OcrEngine.AvailableRecognizerLang
 | Installed package | The exact signed package, successful deployment, and the scenario exercised through that installed app. Include OCR language/package-identity evidence when testing OCR. A signed archive alone is not an installation test. |
 
 Portable release artifacts are prepared through GitHub Actions. See
-[RELEASING.md](RELEASING.md) for that workflow, WebView2 requirements, and the
+[RELEASING.md](RELEASING.md) for that workflow and the
 MSIX requirement for on-device screenshot OCR.
 
 For an explicitly requested local MSIX installation task:
@@ -159,7 +151,7 @@ For an explicitly requested local MSIX installation task:
 pwsh -NoProfile -File ./scripts/TrackMeUp.ps1 -Action PackageMsix -Platform x64
 ```
 
-`PackageMsix` rebuilds reports, resolves a certificate, restores/cleans/publishes the packaged `Release` configuration, and checks that the archive contains a signature and its required report assets. That archive check does not verify certificate trust on another machine. It writes under `artifacts/packages/`. `CreateInstaller` creates the final installer under `artifacts/installers/` and normally runs the packaging step first.
+`PackageMsix` resolves a certificate, restores/cleans/publishes the packaged `Release` configuration, and checks the archive signature, manifest, architecture, and version metadata. That archive check does not verify certificate trust on another machine. It writes under `artifacts/packages/`. `CreateInstaller` creates the final installer under `artifacts/installers/` and normally runs the packaging step first.
 
 Local packaging creates or reuses the current-user `TrackMeUp Test Signing`
 certificate (`CN=umber`), exports its public certificate under

@@ -62,8 +62,9 @@ internal static class CelestialEventService
         var events = new List<GlobalEvent>();
         var start = new AstroTime(date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
         var end = start.AddDays(36);
-        foreach (var kind in new[] { CelestialBodyKind.Mercury, CelestialBodyKind.Venus, CelestialBodyKind.Mars, CelestialBodyKind.Jupiter, CelestialBodyKind.Saturn })
+        foreach (var name in CelestialSkyCatalog.Current.ConjunctionBodies)
         {
+            var kind = Enum.Parse<CelestialBodyKind>(name);
             var body = Enum.Parse<Body>(kind.ToString());
             var context = new ConjunctionContext(body);
             foreach (var crossing in FindAscendingCrossings(context, start, end, 0.5, cancellationToken))
@@ -136,34 +137,26 @@ internal static class CelestialEventService
         };
         var catalog = JsonSerializer.Deserialize<MeteorCatalog>(stream, options)
             ?? throw new InvalidDataException("The meteor catalog is empty.");
-        if (catalog.SchemaVersion != 1 || catalog.ReferenceYear != 2026 || catalog.SolarLongitudeFrame != "J2000"
+        if (catalog.SchemaVersion != 1 || catalog.ReferenceYear is < 1900 or > 2100 || catalog.SolarLongitudeFrame != "J2000"
             || !Uri.TryCreate(catalog.SourceUrl, UriKind.Absolute, out var source) || source.Scheme != Uri.UriSchemeHttps
-            || catalog.Showers is null || catalog.Showers.Count != 8)
+            || catalog.Showers is null || catalog.Showers.Count == 0)
             throw new InvalidDataException("The meteor catalog metadata is unsupported.");
 
-        var supported = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["Quadrantids"] = "QUA",
-            ["Lyrids"] = "LYR",
-            ["EtaAquariids"] = "ETA",
-            ["Perseids"] = "PER",
-            ["Orionids"] = "ORI",
-            ["Leonids"] = "LEO",
-            ["Geminids"] = "GEM",
-            ["Ursids"] = "URS"
-        };
         var identifiers = new HashSet<string>(StringComparer.Ordinal);
+        var iauCodes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var shower in catalog.Showers)
         {
             if (shower is null || string.IsNullOrEmpty(shower.Id) || !identifiers.Add(shower.Id)
-                || !supported.TryGetValue(shower.Id, out var code) || code != shower.IauCode
+                || shower.IauCode is not { Length: 3 } || !shower.IauCode.All(char.IsAsciiLetterUpper)
+                || !iauCodes.Add(shower.IauCode)
                 || !double.IsFinite(shower.PeakSolarLongitudeDegrees) || shower.PeakSolarLongitudeDegrees is < 0 or >= 360)
                 throw new InvalidDataException("The meteor catalog contains invalid or duplicate shower data.");
             try
             {
                 // Use a non-leap year because these activity ranges must exist in every supported year.
-                var start = new DateOnly(shower.StartMonth > shower.EndMonth ? 2025 : 2026, shower.StartMonth, shower.StartDay);
-                var finish = new DateOnly(2026, shower.EndMonth, shower.EndDay);
+                var nonLeapYear = DateTime.IsLeapYear(catalog.ReferenceYear) ? catalog.ReferenceYear + 1 : catalog.ReferenceYear;
+                var start = new DateOnly(shower.StartMonth > shower.EndMonth ? nonLeapYear - 1 : nonLeapYear, shower.StartMonth, shower.StartDay);
+                var finish = new DateOnly(nonLeapYear, shower.EndMonth, shower.EndDay);
                 if (finish <= start || finish.DayNumber - start.DayNumber > 90)
                     throw new InvalidDataException("A meteor activity period is invalid.");
             }

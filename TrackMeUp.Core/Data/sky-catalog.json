@@ -1,0 +1,1003 @@
+{
+  "schemaVersion": 1,
+  "sourceUrl": "https://simbad.cds.unistra.fr/simbad/sim-tap",
+  "satelliteElementsUrl": "https://celestrak.org/NORAD/elements/gp.php?GROUP=STATIONS&FORMAT=TLE",
+  "conjunctionBodies": ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"],
+  "stars": [
+    {
+      "id": "alf-aqr",
+      "name": "Sadalmelik",
+      "rightAscensionDegrees": 331.445981,
+      "declinationDegrees": -0.319851,
+      "magnitude": 2.94
+    },
+    {
+      "id": "alf-ari",
+      "name": "Hamal",
+      "rightAscensionDegrees": 31.793357,
+      "declinationDegrees": 23.462418,
+      "magnitude": 2.01
+    },
+    {
+      "id": "alf-cap",
+      "name": "α Capricorni",
+      "rightAscensionDegrees": 304.513565,
+      "declinationDegrees": -12.544852,
+      "magnitude": 3.58
+    },
+    {
+      "id": "alf-cas",
+      "name": "Schedar",
+      "rightAscensionDegrees": 10.126846,
+      "declinationDegrees": 56.537329,
+      "magnitude": 2.23
+    },
+    {
+      "id": "alf-cnc",
+      "name": "Acubens",
+      "rightAscensionDegrees": 134.621684,
+      "declinationDegrees": 11.85768,
+      "magnitude": 4.249
+    },
+    {
+      "id": "alf-cru",
+      "name": "Acrux",
+      "rightAscensionDegrees": 186.649563,
+      "declinationDegrees": -63.099093,
+      "magnitude": null
+    },
+    {
+      "id": "alf-gem",
+      "name": "Castor",
+      "rightAscensionDegrees": 113.649472,
+      "declinationDegrees": 31.888282,
+      "magnitude": 1.58
+    },
+    {
+      "id": "alf-leo",
+      "name": "Regulus",
+      "rightAscensionDegrees": 152.092962,
+      "declinationDegrees": 11.967209,
+      "magnitude": 1.4
+    },
+    {
+      "id": "alf-lib",
+      "name": "Zubenelgenubi",
+      "rightAscensionDegrees": 222.719638,
+      "declinationDegrees": -16.041777,
+      "magnitude": 2.75
+    },
+    {
+      "id": "alf-ori",
+      "name": "Betelgeuse",
+      "rightAscensionDegrees": 88.792939,
+      "declinationDegrees": 7.407064,
+      "magnitude": 0.42
+    },
+    {
+      "id": "alf-psc",
+      "name": "Alrescha",
+      "rightAscensionDegrees": 30.511749,
+      "declinationDegrees": 2.763761,
+      "magnitude": null
+    },
+    {
+      "id": "alf-sco",
+      "name": "Antares",
+      "rightAscensionDegrees": 247.351915,
+      "declinationDegrees": -26.432003,
+      "magnitude": 0.91
+    },
+    {
+      "id": "alf-sgr",
+      "name": "α Sagittarii",
+      "rightAscensionDegrees": 290.971564,
+      "declinationDegrees": -40.615937,
+      "magnitude": 3.943
+    },
+    {
+      "id": "alf-tau",
+      "name": "Aldebaran",
+      "rightAscensionDegrees": 68.980163,
+      "declinationDegrees": 16.509302,
+      "magnitude": 0.86
+    },
+    {
+      "id": "alf-uma",
+      "name": "Dubhe",
+      "rightAscensionDegrees": 165.931965,
+      "declinationDegrees": 61.751035,
+      "magnitude": 1.79
+    },
+    {
+      "id": "alf-umi",
+      "name": "Polaris",
+      "rightAscensionDegrees": 37.954561,
+      "declinationDegrees": 89.264109,
+      "magnitude": 2.02
+    },
+    {
+      "id": "alf-vir",
+      "name": "Spica",
+      "rightAscensionDegrees": 201.298247,
+      "declinationDegrees": -11.161319,
+      "magnitude": 0.97
+    },
+    {
+      "id": "bet-aqr",
+      "name": "Sadalsuud",
+      "rightAscensionDegrees": 322.889717,
+      "declinationDegrees": -5.571175,
+      "magnitude": 2.89
+    },
+    {
+      "id": "bet-ari",
+      "name": "Sheratan",
+      "rightAscensionDegrees": 28.660046,
+      "declinationDegrees": 20.808031,
+      "magnitude": 2.65
+    },
+    {
+      "id": "bet-cap",
+      "name": "β Capricorni",
+      "rightAscensionDegrees": 305.252777,
+      "declinationDegrees": -14.781408,
+      "magnitude": 3.08
+    },
+    {
+      "id": "bet-cas",
+      "name": "Caph",
+      "rightAscensionDegrees": 2.294522,
+      "declinationDegrees": 59.149781,
+      "magnitude": 2.27
+    },
+    {
+      "id": "bet-cnc",
+      "name": "Tarf",
+      "rightAscensionDegrees": 124.128837,
+      "declinationDegrees": 9.185544,
+      "magnitude": 3.52
+    },
+    {
+      "id": "bet-cru",
+      "name": "Mimosa",
+      "rightAscensionDegrees": 191.930287,
+      "declinationDegrees": -59.688772,
+      "magnitude": 1.25
+    },
+    {
+      "id": "bet-gem",
+      "name": "Pollux",
+      "rightAscensionDegrees": 116.328958,
+      "declinationDegrees": 28.026199,
+      "magnitude": 1.14
+    },
+    {
+      "id": "bet-leo",
+      "name": "Denebola",
+      "rightAscensionDegrees": 177.26491,
+      "declinationDegrees": 14.572058,
+      "magnitude": 2.13
+    },
+    {
+      "id": "bet-lib",
+      "name": "Zubeneschamali",
+      "rightAscensionDegrees": 229.251724,
+      "declinationDegrees": -9.382914,
+      "magnitude": 2.62
+    },
+    {
+      "id": "bet-ori",
+      "name": "Rigel",
+      "rightAscensionDegrees": 78.634467,
+      "declinationDegrees": -8.201638,
+      "magnitude": 0.13
+    },
+    {
+      "id": "bet-psc",
+      "name": "β Piscium",
+      "rightAscensionDegrees": 345.969222,
+      "declinationDegrees": 3.820046,
+      "magnitude": 4.52
+    },
+    {
+      "id": "bet-sco",
+      "name": "β Scorpii",
+      "rightAscensionDegrees": 241.359292,
+      "declinationDegrees": -19.805389,
+      "magnitude": 2.5
+    },
+    {
+      "id": "bet-tau",
+      "name": "Elnath",
+      "rightAscensionDegrees": 81.572971,
+      "declinationDegrees": 28.607452,
+      "magnitude": 1.65
+    },
+    {
+      "id": "bet-uma",
+      "name": "Merak",
+      "rightAscensionDegrees": 165.460332,
+      "declinationDegrees": 56.382434,
+      "magnitude": 2.37
+    },
+    {
+      "id": "bet-umi",
+      "name": "Kochab",
+      "rightAscensionDegrees": 222.676357,
+      "declinationDegrees": 74.155504,
+      "magnitude": 2.08
+    },
+    {
+      "id": "bet-vir",
+      "name": "β Virginis",
+      "rightAscensionDegrees": 177.673827,
+      "declinationDegrees": 1.764723,
+      "magnitude": 3.6
+    },
+    {
+      "id": "del-aqr",
+      "name": "δ Aquarii",
+      "rightAscensionDegrees": 343.662526,
+      "declinationDegrees": -15.82082,
+      "magnitude": 3.28
+    },
+    {
+      "id": "del-cap",
+      "name": "δ Capricorni",
+      "rightAscensionDegrees": 326.760184,
+      "declinationDegrees": -16.127287,
+      "magnitude": 2.83
+    },
+    {
+      "id": "del-cas",
+      "name": "Ruchbah",
+      "rightAscensionDegrees": 21.453964,
+      "declinationDegrees": 60.235284,
+      "magnitude": 2.68
+    },
+    {
+      "id": "del-cnc",
+      "name": "δ Cancri",
+      "rightAscensionDegrees": 131.171247,
+      "declinationDegrees": 18.154308,
+      "magnitude": 3.94
+    },
+    {
+      "id": "del-cru",
+      "name": "Imai",
+      "rightAscensionDegrees": 183.786327,
+      "declinationDegrees": -58.748924,
+      "magnitude": 2.752
+    },
+    {
+      "id": "del-leo",
+      "name": "δ Leonis",
+      "rightAscensionDegrees": 168.527089,
+      "declinationDegrees": 20.523718,
+      "magnitude": 2.53
+    },
+    {
+      "id": "del-ori",
+      "name": "Mintaka",
+      "rightAscensionDegrees": 83.001667,
+      "declinationDegrees": -0.299095,
+      "magnitude": 2.41
+    },
+    {
+      "id": "del-psc",
+      "name": "δ Piscium",
+      "rightAscensionDegrees": 12.170601,
+      "declinationDegrees": 7.585082,
+      "magnitude": 4.44
+    },
+    {
+      "id": "del-sco",
+      "name": "δ Scorpii",
+      "rightAscensionDegrees": 240.083355,
+      "declinationDegrees": -22.621706,
+      "magnitude": 2.32
+    },
+    {
+      "id": "del-sgr",
+      "name": "Kaus Media",
+      "rightAscensionDegrees": 275.248512,
+      "declinationDegrees": -29.828102,
+      "magnitude": 2.668
+    },
+    {
+      "id": "del-uma",
+      "name": "Megrez",
+      "rightAscensionDegrees": 183.856499,
+      "declinationDegrees": 57.032617,
+      "magnitude": 3.32
+    },
+    {
+      "id": "del-umi",
+      "name": "Yildun",
+      "rightAscensionDegrees": 263.054159,
+      "declinationDegrees": 86.58646,
+      "magnitude": 4.336
+    },
+    {
+      "id": "del-vir",
+      "name": "δ Virginis",
+      "rightAscensionDegrees": 193.900869,
+      "declinationDegrees": 3.397469,
+      "magnitude": 3.38
+    },
+    {
+      "id": "eps-aqr",
+      "name": "ε Aquarii",
+      "rightAscensionDegrees": 311.918957,
+      "declinationDegrees": -9.495777,
+      "magnitude": 3.77
+    },
+    {
+      "id": "eps-cas",
+      "name": "Segin",
+      "rightAscensionDegrees": 28.598892,
+      "declinationDegrees": 63.6701,
+      "magnitude": 3.37
+    },
+    {
+      "id": "eps-leo",
+      "name": "ε Leonis",
+      "rightAscensionDegrees": 146.462807,
+      "declinationDegrees": 23.774254,
+      "magnitude": 2.98
+    },
+    {
+      "id": "eps-ori",
+      "name": "Alnilam",
+      "rightAscensionDegrees": 84.053389,
+      "declinationDegrees": -1.201919,
+      "magnitude": 1.69
+    },
+    {
+      "id": "eps-psc",
+      "name": "ε Piscium",
+      "rightAscensionDegrees": 15.735868,
+      "declinationDegrees": 7.890133,
+      "magnitude": 4.28
+    },
+    {
+      "id": "eps-sco",
+      "name": "ε Scorpii",
+      "rightAscensionDegrees": 252.540878,
+      "declinationDegrees": -34.293232,
+      "magnitude": 2.29
+    },
+    {
+      "id": "eps-sgr",
+      "name": "Kaus Australis",
+      "rightAscensionDegrees": 276.042993,
+      "declinationDegrees": -34.384616,
+      "magnitude": 1.81
+    },
+    {
+      "id": "eps-uma",
+      "name": "Alioth",
+      "rightAscensionDegrees": 193.50729,
+      "declinationDegrees": 55.959823,
+      "magnitude": 1.77
+    },
+    {
+      "id": "eps-umi",
+      "name": "ε Ursae Minoris",
+      "rightAscensionDegrees": 251.492682,
+      "declinationDegrees": 82.037258,
+      "magnitude": 4.212
+    },
+    {
+      "id": "eps-vir",
+      "name": "ε Virginis",
+      "rightAscensionDegrees": 195.544154,
+      "declinationDegrees": 10.959149,
+      "magnitude": 2.79
+    },
+    {
+      "id": "eta-tau",
+      "name": "η Tauri",
+      "rightAscensionDegrees": 56.871152,
+      "declinationDegrees": 24.105136,
+      "magnitude": 2.87
+    },
+    {
+      "id": "eta-uma",
+      "name": "Alkaid",
+      "rightAscensionDegrees": 206.885157,
+      "declinationDegrees": 49.313267,
+      "magnitude": 1.86
+    },
+    {
+      "id": "eta-umi",
+      "name": "η Ursae Minoris",
+      "rightAscensionDegrees": 244.376126,
+      "declinationDegrees": 75.755343,
+      "magnitude": null
+    },
+    {
+      "id": "gam-aqr",
+      "name": "γ Aquarii",
+      "rightAscensionDegrees": 335.414048,
+      "declinationDegrees": -1.387349,
+      "magnitude": 3.834
+    },
+    {
+      "id": "gam-ari",
+      "name": "γ Arietis",
+      "rightAscensionDegrees": 28.382562,
+      "declinationDegrees": 19.293855,
+      "magnitude": null
+    },
+    {
+      "id": "gam-cap",
+      "name": "γ Capricorni",
+      "rightAscensionDegrees": 325.022689,
+      "declinationDegrees": -16.662371,
+      "magnitude": 3.67
+    },
+    {
+      "id": "gam-cas",
+      "name": "Gamma Cassiopeiae",
+      "rightAscensionDegrees": 14.177213,
+      "declinationDegrees": 60.71674,
+      "magnitude": 2.39
+    },
+    {
+      "id": "gam-cnc",
+      "name": "γ Cancri",
+      "rightAscensionDegrees": 130.821446,
+      "declinationDegrees": 21.468499,
+      "magnitude": 4.652
+    },
+    {
+      "id": "gam-cru",
+      "name": "Gacrux",
+      "rightAscensionDegrees": 187.791498,
+      "declinationDegrees": -57.113213,
+      "magnitude": 1.64
+    },
+    {
+      "id": "gam-gem",
+      "name": "Alhena",
+      "rightAscensionDegrees": 99.42796,
+      "declinationDegrees": 16.39928,
+      "magnitude": 1.92
+    },
+    {
+      "id": "gam-leo",
+      "name": "Algieba",
+      "rightAscensionDegrees": 154.993127,
+      "declinationDegrees": 19.841485,
+      "magnitude": null
+    },
+    {
+      "id": "gam-lib",
+      "name": "γ Librae",
+      "rightAscensionDegrees": 233.881575,
+      "declinationDegrees": -14.789536,
+      "magnitude": 3.91
+    },
+    {
+      "id": "gam-ori",
+      "name": "Bellatrix",
+      "rightAscensionDegrees": 81.282764,
+      "declinationDegrees": 6.349703,
+      "magnitude": 1.64
+    },
+    {
+      "id": "gam-psc",
+      "name": "γ Piscium",
+      "rightAscensionDegrees": 349.291405,
+      "declinationDegrees": 3.28229,
+      "magnitude": 3.7
+    },
+    {
+      "id": "gam-sgr",
+      "name": "γ Sagittarii",
+      "rightAscensionDegrees": 271.452034,
+      "declinationDegrees": -30.42409,
+      "magnitude": 2.99
+    },
+    {
+      "id": "gam-uma",
+      "name": "Phecda",
+      "rightAscensionDegrees": 178.457697,
+      "declinationDegrees": 53.69476,
+      "magnitude": 2.44
+    },
+    {
+      "id": "gam-umi",
+      "name": "Pherkad",
+      "rightAscensionDegrees": 230.182098,
+      "declinationDegrees": 71.834025,
+      "magnitude": 3.002
+    },
+    {
+      "id": "gam-vir",
+      "name": "Porrima",
+      "rightAscensionDegrees": 190.415118,
+      "declinationDegrees": -1.449404,
+      "magnitude": 2.74
+    },
+    {
+      "id": "kap-ori",
+      "name": "Saiph",
+      "rightAscensionDegrees": 86.93912,
+      "declinationDegrees": -9.669605,
+      "magnitude": 2.06
+    },
+    {
+      "id": "lam-sco",
+      "name": "Shaula",
+      "rightAscensionDegrees": 263.402167,
+      "declinationDegrees": -37.103824,
+      "magnitude": 1.63
+    },
+    {
+      "id": "mu-gem",
+      "name": "μ Geminorum",
+      "rightAscensionDegrees": 95.740112,
+      "declinationDegrees": 22.513583,
+      "magnitude": 2.87
+    },
+    {
+      "id": "sig-lib",
+      "name": "σ Librae",
+      "rightAscensionDegrees": 226.017562,
+      "declinationDegrees": -25.28197,
+      "magnitude": 3.21
+    },
+    {
+      "id": "zet-ori",
+      "name": "Alnitak",
+      "rightAscensionDegrees": 85.189694,
+      "declinationDegrees": -1.942574,
+      "magnitude": 1.77
+    },
+    {
+      "id": "zet-sgr",
+      "name": "ζ Sagittarii",
+      "rightAscensionDegrees": 285.653043,
+      "declinationDegrees": -29.880063,
+      "magnitude": 2.59
+    },
+    {
+      "id": "zet-tau",
+      "name": "ζ Tauri",
+      "rightAscensionDegrees": 84.411189,
+      "declinationDegrees": 21.142544,
+      "magnitude": 3.03
+    },
+    {
+      "id": "zet-uma",
+      "name": "Mizar",
+      "rightAscensionDegrees": 200.981419,
+      "declinationDegrees": 54.925352,
+      "magnitude": null
+    },
+    {
+      "id": "zet-umi",
+      "name": "ζ Ursae Minoris",
+      "rightAscensionDegrees": 236.014661,
+      "declinationDegrees": 77.794493,
+      "magnitude": 4.274
+    }
+  ],
+  "constellations": [
+    {
+      "id": "Orion",
+      "zodiacSign": null,
+      "segments": [
+        [
+          "alf-ori",
+          "gam-ori"
+        ],
+        [
+          "gam-ori",
+          "del-ori"
+        ],
+        [
+          "del-ori",
+          "eps-ori"
+        ],
+        [
+          "eps-ori",
+          "zet-ori"
+        ],
+        [
+          "zet-ori",
+          "alf-ori"
+        ],
+        [
+          "zet-ori",
+          "kap-ori"
+        ],
+        [
+          "kap-ori",
+          "bet-ori"
+        ],
+        [
+          "bet-ori",
+          "del-ori"
+        ]
+      ]
+    },
+    {
+      "id": "Cassiopeia",
+      "zodiacSign": null,
+      "segments": [
+        [
+          "bet-cas",
+          "alf-cas"
+        ],
+        [
+          "alf-cas",
+          "gam-cas"
+        ],
+        [
+          "gam-cas",
+          "del-cas"
+        ],
+        [
+          "del-cas",
+          "eps-cas"
+        ]
+      ]
+    },
+    {
+      "id": "UrsaMajor",
+      "zodiacSign": null,
+      "segments": [
+        [
+          "alf-uma",
+          "bet-uma"
+        ],
+        [
+          "bet-uma",
+          "gam-uma"
+        ],
+        [
+          "gam-uma",
+          "del-uma"
+        ],
+        [
+          "del-uma",
+          "alf-uma"
+        ],
+        [
+          "del-uma",
+          "eps-uma"
+        ],
+        [
+          "eps-uma",
+          "zet-uma"
+        ],
+        [
+          "zet-uma",
+          "eta-uma"
+        ]
+      ]
+    },
+    {
+      "id": "UrsaMinor",
+      "zodiacSign": null,
+      "segments": [
+        [
+          "alf-umi",
+          "del-umi"
+        ],
+        [
+          "del-umi",
+          "eps-umi"
+        ],
+        [
+          "eps-umi",
+          "zet-umi"
+        ],
+        [
+          "zet-umi",
+          "bet-umi"
+        ],
+        [
+          "bet-umi",
+          "gam-umi"
+        ],
+        [
+          "gam-umi",
+          "eta-umi"
+        ],
+        [
+          "eta-umi",
+          "zet-umi"
+        ]
+      ]
+    },
+    {
+      "id": "Crux",
+      "zodiacSign": null,
+      "segments": [
+        [
+          "alf-cru",
+          "gam-cru"
+        ],
+        [
+          "bet-cru",
+          "del-cru"
+        ]
+      ]
+    },
+    {
+      "id": "Aries",
+      "zodiacSign": "Aries",
+      "segments": [
+        [
+          "alf-ari",
+          "bet-ari"
+        ],
+        [
+          "bet-ari",
+          "gam-ari"
+        ]
+      ]
+    },
+    {
+      "id": "Taurus",
+      "zodiacSign": "Taurus",
+      "segments": [
+        [
+          "bet-tau",
+          "alf-tau"
+        ],
+        [
+          "alf-tau",
+          "eta-tau"
+        ],
+        [
+          "alf-tau",
+          "zet-tau"
+        ]
+      ]
+    },
+    {
+      "id": "Gemini",
+      "zodiacSign": "Gemini",
+      "segments": [
+        [
+          "alf-gem",
+          "bet-gem"
+        ],
+        [
+          "alf-gem",
+          "gam-gem"
+        ],
+        [
+          "bet-gem",
+          "mu-gem"
+        ],
+        [
+          "gam-gem",
+          "mu-gem"
+        ]
+      ]
+    },
+    {
+      "id": "Cancer",
+      "zodiacSign": "Cancer",
+      "segments": [
+        [
+          "alf-cnc",
+          "bet-cnc"
+        ],
+        [
+          "bet-cnc",
+          "del-cnc"
+        ],
+        [
+          "del-cnc",
+          "gam-cnc"
+        ]
+      ]
+    },
+    {
+      "id": "Leo",
+      "zodiacSign": "Leo",
+      "segments": [
+        [
+          "alf-leo",
+          "gam-leo"
+        ],
+        [
+          "gam-leo",
+          "del-leo"
+        ],
+        [
+          "del-leo",
+          "bet-leo"
+        ],
+        [
+          "gam-leo",
+          "eps-leo"
+        ],
+        [
+          "eps-leo",
+          "alf-leo"
+        ]
+      ]
+    },
+    {
+      "id": "Virgo",
+      "zodiacSign": "Virgo",
+      "segments": [
+        [
+          "alf-vir",
+          "gam-vir"
+        ],
+        [
+          "gam-vir",
+          "eps-vir"
+        ],
+        [
+          "eps-vir",
+          "del-vir"
+        ],
+        [
+          "del-vir",
+          "bet-vir"
+        ]
+      ]
+    },
+    {
+      "id": "Libra",
+      "zodiacSign": "Libra",
+      "segments": [
+        [
+          "alf-lib",
+          "bet-lib"
+        ],
+        [
+          "bet-lib",
+          "gam-lib"
+        ],
+        [
+          "gam-lib",
+          "sig-lib"
+        ],
+        [
+          "sig-lib",
+          "alf-lib"
+        ]
+      ]
+    },
+    {
+      "id": "Scorpio",
+      "zodiacSign": "Scorpio",
+      "segments": [
+        [
+          "alf-sco",
+          "bet-sco"
+        ],
+        [
+          "bet-sco",
+          "del-sco"
+        ],
+        [
+          "del-sco",
+          "eps-sco"
+        ],
+        [
+          "eps-sco",
+          "lam-sco"
+        ]
+      ]
+    },
+    {
+      "id": "Sagittarius",
+      "zodiacSign": "Sagittarius",
+      "segments": [
+        [
+          "alf-sgr",
+          "gam-sgr"
+        ],
+        [
+          "gam-sgr",
+          "del-sgr"
+        ],
+        [
+          "del-sgr",
+          "eps-sgr"
+        ],
+        [
+          "eps-sgr",
+          "zet-sgr"
+        ],
+        [
+          "zet-sgr",
+          "gam-sgr"
+        ]
+      ]
+    },
+    {
+      "id": "Capricorn",
+      "zodiacSign": "Capricorn",
+      "segments": [
+        [
+          "alf-cap",
+          "bet-cap"
+        ],
+        [
+          "bet-cap",
+          "gam-cap"
+        ],
+        [
+          "gam-cap",
+          "del-cap"
+        ],
+        [
+          "del-cap",
+          "alf-cap"
+        ]
+      ]
+    },
+    {
+      "id": "Aquarius",
+      "zodiacSign": "Aquarius",
+      "segments": [
+        [
+          "alf-aqr",
+          "bet-aqr"
+        ],
+        [
+          "bet-aqr",
+          "gam-aqr"
+        ],
+        [
+          "gam-aqr",
+          "del-aqr"
+        ],
+        [
+          "del-aqr",
+          "eps-aqr"
+        ]
+      ]
+    },
+    {
+      "id": "Pisces",
+      "zodiacSign": "Pisces",
+      "segments": [
+        [
+          "alf-psc",
+          "bet-psc"
+        ],
+        [
+          "bet-psc",
+          "gam-psc"
+        ],
+        [
+          "gam-psc",
+          "del-psc"
+        ],
+        [
+          "del-psc",
+          "eps-psc"
+        ],
+        [
+          "eps-psc",
+          "alf-psc"
+        ]
+      ]
+    }
+  ],
+  "satellites": [
+    {
+      "id": "ISS",
+      "noradCatalogNumber": 25544
+    },
+    {
+      "id": "Tiangong",
+      "noradCatalogNumber": 48274
+    }
+  ]
+}

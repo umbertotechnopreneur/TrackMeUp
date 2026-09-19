@@ -31,7 +31,6 @@ public partial class App : Microsoft.UI.Xaml.Application
     private readonly AtomicResetService _atomicReset = new();
     private readonly DispatcherQueue _dispatcherQueue;
     private MainWindow? _window;
-    private ReportsWindow? _reportsWindow;
     private WorldClockWindow? _worldClockWindow;
     private SensorsWindow? _sensorsWindow;
     private bool _sensorsWindowOpening;
@@ -47,7 +46,6 @@ public partial class App : Microsoft.UI.Xaml.Application
     private ITrackMeUpApplication? _runtimeApplication;
     private ITrackMeUpApplication? _applicationFacade;
     private DashboardRefreshCoordinator? _dashboardRefreshCoordinator;
-    private bool _reportsOnly;
     private bool _searchWindowOpening;
     private bool _worldClockWindowOpening;
     private bool _worldMapWindowOpening;
@@ -69,11 +67,12 @@ public partial class App : Microsoft.UI.Xaml.Application
             _services.GetRequiredService<ILoggerFactory>().CreateLogger<WindowsToastNotificationService>());
         InitializeComponent();
         WindowPlacementService.PersistenceFailed += WindowPlacementService_PersistenceFailed;
+        WindowPlacementService.SnappingFailed += WindowPlacementService_SnappingFailed;
         UnhandledException += (_, eventArgs) => _logger.LogCritical(eventArgs.Exception, "Unhandled WinUI exception.");
         _logger.LogInformation("TrackMeUp process started. Architecture={Architecture}", RuntimeInformation.ProcessArchitecture);
     }
 
-    /// <summary>Routes launch modes to the CLI, background runtime, reports, or WinUI player.</summary>
+    /// <summary>Routes launch modes to the CLI, background runtime, or WinUI player.</summary>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
@@ -99,9 +98,6 @@ public partial class App : Microsoft.UI.Xaml.Application
                     return;
                 case LaunchMode.Background:
                     StartBackgroundRuntime(options);
-                    return;
-                case LaunchMode.Reports:
-                    StartReports(options);
                     return;
                 default:
                     StartUi(options);
@@ -148,25 +144,8 @@ public partial class App : Microsoft.UI.Xaml.Application
             case LaunchMode.Background:
                 // The registered process already owns startup; a duplicate headless request must not create a window.
                 return;
-            case LaunchMode.Reports:
-                if (_reportsOnly && _reportsWindow is null)
-                {
-                    // The original reports launch is still preparing storage; do not bypass its migration checks.
-                    return;
-                }
-
-                if (_window is null && !_reportsOnly)
-                {
-                    StartReports(options);
-                }
-                else
-                {
-                    ShowReportsWindow(StartOrConnectRuntime(), options.Theme);
-                }
-
-                return;
             case LaunchMode.Ui:
-                // Promote the existing background/report process while preserving explicit pause, safe-mode, and UI options.
+                // Promote the existing background process while preserving explicit pause, safe-mode, and UI options.
                 StartUi(options);
                 return;
             default:
@@ -192,7 +171,6 @@ public partial class App : Microsoft.UI.Xaml.Application
         try
         {
 
-            _reportsOnly = false;
             var application = StartOrConnectRuntime();
             // Read the previous session before newly created windows can persist their visibility.
             var initialSettings = await application.GetSettingsAsync(CancellationToken.None);
@@ -209,7 +187,6 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SettingsApplied += ApplyWorldClockWindowSettings;
             _window.SettingsApplied += ApplyTitleBarSettings;
             _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
-            _window.ReportsRequested += MainWindow_ReportsRequested;
             _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
             _window.SensorsRequested += MainWindow_SensorsRequested;
             _window.SearchRequested += MainWindow_SearchRequested;
@@ -321,9 +298,6 @@ public partial class App : Microsoft.UI.Xaml.Application
 
             switch (key)
             {
-                case WindowStateKeys.Reports:
-                    ShowReportsWindow(application, null);
-                    break;
                 case WindowStateKeys.Sensors:
                     await ShowSensorsWindowAsync(application);
                     break;
@@ -371,78 +345,6 @@ public partial class App : Microsoft.UI.Xaml.Application
             await _window.RestoreToolWindowsAsync(windowKeys);
         }
     }
-
-    private void StartReports(LaunchOptions options) => _ = StartReportsAsync(options);
-
-    private async Task StartReportsAsync(LaunchOptions options)
-    {
-        _reportsOnly = true;
-        var application = StartOrConnectRuntime();
-        try
-        {
-            var settings = await application.GetSettingsAsync(CancellationToken.None);
-            if (!settings.Succeeded || settings.Value is null)
-            {
-                _logger.LogWarning("Reports startup settings could not be loaded. Code={Code}", settings.Code);
-                await ShutdownRuntimeAsync();
-                Exit();
-                return;
-            }
-
-            ApplyTitleBarSettings(settings.Value);
-            var startup = await application.SetStartupEnabledAsync(
-                settings.Value.StartWithWindows,
-                CancellationToken.None);
-            if (!startup.Succeeded)
-            {
-                _logger.LogWarning("Windows startup registration reconciliation failed. Code={Code}", startup.Code);
-            }
-
-            var strings = new LocalizationService(settings.Value.UiLanguage);
-            var migrationTheme = (options.Theme ?? settings.Value.Theme) switch
-            {
-                "light" => ElementTheme.Light,
-                "dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
-            var migrationStatus = await application.GetScreenshotStorageMigrationStatusAsync(CancellationToken.None);
-            if (!migrationStatus.Succeeded || migrationStatus.Value is null)
-            {
-                NotifyScreenshotStorageMigrationFailure(strings, migrationStatus.Code);
-                await ShutdownRuntimeAsync();
-                Exit();
-                return;
-            }
-
-            // A reports-only launch has no owner window yet, but still exposes required file moves visibly.
-            var migration = migrationStatus.Value.Required
-                ? await _dialogs.ShowStandaloneScreenshotStorageMigrationAsync(application, migrationTheme, strings)
-                : await application.MigrateScreenshotStorageAsync(CancellationToken.None);
-            if (!migration.Succeeded)
-            {
-                _logger.LogError("Reports startup screenshot migration failed. Code={Code}", migration.Code);
-                NotifyScreenshotStorageMigrationFailure(strings, migration.Code);
-                await ShutdownRuntimeAsync();
-                Exit();
-                return;
-            }
-
-            ShowReportsWindow(application, options.Theme);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Reports startup preparation failed; no report window was opened.");
-            await ShutdownRuntimeAsync();
-            Exit();
-        }
-    }
-
-    private void NotifyScreenshotStorageMigrationFailure(LocalizationService strings, string code) =>
-        _windowsNotifications.TryShow(
-            strings.Translate("Dialog.DataMigration.Failed.Title"),
-            strings.Format("Dialog.DataMigration.Failed.Message", code));
-
-    private void MainWindow_ReportsRequested(object? sender, EventArgs eventArgs) => ShowReportsWindow(StartOrConnectRuntime(), null);
 
     private async void MainWindow_WorldClocksRequested(object? sender, EventArgs eventArgs) =>
         await ShowWorldClockWindowAsync(StartOrConnectRuntime());
@@ -538,20 +440,6 @@ public partial class App : Microsoft.UI.Xaml.Application
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
 
     private void MainWindow_ExitRequested(object? sender, EventArgs eventArgs) => _window?.Close();
-
-    private void ShowReportsWindow(ITrackMeUpApplication application, string? launchTheme)
-    {
-        if (_reportsWindow is not null)
-        {
-            _reportsWindow.SelectToday();
-            _reportsWindow.Activate();
-            return;
-        }
-
-        _reportsWindow = new ReportsWindow(application, launchTheme);
-        _reportsWindow.Closed += ReportsWindow_Closed;
-        _reportsWindow.Activate();
-    }
 
     private async void MainWindow_SensorsRequested(object? sender, EventArgs eventArgs) =>
         await ShowSensorsWindowAsync(StartOrConnectRuntime());
@@ -680,6 +568,18 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _uiLanguage = settings.UiLanguage;
         CustomTitleBarController.ApplyAutoHideSetting(settings.AutoHideTitleBar);
+        _applicationFacade?.ConfigureWindowSnapping(settings.WindowSnappingEnabled);
+    }
+
+    private async Task WindowPlacementService_SnappingFailed(Window owner, Exception exception)
+    {
+        _logger.LogError(exception, "Window snapping failed; native free movement remains available for this operation.");
+        if (Volatile.Read(ref _shutdownStarted) != 0 || owner.Content is not FrameworkElement { IsLoaded: true }) return;
+        var strings = new LocalizationService(_uiLanguage);
+        await _dialogs.ShowInformativeAsync(owner, DialogRequest.Informative(
+            strings.Translate("Operations.Status.Failed.Title"),
+            strings.Translate("Options.Window.Snapping.Failed"),
+            strings.Translate("Dialog.Ok")));
     }
 
     private async Task WindowPlacementService_PersistenceFailed(Window owner, string windowKey, Exception exception)
@@ -963,21 +863,6 @@ public partial class App : Microsoft.UI.Xaml.Application
         _screenshotsWindow.Activate();
     }
 
-    private async void ReportsWindow_Closed(object sender, WindowEventArgs args)
-    {
-        if (_reportsWindow is not null)
-        {
-            _reportsWindow.Closed -= ReportsWindow_Closed;
-            _reportsWindow = null;
-        }
-
-        if (_reportsOnly && _window is null)
-        {
-            await ShutdownRuntimeAsync();
-            Exit();
-        }
-    }
-
     private void WorldClockWindow_Closed(object sender, WindowEventArgs args)
     {
         if (_worldClockWindow is not null)
@@ -1006,7 +891,6 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SettingsApplied -= ApplyWorldClockWindowSettings;
             _window.SettingsApplied -= ApplyTitleBarSettings;
             _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
-            _window.ReportsRequested -= MainWindow_ReportsRequested;
             _window.WorldClocksRequested -= MainWindow_WorldClocksRequested;
             _window.SensorsRequested -= MainWindow_SensorsRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
@@ -1025,13 +909,6 @@ public partial class App : Microsoft.UI.Xaml.Application
             _quickSetupWindow.Closed -= QuickSetupWindow_Closed;
             _quickSetupWindow.Close();
             _quickSetupWindow = null;
-        }
-
-        if (_reportsWindow is not null)
-        {
-            _reportsWindow.Closed -= ReportsWindow_Closed;
-            _reportsWindow.Close();
-            _reportsWindow = null;
         }
 
         if (_sensorsWindow is not null)

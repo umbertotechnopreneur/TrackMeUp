@@ -1,6 +1,6 @@
 # TrackMeUp CLI: product and implementation notes
 
-The CLI lets you check your workday, control tracking, generate reports, and
+The CLI lets you check your workday, control tracking, inspect screenshots, and
 manage settings from PowerShell 7. It uses the same app services as the desktop
 UI, so privacy rules and data stay consistent.
 
@@ -30,7 +30,6 @@ you want to pause the shared tracker.
 | Check device readings | `system snapshot` |
 | Work with screenshots | `screenshot capture`, `screenshot latest`, `screenshot open-folder` |
 | Manage AI | `ai status`, `ai enable`, `ai disable`, `ai configure`, `ai key set`, `ai analyze` |
-| Review the day | `report today`, `report digest` |
 | Control saved data | `privacy ...`, `retention status`, `retention preview`, `retention run` |
 | Adjust settings | `config ...`, `plugins ...`, `startup ...` |
 | Get help or diagnose a problem | `--help`, `--version`, `runtime health`, `doctor`, `about` |
@@ -87,7 +86,7 @@ and serialize data changes in the application layer.
 
 The runtime owns settings and local history. Settings updates must be atomic;
 invalid input or unsupported stored state must fail clearly. Keep installation
-identity on records that need it for reports across computers, without exposing
+identity on records that need it for activity aggregation across computers, without exposing
 it unnecessarily in diagnostics.
 
 Use typed requests and shared results with stable codes, localizable message

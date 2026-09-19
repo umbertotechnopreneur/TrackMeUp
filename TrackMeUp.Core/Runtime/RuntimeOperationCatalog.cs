@@ -132,12 +132,6 @@ internal enum RuntimeOperation
     AiAnalyze,
     [RuntimeOperationWireName("report.query.v1")]
     ReportQueryV1,
-    [RuntimeOperationWireName("report.today")]
-    ReportToday,
-    [RuntimeOperationWireName("report.digest")]
-    ReportDigest,
-    [RuntimeOperationWireName("report.open_folder")]
-    ReportOpenFolder,
     [RuntimeOperationWireName("ui.open")]
     UiOpen,
     [RuntimeOperationWireName("privacy.list")]

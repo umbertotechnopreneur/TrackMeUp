@@ -76,11 +76,6 @@ public sealed class UtilityService
     public string FormatDuration(long seconds) => seconds >= 3600 ? $"{seconds / 3600} h {(seconds % 3600) / 60} min" : $"{Math.Max(0, seconds / 60)} min";
 
     /// <summary>
-    /// Returns reports directory and ensures it exists.
-    /// </summary>
-    public string ReportsDirectory => NormalizeDirectory(Path.Combine(AppDataDirectory, "reports"));
-
-    /// <summary>
     /// Returns a random, non-identifying installation identifier.
     /// </summary>
     public string GenerateInstallationId() => Guid.NewGuid().ToString("N");

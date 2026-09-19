@@ -67,7 +67,7 @@ their original time so they are not mistaken for a fresh measurement.
 ### Details for contributors
 
 One Core `HardwareTelemetryService` shares readings from an isolated
-LibreHardwareMonitor collector through `SystemSnapshot`. Capture, reports,
+LibreHardwareMonitor collector through `SystemSnapshot`. Capture,
 diagnostics, the CLI, and AI use this same model.
 
 `CollectionStartedAt` and `Timestamp` describe the collection window;
