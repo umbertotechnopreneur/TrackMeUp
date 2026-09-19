@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+using System.Globalization;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,6 +20,7 @@ public sealed partial class LocalSkyControl : UserControl
     private double _centerX;
     private double _centerY;
     private double _radius;
+    private readonly List<Rect> _labelBounds = [];
 
     /// <summary>Creates a passive sky chart without location, clock, or astronomy services.</summary>
     public LocalSkyControl()
@@ -32,6 +34,9 @@ public sealed partial class LocalSkyControl : UserControl
     {
         _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
+        ZenithColorStop.Color = ParseColor(snapshot.SkyAppearance.ZenithColor);
+        UpperSkyColorStop.Color = ParseColor(snapshot.SkyAppearance.UpperSkyColor);
+        HorizonColorStop.Color = ParseColor(snapshot.SkyAppearance.HorizonColor);
         UiLocalization.SetAccessibleLabel(SkyViewport, _strings.Translate("Celestial.Sky.ChartDescription"));
         Render();
     }
@@ -44,6 +49,7 @@ public sealed partial class LocalSkyControl : UserControl
     private void Render()
     {
         SkyCanvas.Children.Clear();
+        _labelBounds.Clear();
         var width = Math.Max(0d, SkyViewport.ActualWidth - 8d);
         var height = Math.Max(0d, SkyViewport.ActualHeight - 8d);
         if (_snapshot is null || width < 60d || height < 60d)
@@ -55,7 +61,7 @@ public sealed partial class LocalSkyControl : UserControl
         SkyCanvas.Height = height;
         _centerX = width / 2d;
         _centerY = height / 2d;
-        _radius = Math.Max(1d, (Math.Min(width, height) / 2d) - 26d);
+        _radius = Math.Max(1d, (Math.Min(width, height) / 2d) - 32d);
         var secondary = Brush("TextFillColorSecondaryBrush");
         var accent = Brush("AccentTextFillColorPrimaryBrush");
         var grid = Brush("DividerStrokeColorDefaultBrush");
@@ -68,7 +74,8 @@ public sealed partial class LocalSkyControl : UserControl
                 Height = radius * 2d,
                 Stroke = altitude == 0d ? accent : grid,
                 StrokeThickness = altitude == 0d ? 1.5d : 1d,
-                Opacity = altitude == 0d ? 0.65d : 0.8d
+                Opacity = altitude == 0d ? 0.65d : 0.6d,
+                StrokeDashArray = altitude == 0d ? [] : [2d, 4d]
             }, _centerX - radius, _centerY - radius);
             if (altitude > 0d && _radius > 130d)
             {
@@ -86,7 +93,8 @@ public sealed partial class LocalSkyControl : UserControl
                 X2 = edge.X,
                 Y2 = edge.Y,
                 Stroke = grid,
-                StrokeThickness = 0.6d
+                StrokeThickness = 0.6d,
+                StrokeDashArray = [2d, 5d]
             });
         }
 
@@ -119,7 +127,7 @@ public sealed partial class LocalSkyControl : UserControl
                 Y2 = to.Y,
                 Stroke = accent,
                 StrokeThickness = 1d,
-                Opacity = 0.42d
+                Opacity = 0.42d * _snapshot.SkyAppearance.StarOpacity
             });
         }
 
@@ -127,12 +135,20 @@ public sealed partial class LocalSkyControl : UserControl
         {
             var point = Project(star.AltitudeDegrees, star.AzimuthDegrees);
             var diameter = Math.Clamp(5d - (star.Magnitude ?? 2d), 2d, 7d);
-            var dot = new Ellipse { Width = diameter, Height = diameter, Fill = Brush("TextFillColorPrimaryBrush"), Opacity = 0.8d };
+            if (diameter > 3.4d)
+            {
+                Add(new Ellipse { Width = diameter * 4d, Height = diameter * 4d, Fill = Brush("TextFillColorPrimaryBrush"), Opacity = 0.035d * _snapshot.SkyAppearance.StarOpacity },
+                    point.X - (diameter * 2d), point.Y - (diameter * 2d));
+                Add(new Ellipse { Width = diameter * 2d, Height = diameter * 2d, Fill = accent, Opacity = 0.12d * _snapshot.SkyAppearance.StarOpacity },
+                    point.X - diameter, point.Y - diameter);
+            }
+
+            var dot = new Ellipse { Width = diameter, Height = diameter, Fill = Brush("TextFillColorPrimaryBrush"), Opacity = 0.8d * _snapshot.SkyAppearance.StarOpacity };
             UiLocalization.SetAccessibleLabel(dot, star.Name);
             Add(dot, point.X - (diameter / 2d), point.Y - (diameter / 2d));
         }
 
-        if (_radius > 130d)
+        if (_radius > 130d && _snapshot.SkyAppearance.StarOpacity > 0.15d)
         {
             foreach (var constellation in _snapshot.ConstellationSegments.GroupBy(segment => segment.ConstellationId))
             {
@@ -152,7 +168,25 @@ public sealed partial class LocalSkyControl : UserControl
         foreach (var body in _snapshot.Bodies.Where(body => body.IsAboveHorizon))
         {
             var point = Project(body.AltitudeDegrees, body.AzimuthDegrees);
-            var diameter = body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon ? 30d : 9d;
+            var diameter = body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon
+                ? (_radius > 170d ? 44d : 30d)
+                : (_radius > 170d ? 34d : 24d);
+            if (body.Kind == CelestialBodyKind.Sun)
+            {
+                var glowSize = Math.Clamp(_radius * 0.9d, 60d, 220d);
+                var glow = new RadialGradientBrush();
+                glow.GradientStops.Add(new GradientStop { Color = Windows.UI.Color.FromArgb(85, 255, 220, 141), Offset = 0d });
+                glow.GradientStops.Add(new GradientStop { Color = Windows.UI.Color.FromArgb(0, 255, 182, 102), Offset = 1d });
+                Add(new Ellipse
+                {
+                    Width = glowSize,
+                    Height = glowSize,
+                    Fill = glow,
+                    Opacity = _snapshot.SkyAppearance.SunGlowOpacity * SkyDecorations.Opacity,
+                    IsHitTestVisible = false
+                }, point.X - (glowSize / 2d), point.Y - (glowSize / 2d));
+            }
+
             Add(new Ellipse { Width = diameter * 2.5d, Height = diameter * 2.5d, Fill = accent, Opacity = 0.08d },
                 point.X - (diameter * 1.25d), point.Y - (diameter * 1.25d));
             FrameworkElement dot = body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon
@@ -163,13 +197,18 @@ public sealed partial class LocalSkyControl : UserControl
                     IsDaylight = body.Kind == CelestialBodyKind.Sun,
                     MoonPhaseAngleDegrees = _snapshot.MoonPhaseAngleDegrees
                 }
-                : new Ellipse { Width = diameter, Height = diameter, Fill = accent };
+                : new CelestialArtworkControl
+                {
+                    Width = diameter,
+                    Height = diameter,
+                    Kind = CelestialArtworkControl.ForPlanet(body.Kind)
+                };
             var name = _strings.Translate($"CelestialBody{body.Kind}");
             UiLocalization.SetAccessibleLabel(dot, _strings.Format("Celestial.Sky.BodyPosition", name, body.AltitudeDegrees, body.AzimuthDegrees));
             Add(dot, point.X - (diameter / 2d), point.Y - (diameter / 2d));
             if (_radius > 80d)
             {
-                Label(name, point.X + (diameter / 2d) + 5d, point.Y - 9d, Brush("TextFillColorPrimaryBrush"), 12d);
+                Label(name, point.X + (diameter / 2d) + 5d, point.Y - 9d, Brush("TextFillColorPrimaryBrush"), _radius > 170d ? 14d : 12d);
             }
         }
     }
@@ -182,6 +221,19 @@ public sealed partial class LocalSkyControl : UserControl
         return new Point(_centerX - (radius * Math.Sin(radians)), _centerY - (radius * Math.Cos(radians)));
     }
 
+    private static Windows.UI.Color ParseColor(string value)
+    {
+        if (value.Length != 7 || value[0] != '#')
+        {
+            throw new InvalidDataException("The sky palette must supply six-digit RGB colors.");
+        }
+
+        return Windows.UI.Color.FromArgb(255,
+            byte.Parse(value.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+            byte.Parse(value.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+            byte.Parse(value.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+    }
+
     private void Label(string text, double x, double y, Brush foreground, double size)
     {
         var label = new TextBlock
@@ -190,12 +242,40 @@ public sealed partial class LocalSkyControl : UserControl
             FontSize = size,
             FontWeight = FontWeights.Light,
             Foreground = foreground,
-            MaxWidth = Math.Max(20d, SkyCanvas.Width - Math.Max(0d, x)),
+            MaxWidth = Math.Max(20d, SkyCanvas.Width - 12d),
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsHitTestVisible = false
         };
-        Add(label, Math.Clamp(x, 0d, Math.Max(0d, SkyCanvas.Width - 20d)), Math.Clamp(y, 0d, Math.Max(0d, SkyCanvas.Height - 18d)));
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var width = Math.Min(SkyCanvas.Width, label.DesiredSize.Width + 8d);
+        var height = label.DesiredSize.Height + 2d;
+        var left = x + width > SkyCanvas.Width ? x - width - 12d : x;
+        left = Math.Clamp(left, 0d, Math.Max(0d, SkyCanvas.Width - width));
+        var top = Math.Clamp(y, 0d, Math.Max(0d, SkyCanvas.Height - height));
+        foreach (var offset in new[] { 0d, -height, height, -2d * height, 2d * height })
+        {
+            var candidateTop = Math.Clamp(top + offset, 0d, Math.Max(0d, SkyCanvas.Height - height));
+            var candidate = new Rect(left, candidateTop, width, height);
+            if (_labelBounds.All(existing => !Intersects(existing, candidate)))
+            {
+                top = candidateTop;
+                break;
+            }
+        }
+
+        _labelBounds.Add(new Rect(left, top, width, height));
+        Add(new Border
+        {
+            Child = label,
+            Padding = new Thickness(4, 1, 4, 1),
+            CornerRadius = new CornerRadius(4),
+            Background = LabelPalette.Background,
+            IsHitTestVisible = false
+        }, left, top);
     }
+
+    private static bool Intersects(Rect first, Rect second) =>
+        first.Left < second.Right && first.Right > second.Left && first.Top < second.Bottom && first.Bottom > second.Top;
 
     private void Add(FrameworkElement element, double x, double y)
     {

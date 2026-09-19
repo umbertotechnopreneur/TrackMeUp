@@ -55,7 +55,7 @@ public sealed class CelestialServiceTests
         Assert.DoesNotContain(snapshot.Agenda, item => item.Kind is CelestialEventKind.Sunrise or CelestialEventKind.Sunset
             or CelestialEventKind.CivilDawn or CelestialEventKind.CivilDusk
             or CelestialEventKind.MorningBlueHour or CelestialEventKind.EveningBlueHour);
-        Assert.Equal(5, snapshot.Agenda.Count);
+        Assert.Equal(5, snapshot.Agenda.Count(item => item.Kind is not CelestialEventKind.MoonPlanetConjunction and not CelestialEventKind.MeteorShower));
         var clock = LocalAstronomy.Calculate(90, 0, TimeZoneInfo.Utc, snapshot.InstantUtc);
         Assert.Null(clock.Sunrise);
         Assert.Null(clock.Sunset);
@@ -102,6 +102,8 @@ public sealed class CelestialServiceTests
         var json = JsonSerializer.Serialize(snapshot);
         var restored = JsonSerializer.Deserialize<CelestialSnapshot>(json)!;
         Assert.Equal(snapshot.InstantUtc, restored.InstantUtc);
+        Assert.Equal(snapshot.Zodiac.CurrentSign, restored.Zodiac.CurrentSign);
+        Assert.Equal(snapshot.SkyAppearance, restored.SkyAppearance);
         Assert.Equal(snapshot.Agenda, restored.Agenda);
         Assert.Equal(23, restored.Stars.Count);
         Assert.All(restored.Stars, star =>

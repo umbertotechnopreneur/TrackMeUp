@@ -6,7 +6,8 @@ This archive tracks completed development tasks for reference, historical alignm
 
 - [x] Implement independent local sky, astronomical agenda and Earth windows with existing Acrylic, light typography, accent colors and the shared auto-hiding title bar. Add an astronomy launcher menu and independent saved window placement/session restoration. Preserve the original day/night map surface; only the new Earth window switches flat/globe.
 - [x] Replace duplicate approximate solar/lunar calculations with one Core Astronomy Engine model and bounded caches, shared by existing clocks/Moon/maps and new views. Add source-attributed stars, computed events, offline Earth texture rendering, passive UI DTOs and versioned operations on the existing runtime.
-- [x] Validate x64 WinUI compilation (zero warnings/errors), 751 Core tests, 372 Presentation tests and 96 CLI tests. All ten localization catalogs have matching keys/placeholders. Required CI and installed visual checks remain tracked in todo.md.
+- [x] Add computed Moon/planet conjunctions, a source-attributed eight-shower meteor catalog with explicitly approximate peaks, and informational tropical zodiac sectors. Create twelve individual transparent zodiac PNGs, planetary/event artwork and a transparent landscape; record generation prompts and provenance. Render dawn/day/dusk/night with 24 smoothly interpolated palettes driven by actual solar elevation.
+- [x] Validate x64 WinUI compilation (zero warnings/errors), 770 Core tests, 372 Presentation tests and 96 CLI tests. All ten localization catalogs have matching keys/placeholders. CI results are recorded on PR #39; installed visual checks remain tracked in todo.md.
 
 ## [2026-09-19] Create a local installer and update the installed app
 

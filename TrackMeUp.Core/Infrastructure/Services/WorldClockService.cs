@@ -533,7 +533,7 @@ internal static class LocalAstronomy
     private static readonly Dictionary<DayKey, (DateTimeOffset? Rise, DateTimeOffset? Set)> DayCache = new();
 
     internal sealed record Result(DateTimeOffset? Sunrise, DateTimeOffset? Sunset, double SunAltitudeDegrees, double MoonPhaseAngleDegrees);
-    internal sealed record GlobalResult(double SunLatitude, double SunLongitude, double MoonLatitude, double MoonLongitude, double MoonPhaseAngleDegrees);
+    internal sealed record GlobalResult(double SunLatitude, double SunLongitude, double MoonLatitude, double MoonLongitude, double MoonPhaseAngleDegrees, double SolarEclipticLongitudeDegrees);
 
     /// <summary>Calculates apparent rise/set crossings for the city-local date and the shared lunar phase.</summary>
     public static Result Calculate(double latitude, double longitude, TimeZoneInfo timeZone, DateTimeOffset utcNow)
@@ -579,7 +579,7 @@ internal static class LocalAstronomy
             var moon = Astronomy.EquatorFromVector(Astronomy.RotateVector(rotation, Astronomy.GeoVector(Body.Moon, time, Aberration.Corrected)));
             var sidereal = Astronomy.SiderealTime(time);
             var result = new GlobalResult(sun.dec, SignedLongitude(15 * (sun.ra - sidereal)),
-                moon.dec, SignedLongitude(15 * (moon.ra - sidereal)), Astronomy.MoonPhase(time));
+                moon.dec, SignedLongitude(15 * (moon.ra - sidereal)), Astronomy.MoonPhase(time), Astronomy.SunPosition(time).elon);
             if (GlobalCache.Count >= 32) GlobalCache.Remove(GlobalCache.Keys.First());
             GlobalCache.Add(utcNow.UtcTicks, result);
             return result;

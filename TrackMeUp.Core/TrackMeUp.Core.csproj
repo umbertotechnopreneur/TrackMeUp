@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Localization\*.json" LogicalName="TrackMeUp.Localization.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Data\meteor-showers.json" LogicalName="TrackMeUp.Data.meteor-showers.json" />
     <EmbeddedResource Include="..\TrackMeUp.Hardware\PawnIO\distribution.json" LogicalName="TrackMeUp.PawnIO.distribution.json" />
   </ItemGroup>
 

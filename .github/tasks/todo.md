@@ -2,7 +2,7 @@
 
 ## Celestial desktop windows (2026-09-19)
 
-- [ ] Complete required PR checks for the three celestial windows. Local x64 WinUI build passed with zero warnings/errors; Core 751, Presentation 372 and CLI 96 tests passed. Shared phase calculations, polar/DST cases, map illumination, IPC and independent workspace restoration are covered.
+- Automated validation: x64 WinUI build passed with zero warnings/errors; Core 770, Presentation 372 and CLI 96 tests passed. Shared phases, polar/DST cases, map illumination, IPC, independent restoration, conjunctions, meteor estimates, zodiac boundaries and the 24 interpolated sky palettes are covered. Required CI results are recorded on PR #39.
 - [ ] Complete the README visual scenarios for local sky, agenda and the new planar/spherical Earth window: Acrylic/accent, disappearing title bars, resizing at 100–200% scaling and keyboard navigation. No installed-app visual validation has been performed in this task.
 
 ## Restore installed advanced sensors at startup (2026-09-19)

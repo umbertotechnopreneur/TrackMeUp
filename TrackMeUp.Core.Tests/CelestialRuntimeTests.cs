@@ -70,6 +70,9 @@ public sealed class CelestialRuntimeTests
         Assert.Equal(TimeSpan.FromHours(7), agendaEvent.StartLocal.Offset);
         Assert.Null(agendaEvent.EndUtc);
         Assert.Null(agendaEvent.EndLocal);
+        Assert.Equal(TropicalZodiacSign.Virgo, result.Value.Zodiac.CurrentSign);
+        Assert.Equal(12, result.Value.Zodiac.Signs.Count);
+        Assert.Equal(CelestialSkyPalette.Create(-30), result.Value.SkyAppearance);
     }
 
     public class CelestialRuntimeProxy : DispatchProxy
@@ -100,7 +103,13 @@ public sealed class CelestialRuntimeTests
                     new CelestialSnapshot(SkyRequest.CityId, "Ho Chi Minh City", "SE Asia Standard Time",
                         instant, local, 10.82, 106.63, 0, -30,
                         [new(CelestialBodyKind.Moon, 15, 90, true)], [new("star", "Star", 30, 45, null)], [],
-                        [new(CelestialEventKind.NewMoon, instant, null, local, null)])));
+                        [new(CelestialEventKind.NewMoon, instant, null, local, null)])
+                    {
+                        SkyAppearance = CelestialSkyPalette.Create(-30),
+                        Zodiac = new CelestialZodiacSnapshot(TropicalZodiacSign.Virgo, 176,
+                            System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(Enum.GetValues<TropicalZodiacSign>(),
+                                sign => new CelestialZodiacSector(sign, (int)sign * 30, ((int)sign + 1) * 30))))
+                    }));
             }
 
             if (targetMethod?.Name == nameof(IAsyncDisposable.DisposeAsync)) return ValueTask.CompletedTask;

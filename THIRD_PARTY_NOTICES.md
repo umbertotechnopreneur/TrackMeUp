@@ -74,8 +74,34 @@ motion and stellar aberration are omitted in this schematic bright-star view;
 precession, nutation and standard atmospheric refraction are applied. The
 connecting figures are project-authored schematic line segments, not IAU
 constellation boundaries. Astronomy Engine's MIT-licensed algorithms calculate
-the dynamic solar-system and event data; no predicted meteor-shower, satellite,
-conjunction or eclipse event is fabricated from a decorative image.
+the dynamic solar-system and event data; no event is inferred from a decorative image.
+
+## Curated annual meteor shower data and celestial event definitions
+
+`TrackMeUp.Core/Data/meteor-showers.json` contains eight selected activity periods
+and peak solar longitudes from the International Meteor Organization's
+[2026 Meteor Shower Calendar, Table 5](https://www.imo.net/files/meteor-shower/cal2026.pdf):
+Quadrantids, April Lyrids, eta-Aquariids, Perseids, Orionids, Leonids, Geminids and
+Ursids. This small selection of factual catalog parameters is attributed to IMO
+and the calendar's contributing observers; the calendar itself is not
+redistributed or relicensed. The upstream site's maintenance state can affect
+availability of the source link.
+
+Solar longitudes are evaluated in the catalog's J2000 ecliptic frame. Each entry
+is an approximate recurring annual peak, not a year-specific forecast,
+outburst prediction or promise of visibility. Fixed activity month/day ranges
+are approximate and may change as meteor streams evolve. Runtime presentation
+must preserve the expected/approximate distinction. The application uses this
+catalog parametrically across its supported 1900–2100 request range; historical
+or future activity is not asserted to have been observed or predicted by IMO.
+
+Moon/planet conjunctions are computed by Astronomy Engine as equality of
+geocentric ecliptic longitude, with geocentric angular separation reported at
+that instant. They are not necessarily the instant of minimum separation and
+do not establish local observability. Tropical zodiac signs are twelve equal
+30-degree sectors measured from the March equinox, distinct from the
+[IAU's astronomical constellation boundaries](https://iauarchive.eso.org/public/themes/constellations/).
+They are informational coordinate labels, not astrological predictions.
 
 ## Hardware telemetry source and optional driver
 

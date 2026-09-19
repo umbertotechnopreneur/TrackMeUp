@@ -17,6 +17,7 @@
         <Border x:Name="SecondaryPalette" Background="{ThemeResource TextFillColorSecondaryBrush}" Visibility="Collapsed" />
         <Border x:Name="AccentPalette" Background="{ThemeResource AccentTextFillColorPrimaryBrush}" Visibility="Collapsed" />
         <Border x:Name="DividerPalette" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Visibility="Collapsed" />
+        <Border x:Name="CardPalette" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Visibility="Collapsed" />
         <Grid x:Name="TitleBarDragRegion"
               Background="{ThemeResource TrackMeUpTitleBarOverlayBrush}"
               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
@@ -59,18 +60,49 @@
                 <controls:CelestialMapControl x:Name="EarthControl" Visibility="Collapsed" />
                 <ScrollViewer x:Name="AgendaScroll" Visibility="Collapsed" HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
-                    <StackPanel x:Name="AgendaRows" Spacing="4" />
+                    <StackPanel x:Name="AgendaRows" Spacing="10" Margin="0,0,6,0" />
                 </ScrollViewer>
                 <TextBlock x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
                            FontSize="18" FontWeight="Light" TextWrapping="Wrap" TextAlignment="Center" />
             </Grid>
             <StackPanel x:Name="Footer" Grid.Row="2" Spacing="6">
-                <ScrollViewer x:Name="BodiesScroll" HorizontalScrollBarVisibility="Auto"
+                <Border x:Name="BodiesFrame" CornerRadius="18" BorderThickness="1" Padding="14,10"
+                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="AboveHorizonText" FontSize="14" FontWeight="Light" />
+                        <ScrollViewer x:Name="BodiesScroll" HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled"
                               VerticalScrollMode="Disabled">
-                    <StackPanel x:Name="BodyItems" Orientation="Horizontal" Spacing="18" />
-                </ScrollViewer>
-                <TextBlock x:Name="StatusText" FontSize="12" FontWeight="Light" TextWrapping="Wrap"
+                            <StackPanel x:Name="BodyItems" Orientation="Horizontal" Spacing="22" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+                <Expander x:Name="ZodiacExpander" Visibility="Collapsed" HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch">
+                    <Expander.Header>
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Image x:Name="CurrentZodiacImage" Width="28" Height="28" AutomationProperties.AccessibilityView="Raw" />
+                            <TextBlock x:Name="ZodiacSummaryText" Grid.Column="1" FontWeight="Light" FontSize="14" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </Grid>
+                    </Expander.Header>
+                    <ScrollViewer x:Name="ZodiacContentScroll" MaxHeight="220" HorizontalScrollMode="Disabled"
+                                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="10">
+                        <ScrollViewer HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled"
+                                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="ZodiacItems" Orientation="Horizontal" Spacing="10" />
+                        </ScrollViewer>
+                        <TextBlock x:Name="ZodiacNoteText" FontSize="12" FontWeight="Light" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Expander>
+                <TextBlock x:Name="StatusText" FontSize="12" FontWeight="Light" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Grid>

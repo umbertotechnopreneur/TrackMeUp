@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using TrackMeUp.Application;
 using TrackMeUp.Controls;
@@ -75,6 +76,9 @@ internal sealed partial class CelestialWindow : Window
         GlobeSwitch.Visibility = _windowKey == WindowStateKeys.CelestialMap ? Visibility.Visible : Visibility.Collapsed;
         SkyZoom.Visibility = _windowKey == WindowStateKeys.LocalSky ? Visibility.Visible : Visibility.Collapsed;
         BodiesScroll.Visibility = _windowKey == WindowStateKeys.LocalSky ? Visibility.Visible : Visibility.Collapsed;
+        BodiesFrame.Visibility = BodiesScroll.Visibility;
+        AboveHorizonText.Text = T("Celestial.Sky.AboveHorizon");
+        ZodiacNoteText.Text = T("Celestial.Zodiac.Note");
         _controller.ApplySettings(settings);
     }
 
@@ -137,6 +141,7 @@ internal sealed partial class CelestialWindow : Window
         EarthControl.Visibility = Visibility.Collapsed;
         BodyItems.Children.Clear();
         StatusText.Text = string.Empty;
+        ZodiacExpander.Visibility = Visibility.Collapsed;
         if (!isMap && selectedCity is null)
         {
             SkyControl.Visibility = Visibility.Collapsed;
@@ -182,7 +187,7 @@ internal sealed partial class CelestialWindow : Window
                 await EarthControl.ApplyAsync(result.Value, _strings, cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
                 EarthControl.Visibility = Visibility.Visible;
-                StatusText.Text = T("Celestial.Map.Note");
+                SetStatus("Celestial.Map.Note");
             }
             else
             {
@@ -200,13 +205,14 @@ internal sealed partial class CelestialWindow : Window
                     SkyControl.Apply(result.Value, _strings);
                     SkyControl.Visibility = Visibility.Visible;
                     RenderBodies(result.Value);
-                    StatusText.Text = T(result.Value.SunAltitudeDegrees >= 0d ? "Celestial.Sky.DaylightNote" : "Celestial.Sky.NightNote");
+                    SetStatus(result.Value.SunAltitudeDegrees >= 0d ? "Celestial.Sky.DaylightNote" : "Celestial.Sky.NightNote");
                 }
                 else
                 {
                     RenderAgenda(result.Value);
+                    RenderZodiac(result.Value.Zodiac);
                     AgendaScroll.Visibility = Visibility.Visible;
-                    StatusText.Text = T("Celestial.Agenda.Note");
+                    SetStatus("Celestial.Agenda.Note");
                 }
             }
         }
@@ -235,39 +241,49 @@ internal sealed partial class CelestialWindow : Window
     private void RenderBodies(CelestialSnapshot snapshot)
     {
         BodyItems.Children.Clear();
-        BodyItems.Children.Add(new TextBlock
-        {
-            Text = T("Celestial.Sky.AboveHorizon"),
-            FontWeight = FontWeights.Light,
-            FontSize = 13,
-            VerticalAlignment = VerticalAlignment.Center,
-            Foreground = ThemeBrush("TextFillColorSecondaryBrush")
-        });
         foreach (var body in snapshot.Bodies.Where(body => body.IsAboveHorizon))
         {
             var name = T($"CelestialBody{body.Kind}");
             var label = new TextBlock
             {
-                Text = $"{name}  {body.AltitudeDegrees.ToString("0°", _strings.Culture)}",
-                FontSize = 14,
+                Text = name,
+                FontSize = 15,
                 FontWeight = FontWeights.Light,
-                Foreground = ThemeBrush("AccentTextFillColorPrimaryBrush")
+                Foreground = ThemeBrush("TextFillColorPrimaryBrush")
             };
             UiLocalization.SetAccessibleLabel(label, _strings.Format("Celestial.Sky.BodyPosition", name, body.AltitudeDegrees, body.AzimuthDegrees));
-            var chip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            var chip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             if (body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon)
             {
                 chip.Children.Add(new CelestialPhaseControl
                 {
-                    Width = 30,
-                    Height = 30,
+                    Width = 44,
+                    Height = 44,
                     IsDaylight = body.Kind == CelestialBodyKind.Sun,
                     MoonPhaseAngleDegrees = snapshot.MoonPhaseAngleDegrees
                 });
             }
+            else
+            {
+                chip.Children.Add(new CelestialArtworkControl
+                {
+                    Width = 44,
+                    Height = 44,
+                    Kind = CelestialArtworkControl.ForPlanet(body.Kind)
+                });
+            }
 
             label.VerticalAlignment = VerticalAlignment.Center;
-            chip.Children.Add(label);
+            var caption = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };
+            caption.Children.Add(label);
+            caption.Children.Add(new TextBlock
+            {
+                Text = body.AltitudeDegrees.ToString("0°", _strings.Culture),
+                FontWeight = FontWeights.Light,
+                FontSize = 12,
+                Foreground = ThemeBrush("AccentTextFillColorPrimaryBrush")
+            });
+            chip.Children.Add(caption);
             BodyItems.Children.Add(chip);
         }
     }
@@ -283,18 +299,18 @@ internal sealed partial class CelestialWindow : Window
             {
                 AgendaRows.Children.Add(new TextBlock
                 {
-                    Text = item.StartLocal.ToString("dddd d MMMM", _strings.Culture),
+                    Text = item.StartLocal.ToString("dddd d MMMM yyyy", _strings.Culture),
                     FontSize = 13,
                     FontWeight = FontWeights.Light,
-                    Margin = new Thickness(30, 16, 0, 6),
+                    Margin = new Thickness(30, 12, 0, 2),
                     Foreground = ThemeBrush("TextFillColorSecondaryBrush")
                 });
                 previousDate = date;
             }
 
-            var row = new Grid { ColumnSpacing = 12, MinHeight = 66 };
+            var row = new Grid { ColumnSpacing = 14, MinHeight = 94 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(68) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.Children.Add(new Border
             {
@@ -309,13 +325,25 @@ internal sealed partial class CelestialWindow : Window
                 VerticalAlignment = VerticalAlignment.Center,
                 Fill = ThemeBrush("AccentTextFillColorPrimaryBrush")
             });
+            var surface = new Border
+            {
+                CornerRadius = new CornerRadius(18),
+                Background = ThemeBrush("CardBackgroundFillColorDefaultBrush"),
+                BorderBrush = ThemeBrush("DividerStrokeColorDefaultBrush"),
+                BorderThickness = new Thickness(1),
+                Opacity = 0.45d,
+                IsHitTestVisible = false
+            };
+            Grid.SetColumn(surface, 1);
+            Grid.SetColumnSpan(surface, 2);
+            row.Children.Add(surface);
             FrameworkElement illustration;
             if (item.Kind is CelestialEventKind.NewMoon or CelestialEventKind.FirstQuarter or CelestialEventKind.FullMoon or CelestialEventKind.LastQuarter)
             {
                 illustration = new CelestialPhaseControl
                 {
-                    Width = 46,
-                    Height = 46,
+                    Width = 60,
+                    Height = 60,
                     IsDaylight = false,
                     MoonPhaseAngleDegrees = item.Kind switch
                     {
@@ -326,41 +354,101 @@ internal sealed partial class CelestialWindow : Window
                     }
                 };
             }
-            else if (item.Kind is CelestialEventKind.Sunrise or CelestialEventKind.Sunset)
+            else if (item.Kind == CelestialEventKind.MoonPlanetConjunction)
             {
-                illustration = new CelestialPhaseControl { Width = 46, Height = 46, IsDaylight = true };
+                var relatedBody = item.RelatedBody ?? throw new InvalidDataException("A conjunction must identify its related planet.");
+                var pair = new Grid { Width = 64, Height = 60 };
+                pair.Children.Add(new CelestialPhaseControl
+                {
+                    Width = 38,
+                    Height = 38,
+                    IsDaylight = false,
+                    MoonPhaseAngleDegrees = item.MoonPhaseAngleDegrees ?? throw new InvalidDataException("A conjunction must contain its lunar phase at the event instant."),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Bottom
+                });
+                pair.Children.Add(new CelestialArtworkControl
+                {
+                    Width = 32,
+                    Height = 32,
+                    Kind = CelestialArtworkControl.ForPlanet(relatedBody),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top
+                });
+                illustration = pair;
+            }
+            else if (item.Kind == CelestialEventKind.MeteorShower)
+            {
+                illustration = new Image
+                {
+                    Width = 60,
+                    Height = 60,
+                    Stretch = Stretch.Uniform,
+                    Source = new BitmapImage(new Uri("ms-appx:///Assets/Celestial/Artwork/meteor-shower-v1.png"))
+                };
             }
             else
             {
-                illustration = new FontIcon
+                illustration = new CelestialArtworkControl
                 {
-                    Glyph = item.Kind is CelestialEventKind.MarchEquinox or CelestialEventKind.JuneSolstice
-                        or CelestialEventKind.SeptemberEquinox or CelestialEventKind.DecemberSolstice ? "\uE734" : "\uE706",
-                    FontSize = 26,
-                    Foreground = ThemeBrush("AccentTextFillColorPrimaryBrush")
+                    Width = 60,
+                    Height = 60,
+                    Kind = item.Kind switch
+                    {
+                        CelestialEventKind.Sunrise => CelestialArtworkKind.Sunrise,
+                        CelestialEventKind.Sunset => CelestialArtworkKind.Sunset,
+                        CelestialEventKind.MorningBlueHour or CelestialEventKind.EveningBlueHour => CelestialArtworkKind.BlueHour,
+                        CelestialEventKind.CivilDawn or CelestialEventKind.CivilDusk => CelestialArtworkKind.Twilight,
+                        _ => CelestialArtworkKind.Seasons
+                    }
                 };
             }
 
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(illustration, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
             Grid.SetColumn(illustration, 1);
             row.Children.Add(illustration);
-            var details = new StackPanel { Spacing = 4, Margin = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
+            var details = new StackPanel { Spacing = 7, Margin = new Thickness(0, 12, 12, 12), VerticalAlignment = VerticalAlignment.Center };
             details.Children.Add(new TextBlock
             {
-                Text = T($"CelestialEvent{item.Kind}"),
+                Text = EventTitle(item),
                 FontWeight = FontWeights.Light,
                 FontSize = 19,
                 TextWrapping = TextWrapping.Wrap
             });
             details.Children.Add(new TextBlock
             {
-                Text = item.EndLocal is { } end
+                Text = item.IsApproximate ? T("Celestial.Agenda.ApproximatePeak") : item.EndLocal is { } end
                     ? $"{item.StartLocal.ToString("t", _strings.Culture)} – {end.ToString("t", _strings.Culture)}"
                     : item.StartLocal.ToString("t", _strings.Culture),
                 FontWeight = FontWeights.Light,
                 FontSize = 13,
                 Foreground = ThemeBrush("TextFillColorSecondaryBrush")
             });
+            if (item.Kind == CelestialEventKind.MoonPlanetConjunction)
+            {
+                details.Children.Add(new TextBlock
+                {
+                    Text = _strings.Format("Celestial.Agenda.ConjunctionDetail",
+                        item.SeparationDegrees ?? throw new InvalidDataException("A conjunction must contain its angular separation.")),
+                    FontWeight = FontWeights.Light,
+                    FontSize = 11,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = ThemeBrush("TextFillColorSecondaryBrush")
+                });
+            }
+            else if (item.Kind == CelestialEventKind.MeteorShower)
+            {
+                details.Children.Add(new TextBlock
+                {
+                    Text = _strings.Format("Celestial.Agenda.MeteorActivity",
+                        (item.ActivityStartDate ?? throw new InvalidDataException("A meteor shower must contain its activity start.")).ToString("d MMM yyyy", _strings.Culture),
+                        (item.ActivityEndDate ?? throw new InvalidDataException("A meteor shower must contain its activity end.")).ToString("d MMM yyyy", _strings.Culture)),
+                    FontWeight = FontWeights.Light,
+                    FontSize = 11,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = ThemeBrush("TextFillColorSecondaryBrush")
+                });
+            }
             Grid.SetColumn(details, 2);
             row.Children.Add(details);
             AgendaRows.Children.Add(row);
@@ -371,6 +459,68 @@ internal sealed partial class CelestialWindow : Window
             EmptyState.Text = T("Celestial.Agenda.NoEvents");
             EmptyState.Visibility = Visibility.Visible;
         }
+    }
+
+    private string EventTitle(CelestialAgendaEvent item) => item.Kind switch
+    {
+        CelestialEventKind.MoonPlanetConjunction => _strings.Format("Celestial.Agenda.ConjunctionTitle",
+            T($"CelestialBody{item.RelatedBody ?? throw new InvalidDataException("A conjunction must identify its related planet.")}")),
+        CelestialEventKind.MeteorShower => T($"CelestialMeteor{item.MeteorShowerId ?? throw new InvalidDataException("A meteor shower must identify its catalog entry.")}"),
+        _ => T($"CelestialEvent{item.Kind}")
+    };
+
+    private void RenderZodiac(CelestialZodiacSnapshot zodiac)
+    {
+        ZodiacExpander.Visibility = Visibility.Visible;
+        ZodiacSummaryText.Text = _strings.Format("Celestial.Zodiac.Current", T($"CelestialZodiac{zodiac.CurrentSign}"));
+        CurrentZodiacImage.Source = ZodiacImage(zodiac.CurrentSign);
+        UiLocalization.SetAccessibleLabel(ZodiacExpander, ZodiacSummaryText.Text);
+        ZodiacItems.Children.Clear();
+        foreach (var sector in zodiac.Signs)
+        {
+            var current = sector.Sign == zodiac.CurrentSign;
+            var name = T($"CelestialZodiac{sector.Sign}");
+            var content = new StackPanel { Spacing = 6 };
+            var image = new Image { Source = ZodiacImage(sector.Sign), Width = 44, Height = 44 };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAccessibilityView(image, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+            content.Children.Add(image);
+            content.Children.Add(new TextBlock
+            {
+                Text = name,
+                FontSize = 12,
+                FontWeight = FontWeights.Light,
+                TextAlignment = TextAlignment.Center,
+                Foreground = ThemeBrush(current ? "AccentTextFillColorPrimaryBrush" : "TextFillColorPrimaryBrush")
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = $"{sector.StartLongitudeDegrees:0}°–{sector.EndLongitudeDegrees:0}°",
+                FontSize = 10,
+                FontWeight = FontWeights.Light,
+                TextAlignment = TextAlignment.Center,
+                Foreground = ThemeBrush("TextFillColorSecondaryBrush")
+            });
+            var tile = new Border
+            {
+                Child = content,
+                MinWidth = 78,
+                Padding = new Thickness(10, 8, 10, 8),
+                CornerRadius = new CornerRadius(14),
+                BorderThickness = new Thickness(current ? 1.5d : 1d),
+                BorderBrush = ThemeBrush(current ? "AccentTextFillColorPrimaryBrush" : "DividerStrokeColorDefaultBrush")
+            };
+            UiLocalization.SetAccessibleLabel(tile, current ? ZodiacSummaryText.Text : name);
+            ZodiacItems.Children.Add(tile);
+        }
+    }
+
+    private static BitmapImage ZodiacImage(TropicalZodiacSign sign) =>
+        new(new Uri($"ms-appx:///Assets/Celestial/Zodiac/{sign.ToString().ToLowerInvariant()}.png"));
+
+    private void SetStatus(string key)
+    {
+        StatusText.Text = T(key);
+        UiLocalization.SetAccessibleLabel(StatusText, StatusText.Text);
     }
 
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -384,6 +534,8 @@ internal sealed partial class CelestialWindow : Window
             TitleBarText.Visibility = e.NewSize.Width < 280d ? Visibility.Collapsed : Visibility.Visible;
             ReferenceInstantText.Visibility = e.NewSize.Height < 260d ? Visibility.Collapsed : Visibility.Visible;
             SkyZoom.Width = e.NewSize.Width < 360d ? 60d : 96d;
+            ZodiacSummaryText.MaxWidth = Math.Max(60d, e.NewSize.Width - 160d);
+            ZodiacContentScroll.MaxHeight = Math.Clamp(e.NewSize.Height * 0.3d, 80d, 220d);
             Footer.Visibility = e.NewSize.Height < 300d ? Visibility.Collapsed : Visibility.Visible;
         }
 
@@ -435,6 +587,7 @@ internal sealed partial class CelestialWindow : Window
         "TextFillColorSecondaryBrush" => SecondaryPalette.Background,
         "AccentTextFillColorPrimaryBrush" => AccentPalette.Background,
         "DividerStrokeColorDefaultBrush" => DividerPalette.Background,
+        "CardBackgroundFillColorDefaultBrush" => CardPalette.Background,
         _ => throw new ArgumentException("Unsupported celestial theme brush.", nameof(key))
     };
 

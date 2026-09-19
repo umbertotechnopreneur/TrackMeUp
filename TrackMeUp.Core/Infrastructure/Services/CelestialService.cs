@@ -116,7 +116,11 @@ public static class CelestialService
 
         return new CelestialSnapshot(city.Id, city.Name, city.TimeZoneId, instant, TimeZoneInfo.ConvertTime(instant, zone),
             city.Latitude, city.Longitude, LocalAstronomy.CalculateGlobal(instant).MoonPhaseAngleDegrees, bodies[0].AltitudeDegrees,
-            Array.AsReadOnly(bodies), Array.AsReadOnly(stars), Array.AsReadOnly(Segments), BuildAgenda(time, observer, zone, cancellationToken));
+            Array.AsReadOnly(bodies), Array.AsReadOnly(stars), Array.AsReadOnly(Segments), BuildAgenda(time, observer, zone, cancellationToken))
+        {
+            Zodiac = CelestialEventService.BuildZodiac(instant),
+            SkyAppearance = CelestialSkyPalette.Create(bodies[0].AltitudeDegrees)
+        };
     }
 
     private static IReadOnlyList<CelestialAgendaEvent> BuildAgenda(AstroTime time, Observer observer, TimeZoneInfo zone, CancellationToken cancellationToken)
@@ -160,6 +164,7 @@ public static class CelestialService
 
         var nextSeason = seasons.Where(item => item.Time.ut >= time.ut).MinBy(item => item.Time.ut);
         AddEvent(nextSeason.Kind, nextSeason.Time);
+        events.AddRange(CelestialEventService.BuildUpcoming(new DateTimeOffset(time.ToUtcDateTime()), zone, cancellationToken));
         return Array.AsReadOnly(events.OrderBy(item => item.StartUtc).ThenBy(item => item.Kind).ToArray());
 
         void AddEvent(CelestialEventKind kind, AstroTime start, AstroTime? finish = null)

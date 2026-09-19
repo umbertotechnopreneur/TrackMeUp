@@ -63,6 +63,15 @@ NASA and SDO science-team credits, source links, and usage guidance recorded in
 
 ## First-party AI-generated asset record
 
+The decorative planetary/event atlas, transparent horizon and meteor illustration in
+`TrackMeUp/Assets/Celestial/Artwork/`, and the twelve informational zodiac glyphs in
+`TrackMeUp/Assets/Celestial/Zodiac/`, were generated at the owner's request for the
+celestial windows. They are illustrative interface artwork, not NASA observations
+or live sky data. Generation prompts, unmodified output dimensions and checksums
+are recorded in the adjacent `PROVENANCE.md` files. These records do not change
+the separate licensing of existing photographs, geographic textures or branding.
+
+
 The project owner has confirmed that the first-party TrackMeUp visual assets
 listed in
 [`AI_ASSET_PROVENANCE.md`](design/branding/AI_ASSET_PROVENANCE.md) were created

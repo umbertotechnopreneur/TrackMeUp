@@ -22,18 +22,38 @@ public enum CelestialEventKind
 {
     Sunrise, Sunset, CivilDawn, CivilDusk, MorningBlueHour, EveningBlueHour,
     NewMoon, FirstQuarter, FullMoon, LastQuarter,
-    MarchEquinox, JuneSolstice, SeptemberEquinox, DecemberSolstice
+    MarchEquinox, JuneSolstice, SeptemberEquinox, DecemberSolstice,
+    MoonPlanetConjunction, MeteorShower
 }
 
-/// <summary>Contains event instants and city-local offsets; interval endpoints are null for instantaneous events.</summary>
+/// <summary>Contains event instants and city-local offsets; conjunctions are global longitude equality, and meteor activity dates accompany approximate recurring peaks.</summary>
 public sealed record CelestialAgendaEvent(
     CelestialEventKind Kind, DateTimeOffset StartUtc, DateTimeOffset? EndUtc,
-    DateTimeOffset StartLocal, DateTimeOffset? EndLocal);
+    DateTimeOffset StartLocal, DateTimeOffset? EndLocal,
+    CelestialBodyKind? RelatedBody = null, string? MeteorShowerId = null, double? SeparationDegrees = null,
+    DateOnly? ActivityStartDate = null, DateOnly? ActivityEndDate = null, bool IsApproximate = false,
+    double? MoonPhaseAngleDegrees = null);
 
-/// <summary>Contains one source-backed local sky and a sorted agenda: solar events over 48 hours, four lunar quarters, and the next season.</summary>
+/// <summary>Identifies equal tropical zodiac sectors beginning at the March equinox; these are not IAU constellations.</summary>
+public enum TropicalZodiacSign { Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpio, Sagittarius, Capricorn, Aquarius, Pisces }
+
+/// <summary>Describes one 30-degree tropical sector, inclusive at its start and exclusive at its end.</summary>
+public sealed record CelestialZodiacSector(TropicalZodiacSign Sign, double StartLongitudeDegrees, double EndLongitudeDegrees);
+
+/// <summary>Contains the current solar tropical sector and the complete informational zodiac; no predictions are inferred.</summary>
+public sealed record CelestialZodiacSnapshot(TropicalZodiacSign CurrentSign, double SunLongitudeDegrees, IReadOnlyList<CelestialZodiacSector> Signs);
+
+/// <summary>Contains a local sky, tropical zodiac and sorted agenda: 48-hour solar events, lunar quarters, next season, 35-day conjunctions and next annual meteor peaks.</summary>
 public sealed record CelestialSnapshot(
     string CityId, string CityName, string TimeZoneId,
     DateTimeOffset InstantUtc, DateTimeOffset LocalTime,
     double Latitude, double Longitude, double MoonPhaseAngleDegrees, double SunAltitudeDegrees,
     IReadOnlyList<CelestialBodyPosition> Bodies, IReadOnlyList<CelestialStarPosition> Stars,
-    IReadOnlyList<CelestialConstellationSegment> ConstellationSegments, IReadOnlyList<CelestialAgendaEvent> Agenda);
+    IReadOnlyList<CelestialConstellationSegment> ConstellationSegments, IReadOnlyList<CelestialAgendaEvent> Agenda)
+{
+    /// <summary>Provides the current tropical solar sector independently of astronomical constellation figures.</summary>
+    public required CelestialZodiacSnapshot Zodiac { get; init; }
+
+    /// <summary>Contains the interpolated city-specific solar-altitude sky palette.</summary>
+    public required CelestialSkyAppearance SkyAppearance { get; init; }
+}
