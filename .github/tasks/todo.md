@@ -1,5 +1,9 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Compact sensor background graphs (2026-09-19)
+
+- [ ] Verify the README background-graph scenario in the installed app after the next deployment. The implementation overlays each trace behind the component's text and shares compact row heights with pagination; the currently installed MSIX predates this change. The updated layout scenarios are included for required PR CI; no additional local test run or installation was requested.
+
 ## Activity calendar startup correction (2026-09-19)
 
 - [ ] Verify the calendar remains closed at startup even with a saved open flag, while explicit menu opening and other workspace restoration still work. `main` and `origin/main` were aligned at `9b31eb1`; both still classified the calendar as restorable. The correction removes it from session restoration and the main-window startup action. The user requested adding this fix only to the PR: no additional local tests or reinstall were run, and the installed app still has the prior calendar behavior. Required CI and a future installed-app check remain pending.

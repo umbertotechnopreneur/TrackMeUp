@@ -2,6 +2,14 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Place sensor graphs behind compact component rows
+
+- [x] Render each activity trace as a muted background behind identity, value and temperature, removing the separate graph row/column. Keep battery charge in a slim level bar and hide decorative traces in high contrast.
+- [x] Share the 148 px narrow / 96 px wide row heights with pagination, so a 476 × 476 logical-pixel track area fits three devices. Preserve missing-sample gaps and accessible collection status.
+- [x] Update existing layout scenarios and the README manual checklist. The x64 Debug app build passed with zero warnings/errors; formatting verification and scoped diff review passed. No further local test run or app installation was performed; required PR CI and the installed-app visual check remain pending.
+
+---
+
 ## [2026-09-19] Keep the activity calendar closed at startup
 
 - [x] Confirm local `main`, `origin/main`, and the installed app's base commit match `9b31eb1`; the unwanted restore behavior was present on main.

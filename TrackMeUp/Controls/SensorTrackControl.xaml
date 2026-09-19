@@ -5,6 +5,7 @@
         <ResourceDictionary>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
+                    <x:Double x:Key="SensorTraceOpacity">0.24</x:Double>
                     <SolidColorBrush x:Key="SensorCpuBrush" Color="#FFA34910"/>
                     <SolidColorBrush x:Key="SensorMemoryBrush" Color="#FF7F399A"/>
                     <SolidColorBrush x:Key="SensorGpuBrush" Color="#FF007376"/>
@@ -12,6 +13,7 @@
                     <SolidColorBrush x:Key="SensorBatteryBrush" Color="#FF29742F"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
+                    <x:Double x:Key="SensorTraceOpacity">0.32</x:Double>
                     <SolidColorBrush x:Key="SensorCpuBrush" Color="#FFFFAB5E"/>
                     <SolidColorBrush x:Key="SensorMemoryBrush" Color="#FFD594E9"/>
                     <SolidColorBrush x:Key="SensorGpuBrush" Color="#FF58DCD8"/>
@@ -19,6 +21,7 @@
                     <SolidColorBrush x:Key="SensorBatteryBrush" Color="#FF8BE184"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
+                    <x:Double x:Key="SensorTraceOpacity">0</x:Double>
                     <SolidColorBrush x:Key="SensorCpuBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
                     <SolidColorBrush x:Key="SensorMemoryBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
                     <SolidColorBrush x:Key="SensorGpuBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
@@ -34,9 +37,16 @@
             <ColumnDefinition x:Name="NameColumn" Width="280"/>
             <ColumnDefinition x:Name="ValueColumn" Width="130"/>
             <ColumnDefinition x:Name="TemperatureColumn" Width="150"/>
-            <ColumnDefinition x:Name="ChartColumn" Width="*"/>
         </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions><RowDefinition x:Name="HeaderRow" Height="*"/><RowDefinition x:Name="MetricsRow" Height="0"/><RowDefinition x:Name="GraphRow" Height="0"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition x:Name="HeaderRow" Height="*"/><RowDefinition x:Name="MetricsRow" Height="0"/></Grid.RowDefinitions>
+        <!-- The trace is a decorative background: it reserves no row or column and never intercepts input. -->
+        <Grid x:Name="TraceHost" Grid.ColumnSpan="4" Grid.RowSpan="2" IsHitTestVisible="False" Opacity="{ThemeResource SensorTraceOpacity}" AutomationProperties.AccessibilityView="Raw">
+            <Canvas x:Name="TraceCanvas" SizeChanged="TraceCanvas_SizeChanged" AutomationProperties.AccessibilityView="Raw"/>
+        </Grid>
+        <Border x:Name="LevelBarTrack" Grid.Column="1" Grid.ColumnSpan="3" Grid.RowSpan="2" Height="3" VerticalAlignment="Bottom" CornerRadius="1.5"
+            Background="{ThemeResource DividerStrokeColorDefaultBrush}" Visibility="Collapsed" IsHitTestVisible="False" SizeChanged="LevelBarTrack_SizeChanged" AutomationProperties.AccessibilityView="Raw">
+            <Border x:Name="LevelBarFill" HorizontalAlignment="Left" CornerRadius="1.5"/>
+        </Border>
         <FontIcon x:Name="DeviceIcon" FontFamily="Segoe Fluent Icons" FontSize="27" VerticalAlignment="Center" AutomationProperties.AccessibilityView="Raw"/>
         <StackPanel x:Name="IdentityPanel" Grid.Column="1" Spacing="3" VerticalAlignment="Center">
             <TextBlock x:Name="CategoryText" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
@@ -54,16 +64,6 @@
                 <TextBlock x:Name="TemperatureText" FontSize="18" FontWeight="SemiBold"/>
             </StackPanel>
             <TextBlock x:Name="TemperatureStatus" FontSize="11" TextWrapping="Wrap" MaxLines="2" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-        </StackPanel>
-        <StackPanel x:Name="GraphPanel" Grid.Column="4" VerticalAlignment="Center" Spacing="4">
-            <Grid x:Name="TraceHost" Height="64">
-                <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1"/>
-                <Canvas x:Name="TraceCanvas" SizeChanged="TraceCanvas_SizeChanged" AutomationProperties.AccessibilityView="Raw"/>
-                <TextBlock x:Name="NoTraceText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-            </Grid>
-            <Border x:Name="LevelBarTrack" Height="6" CornerRadius="3" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Visibility="Collapsed" SizeChanged="LevelBarTrack_SizeChanged" AutomationProperties.AccessibilityView="Raw">
-                <Border x:Name="LevelBarFill" HorizontalAlignment="Left" CornerRadius="3"/>
-            </Border>
         </StackPanel>
     </Grid>
 </UserControl>

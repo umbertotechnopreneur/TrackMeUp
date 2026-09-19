@@ -45,9 +45,10 @@ public sealed partial class SensorTrackControl : UserControl
         TemperatureIcon.Visibility = row.HasTemperature ? Visibility.Visible : Visibility.Collapsed;
         TemperatureStatus.Text = strings.Translate("Sensors.TemperatureUnavailable");
         TemperatureStatus.Visibility = !row.HasTemperature && row.Category != "Memory" ? Visibility.Visible : Visibility.Collapsed;
-        NoTraceText.Text = row.Percent is null ? strings.Translate("Common.NotAvailable") : strings.Translate("Sensors.Collecting");
+        var traceStatus = row.Category != "Battery" && row.Percent.HasValue && points.Count(point => point.Value.HasValue) < 2
+            ? strings.Translate("Sensors.Collecting") : string.Empty;
         var updated = string.Format(strings.Culture, strings.Translate("Hardware.DeviceUpdated"), row.SampledAt.ToLocalTime().ToString("T", strings.Culture));
-        var description = string.Join(" · ", new[] { CategoryText.Text, row.Name, row.Value, row.Temperature, row.Details, updated }.Where(text => text.Length > 0));
+        var description = string.Join(" · ", new[] { CategoryText.Text, row.Name, row.Value, row.Temperature, row.Details, updated, traceStatus }.Where(text => text.Length > 0));
         AutomationProperties.SetName(this, description);
         ToolTipService.SetToolTip(this, description + "\n" + row.Source);
         ArrangeTrack();
@@ -60,30 +61,24 @@ public sealed partial class SensorTrackControl : UserControl
     {
         if (_row is not { } row) return;
         var battery = row.Category == "Battery";
-        var layout = SensorMonitorLayout.ResolveTrack(Track.ActualWidth, Track.ActualHeight);
+        var layout = SensorMonitorLayout.ResolveTrack(Track.ActualWidth);
         Track.Padding = new Thickness(0, layout.Padding, 0, layout.Padding);
         NameColumn.Width = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(layout.NameWidth);
         ValueColumn.Width = new GridLength(layout.ValueWidth);
         TemperatureColumn.Width = layout.Stacked ? new GridLength(0) : new GridLength(layout.TemperatureWidth);
-        ChartColumn.Width = layout.Stacked ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         HeaderRow.Height = layout.Stacked ? new GridLength(60) : new GridLength(1, GridUnitType.Star);
-        MetricsRow.Height = layout.Stacked ? new GridLength(64) : new GridLength(0);
-        GraphRow.Height = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        Grid.SetColumnSpan(IdentityPanel, layout.Stacked ? 4 : 1);
+        MetricsRow.Height = layout.Stacked ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        Grid.SetColumnSpan(IdentityPanel, layout.Stacked ? 3 : 1);
         Grid.SetRow(Values, layout.Stacked ? 1 : 0);
         Grid.SetColumn(Values, layout.Stacked ? 1 : 2);
         Grid.SetRow(TemperaturePanel, layout.Stacked ? 1 : 0);
         Grid.SetColumn(TemperaturePanel, layout.Stacked ? 2 : 3);
-        Grid.SetColumnSpan(TemperaturePanel, layout.Stacked ? 3 : 1);
-        Grid.SetRow(GraphPanel, layout.Stacked ? 2 : 0);
-        Grid.SetColumn(GraphPanel, layout.Stacked ? 1 : 4);
-        Grid.SetColumnSpan(GraphPanel, layout.Stacked ? 4 : 1);
+        Grid.SetColumnSpan(TemperaturePanel, layout.Stacked ? 2 : 1);
         TemperatureLabel.Visibility = layout.Stacked ? Visibility.Visible : Visibility.Collapsed;
         ValueText.FontSize = layout.Stacked ? 22 : 28;
         CapacityText.Visibility = row.CapacityText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         SecondaryText.Visibility = row.SecondaryValue.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         TraceHost.Visibility = battery ? Visibility.Collapsed : Visibility.Visible;
-        TraceHost.Height = layout.GraphHeight;
         LevelBarTrack.Visibility = battery && row.Percent.HasValue ? Visibility.Visible : Visibility.Collapsed;
         UpdateLevelBar();
     }
@@ -101,7 +96,6 @@ public sealed partial class SensorTrackControl : UserControl
         var height = TraceCanvas.ActualHeight;
         if (width <= 0 || height <= 0) return;
         TraceCanvas.Clip = new RectangleGeometry { Rect = new Rect(0, 0, width, height) };
-        NoTraceText.Visibility = _points.Count(point => point.Value.HasValue) < 2 ? Visibility.Visible : Visibility.Collapsed;
         var segment = new List<Point>();
         foreach (var sample in _points)
         {
@@ -118,7 +112,7 @@ public sealed partial class SensorTrackControl : UserControl
         if (points.Count < 2) return;
         var color = _accent.Color;
         var gradient = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
-        gradient.GradientStops.Add(new GradientStop { Offset = 0, Color = Windows.UI.Color.FromArgb(60, color.R, color.G, color.B) });
+        gradient.GradientStops.Add(new GradientStop { Offset = 0, Color = Windows.UI.Color.FromArgb(96, color.R, color.G, color.B) });
         gradient.GradientStops.Add(new GradientStop { Offset = 1, Color = Windows.UI.Color.FromArgb(0, color.R, color.G, color.B) });
         var fill = new Polygon { Fill = gradient };
         fill.Points.Add(new Point(points[0].X, height));
