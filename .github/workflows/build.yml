@@ -17,6 +17,33 @@ permissions:
   contents: read
 
 jobs:
+  report-retirement:
+    # This check name is required by main's existing protection. Keep that gate
+    # while verifying removal instead of restoring the retired Node/Vue build.
+    name: reports web
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify retired report surfaces and build integration stay absent
+        shell: pwsh -NoProfile -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $retiredFiles = @(git ls-files -- TrackMeUp.Reports.Web TrackMeUp/ReportsWindow.xaml TrackMeUp/ReportsWindow.xaml.cs TrackMeUp/Controls/ReportsOperationsControl.xaml TrackMeUp/Controls/ReportsOperationsControl.xaml.cs TrackMeUp.Core/Infrastructure/Services/HtmlReportService.cs)
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect tracked report files.' }
+          if ($retiredFiles.Count -ne 0) { throw "Retired report files are still tracked: $($retiredFiles -join ', ')" }
+          foreach ($path in @('TrackMeUp/TrackMeUp.csproj', 'scripts/TrackMeUp.ps1', 'scripts/New-PortableReleaseArchive.ps1')) {
+            if ((Get-Content -LiteralPath $path -Raw) -match 'ReportsWeb|BuildReports|TrackMeUp\.Reports\.Web') {
+              throw "Retired report build integration remains in $path."
+            }
+          }
+          foreach ($path in @('TrackMeUp.Core/Application/Contracts.cs', 'TrackMeUp.Core/Runtime/RuntimeOperationCatalog.cs', 'TrackMeUp.Cli/CliCommandCatalog.cs')) {
+            if ((Get-Content -LiteralPath $path -Raw) -match 'GenerateTodayReportAsync|GenerateDailyDigestAsync|OpenReportsFolderAsync|report\.today|report\.digest|report\.open_folder') {
+              throw "Retired report entry points remain in $path."
+            }
+          }
+
   lint:
     name: lint
     runs-on: windows-latest
