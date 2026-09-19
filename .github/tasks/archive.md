@@ -2,6 +2,12 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Shared astronomical model and celestial desktop windows
+
+- [x] Implement independent local sky, astronomical agenda and Earth windows with existing Acrylic, light typography, accent colors and the shared auto-hiding title bar. Add an astronomy launcher menu and independent saved window placement/session restoration. Preserve the original day/night map surface; only the new Earth window switches flat/globe.
+- [x] Replace duplicate approximate solar/lunar calculations with one Core Astronomy Engine model and bounded caches, shared by existing clocks/Moon/maps and new views. Add source-attributed stars, computed events, offline Earth texture rendering, passive UI DTOs and versioned operations on the existing runtime.
+- [x] Validate x64 WinUI compilation (zero warnings/errors), 751 Core tests, 372 Presentation tests and 96 CLI tests. All ten localization catalogs have matching keys/placeholders. Required CI and installed visual checks remain tracked in todo.md.
+
 ## [2026-09-19] Create a local installer and update the installed app
 
 - [x] Build a signed local x64 MSIX from the current workspace at the user's request, preserving existing source edits. The packaging route's explicitly approved report run passed all 60 tests; production report checks and package creation succeeded.

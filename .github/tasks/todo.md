@@ -1,5 +1,10 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Celestial desktop windows (2026-09-19)
+
+- [ ] Complete required PR checks for the three celestial windows. Local x64 WinUI build passed with zero warnings/errors; Core 751, Presentation 372 and CLI 96 tests passed. Shared phase calculations, polar/DST cases, map illumination, IPC and independent workspace restoration are covered.
+- [ ] Complete the README visual scenarios for local sky, agenda and the new planar/spherical Earth window: Acrylic/accent, disappearing title bars, resizing at 100–200% scaling and keyboard navigation. No installed-app visual validation has been performed in this task.
+
 ## Restore installed advanced sensors at startup (2026-09-19)
 
 - [ ] Run the new focused startup scenarios after the pending explicit test approval. Implementation now restores compatible installed PawnIO once when saved sensor/advanced preferences are enabled; the user accepted Windows UAC. Missing prerequisites never launch setup automatically, and failed/declined activation is reported before basic readings resume without repeated consent. The x64 Release Core/test-project build passed with zero warnings/errors; formatting verification, localization JSON parsing and scoped diff checks passed. The installed app remains 0.0.10.0 and does not yet include this change.

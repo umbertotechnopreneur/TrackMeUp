@@ -227,6 +227,18 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSnapshot>> GetWorldClocksAsync(CancellationToken cancellationToken) =>
         SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksGetV3, null, cancellationToken, WorldClockQueryTimeout);
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken) =>
+        SendAsync<WorldClockSnapshot>(RuntimeOperation.CelestialReferenceV1, null, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<CelestialSnapshot>> GetCelestialAsync(CelestialRequest request, CancellationToken cancellationToken) =>
+        SendAsync<CelestialSnapshot>(RuntimeOperation.CelestialGetV1, request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<OperationResult<CelestialMapImage>> GetCelestialMapAsync(CelestialMapRequest request, CancellationToken cancellationToken) =>
+        SendAsync<CelestialMapImage>(RuntimeOperation.CelestialMapV1, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<WorldClockSnapshot>> ConvertWorldClocksAsync(WorldClockConversionRequest request, CancellationToken cancellationToken) =>
         SendAsync<WorldClockSnapshot>(RuntimeOperation.WorldClocksConvertV2, request, cancellationToken);

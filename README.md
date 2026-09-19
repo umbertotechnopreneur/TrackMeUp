@@ -358,6 +358,18 @@ Privacy and runtime regression checks:
 
 ## More about the project
 
+### Celestial desktop windows
+
+The globe command in World Clocks opens the astronomical windows menu: **Local sky**, **Astronomical agenda**, **Earth**, and the original day/night map. The three new independent Acrylic windows use the shared auto-hiding title bar, light typography, accent color and persisted workspace bounds. Earth switches between a flat map and a globe; the original map keeps its existing surface.
+
+Core owns one offline astronomical engine for all clocks, lunar phases, maps and new windows. Matching instants share cached ephemerides; live celestial references use UTC-minute boundaries, while explicitly selected clock instants remain exact. The sky uses a small attributed bright-star/constellation catalog and calculated Sun, Moon and planet positions. The agenda lists computed solar crossings, blue-hour intervals, lunar quarters and equinoxes/solstices. Above the horizon does not guarantee naked-eye visibility; weather, terrain and light pollution are not modeled. Blue hour is defined here by solar altitude −6° to −4°. New sky/agenda dates are supported from 1900 through 2100.
+
+- [ ] Open all three windows, choose a city and change the clock reference date/time. Compare Moon phase across clocks, Moon and local sky; return to live mode and verify synchronized minute updates without weather requests from the celestial windows.
+- [ ] In the new Earth window, switch flat/globe at the same instant and check consistent illumination, including the poles and dateline. Open the original day/night map simultaneously and verify that its layout and commands are unchanged.
+- [ ] Resize each window to its minimum and to tall/wide layouts at 100%, 150% and 200% scaling. Verify readable controls, scrolling agenda, theme/accent changes, keyboard access and the shared title-bar hover reveal. Close/reopen and restart with different subsets of windows open; only those subsets should restore.
+- [ ] Verify polar-day/night missing solar crossings, a DST transition, an empty city selection, unsupported dates and a failed image load. Errors must be visible, and a canceled or superseded request must not update a closed window.
+
+
 - [How your data is handled](docs/PRIVACY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Windows contributor setup and troubleshooting](docs/DEVELOPMENT.md)

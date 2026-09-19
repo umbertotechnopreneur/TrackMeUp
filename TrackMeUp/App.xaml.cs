@@ -37,6 +37,8 @@ public partial class App : Microsoft.UI.Xaml.Application
     private bool _sensorsWindowOpening;
     private WorldMapWindow? _worldMapWindow;
     private LunarPhaseWindow? _lunarPhaseWindow;
+    private readonly Dictionary<string, CelestialWindow> _celestialWindows = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _celestialWindowsOpening = new(StringComparer.Ordinal);
     private ScreenshotWindow? _screenshotsWindow;
     private SearchWindow? _searchWindow;
     private QuickSetupWindow? _quickSetupWindow;
@@ -333,6 +335,11 @@ public partial class App : Microsoft.UI.Xaml.Application
                     break;
                 case WindowStateKeys.LunarPhase:
                     await ShowAstronomyWindowAsync(isLunarPhase: true);
+                    break;
+                case WindowStateKeys.LocalSky:
+                case WindowStateKeys.AstronomyAgenda:
+                case WindowStateKeys.CelestialMap:
+                    await ShowCelestialWindowAsync(key);
                     break;
                 case WindowStateKeys.Search:
                     await ShowSearchWindowAsync(application);
@@ -634,6 +641,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow = new WorldClockWindow(application, _dialogs, settings.Value);
             _worldClockWindow.WorldMapRequested += WorldClockWindow_WorldMapRequested;
             _worldClockWindow.LunarPhaseRequested += WorldClockWindow_LunarPhaseRequested;
+            _worldClockWindow.CelestialWindowRequested += WorldClockWindow_CelestialWindowRequested;
             _worldClockWindow.ProjectionChanged += WorldClockWindow_ProjectionChanged;
             _worldClockWindow.SettingsSaved += ApplyAstronomyWindowSettings;
             _worldClockWindow.Closed += WorldClockWindow_Closed;
@@ -665,6 +673,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _worldMapWindow?.ApplySettings(settings);
         _lunarPhaseWindow?.ApplySettings(settings);
+        foreach (var window in _celestialWindows.Values) window.ApplySettings(settings);
     }
 
     private void ApplyTitleBarSettings(AppSettings settings)
@@ -698,6 +707,53 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _worldMapWindow?.ApplySnapshot(snapshot, isLive);
         _lunarPhaseWindow?.ApplySnapshot(snapshot, isLive);
+        foreach (var window in _celestialWindows.Values) window.ApplySnapshot(snapshot, isLive);
+    }
+
+    private async void WorldClockWindow_CelestialWindowRequested(string key) => await ShowCelestialWindowAsync(key);
+
+    private async Task ShowCelestialWindowAsync(string key)
+    {
+        if (!_celestialWindowsOpening.Add(key)) return;
+        CelestialWindow? created = null;
+        try
+        {
+            if (_celestialWindows.TryGetValue(key, out var existing))
+            {
+                existing.Activate();
+                return;
+            }
+
+            var application = StartOrConnectRuntime();
+            var settings = await application.GetSettingsAsync(CancellationToken.None);
+            if (_window is null || Volatile.Read(ref _shutdownStarted) != 0) return;
+            if (!settings.Succeeded || settings.Value is null)
+                throw new InvalidOperationException($"Celestial window settings are unavailable ({settings.Code}).");
+
+            created = new CelestialWindow(application, _dialogs, settings.Value, key);
+            _celestialWindows.Add(key, created);
+            created.Closed += (sender, _) =>
+            {
+                if (_celestialWindows.TryGetValue(key, out var current) && ReferenceEquals(current, sender))
+                    _celestialWindows.Remove(key);
+            };
+            if (_worldClockWindow?.CurrentSnapshot is { } snapshot)
+                created.ApplySnapshot(snapshot, _worldClockWindow.IsLive);
+            created.Activate();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Celestial window could not be opened. WindowKey={WindowKey}", key);
+            // Only the failed new instance is removed; activation failure must retain an existing surface.
+            if (created is not null)
+            {
+                _celestialWindows.Remove(key);
+                try { created.CloseAfterFailedOpening(); }
+                catch (Exception cleanupException) { _logger.LogError(cleanupException, "Failed celestial opening could not release its window."); }
+            }
+            if (_window is not null && Volatile.Read(ref _shutdownStarted) == 0) _window.ShowWorldClockOpenFailure();
+        }
+        finally { _celestialWindowsOpening.Remove(key); }
     }
 
     private async Task ShowAstronomyWindowAsync(bool isLunarPhase)
@@ -929,6 +985,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow.Closed -= WorldClockWindow_Closed;
             _worldClockWindow.WorldMapRequested -= WorldClockWindow_WorldMapRequested;
             _worldClockWindow.LunarPhaseRequested -= WorldClockWindow_LunarPhaseRequested;
+            _worldClockWindow.CelestialWindowRequested -= WorldClockWindow_CelestialWindowRequested;
             _worldClockWindow.ProjectionChanged -= WorldClockWindow_ProjectionChanged;
             _worldClockWindow.SettingsSaved -= ApplyAstronomyWindowSettings;
             _worldClockWindow = null;
@@ -937,6 +994,8 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
+        foreach (var celestialWindow in _celestialWindows.Values.ToArray()) celestialWindow.CloseForShutdown();
+        _celestialWindows.Clear();
         _worldMapWindow?.CloseForShutdown();
         _worldMapWindow = null;
         _lunarPhaseWindow?.CloseForShutdown();
@@ -988,6 +1047,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow.Closed -= WorldClockWindow_Closed;
             _worldClockWindow.WorldMapRequested -= WorldClockWindow_WorldMapRequested;
             _worldClockWindow.LunarPhaseRequested -= WorldClockWindow_LunarPhaseRequested;
+            _worldClockWindow.CelestialWindowRequested -= WorldClockWindow_CelestialWindowRequested;
             _worldClockWindow.ProjectionChanged -= WorldClockWindow_ProjectionChanged;
             _worldClockWindow.SettingsSaved -= ApplyAstronomyWindowSettings;
             _worldClockWindow.CloseForShutdown();

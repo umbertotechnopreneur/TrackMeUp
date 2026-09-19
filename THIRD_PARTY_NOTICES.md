@@ -18,7 +18,7 @@ tracked web report bundle, and distributed world-clock data/media assets.
 
 ## Summary
 
-- Runtime dependencies: 24 unique packages, plus the pinned LibreHardwareMonitor source build below.
+- Runtime dependencies: 25 unique packages, plus the pinned LibreHardwareMonitor source build below.
 - Build-only hardware source generator: Microsoft.Windows.CsWin32 0.3.269 (MIT).
 - Test-only dependencies: 4 unique packages.
 - Web report production dependencies: 29 unique packages.
@@ -29,6 +29,7 @@ tracked web report bundle, and distributed world-clock data/media assets.
 
 | Package | Badges | License / terms | Used by |
 | --- | --- | --- | --- |
+| [CosineKitty.AstronomyEngine 2.1.19](https://www.nuget.org/packages/CosineKitty.AstronomyEngine/2.1.19) | NuGet | [MIT](https://github.com/cosinekitty/astronomy/blob/v2.1.19/LICENSE) | TrackMeUp.Core; shared solar/lunar/planet ephemerides, rise/set, twilight, lunar quarters and seasons |
 | [Lucene.Net](https://www.nuget.org/packages/Lucene.Net/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net?label=NuGet)](https://www.nuget.org/packages/Lucene.Net/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
 | [Lucene.Net.Analysis.Common](https://www.nuget.org/packages/Lucene.Net.Analysis.Common/4.8.0-beta00018) | [![NuGet](https://img.shields.io/nuget/v/Lucene.Net.Analysis.Common?label=NuGet)](https://www.nuget.org/packages/Lucene.Net.Analysis.Common/4.8.0-beta00018) [![License](https://img.shields.io/badge/license-Apache-2.0-orange)](https://licenses.nuget.org/Apache-2.0) | [Apache-2.0](https://licenses.nuget.org/Apache-2.0) (embedded LICENSE.txt) | TrackMeUp.Search |
 | [Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.10) | [![NuGet](https://img.shields.io/nuget/v/Microsoft.Data.Sqlite?label=NuGet)](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.10) [![License](https://img.shields.io/badge/license-MIT-green)](https://licenses.nuget.org/MIT) | [MIT](https://licenses.nuget.org/MIT) | TrackMeUp.Core |
@@ -53,6 +54,28 @@ tracked web report bundle, and distributed world-clock data/media assets.
 | [Mono.Posix.NETStandard 1.0.0](https://www.nuget.org/packages/Mono.Posix.NETStandard/1.0.0) | NuGet | [Package license terms](https://go.microsoft.com/fwlink/?linkid=869050) (legacy licenseUrl, no SPDX expression) | LibreHardwareMonitor source build |
 | [System.IO.FileSystem.AccessControl 5.0.0](https://www.nuget.org/packages/System.IO.FileSystem.AccessControl/5.0.0) | NuGet | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
 | [System.IO.Ports 10.0.3](https://www.nuget.org/packages/System.IO.Ports/10.0.3) | NuGet | [MIT](https://licenses.nuget.org/MIT) | LibreHardwareMonitor source build |
+
+## Celestial star catalog subset
+
+The local-sky view includes 23 J2000 ICRS stellar coordinates and available V-band
+magnitudes retrieved from the [SIMBAD astronomical database, CDS, Strasbourg](https://simbad.cds.unistra.fr/)
+on 2026-09-19 through its [TAP service](https://simbad.cds.unistra.fr/simbad/sim-tap).
+This small selection of scientific facts is attributed to SIMBAD and its original
+catalog references; it does not relicense the SIMBAD database. SIMBAD reference:
+Wenger et al. (2000), Astronomy & Astrophysics Supplement 143, 9,
+[2000A&AS..143....9W](https://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2000A%26AS..143....9W).
+
+The selection comprises alpha/beta/gamma/delta/epsilon/zeta/kappa Orionis;
+alpha/beta/gamma/delta/epsilon Cassiopeiae;
+alpha/beta/gamma/delta/epsilon/zeta/eta Ursae Majoris; and
+alpha/beta/gamma/delta Crucis. Missing system-level V magnitudes for Mizar and
+Acrux remain absent. Coordinates are rounded to six decimal degrees. Proper
+motion and stellar aberration are omitted in this schematic bright-star view;
+precession, nutation and standard atmospheric refraction are applied. The
+connecting figures are project-authored schematic line segments, not IAU
+constellation boundaries. Astronomy Engine's MIT-licensed algorithms calculate
+the dynamic solar-system and event data; no predicted meteor-shower, satellite,
+conjunction or eclipse event is fabricated from a decorative image.
 
 ## Hardware telemetry source and optional driver
 

@@ -137,6 +137,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly AiScreenshotReprocessingService _screenshotReprocessing;
     private readonly DataArchiveService _archives;
     private readonly WorldClockApplicationService _worldClockOperations;
+    private readonly CelestialMapService _celestialMap = new();
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
@@ -2221,6 +2222,32 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         cancellationToken.ThrowIfCancellationRequested();
         return await _worldClockOperations.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task<OperationResult<WorldClockSnapshot>> GetCelestialReferenceAsync(CancellationToken cancellationToken) =>
+        _worldClockOperations.GetCelestialReferenceAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<OperationResult<CelestialSnapshot>> GetCelestialAsync(CelestialRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Ephemeris searches run off the presentation dispatcher; failures propagate without fabricated events.
+        var snapshot = await Task.Run(() =>
+        {
+            var catalog = _worldClockOperations.GetCatalog().Value
+                ?? throw new InvalidDataException("The celestial city catalog is unavailable.");
+            return CelestialService.Build(request, catalog, cancellationToken);
+        }, cancellationToken).ConfigureAwait(false);
+        return OperationResult<CelestialSnapshot>.Success("celestial.loaded", "WorldClocksLoaded", snapshot);
+    }
+
+    /// <inheritdoc />
+    public async Task<OperationResult<CelestialMapImage>> GetCelestialMapAsync(CelestialMapRequest request, CancellationToken cancellationToken)
+    {
+        var image = await _celestialMap.RenderAsync(request, cancellationToken).ConfigureAwait(false);
+        return OperationResult<CelestialMapImage>.Success("celestial.map.loaded", "WorldClocksLoaded", image);
     }
 
     /// <inheritdoc />
