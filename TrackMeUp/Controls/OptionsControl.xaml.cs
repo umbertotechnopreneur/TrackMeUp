@@ -91,6 +91,8 @@ public sealed partial class OptionsControl : UserControl
             AutomationProperties.SetName(MainWindowOpacitySlider, T("Options.Window.Opacity.Header"));
             AutomationProperties.SetName(AutoHideTitleBarSwitch, T("Options.Window.AutoHideTitleBar.Header"));
             AutomationProperties.SetHelpText(AutoHideTitleBarSwitch, T("Options.Window.AutoHideTitleBar.Description"));
+            AutomationProperties.SetName(WindowSnappingSwitch, T("Options.Window.Snapping.Header"));
+            AutomationProperties.SetHelpText(WindowSnappingSwitch, T("Options.Window.Snapping.Description"));
             AutomationProperties.SetName(MainWindowShowInTaskbarSwitch, T("Options.Window.ShowInTaskbar.Header"));
             AutomationProperties.SetName(KeepScreenshotsSwitch, T("Options.KeepSnapshots.Header"));
             AutomationProperties.SetName(StartWithWindowsSwitch, T("Options.StartWithWindows.Header"));
@@ -479,6 +481,7 @@ public sealed partial class OptionsControl : UserControl
             SelectTag(PositionBox, settings.FlyoutPosition, "bottom-center");
             MainWindowOpacitySlider.Value = settings.MainWindowOpacityPercent;
             AutoHideTitleBarSwitch.IsOn = settings.AutoHideTitleBar;
+            WindowSnappingSwitch.IsOn = settings.WindowSnappingEnabled;
             MainWindowShowInTaskbarSwitch.IsOn = settings.MainWindowShowInTaskbar;
             TaskbarWidgetVisibleSwitch.IsOn = settings.TaskbarWidgetVisible;
             SelectTag(TaskbarWidgetPositionBox, settings.TaskbarWidgetPosition, "left");
@@ -511,6 +514,9 @@ public sealed partial class OptionsControl : UserControl
         AutoHideTitleBarSwitch.Toggled += (_, _) => QueueAutoSave(
             "window.titlebar.auto_hide",
             AutoHideTitleBarSwitch.IsOn ? "true" : "false");
+        WindowSnappingSwitch.Toggled += (_, _) => QueueAutoSave(
+            "window.snapping.enabled",
+            WindowSnappingSwitch.IsOn ? "true" : "false");
         MainWindowOpacitySlider.ValueChanged += (_, _) => QueueAutoSave(
             "window.main.opacity_percent",
             MainWindowOpacitySlider.Value.ToString("0", CultureInfo.InvariantCulture));

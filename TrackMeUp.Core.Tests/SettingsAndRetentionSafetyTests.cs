@@ -131,6 +131,71 @@ public sealed class SettingsAndRetentionSafetyTests
         Assert.Equal("system", defaults.Theme);
     }
 
+    /// <summary>Preserves the global snapping preference through storage and unrelated settings changes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void WindowSnapping_RoundTripsThroughTheCatalogAndLocalStore(bool enabled)
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new LocalStore(dataDirectory);
+            var defaults = store.LoadSettings();
+            Assert.True(defaults.WindowSnappingEnabled);
+            var descriptor = Assert.Single(SettingsCatalog.Definitions, item => item.Key == "window.snapping.enabled");
+            Assert.False(descriptor.RequiresRestart);
+
+            var updated = SettingsCatalog.Apply(defaults, new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["window.snapping.enabled"] = enabled ? "true" : "false"
+            }));
+            Assert.True(updated.Succeeded);
+            store.SaveSettings(Assert.IsType<AppSettings>(updated.Value));
+
+            var restored = new LocalStore(dataDirectory).LoadSettings();
+            Assert.Equal(enabled, restored.WindowSnappingEnabled);
+            Assert.True(SettingsCatalog.TryGetValue(restored, "window.snapping.enabled", out var storedValue));
+            Assert.Equal(enabled, Assert.IsType<bool>(storedValue));
+
+            var themeChanged = SettingsCatalog.Apply(restored, new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["theme"] = "dark",
+                ["window.titlebar.auto_hide"] = "false"
+            }));
+            Assert.True(themeChanged.Succeeded);
+            Assert.Equal(enabled, themeChanged.Value!.WindowSnappingEnabled);
+        }
+        finally
+        {
+            if (Directory.Exists(dataDirectory))
+            {
+                Directory.Delete(dataDirectory, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>Rejects invalid snapping values atomically while preserving the enabled default.</summary>
+    [Fact]
+    public void WindowSnapping_RejectsAnInvalidValueAtomically()
+    {
+        var defaults = Assert.IsType<AppSettings>(JsonSerializer.Deserialize<AppSettings>(
+            "{}", new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.True(defaults.WindowSnappingEnabled);
+
+        var result = SettingsCatalog.Apply(defaults, new SettingsPatch(new Dictionary<string, string?>
+        {
+            ["window.snapping.enabled"] = "sometimes",
+            ["theme"] = "dark"
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Value);
+        Assert.Contains(result.Issues, issue => issue.Field == "window.snapping.enabled");
+        Assert.True(defaults.WindowSnappingEnabled);
+        Assert.Equal("system", defaults.Theme);
+    }
+
     [Fact]
     public void Apply_UsesOneTransactionalCatalogForAiTuning()
     {

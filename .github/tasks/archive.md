@@ -2,6 +2,11 @@
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 
+## [2026-09-19] Add optional magnetic window snapping
+
+- [x] Add a shared Core geometry engine and owning-thread native registrations through the application facade. Snap visible window edges within five physical pixels to app peers or the monitor work area, with raw cursor anchoring to avoid cumulative drift. Crossing the starting monitor's physical bounds suppresses snap until the next drag; intentional off-screen/edge placement is not clamped back by subsequent DPI layout. The disabled setting leaves native movement untouched. Closed/hidden/minimized/maximized/cloaked peers are excluded, native failures are reported after dragging, and subclass cleanup remains on its owner thread.
+- [x] Add enabled-by-default `window.snapping.enabled` with a persisted Settings toggle, immediate application to open windows, accessibility and all ten UI translations. Add geometry/settings unit scenarios and the README manual checklist. Source review, formatting verification and XAML/localization parsing completed; no test suite or push/CI was run. The user requested a local post-implementation checkpoint followed by a signed development MSIX build and in-place update; installer verification is recorded beside the generated package, while visual validation remains in `todo.md`.
+
 ## [2026-09-19] Remove sky zoom and keep the scene centered
 
 - [x] Remove the sky zoom slider, gesture handling, synchronization events and obsolete localized labels. Replace the scroll/zoom viewport with a bounded grid and stretch canvas, using the actual viewport center and explicit clipping. The full sky now adapts to window size without panning or magnification. Update the manual scenarios; no test suite was run.

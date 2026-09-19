@@ -673,6 +673,12 @@ public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, stri
 /// <summary>Exposes every frontend capability through UI-independent requests and result DTOs.</summary>
 public interface ITrackMeUpApplication : IAsyncDisposable
 {
+    /// <summary>Registers local native drag handling on the window's UI thread; the returned registration must be disposed on that thread.</summary>
+    IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure);
+
+    /// <summary>Applies the persisted snapping preference to this frontend's windows without starting a second tracking runtime.</summary>
+    void ConfigureWindowSnapping(bool enabled);
+
     /// <summary>Occurs after tracking state or dashboard data changes.</summary>
     event EventHandler<RuntimeStateChangedEventArgs>? RuntimeStateChanged;
 

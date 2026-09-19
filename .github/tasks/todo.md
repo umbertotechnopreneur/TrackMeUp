@@ -1,5 +1,9 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Magnetic window snapping (2026-09-19)
+
+- [ ] Complete native-window visual checks after the authorized development MSIX update: adjacent/aligned app windows and monitor work-area edges at five physical pixels; no snapping at six pixels; smooth release without drift; negative monitor coordinates, different DPI scales, dragging from maximized, hidden/minimized peers and closing peers. Crossing the starting monitor's physical bounds must disable snapping for the rest of that drag, including re-entry, without forcing the window back; the next drag starts fresh. Confirm the Settings switch applies immediately, persists on restart and does not interfere with the shared disappearing title bar. Test suites and push/CI are not authorized.
+
 ## Fixed celestial sky and refresh (2026-09-19)
 
 - [ ] Visually validate the fixed, centered sky with no zoom slider, pinch zoom, panning or scrollbars. Check responsive centering when resized, the bottom inline explanation and correctly clipped planet thumbnails. Verify no blanking/selection reset across duplicate live-minute updates and correct cancellation during rapid resize, city changes and explicit time changes. No tests, branch, push or CI are authorized for these local refinements.

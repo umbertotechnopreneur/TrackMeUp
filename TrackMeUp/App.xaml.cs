@@ -69,6 +69,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _services.GetRequiredService<ILoggerFactory>().CreateLogger<WindowsToastNotificationService>());
         InitializeComponent();
         WindowPlacementService.PersistenceFailed += WindowPlacementService_PersistenceFailed;
+        WindowPlacementService.SnappingFailed += WindowPlacementService_SnappingFailed;
         UnhandledException += (_, eventArgs) => _logger.LogCritical(eventArgs.Exception, "Unhandled WinUI exception.");
         _logger.LogInformation("TrackMeUp process started. Architecture={Architecture}", RuntimeInformation.ProcessArchitecture);
     }
@@ -680,6 +681,18 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         _uiLanguage = settings.UiLanguage;
         CustomTitleBarController.ApplyAutoHideSetting(settings.AutoHideTitleBar);
+        _applicationFacade?.ConfigureWindowSnapping(settings.WindowSnappingEnabled);
+    }
+
+    private async Task WindowPlacementService_SnappingFailed(Window owner, Exception exception)
+    {
+        _logger.LogError(exception, "Window snapping failed; native free movement remains available for this operation.");
+        if (Volatile.Read(ref _shutdownStarted) != 0 || owner.Content is not FrameworkElement { IsLoaded: true }) return;
+        var strings = new LocalizationService(_uiLanguage);
+        await _dialogs.ShowInformativeAsync(owner, DialogRequest.Informative(
+            strings.Translate("Operations.Status.Failed.Title"),
+            strings.Translate("Options.Window.Snapping.Failed"),
+            strings.Translate("Dialog.Ok")));
     }
 
     private async Task WindowPlacementService_PersistenceFailed(Window owner, string windowKey, Exception exception)

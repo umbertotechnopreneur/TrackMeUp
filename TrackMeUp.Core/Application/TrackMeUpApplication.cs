@@ -113,6 +113,15 @@ public static class TrackMeUpApplicationFactory
 /// <summary>Implements UI-independent use cases over the existing local infrastructure services.</summary>
 public sealed class TrackMeUpApplication : ITrackMeUpApplication
 {
+    private readonly WindowSnappingService _windowSnapping = new();
+
+    /// <inheritdoc />
+    public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
+        _windowSnapping.Register(windowHandle, reportFailure);
+
+    /// <inheritdoc />
+    public void ConfigureWindowSnapping(bool enabled) => _windowSnapping.Configure(enabled);
+
     private readonly LocalStore _store;
     private readonly SettingsSnapshot _settingsSnapshot;
     private readonly UtilityService _utilities;

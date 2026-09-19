@@ -196,6 +196,19 @@
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Applies to all windows. Turn off to keep title bars visible."
                             TextWrapping="Wrap" />
+                        <ToggleSwitch
+                            x:Name="WindowSnappingSwitch"
+                            Header="Window snapping"
+                            IsOn="True"
+                            OffContent=""
+                            OnContent=""
+                            Tag="Options.Window.Snapping" />
+                        <TextBlock
+                            Tag="Options.Window.Snapping.Description"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Snap within 5 pixels of other TrackMeUp windows or monitor edges. Leaving the monitor disables snapping for the rest of that drag."
+                            TextWrapping="Wrap" />
                         <Slider
                             x:Name="MainWindowOpacitySlider"
                             Header="Window opacity"

@@ -142,7 +142,8 @@ public sealed record AppSettings(
     bool HardwareSaveSnapshots = true,
     string HardwareSamplingProfile = "normal",
     bool WorldMapWindowShowInTaskbar = true,
-    bool LunarPhaseWindowShowInTaskbar = true);
+    bool LunarPhaseWindowShowInTaskbar = true,
+    bool WindowSnappingEnabled = true);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

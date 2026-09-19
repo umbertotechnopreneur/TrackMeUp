@@ -181,6 +181,15 @@ public sealed class RuntimeHost : IAsyncDisposable
 /// <summary>Provides a typed application facade backed by the local runtime pipe.</summary>
 public sealed class RuntimeClient : ITrackMeUpApplication
 {
+    private readonly WindowSnappingService _windowSnapping = new();
+
+    /// <inheritdoc />
+    public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
+        _windowSnapping.Register(windowHandle, reportFailure);
+
+    /// <inheritdoc />
+    public void ConfigureWindowSnapping(bool enabled) => _windowSnapping.Configure(enabled);
+
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotReprocessPreviewTimeout = TimeSpan.FromMinutes(2);

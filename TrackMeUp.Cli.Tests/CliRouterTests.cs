@@ -323,6 +323,12 @@ public sealed class CliRouterTests
 
     private sealed class RecordingApplication : ITrackMeUpApplication
     {
+        public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
+            throw new NotSupportedException("The CLI does not register native windows.");
+
+        public void ConfigureWindowSnapping(bool enabled) =>
+            throw new NotSupportedException("The CLI does not configure native windows.");
+
         public event EventHandler<RuntimeStateChangedEventArgs>? RuntimeStateChanged
         {
             add { }

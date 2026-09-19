@@ -69,6 +69,7 @@ public static class SettingsCatalog
         Choice("theme", "Application color theme.", Themes),
         Choice("position", "Player flyout anchor.", FlyoutAnchors),
         Boolean("window.titlebar.auto_hide", "Automatically hide title bars in all windows when the pointer leaves."),
+        Boolean("window.snapping.enabled", "Snap within 5 pixels of TrackMeUp windows or monitor edges; leaving the monitor disables snapping for that drag."),
         Integer("window.main.opacity_percent", "Player window opacity from 25 through 100 percent."),
         Boolean("window.main.show_in_taskbar", "Show the player window in the Windows taskbar."),
         Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
@@ -150,6 +151,7 @@ public static class SettingsCatalog
             "theme" => settings.Theme,
             "position" => settings.FlyoutPosition,
             "window.titlebar.auto_hide" => settings.AutoHideTitleBar,
+            "window.snapping.enabled" => settings.WindowSnappingEnabled,
             "window.main.opacity_percent" => settings.MainWindowOpacityPercent,
             "window.main.show_in_taskbar" => settings.MainWindowShowInTaskbar,
             "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
@@ -273,6 +275,7 @@ public static class SettingsCatalog
                 case "language" when Canonical(ProductLanguageCatalog.UiChoices, value) is { } language: current = current with { UiLanguage = language }; break;
                 case "theme" when Canonical(Themes, value) is { } theme: current = current with { Theme = theme }; break;
                 case "window.titlebar.auto_hide" when TryBoolean(value, out var autoHideTitleBar): current = current with { AutoHideTitleBar = autoHideTitleBar }; break;
+                case "window.snapping.enabled" when TryBoolean(value, out var windowSnappingEnabled): current = current with { WindowSnappingEnabled = windowSnappingEnabled }; break;
                 case "position" when Canonical(FlyoutAnchors, value) is { } position: current = current with { FlyoutPosition = position }; break;
                 case "window.main.opacity_percent" when TryInteger(value, 25, 100, out var mainOpacity): current = current with { MainWindowOpacityPercent = mainOpacity }; break;
                 case "window.main.show_in_taskbar" when TryBoolean(value, out var mainShowInTaskbar): current = current with { MainWindowShowInTaskbar = mainShowInTaskbar }; break;
