@@ -37,3 +37,18 @@ This repository uses Lilac `#AF9BFF`. These colors describe documentation artwor
 ```text
 Use case: stylized-concept. Create one landscape 3:1 editorial product illustration for a coordinated MeUp software family. Dark ink navy background #101526, warm ivory matte paper-cut objects with subtle dimensional depth, fine precise curved paths, soft studio light, generous negative space, restrained composition. No words, no letters, no logos, no interface mockup, no screenshot, no decorative frame. This is conceptual branding artwork, not a depiction of the app. Consistent visual system: three or four objects connected by a single fine flowing line, centered horizontally, spacious margins. Lilac accent #AF9BFF. Subject: three ivory small snapshot tiles spaced along a curved timeline, a fine magnifying ring focusing on one tile, and a simple small clock face without numerals. Suggest recalling past work and time tracking. Do not include planets or weather in this main product illustration.
 ```
+
+## Footer mark
+
+- File: `trackmeup-mark-v1.png`.
+- Created: September 21, 2026, with the built-in image generation tool.
+- Format: transparent PNG, 1254 × 1254 pixels.
+- Purpose: compact README footer branding. It is not a replacement app icon, product logo, or screenshot.
+- Inputs and review: generated from the prompt below without reference images; visually reviewed for transparent edges, legibility at small size, and the timeline-and-recall motif.
+- Rights: project brand artwork remains subject to [the trademark and brand policy](../../../TRADEMARKS.md); this record does not change existing asset licenses.
+
+### Footer mark generation prompt
+
+```text
+Use case: logo-brand. Create a compact transparent branding mark for a local activity tracker: a precise timeline path folds into a location pin with one small clock tick, conveying retracing your day and finding where you left off. Clean premium 3D-vector hybrid, centered square, no letters, words, watermark, border, UI frame, or photorealism.
+```
