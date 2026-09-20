@@ -112,7 +112,9 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <StackPanel x:Name="OptionsPrimaryPanel" Grid.Row="0" Grid.Column="0" Spacing="0">
-                    <controls:ActivityLabelsEditor x:Name="LabelsEditor" Margin="0,0,0,20" />
+                    <controls:FeatureGate x:Name="LabelsFeatureGate" Feature="ActivityLabels" Margin="0,0,0,20">
+                        <controls:ActivityLabelsEditor x:Name="LabelsEditor" />
+                    </controls:FeatureGate>
                     <StackPanel Spacing="6" Margin="0,0,0,20">
                         <ToggleSwitch x:Name="ShowAiMonthlySpendSwitch" Tag="Options.AiMonthlySpendVisibility" Header="Show monthly AI spend in the player" OffContent="Hidden" OnContent="Visible" />
                         <TextBlock Tag="Labels.CostHint" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

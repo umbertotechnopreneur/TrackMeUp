@@ -104,6 +104,7 @@
                 <Button
                     x:Name="SensorsButton"
                     Grid.Column="5"
+                    Visibility="Collapsed"
                     AutomationProperties.Name="Show hardware sensors"
                     Click="SensorsButton_Click"
                     Style="{StaticResource TrackMeUpTitleBarCommandButtonStyle}"
@@ -561,6 +562,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <Grid
@@ -767,7 +769,9 @@
                                 </Grid>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6">
-                            <controls:ActivityLabelSelector x:Name="PlayerLabelSelector" HorizontalAlignment="Right" />
+                            <controls:FeatureGate x:Name="PlayerLabelFeatureGate" Feature="ActivityLabels" ShowTitle="False" ShowHint="False" HorizontalAlignment="Right">
+                                <controls:ActivityLabelSelector x:Name="PlayerLabelSelector" />
+                            </controls:FeatureGate>
                             <StackPanel
                                 x:Name="AiMonthlySpendPanel"
                                 HorizontalAlignment="Right"
@@ -794,6 +798,125 @@
                             </StackPanel>
                             </StackPanel>
                             </Grid>
+
+                            <Border
+                                Grid.Row="2"
+                                Margin="0,10,0,2"
+                                Padding="4"
+                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <StackPanel Spacing="2">
+                                    <Button
+                                        x:Name="QuickSearchButton"
+                                        MinHeight="34"
+                                        Padding="8,4"
+                                        HorizontalContentAlignment="Stretch"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Click="QuickSearchButton_Click"
+                                        ToolTipService.ToolTip="Search history">
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <FontIcon
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.AccessibilityView="Raw"
+                                                FontFamily="Segoe Fluent Icons"
+                                                FontSize="16"
+                                                Foreground="#FFDB8D72"
+                                                Glyph="&#xE721;" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                FontSize="13"
+                                                FontWeight="SemiBold"
+                                                Tag="Search.Title"
+                                                Text="Search history"
+                                                TextTrimming="CharacterEllipsis" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                FontSize="10"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Text="F3 / Ctrl+Shift+P" />
+                                        </Grid>
+                                    </Button>
+                                    <Button
+                                        x:Name="QuickActivityCalendarButton"
+                                        MinHeight="34"
+                                        Padding="8,4"
+                                        HorizontalContentAlignment="Stretch"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Click="QuickActivityCalendarButton_Click"
+                                        ToolTipService.ToolTip="Activity calendar">
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <FontIcon
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.AccessibilityView="Raw"
+                                                FontFamily="Segoe Fluent Icons"
+                                                FontSize="16"
+                                                Foreground="#FF7D9FF8"
+                                                Glyph="&#xE787;" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                FontSize="13"
+                                                FontWeight="SemiBold"
+                                                Tag="ActivityCalendar.MenuTitle"
+                                                Text="Activity calendar"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </Button>
+                                    <Button
+                                        x:Name="QuickScreenshotGalleryButton"
+                                        MinHeight="34"
+                                        Padding="8,4"
+                                        HorizontalContentAlignment="Stretch"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Click="QuickScreenshotGalleryButton_Click"
+                                        ToolTipService.ToolTip="Screenshot gallery">
+                                        <Grid ColumnSpacing="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <FontIcon
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.AccessibilityView="Raw"
+                                                FontFamily="Segoe Fluent Icons"
+                                                FontSize="16"
+                                                Foreground="#FF71CBB7"
+                                                Glyph="&#xE8B9;" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                VerticalAlignment="Center"
+                                                FontSize="13"
+                                                FontWeight="SemiBold"
+                                                Tag="Screenshots.Caption"
+                                                Text="Screenshot gallery"
+                                                TextTrimming="CharacterEllipsis" />
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                FontSize="10"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Text="Ctrl+Shift+G" />
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </Grid>
 
                         <StackPanel x:Name="PlayerMetrics" Grid.Row="1" Spacing="6">

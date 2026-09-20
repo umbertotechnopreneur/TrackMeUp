@@ -150,6 +150,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     private readonly ILogger<TrackMeUpApplication> _logger;
     private readonly ObservabilityHealth _observability;
     private readonly SemaphoreSlim _mutations = new(1, 1);
+    private readonly FeatureAccessPolicy _featureAccess;
     private readonly object _liveWorkLock = new();
     private CancellationTokenSource _liveWorkCancellation = new();
     private int _liveWorkCount;
@@ -206,10 +207,19 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         AtomicResetService? atomicResetService = null,
         SettingsSnapshot? settingsSnapshot = null,
         WorldClockService? worldClockService = null,
-        bool startScheduledSnapshotTimer = true)
+        bool startScheduledSnapshotTimer = true,
+        IFeatureLicenseSource? featureLicenseSource = null)
     {
         _store = store;
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
+        _featureAccess = new FeatureAccessPolicy(featureLicenseSource);
+        var entitledSettings = FeatureAccessPolicy.WithoutUnavailableSelection(_settingsSnapshot.Value, _featureAccess.Snapshot);
+        if (entitledSettings != _settingsSnapshot.Value)
+        {
+            // Persist the cleared selection before tracking can resume; retain definitions and historical activity.
+            store.SaveSettings(entitledSettings);
+            _settingsSnapshot.Replace(entitledSettings);
+        }
         _utilities = utilities;
         _tracking = tracking;
         _capture = capture;
@@ -2303,9 +2313,35 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     }
 
     /// <inheritdoc />
+    public Task<OperationResult<FeatureAccessSnapshot>> GetFeatureAccessAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(OperationResult<FeatureAccessSnapshot>.Success("features.loaded", "Premium.Status", _featureAccess.Snapshot));
+    }
+
+#if DEBUG
+    /// <inheritdoc />
+    public Task<OperationResult<FeatureAccessSnapshot>> SimulateFeatureAccessAsync(ProductTier tier, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
+    {
+        if (!Enum.IsDefined(tier))
+            return OperationResult<FeatureAccessSnapshot>.Failure("features.invalid_tier", "Premium.InvalidTier");
+        var next = new FeatureAccessSnapshot(tier, true, true);
+        var settings = _settingsSnapshot.Value;
+        var updated = FeatureAccessPolicy.WithoutUnavailableSelection(settings, next);
+        // Do not acknowledge a downgrade until its selected-label mutation is durably saved.
+        if (updated != settings) PersistSettings(updated);
+        _featureAccess.Simulate(tier);
+        await Task.CompletedTask;
+        return OperationResult<FeatureAccessSnapshot>.Success("features.simulated", "Premium.Status", next);
+    }, cancellationToken);
+#endif
+
+    /// <inheritdoc />
     public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) => MutateVisualStateAsync(async () =>
     {
         var settings = _settingsSnapshot.Value;
+        if (_featureAccess.DeniedSetting(patch, settings) is { } denied)
+            return OperationResult<AppSettings>.Failure("feature.premium_required", "Premium.Required", denied);
         var validation = SettingsCatalog.Apply(settings, patch);
         if (!validation.Succeeded || validation.Value is null)
         {
@@ -2744,7 +2780,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         {
             ScheduledSnapshotRemaining = GetScheduledSnapshotRemaining(),
             PendingManualScreenshot = GetPendingManualScreenshotState(),
-            IsWithinActiveHours = ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now)
+            IsWithinActiveHours = ActiveHoursSchedule.IsWithinActiveHours(settings.ActiveHours, DateTimeOffset.Now),
+            FeatureAccess = _featureAccess.Snapshot,
+            SpanLabel = settings.SpanLabel
         };
     }
 

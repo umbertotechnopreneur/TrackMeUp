@@ -1,5 +1,17 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Premium feature policy and Debug simulation (2026-09-21)
+
+- [ ] Validate Free/Premium switching through the Debug main menu: label editor and player selector lock/unlock immediately, badges remain visible in both profiles, downgrade clears selection but preserves definitions/history, restart resets simulation. Verify protected settings via CLI and IPC are denied in Free. Run FeatureAccessPolicyTests only with approval. Connect a verified commercial license source before shipping Premium purchases; the current production default is explicitly Free.
+
+## Player quick-access rail (2026-09-21)
+
+- [ ] Visually validate the player quick-access rail for Search, Activity calendar and Screenshot gallery at compact and expanded player sizes, 100–200% scaling, light/dark/high-contrast themes and keyboard navigation. The full More menu must retain its existing hubs and system actions. No tests run.
+
+## Focused onboarding and deferred sensors entry point (2026-09-21)
+
+- [ ] Visually accept the streamlined Quick Setup window: selected-profile panel, four keyboard-reachable cards, Start with Windows and the single confirmation action at 100–200% scaling, light/dark/high-contrast. Confirm the player has no Sensors command while its existing sensors window remains available to future work. No tests run.
+
 ## Data transfer visual polish (2026-09-21)
 
 - [ ] Visually check smaller colored tab headers, consistent content spacing and thin maintenance Acrylic, including high contrast, reduced transparency and 200% text scaling. Archive actions are unchanged.

@@ -1,5 +1,11 @@
 # Task Archive
 
+## 2026-09-21 — Central feature access and Debug profiles
+
+- Added the shared feature catalog, runtime-owned license policy, and reusable `FeatureGate` title/badge/access container. Saved labels are the first Premium feature; the badge remains visible in both profiles. Settings mutations are checked inside Core for direct, CLI and IPC callers, including saved-label selection through the taskbar text setting.
+- Added a Debug-only main-menu switch between Free and Premium. Its override is runtime-local and is not persisted; downgrade clears a selected saved label while retaining definitions/history. Dashboard events distribute access state to views. Commercial licensing remains an explicit integration boundary with an unlicensed Free default; Store purchase/entitlement integration is not included.
+- Debug x64 app compilation and a local compilation without the DEBUG symbol passed with zero warnings/errors. Static assembly metadata confirmed the non-DEBUG Core has no simulation method, override field or debug IPC operation. FeatureAccessPolicyTests compiled without execution; scenarios and extension guidance are in DEVELOPMENT_CHECKLIST.md and PREMIUM_FEATURES.md. Visual acceptance and approved test execution remain pending.
+
 ## 2026-09-21 — Data transfer appearance
 
 - Added compact localized tab headers with blue export, green import and violet installation icons, theme/high-contrast brushes and uniform content spacing. Archive commands and preview behavior are unchanged.

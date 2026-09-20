@@ -427,6 +427,14 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.SettingsGet, null, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<FeatureAccessSnapshot>> GetFeatureAccessAsync(CancellationToken cancellationToken) =>
+        SendAsync<FeatureAccessSnapshot>(RuntimeOperation.FeatureAccessGetV1, null, cancellationToken);
+#if DEBUG
+    /// <inheritdoc />
+    public Task<OperationResult<FeatureAccessSnapshot>> SimulateFeatureAccessAsync(ProductTier tier, CancellationToken cancellationToken) =>
+        SendAsync<FeatureAccessSnapshot>(RuntimeOperation.DebugFeatureSimulateV1, tier, cancellationToken);
+#endif
+    /// <inheritdoc />
     public Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken) => SendAsync<AppSettings>(RuntimeOperation.QuickSetupApplyV1, request, cancellationToken);
     /// <inheritdoc />
     public Task<OperationResult<AppSettings>> PatchSettingsAsync(SettingsPatch patch, CancellationToken cancellationToken) =>

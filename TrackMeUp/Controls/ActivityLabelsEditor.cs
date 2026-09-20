@@ -16,7 +16,6 @@ namespace TrackMeUp.Controls;
 public sealed class ActivityLabelsEditor : UserControl
 {
     private readonly StackPanel _root = new() { Spacing = 8 };
-    private readonly TextBlock _title = new() { FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
     private readonly ComboBox _labels = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox _name = new() { MaxLength = 20, MinWidth = 100 };
     private readonly Button _appearance = new();
@@ -37,7 +36,6 @@ public sealed class ActivityLabelsEditor : UserControl
     public ActivityLabelsEditor()
     {
         Content = _root;
-        _root.Children.Add(_title);
         _root.Children.Add(_labels);
         var fields = new Grid { ColumnSpacing = 8 };
         fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -80,7 +78,6 @@ public sealed class ActivityLabelsEditor : UserControl
         _settings = settings;
         if (!changed) return;
         _strings = new LocalizationService(settings.UiLanguage);
-        _title.Text = T("Labels.Title");
         _name.PlaceholderText = T("Labels.Name");
         _labels.PlaceholderText = T("Labels.New");
         AutomationProperties.SetName(_name, T("Labels.Name"));
@@ -199,7 +196,7 @@ public sealed class ActivityLabelsEditor : UserControl
         {
             // Persistence and validation remain in Core; keep the draft visible if the request fails.
             var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { [key] = value }), CancellationToken.None);
-            if (!result.Succeeded || result.Value is null) { _status.Text = T("Labels.SaveError"); return; }
+            if (!result.Succeeded || result.Value is null) { _status.Text = T(result.MessageKey); return; }
             if (key == "activity.label.save" && _id.Length == 0)
                 _id = result.Value.ActivityLabels!.Single(label => label.Name == _name.Text.Trim()).Id;
             ApplySettings(_application, result.Value);

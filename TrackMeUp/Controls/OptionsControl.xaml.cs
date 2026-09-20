@@ -83,6 +83,7 @@ public sealed partial class OptionsControl : UserControl
         try
         {
             _strings = new LocalizationService(language);
+            LabelsFeatureGate.UiLanguage = language;
             UiLocalization.Apply(this, _strings);
             if (SelectedModel() is { } selectedModel)
             {
@@ -505,6 +506,9 @@ public sealed partial class OptionsControl : UserControl
 
     /// <summary>Refreshes the passive options controls from a settings snapshot persisted by another surface.</summary>
     internal void ApplyExternalSettings(AppSettings settings) => ApplySettings(settings);
+
+    /// <summary>Projects runtime entitlement onto the feature containers in this view.</summary>
+    internal void ApplyFeatureAccess(FeatureAccessSnapshot? access) => LabelsFeatureGate.Access = access;
 
     private bool CanAutoSave => _autoSaveReady && !_suppressAutoSave && _application is not null;
 

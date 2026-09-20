@@ -218,6 +218,9 @@ public sealed record DashboardState(
 {
     /// <summary>Optional 16×16 premultiplied BGRA icon for the application in CurrentContext.</summary>
     public byte[]? CurrentApplicationIconPixels { get; init; }
+
+    /// <summary>Runtime-owned feature access, shared with subscribed frontends without persisting an entitlement.</summary>
+    public TrackMeUp.Application.FeatureAccessSnapshot? FeatureAccess { get; init; }
 }
 
 /// <summary>Describes a retained manual screenshot that can be deleted before deferred analysis begins.</summary>

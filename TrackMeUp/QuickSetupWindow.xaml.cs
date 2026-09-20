@@ -172,8 +172,6 @@ internal sealed partial class QuickSetupWindow : Window
         }
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e) => Close();
-
     private void SetActionsEnabled(bool enabled)
     {
         CompleteProfileButton.IsEnabled = enabled;
@@ -181,7 +179,6 @@ internal sealed partial class QuickSetupWindow : Window
         LocalRecordProfileButton.IsEnabled = enabled;
         EssentialOfflineProfileButton.IsEnabled = enabled;
         StartWithWindowsCheckBox.IsEnabled = enabled;
-        CancelButton.IsEnabled = enabled;
         PrimaryButton.IsEnabled = enabled;
     }
 

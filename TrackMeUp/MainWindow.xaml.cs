@@ -201,6 +201,7 @@ public sealed partial class MainWindow : Window
         _currentWorkArea = CurrentWorkArea();
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += AppWindow_Closing;
+        InitializeFeatureAccessMenu();
         PlayerLabelSelector.SettingsSaved += settings =>
         {
             _optionsControl?.ApplyExternalSettings(settings);
@@ -412,6 +413,9 @@ public sealed partial class MainWindow : Window
         MoreButton.IsEnabled = isReady;
         TitleBarMoreButton.IsEnabled = isReady;
         TitleBarSearchButton.IsEnabled = isReady;
+        QuickSearchButton.IsEnabled = isReady;
+        QuickActivityCalendarButton.IsEnabled = isReady;
+        QuickScreenshotGalleryButton.IsEnabled = isReady;
         SensorsButton.IsEnabled = isReady;
         ScreenshotPreviewButton.IsEnabled = isReady;
         CaptureMenu.IsEnabled = isReady;
@@ -813,6 +817,8 @@ public sealed partial class MainWindow : Window
     private async void MoreMenu_Opened(object sender, object e)
     {
         ApplyMainMenuLabels();
+        await RefreshFeatureAccessAsync();
+        if (_dashboardSurfaceClosed) return;
         var settingsTask = _application.GetSettingsAsync(CancellationToken.None);
         var aiStateTask = AiState.LoadAsync(CancellationToken.None);
         await Task.WhenAll(settingsTask, aiStateTask);
@@ -881,6 +887,7 @@ public sealed partial class MainWindow : Window
         }
 
         var options = new OptionsControl();
+        options.ApplyFeatureAccess(_featureAccessState);
         _optionsControl = options;
         OptionsHost.Content = options;
         options.BackRequested += OptionsControl_BackRequested;
@@ -997,6 +1004,16 @@ public sealed partial class MainWindow : Window
     private void TitleBarSearchButton_Click(object sender, RoutedEventArgs e) => RequestSearch();
 
     private void RequestSearch() => SearchRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Opens local search from the player quick-access rail.</summary>
+    private void QuickSearchButton_Click(object sender, RoutedEventArgs e) => RequestSearch();
+
+    /// <summary>Opens the aggregate activity calendar from the player quick-access rail.</summary>
+    private async void QuickActivityCalendarButton_Click(object sender, RoutedEventArgs e) =>
+        await ShowActivityCalendarAsync();
+
+    /// <summary>Opens the retained screenshot gallery from the player quick-access rail.</summary>
+    private void QuickScreenshotGalleryButton_Click(object sender, RoutedEventArgs e) => RequestScreenshotGallery();
 
     /// <summary>Routes the small set of primary window shortcuts to the same passive commands as the menu.</summary>
     private void MainKeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -1433,7 +1450,8 @@ public sealed partial class MainWindow : Window
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
         WorldClockButton.Visibility = Visibility.Visible;
-        SensorsButton.Visibility = Visibility.Visible;
+        // Keep the sensors surface available for future use, but do not expose its player command yet.
+        SensorsButton.Visibility = Visibility.Collapsed;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         TitleBarLogo.Visibility = Visibility.Visible;
         TitleBarTitleText.Text = "TRACK ME UP";
@@ -1578,6 +1596,8 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders current dashboard values without making application calls.</summary>
     private void UpdatePlayer(DashboardState state)
     {
+        ApplyFeatureAccess(state.FeatureAccess);
+        PlayerLabelSelector.ApplyActiveLabel(state.SpanLabel);
         _isTracking = state.IsTracking;
         UpdateActiveHoursAvailability(state.IsWithinActiveHours);
         var currentContext = state.CurrentContext is "STATE_READY"
@@ -2010,6 +2030,8 @@ public sealed partial class MainWindow : Window
             && !string.Equals(_position, settings.FlyoutPosition, StringComparison.Ordinal);
         _strings = new LocalizationService(settings.UiLanguage);
         PlayerLabelSelector.ApplySettings(_application, settings);
+        PlayerLabelFeatureGate.UiLanguage = settings.UiLanguage;
+        UpdateDebugFeatureMenu();
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         _hasAppliedSettings = true;
@@ -2066,6 +2088,9 @@ public sealed partial class MainWindow : Window
         UiLocalization.SetAccessibleLabel(MoreButton, T("Main.Menu.Open"));
         UiLocalization.SetAccessibleLabel(TitleBarMoreButton, T("Main.Menu.Open"));
         UiLocalization.SetAccessibleLabel(TitleBarSearchButton, T("Search.Title"));
+        UiLocalization.SetAccessibleLabel(QuickSearchButton, T("Search.Title"));
+        UiLocalization.SetAccessibleLabel(QuickActivityCalendarButton, T("ActivityCalendar.MenuTitle"));
+        UiLocalization.SetAccessibleLabel(QuickScreenshotGalleryButton, T("Screenshots.Caption"));
         UiLocalization.SetAccessibleLabel(TitleBarMinimizeToTrayButton, T("Main.Menu.MinimizeToTray"));
         UiLocalization.SetAccessibleLabel(TitleBarCloseButton, T("Tray.CloseApplication"));
         UiLocalization.SetAccessibleLabel(WorldClockButton, T("WorldClock.OpenWindow"));

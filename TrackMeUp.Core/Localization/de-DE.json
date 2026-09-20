@@ -1,4 +1,12 @@
 {
+  "Premium.Badge": "PREMIUM",
+  "Premium.Required": "Diese Funktion erfordert Premium.",
+  "Premium.Loading": "Zugriff wird geprüft…",
+  "Premium.Status": "Funktionszugriff",
+  "Premium.Error": "Das Zugriffsprofil konnte nicht aktualisiert werden. Bitte erneut versuchen.",
+  "Premium.InvalidTier": "Ungültiges Zugriffsprofil.",
+  "Premium.DebugSwitchPremium": "Debug: Free-Profil → Premium simulieren",
+  "Premium.DebugSwitchFree": "Debug: Premium-Profil → Free simulieren",
   "Labels.Title": "Labels",
   "Labels.None": "Kein Label",
   "Labels.Name": "Labelname (1–20 Zeichen)",

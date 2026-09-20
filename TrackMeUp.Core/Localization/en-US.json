@@ -1,4 +1,12 @@
 {
+  "Premium.Badge": "PREMIUM",
+  "Premium.Required": "This feature requires Premium.",
+  "Premium.Loading": "Checking access…",
+  "Premium.Status": "Feature access",
+  "Premium.Error": "Could not update the access profile. Please retry.",
+  "Premium.InvalidTier": "Invalid access profile.",
+  "Premium.DebugSwitchPremium": "Debug: Free profile → simulate Premium",
+  "Premium.DebugSwitchFree": "Debug: Premium profile → simulate Free",
   "Labels.Title": "Labels",
   "Labels.None": "No label",
   "Labels.Name": "Label name (1–20 characters)",

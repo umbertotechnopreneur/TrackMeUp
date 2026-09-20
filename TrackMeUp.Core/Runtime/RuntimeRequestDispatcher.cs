@@ -134,6 +134,11 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.PluginsEnable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
                 RuntimeOperation.PluginsDisable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
                 RuntimeOperation.SettingsGet => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
+                RuntimeOperation.FeatureAccessGetV1 => ToResponse(request, await _application.GetFeatureAccessAsync(cancellationToken)),
+#if DEBUG
+                RuntimeOperation.DebugFeatureSimulateV1 => ToResponse(request, await _application.SimulateFeatureAccessAsync(
+                    Read<ProductTier?>(request.Payload) ?? throw new ArgumentException("An access tier is required."), cancellationToken)),
+#endif
                 RuntimeOperation.QuickSetupApplyV1 => ToResponse(request, await _application.ApplyQuickSetupProfileAsync(
                     Read<QuickSetupProfileRequest>(request.Payload) ?? new QuickSetupProfileRequest(string.Empty, false),
                     cancellationToken)),

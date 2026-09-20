@@ -19,6 +19,7 @@ public sealed class ActivityLabelSelector : UserControl
     private ITrackMeUpApplication? _application;
     private LocalizationService _strings = new("system");
     private bool _updating;
+    private bool _selectionSaveInProgress;
 
     /// <summary>Creates the small selector with an explicit no-label choice.</summary>
     public ActivityLabelSelector()
@@ -73,17 +74,30 @@ public sealed class ActivityLabelSelector : UserControl
     {
         if (_updating || _application is null || _box.SelectedItem is not ComboBoxItem { Tag: string id }) return;
         _box.IsEnabled = false;
+        _selectionSaveInProgress = true;
         _error.Visibility = Visibility.Collapsed;
         try
         {
             // Keep the last acknowledged selection if persistence or validation fails.
             var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { ["activity.label.select"] = id }), CancellationToken.None);
-            if (!result.Succeeded || result.Value is null) { RestoreSelection(); return; }
+            if (!result.Succeeded || result.Value is null)
+            {
+                RestoreSelection();
+                _error.Text = _strings.Translate(result.MessageKey);
+                return;
+            }
             ApplySettings(_application, result.Value);
             SettingsSaved?.Invoke(result.Value);
         }
         catch (Exception) { RestoreSelection(); }
-        finally { _box.IsEnabled = true; }
+        finally { _selectionSaveInProgress = false; _box.IsEnabled = true; }
+    }
+
+    /// <summary>Reflects the runtime's active label after a profile switch or taskbar edit.</summary>
+    internal void ApplyActiveLabel(string name)
+    {
+        if (!_selectionSaveInProgress && _application is not null && _settings is not null)
+            ApplySettings(_application, _settings with { SpanLabel = name });
     }
 
     private void RestoreSelection()

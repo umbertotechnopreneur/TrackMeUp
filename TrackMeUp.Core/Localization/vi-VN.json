@@ -1,4 +1,12 @@
 {
+  "Premium.Badge": "PREMIUM",
+  "Premium.Required": "Tính năng này yêu cầu Premium.",
+  "Premium.Loading": "Đang kiểm tra quyền truy cập…",
+  "Premium.Status": "Quyền truy cập tính năng",
+  "Premium.Error": "Không cập nhật được hồ sơ. Hãy thử lại.",
+  "Premium.InvalidTier": "Hồ sơ không hợp lệ.",
+  "Premium.DebugSwitchPremium": "Debug: hồ sơ Free → mô phỏng Premium",
+  "Premium.DebugSwitchFree": "Debug: hồ sơ Premium → mô phỏng Free",
   "Labels.Title": "Label",
   "Labels.None": "Không có label",
   "Labels.Name": "Tên label (1–20 ký tự)",

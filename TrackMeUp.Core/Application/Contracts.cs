@@ -926,6 +926,13 @@ public interface ITrackMeUpApplication : IAsyncDisposable
     /// <summary>Gets typed application settings.</summary>
     Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken);
 
+    /// <summary>Gets the runtime-owned feature entitlement snapshot.</summary>
+    Task<OperationResult<FeatureAccessSnapshot>> GetFeatureAccessAsync(CancellationToken cancellationToken);
+#if DEBUG
+    /// <summary>Simulates an access tier in runtime memory for debugging; absent in Release.</summary>
+    Task<OperationResult<FeatureAccessSnapshot>> SimulateFeatureAccessAsync(ProductTier tier, CancellationToken cancellationToken);
+#endif
+
     /// <summary>Applies one complete Quick Setup profile as a single validated settings transaction.</summary>
     Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken);
 

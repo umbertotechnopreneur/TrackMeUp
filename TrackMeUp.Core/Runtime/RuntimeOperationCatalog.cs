@@ -160,6 +160,12 @@ internal enum RuntimeOperation
     PluginsDisable,
     [RuntimeOperationWireName("settings.get")]
     SettingsGet,
+    [RuntimeOperationWireName("features.access.get.v1")]
+    FeatureAccessGetV1,
+#if DEBUG
+    [RuntimeOperationWireName("debug.features.simulate.v1")]
+    DebugFeatureSimulateV1,
+#endif
     [RuntimeOperationWireName("quick_setup.apply.v1")]
     QuickSetupApplyV1,
     [RuntimeOperationWireName("settings.patch")]

@@ -1,4 +1,12 @@
 {
+  "Premium.Badge": "PREMIUM",
+  "Premium.Required": "Esta función requiere Premium.",
+  "Premium.Loading": "Comprobando acceso…",
+  "Premium.Status": "Acceso a funciones",
+  "Premium.Error": "No se pudo actualizar el perfil. Inténtalo de nuevo.",
+  "Premium.InvalidTier": "Perfil no válido.",
+  "Premium.DebugSwitchPremium": "Debug: perfil Free → simular Premium",
+  "Premium.DebugSwitchFree": "Debug: perfil Premium → simular Free",
   "Labels.Title": "Labels",
   "Labels.None": "Sin label",
   "Labels.Name": "Nombre de label (1–20 caracteres)",
