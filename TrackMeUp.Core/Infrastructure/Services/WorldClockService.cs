@@ -249,7 +249,7 @@ public sealed class WorldClockService : IDisposable
         var providerConfiguration = _currentWeather.CaptureConfiguration();
         if (selection.Count == 0)
         {
-            return BuildSnapshotCore(
+            return await AttachCurrentSpaceWeatherAsync(BuildSnapshotCore(
                 selection,
                 cities,
                 _timeProvider.GetUtcNow(),
@@ -260,12 +260,12 @@ public sealed class WorldClockService : IDisposable
                     "no-clocks",
                     0,
                     0,
-                    providerConfiguration.IsConfigured));
+                    providerConfiguration.IsConfigured)), cancellationToken).ConfigureAwait(false);
         }
 
         if (!weatherEnabled)
         {
-            return BuildSnapshotCore(
+            return await AttachCurrentSpaceWeatherAsync(BuildSnapshotCore(
                 selection,
                 cities,
                 _timeProvider.GetUtcNow(),
@@ -276,7 +276,7 @@ public sealed class WorldClockService : IDisposable
                     "user-disabled",
                     selection.Count,
                     0,
-                    providerConfiguration.IsConfigured));
+                    providerConfiguration.IsConfigured)), cancellationToken).ConfigureAwait(false);
         }
 
         var locations = selection.Select(cityId =>
@@ -292,12 +292,12 @@ public sealed class WorldClockService : IDisposable
         // Project clocks after optional network work so the returned local times are current at completion.
         var instantUtc = _timeProvider.GetUtcNow();
         var snapshotWeather = _currentWeather.RevalidateForSnapshot(weather, instantUtc);
-        return BuildSnapshotCore(
+        return await AttachCurrentSpaceWeatherAsync(BuildSnapshotCore(
             selection,
             cities,
             instantUtc,
             snapshotWeather.Observations,
-            snapshotWeather.Status);
+            snapshotWeather.Status), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Invalidates observations that were loaded with the previous provider configuration.</summary>
@@ -308,6 +308,24 @@ public sealed class WorldClockService : IDisposable
         string secret,
         CancellationToken cancellationToken) =>
         _currentWeather.ValidateApiKeyAsync(secret, cancellationToken);
+
+    private static async Task<WorldClockSnapshot> AttachCurrentSpaceWeatherAsync(
+        WorldClockSnapshot snapshot,
+        CancellationToken cancellationToken)
+    {
+        var locations = snapshot.Map.Cities.ToDictionary(city => city.CityId);
+        var clocks = new List<WorldClockItem>(snapshot.Clocks.Count);
+        foreach (var clock in snapshot.Clocks)
+        {
+            var location = locations[clock.CityId];
+            // Reuse the shared NOAA cache, but evaluate geographic eligibility and darkness for each city.
+            var alert = await CelestialSpaceWeatherService.GetCurrentSignificantAlertAsync(
+                snapshot.InstantUtc, location.Latitude, location.Longitude, cancellationToken).ConfigureAwait(false);
+            clocks.Add(clock with { SpaceWeatherAlert = alert });
+        }
+
+        return snapshot with { Clocks = clocks.AsReadOnly() };
+    }
 
     private static WorldClockSnapshot BuildSnapshotCore(
         IReadOnlyList<string> selection,

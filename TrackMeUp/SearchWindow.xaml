@@ -4,9 +4,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:TrackMeUp.Controls"
+    xmlns:local="using:TrackMeUp"
     Title="Search snapshots">
     <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
+        <local:GlassBackdrop />
     </Window.SystemBackdrop>
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded" SizeChanged="RootGrid_SizeChanged">
         <Grid.Resources>
@@ -90,6 +91,7 @@
             Margin="24,0,24,8"
             IsClosable="True"
             IsOpen="False"
+            Closed="SearchInfoBar_Closed"
             Severity="Error" />
 
         <Grid x:Name="SearchStatusRow" Grid.Row="3" Margin="24,0,24,12" MinHeight="24" Visibility="Collapsed">

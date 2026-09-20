@@ -634,7 +634,8 @@ public sealed record WorldClockItem(
     string SkylineAssetPath,
     string SkylineSeason,
     WorldClockAtmosphere Atmosphere,
-    WorldClockWeather? Weather);
+    WorldClockWeather? Weather,
+    SpaceWeatherAlert? SpaceWeatherAlert = null);
 
 /// <summary>Identifies one geographic point used by the world day/night projection.</summary>
 public sealed record WorldClockMapCoordinate(double Latitude, double Longitude);

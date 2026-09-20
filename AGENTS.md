@@ -4,17 +4,30 @@ These instructions apply to all changes in this repository.
 
 ## Product writing and author voice
 
+- Keep MailMeUp, PromptMeUp, and TrackMeUp visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
+
 - Start each README with a headline that says what the app does and what the reader can use it for. Put the product benefit before architecture, branding, or project history.
 - Apply this style throughout repository documentation: plain English, short sentences, concrete actions, and useful examples. Cut filler, vague slogans, hype, corporate language, and formulaic AI-sounding prose.
 - Speak to the reader as "you". When speaking as the author, use "I", "me", and "my", never a company-style "we", "us", or "our". Umberto is the solo maintainer, with help from a few contributors; keep their credits accurate.
 - Keep technical detail in the relevant reference guides. Preserve exact commands, UI labels, privacy facts, limitations, and the distinction between implemented, tested, and planned features. Do not promise unlimited capacity or untested compatibility.
 - Preserve third-party quotations, license text, and historical records; these writing preferences apply to original project copy.
 
+## Distribution and purchase messaging
+
+- The commercial edition supports Windows 11 on x64 and ARM64 only. Distribute it only as MSIX.
+- Linux and macOS are source-only: users must compile and adapt the source themselves. Do not provide compiled binaries, installers, or commercial support for these platforms, and do not imply that every project can run there unchanged.
+- When a build is explicitly requested, default to a local development/debug build using the Debug configuration. A generic build or release request does not authorize a Microsoft Store package. Produce a Store version only when the owner explicitly asks for one; never upload or publish it without explicit authorization.
+- Keep development/debug artifacts separate from Store release artifacts. These rules do not authorize running builds, changing release pipelines, creating tags, or publishing on their own.
+- Windows distribution is MSIX-only. Do not propose or add portable ZIP, standalone EXE, or MSI distribution unless the owner explicitly changes this decision. This preference does not authorize packaging or workflow changes.
+- When helping with publication or Store listing copy, include this owner-approved Italian purchase notice verbatim: "Acquisto una tantum. Include tutte le funzioni Pro della versione 1 e gli aggiornamenti 1.x. Le future versioni principali possono richiedere un upgrade separato."
+- Treat this notice as approved customer-facing copy, not evidence that purchases or licensing are already implemented. Use a faithful English translation in English repository documentation; preserve the approved Italian wording for Italian publication.
+
 ## Shared delivery workflow
 
-- For documentation-only or repository-instruction-only changes, commit and push directly on the current branch, including `main`, without creating a branch or opening a pull request. The owner authorizes using existing administrator bypass rights for this exception; do not change repository protection settings. Include `[skip ci]` in the commit message unless the owner explicitly requests CI.
+- Never create a branch, commit, or push on your own initiative. Each action requires an explicit request from the owner; a request to edit files does not authorize Git delivery.
+- For documentation-only or repository-instruction-only changes, keep edits local until the owner explicitly requests delivery. If authorized, use the current branch and include `[skip ci]` unless the owner requests CI. Do not treat this rule as permission to bypass repository protections.
 - For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge.
-- Create portable release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
+- Create MSIX release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
 
 ## Context and token efficiency
@@ -59,7 +72,7 @@ These instructions apply to all changes in this repository.
 ## Code and UI guidance
 
 - Add XML documentation to public/protected methods and brief inline comments for critical I/O, process/OS interop, and external-call paths. Explain failure behavior and any fallback in service/monitoring logic and exception/guard clauses.
-- Keep UI strings separate from business logic. When behavior changes, include at least one unit/integration scenario checklist entry in `README`.
+- Keep UI strings separate from business logic. When behavior changes, include at least one unit/integration scenario checklist entry in `docs/DEVELOPMENT_CHECKLIST.md`. Keep detailed checks out of the product README.
 - For Screenshot UI work, use reusable components and keep data/business logic in models/services. Avoid duplicate large titles and card wrappers around controls; emphasize a translucent Mica/Acrylic look.
 - Track active work in `.github/tasks/todo.md` and completed work in `.github/tasks/archive.md`.
 

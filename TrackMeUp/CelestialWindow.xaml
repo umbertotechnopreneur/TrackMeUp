@@ -41,12 +41,18 @@
             <Grid x:Name="Toolbar" Grid.Row="2" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="3*" />
                 </Grid.ColumnDefinitions>
                 <ComboBox x:Name="CitySelector" DisplayMemberPath="CityName" SelectedValuePath="CityId"
                           MinWidth="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" VerticalAlignment="Center"
                           FontWeight="Light" SelectionChanged="CitySelector_SelectionChanged" />
-                <TextBlock x:Name="StatusText" Grid.Column="1" FontSize="12" FontWeight="Light"
+                <ToggleSwitch x:Name="PlanetsVisibilitySwitch" Grid.Column="1" Margin="4,0,0,0" VerticalAlignment="Center"
+                              IsOn="True" Toggled="SkyVisibilitySwitch_Toggled" />
+                <ToggleSwitch x:Name="ConstellationsVisibilitySwitch" Grid.Column="2" Margin="4,0,0,0" VerticalAlignment="Center"
+                              IsOn="True" Toggled="SkyVisibilitySwitch_Toggled" />
+                <TextBlock x:Name="StatusText" Grid.Column="3" FontSize="12" FontWeight="Light"
                            TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </Grid>

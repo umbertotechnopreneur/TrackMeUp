@@ -26,19 +26,45 @@ public sealed record CelestialSatellitePosition(string Id, double AltitudeDegree
 /// <summary>Identifies calculated solar, lunar, and seasonal events; blue hour uses geometric solar altitude from -6 to -4 degrees.</summary>
 public enum CelestialEventKind
 {
-    Sunrise, Sunset, CivilDawn, CivilDusk, MorningBlueHour, EveningBlueHour,
+    Sunrise, Sunset, Moonrise, Moonset, CivilDawn, CivilDusk, MorningBlueHour, EveningBlueHour,
     NewMoon, FirstQuarter, FullMoon, LastQuarter,
     MarchEquinox, JuneSolstice, SeptemberEquinox, DecemberSolstice,
-    MoonPlanetConjunction, MeteorShower
+    MoonPlanetConjunction, MeteorShower, ImportantDate, SpaceWeather
 }
 
-/// <summary>Contains event instants and city-local offsets; conjunctions are global longitude equality, and meteor activity dates accompany approximate recurring peaks.</summary>
+/// <summary>Classifies a significant NOAA Space Weather Prediction Center condition without inferring local aurora visibility.</summary>
+public enum SpaceWeatherEventKind { GeomagneticStorm, SolarRadiationStorm, RadioBlackout, HighEnergyElectronFlux }
+
+/// <summary>Contains one three-hour planetary K-index observation, estimate, or forecast published by NOAA SWPC.</summary>
+public sealed record SpaceWeatherKpForecast(DateTimeOffset StartUtc, double KpIndex, string Status, int? NoaaScale);
+
+/// <summary>Contains a currently active NOAA SWPC alert with parsed validity and severity metadata.</summary>
+public sealed record SpaceWeatherAlert(
+    string Id, DateTimeOffset IssuedUtc, DateTimeOffset? ValidFromUtc, DateTimeOffset? ValidToUtc,
+    SpaceWeatherEventKind Kind, int? NoaaScale, double? KpIndex, string Summary);
+
+/// <summary>Contains the cached NOAA SWPC space-weather feed used to add significant conditions to a local agenda.</summary>
+public sealed record SpaceWeatherSnapshot(
+    DateTimeOffset RetrievedUtc, IReadOnlyList<SpaceWeatherKpForecast> KpForecast,
+    IReadOnlyList<SpaceWeatherAlert> ActiveAlerts)
+{
+    /// <summary>Represents an unavailable or intentionally inapplicable live feed without inventing space-weather data.</summary>
+    public static SpaceWeatherSnapshot Empty { get; } = new(DateTimeOffset.MinValue, [], []);
+}
+
+/// <summary>Contains event instants and city-local offsets; conjunctions are global longitude equality, meteor activity dates accompany recurring peaks, and important dates identify a local catalog entry.</summary>
 public sealed record CelestialAgendaEvent(
     CelestialEventKind Kind, DateTimeOffset StartUtc, DateTimeOffset? EndUtc,
     DateTimeOffset StartLocal, DateTimeOffset? EndLocal,
     CelestialBodyKind? RelatedBody = null, string? MeteorShowerId = null, double? SeparationDegrees = null,
     DateOnly? ActivityStartDate = null, DateOnly? ActivityEndDate = null, bool IsApproximate = false,
-    double? MoonPhaseAngleDegrees = null);
+    double? MoonPhaseAngleDegrees = null, string? ImportantDateId = null,
+    SpaceWeatherEventKind? SpaceWeatherKind = null, int? NoaaScale = null, double? KpIndex = null,
+    string? SpaceWeatherAlertId = null)
+{
+    /// <summary>Indicates that the projected instant falls in this event's half-open interval; point events are not ongoing.</summary>
+    public bool IsAtReferenceInstant { get; init; }
+}
 
 /// <summary>Identifies equal tropical zodiac sectors beginning at the March equinox; these are not IAU constellations.</summary>
 public enum TropicalZodiacSign { Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpio, Sagittarius, Capricorn, Aquarius, Pisces }
@@ -49,7 +75,7 @@ public sealed record CelestialZodiacSector(TropicalZodiacSign Sign, double Start
 /// <summary>Contains the current solar tropical sector and the complete informational zodiac; no predictions are inferred.</summary>
 public sealed record CelestialZodiacSnapshot(TropicalZodiacSign CurrentSign, double SunLongitudeDegrees, IReadOnlyList<CelestialZodiacSector> Signs);
 
-/// <summary>Contains a local sky, tropical zodiac and sorted agenda: 48-hour solar events, lunar quarters, next season, 35-day conjunctions and next annual meteor peaks.</summary>
+/// <summary>Contains a local sky, tropical zodiac and sorted agenda: 48-hour solar/lunar horizon events, lunar quarters, next season, conjunctions, annual meteor peaks, and local important dates.</summary>
 public sealed record CelestialSnapshot(
     string CityId, string CityName, string TimeZoneId,
     DateTimeOffset InstantUtc, DateTimeOffset LocalTime,
@@ -57,6 +83,9 @@ public sealed record CelestialSnapshot(
     IReadOnlyList<CelestialBodyPosition> Bodies, IReadOnlyList<CelestialStarPosition> Stars,
     IReadOnlyList<CelestialConstellationSegment> ConstellationSegments, IReadOnlyList<CelestialAgendaEvent> Agenda)
 {
+    /// <summary>Insertion position of the reference-time marker in the sorted agenda, after events starting at that instant.</summary>
+    public int AgendaReferenceIndex => Agenda.Count(item => item.StartUtc <= InstantUtc);
+
     /// <summary>Describes the schematic constellation figures drawn from the embedded sky catalog.</summary>
     public IReadOnlyList<CelestialConstellationInfo> Constellations { get; init; } = [];
 
@@ -68,4 +97,7 @@ public sealed record CelestialSnapshot(
 
     /// <summary>Contains the interpolated city-specific solar-altitude sky palette.</summary>
     public required CelestialSkyAppearance SkyAppearance { get; init; }
+
+    /// <summary>Contains currently relevant NOAA SWPC data; it is empty for historical snapshots or unavailable feeds.</summary>
+    public SpaceWeatherSnapshot SpaceWeather { get; init; } = SpaceWeatherSnapshot.Empty;
 }

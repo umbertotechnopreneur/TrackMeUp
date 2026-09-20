@@ -24,12 +24,38 @@ public sealed partial class LocalSkyControl : UserControl
     private double _viewportWidth;
     private double _viewportHeight;
     private readonly List<Rect> _labelBounds = [];
+    private bool _showPlanets = true;
+    private bool _showConstellations = true;
 
     /// <summary>Creates a passive sky chart without location, clock, or astronomy services.</summary>
     public LocalSkyControl()
     {
         InitializeComponent();
         ActualThemeChanged += (_, _) => Render();
+    }
+
+    /// <summary>Gets or sets whether planet markers are rendered; the Sun and Moon remain visible as primary sky references.</summary>
+    internal bool ShowPlanets
+    {
+        get => _showPlanets;
+        set
+        {
+            if (_showPlanets == value) return;
+            _showPlanets = value;
+            Render();
+        }
+    }
+
+    /// <summary>Gets or sets whether schematic constellation figures and labels are rendered.</summary>
+    internal bool ShowConstellations
+    {
+        get => _showConstellations;
+        set
+        {
+            if (_showConstellations == value) return;
+            _showConstellations = value;
+            Render();
+        }
     }
 
     /// <summary>Renders one complete astronomical DTO; position calculations remain in Core.</summary>
@@ -110,27 +136,30 @@ public sealed partial class LocalSkyControl : UserControl
         }
 
         var stars = _snapshot.Stars.ToDictionary(star => star.Id, StringComparer.Ordinal);
-        foreach (var segment in _snapshot.ConstellationSegments)
+        if (_showConstellations)
         {
-            var start = stars[segment.StartStarId];
-            var end = stars[segment.EndStarId];
-            if (start.AltitudeDegrees < 0d || end.AltitudeDegrees < 0d)
+            foreach (var segment in _snapshot.ConstellationSegments)
             {
-                continue;
-            }
+                var start = stars[segment.StartStarId];
+                var end = stars[segment.EndStarId];
+                if (start.AltitudeDegrees < 0d || end.AltitudeDegrees < 0d)
+                {
+                    continue;
+                }
 
-            var from = Project(start.AltitudeDegrees, start.AzimuthDegrees);
-            var to = Project(end.AltitudeDegrees, end.AzimuthDegrees);
-            SkyCanvas.Children.Add(new Line
-            {
-                X1 = from.X,
-                Y1 = from.Y,
-                X2 = to.X,
-                Y2 = to.Y,
-                Stroke = accent,
-                StrokeThickness = 1.5d,
-                Opacity = 0.8d * _snapshot.SkyAppearance.StarOpacity
-            });
+                var from = Project(start.AltitudeDegrees, start.AzimuthDegrees);
+                var to = Project(end.AltitudeDegrees, end.AzimuthDegrees);
+                SkyCanvas.Children.Add(new Line
+                {
+                    X1 = from.X,
+                    Y1 = from.Y,
+                    X2 = to.X,
+                    Y2 = to.Y,
+                    Stroke = accent,
+                    StrokeThickness = 1.5d,
+                    Opacity = 0.8d * _snapshot.SkyAppearance.StarOpacity
+                });
+            }
         }
 
         foreach (var star in _snapshot.Stars.Where(star => star.AltitudeDegrees >= 0d))
@@ -150,7 +179,7 @@ public sealed partial class LocalSkyControl : UserControl
             Add(dot, point.X - (diameter / 2d), point.Y - (diameter / 2d));
         }
 
-        foreach (var body in _snapshot.Bodies.Where(body => body.IsAboveHorizon))
+        foreach (var body in _snapshot.Bodies.Where(body => body.IsAboveHorizon && (_showPlanets || !IsPlanet(body.Kind))))
         {
             var point = Project(body.AltitudeDegrees, body.AzimuthDegrees);
             var diameter = body.Kind is CelestialBodyKind.Sun or CelestialBodyKind.Moon
@@ -229,7 +258,7 @@ public sealed partial class LocalSkyControl : UserControl
                     Brush("TextFillColorPrimaryBrush"), 12d, avoidOverlap: true);
             }
         }
-        if (_radius > 130d && _snapshot.SkyAppearance.StarOpacity > 0.15d)
+        if (_showConstellations && _radius > 130d && _snapshot.SkyAppearance.StarOpacity > 0.15d)
         {
             var figures = _snapshot.Constellations.ToDictionary(figure => figure.Id, StringComparer.Ordinal);
             foreach (var constellation in _snapshot.ConstellationSegments.GroupBy(segment => segment.ConstellationId))
@@ -255,7 +284,8 @@ public sealed partial class LocalSkyControl : UserControl
 
             if (_radius > 180d)
             {
-                foreach (var star in _snapshot.Stars.Where(star => star.AltitudeDegrees > 8d && star.Magnitude is <= 1.5d))
+                foreach (var star in _snapshot.Stars.Where(star => star.AltitudeDegrees > 8d
+                    && (star.Magnitude is <= 1.5d || IsFeaturedStar(star.Id))))
                 {
                     var position = Project(star.AltitudeDegrees, star.AzimuthDegrees);
                     Label(star.Name, position.X + 7d, position.Y + 2d, secondary, 10d, avoidOverlap: true);
@@ -264,6 +294,13 @@ public sealed partial class LocalSkyControl : UserControl
         }
 
     }
+
+    private static bool IsPlanet(CelestialBodyKind kind) => kind is CelestialBodyKind.Mercury or CelestialBodyKind.Venus
+        or CelestialBodyKind.Mars or CelestialBodyKind.Jupiter or CelestialBodyKind.Saturn
+        or CelestialBodyKind.Uranus or CelestialBodyKind.Neptune;
+
+    private static bool IsFeaturedStar(string id) => id is "proxima-cen" or "alf-cen" or "sirius"
+        or "vega" or "deneb" or "altair";
 
     private Point Project(double altitude, double azimuth)
     {

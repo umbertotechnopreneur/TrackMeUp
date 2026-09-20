@@ -20,6 +20,7 @@
     <EmbeddedResource Include="Data\meteor-showers.json" LogicalName="TrackMeUp.Data.meteor-showers.json" />
     <EmbeddedResource Include="Data\sky-catalog.json" LogicalName="TrackMeUp.Data.sky-catalog.json" />
     <EmbeddedResource Include="Data\sky-palette.json" LogicalName="TrackMeUp.Data.sky-palette.json" />
+    <EmbeddedResource Include="Data\important-dates.json" LogicalName="TrackMeUp.Data.important-dates.json" />
     <EmbeddedResource Include="..\TrackMeUp.Hardware\PawnIO\distribution.json" LogicalName="TrackMeUp.PawnIO.distribution.json" />
   </ItemGroup>
 

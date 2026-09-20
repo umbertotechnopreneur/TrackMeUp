@@ -58,7 +58,9 @@ internal sealed class ToastNotificationService
 
         foreach (var host in hosts)
         {
-            Hide(host);
+            // Shutdown must not start a fade or enqueue another callback against a closing XAML root.
+            StopCountdown(host);
+            host.DismissImmediately();
         }
     }
 

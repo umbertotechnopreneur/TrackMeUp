@@ -92,6 +92,16 @@ public sealed partial class TimedInfoBar : UserControl
         Dismiss();
     }
 
+    /// <summary>Stops pending transitions and closes synchronously without scheduling work on a shutting-down window.</summary>
+    internal void DismissImmediately()
+    {
+        // Invalidate queued commits and animation completions before stopping their storyboard.
+        var generation = ++_transitionGeneration;
+        StopActiveTransition();
+        _isDismissing = true;
+        CompleteDismissal(generation);
+    }
+
     private void TimedInfoBar_Unloaded(object sender, RoutedEventArgs e)
     {
         if (!_isPresented)
@@ -99,9 +109,7 @@ public sealed partial class TimedInfoBar : UserControl
             return;
         }
 
-        _isDismissing = true;
-        var generation = ++_transitionGeneration;
-        CompleteDismissal(generation);
+        DismissImmediately();
     }
 
     private void CompleteDismissal(long generation)

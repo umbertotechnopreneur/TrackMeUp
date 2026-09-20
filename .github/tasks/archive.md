@@ -1,5 +1,60 @@
 # Task Archive
 
+## 2026-09-20 — Shutdown lifecycle corrections
+
+- Celestial windows invalidate pending rendering ownership before cancellation and no longer update the loading indicator after closure.
+- Shutdown toast dismissal stops timers and completes synchronously, without starting a fade or queueing a dismissal callback. Ordinary dismissal remains animated; unload invalidates pending animation completions.
+- Built and signature-verified local x64 Debug 0.0.30; formatting passed and build outputs cleaned. No tests run. These defects are corrected in code, but their relationship to the observed 0.0.27 crash remains unproven because the minidump omits the original stowed exception. Keep debugger reproduction pending.
+
+## 2026-09-20 — Agenda current-time position
+
+- Added an accent marker with localized Now/reference label and city-local timestamp between chronological agenda events. Highlighted ongoing intervals with a border and text label; instantaneous events are not treated as ongoing. Core supplies interval state and marker position.
+- Reused the existing live minute refresh and localization keys. x64 Debug build completed with zero warnings/errors; formatter verification passed. No tests run, no installation performed, visual acceptance pending.
+
+## 2026-09-20 — Finish the product README structure
+
+- Put an actual activity preview, source setup, and essential limitations directly after the product description. Move the world-clock preview into the extras section.
+- Preserve the detailed contributor scenarios and celestial implementation notes in docs/DEVELOPMENT_CHECKLIST.md and docs/CELESTIAL_DESKTOP.md, with links from the README and validation guide. Update the repository rule for future scenario entries.
+- Documentation only; no builds, tests, commits, pushes, or branches were created.
+
+## 2026-09-20 — Apply the shared MeUp presentation
+
+- Shorten the README headline, keep the product purpose first, and add the shared product links and author signature.
+- Add the coordinated concept illustration and its exact generation prompt, provenance, and visual style guide. Present sky, local weather, space weather, and world clocks together as optional desktop extras, using the existing real screenshots.
+- Changes remain local. No build, test, formatter, linter, commit, push, or branch creation was performed for this update.
+
+## 2026-09-20 — City-local aurora and two-line weather
+
+- Moved current advisories onto individual world-clock items. Aurora eligibility uses approximate magnetic latitude from both coordinates, Kp and local darkness; agenda forecasts use the same geographic gate and bounded darkness samples. Expired advisories are excluded.
+- Weather conditions and optional space-weather advisories occupy separate rows, removing the former 132-pixel advisory limit.
+- Built, signed and installed local Debug 0.0.27.0 (package status Ok), including the distinct moonset artwork. x64 compilation, formatting and signature verification passed. Cleaned build outputs and superseded task-generated 0.0.24–0.0.26 package directories, retaining the new installer. No test suites were run; visual acceptance remains pending.
+
+## 2026-09-20 — Distinct moonset artwork
+
+- Generated moonset-v1.png with built-in ImageGen using the existing lunar-horizon illustration as a style reference. Preserved original RGBA pixels and recorded prompt/hash in the artwork provenance.
+- Moonset now selects the new image; Moonrise retains the original asset. Installation/visual acceptance of the new asset remains pending.
+
+## 2026-09-20 — Compact search and restore celestial views
+
+- Search now opens compact, expands for results and uses the shared thin GlassBackdrop. Lowered its native minimum size so saved expanded bounds no longer dictate an empty opening.
+- Removed the visibility-based magnitude-eight validation cutoff: the embedded Proxima Centauri entry at magnitude 11.13 is a valid catalog entry. This previously blocked both celestial views.
+- Built, signed, and installed local Debug 0.0.26.0. Confirmed compact Search dimensions and populated Local Sky/Agenda through the installed UI. Formatting passed; no test suites were run. Retained the installer and cleaned build outputs.
+
+## 2026-09-20 — Increase window snapping distance
+
+- Increased snapping from five to ten physical pixels. Near-edge overshoot no longer immediately suppresses snapping; free movement for the remainder of the drag begins beyond ten pixels outside the starting monitor. Updated boundary/corner scenarios and README behavior.
+- Compiled Core and its test project successfully without running tests; formatted and verified C# sources. Built, verified the signature, and installed x64 Debug 0.0.25.0. User visual checks remain in todo.md.
+
+## 2026-09-20 — Remove the public roadmap
+
+- Remove ROADMAP.md and its README link. Update the feature request checklist to refer only to existing issues. Changes remain local; no tests or CI were run.
+
+## 2026-09-20 — Repair installed application startup
+
+- Restored 28 missing celestial/weather translations in each of eight catalogs. The installed app failed during LocalizationService initialization before constructing its main window; strict catalog validation remains enabled.
+- Verified all ten catalogs contain the same 1,195 keys and matching format placeholders. Built, signed, and installed local x64 Debug 0.0.24.0; cold launch creates a usable main window, minimizing registers the notification-area icon, and a subsequent Start-menu activation restores the same process with a visible foreground window. No test suites, push, or PR were run.
+
+
 ## 2026-09-20 — Clarify product documentation and author voice
 
 - Put activity tracking and search in the first README headline. Simplify product copy and use the solo maintainer's voice in contributor, support, security, privacy, and roadmap documentation.
@@ -7,6 +62,10 @@
 - Documentation changes only. No builds, tests, formatters, linters, or CI were run. Preserve unrelated work in progress.
 
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
+## [2026-09-19] Install the unified UI development MSIX
+
+- [x] At the user's request, build and install a signed local x64 MSIX from `2f2e865`, preserving existing source edits and using the already trusted development certificate. No test suites or CI were run. Update the existing package identity with `ForceUpdateFromAnyVersion` because the two working copies used independent development version counters.
+- [x] Verify the package signature, matching source commit and absence of report assets. Windows reports the installed package as `Ok`; all six checked executable/assembly/build-information hashes match the MSIX, and the installed application is running with a main window. Preserve the MSIX and dependencies under `artifacts/packages/local/x64/ui-cleanup-2f2e865/` and clean Release outputs once. Full visual scenario checks remain pending.
 ## [2026-09-19] Unify desktop UI fixes and retire activity reports
 
 - [x] Combine maintenance/settings and celestial changes on the single existing `codex/clarify-advanced-sensors` branch. Clarify screenshot/AI wording, remove App/PC diagnostics, add responsive privacy actions and accents, load retention criteria automatically on one wrapping row, preserve results across language/theme changes, and give the complete toast frame an opaque theme surface.
@@ -69,6 +128,12 @@ This archive tracks completed development tasks for reference, historical alignm
 - [x] Replace duplicate approximate solar/lunar calculations with one Core Astronomy Engine model and bounded caches, shared by existing clocks/Moon/maps and new views. Add source-attributed stars, computed events, offline Earth texture rendering, passive UI DTOs and versioned operations on the existing runtime.
 - [x] Add computed Moon/planet conjunctions, a source-attributed eight-shower meteor catalog with explicitly approximate peaks, and informational tropical zodiac sectors. Create twelve individual transparent zodiac PNGs, planetary/event artwork and a transparent landscape; record generation prompts and provenance. Render dawn/day/dusk/night with 24 smoothly interpolated palettes driven by actual solar elevation.
 - [x] Validate x64 WinUI compilation (zero warnings/errors), 770 Core tests, 372 Presentation tests and 96 CLI tests. All ten localization catalogs have matching keys/placeholders. CI results are recorded on PR #39; installed visual checks remain tracked in todo.md.
+
+## [2026-09-19] Simplify the Italian activity calendar wording
+
+- [x] Replace the recorded-activity label with the user-requested "Uptime e attività", shared by the calendar subtitle and day status. Delivery is tracked in `todo.md`; no behavior changed.
+
+---
 
 ## [2026-09-19] Create a local installer and update the installed app
 

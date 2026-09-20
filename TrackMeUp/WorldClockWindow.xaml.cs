@@ -636,6 +636,7 @@ public sealed partial class WorldClockWindow : Window
                 clock,
                 referenceClock,
                 clock.CityId == referenceClock.CityId,
+                clock.SpaceWeatherAlert,
                 _strings);
         }
 
@@ -1269,7 +1270,12 @@ public sealed partial class WorldClockWindow : Window
         {
             if (_columns.TryGetValue(clock.CityId, out var column))
             {
-                column.Apply(clock, referenceClock, clock.CityId == referenceCityId, _strings);
+                column.Apply(
+                    clock,
+                    referenceClock,
+                    clock.CityId == referenceCityId,
+                    clock.SpaceWeatherAlert,
+                    _strings);
             }
         }
     }

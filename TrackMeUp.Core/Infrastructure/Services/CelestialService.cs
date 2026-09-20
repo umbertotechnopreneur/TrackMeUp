@@ -91,6 +91,8 @@ public static class CelestialService
         var end = time.AddDays(2);
         AddSolarEvents(CelestialEventKind.Sunrise, Direction.Rise, null);
         AddSolarEvents(CelestialEventKind.Sunset, Direction.Set, null);
+        AddLunarEvents(CelestialEventKind.Moonrise, Direction.Rise);
+        AddLunarEvents(CelestialEventKind.Moonset, Direction.Set);
         AddSolarEvents(CelestialEventKind.CivilDawn, Direction.Rise, -6);
         AddSolarEvents(CelestialEventKind.CivilDusk, Direction.Set, -6);
         AddBlueHours(Direction.Rise, CelestialEventKind.MorningBlueHour, -6, -4);
@@ -127,6 +129,7 @@ public static class CelestialService
         var nextSeason = seasons.Where(item => item.Time.ut >= time.ut).MinBy(item => item.Time.ut);
         AddEvent(nextSeason.Kind, nextSeason.Time);
         events.AddRange(CelestialEventService.BuildUpcoming(new DateTimeOffset(time.ToUtcDateTime()), zone, cancellationToken));
+        events.AddRange(CelestialImportantDateService.BuildUpcoming(new DateTimeOffset(time.ToUtcDateTime()), zone));
         return Array.AsReadOnly(events.OrderBy(item => item.StartUtc).ThenBy(item => item.Kind).ToArray());
 
         void AddEvent(CelestialEventKind kind, AstroTime start, AstroTime? finish = null)
@@ -147,6 +150,20 @@ public static class CelestialService
                 var crossing = altitude is { } degrees
                     ? Astronomy.SearchAltitude(Body.Sun, observer, direction, cursor, end.ut - cursor.ut, degrees)
                     : Astronomy.SearchRiseSet(Body.Sun, observer, direction, cursor, end.ut - cursor.ut);
+                if (crossing is null || crossing.ut >= end.ut) break;
+                AddEvent(kind, crossing);
+                cursor = crossing.AddDays(1.0 / 86400);
+            }
+        }
+
+        void AddLunarEvents(CelestialEventKind kind, Direction direction)
+        {
+            var cursor = time;
+            while (cursor.ut < end.ut)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // A null crossing is normal when the Moon does not cross this observer's horizon in the interval.
+                var crossing = Astronomy.SearchRiseSet(Body.Moon, observer, direction, cursor, end.ut - cursor.ut);
                 if (crossing is null || crossing.ut >= end.ut) break;
                 AddEvent(kind, crossing);
                 cursor = crossing.AddDays(1.0 / 86400);

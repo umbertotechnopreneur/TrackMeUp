@@ -1,4 +1,34 @@
 # TrackMeUp performance and footprint optimization handoff
+
+## Close-time crash investigation (2026-09-20)
+
+- [ ] Verify the close-time crash under debugger after approval. The saved 0.0.27 minidump resolves DispatcherQueue::DeferInvokeCallback but omits the stowed exception memory, so the original failing call is not established. Corrected late celestial loading-indicator updates and asynchronous toast dismissal during shutdown. Local Debug 0.0.30 installer compiled and signature-verified; formatting passed, no tests run. Verify closure before claiming the observed crash fixed.
+
+## Agenda current-time marker (2026-09-20)
+
+- [ ] Visually accept the current/reference-time marker and active-interval borders in the next installed build. x64 Debug compilation passed with zero warnings/errors; formatting passed. Existing live minute refresh and localized Now/reference labels are reused. No tests run; installed app unchanged during crash diagnosis.
+
+## City-local aurora and two-line weather (2026-09-20)
+
+- [ ] Visually accept city-local aurora filtering, separate weather/advisory rows and moonset artwork in local Debug 0.0.27.0. x64 compilation, formatting and package-signature verification passed; no test suites run.
+
+- [ ] Confirm Moonrise/Moonset thumbnails differ at timeline size on Acrylic; the distinct moonset-v1.png is included in local Debug 0.0.27.0.
+## Celestial catalog validation (2026-09-20)
+
+- [ ] Complete visual acceptance of Local Sky and Astronomical Agenda in Debug 0.0.26.0. Both installed views now load populated content after removing the magnitude-eight cutoff; finite-coordinate, identity, and reference validation remains enabled.
+
+## Compact Acrylic search (2026-09-20)
+
+- [ ] Complete Search visual checks in Debug 0.0.26.0: installed empty opening confirmed at 640 × 156 DIP (1280 × 312 physical pixels at 200%). Check expansion with matches, collapse when cleared/empty, busy/error status, result resizing, and thin Acrylic with another window focused. No test suites were run.
+
+## Ten-pixel monitor snapping (2026-09-20)
+
+- [ ] Visually validate snapping in installed Debug 0.0.25.0: all four work-area edges and corners catch within ten physical pixels, including near-edge outward overshoot. At eleven pixels outside the starting monitor, free movement remains active for the rest of the drag. x64 compilation and formatting passed; updated test scenarios were compiled but not run, as requested.
+
+## Installed startup recovery (2026-09-20)
+
+- [ ] Complete user visual acceptance of Debug 0.0.24.0. Installation, cold launch, notification-area registration, and Start-menu restoration to the foreground passed; retain this branch without a PR until requested.
+
 ## Unified UI cleanup and report removal (2026-09-19)
 
 - [ ] Deliver the unified branch through one PR and required CI. Local x64 builds, formatting and the authorized test runs/rechecks passed after fixing two regressions. Validate the README maintenance/privacy/retention/toast and local-sky scenarios in the installed app before claiming visual verification. The user authorized push and PR creation; no additional local test run is authorized.
@@ -9,7 +39,7 @@
 
 ## Magnetic window snapping (2026-09-19)
 
-- [ ] Complete native-window visual checks after the authorized development MSIX update: adjacent/aligned app windows and monitor work-area edges at five physical pixels; no snapping at six pixels; smooth release without drift; negative monitor coordinates, different DPI scales, dragging from maximized, hidden/minimized peers and closing peers. Crossing the starting monitor's physical bounds must disable snapping for the rest of that drag, including re-entry, without forcing the window back; the next drag starts fresh. Confirm the Settings switch applies immediately, persists on restart and does not interfere with the shared disappearing title bar. Test suites and push/CI are not authorized.
+- [ ] Complete native-window visual checks after the development MSIX update: adjacent/aligned app windows and monitor work-area edges at ten physical pixels; no snapping at eleven pixels; smooth release without drift; negative monitor coordinates, different DPI scales, dragging from maximized, hidden/minimized peers and closing peers. Exceeding the starting monitor's physical bounds by more than ten pixels disables snapping for the rest of that drag, including re-entry; the next drag starts fresh. Confirm the Settings switch applies immediately, persists on restart and does not interfere with the shared disappearing title bar. Test suites and push/CI are not authorized.
 
 ## Fixed celestial sky and refresh (2026-09-19)
 
@@ -24,6 +54,10 @@
 
 - Automated validation: x64 WinUI build passed with zero warnings/errors; Core 770, Presentation 372 and CLI 96 tests passed. Shared phases, polar/DST cases, map illumination, IPC, independent restoration, conjunctions, meteor estimates, zodiac boundaries and the 24 interpolated sky palettes are covered. Required CI results are recorded on PR #39.
 - [ ] Complete the README visual scenarios for local sky, agenda and the separate Earth globe window: Acrylic/accent, disappearing title bars, resizing at 100–200% scaling and keyboard navigation. No installed-app visual validation has been performed in this task.
+
+## Activity calendar wording (2026-09-19)
+
+- [ ] Deliver the completed Italian "Uptime e attività" wording through a focused PR after explicit approval to create a branch and push with required CI.
 
 ## Restore installed advanced sensors at startup (2026-09-19)
 

@@ -1,5 +1,7 @@
 # Check the app experience
 
+For the detailed scenarios previously kept in the README, see the [development checklist](DEVELOPMENT_CHECKLIST.md) and [celestial desktop checks](CELESTIAL_DESKTOP.md). These lists describe checks to run, not verified results.
+
 Use the relevant section after changing a feature. Check what people see and
 what their actions do, including keyboard access and error states. Run deletion
 and reset checks only with disposable data.

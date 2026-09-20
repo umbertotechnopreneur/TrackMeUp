@@ -109,7 +109,7 @@ public sealed class WindowStateService
             WindowStateKeys.OcrText => new(560, 360),
             WindowStateKeys.About => new(900, 700),
             WindowStateKeys.Licenses => new(720, 520),
-            WindowStateKeys.Search => new(780, 420),
+            WindowStateKeys.Search => new(560, 156),
             WindowStateKeys.SearchIndexing => new(560, 420),
             WindowStateKeys.Schedule => new(620, 480),
             WindowStateKeys.QuickSetup => new(760, 560),

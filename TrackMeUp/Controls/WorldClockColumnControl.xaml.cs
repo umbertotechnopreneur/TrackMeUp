@@ -104,6 +104,7 @@ public sealed partial class WorldClockColumnControl : UserControl
         WorldClockItem clock,
         WorldClockItem referenceClock,
         bool isReference,
+        SpaceWeatherAlert? spaceWeatherAlert,
         LocalizationService strings)
     {
         ArgumentNullException.ThrowIfNull(clock);
@@ -148,6 +149,7 @@ public sealed partial class WorldClockColumnControl : UserControl
         var sunsetSummary = strings.Format("WorldClock.Sunset", sunsetTime);
         var daylightSummary = ApplySolarTimeline(clock, strings);
         var weatherSummary = ApplyWeather(clock.Weather, strings);
+        var spaceWeatherSummary = ApplySpaceWeatherAlert(spaceWeatherAlert, strings);
         CompactDaylightDurationText.Text = daylightSummary;
         CompactTimeZoneText.Text = string.Concat("UTC", FormatOffset(clock.LocalTime.Offset));
         ApplyPresentationMode();
@@ -162,6 +164,7 @@ public sealed partial class WorldClockColumnControl : UserControl
             daylightSavingSummary,
             moonPhaseSummary,
             weatherSummary,
+            spaceWeatherSummary,
             sunriseSummary,
             sunsetSummary,
             daylightSummary
@@ -433,6 +436,58 @@ public sealed partial class WorldClockColumnControl : UserControl
         WeatherFogIcon.Visibility = condition is "fog" ? Visibility.Visible : Visibility.Collapsed;
         WeatherLightningIcon.Visibility = condition is "lightning" ? Visibility.Visible : Visibility.Collapsed;
         WeatherUnknownIcon.Visibility = condition is "unknown" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string ApplySpaceWeatherAlert(SpaceWeatherAlert? alert, LocalizationService strings)
+    {
+        if (alert is null)
+        {
+            SpaceWeatherAlertText.Text = string.Empty;
+            SpaceWeatherAlertPanel.Visibility = Visibility.Collapsed;
+            ToolTipService.SetToolTip(SpaceWeatherAlertPanel, null);
+            AutomationProperties.SetName(SpaceWeatherAlertPanel, string.Empty);
+            return string.Empty;
+        }
+
+        if (!Enum.IsDefined(alert.Kind))
+        {
+            throw new InvalidDataException($"Unsupported space-weather alert kind '{alert.Kind}'.");
+        }
+
+        if (alert.KpIndex is { } kpIndex && !double.IsFinite(kpIndex))
+        {
+            throw new InvalidDataException("The space-weather Kp index must be finite.");
+        }
+
+        var kind = strings.Translate($"WorldClock.SpaceWeather.{alert.Kind}");
+        var indicators = new List<string>();
+        if (alert.NoaaScale is { } scale)
+        {
+            indicators.Add(strings.Format("WorldClock.SpaceWeather.Scale", scale));
+        }
+
+        if (alert.KpIndex is { } kp)
+        {
+            indicators.Add(strings.Format("WorldClock.SpaceWeather.Kp", kp));
+        }
+
+        var detail = indicators.Count == 0 ? kind : $"{kind} · {string.Join(" · ", indicators)}";
+        var validUntil = alert.ValidToUtc is { } end
+            ? strings.Format("WorldClock.SpaceWeather.ValidUntil", end.ToLocalTime().ToString("g", strings.Culture))
+            : string.Empty;
+        var summary = string.IsNullOrWhiteSpace(alert.Summary)
+            ? detail
+            : $"{detail}. {alert.Summary}";
+        if (!string.IsNullOrEmpty(validUntil))
+        {
+            summary = $"{summary}. {validUntil}";
+        }
+
+        SpaceWeatherAlertText.Text = detail;
+        SpaceWeatherAlertPanel.Visibility = Visibility.Visible;
+        ToolTipService.SetToolTip(SpaceWeatherAlertPanel, summary);
+        AutomationProperties.SetName(SpaceWeatherAlertPanel, summary);
+        return summary;
     }
 
     private void ApplySkyline(string assetPath)

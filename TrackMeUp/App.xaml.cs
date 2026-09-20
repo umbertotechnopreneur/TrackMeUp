@@ -196,9 +196,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.ExitRequested += MainWindow_ExitRequested;
             _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
             _window.Closed += MainWindow_Closed;
-            var restoreHiddenMain = initialSettings.Value.WindowOpenStates is { } openStates
-                && openStates.TryGetValue(WindowStateKeys.Main, out var wasMainOpen) && !wasMainOpen;
-            if (options.StartWithWindows || restoreHiddenMain)
+            if (options.StartWithWindows)
             {
                 try
                 {

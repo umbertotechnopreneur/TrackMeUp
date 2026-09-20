@@ -12,10 +12,10 @@ public readonly record struct WindowSnapRectangle(int Left, int Top, int Right, 
     public int Height => checked(Bottom - Top);
 }
 
-/// <summary>Calculates five-pixel edge snapping for one drag; leaving the starting monitor suppresses its remaining moves.</summary>
+/// <summary>Calculates ten-pixel edge snapping; leaving the starting monitor by more than ten pixels suppresses the remaining drag.</summary>
 public sealed class WindowSnapSession
 {
-    private const int SnapDistance = 5;
+    private const int SnapDistance = 10;
     private readonly WindowSnapRectangle _monitorBounds;
     private readonly WindowSnapRectangle _workArea;
 
@@ -33,7 +33,7 @@ public sealed class WindowSnapSession
         _workArea = workArea;
     }
 
-    /// <summary>Gets whether a raw proposal has left the starting monitor, permanently disabling snap until a new session.</summary>
+    /// <summary>Gets whether a raw proposal exceeded the monitor's ten-pixel margin, disabling snap until a new session.</summary>
     public bool IsSuppressed { get; private set; }
 
     /// <summary>Gets whether the last valid move matched an eligible edge, including an exact zero-distance match.</summary>
@@ -41,7 +41,7 @@ public sealed class WindowSnapSession
 
     /// <summary>
     /// Translates raw visible bounds toward nearby work-area or peer edges without resizing or clamping.
-    /// Peers must overlap or lie within five pixels on the perpendicular axis. Equal-distance targets
+    /// Peers must overlap or lie within ten pixels on the perpendicular axis. Equal-distance targets
     /// resolve toward the smaller desktop coordinate, independently of peer order. Every input is validated,
     /// including after suppression; callers must pass unsnapped bounds to avoid making an edge sticky.
     /// </summary>
@@ -54,9 +54,13 @@ public sealed class WindowSnapSession
             Validate(peer, nameof(peerBounds));
         }
 
-        if (!Contains(_monitorBounds, proposedBounds))
+        if ((long)proposedBounds.Left < (long)_monitorBounds.Left - SnapDistance
+            || (long)proposedBounds.Right > (long)_monitorBounds.Right + SnapDistance
+            || (long)proposedBounds.Top < (long)_monitorBounds.Top - SnapDistance
+            || (long)proposedBounds.Bottom > (long)_monitorBounds.Bottom + SnapDistance)
         {
-            // Exiting the physical monitor releases snapping even when the next raw move re-enters it.
+            // Permit near-edge overshoot so a sampled pointer move can still reach the monitor edge.
+            // Deliberately moving farther outside releases snapping for the remainder of this drag.
             IsSuppressed = true;
         }
 

@@ -10,13 +10,22 @@ public sealed class WindowSnapSessionTests
 {
     private static readonly WindowSnapRectangle Monitor = new(0, 0, 1000, 1000);
 
-    /// <summary>All four working-area edges snap at five physical pixels, with no resizing.</summary>
+    /// <summary>All four edges snap within ten physical pixels, including outward overshoot, without resizing.</summary>
     [Theory]
     [InlineData(5, 200, 105, 300, 0, 200, 100, 300)]
     [InlineData(895, 200, 995, 300, 900, 200, 1000, 300)]
     [InlineData(200, 5, 300, 105, 200, 0, 300, 100)]
     [InlineData(200, 895, 300, 995, 200, 900, 300, 1000)]
-    public void Move_SnapsAllWorkAreaEdgesWithinFivePixels(int left, int top, int right, int bottom,
+    [InlineData(10, 200, 110, 300, 0, 200, 100, 300)]
+    [InlineData(890, 200, 990, 300, 900, 200, 1000, 300)]
+    [InlineData(200, 10, 300, 110, 200, 0, 300, 100)]
+    [InlineData(200, 890, 300, 990, 200, 900, 300, 1000)]
+    [InlineData(-10, 200, 90, 300, 0, 200, 100, 300)]
+    [InlineData(910, 200, 1010, 300, 900, 200, 1000, 300)]
+    [InlineData(200, -10, 300, 90, 200, 0, 300, 100)]
+    [InlineData(200, 910, 300, 1010, 200, 900, 300, 1000)]
+    [InlineData(-10, -10, 90, 90, 0, 0, 100, 100)]
+    public void Move_SnapsAllWorkAreaEdgesWithinTenPixels(int left, int top, int right, int bottom,
         int expectedLeft, int expectedTop, int expectedRight, int expectedBottom)
     {
         var session = new WindowSnapSession(Monitor, Monitor);
@@ -28,13 +37,13 @@ public sealed class WindowSnapSessionTests
         Assert.False(session.IsSuppressed);
     }
 
-    /// <summary>Six pixels is outside the inclusive threshold on every edge.</summary>
+    /// <summary>Eleven pixels is outside the inclusive threshold on every edge.</summary>
     [Theory]
-    [InlineData(6, 200, 106, 300)]
-    [InlineData(894, 200, 994, 300)]
-    [InlineData(200, 6, 300, 106)]
-    [InlineData(200, 894, 300, 994)]
-    public void Move_DoesNotSnapAtSixPixels(int left, int top, int right, int bottom)
+    [InlineData(11, 200, 111, 300)]
+    [InlineData(889, 200, 989, 300)]
+    [InlineData(200, 11, 300, 111)]
+    [InlineData(200, 889, 300, 989)]
+    public void Move_DoesNotSnapAtElevenPixels(int left, int top, int right, int bottom)
     {
         var proposed = new WindowSnapRectangle(left, top, right, bottom);
         Assert.Equal(proposed, new WindowSnapSession(Monitor, Monitor).Move(proposed, []));
@@ -46,7 +55,7 @@ public sealed class WindowSnapSessionTests
     {
         var session = new WindowSnapSession(Monitor, Monitor);
         Assert.Equal(0, session.Move(new(5, 200, 105, 300), []).Left);
-        Assert.Equal(6, session.Move(new(6, 200, 106, 300), []).Left);
+        Assert.Equal(11, session.Move(new(11, 200, 111, 300), []).Left);
         Assert.False(session.IsSuppressed);
     }
 
@@ -64,7 +73,7 @@ public sealed class WindowSnapSessionTests
         Assert.False(session.IsSnapped);
         Assert.Equal(interior, session.Move(interior, [new(300, 200, 400, 300)]));
         Assert.True(session.IsSnapped);
-        session.Move(new(-1, 200, 99, 300), []);
+        session.Move(new(-11, 200, 89, 300), []);
         Assert.True(session.IsSuppressed);
         Assert.False(session.IsSnapped);
         session.Move(exactEdge, []);
@@ -110,14 +119,14 @@ public sealed class WindowSnapSessionTests
         Assert.Equal(proposed, session.Move(proposed, [new(400, 400, 600, 600)]));
     }
 
-    /// <summary>Corner proximity is accepted at five pixels but rejected beyond it.</summary>
+    /// <summary>Corner proximity is accepted at ten pixels but rejected beyond it.</summary>
     [Fact]
-    public void Move_BoundsPerpendicularProximityToFivePixels()
+    public void Move_BoundsPerpendicularProximityToTenPixels()
     {
         var proposed = new WindowSnapRectangle(200, 200, 300, 300);
         var session = new WindowSnapSession(Monitor, Monitor);
-        Assert.Equal(new WindowSnapRectangle(205, 205, 305, 305), session.Move(proposed, [new(305, 305, 405, 405)]));
-        Assert.Equal(proposed, session.Move(proposed, [new(305, 306, 405, 406)]));
+        Assert.Equal(new WindowSnapRectangle(210, 210, 310, 310), session.Move(proposed, [new(310, 310, 410, 410)]));
+        Assert.Equal(proposed, session.Move(proposed, [new(310, 311, 410, 411)]));
     }
 
     /// <summary>The closest eligible edge wins; equal distances are deterministic regardless of peer enumeration order.</summary>
@@ -145,12 +154,12 @@ public sealed class WindowSnapSessionTests
         Assert.False(session.IsSuppressed);
     }
 
-    /// <summary>Crossing any physical monitor edge disables snapping for the rest of that drag, including re-entry.</summary>
+    /// <summary>Exceeding any monitor edge by eleven pixels disables snapping for the rest of the drag, including re-entry.</summary>
     [Theory]
-    [InlineData(-1, 100, 99, 200)]
-    [InlineData(901, 100, 1001, 200)]
-    [InlineData(100, -1, 200, 99)]
-    [InlineData(100, 901, 200, 1001)]
+    [InlineData(-11, 100, 89, 200)]
+    [InlineData(911, 100, 1011, 200)]
+    [InlineData(100, -11, 200, 89)]
+    [InlineData(100, 911, 200, 1011)]
     public void Move_SuppressesAfterEscapeUntilNewSession(int left, int top, int right, int bottom)
     {
         var session = new WindowSnapSession(Monitor, Monitor);
@@ -202,7 +211,7 @@ public sealed class WindowSnapSessionTests
         Assert.Throws<ArgumentException>(() => session.Move(new(int.MinValue, 0, int.MaxValue, 100), []));
         Assert.Throws<ArgumentException>(() => session.Move(new(100, 100, 200, 200), [new(0, int.MinValue, 100, int.MaxValue)]));
         Assert.False(session.IsSuppressed);
-        session.Move(new(-1, 100, 99, 200), []);
+        session.Move(new(-11, 100, 89, 200), []);
         Assert.Throws<ArgumentException>(() => session.Move(default, []));
         Assert.Throws<ArgumentException>(() => session.Move(new(100, 100, 200, 200), [default]));
     }
