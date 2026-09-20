@@ -581,7 +581,7 @@ public sealed record WorldClockCitySummary(
     bool IsCapital);
 
 /// <summary>Contains the locally distributed city catalog and current selection limit.</summary>
-public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> Cities, int MaximumClocks);
+public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> Cities, int MaximumClocks, string? AddDeniedMessageKey = null);
 
 /// <summary>Contains the persisted world-clock identifiers after a successful selection mutation.</summary>
 public sealed record WorldClockSelectionState(IReadOnlyList<string> CityIds, int MaximumClocks);
@@ -745,6 +745,21 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets a privacy-safe aggregate report for an inclusive local-date range.</summary>
     Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Gets local export preferences and known installations without requiring Premium.</summary>
+    Task<OperationResult<ReportExportSetup>> GetReportExportSetupAsync(CancellationToken cancellationToken);
+
+    /// <summary>Builds bounded local export previews without requiring Premium or calling an AI provider.</summary>
+    Task<OperationResult<ReportExportPreview>> PreviewReportExportAsync(ReportExportOptions options, CancellationToken cancellationToken);
+
+    /// <summary>Saves field preferences; dates and generated summaries are not persisted.</summary>
+    Task<OperationResult<bool>> SaveReportExportPreferencesAsync(ReportExportOptions options, CancellationToken cancellationToken);
+
+    /// <summary>Checks the runtime entitlement and atomically writes a selected analytical export.</summary>
+    Task<OperationResult<ReportExportResult>> ExportReportAsync(ReportExportRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Explicitly sends selected saved text to the configured AI provider and returns an editable summary.</summary>
+    Task<OperationResult<ReportSummaryResult>> GenerateReportSummaryAsync(ReportSummaryRequest request, CancellationToken cancellationToken);
 
     /// <summary>Captures a current system snapshot.</summary>
     Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken);

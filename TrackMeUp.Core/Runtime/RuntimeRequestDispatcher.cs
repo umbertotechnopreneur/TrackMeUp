@@ -118,6 +118,15 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.AiKeySet => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
                 RuntimeOperation.AiAnalyze => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
                 RuntimeOperation.ReportQueryV1 => await DispatchReportQueryAsync(request, cancellationToken),
+                RuntimeOperation.ReportExportSetupV1 => ToResponse(request, await _application.GetReportExportSetupAsync(cancellationToken)),
+                RuntimeOperation.ReportExportPreviewV1 => ToResponse(request, await _application.PreviewReportExportAsync(
+                    Read<ReportExportOptions>(request.Payload) ?? throw new InvalidDataException("Export options are required."), cancellationToken)),
+                RuntimeOperation.ReportExportPreferencesV1 => ToResponse(request, await _application.SaveReportExportPreferencesAsync(
+                    Read<ReportExportOptions>(request.Payload) ?? throw new InvalidDataException("Export options are required."), cancellationToken)),
+                RuntimeOperation.ReportExportWriteV1 => ToResponse(request, await _application.ExportReportAsync(
+                    Read<ReportExportRequest>(request.Payload) ?? throw new InvalidDataException("An export request is required."), cancellationToken)),
+                RuntimeOperation.ReportExportSummaryV1 => ToResponse(request, await _application.GenerateReportSummaryAsync(
+                    Read<ReportSummaryRequest>(request.Payload) ?? throw new InvalidDataException("A summary request is required."), cancellationToken)),
                 RuntimeOperation.UiOpen => ToResponse(request, await _application.OpenUserInterfaceAsync(cancellationToken)),
                 RuntimeOperation.PrivacyList => ToResponse(request, await _application.GetPrivacyRulesAsync(cancellationToken)),
                 RuntimeOperation.PrivacyAdd => ToResponse(request, await _application.AddPrivacyRuleAsync(ReadString(request.Payload, "type"), ReadString(request.Payload, "value"), cancellationToken)),

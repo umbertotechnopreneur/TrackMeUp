@@ -75,12 +75,13 @@ public sealed class ActivityCalendarSurfaceContractTests
         var main = XDocument.Load(RepositoryFile("TrackMeUp", "MainWindow.xaml"));
         var mainSource = File.ReadAllText(RepositoryFile("TrackMeUp", "MainWindow.xaml.cs"));
         var dialogs = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
-        var menuItem = main.Descendants().Single(element => HasName(element, "ActivityCalendarMenuItem"));
+        var menuItem = main.Descendants().Single(element => HasName(element, "QuickActivityCalendarMenuItem"));
 
         Assert.Equal("ActivityCalendar.MenuTitle", menuItem.Attribute("Tag")?.Value);
         Assert.Equal("ActivityCalendarMenuItem_Click", menuItem.Attribute("Click")?.Value);
-        Assert.Contains(menuItem.Ancestors(), element => HasName(element, "ActivityMenu"));
-        Assert.Contains("ActivityCalendarMenuItem.Text = T(\"ActivityCalendar.MenuTitle\")", mainSource, StringComparison.Ordinal);
+        Assert.Contains(menuItem.Ancestors(), element => HasName(element, "MainMenuFlyout"));
+        Assert.DoesNotContain(main.Descendants(), element => HasName(element, "ActivityMenu"));
+        Assert.Contains("QuickActivityCalendarMenuItem.Text = T(\"ActivityCalendar.MenuTitle\")", mainSource, StringComparison.Ordinal);
         Assert.Contains("await _dialogs.ShowActivityCalendarAsync(_application, this, RootGrid.RequestedTheme, _strings)", mainSource, StringComparison.Ordinal);
         Assert.Contains("ScreenshotGalleryDateRequested?.Invoke", mainSource, StringComparison.Ordinal);
         Assert.Contains("internal async Task<DateOnly?> ShowActivityCalendarAsync", dialogs, StringComparison.Ordinal);

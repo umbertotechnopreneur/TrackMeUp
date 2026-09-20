@@ -299,14 +299,14 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("Math.Clamp(remaining.TotalSeconds, 1d, PendingSnapshotDeleteSeconds)", mainSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetHelpText(DeleteSnapshotButton, accessibleStatus);", mainSource, StringComparison.Ordinal);
         Assert.DoesNotContain("$\"00:{Math.Max", mainSource, StringComparison.Ordinal);
-        Assert.Equal(4, menu.Descendants().Count(element => element.Name.LocalName == "MenuFlyoutSubItem"));
+        Assert.Equal(3, menu.Descendants().Count(element => element.Name.LocalName == "MenuFlyoutSubItem"));
         Assert.Equal(2, menu.Descendants().Count(element => element.Name.LocalName == "ToggleMenuFlyoutItem"));
         Assert.DoesNotContain(menu.Descendants(), element => element.Name.LocalName == "Button");
         Assert.All(
             menu.Descendants().Where(element => element.Name.LocalName is "MenuFlyoutSubItem" or "MenuFlyoutItem" or "ToggleMenuFlyoutItem"),
             item => Assert.False(string.IsNullOrWhiteSpace(item.Attribute("ToolTipService.ToolTip")?.Value)));
-        Assert.Contains(MenuGlyph(player, "ActivityCalendarMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE787");
-        Assert.Contains(MenuGlyph(player, "ScreenshotsMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8B9");
+        Assert.Contains(MenuGlyph(player, "QuickActivityCalendarMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE787");
+        Assert.Contains(MenuGlyph(player, "QuickScreenshotGalleryMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8B9");
         Assert.Contains(MenuGlyph(player, "CaptureMenu"), element => element.Attribute("Glyph")?.Value == "\uE722");
         Assert.Contains(MenuGlyph(player, "ScheduleMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8C0");
         Assert.Contains(MenuGlyph(player, "ScreenshotsMenuToggle"), element => element.Attribute("Glyph")?.Value == "\uE8B8");
@@ -566,7 +566,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Equal("Transparent", schedule.Descendants().Single(element => HasName(element, "ScheduleFooterGrid")).Attribute("Background")?.Value);
         Assert.Contains(schedule.Descendants(), element =>
             element.Name.LocalName == "AdaptiveTrigger"
-            && element.Attribute("MinWindowWidth")?.Value == "920");
+            && element.Attribute("MinWindowWidth")?.Value == "720");
         Assert.DoesNotContain("ScheduleAtmosphere", schedule.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("Assets/WorldClocks/Skylines", schedule.ToString(), StringComparison.Ordinal);
         Assert.Equal(
@@ -895,7 +895,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("presenter.IsMinimizable = false;", mainSource, StringComparison.Ordinal);
         Assert.Contains("presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.SetAccessibleLabel(TitleBarCloseButton, T(\"Tray.CloseApplication\"));", mainSource, StringComparison.Ordinal);
-        Assert.Contains("private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();", mainSource, StringComparison.Ordinal);
+        Assert.Contains("private async void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => await RequestCloseAsync();", mainSource, StringComparison.Ordinal);
         Assert.Contains("PlayerBackgroundSurface.Visibility = Visibility.Collapsed;", mainSource, StringComparison.Ordinal);
         Assert.Contains("PlayerBackgroundSurface.Visibility = Visibility.Visible;", mainSource, StringComparison.Ordinal);
         Assert.Contains("_appWindow.Closing += AppWindow_Closing;", mainSource, StringComparison.Ordinal);

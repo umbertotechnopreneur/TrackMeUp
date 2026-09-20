@@ -1243,7 +1243,9 @@ public sealed class LocalStore
     /// </remarks>
     internal void VisitAllScreenshotGalleryItems(
         Action<ScreenshotGalleryItem> visitor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null)
     {
         ArgumentNullException.ThrowIfNull(visitor);
         cancellationToken.ThrowIfCancellationRequested();
@@ -1256,6 +1258,7 @@ public sealed class LocalStore
 
         var dates = ScreenshotStorageLayout.EnumerateOwnedArtifacts(settings.ScreenshotDirectory)
             .Select(path => ScreenshotStorageLayout.GetDay(settings.ScreenshotDirectory, path))
+            .Where(date => (!fromDate.HasValue || date >= fromDate.Value) && (!toDate.HasValue || date <= toDate.Value))
             .Distinct()
             .Order()
             .ToArray();

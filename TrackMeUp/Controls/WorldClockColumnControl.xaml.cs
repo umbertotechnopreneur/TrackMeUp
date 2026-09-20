@@ -25,7 +25,6 @@ public sealed partial class WorldClockColumnControl : UserControl
     private string? _skylineAssetPath;
     private string[] _backdropAssetPaths = [];
     private string[] _foregroundAssetPaths = [];
-    private WorldClockPresentationMode _presentationMode = WorldClockPresentationMode.Expanded;
     private double _viewportWidth;
     private double _viewportHeight;
 
@@ -56,18 +55,6 @@ public sealed partial class WorldClockColumnControl : UserControl
         SceneGrid.Height = height;
         Canvas.SetTop(SceneGrid, ColumnRoot.ActualHeight - height);
         SceneGrid.Clip = new RectangleGeometry { Rect = new Rect(0d, 0d, width, height) };
-    }
-
-    /// <summary>Switches this passive city surface between detailed and widget density.</summary>
-    public void SetPresentationMode(WorldClockPresentationMode presentationMode)
-    {
-        if (!Enum.IsDefined(presentationMode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(presentationMode));
-        }
-
-        _presentationMode = presentationMode;
-        ApplyPresentationMode();
     }
 
     /// <summary>Measures the non-wrapping clock at its largest type size, including accessibility text scaling.</summary>
@@ -194,10 +181,10 @@ public sealed partial class WorldClockColumnControl : UserControl
         ApplyDetailLayout(WorldClockDetailLevel.Summary, inlineWeather);
         ClockDetailsLayout.Measure(new Size(_viewportWidth, double.PositiveInfinity));
         var summaryHeight = ClockDetailsLayout.DesiredSize.Height;
-        PreferredContentHeight = _presentationMode == WorldClockPresentationMode.Expanded ? expandedHeight : summaryHeight;
+        PreferredContentHeight = expandedHeight;
 
         var detail = WorldClockWindowLayoutState.CalculateDetailLevel(
-            _presentationMode, _viewportHeight, expandedHeight, summaryHeight);
+            _viewportHeight, expandedHeight, summaryHeight);
         ApplyDetailLayout(detail, inlineWeather);
     }
 

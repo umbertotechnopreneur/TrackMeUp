@@ -38,6 +38,10 @@ public sealed partial class OperationsControl : UserControl
     /// <summary>Occurs after the visible operational page changes and the host may need to re-measure.</summary>
     public event EventHandler? LayoutChanged;
 
+    /// <summary>Indicates whether the archive page is visible so the host can mark its title bar.</summary>
+    internal bool IsArchivePageVisible => DetailScroll.Visibility == Visibility.Visible
+        && _installationTransferSection?.Visibility == Visibility.Visible;
+
     /// <summary>Occurs after the runtime has accepted both confirmations and prepared the reset plan.</summary>
     internal event EventHandler<AtomicResetPreparedEventArgs>? AtomicResetPrepared;
 

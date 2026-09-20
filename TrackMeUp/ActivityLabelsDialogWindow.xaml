@@ -31,6 +31,8 @@
                     <TextBlock Tag="Labels.Description"
                                Text="Organize your activities by project or context with names, icons and colors."
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                    <TextBlock Tag="Labels.FreeHint" Text="Free includes up to 3 labels. Existing labels are kept when you change profile."
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                 </StackPanel>
                 <controls:FeatureGate x:Name="LabelsFeatureGate" Feature="ActivityLabels" ShowTitle="False">
                     <controls:ActivityLabelsEditor x:Name="LabelsEditor" />

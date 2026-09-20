@@ -1,5 +1,34 @@
 # Task Archive
 
+## 2026-09-21 — Restrained export action icons
+
+- Added colored icons alongside localized captions for Generate summary, Save preferences and Export. Secondary commands remain text-only. The icons use system colors in high contrast and are excluded from the accessibility tree; the owning buttons retain localized names and tooltips.
+- Updated the unexecuted localization regression checks to accept both string content and tagged text children, and to keep icons limited to those three actions. Source changes only; no build, tests or app restart.
+
+## 2026-09-21 — Export button caption initialization
+
+- Added explicit string content to all nine export-window text buttons. The shared localizer previously treated null content as a visual-only command and assigned an accessible label without a visible caption. Existing localization keys and icon-only command behavior remain unchanged.
+- Added regression coverage for text-button content and caption/header availability across ten locales. Source-only change at the owner's request: tests, compilation and app restart were not performed. C# formatting and verification passed; runtime acceptance remains in todo.
+
+## 2026-09-21 — Stable player label selector width
+
+- Changed the selector from a content-dependent maximum width to a fixed 155 logical pixels. Existing full-name tooltips remain available. Build and visual acceptance are pending; no tests were run for this adjustment.
+
+## 2026-09-21 — Free quotas and Premium action surfaces
+
+- Implemented serialized Core guards for three Free labels and clocks, screenshot schedule saves and archive export/import execution. Free archive previews remain available. Downgrade preserves existing catalogs and selection; guarded actions use the standard upgrade notice, not a new Store purchase integration.
+- Added shared title-bar Premium badges to schedule/report export and the archive page, plus a badge beside Add clock. Removed the label badges, redundant history submenu, manual clock-density command and obsolete localized strings. Added left-aligned label management, colored editor action icons, borderless appearance choices, and the main-menu style for celestial actions.
+- Changed snapshot conflict detection to compare JSON content while preserving scalar conflicts and rejecting malformed JSON. The owner's archive was inspected only; no import or data mutation was used for verification.
+- Debug x64 unpackaged app build passed with zero warnings/errors; C# formatting and verification passed. Replaced the running MSIX process with the updated local Debug EXE with owner approval. The first focused test run passed 241/252 checks; corrected incomplete fixtures and stale UI contracts compile without warnings, but their repeat execution awaits approval. Remaining automated and manual verification is tracked in todo.
+
+## 2026-09-21 — Activity export workspace
+
+- Added a native three-section Mica export window with date/device filters, saved field preferences, bounded previews and Excel, zipped CSV and typed JSON output. Free users can configure and preview everything; the shared application facade checks Premium before writing. The upgrade message does not implement a Store purchase flow.
+- Added optional editable AI summaries from selected saved text, with explicit generation, shared cancellation, provider usage accounting and daily limits. Ordinary previews and exports do not contact an AI provider. Sensitive fields are opt-in; measured activity counters remain separate from screenshot descriptions.
+- Added atomic destination writes, CSV formula protection, long-text continuation sheets for Excel, localized controls in all ten languages, IPC operations and technical export guidance.
+- The authorized focused checks passed: 85 Core checks on the initial run, the eight affected export checks after fixing their isolated screenshot fixture and receiving approval to rerun them, and four presentation boundary checks. No real-provider calls, installed-app changes, Store packages, commits or pushes were performed. Manual UI and real Excel acceptance remain in todo; preserve the owner's requested unpackaged Debug app for testing.
+- Final x64 Debug unpackaged compilation passed with zero warnings/errors, and the repository C# formatter verification passed. The unpackaged executable is a local development artifact, not a commercial distribution package.
+
 ## 2026-09-21 — Premium CLI operational refresh
 
 - Added search with filters/pagination, date-range reports, clock-only queries/conversion, hardware readings, screenshot gallery/deletion/migration, archive export/import, AI model/price/connection/reprocessing operations, log opening, access status and double-confirmed reset. All operations use the existing shared facade; celestial and window-only functions remain outside CLI scope.

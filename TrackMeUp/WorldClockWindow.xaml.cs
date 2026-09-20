@@ -96,7 +96,7 @@ public sealed partial class WorldClockWindow : Window
             HeaderDragRegion,
             TitleBarLeftInsetColumn,
             TitleBarRightInsetColumn,
-            () => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, PresentationModeButton, OptionsButton],
+            () => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, OptionsButton],
             overlayContent: true);
         _titleBar.ThemeChanged += TitleBar_ThemeChanged;
 
@@ -154,7 +154,6 @@ public sealed partial class WorldClockWindow : Window
         CelestialMapMenuItem.Text = T("Celestial.Map.Title");
         WorldMapMenuItem.Text = T("WorldClock.Map.MenuLabel");
         UiLocalization.SetAccessibleLabel(LunarPhaseButton, T("WorldClock.MoonPhase.Open"));
-        UpdatePresentationModeCommand();
         ReferenceCityComboBox.Header = T("WorldClock.ReferenceCity");
         ReferenceDatePicker.Header = T("WorldClock.ReferenceDate");
         ReferenceTimePicker.Header = T("WorldClock.ReferenceTime");
@@ -198,24 +197,6 @@ public sealed partial class WorldClockWindow : Window
     private void CelestialMapMenuItem_Click(object sender, RoutedEventArgs e) => CelestialWindowRequested?.Invoke(WindowStateKeys.CelestialMap);
 
     private void LunarPhaseButton_Click(object sender, RoutedEventArgs e) => LunarPhaseRequested?.Invoke(this, EventArgs.Empty);
-
-    private void PresentationModeButton_Click(object sender, RoutedEventArgs e)
-    {
-        var presentationMode = _layoutState.TogglePresentationMode();
-        foreach (var column in _columns.Values)
-        {
-            column.SetPresentationMode(presentationMode);
-        }
-
-        if (_snapshot is { Clocks.Count: > 0 } snapshot)
-        {
-            UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);
-            ApplySmartWindowSizing(snapshot.Clocks.Count);
-        }
-
-        UpdatePresentationModeCommand();
-        _titleBar.QueueLayoutUpdate();
-    }
 
     private void ShowOptionsSurface()
     {
@@ -355,20 +336,7 @@ public sealed partial class WorldClockWindow : Window
         ReferenceInstantButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         WorldMapButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         LunarPhaseButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
-        PresentationModeButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
         OptionsButton.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;
-    }
-
-    private void UpdatePresentationModeCommand()
-    {
-        var key = _layoutState.PresentationMode == WorldClockPresentationMode.Compact
-            ? "WorldClock.Layout.Expanded"
-            : "WorldClock.Layout.Compact";
-        PresentationModeButton.Tag = key;
-        PresentationModeIcon.Glyph = _layoutState.PresentationMode == WorldClockPresentationMode.Compact
-            ? "\uE73F"
-            : "\uE740";
-        UiLocalization.SetAccessibleLabel(PresentationModeButton, T(key));
     }
 
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -852,7 +820,6 @@ public sealed partial class WorldClockWindow : Window
         {
             ClockColumnsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var column = new WorldClockColumnControl();
-            column.SetPresentationMode(_layoutState.PresentationMode);
             _columns.Add(clocks[index].CityId, column);
 
             var host = new Border
@@ -1022,6 +989,11 @@ public sealed partial class WorldClockWindow : Window
             }
 
             var selectedIds = _snapshot?.Clocks.Select(clock => clock.CityId).ToHashSet(StringComparer.Ordinal) ?? [];
+            if (catalogResult.Value.AddDeniedMessageKey is { } deniedMessage)
+            {
+                await _dialogs.ShowInformativeAsync(this, DialogRequest.Informative(T("Premium.UpgradeTitle"), T(deniedMessage), T("Dialog.Ok")));
+                return;
+            }
             var options = catalogResult.Value.Cities.Where(city => !selectedIds.Contains(city.Id)).ToArray();
             if (options.Length == 0)
             {

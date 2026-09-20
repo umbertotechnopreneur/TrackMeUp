@@ -2,7 +2,7 @@
 <UserControl
     x:Class="TrackMeUp.Controls.WorldClockOptionsControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:TrackMeUp.Controls">
     <UserControl.Resources>
         <Style x:Key="WorldClockOptionsSectionStyle" TargetType="Border">
             <Setter Property="Padding" Value="18" />
@@ -284,7 +284,12 @@
                                 x:Name="CitiesHost"
                                 Margin="0,2,0,0"
                                 Spacing="0" />
-                            <Button
+                            <Grid ColumnSpacing="8">
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                              </Grid.ColumnDefinitions>
+                              <Button
                                 x:Name="AddClockButton"
                                 HorizontalAlignment="Left"
                                 Click="AddClockButton_Click"
@@ -298,7 +303,9 @@
                                         Tag="WorldClock.Add"
                                         Text="Add clock" />
                                 </StackPanel>
-                            </Button>
+                              </Button>
+                              <controls:PremiumBadge x:Name="AddClockPremiumBadge" Grid.Column="1" HorizontalAlignment="Left" />
+                            </Grid>
                         </StackPanel>
                     </Border>
                 </Grid>

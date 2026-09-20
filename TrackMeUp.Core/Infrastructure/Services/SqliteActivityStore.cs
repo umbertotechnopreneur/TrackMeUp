@@ -2114,7 +2114,7 @@ internal sealed class SqliteActivityStore
             FROM ai_request_usage
             WHERE occurred_utc_ticks >= $from
               AND occurred_utc_ticks < $to
-              AND request_kind IN ('screen_analysis', 'ocr_refinement');
+              AND request_kind IN ('screen_analysis', 'ocr_refinement', 'report_summary');
             """;
         command.Parameters.AddWithValue("$from", fromUtc.UtcDateTime.Ticks);
         command.Parameters.AddWithValue("$to", toUtc.UtcDateTime.Ticks);

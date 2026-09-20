@@ -6,7 +6,7 @@ namespace TrackMeUp.Application;
 public enum ProductTier { Free, Premium }
 
 /// <summary>Stable feature identities used by the catalog, presentation and application guards.</summary>
-public enum ProductFeature { Tracking, Screenshots, Search, DataTransfer, WorldClocks, Astronomy, HardwareSensors, ActivityLabels, Cli }
+public enum ProductFeature { Tracking, Screenshots, Search, DataTransfer, WorldClocks, Astronomy, HardwareSensors, ActivityLabels, Cli, ReportExport, ScreenshotSchedule }
 
 /// <summary>Declares one feature and the settings operations that require its entitlement.</summary>
 public sealed record FeatureDefinition(ProductFeature Id, string TitleKey, ProductTier RequiredTier, IReadOnlyList<string> SettingKeys);
@@ -37,12 +37,17 @@ public static class FeatureCatalog
         new FeatureDefinition(ProductFeature.Tracking, "Main.TrackingStatus", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.Screenshots, "Screenshots.Title", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.Search, "Search.Title", ProductTier.Free, Array.Empty<string>()),
-        new FeatureDefinition(ProductFeature.DataTransfer, "Operations.InstallationTransfer.Title", ProductTier.Free, Array.Empty<string>()),
+        new FeatureDefinition(ProductFeature.DataTransfer, "Operations.InstallationTransfer.Title", ProductTier.Premium, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.WorldClocks, "WorldClock.OpenWindow", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.Astronomy, "Celestial.Agenda.Title", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.HardwareSensors, "Sensors.Open", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.Cli, "Cli.Title", ProductTier.Premium, Array.Empty<string>()),
-        new FeatureDefinition(ProductFeature.ActivityLabels, "Labels.Title", ProductTier.Premium,
+        new FeatureDefinition(ProductFeature.ReportExport, "Export.Title", ProductTier.Premium, Array.Empty<string>()),
+        new FeatureDefinition(ProductFeature.ScreenshotSchedule, "Schedule.WindowTitle", ProductTier.Premium,
+            Array.AsReadOnly(new[] { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" }
+                .SelectMany(day => new[] { $"active_hours.{day}.active", $"active_hours.{day}.breaks" })
+                .Append("screenshots.interval_minutes").ToArray())),
+        new FeatureDefinition(ProductFeature.ActivityLabels, "Labels.Title", ProductTier.Free,
             Array.AsReadOnly(new[] { "activity.label.save", "activity.label.delete", "activity.label.select" }))
     });
 
@@ -56,6 +61,12 @@ public static class FeatureCatalog
 /// <summary>Owns entitlement decisions. Debug overrides live only in memory in the shared runtime.</summary>
 public sealed class FeatureAccessPolicy
 {
+    /// <summary>Maximum saved-label count when creating labels in the Free tier.</summary>
+    public const int FreeLabelLimit = 3;
+
+    /// <summary>Maximum saved world-clock count when adding clocks in the Free tier.</summary>
+    public const int FreeClockLimit = 3;
+
     private readonly IFeatureLicenseSource _license;
 #if DEBUG
     private int _debugTier = -1;
@@ -89,28 +100,36 @@ public sealed class FeatureAccessPolicy
     public ValidationIssue? DeniedSetting(SettingsPatch patch, AppSettings settings)
     {
         var access = Snapshot;
-        foreach (var (rawKey, rawValue) in patch.Values)
+        foreach (var rawKey in patch.Values.Keys)
         {
             var key = rawKey?.Trim().ToLowerInvariant();
-            var value = rawValue?.Trim();
-            // Clearing the active label must remain possible after losing entitlement.
-            if (key == "activity.label.select" && value == "") continue;
             var feature = FeatureCatalog.Definitions.FirstOrDefault(item => item.SettingKeys.Contains(key));
-            // The existing taskbar text route must not bypass selection of a saved Premium label.
-            if (key == "activity.span_label" && !string.IsNullOrEmpty(value)
-                && (settings.ActivityLabels ?? []).Any(label => string.Equals(label.Name, value, StringComparison.OrdinalIgnoreCase)))
-                feature = FeatureCatalog.Get(ProductFeature.ActivityLabels);
             if (feature is not null && !FeatureCatalog.IsAllowed(feature.Id, access))
                 return new ValidationIssue(rawKey!, "premium_required", "Premium.Required");
         }
         return null;
     }
 
-    /// <summary>Removes only a currently selected protected label when that feature is unavailable.</summary>
-    public static AppSettings WithoutUnavailableSelection(AppSettings settings, FeatureAccessSnapshot access) =>
-        !FeatureCatalog.IsAllowed(ProductFeature.ActivityLabels, access)
-        && (settings.ActivityLabels ?? []).Any(label => label.Name == settings.SpanLabel)
-            ? settings with { SpanLabel = "" } : settings;
+    /// <summary>Checks the complete validated mutation; downgrade preserves existing labels and their selection.</summary>
+    public ValidationIssue? DeniedSettingsChange(AppSettings previous, AppSettings updated)
+    {
+        var previousCount = previous.ActivityLabels?.Count ?? 0;
+        var updatedCount = updated.ActivityLabels?.Count ?? 0;
+        // Enforce the quota under the facade mutation lock, after every command in the patch has been applied.
+        // Existing over-limit catalogs may still be edited or reduced without deleting user data on downgrade.
+        if (Snapshot.Tier != ProductTier.Free) return null;
+        if (updatedCount > FreeLabelLimit && updatedCount > previousCount)
+            return new ValidationIssue("activity.label.save", "label_limit", "Labels.FreeLimit");
+        var previousClocks = Services.WorldClockSelection.NormalizePersisted(previous.WorldClockCityIds).Count;
+        var updatedClocks = Services.WorldClockSelection.NormalizePersisted(updated.WorldClockCityIds).Count;
+        return updatedClocks > previousClocks ? DeniedWorldClockCreation(updatedClocks - 1) : null;
+    }
+
+    /// <summary>Checks a clock addition against the current runtime tier without mutating existing clocks.</summary>
+    public ValidationIssue? DeniedWorldClockCreation(int currentCount) =>
+        Snapshot.Tier == ProductTier.Free && currentCount >= FreeClockLimit
+            ? new ValidationIssue("world_clock.cities", "clock_limit", "WorldClock.FreeLimit")
+            : null;
 
 #if DEBUG
     /// <summary>Sets a process-local simulation; this method does not exist in Release builds.</summary>

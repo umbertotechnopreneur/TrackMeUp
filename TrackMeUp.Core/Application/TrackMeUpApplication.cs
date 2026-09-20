@@ -111,7 +111,7 @@ public static class TrackMeUpApplicationFactory
 }
 
 /// <summary>Implements UI-independent use cases over the existing local infrastructure services.</summary>
-public sealed class TrackMeUpApplication : ITrackMeUpApplication
+public sealed partial class TrackMeUpApplication : ITrackMeUpApplication
 {
     private readonly WindowSnappingService _windowSnapping = new();
 
@@ -213,13 +213,7 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         _store = store;
         _settingsSnapshot = settingsSnapshot ?? new SettingsSnapshot(store.LoadSettings());
         _featureAccess = new FeatureAccessPolicy(featureLicenseSource);
-        var entitledSettings = FeatureAccessPolicy.WithoutUnavailableSelection(_settingsSnapshot.Value, _featureAccess.Snapshot);
-        if (entitledSettings != _settingsSnapshot.Value)
-        {
-            // Persist the cleared selection before tracking can resume; retain definitions and historical activity.
-            store.SaveSettings(entitledSettings);
-            _settingsSnapshot.Replace(entitledSettings);
-        }
+        _ = _featureAccess.Snapshot;
         _utilities = utilities;
         _tracking = tracking;
         _capture = capture;
@@ -1343,6 +1337,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         CancellationToken cancellationToken) =>
         MutateVisualStateAsync(async () =>
         {
+            // Check the current entitlement inside the mutation lock before writing archive files.
+            if (!FeatureCatalog.IsAllowed(ProductFeature.DataTransfer, _featureAccess.Snapshot))
+            {
+                return OperationResult<DataArchiveExportResult>.Failure("feature.premium_required", "Premium.Required");
+            }
+
             try
             {
                 var result = await Task.Run(
@@ -1405,6 +1405,12 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         CancellationToken cancellationToken) =>
         MutateVisualStateAsync(async () =>
         {
+            // Free can preview a plan, but cannot commit it, including after a Premium downgrade.
+            if (!FeatureCatalog.IsAllowed(ProductFeature.DataTransfer, _featureAccess.Snapshot))
+            {
+                return OperationResult<DataArchiveImportResult>.Failure("feature.premium_required", "Premium.Required");
+            }
+
             var wasTracking = _tracking.IsTracking;
             if (wasTracking)
             {
@@ -2195,7 +2201,10 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     public Task<OperationResult<WorldClockCityCatalog>> GetWorldClockCityCatalogAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_worldClockOperations.GetCatalog());
+        var result = _worldClockOperations.GetCatalog();
+        if (!result.Succeeded || result.Value is null) return Task.FromResult(result);
+        var count = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds).Count;
+        return Task.FromResult(result with { Value = result.Value with { AddDeniedMessageKey = _featureAccess.DeniedWorldClockCreation(count)?.MessageKey } });
     }
 
     /// <inheritdoc />
@@ -2265,7 +2274,14 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         var normalizedId = _worldClockOperations.NormalizeAndValidateCityId(cityId);
         return MutateAsync(
-            () => Task.FromResult(_worldClockOperations.AddValidated(normalizedId)),
+            () =>
+            {
+                var selection = WorldClockSelection.NormalizePersisted(_settingsSnapshot.Value.WorldClockCityIds);
+                // Recheck under the same mutation lock as persistence; a previously opened picker is not an entitlement.
+                if (!selection.Contains(normalizedId) && _featureAccess.DeniedWorldClockCreation(selection.Count) is { } denied)
+                    return Task.FromResult(OperationResult<WorldClockSelectionState>.Failure("feature.clock_limit", denied.MessageKey, denied));
+                return Task.FromResult(_worldClockOperations.AddValidated(normalizedId));
+            },
             cancellationToken);
     }
 
@@ -2325,14 +2341,9 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
     {
         if (!Enum.IsDefined(tier))
             return OperationResult<FeatureAccessSnapshot>.Failure("features.invalid_tier", "Premium.InvalidTier");
-        var next = new FeatureAccessSnapshot(tier, true, true);
-        var settings = _settingsSnapshot.Value;
-        var updated = FeatureAccessPolicy.WithoutUnavailableSelection(settings, next);
-        // Do not acknowledge a downgrade until its selected-label mutation is durably saved.
-        if (updated != settings) PersistSettings(updated);
         _featureAccess.Simulate(tier);
         await Task.CompletedTask;
-        return OperationResult<FeatureAccessSnapshot>.Success("features.simulated", "Premium.Status", next);
+        return OperationResult<FeatureAccessSnapshot>.Success("features.simulated", "Premium.Status", _featureAccess.Snapshot);
     }, cancellationToken);
 #endif
 
@@ -2349,6 +2360,8 @@ public sealed class TrackMeUpApplication : ITrackMeUpApplication
         }
 
         var current = validation.Value;
+        if (_featureAccess.DeniedSettingsChange(settings, current) is { } quotaIssue)
+            return OperationResult<AppSettings>.Failure("feature." + quotaIssue.Code, quotaIssue.MessageKey, quotaIssue);
         if (!TryValidateOpenAiConfiguration(current, requireImageInput: false, out var validatedSettings, out var validationIssue))
         {
             return OperationResult<AppSettings>.Failure(

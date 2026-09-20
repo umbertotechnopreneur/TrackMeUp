@@ -62,13 +62,11 @@ public sealed class WorldClockResponsiveLayoutTests
     }
 
     [Theory]
-    [InlineData(1, WorldClockPresentationMode.Compact)]
-    [InlineData(2, WorldClockPresentationMode.Compact)]
-    [InlineData(1, WorldClockPresentationMode.Expanded)]
-    [InlineData(2, WorldClockPresentationMode.Expanded)]
-    public void PreferredSize_HasNoUnusedWidthAndSharesTheRestoreMinimum(int count, WorldClockPresentationMode mode)
+    [InlineData(1)]
+    [InlineData(2)]
+    public void PreferredSize_HasNoUnusedWidthAndSharesTheRestoreMinimum(int count)
     {
-        var sizing = WorldClockWindowLayoutState.CalculateWindowSizing(count, mode);
+        var sizing = WorldClockWindowLayoutState.CalculateWindowSizing(count);
         var columns = WorldClockWindowLayoutState.CalculateColumnsLayout(count, sizing.PreferredLogicalWidth);
         var minimum = WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks);
 
@@ -86,18 +84,18 @@ public sealed class WorldClockResponsiveLayoutTests
     }
 
     [Theory]
-    [InlineData(WorldClockPresentationMode.Expanded, 610d, 610d, 290d, WorldClockDetailLevel.Expanded)]
-    [InlineData(WorldClockPresentationMode.Expanded, 609d, 610d, 290d, WorldClockDetailLevel.Summary)]
-    [InlineData(WorldClockPresentationMode.Expanded, 290d, 610d, 290d, WorldClockDetailLevel.Summary)]
-    [InlineData(WorldClockPresentationMode.Expanded, 289d, 610d, 290d, WorldClockDetailLevel.Essential)]
-    [InlineData(WorldClockPresentationMode.Expanded, 610d, 850d, 410d, WorldClockDetailLevel.Summary)]
-    [InlineData(WorldClockPresentationMode.Compact, 1000d, 610d, 290d, WorldClockDetailLevel.Summary)]
-    [InlineData(WorldClockPresentationMode.Compact, 240d, 610d, 290d, WorldClockDetailLevel.Essential)]
-    public void Disclosure_UsesMeasuredContentAndHonorsCompactChoice(
-        WorldClockPresentationMode mode, double viewport, double expandedHeight, double summaryHeight,
+    [InlineData(610d, 610d, 290d, WorldClockDetailLevel.Expanded)]
+    [InlineData(609d, 610d, 290d, WorldClockDetailLevel.Summary)]
+    [InlineData(290d, 610d, 290d, WorldClockDetailLevel.Summary)]
+    [InlineData(289d, 610d, 290d, WorldClockDetailLevel.Essential)]
+    [InlineData(610d, 850d, 410d, WorldClockDetailLevel.Summary)]
+    [InlineData(1000d, 610d, 290d, WorldClockDetailLevel.Expanded)]
+    [InlineData(240d, 610d, 290d, WorldClockDetailLevel.Essential)]
+    public void Disclosure_UsesMeasuredContentAndAvailableHeight(
+        double viewport, double expandedHeight, double summaryHeight,
         WorldClockDetailLevel expected)
     {
-        Assert.Equal(expected, WorldClockWindowLayoutState.CalculateDetailLevel(mode, viewport, expandedHeight, summaryHeight));
+        Assert.Equal(expected, WorldClockWindowLayoutState.CalculateDetailLevel(viewport, expandedHeight, summaryHeight));
     }
 
     [Theory]
@@ -107,7 +105,7 @@ public sealed class WorldClockResponsiveLayoutTests
     public void Measurement_RejectsInvalidDimensions(double value)
     {
         Assert.ThrowsAny<ArgumentException>(() => WorldClockWindowLayoutState.CalculateColumnsLayout(1, value));
-        Assert.ThrowsAny<ArgumentException>(() => WorldClockWindowLayoutState.CalculateDetailLevel(WorldClockPresentationMode.Expanded, value, 600, 300));
+        Assert.ThrowsAny<ArgumentException>(() => WorldClockWindowLayoutState.CalculateDetailLevel(value, 600, 300));
     }
 
     [Fact]
@@ -120,8 +118,7 @@ public sealed class WorldClockResponsiveLayoutTests
         state.AcceptWindowResizeRequest(initial);
         Assert.Null(state.GetWindowResizeRequest(2));
 
-        state.TogglePresentationMode();
-        Assert.True(Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(2)).ResizeToPreferred);
+        Assert.True(Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(3)).ResizeToPreferred);
     }
 
     [Theory]
@@ -138,7 +135,7 @@ public sealed class WorldClockResponsiveLayoutTests
         state.ShowSurface(WorldClockWindowSurface.Clocks);
         var pending = Assert.IsType<WorldClockWindowResizeRequest>(state.GetWindowResizeRequest(after));
         Assert.True(pending.ResizeToPreferred);
-        Assert.Equal(WorldClockWindowLayoutState.CalculateWindowSizing(after, state.PresentationMode), pending.Sizing);
+        Assert.Equal(WorldClockWindowLayoutState.CalculateWindowSizing(after), pending.Sizing);
         // A failed resize is not acknowledged and remains retryable.
         Assert.Equal(pending, state.GetWindowResizeRequest(after));
         state.AcceptWindowResizeRequest(pending);

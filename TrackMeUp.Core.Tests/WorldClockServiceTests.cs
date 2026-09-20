@@ -235,7 +235,7 @@ public sealed class WorldClockServiceTests
         var service = new WorldClockService(catalogPath);
 
         var exception = Assert.Throws<WorldClockConversionException>(() => service.BuildSnapshotForLocalTime(
-            WorldClockSelection.Defaults,
+            ["paris"],
             new WorldClockConversionRequest(
                 "paris",
                 new DateTime(year, month, day, hour, minute, 0, DateTimeKind.Unspecified))));

@@ -114,6 +114,12 @@ internal sealed class OperationsSectionContext
                         InfoBarSeverity.Success);
                 }
             }
+            else if (result.Code == "feature.premium_required")
+            {
+                await Dialogs.ShowInformativeAsync(OwnerWindow,
+                    DialogRequest.Informative(Translate("Premium.UpgradeTitle"),
+                        Translate("Premium.Required"), Translate("Dialog.Ok")));
+            }
             else
             {
                 ShowStatus(

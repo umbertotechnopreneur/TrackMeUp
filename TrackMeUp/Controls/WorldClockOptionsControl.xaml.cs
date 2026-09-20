@@ -75,6 +75,7 @@ public sealed partial class WorldClockOptionsControl : UserControl
         _application = application ?? throw new ArgumentNullException(nameof(application));
         ArgumentNullException.ThrowIfNull(settings);
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
+        AddClockPremiumBadge.Text = _strings.Translate("Premium.Badge");
         _lifetimeToken = lifetimeToken;
         UiLocalization.Apply(this, _strings);
         ApplyLocalizedPresentation();

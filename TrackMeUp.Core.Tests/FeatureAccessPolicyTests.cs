@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
 using Xunit;
@@ -14,50 +15,76 @@ public sealed class FeatureAccessPolicyTests
     private static readonly ActivityLabelDefinition Work = new("123456781234123412341234567890ab", "Work", "work", "#FF6268");
     private static SettingsPatch Patch(string key, string value) => new(new Dictionary<string, string?> { [key] = value });
 
-    /// <summary>Every registered protected label key is denied to the unlicensed profile.</summary>
+    /// <summary>Label editing and selection are available in Free; creation uses the separate quota guard.</summary>
     [Theory]
     [InlineData("activity.label.save")]
     [InlineData("activity.label.delete")]
     [InlineData("activity.label.select")]
     [InlineData(" ACTIVITY.LABEL.SELECT ")]
-    public void Free_RejectsEveryProtectedSettingRegardlessOfFrontend(string key)
+    public void Free_AllowsLabelCommandsRegardlessOfFrontend(string key)
     {
         var policy = new FeatureAccessPolicy();
         var denied = policy.DeniedSetting(Patch(key, Work.Id), new AppSettings(ActivityLabels: [Work]));
-        Assert.Equal("premium_required", denied?.Code);
+        Assert.Null(denied);
     }
 
-    /// <summary>Saved-label selection cannot bypass the guard through the original text setting.</summary>
+    /// <summary>Free allows both saved-label and one-off taskbar selection.</summary>
     [Fact]
-    public void Free_CannotSelectSavedLabelThroughTheTaskbarTextRoute()
+    public void Free_CanSelectSavedLabelThroughTheTaskbarTextRoute()
     {
         var policy = new FeatureAccessPolicy();
         var settings = new AppSettings(ActivityLabels: [Work]);
-        Assert.NotNull(policy.DeniedSetting(Patch("activity.span_label", " work "), settings));
+        Assert.Null(policy.DeniedSetting(Patch("activity.span_label", " work "), settings));
         Assert.Null(policy.DeniedSetting(Patch("activity.span_label", "One-off"), settings));
         Assert.Null(policy.DeniedSetting(Patch("activity.label.select", ""), settings));
         Assert.Null(policy.DeniedSetting(Patch("theme", "dark"), settings));
     }
 
-    /// <summary>Entitlement grants use without changing the feature's Premium classification.</summary>
+    /// <summary>Labels are Free while file export and the CLI retain their Premium classification.</summary>
     [Fact]
-    public void Premium_AllowsProtectedWritesWhileTheCatalogStillMarksTheFeaturePremium()
+    public void Catalog_LabelsAreFreeAndOtherPremiumFeaturesStayProtected()
     {
         var policy = new FeatureAccessPolicy(new License(ProductTier.Premium));
         Assert.Null(policy.DeniedSetting(Patch("activity.label.save", "{}"), new AppSettings()));
-        Assert.Equal(ProductTier.Premium, FeatureCatalog.Get(ProductFeature.ActivityLabels).RequiredTier);
+        Assert.Equal(ProductTier.Free, FeatureCatalog.Get(ProductFeature.ActivityLabels).RequiredTier);
+        Assert.Equal(ProductTier.Premium, FeatureCatalog.Get(ProductFeature.ReportExport).RequiredTier);
+        Assert.Equal(ProductTier.Premium, FeatureCatalog.Get(ProductFeature.DataTransfer).RequiredTier);
+        Assert.Equal(ProductTier.Premium, FeatureCatalog.Get(ProductFeature.ScreenshotSchedule).RequiredTier);
+        Assert.Equal(ProductTier.Premium, FeatureCatalog.Get(ProductFeature.Cli).RequiredTier);
         Assert.False(policy.Snapshot.IsDebugSimulation);
     }
 
-    /// <summary>Loss of access clears selection but does not remove user definitions.</summary>
+    /// <summary>Every schedule field is protected while ordinary screenshot settings remain Free.</summary>
     [Fact]
-    public void Downgrade_ClearsOnlySelectedSavedLabelAndPreservesDefinitions()
+    public void Free_DeniesEveryScheduleFieldButAllowsScreenshots()
     {
-        var settings = new AppSettings(SpanLabel: Work.Name, ActivityLabels: [Work]);
-        var cleared = FeatureAccessPolicy.WithoutUnavailableSelection(settings, new(ProductTier.Free, true, true));
-        Assert.Empty(cleared.SpanLabel);
-        Assert.Same(settings.ActivityLabels, cleared.ActivityLabels);
-        Assert.Equal(settings, FeatureAccessPolicy.WithoutUnavailableSelection(settings, new(ProductTier.Premium, false, false)));
+        var free = new FeatureAccessPolicy();
+        var premium = new FeatureAccessPolicy(new License(ProductTier.Premium));
+        foreach (var key in FeatureCatalog.Get(ProductFeature.ScreenshotSchedule).SettingKeys)
+        {
+            Assert.Equal("premium_required", free.DeniedSetting(Patch(" " + key.ToUpperInvariant() + " ", ""), new AppSettings())!.Code);
+            Assert.Null(premium.DeniedSetting(Patch(key, ""), new AppSettings()));
+        }
+        Assert.True(FeatureCatalog.IsAllowed(ProductFeature.Screenshots, free.Snapshot));
+    }
+
+    /// <summary>Free permits three labels and preserves over-limit catalogs while preventing further growth.</summary>
+    [Theory]
+    [InlineData(0, 1, false)]
+    [InlineData(2, 3, false)]
+    [InlineData(3, 4, true)]
+    [InlineData(4, 4, false)]
+    [InlineData(4, 5, true)]
+    [InlineData(4, 3, false)]
+    [InlineData(4, 0, false)]
+    public void Free_EnforcesCreationQuotaWithoutBlockingEditsOrDeletion(int before, int after, bool denied)
+    {
+        var previous = new AppSettings(ActivityLabels: Enumerable.Range(0, before).Select(i => Work with { Id = Guid.NewGuid().ToString("N"), Name = "Label " + i }).ToArray());
+        var updated = previous with { ActivityLabels = Enumerable.Range(0, after).Select(i => Work with { Id = Guid.NewGuid().ToString("N"), Name = "Label " + i }).ToArray() };
+        var issue = new FeatureAccessPolicy().DeniedSettingsChange(previous, updated);
+        Assert.Equal(denied, issue is not null);
+        if (denied) Assert.Equal("Labels.FreeLimit", issue!.MessageKey);
+        Assert.Null(new FeatureAccessPolicy(new License(ProductTier.Premium)).DeniedSettingsChange(previous, updated));
     }
 
     /// <summary>An invalid verified-source result fails closed.</summary>
@@ -79,7 +106,8 @@ public sealed class FeatureAccessPolicyTests
         Assert.Equal(ProductTier.Premium, policy.Snapshot.Tier);
         Assert.Equal(ProductTier.Free, new FeatureAccessPolicy().Snapshot.Tier);
         policy.Simulate(ProductTier.Free);
-        Assert.NotNull(policy.DeniedSetting(Patch("activity.label.delete", Work.Id), new AppSettings(ActivityLabels: [Work])));
+        Assert.Equal(ProductTier.Free, policy.Snapshot.Tier);
+        Assert.Null(policy.DeniedSetting(Patch("activity.label.delete", Work.Id), new AppSettings(ActivityLabels: [Work])));
         Assert.Throws<ArgumentOutOfRangeException>(() => policy.Simulate((ProductTier)42));
     }
 #else

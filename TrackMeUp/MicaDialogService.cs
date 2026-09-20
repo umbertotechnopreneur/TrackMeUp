@@ -114,6 +114,16 @@ internal sealed class MicaDialogService
         });
     }
 
+    /// <summary>Shows the export workspace without requiring an entitlement until a file is written.</summary>
+    internal async Task ShowReportExportAsync(ITrackMeUpApplication application, Window owner, ElementTheme theme, LocalizationService strings)
+    {
+        await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new ReportExportWindow(application, theme, strings, ownerAppWindow, ownerHandle);
+            await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
+    }
+
     /// <summary>Shows the native rolling activity calendar and returns a day requested for screenshot exploration.</summary>
     internal async Task<DateOnly?> ShowActivityCalendarAsync(
         ITrackMeUpApplication application,

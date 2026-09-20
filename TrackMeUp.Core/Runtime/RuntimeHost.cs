@@ -288,6 +288,21 @@ public sealed class RuntimeClient : ITrackMeUpApplication
     public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) =>
         SendAsync<ReportSnapshot>(RuntimeOperation.ReportQueryV1, query, cancellationToken, ReportQueryTimeout);
     /// <inheritdoc />
+    public Task<OperationResult<ReportExportSetup>> GetReportExportSetupAsync(CancellationToken cancellationToken) =>
+        SendAsync<ReportExportSetup>(RuntimeOperation.ReportExportSetupV1, null, cancellationToken, ReportQueryTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<ReportExportPreview>> PreviewReportExportAsync(ReportExportOptions options, CancellationToken cancellationToken) =>
+        SendAsync<ReportExportPreview>(RuntimeOperation.ReportExportPreviewV1, options, cancellationToken, DataArchiveTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<bool>> SaveReportExportPreferencesAsync(ReportExportOptions options, CancellationToken cancellationToken) =>
+        SendAsync<bool>(RuntimeOperation.ReportExportPreferencesV1, options, cancellationToken);
+    /// <inheritdoc />
+    public Task<OperationResult<ReportExportResult>> ExportReportAsync(ReportExportRequest request, CancellationToken cancellationToken) =>
+        SendAsync<ReportExportResult>(RuntimeOperation.ReportExportWriteV1, request, cancellationToken, DataArchiveTimeout);
+    /// <inheritdoc />
+    public Task<OperationResult<ReportSummaryResult>> GenerateReportSummaryAsync(ReportSummaryRequest request, CancellationToken cancellationToken) =>
+        SendAsync<ReportSummaryResult>(RuntimeOperation.ReportExportSummaryV1, request, cancellationToken, DataArchiveTimeout);
+    /// <inheritdoc />
     public Task<OperationResult<SystemSnapshot>> CaptureHardwareSnapshotAsync(CancellationToken cancellationToken) =>
         SendAsync<SystemSnapshot>(RuntimeOperation.HardwareSnapshotV1, null, cancellationToken, HardwareSnapshotTimeout);
 

@@ -117,15 +117,17 @@
                     Grid.Column="2"
                     Margin="12,0,0,0"
                     Style="{StaticResource TrackMeUpTitleBarLogoStyle}" />
+                <Grid Grid.Column="3" ColumnSpacing="8" Margin="10,0,12,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock
                     x:Name="TitleBarTitleText"
-                    Grid.Column="3"
-                    Margin="10,0,12,0"
                     AutomationProperties.AccessibilityView="Raw"
                     CharacterSpacing="130"
                     Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                     Text="TRACK ME UP"
                     TextTrimming="CharacterEllipsis" />
+                    <controls:PremiumBadge x:Name="TitlePremiumBadge" Grid.Column="1" VerticalAlignment="Center" Visibility="Collapsed" />
+                </Grid>
                 <Button
                     x:Name="TitleBarMoreButton"
                     Grid.Column="6"
@@ -387,51 +389,10 @@
                                             <FontIcon Foreground="#FF71CBB7" Glyph="&#xE8B9;" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
-                                    <MenuFlyoutSeparator />
-
-                                    <MenuFlyoutSubItem
-                                        x:Name="ActivityMenu"
-                                        AutomationProperties.HelpText="Search your history or open the calendar and captured screenshots."
-                                        AutomationProperties.Name="History and insights"
-                                        Tag="Main.Menu.Activity"
-                                        Text="History and insights"
-                                        ToolTipService.ToolTip="Search your history or open the calendar and captured screenshots.">
-                                        <MenuFlyoutSubItem.Icon>
-                                            <FontIcon Glyph="&#xE81C;" />
-                                        </MenuFlyoutSubItem.Icon>
-                                        <MenuFlyoutItem
-                                            x:Name="SearchMenuItem"
-                                            Tag="Search.Title"
-                                            Text="Search captured moments"
-                                            ToolTipService.ToolTip="Find recorded moments by app, window title, OCR text, or AI description."
-                                            KeyboardAcceleratorTextOverride="F3 / Ctrl+Shift+P"
-                                            Click="SearchMenuItem_Click">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Foreground="#FFDB8D72" Glyph="&#xE721;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                    <MenuFlyoutItem
-                                        x:Name="ActivityCalendarMenuItem"
-                                        Tag="ActivityCalendar.MenuTitle"
-                                        Text="Activity calendar"
-                                        ToolTipService.ToolTip="Browse recorded days and inspect each day's activity details."
-                                        Click="ActivityCalendarMenuItem_Click">
-                                        <MenuFlyoutItem.Icon>
-                                            <FontIcon Foreground="#FF7D9FF8" Glyph="&#xE787;" />
-                                        </MenuFlyoutItem.Icon>
+                                    <MenuFlyoutItem x:Name="ReportExportMenuItem" Tag="Export.Title" Text="Export activity" Click="ReportExportMenuItem_Click">
+                                        <MenuFlyoutItem.Icon><FontIcon Foreground="#FFDB8D72" Glyph="&#xEDE1;" /></MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
-                                    <MenuFlyoutItem
-                                        x:Name="ScreenshotsMenuItem"
-                                            Tag="Screenshots.Caption"
-                                            Text="Screenshot gallery"
-                                            ToolTipService.ToolTip="Browse screenshots retained by TrackMeUp."
-                                            KeyboardAcceleratorTextOverride="Ctrl+Shift+G"
-                                            Click="ScreenshotsMenuItem_Click">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Foreground="#FF71CBB7" Glyph="&#xE8B9;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                    </MenuFlyoutSubItem>
+                                    <MenuFlyoutSeparator />
 
                                     <MenuFlyoutSubItem
                                         x:Name="CaptureMenu"
@@ -798,12 +759,38 @@
                                         TextWrapping="Wrap" />
                                 </Grid>
                             </StackPanel>
-                            <StackPanel x:Name="PlayerLabelAndCostPanel" Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6">
-                            <controls:FeatureGate x:Name="PlayerLabelFeatureGate" Feature="ActivityLabels" ShowTitle="False" ShowHint="False" HorizontalAlignment="Right">
-                                <controls:ActivityLabelSelector x:Name="PlayerLabelSelector" />
-                            </controls:FeatureGate>
+                            <Grid x:Name="PlayerLabelAndCostPanel" Grid.Row="1" Grid.ColumnSpan="3" Margin="0,8,0,0" ColumnSpacing="12" RowSpacing="6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid x:Name="PlayerLabelActionsPanel" ColumnSpacing="8" VerticalAlignment="Top">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <controls:FeatureGate x:Name="PlayerLabelFeatureGate" Feature="ActivityLabels" ShowTitle="False" ShowHint="False" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                        <controls:ActivityLabelSelector x:Name="PlayerLabelSelector" />
+                                    </controls:FeatureGate>
+                                    <Button x:Name="ManageLabelsButton" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                            Padding="8,4" FontSize="12" Click="ManageLabelsButton_Click">
+                                        <Grid ColumnSpacing="6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <FontIcon Glyph="&#xE8EC;" FontSize="14" Foreground="{ThemeResource PlayerAccentTextBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                            <TextBlock Grid.Column="1" Tag="Labels.Manage" Text="Manage labels" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Button>
+                                </Grid>
                             <StackPanel
                                 x:Name="AiMonthlySpendPanel"
+                                Grid.Column="1"
                                 HorizontalAlignment="Right"
                                 Spacing="1"
                                 Visibility="Collapsed">
@@ -826,7 +813,7 @@
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Text="" />
                             </StackPanel>
-                            </StackPanel>
+                            </Grid>
                             </Grid>
 
                         </Grid>

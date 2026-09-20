@@ -14,7 +14,7 @@ public static class WorldClockSelection
     public const int MaximumClocks = 12;
 
     /// <summary>Initial selection matching the approved local-plus-capitals composition.</summary>
-    public static IReadOnlyList<string> Defaults { get; } = ["ho-chi-minh-city", "london", "tokyo", "paris"];
+    public static IReadOnlyList<string> Defaults { get; } = ["ho-chi-minh-city", "london", "tokyo"];
 
     /// <summary>Validates persisted identifiers without requiring catalog I/O during settings deserialization.</summary>
     public static IReadOnlyList<string> NormalizePersisted(IReadOnlyList<string>? cityIds)

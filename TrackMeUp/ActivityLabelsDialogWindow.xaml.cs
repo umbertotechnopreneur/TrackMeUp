@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Input;
 using TrackMeUp.Application;
+using TrackMeUp.Presentation;
 using TrackMeUp.Services;
 using Windows.System;
 
@@ -17,6 +18,7 @@ internal sealed partial class ActivityLabelsDialogWindow : Window
     private readonly TaskCompletionSource<AppSettings?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CustomTitleBarController _titleBar;
     private readonly WindowPlacementService _placement;
+    private readonly MicaDialogService _messages = new();
     private AppSettings? _savedSettings;
 
     /// <summary>Creates the label-management surface using the current settings and access snapshots.</summary>
@@ -52,6 +54,8 @@ internal sealed partial class ActivityLabelsDialogWindow : Window
         LabelsFeatureGate.UiLanguage = settings.UiLanguage;
         LabelsFeatureGate.Access = access;
         LabelsEditor.ApplySettings(application, settings);
+        LabelsEditor.ShowUpgradeAsync = () => _messages.ShowInformativeAsync(this,
+            DialogRequest.Informative(strings.Translate("Premium.UpgradeTitle"), strings.Translate("Labels.FreeLimit"), strings.Translate("Dialog.Ok")));
         LabelsEditor.SettingsSaved += saved => _savedSettings = saved;
         LabelsEditor.BusyChanged += busy => CloseButton.IsEnabled = !busy;
         appWindow.Closing += (_, args) =>
@@ -60,6 +64,7 @@ internal sealed partial class ActivityLabelsDialogWindow : Window
         };
         Closed += (_, _) =>
         {
+            _messages.CloseActive();
             _titleBar.Dispose();
             _completion.TrySetResult(_savedSettings);
         };

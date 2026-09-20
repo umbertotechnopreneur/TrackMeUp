@@ -34,6 +34,7 @@
                     Style="{StaticResource TrackMeUpTitleBarLabelStyle}"
                     Tag="Schedule.WindowTitleUpper"
                     Text="SNAPSHOT SCHEDULE" />
+                <controls:PremiumBadge x:Name="TitlePremiumBadge" />
             </StackPanel>
         </Grid>
 

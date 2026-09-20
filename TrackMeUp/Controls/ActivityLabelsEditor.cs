@@ -86,6 +86,9 @@ public sealed class ActivityLabelsEditor : UserControl
 
     internal bool IsBusy => _busy;
 
+    /// <summary>Opens the owner's standard upgrade dialog after the application rejects a quota-exceeding save.</summary>
+    internal Func<Task>? ShowUpgradeAsync { get; set; }
+
     /// <summary>Moves keyboard focus to the label name without creating or saving a draft.</summary>
     internal void FocusEditor() => _name.Focus(FocusState.Programmatic);
 
@@ -129,8 +132,24 @@ public sealed class ActivityLabelsEditor : UserControl
 
     private void SetActionLabel(Button button, string key)
     {
-        button.Content = new TextBlock { Text = T(key), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+        var (glyph, color) = key switch
+        {
+            "Labels.New" => ("\uE710", "#AD7CF5"),
+            "Labels.Save" => ("\uE74E", "#245B40"),
+            _ => ("\uE74D", "#FF6268")
+        };
+        var content = new Grid { ColumnSpacing = 8 };
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var icon = new FontIcon { Glyph = glyph, FontSize = 16, Foreground = ActivityLabelVisuals.Brush(color) };
+        AutomationProperties.SetAccessibilityView(icon, AccessibilityView.Raw);
+        content.Children.Add(icon);
+        var caption = new TextBlock { Text = T(key), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(caption, 1);
+        content.Children.Add(caption);
+        button.Content = content;
         AutomationProperties.SetName(button, T(key));
+        ToolTipService.SetToolTip(button, T(key));
     }
 
     private void UpdateActionLayout()
@@ -185,13 +204,20 @@ public sealed class ActivityLabelsEditor : UserControl
                 Content = new Border { Width = 23, Height = 23, CornerRadius = new CornerRadius(12), Background = ActivityLabelVisuals.Brush(color) }
             };
             var caption = T($"Labels.Color.{index}");
+            ApplyBarePickerStyle(swatch);
+            swatch.Content = PickerContent((UIElement)swatch.Content, color, swatch.IsChecked == true);
             AutomationProperties.SetName(swatch, caption);
             ToolTipService.SetToolTip(swatch, caption);
             swatch.Click += (_, _) =>
             {
                 _color = color;
-                foreach (var button in colorButtons) button.IsChecked = button == swatch;
-                foreach (var (button, icon) in iconButtons) button.Content = ActivityLabelVisuals.Icon(icon, color);
+                foreach (var button in colorButtons)
+                {
+                    button.IsChecked = button == swatch;
+                    UpdatePickerSelection(button);
+                }
+                foreach (var (button, icon) in iconButtons)
+                    button.Content = PickerContent(ActivityLabelVisuals.Icon(icon, color), color, button.IsChecked == true);
                 UpdateAppearance();
             };
             colorButtons.Add(swatch);
@@ -208,12 +234,18 @@ public sealed class ActivityLabelsEditor : UserControl
         foreach (var icon in ActivityLabelCatalog.Icons)
         {
             var button = new ToggleButton { Content = ActivityLabelVisuals.Icon(icon, _color), IsChecked = icon == _icon, HorizontalAlignment = HorizontalAlignment.Stretch, Height = 40 };
+            ApplyBarePickerStyle(button);
+            button.Content = PickerContent((UIElement)button.Content, _color, button.IsChecked == true);
             AutomationProperties.SetName(button, T($"Labels.Icon.{icon}"));
             ToolTipService.SetToolTip(button, T($"Labels.Icon.{icon}"));
             button.Click += (_, _) =>
             {
                 _icon = icon;
-                foreach (var item in iconButtons) item.Button.IsChecked = item.Button == button;
+                foreach (var item in iconButtons)
+                {
+                    item.Button.IsChecked = item.Button == button;
+                    UpdatePickerSelection(item.Button);
+                }
                 UpdateAppearance();
             };
             iconButtons.Add((button, icon));
@@ -235,6 +267,38 @@ public sealed class ActivityLabelsEditor : UserControl
         _appearance.Flyout = new Flyout { Content = panel };
     }
 
+    private static void ApplyBarePickerStyle(ToggleButton button)
+    {
+        var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        button.Background = transparent;
+        button.BorderBrush = transparent;
+        button.BorderThickness = new Thickness(0);
+        // Keep native keyboard focus visuals while removing the colored tiles from every toggle state.
+        foreach (var state in new[] { "", "PointerOver", "Pressed", "Disabled", "Checked", "CheckedPointerOver", "CheckedPressed", "CheckedDisabled" })
+        {
+            button.Resources["ToggleButtonBackground" + state] = transparent;
+            button.Resources["ToggleButtonBorderBrush" + state] = transparent;
+        }
+    }
+
+    private static Grid PickerContent(UIElement glyph, string color, bool selected)
+    {
+        var content = new Grid { RowSpacing = 3 };
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.Children.Add(glyph);
+        var indicator = new Border { Width = 12, Height = 2, Background = ActivityLabelVisuals.Brush(color), Opacity = selected ? 1 : 0, HorizontalAlignment = HorizontalAlignment.Center };
+        Grid.SetRow(indicator, 1);
+        content.Children.Add(indicator);
+        return content;
+    }
+
+    private static void UpdatePickerSelection(ToggleButton button)
+    {
+        if (button.Content is Grid content && content.Children[1] is Border indicator)
+            indicator.Opacity = button.IsChecked == true ? 1 : 0;
+    }
+
     private async Task SaveAsync(string key, string value)
     {
         if (_application is null || _busy) return;
@@ -245,7 +309,13 @@ public sealed class ActivityLabelsEditor : UserControl
         {
             // Persistence and validation remain in Core; keep the draft visible if the request fails.
             var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?> { [key] = value }), CancellationToken.None);
-            if (!result.Succeeded || result.Value is null) { _status.Text = T(result.MessageKey); return; }
+            if (!result.Succeeded || result.Value is null)
+            {
+                _status.Text = T(result.MessageKey);
+                if (result.Code == "feature.label_limit" && ShowUpgradeAsync is { } showUpgrade)
+                    await showUpgrade();
+                return;
+            }
             if (key == "activity.label.save" && _id.Length == 0)
                 _id = result.Value.ActivityLabels!.Single(label => label.Name == _name.Text.Trim()).Id;
             ApplySettings(_application, result.Value);

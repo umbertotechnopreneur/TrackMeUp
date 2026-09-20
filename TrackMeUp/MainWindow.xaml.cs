@@ -741,6 +741,8 @@ public sealed partial class MainWindow : Window
         var saveResult = await _application.PatchSettingsAsync(patch, CancellationToken.None);
         if (!saveResult.Succeeded || saveResult.Value is null)
         {
+            await _dialogs.ShowInformativeAsync(sender as Window ?? this, DialogRequest.Informative(
+                T(saveResult.Code == "feature.premium_required" ? "Premium.UpgradeTitle" : "Schedule.WindowTitle"), T(saveResult.MessageKey), T("Dialog.Ok")));
             return;
         }
 
@@ -1060,6 +1062,14 @@ public sealed partial class MainWindow : Window
     private async void ExportDataMenuItem_Click(object sender, RoutedEventArgs e) =>
         await ShowDataTransferAsync(startExport: true);
 
+    private async void ReportExportMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        try { await _dialogs.ShowReportExportAsync(_application, this, RootGrid.RequestedTheme, _strings); }
+        catch (Exception) when (_dashboardSurfaceClosed) { }
+        catch (Exception) { await ShowLazySurfaceFailureAsync(); }
+    }
+
     /// <summary>Opens the installation-transfer surface and starts an archive import preview.</summary>
     private async void ImportDataMenuItem_Click(object sender, RoutedEventArgs e) =>
         await ShowDataTransferAsync(startExport: false);
@@ -1258,18 +1268,16 @@ public sealed partial class MainWindow : Window
     /// <summary>Localizes the logical menu groups and commands without coupling them to one AI vendor.</summary>
     private void ApplyMainMenuLabels()
     {
-        ActivityMenu.Text = T("Main.Menu.Activity");
         CaptureMenu.Text = T("Main.Menu.Capture");
         SettingsMenu.Text = T("Main.Menu.Settings");
         ExportDataMenuItem.Text = T("Main.Menu.DataTransfer.Export");
+        ReportExportMenuItem.Text = T("Export.Title");
+        UiLocalization.SetAccessibleLabel(ReportExportMenuItem, T("Export.Title"));
         ImportDataMenuItem.Text = T("Main.Menu.DataTransfer.Import");
         AiProviderMenu.Text = T("Main.Menu.AiProvider");
-        SearchMenuItem.Text = T("Search.Title");
-        ActivityCalendarMenuItem.Text = T("ActivityCalendar.MenuTitle");
-        ScreenshotsMenuItem.Text = T("Screenshots.Caption");
-        QuickSearchMenuItem.Text = SearchMenuItem.Text;
-        QuickActivityCalendarMenuItem.Text = ActivityCalendarMenuItem.Text;
-        QuickScreenshotGalleryMenuItem.Text = ScreenshotsMenuItem.Text;
+        QuickSearchMenuItem.Text = T("Search.Title");
+        QuickActivityCalendarMenuItem.Text = T("ActivityCalendar.MenuTitle");
+        QuickScreenshotGalleryMenuItem.Text = T("Screenshots.Caption");
         ScheduleMenuItem.Text = T("Schedule.Snapshots");
         ScreenshotsMenuToggle.Text = T("MenuToggleScreenshot");
         QuickSetupMenuItem.Text = T("QuickSetup.MenuTitle");
@@ -1280,13 +1288,9 @@ public sealed partial class MainWindow : Window
         MinimizeToTrayMenuItem.Text = T("Main.Menu.MinimizeToTray");
         AboutMenuItem.Text = T("MenuTitleAbout");
 
-        ApplyMenuAccessibility(ActivityMenu, "Main.Menu.Activity", "Main.Menu.Activity.Tooltip");
         ApplyMenuAccessibility(QuickSearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
         ApplyMenuAccessibility(QuickActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
         ApplyMenuAccessibility(QuickScreenshotGalleryMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
-        ApplyMenuAccessibility(SearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
-        ApplyMenuAccessibility(ActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
-        ApplyMenuAccessibility(ScreenshotsMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
         ApplyMenuAccessibility(CaptureMenu, "Main.Menu.Capture", "Main.Menu.Capture.Tooltip");
         ApplyMenuAccessibility(ScheduleMenuItem, "Schedule.Snapshots", "Main.Menu.Schedule.Tooltip");
         ApplyMenuAccessibility(ScreenshotsMenuToggle, "MenuToggleScreenshot", "Main.Menu.ScreenshotToggle.Tooltip");
@@ -1363,6 +1367,9 @@ public sealed partial class MainWindow : Window
 
     private bool _labelsDialogOpen;
 
+    private void ManageLabelsButton_Click(object sender, RoutedEventArgs e) =>
+        OptionsControl_ManageLabelsRequested(sender, EventArgs.Empty);
+
     private async void OptionsControl_ManageLabelsRequested(object? sender, EventArgs e)
     {
         if (_labelsDialogOpen) return;
@@ -1430,6 +1437,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Re-measures the operations surface after its landing or detail view changes.</summary>
     private void OperationsControl_LayoutChanged(object? sender, EventArgs e)
     {
+        UpdateTitlePremiumBadge();
         if (_layoutState.Surface == MainWindowSurface.Operations)
         {
             ResizeForCurrentLayout(animate: true);
@@ -1438,6 +1446,13 @@ public sealed partial class MainWindow : Window
 
     private void OperationsControl_AtomicResetPrepared(object? sender, AtomicResetPreparedEventArgs e) =>
         AtomicResetPrepared?.Invoke(this, e);
+
+    private void UpdateTitlePremiumBadge()
+    {
+        TitlePremiumBadge.Text = T("Premium.Badge");
+        TitlePremiumBadge.Visibility = _layoutState.Surface == MainWindowSurface.Operations
+            && _operationsControl?.IsArchivePageVisible == true ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <summary>Shows one top-level panel and measures the visible XAML content before resizing.</summary>
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
@@ -1453,6 +1468,7 @@ public sealed partial class MainWindow : Window
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(surface);
+        UpdateTitlePremiumBadge();
         TitleBarBackButton.Visibility = Visibility.Visible;
         TitleBarLogo.Visibility = Visibility.Collapsed;
         TitleBarTitleText.Text = T(surface == MainWindowSurface.Options
@@ -1474,6 +1490,7 @@ public sealed partial class MainWindow : Window
         PlayerBackgroundSurface.Visibility = Visibility.Visible;
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
+        UpdateTitlePremiumBadge();
         WorldClockButton.Visibility = Visibility.Visible;
         // Keep the sensors surface available for future use, but do not expose its player command yet.
         SensorsButton.Visibility = Visibility.Collapsed;
@@ -1576,15 +1593,14 @@ public sealed partial class MainWindow : Window
         PlayerSecondaryColumn.Width = columns ? new GridLength(1d, GridUnitType.Star) : new GridLength(0d);
         PlayerLayout.ColumnSpacing = columns ? 24d : 0d;
         // The header occupies half the player in the two-column layout.
-        // Keep the label and its badge together below the timer when their measured content cannot fit beside it.
+        // Labels always start at the left below the timer; optional cost details wrap onto their own row.
         var headerWidth = columns ? (PlayerLayout.Width - PlayerLayout.ColumnSpacing) / 2d : PlayerLayout.Width;
         PlayerLabelAndCostPanel.MaxWidth = headerWidth;
-        PlayerLabelAndCostPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var stackLabels = headerWidth < Math.Max(520d, PlayerLabelAndCostPanel.DesiredSize.Width + 270d);
-        Grid.SetRow(PlayerLabelAndCostPanel, stackLabels ? 1 : 0);
-        Grid.SetColumn(PlayerLabelAndCostPanel, stackLabels ? 0 : 2);
-        Grid.SetColumnSpan(PlayerLabelAndCostPanel, stackLabels ? 3 : 1);
-        PlayerLabelAndCostPanel.Margin = stackLabels ? new Thickness(0, 8, 0, 0) : new Thickness(8, 0, 0, 0);
+        var stackCost = headerWidth < 620d;
+        Grid.SetColumnSpan(PlayerLabelActionsPanel, stackCost ? 2 : 1);
+        Grid.SetRow(AiMonthlySpendPanel, stackCost ? 1 : 0);
+        Grid.SetColumn(AiMonthlySpendPanel, stackCost ? 0 : 1);
+        Grid.SetColumnSpan(AiMonthlySpendPanel, stackCost ? 2 : 1);
         Grid.SetRow(PlayerActivity, columns ? 0 : 2);
         Grid.SetColumn(PlayerActivity, columns ? 1 : 0);
         Grid.SetRowSpan(PlayerActivity, columns ? 2 : 1);
@@ -2066,6 +2082,9 @@ public sealed partial class MainWindow : Window
         _strings = new LocalizationService(settings.UiLanguage);
         PlayerLabelSelector.ApplySettings(_application, settings);
         PlayerLabelFeatureGate.UiLanguage = settings.UiLanguage;
+        UpdateTitlePremiumBadge();
+        AutomationProperties.SetName(ManageLabelsButton, T("Labels.Manage"));
+        ToolTipService.SetToolTip(ManageLabelsButton, T("Labels.Manage"));
         UpdateDebugFeatureMenu();
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;

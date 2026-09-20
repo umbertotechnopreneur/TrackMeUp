@@ -171,6 +171,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     internal async Task StartExportAsync()
     {
         TransferSections.SelectedItem = ExportSection;
+        if (!await EnsureArchiveAccessAsync())
+        {
+            return;
+        }
         var destinationPath = await PickExportPathAsync();
         if (destinationPath is null)
         {
@@ -201,6 +205,23 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         }
     }
 
+    private async Task<bool> EnsureArchiveAccessAsync()
+    {
+        var result = await Context.ExecuteAsync((application, token) => application.GetFeatureAccessAsync(token), showSuccess: false);
+        if (result is not { Succeeded: true, Value: { } access })
+        {
+            return false;
+        }
+        if (FeatureCatalog.IsAllowed(ProductFeature.DataTransfer, access))
+        {
+            return true;
+        }
+        await Context.Dialogs.ShowInformativeAsync(Context.OwnerWindow,
+            DialogRequest.Informative(_strings.Translate("Premium.UpgradeTitle"),
+                _strings.Translate("Premium.Required"), _strings.Translate("Dialog.Ok")));
+        return false;
+    }
+
     private async void PreviewImportButton_Click(object sender, RoutedEventArgs e) => await StartImportPreviewAsync();
 
     /// <summary>Collects an archive path and delegates validation and preview to the application facade.</summary>
@@ -227,6 +248,11 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     private async void MergeImportButton_Click(object sender, RoutedEventArgs e)
     {
         if (_importPlan is not { } plan || plan.AlreadyImported || _confirmationOpen)
+        {
+            return;
+        }
+
+        if (!await EnsureArchiveAccessAsync())
         {
             return;
         }

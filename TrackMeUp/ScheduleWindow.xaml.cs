@@ -80,6 +80,7 @@ public sealed partial class ScheduleWindow : Window
         _strings = new LocalizationService(uiLanguage);
         Title = _strings.Translate("Schedule.WindowTitle");
         UiLocalization.Apply(RootGrid, _strings);
+        TitlePremiumBadge.Text = _strings.Translate("Premium.Badge");
         IntervalNumberBox.Header = null;
         AutomationProperties.SetName(IntervalNumberBox, _strings.Translate("Schedule.Interval.Value.Header"));
         WorkingHoursEditor.ApplyLanguage(uiLanguage);

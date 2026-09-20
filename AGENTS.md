@@ -32,7 +32,8 @@ These instructions apply to all changes in this repository.
 - Never create a branch, commit, or push on your own initiative. Each action requires an explicit request from the owner; a request to edit files does not authorize Git delivery.
 - For documentation-only or repository-instruction-only changes, keep edits local until the owner explicitly requests delivery. If authorized, use the current branch and include `[skip ci]` unless the owner requests CI. Do not treat this rule as permission to bypass repository protections.
 - For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge.
-- Create MSIX release artifacts only through GitHub Actions. Create an annotated `v<version>` tag only after the matching source version is on `main`; never build, sign, upload, or publish release artifacts locally.
+- Local MSIX builds and signing are allowed when explicitly requested by the owner. Default to Debug for local installation tests and keep those artifacts separate from Store releases. GitHub Actions is optional, not required for packaging. Do not install, upload, or publish a package without explicit authorization.
+- Create an annotated `v<version>` tag only after the matching source version is on `main` and the owner explicitly requests the tag. Store release packaging and publication still require explicit authorization.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
 
 ## Context and token efficiency

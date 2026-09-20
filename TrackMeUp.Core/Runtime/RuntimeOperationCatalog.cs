@@ -132,6 +132,16 @@ internal enum RuntimeOperation
     AiAnalyze,
     [RuntimeOperationWireName("report.query.v1")]
     ReportQueryV1,
+    [RuntimeOperationWireName("report.export.setup.v1")]
+    ReportExportSetupV1,
+    [RuntimeOperationWireName("report.export.preview.v1")]
+    ReportExportPreviewV1,
+    [RuntimeOperationWireName("report.export.preferences.v1")]
+    ReportExportPreferencesV1,
+    [RuntimeOperationWireName("report.export.write.v1")]
+    ReportExportWriteV1,
+    [RuntimeOperationWireName("report.export.summary.v1")]
+    ReportExportSummaryV1,
     [RuntimeOperationWireName("ui.open")]
     UiOpen,
     [RuntimeOperationWireName("privacy.list")]

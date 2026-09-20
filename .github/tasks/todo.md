@@ -1,16 +1,30 @@
 # TrackMeUp performance and footprint optimization handoff
 
+- [ ] Verify export localization in a future authorized build: all nine buttons declare visible text, with small colored icons only for Generate summary, Save preferences and Export. ReportExportLocalizationContractTests covers string content/tagged captions, the limited icon set and all ten locales but has not been run. The owner requested source changes only; no build or restart. Manually check hidden tabs, busy-state actions and high-contrast icons when verification is authorized.
+
+- [ ] Visually verify the fixed-width player label selector in the next Debug build: switching between short/long/no label must not move Manage labels. Source change only; no new build or tests run for this adjustment.
+
+## Free-tier limits, import comparison and UI refinements (2026-09-21)
+
+- [ ] Visually accept the implemented Free creation limits (three labels and clocks), upgrade dialogs and Premium title-bar badges for screenshot scheduling, report export and archive transfer. Existing over-limit catalogs and active labels must remain intact; check stale dialogs after a profile change.
+- [ ] Visually accept left-aligned label controls, colored action icons, borderless appearance choices, simplified OCR/AI settings and the matching world-clock menu. Verify responsive clock details with no manual density command, plus light/dark/high contrast, keyboard navigation and 200% text scaling.
+- [ ] Obtain approval to rerun only the affected tests: FeatureCreationQuotaTests, WorldClockServiceTests.Conversion_RejectsInvalidAndAmbiguousCivilTimes, all four DataArchiveServiceTests.PreviewImport_ExistingSnapshot_ComparesContentInsteadOfJsonFormatting cases, and the four corrected UI contracts. The first run passed 241 of 252 checks; eleven failed because of incomplete fixtures or stale expectations, now corrected and compile-checked but not rerun. Keep synthetic archive capture rows present so JSON comparisons exercise actual records. Debug x64 unpackaged build and formatter verification passed; the updated development EXE is running. Do not import the owner's archive or alter real settings in tests.
+
+## Activity export (2026-09-21)
+
+- [ ] Visually accept More → Export activity in the local Debug unpackaged app: responsive navigation and footer, date/device filters, field selection, preview, Excel/CSV/JSON files and editable AI summaries. Check Free → Export opens the upgrade dialog and simulated Premium can write files. The 93 focused Core checks and four presentation boundary checks passed after correcting the isolated screenshot fixture and rerunning only the eight affected export tests with approval. Real-provider requests, opening the workbook in Excel and commercial Store purchase integration remain unverified or pending; use synthetic data for manual checks.
+
 ## CLI operational refresh (2026-09-21)
 
 - [ ] Validate the Premium CLI in an installed app with synthetic data: Free/Premium transitions, interactive and watch downgrade, report/search date ranges, expired import/reprocessing plans and failure reporting. Check screenshot maintenance and export/import previews before confirming synthetic writes. Reset requires a disposable test profile and separate owner approval. Local x64 Debug CLI compilation, formatting verification and all 163 CLI tests passed. Commercial entitlement integration remains pending; current production default is Free.
 
 ## Premium feature policy and Debug simulation (2026-09-21)
 
-- [ ] Validate Free/Premium switching through the Debug main menu: label editor and player selector lock/unlock immediately, badges remain visible in both profiles, downgrade clears selection but preserves definitions/history, restart resets simulation. Verify protected settings via CLI and IPC are denied in Free. Run FeatureAccessPolicyTests only with approval. Connect a verified commercial license source before shipping Premium purchases; the current production default is explicitly Free.
+- [ ] Validate Free/Premium switching through the Debug main menu: Free supports three labels and clocks, blocks further creation with the upgrade dialog and preserves existing catalogs/selection after downgrade. Save-protected windows keep a title-bar badge and editable previews. Restart resets simulation. Connect a verified commercial license source before shipping Premium purchases; the current production default is explicitly Free.
 
 ## Main-menu shortcuts and responsive label management (2026-09-21)
 
-- [ ] Visually validate Search, Activity history and Screenshot gallery at the top level of the More menu, with no quick-access rail in the player body. Retain the existing hubs and system actions. Check the compact Premium badge to the left of the label selector, vertical alignment and wrapping below the timer at narrow widths.
+- [ ] Visually validate Search, Activity history and Screenshot gallery at the top level of More, with no redundant History and insights submenu. Check the left-aligned label selector without a Premium badge, Manage labels beside it, and wrapping below the timer at narrow widths.
 - [ ] Validate Settings → Manage labels: only title, product description and action remain in settings. Check the resizable Mica dialog at 340 px width, short heights, 100–200% text/display scaling, all UI languages, light/dark/high contrast and keyboard-only navigation. Actions must stack when their captions no longer fit; content must scroll vertically, never horizontally. Verify save/delete, appearance, persistence errors and closing during a pending save. Existing entitlement rules remain unchanged. Automated tests require approval.
 
 ## Focused onboarding and deferred sensors entry point (2026-09-21)

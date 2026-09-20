@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -909,7 +910,7 @@ internal sealed class DataArchiveService
             EnsureNoAlternateUniqueConflict(connection, "ai_analysis_results", "attempt_id", "correlation_id");
             EnsureNoPayloadConflict(connection, "screenshot_captures", ["capture_id"], ScreenshotCaptureColumns.Except(["capture_id"]).ToArray());
             EnsureNoPayloadConflict(connection, "ai_analysis_artifacts", ["artifact_identity"], AiArtifactColumns.Except(["artifact_identity"]).ToArray());
-            EnsureNoVersionedPayloadConflict(connection, "screenshot_text_snapshots", "artifact_identity", "updated_utc_ticks", ScreenshotSnapshotColumns);
+            EnsureNoVersionedPayloadConflict(connection, "screenshot_text_snapshots", "artifact_identity", "updated_utc_ticks", ScreenshotSnapshotColumns, "snapshot_json");
             EnsureNoVersionedPayloadConflict(connection, "screenshot_interval_telemetry", "artifact_identity", "updated_utc_ticks", ScreenshotTelemetryColumns);
             EnsureNoPayloadConflict(connection, "capture_hardware_snapshots", ["capture_id"], CaptureHardwareSnapshotColumns.Except(["capture_id"]).ToArray());
         }
@@ -1325,7 +1326,8 @@ internal sealed class DataArchiveService
         string table,
         string key,
         string revision,
-        IReadOnlyList<string> columns)
+        IReadOnlyList<string> columns,
+        string? jsonColumn = null)
     {
         var payload = columns.Where(column =>
             !string.Equals(column, key, StringComparison.Ordinal)
@@ -1333,6 +1335,26 @@ internal sealed class DataArchiveService
         var differences = string.Join(" OR ", payload.Select(column =>
             $"NOT (target.{Quote(column)} IS source.{Quote(column)})"));
         using var command = connection.CreateCommand();
+        if (jsonColumn is not null)
+        {
+            var scalarDifferences = string.Join(" OR ", payload.Where(column => column != jsonColumn).Select(column =>
+                $"NOT (target.{Quote(column)} IS source.{Quote(column)})"));
+            command.CommandText = $"""
+                SELECT ({scalarDifferences}), target.{Quote(jsonColumn)}, source.{Quote(jsonColumn)}
+                FROM incoming.{Quote(table)} AS source
+                JOIN main.{Quote(table)} AS target ON target.{Quote(key)} = source.{Quote(key)}
+                WHERE target.{Quote(revision)} = source.{Quote(revision)} AND ({differences});
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                // Path remapping reserializes snapshots. Ignore formatting and object-property order only;
+                // changed values or non-JSON columns remain conflicts, and malformed JSON fails explicitly.
+                if (reader.GetBoolean(0) || !JsonNode.DeepEquals(JsonNode.Parse(reader.GetString(1)), JsonNode.Parse(reader.GetString(2))))
+                    throw new InvalidDataException($"The archive contains a conflicting {table} revision.");
+            }
+            return;
+        }
         command.CommandText = $"""
             SELECT 1
             FROM incoming.{Quote(table)} AS source

@@ -21,6 +21,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
     private readonly ITrackMeUpApplication _application;
     private readonly List<WorldClockCityPickerOption> _options;
     private readonly ToastNotificationService _notifications;
+    private readonly MicaDialogService _messages = new();
     private readonly LocalizationService _strings;
     private readonly AppWindow _appWindow;
     private readonly CustomTitleBarController _titleBar;
@@ -182,6 +183,7 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
     private void WorldClockCityPickerDialogWindow_Closed(object sender, WindowEventArgs args)
     {
         _closed = true;
+        _messages.CloseActive();
         _lifetimeCancellation.Cancel();
         _appWindow.Closing -= AppWindow_Closing;
         Closed -= WorldClockCityPickerDialogWindow_Closed;
@@ -211,6 +213,12 @@ internal sealed partial class WorldClockCityPickerDialogWindow : Window
 
             if (!result.Succeeded || result.Value is null)
             {
+                if (result.Code == "feature.clock_limit")
+                {
+                    await _messages.ShowInformativeAsync(this, DialogRequest.Informative(
+                        _strings.Translate("Premium.UpgradeTitle"), ResultMessage(result.MessageKey), _strings.Translate("Dialog.Ok")));
+                    return;
+                }
                 // The picker remains usable after a rejected mutation so the user can select another city.
                 _notifications.ShowWarning(
                     PickerNotificationBanner,

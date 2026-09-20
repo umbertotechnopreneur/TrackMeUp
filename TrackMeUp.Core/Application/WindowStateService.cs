@@ -74,6 +74,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the responsive label-management dialog.</summary>
     public const string ActivityLabels = "activity-labels";
 
+    /// <summary>Identifies the analytical export workspace.</summary>
+    public const string ReportExport = "report-export";
+
     /// <summary>Identifies the AI provider connection test dialog window.</summary>
     public const string AiConnectionTest = "ai-connection-test";
 }
@@ -107,6 +110,7 @@ public sealed class WindowStateService
         {
             WindowStateKeys.Main => new(470, 240),
             WindowStateKeys.ActivityCalendar => new(760, 560),
+            WindowStateKeys.ReportExport => new(660, 520),
             WindowStateKeys.AiScreenshotReprocessing => new(640, 560),
             WindowStateKeys.Screenshots => new(760, 540),
             WindowStateKeys.OcrText => new(560, 360),

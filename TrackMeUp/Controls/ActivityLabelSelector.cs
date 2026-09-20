@@ -13,7 +13,7 @@ namespace TrackMeUp.Controls;
 /// <summary>Offers an optional active label and persists selection through the shared facade.</summary>
 public sealed class ActivityLabelSelector : UserControl
 {
-    private readonly ComboBox _box = new() { MinWidth = 0, MaxWidth = 155, HorizontalAlignment = HorizontalAlignment.Stretch, FontSize = 12, Padding = new Thickness(8, 4, 8, 4), CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+    private readonly ComboBox _box = new() { MinWidth = 0, Width = 155, HorizontalAlignment = HorizontalAlignment.Stretch, FontSize = 12, Padding = new Thickness(8, 4, 8, 4), CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
     private readonly TextBlock _error = new() { FontSize = 11, MaxWidth = 155, TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
     private AppSettings? _settings;
     private ITrackMeUpApplication? _application;
