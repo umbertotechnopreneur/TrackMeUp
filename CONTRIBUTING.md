@@ -71,7 +71,7 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAs
 
 ## Opening a pull request
 
-Tell us:
+Tell me:
 
 - what changed;
 - why it changed;

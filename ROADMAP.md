@@ -1,10 +1,10 @@
 # TrackMeUp roadmap
 
-We're working toward a first public preview that's useful, reliable, and easy
-to use on Windows. This is what we're focusing on. Plans can change, and this
-page isn't a promise of delivery dates.
+I'm preparing the first public preview for Windows. The priorities are reliable
+tracking, useful search, and clear privacy controls. Plans can change; this page
+doesn't promise delivery dates.
 
-## What we're working on now
+## What I'm working on now
 
 - Finish checking the code, packages, dependencies, and artwork before publication.
 - Fix remaining issues in World clocks and the Windows interface.
@@ -29,10 +29,10 @@ page isn't a promise of delivery dates.
 
 - Make it easier to move history between installations, with no hidden sync.
 - Improve local reports and search when they solve a real need and justify the extra data stored.
-- Consider integrations when we can clearly explain what they send and ask users to opt in.
-- Add useful ideas from contributors to this roadmap once we've worked through them together.
+- Consider integrations only when I can explain what they send and make them opt-in.
+- Add useful ideas from contributors after discussing the scope with them.
 
-## What we want to keep
+## What I plan to keep
 
 - Your history stays on your PC by default.
 - Screenshots, AI assistance, and location sharing remain independent choices.

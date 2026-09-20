@@ -1,5 +1,11 @@
 # Task Archive
 
+## 2026-09-20 — Clarify product documentation and author voice
+
+- Put activity tracking and search in the first README headline. Simplify product copy and use the solo maintainer's voice in contributor, support, security, privacy, and roadmap documentation.
+- Save the product writing preferences in AGENTS.md, including plain English, concrete benefits, and first-person singular author wording.
+- Documentation changes only. No builds, tests, formatters, linters, or CI were run. Preserve unrelated work in progress.
+
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
 ## [2026-09-19] Unify desktop UI fixes and retire activity reports
 

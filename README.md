@@ -1,3 +1,5 @@
+<h1 align="center">TrackMeUp — Track time in Windows apps and search your activity and screenshots</h1>
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="design/branding/recall-timeline/output/trackmeup-recall-timeline-banner-theme-dark-readme-2400x800.png" />
@@ -6,16 +8,14 @@
   </picture>
 </p>
 
-<h1 align="center">TrackMeUp — Find your way back to what you were doing</h1>
-
 <p align="center"><strong>A Windows activity tracker that keeps your history on your PC by default.</strong></p>
 
 <p align="center">
-  Saw something useful, then forgot where? TrackMeUp helps you find it again.
-  Search your activity, look through saved screenshots, and see where your time went. No TrackMeUp account needed, and no hidden cloud sync.
+  Find an app, document, or screenshot from earlier in your day and see how long you spent working.
+  Screenshots are optional. No TrackMeUp account needed, and no hidden cloud sync.
 </p>
 
-We sweat the small stuff: keeping TrackMeUp fast, going easy on your PC's resources, and making the UI a pleasure to use. That care extends to **over 600 artworks for 300 cities**, with summer and winter views to enjoy in **World clocks and the main window**. A little window onto the world, right on your desktop.
+I develop TrackMeUp with help from a few contributors. It also includes **World clocks** and **over 600 artworks for 300 cities**, with summer and winter views in the clocks and main window.
 
 <p align="center">
   <img src="docs/images/readme/trackmeup-seasonal-cities-strip.png" alt="Watercolor panorama of Rome, Paris, Tokyo, and New York, flowing from summer warmth to snowy winter" width="100%" />
@@ -39,7 +39,7 @@ We sweat the small stuff: keeping TrackMeUp fast, going easy on your PC's resour
 </p>
 
 > [!IMPORTANT]
-> **Beta 1 is coming soon.** We're spending the next two months checking how the app handles AI and private data before sharing the first public beta.
+> **The first public beta is in preparation.** I'm checking how the app handles AI and private data before publishing it.
 
 ## Remember the moment, not the tab
 
@@ -225,7 +225,7 @@ The script publishes the app to a fresh directory under `artifacts/unpackaged/<v
 > OCR is initialized when text extraction is requested. The x64 portable has passed an extracted `--version` launch check; full UI startup on clean x64/ARM64 machines remains a separate release check. See [portable requirements and verification](docs/RELEASING.md#portable-startup-and-feature-limitations).
 
 > [!NOTE]
-> **MSIX installers are temporarily unavailable.** We're working on the code-signing certificate needed to distribute them. Use an unpackaged build for now.
+> **MSIX installers are temporarily unavailable.** I'm working on the code-signing certificate needed to distribute them. Use an unpackaged build for now.
 
 Portable release archives are built by GitHub Actions from a version-matching `v<version>` tag, which prepares a draft release for review.
 

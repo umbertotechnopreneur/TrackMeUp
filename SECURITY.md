@@ -1,15 +1,15 @@
 # Reporting a security problem
 
-## Versions we support
+## Supported versions
 
-We consider security fixes for:
+I consider security fixes for:
 
 - the default branch;
 - the latest published release (when available).
 
 TrackMeUp is still in development, so behavior can change between versions.
 
-## How to reach us
+## How to reach me
 
 If you think you've found a vulnerability, please report it privately. Don't open a public issue with details that someone could use to exploit it.
 

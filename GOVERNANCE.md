@@ -1,15 +1,14 @@
 # How TrackMeUp is maintained
 
-TrackMeUp is an open-source project maintained by
-[@umbertotechnopreneur](https://github.com/umbertotechnopreneur). This document
-explains how to suggest changes and how we decide what goes into the app.
+I'm [Umberto Giacobbi](https://github.com/umbertotechnopreneur), the maintainer
+of TrackMeUp. I develop it with help from a few contributors. This guide explains
+how to suggest changes and how I decide what goes into the app.
 
 ## Who looks after the project
 
-The maintainer decides what to work on, reviews contributions, and publishes
-releases. They also check that changes respect the app's privacy rules and keep
-data local by default. When a discussion doesn't reach agreement, the maintainer
-makes the final call.
+I decide what to work on, review contributions, and publish releases. I check
+that changes respect the app's privacy rules and keep data local by default.
+When a discussion doesn't reach agreement, I make the final call.
 
 Repository ownership does not override the MIT license. Contributions accepted
 into the project are licensed as described in [CONTRIBUTING.md](CONTRIBUTING.md),
@@ -41,7 +40,7 @@ and branches are deleted automatically after merging.
 
 ## Decisions and releases
 
-We record decisions in issues and pull requests. If a decision changes how the
+I record decisions in issues and pull requests. If a decision changes how the
 app works or how the code is organized, update the relevant guide in the same
 pull request.
 

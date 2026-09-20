@@ -1,6 +1,6 @@
 # Code of Conduct
 
-## Our Standards
+## Standards
 
 Participants are expected to be respectful, specific, and constructive.
 

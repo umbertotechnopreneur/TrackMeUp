@@ -2,6 +2,14 @@
 
 These instructions apply to all changes in this repository.
 
+## Product writing and author voice
+
+- Start each README with a headline that says what the app does and what the reader can use it for. Put the product benefit before architecture, branding, or project history.
+- Apply this style throughout repository documentation: plain English, short sentences, concrete actions, and useful examples. Cut filler, vague slogans, hype, corporate language, and formulaic AI-sounding prose.
+- Speak to the reader as "you". When speaking as the author, use "I", "me", and "my", never a company-style "we", "us", or "our". Umberto is the solo maintainer, with help from a few contributors; keep their credits accurate.
+- Keep technical detail in the relevant reference guides. Preserve exact commands, UI labels, privacy facts, limitations, and the distinction between implemented, tested, and planned features. Do not promise unlimited capacity or untested compatibility.
+- Preserve third-party quotations, license text, and historical records; these writing preferences apply to original project copy.
+
 ## Shared delivery workflow
 
 - For documentation-only or repository-instruction-only changes, commit and push directly on the current branch, including `main`, without creating a branch or opening a pull request. The owner authorizes using existing administrator bypass rights for this exception; do not change repository protection settings. Include `[skip ci]` in the commit message unless the owner explicitly requests CI.

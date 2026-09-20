@@ -4,7 +4,7 @@ Open a [GitHub issue](https://github.com/umbertotechnopreneur/TrackMeUp/issues) 
 
 Have a quick look at existing issues first. Someone may already have an answer or be working on the same thing.
 
-## Help us understand what happened
+## Describe what happened
 
 You don't need a long report. A few details help:
 
@@ -14,7 +14,7 @@ You don't need a long report. A few details help:
 - what happened instead;
 - logs or screenshots, if useful, with private information removed.
 
-Let us know whether you ran the app from source, installed a package, or only ran a build or tests. That helps us reproduce the problem.
+Tell me whether you ran the app from source, installed a package, or only ran a build or tests. That helps me reproduce the problem.
 
 ## Before you post
 

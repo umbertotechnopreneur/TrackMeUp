@@ -7,7 +7,7 @@ PC. This page explains what it saves, what can leave your PC, and how to delete
 it. The app can help you find something you've seen, but it can't recover
 information it never saw or recorded, such as a hidden URL.
 
-If we change how the app handles data, we'll update this page before a public
+If I change how the app handles data, I'll update this page before a public
 release. For privacy questions, email **hello@umbertogiacobbi.biz**.
 
 ## The short version
