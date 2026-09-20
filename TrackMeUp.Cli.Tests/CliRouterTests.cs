@@ -317,6 +317,15 @@ public sealed class CliRouterTests
         public void ConfigureWindowSnapping(bool enabled) =>
             throw new NotSupportedException("The CLI does not configure native windows.");
 
+        /// <inheritdoc />
+        public Task<OperationResult<FeatureAccessSnapshot>> GetFeatureAccessAsync(CancellationToken cancellationToken) =>
+            Success(new FeatureAccessSnapshot(ProductTier.Premium, false, false), "features.loaded");
+#if DEBUG
+        /// <inheritdoc />
+        public Task<OperationResult<FeatureAccessSnapshot>> SimulateFeatureAccessAsync(ProductTier tier, CancellationToken cancellationToken) =>
+            throw new NotSupportedException("The CLI cannot grant itself Premium access.");
+#endif
+
         public event EventHandler<RuntimeStateChangedEventArgs>? RuntimeStateChanged
         {
             add { }

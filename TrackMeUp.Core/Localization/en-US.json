@@ -1,4 +1,5 @@
 {
+  "Cli.Title": "Command-line interface",
   "Premium.Badge": "PREMIUM",
   "Premium.Required": "This feature requires Premium.",
   "Premium.Loading": "Checking access…",
@@ -8,6 +9,9 @@
   "Premium.DebugSwitchPremium": "Debug: Free profile → simulate Premium",
   "Premium.DebugSwitchFree": "Debug: Premium profile → simulate Free",
   "Labels.Title": "Labels",
+  "Labels.Manage": "Manage labels",
+  "Labels.Description": "Organize your activities by project or context with names, icons and colors.",
+  "Labels.Existing": "Saved labels",
   "Labels.None": "No label",
   "Labels.Name": "Label name (1–20 characters)",
   "Labels.New": "New label",

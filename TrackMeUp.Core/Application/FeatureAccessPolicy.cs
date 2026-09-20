@@ -6,7 +6,7 @@ namespace TrackMeUp.Application;
 public enum ProductTier { Free, Premium }
 
 /// <summary>Stable feature identities used by the catalog, presentation and application guards.</summary>
-public enum ProductFeature { Tracking, Screenshots, Search, DataTransfer, WorldClocks, Astronomy, HardwareSensors, ActivityLabels }
+public enum ProductFeature { Tracking, Screenshots, Search, DataTransfer, WorldClocks, Astronomy, HardwareSensors, ActivityLabels, Cli }
 
 /// <summary>Declares one feature and the settings operations that require its entitlement.</summary>
 public sealed record FeatureDefinition(ProductFeature Id, string TitleKey, ProductTier RequiredTier, IReadOnlyList<string> SettingKeys);
@@ -41,6 +41,7 @@ public static class FeatureCatalog
         new FeatureDefinition(ProductFeature.WorldClocks, "WorldClock.OpenWindow", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.Astronomy, "Celestial.Agenda.Title", ProductTier.Free, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.HardwareSensors, "Sensors.Open", ProductTier.Free, Array.Empty<string>()),
+        new FeatureDefinition(ProductFeature.Cli, "Cli.Title", ProductTier.Premium, Array.Empty<string>()),
         new FeatureDefinition(ProductFeature.ActivityLabels, "Labels.Title", ProductTier.Premium,
             Array.AsReadOnly(new[] { "activity.label.save", "activity.label.delete", "activity.label.select" }))
     });

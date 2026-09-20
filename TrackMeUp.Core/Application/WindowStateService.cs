@@ -71,6 +71,9 @@ public static class WindowStateKeys
     /// <summary>Identifies the simplified AI pricing dialog window.</summary>
     public const string AiPricing = "ai-pricing";
 
+    /// <summary>Identifies the responsive label-management dialog.</summary>
+    public const string ActivityLabels = "activity-labels";
+
     /// <summary>Identifies the AI provider connection test dialog window.</summary>
     public const string AiConnectionTest = "ai-connection-test";
 }
@@ -123,6 +126,7 @@ public sealed class WindowStateService
             WindowStateKeys.CelestialMap => new(320, 280),
             WindowStateKeys.WorldClockCityPicker => new(500, 560),
             WindowStateKeys.AiPricing => new(620, 430),
+            WindowStateKeys.ActivityLabels => new(340, 280),
             WindowStateKeys.AiConnectionTest => new(480, 480),
             _ => throw new ArgumentException("The window key is not supported.", nameof(windowKey))
         };

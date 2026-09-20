@@ -55,6 +55,13 @@ public sealed partial class FeatureGate : UserControl
         FeatureTitle.Visibility = ShowTitle ? Visibility.Visible : Visibility.Collapsed;
         BadgeText.Text = strings.Translate("Premium.Badge");
         PremiumBadge.Visibility = premium ? Visibility.Visible : Visibility.Collapsed;
+        var compact = !ShowTitle && !ShowHint;
+        GateLayout.ColumnSpacing = compact && premium ? 8 : 0;
+        GateLayout.RowSpacing = compact ? 0 : 6;
+        Grid.SetColumnSpan(FeatureHeading, compact ? 1 : 2);
+        Grid.SetRow(BodyHost, compact ? 0 : 2);
+        Grid.SetColumn(BodyHost, compact ? 1 : 0);
+        Grid.SetColumnSpan(BodyHost, compact ? 1 : 2);
         AutomationProperties.SetName(PremiumBadge, BadgeText.Text);
         AccessHint.Text = hint;
         AccessHint.Visibility = !allowed && ShowHint ? Visibility.Visible : Visibility.Collapsed;

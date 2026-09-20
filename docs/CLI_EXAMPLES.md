@@ -1,10 +1,141 @@
 # CLI examples
 
-Check activity, control tracking, and inspect saved screenshots from PowerShell 7. These
+Search history, query reports and control TrackMeUp Premium from PowerShell 7. These
 examples use the installed `trackmeup.exe` command and preserve its exit code.
 For an unpackaged build, replace it with the quoted executable path after `&`.
 
-The CLI uses the same runtime as the desktop app. Commands can start that runtime when it is absent, applying its saved startup settings. Help and version commands do not connect to the runtime. The expected results below describe the output; they are not output captured from a user's installation.
+The entire CLI requires Premium: Free includes no commands, help, version or interactive shell. Every invocation verifies access through the shared runtime and can start it with its saved startup settings when absent. Free returns `cli.premium.required` and exit code `11`; unavailable access verification blocks the command. The expected results below describe the output; they are not output captured from a user's installation.
+
+The commercial license source is not connected yet, so the current production default is Free. Developers can select Premium simulation in the desktop Debug menu before trying these commands. The override ends when the runtime restarts; the CLI cannot grant access. See [Premium access](PREMIUM_FEATURES.md).
+
+## Search, reports, clocks and hardware
+
+```powershell
+pwsh -NoProfile -Command '& trackmeup.exe -cli search status --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli search query --text "project notes" --limit 20 --offset 0 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli search query --from 2026-09-01T00:00:00+07:00 --to 2026-10-01T00:00:00+07:00 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli report --from 2026-09-01 --to 2026-09-21 --timezone UTC --view applications --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli world-clock list --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli world-clock cities --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli hardware snapshot --json; exit $LASTEXITCODE'
+```
+
+Search requires text or a filter. `--from` includes its timestamp and `--to`
+excludes it; use ISO timestamps with seconds and `Z` or an explicit offset.
+`--kind` selects a document kind, `--query-language` controls query analysis,
+and `--include-text` includes text bodies and raw attributes. Bodies are omitted
+by default, but result metadata can still contain private context. The shared
+search service enforces result limits.
+
+Reports use inclusive `yyyy-MM-dd` dates and an explicit time-zone ID.
+Choose `calendar` (default), `hour-of-week`, `trend` or `applications`.
+For conversion, use a city ID from `world-clock cities` in
+`world-clock convert --city <id> --local-time 2026-09-21T14:30:00`.
+This is civil time without an offset; Core handles daylight-saving validation.
+Clock output omits celestial maps and artwork. Hardware reads available sensors
+without requesting installation. Unavailable readings are not reported as zero.
+
+## Screenshot gallery and maintenance
+
+```powershell
+pwsh -NoProfile -Command '& trackmeup.exe -cli screenshots gallery --date 2026-09-21 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli screenshots migrate --json; exit $LASTEXITCODE'
+```
+
+Omit `--date` to read the latest gallery. `screenshots` aliases `screenshot`.
+Gallery results can contain private titles, OCR and AI descriptions.
+
+Copy an exact absolute path from the gallery into
+`screenshots delete --date 2026-09-21 --path "<absolute-path>" --json` to preview
+deletion. The item must belong to that date's gallery. The preview identifies the
+image and indicates that associated analysis is removed too. Review it, then
+repeat with `--yes`. Core resolves owned artifacts; the CLI never deletes
+arbitrary paths. Preview does not reserve the file or freeze state.
+
+`screenshots migrate` reports whether migration is required and the artifact count.
+Review it, then repeat with `--yes`. A confirmed invocation checks status again
+before requesting migration.
+
+## Export and import private data
+
+Export defaults to a request preview. It does not validate filesystem availability,
+count records or reserve the exported data set. Use an absolute `.tmuarchive` path:
+
+```powershell
+pwsh -NoProfile -Command '& trackmeup.exe -cli data export --destination "C:\Backups\workday.tmuarchive" --from 2026-09-01 --to 2026-09-21 --json; exit $LASTEXITCODE'
+```
+
+Review the request, then repeat with `--yes`. **Confirmed export replaces an
+existing archive at that destination.** Omit both dates for all data or provide
+both for an inclusive local-date range. `--no-screenshots` excludes image files.
+The archive remains private activity data, not an anonymized report.
+
+```powershell
+pwsh -NoProfile -Command '& trackmeup.exe -cli data import preview --path "C:\Backups\workday.tmuarchive" --json --timeout 120; exit $LASTEXITCODE'
+```
+
+Review `value.planId`, `expiresAt`, counts and `alreadyImported`. Then run
+`data import run --plan <planId> --yes --json --timeout 120`.
+The plan belongs to the current runtime and expires. Core rechecks the fingerprint
+and collisions before merging. Review a new preview when a plan expires; do not
+silently replace it. Choose a per-request timeout up to 300 seconds for longer
+operations. A timeout does not prove no data was committed; inspect state before
+retrying a write.
+
+## AI diagnostics and historical reprocessing
+
+```powershell
+pwsh -NoProfile -Command '& trackmeup.exe -cli ai models --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli ai pricing --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli ai reprocess preview --date 2026-09-21 --json; exit $LASTEXITCODE'
+```
+
+`ai models` reads the validated model catalog. `ai pricing` reads the service's
+cached prices and local usage overview; this is not live billing or a promise of
+price coverage for every provider. `ai test --yes` sends the minimal non-image
+connection check to the configured AI provider and can incur cost.
+
+Reprocessing preview sends no analysis requests. Review eligibility, blocked
+items, remaining allowance, estimated cost, `canStart`, `expiresAt` and `planId`.
+
+| Action | Command after `trackmeup.exe -cli` |
+| --- | --- |
+| Queue the reviewed plan | `ai reprocess start --plan <planId> --yes --json` |
+| Read progress | `ai reprocess status --job <jobId> --json` |
+| Request a pause | `ai reprocess pause --job <jobId> --json` |
+| Resume provider calls | `ai reprocess resume --job <jobId> --yes --json` |
+
+Use the job ID returned by start. Start returns a job snapshot, not completed
+analysis. Pause is cooperative and may finish the current capture. The shared
+worker enforces privacy and cost gates. Closing the CLI or losing CLI access does
+not itself pause the background job.
+
+## Logs, feature access and reset
+
+```powershell
+pwsh -NoProfile -Command '& trackmeup.exe -cli logs open-folder --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli access status --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& trackmeup.exe -cli reset preview --json; exit $LASTEXITCODE'
+```
+
+`logs open` opens the latest application log; `logs open-folder` opens its folder.
+These commands do not upload or share logs. `access status` reports the tier and
+Debug simulation state. It requires Premium and cannot change entitlement.
+
+Reset preview describes scope and the screenshot directory without stopping
+tracking or preparing deletion. Reset deletes all local app data and app-owned
+screenshots, disables startup and relaunches TrackMeUp. API keys remain in their
+environment variables. Back up data you want to retain before confirming.
+
+The destructive syntax is `reset run --yes --confirm DELETE-ALL-DATA`. Both flags
+are required in scripts and the command center. There is no automatic prompt
+answer. `--yes` alone never authorizes reset. Missing or incorrect confirmation
+returns exit code `3` before calling the reset service.
+
+Success returns `app.reset.accepted` with `completionVerified: false`. The runtime
+owner deletes and relaunches after responding. Exit code `0` confirms acceptance,
+not completed deletion; inspect the relaunched app before assuming completion or
+retrying.
 
 ## Status and diagnostics
 
@@ -159,6 +290,7 @@ The JSON envelope has stable field names: `succeeded`, `code`, `messageKey`, `va
 | `8` | An operation returned a failure code ending in `.failed`. |
 | `9` | Unsupported runtime IPC protocol. |
 | `10` | Other application failure, including partial diagnostics. |
+| `11` | CLI requires Premium (`cli.premium.required`); the requested command is not executed. |
 | `130` | Command cancellation, including stopping a watch with Ctrl+C. |
 
 ## Discover additional commands

@@ -95,6 +95,25 @@ internal sealed class MicaDialogService
         });
     }
 
+    /// <summary>Shows the label editor in a queued Mica window and returns its latest saved settings.</summary>
+    internal async Task<AppSettings?> ShowActivityLabelsAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        AppSettings settings,
+        FeatureAccessSnapshot? access,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(strings);
+        return await RunModalSessionAsync<AppSettings?>(owner, null, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new ActivityLabelsDialogWindow(application, settings, access, theme, strings, ownerAppWindow, ownerHandle);
+            return await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
+    }
+
     /// <summary>Shows the native rolling activity calendar and returns a day requested for screenshot exploration.</summary>
     internal async Task<DateOnly?> ShowActivityCalendarAsync(
         ITrackMeUpApplication application,

@@ -7,7 +7,7 @@ namespace TrackMeUp.Cli;
 
 /// <summary>Routes one-shot commands and the REPL through the same application facade calls.</summary>
 /// <remarks>Initializes a router with presentation-only dependencies.</remarks>
-public sealed class CliRouter(ITrackMeUpApplication application, CliOutput output, CliOptions options)
+public sealed partial class CliRouter(ITrackMeUpApplication application, CliOutput output, CliOptions options)
 {
     private readonly ITrackMeUpApplication _application = application;
     private readonly CliOutput _output = output;
@@ -16,18 +16,20 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
     /// <summary>Runs a command token sequence, or opens the persistent shell when none was supplied.</summary>
     public async Task<int> RunAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        if (arguments.Count == 0)
-        {
-            return await RunShellAsync(cancellationToken);
-        }
-
-        if (!CliCommandCatalog.TryExpandShortcut(arguments, out var expanded))
-        {
-            return InvalidCommand();
-        }
-
         try
         {
+            if (arguments.Count == 0)
+            {
+                var denied = await CheckCliAccessAsync(cancellationToken);
+                return denied ?? await RunShellAsync(cancellationToken);
+            }
+
+            if (!CliCommandCatalog.TryExpandShortcut(arguments, out var expanded))
+            {
+                var denied = await CheckCliAccessAsync(cancellationToken);
+                return denied ?? InvalidCommand();
+            }
+
             return await DispatchAsync(CliCommandCatalog.Normalize(expanded), cancellationToken);
         }
         catch (OperationCanceledException)
@@ -39,6 +41,9 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
     private async Task<int> DispatchAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
+        var denied = await CheckCliAccessAsync(cancellationToken);
+        if (denied is not null) return denied.Value;
+
         if (CliCommandCatalog.TryGetHelpTopic(arguments, out var helpTopic))
         {
             return WriteHelp(helpTopic);
@@ -53,6 +58,17 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             "session" => await SessionAsync(arguments, cancellationToken),
             "system" => await SystemAsync(arguments, cancellationToken),
             "screenshot" => await ScreenshotAsync(arguments, cancellationToken),
+            "screenshots" => await ScreenshotAsync(arguments, cancellationToken),
+            "search" => await SearchAsync(arguments, cancellationToken),
+            "report" => await ReportAsync(arguments, cancellationToken),
+            "world-clock" => await WorldClockAsync(arguments, cancellationToken),
+            "hardware" => arguments.Count == 2 && arguments[1].Equals("snapshot", StringComparison.OrdinalIgnoreCase)
+                ? await WriteAsync(_application.CaptureHardwareSnapshotAsync(cancellationToken)) : InvalidArguments(),
+            "data" => await DataAsync(arguments, cancellationToken),
+            "logs" => await LogsAsync(arguments, cancellationToken),
+            "access" => arguments.Count == 2 && arguments[1].Equals("status", StringComparison.OrdinalIgnoreCase)
+                ? await WriteAsync(_application.GetFeatureAccessAsync(cancellationToken)) : InvalidArguments(),
+            "reset" => await ResetAsync(arguments, cancellationToken),
             "ai" => await AiAsync(arguments, cancellationToken),
             "privacy" => await PrivacyAsync(arguments, cancellationToken),
             "retention" => await RetentionAsync(arguments, cancellationToken),
@@ -64,7 +80,7 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             "about" => arguments.Count == 1 ? await WriteAsync(_application.GetProductInformationAsync(cancellationToken)) : InvalidArguments(),
             "doctor" => arguments.Count == 1 ? await DoctorAsync(cancellationToken) : InvalidArguments(),
             "diagnostics" => arguments.Count == 1 ? await DoctorAsync(cancellationToken) : InvalidCommand(),
-            "version" => arguments.Count == 1 ? WriteResult(CliBootstrap.CreateVersionResult()) : InvalidArguments(),
+            "version" or "--version" => arguments.Count == 1 ? WriteResult(CliBootstrap.CreateVersionResult()) : InvalidArguments(),
             _ => InvalidCommand()
         };
     }
@@ -146,6 +162,11 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
     private async Task<int> ScreenshotAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
+        if (arguments.ElementAtOrDefault(1)?.ToLowerInvariant() is "gallery" or "delete" or "migrate")
+        {
+            return await ScreenshotMaintenanceAsync(arguments, cancellationToken);
+        }
+
         if (arguments.ElementAtOrDefault(1)?.Equals("capture", StringComparison.OrdinalIgnoreCase) == true)
         {
             if (!TryParseOptions(arguments, 2, ["--keep"], ["--mode"], out var options))
@@ -173,6 +194,16 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
     {
         switch (arguments.ElementAtOrDefault(1)?.ToLowerInvariant())
         {
+            case "models" when arguments.Count == 2:
+                return await WriteAsync(_application.GetAiModelCatalogAsync(cancellationToken));
+            case "pricing" when arguments.Count == 2:
+                return await WriteAsync(_application.GetAiPricingOverviewAsync(cancellationToken));
+            case "test" when TryParseOptions(arguments, 2, ["--yes"], [], out var testOptions):
+                return Confirmed(testOptions)
+                    ? await WriteAsync(_application.TestAiConnectionAsync(cancellationToken))
+                    : ConfirmationRequired();
+            case "reprocess":
+                return await AiReprocessAsync(arguments, cancellationToken);
             case "status" when arguments.Count == 2:
                 return await WriteAsync(_application.GetAiStatusAsync(cancellationToken));
             case "analyze" when TryParseOptions(arguments, 2, ["--no-capture"], [], out var analyzeOptions):
@@ -405,6 +436,9 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            var denied = await CheckCliAccessAsync(cancellationToken);
+            if (denied is not null) return denied.Value;
+
             AnsiConsole.Clear();
             _output.WriteShellHeader();
 
@@ -463,7 +497,7 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             }
             else if (action.Id == "help")
             {
-                _output.WriteHelp();
+                await DispatchAsync(["help"], cancellationToken);
             }
             else if (action.Command is not null)
             {
@@ -526,6 +560,8 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             {
                 _output.WriteResult(initial);
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken);
+                var denied = await CheckCliAccessAsync(cancellationToken);
+                if (denied is not null) return denied.Value;
                 initial = await query(cancellationToken);
                 if (!initial.Succeeded || initial.Value is null)
                 {
@@ -543,6 +579,12 @@ public sealed class CliRouter(ITrackMeUpApplication application, CliOutput outpu
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken);
+                var denied = await CheckCliAccessAsync(cancellationToken);
+                if (denied is not null)
+                {
+                    code = denied.Value;
+                    break;
+                }
                 var next = await query(cancellationToken);
                 if (!next.Succeeded || next.Value is null)
                 {

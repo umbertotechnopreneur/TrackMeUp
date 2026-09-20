@@ -1,4 +1,5 @@
 {
+  "Cli.Title": "Giao diện dòng lệnh",
   "Premium.Badge": "PREMIUM",
   "Premium.Required": "Tính năng này yêu cầu Premium.",
   "Premium.Loading": "Đang kiểm tra quyền truy cập…",
@@ -8,6 +9,9 @@
   "Premium.DebugSwitchPremium": "Debug: hồ sơ Free → mô phỏng Premium",
   "Premium.DebugSwitchFree": "Debug: hồ sơ Premium → mô phỏng Free",
   "Labels.Title": "Label",
+  "Labels.Manage": "Quản lý nhãn",
+  "Labels.Description": "Sắp xếp hoạt động theo dự án hoặc ngữ cảnh bằng tên, biểu tượng và màu sắc.",
+  "Labels.Existing": "Nhãn đã lưu",
   "Labels.None": "Không có label",
   "Labels.Name": "Tên label (1–20 ký tự)",
   "Labels.New": "Label mới",

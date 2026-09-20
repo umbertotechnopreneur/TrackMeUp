@@ -1,4 +1,5 @@
 {
+  "Cli.Title": "Interface de linha de comando",
   "Premium.Badge": "PREMIUM",
   "Premium.Required": "Este recurso requer Premium.",
   "Premium.Loading": "Verificando acesso…",
@@ -8,6 +9,9 @@
   "Premium.DebugSwitchPremium": "Debug: perfil Free → simular Premium",
   "Premium.DebugSwitchFree": "Debug: perfil Premium → simular Free",
   "Labels.Title": "Labels",
+  "Labels.Manage": "Gerenciar etiquetas",
+  "Labels.Description": "Organize suas atividades por projeto ou contexto com nomes, ícones e cores.",
+  "Labels.Existing": "Etiquetas salvas",
   "Labels.None": "Sem label",
   "Labels.Name": "Nome da label (1–20 caracteres)",
   "Labels.New": "Nova label",

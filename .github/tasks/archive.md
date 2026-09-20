@@ -1,5 +1,19 @@
 # Task Archive
 
+## 2026-09-21 — Premium CLI operational refresh
+
+- Added search with filters/pagination, date-range reports, clock-only queries/conversion, hardware readings, screenshot gallery/deletion/migration, archive export/import, AI model/price/connection/reprocessing operations, log opening, access status and double-confirmed reset. All operations use the existing shared facade; celestial and window-only functions remain outside CLI scope.
+- Added default previews and explicit confirmation for maintenance. Import/reprocessing use runtime-owned expiring plans; reset reports acceptance separately from asynchronous deletion/relaunch. Export preview describes the request and explicitly warns that confirmed export can replace its destination archive.
+- Classified the entire CLI as Premium, including help, version, diagnostics and shell. The router fails closed on unavailable access, denies Free with exit code 11 and rechecks access during shell/watch use. The CLI cannot grant itself Premium; the existing unlicensed production default and desktop Debug simulation remain explicit.
+- Updated all ten CLI help locales, feature titles, the visible README callout, command reference, Premium guide and scenario checklist. Documented the evaluated Debug unpackaged launch command and the custom configuration's missing DEBUG symbol.
+- x64 Debug CLI/test compilation and formatting verification passed; the authorized CLI suite passed 163/163 tests. No installed-app smoke test, personal-data mutation, provider request, reset, MSIX package, commit or push was performed. Installed runtime acceptance remains in todo.
+
+## 2026-09-21 — Menu placement and label-management dialog
+
+- Moved the three quick actions from the player body to the top level of the More menu, preserving its existing navigation hubs. Reduced the Premium badge and selector corner radius, aligned the badge to the left of the selector and added a narrow-header second row.
+- Replaced the inline settings editor with its title, a localized product description and Manage labels. Added a resizable Mica dialog using the shared modal queue, existing facade-backed editor, separate window placement and a scrollable body. Editor actions adapt to translated caption widths and stack when needed. Existing feature-access rules are unchanged; interactive acceptance remains in todo.md.
+- Verification: repository C# formatter and Verify passed; the four changed/new XAML files parsed and the three new keys are present in all ten locale catalogs. No automated tests, build or installation performed for this change.
+
 ## 2026-09-21 — Central feature access and Debug profiles
 
 - Added the shared feature catalog, runtime-owned license policy, and reusable `FeatureGate` title/badge/access container. Saved labels are the first Premium feature; the badge remains visible in both profiles. Settings mutations are checked inside Core for direct, CLI and IPC callers, including saved-label selection through the taskbar text setting.

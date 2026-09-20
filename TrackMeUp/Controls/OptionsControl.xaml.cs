@@ -50,11 +50,6 @@ public sealed partial class OptionsControl : UserControl
     {
         InitializeComponent();
         RegisterAutoSaveHandlers();
-        LabelsEditor.SettingsSaved += settings =>
-        {
-            ApplySettings(settings);
-            SettingsSaved?.Invoke(settings);
-        };
     }
 
     /// <summary>Occurs when the host should restore the player panel.</summary>
@@ -72,6 +67,11 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Occurs when the user requests the dedicated search-index progress window.</summary>
     public event EventHandler? SearchIndexingRequested;
 
+    /// <summary>Occurs when the user requests the dedicated label-management dialog.</summary>
+    public event EventHandler? ManageLabelsRequested;
+
+    private void ManageLabels_Click(object sender, RoutedEventArgs e) => ManageLabelsRequested?.Invoke(this, EventArgs.Empty);
+
     /// <summary>Occurs when the user requests one focused local-data or operations surface.</summary>
     internal event Action<OperationsSection>? OperationsSectionRequested;
 
@@ -83,7 +83,6 @@ public sealed partial class OptionsControl : UserControl
         try
         {
             _strings = new LocalizationService(language);
-            LabelsFeatureGate.UiLanguage = language;
             UiLocalization.Apply(this, _strings);
             if (SelectedModel() is { } selectedModel)
             {
@@ -459,7 +458,6 @@ public sealed partial class OptionsControl : UserControl
             AiDailyLimitBox.Value = settings.OpenAiDailyLimit;
             _updatingAiDailyLimit = false;
             ApplyLanguage(settings.UiLanguage);
-            if (_application is not null) LabelsEditor.ApplySettings(_application, settings);
             _requestedThinkingEffort = settings.AiReasoningEffort;
             SelectModel(settings.Model);
             ScreenshotFolderBox.Text = settings.ScreenshotDirectory;
@@ -506,9 +504,6 @@ public sealed partial class OptionsControl : UserControl
 
     /// <summary>Refreshes the passive options controls from a settings snapshot persisted by another surface.</summary>
     internal void ApplyExternalSettings(AppSettings settings) => ApplySettings(settings);
-
-    /// <summary>Projects runtime entitlement onto the feature containers in this view.</summary>
-    internal void ApplyFeatureAccess(FeatureAccessSnapshot? access) => LabelsFeatureGate.Access = access;
 
     private bool CanAutoSave => _autoSaveReady && !_suppressAutoSave && _application is not null;
 

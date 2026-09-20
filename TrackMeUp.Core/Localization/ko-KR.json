@@ -1,4 +1,5 @@
 {
+  "Cli.Title": "명령줄 인터페이스",
   "Premium.Badge": "PREMIUM",
   "Premium.Required": "이 기능은 Premium이 필요합니다.",
   "Premium.Loading": "접근 권한 확인 중…",
@@ -8,6 +9,9 @@
   "Premium.DebugSwitchPremium": "Debug: Free 프로필 → Premium 시뮬레이션",
   "Premium.DebugSwitchFree": "Debug: Premium 프로필 → Free 시뮬레이션",
   "Labels.Title": "Label",
+  "Labels.Manage": "레이블 관리",
+  "Labels.Description": "이름, 아이콘, 색상으로 활동을 프로젝트나 상황별로 정리하세요.",
+  "Labels.Existing": "저장된 레이블",
   "Labels.None": "Label 없음",
   "Labels.Name": "Label 이름 (1–20자)",
   "Labels.New": "새 Label",

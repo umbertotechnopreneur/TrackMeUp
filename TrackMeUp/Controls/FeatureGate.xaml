@@ -21,17 +21,26 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <UserControl.Content>
-        <StackPanel Spacing="6">
-            <StackPanel Orientation="Horizontal" Spacing="8">
+        <Grid x:Name="GateLayout" RowSpacing="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel x:Name="FeatureHeading" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock x:Name="FeatureTitle" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap" />
-                <Border x:Name="PremiumBadge" Padding="7,2" CornerRadius="12" VerticalAlignment="Center"
+                <Border x:Name="PremiumBadge" Padding="7,3" CornerRadius="3" VerticalAlignment="Center"
                         Background="{ThemeResource PremiumBadgeFill}" Visibility="Collapsed">
                     <TextBlock x:Name="BadgeText" FontSize="10" Foreground="{ThemeResource PremiumBadgeText}" />
                 </Border>
             </StackPanel>
-            <TextBlock x:Name="AccessHint" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            <TextBlock x:Name="AccessHint" Grid.Row="1" Grid.ColumnSpan="2" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
-            <ContentControl x:Name="BodyHost" HorizontalContentAlignment="Stretch" IsEnabled="False" />
-        </StackPanel>
+            <ContentControl x:Name="BodyHost" Grid.Row="2" Grid.ColumnSpan="2" HorizontalContentAlignment="Stretch" VerticalAlignment="Center" MinWidth="0" IsEnabled="False" />
+        </Grid>
     </UserControl.Content>
 </UserControl>

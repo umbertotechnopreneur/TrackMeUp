@@ -1,12 +1,17 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## CLI operational refresh (2026-09-21)
+
+- [ ] Validate the Premium CLI in an installed app with synthetic data: Free/Premium transitions, interactive and watch downgrade, report/search date ranges, expired import/reprocessing plans and failure reporting. Check screenshot maintenance and export/import previews before confirming synthetic writes. Reset requires a disposable test profile and separate owner approval. Local x64 Debug CLI compilation, formatting verification and all 163 CLI tests passed. Commercial entitlement integration remains pending; current production default is Free.
+
 ## Premium feature policy and Debug simulation (2026-09-21)
 
 - [ ] Validate Free/Premium switching through the Debug main menu: label editor and player selector lock/unlock immediately, badges remain visible in both profiles, downgrade clears selection but preserves definitions/history, restart resets simulation. Verify protected settings via CLI and IPC are denied in Free. Run FeatureAccessPolicyTests only with approval. Connect a verified commercial license source before shipping Premium purchases; the current production default is explicitly Free.
 
-## Player quick-access rail (2026-09-21)
+## Main-menu shortcuts and responsive label management (2026-09-21)
 
-- [ ] Visually validate the player quick-access rail for Search, Activity calendar and Screenshot gallery at compact and expanded player sizes, 100–200% scaling, light/dark/high-contrast themes and keyboard navigation. The full More menu must retain its existing hubs and system actions. No tests run.
+- [ ] Visually validate Search, Activity history and Screenshot gallery at the top level of the More menu, with no quick-access rail in the player body. Retain the existing hubs and system actions. Check the compact Premium badge to the left of the label selector, vertical alignment and wrapping below the timer at narrow widths.
+- [ ] Validate Settings → Manage labels: only title, product description and action remain in settings. Check the resizable Mica dialog at 340 px width, short heights, 100–200% text/display scaling, all UI languages, light/dark/high contrast and keyboard-only navigation. Actions must stack when their captions no longer fit; content must scroll vertically, never horizontally. Verify save/delete, appearance, persistence errors and closing during a pending save. Existing entitlement rules remain unchanged. Automated tests require approval.
 
 ## Focused onboarding and deferred sensors entry point (2026-09-21)
 

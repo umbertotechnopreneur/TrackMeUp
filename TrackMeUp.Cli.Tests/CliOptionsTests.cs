@@ -81,6 +81,7 @@ public sealed class CliOptionsTests
 
     [Theory]
     [InlineData("privacy.blocked", 5)]
+    [InlineData("cli.premium.required", 11)]
     [InlineData("ai.disabled", 6)]
     [InlineData("operation.cancelled", 130)]
     public void ExitCodeMapper_UsesStableCodes(string code, int expected) => Assert.Equal(expected, ExitCodeMapper.Map(code));

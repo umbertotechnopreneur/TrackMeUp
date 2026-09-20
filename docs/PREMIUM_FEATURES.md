@@ -1,6 +1,8 @@
 # Mark and protect Premium features
 
-Use `FeatureCatalog` in Core to define each feature's tier and protected settings keys. Saved activity labels are Premium; the other declared features are Free. Keep tier decisions out of individual views.
+Use `FeatureCatalog` in Core to define each feature's tier and protected settings keys. Saved activity labels and the entire CLI are Premium; the other declared features are Free. Keep tier decisions out of individual views.
+
+`CliRouter` checks the runtime-owned snapshot against `ProductFeature.Cli` before dispatching any command, including help, version, diagnostics and the interactive shell. It checks again before shell actions and watch refreshes. Free returns `cli.premium.required` with exit code `11`; unavailable or invalid access state fails closed. CLI arguments and settings cannot grant access. This is a client feature gate over the shared application services, not authentication for a separate public API; desktop Free features keep their own policies. All CLI entry points, including help/version, now require the runtime connection.
 
 Wrap a feature's controls in the shared WinUI component:
 

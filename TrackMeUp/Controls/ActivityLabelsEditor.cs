@@ -9,15 +9,17 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using TrackMeUp.Application;
 using TrackMeUp.Services;
+using Windows.Foundation;
 
 namespace TrackMeUp.Controls;
 
 /// <summary>Collects label edits and sends them through the shared application facade.</summary>
 public sealed class ActivityLabelsEditor : UserControl
 {
-    private readonly StackPanel _root = new() { Spacing = 8 };
-    private readonly ComboBox _labels = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBox _name = new() { MaxLength = 20, MinWidth = 100 };
+    private readonly StackPanel _root = new() { Spacing = 16 };
+    private readonly ComboBox _labels = new() { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly TextBox _name = new() { MaxLength = 20, MinWidth = 0 };
+    private readonly Grid _actions = new() { ColumnSpacing = 8, RowSpacing = 8 };
     private readonly Button _appearance = new();
     private readonly Button _add = new();
     private readonly Button _save = new();
@@ -44,11 +46,21 @@ public sealed class ActivityLabelsEditor : UserControl
         Grid.SetColumn(_appearance, 1);
         fields.Children.Add(_appearance);
         _root.Children.Add(fields);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        actions.Children.Add(_add);
-        actions.Children.Add(_save);
-        actions.Children.Add(_delete);
-        _root.Children.Add(actions);
+        _appearance.VerticalAlignment = VerticalAlignment.Bottom;
+        for (var index = 0; index < 3; index++)
+        {
+            _actions.ColumnDefinitions.Add(new ColumnDefinition());
+            _actions.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+        foreach (var button in new[] { _add, _save, _delete })
+        {
+            button.MinWidth = 0;
+            button.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _actions.Children.Add(button);
+        }
+        _save.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
+        _root.Children.Add(_actions);
+        SizeChanged += (_, _) => UpdateActionLayout();
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
         _root.Children.Add(_status);
         _labels.SelectionChanged += (_, _) =>
@@ -69,6 +81,14 @@ public sealed class ActivityLabelsEditor : UserControl
     /// <summary>Reports a settings snapshot only after successful application-layer persistence.</summary>
     public event Action<AppSettings>? SettingsSaved;
 
+    /// <summary>Reports when a facade mutation starts or finishes so the host can defer dismissal.</summary>
+    internal event Action<bool>? BusyChanged;
+
+    internal bool IsBusy => _busy;
+
+    /// <summary>Moves keyboard focus to the label name without creating or saving a draft.</summary>
+    internal void FocusEditor() => _name.Focus(FocusState.Programmatic);
+
     /// <summary>Refreshes saved choices without overwriting a draft when unrelated settings change.</summary>
     public void ApplySettings(ITrackMeUpApplication application, AppSettings settings)
     {
@@ -78,13 +98,15 @@ public sealed class ActivityLabelsEditor : UserControl
         _settings = settings;
         if (!changed) return;
         _strings = new LocalizationService(settings.UiLanguage);
-        _name.PlaceholderText = T("Labels.Name");
+        _name.Header = new TextBlock { Text = T("Labels.Name"), TextWrapping = TextWrapping.Wrap };
+        _labels.Header = new TextBlock { Text = T("Labels.Existing"), TextWrapping = TextWrapping.Wrap };
         _labels.PlaceholderText = T("Labels.New");
         AutomationProperties.SetName(_name, T("Labels.Name"));
         AutomationProperties.SetName(_labels, T("Labels.Title"));
-        _add.Content = T("Labels.New");
-        _save.Content = T("Labels.Save");
-        _delete.Content = T("Labels.Delete");
+        SetActionLabel(_add, "Labels.New");
+        SetActionLabel(_save, "Labels.Save");
+        SetActionLabel(_delete, "Labels.Delete");
+        UpdateActionLayout();
         ToolTipService.SetToolTip(_appearance, T("Labels.Appearance"));
         AutomationProperties.SetName(_appearance, T("Labels.Appearance"));
         _updating = true;
@@ -104,6 +126,32 @@ public sealed class ActivityLabelsEditor : UserControl
     }
 
     private string T(string key) => _strings.Translate(key);
+
+    private void SetActionLabel(Button button, string key)
+    {
+        button.Content = new TextBlock { Text = T(key), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+        AutomationProperties.SetName(button, T(key));
+    }
+
+    private void UpdateActionLayout()
+    {
+        // Measure translated, scaled captions instead of assuming English button widths.
+        var buttons = new[] { _add, _save, _delete };
+        var widest = 0d;
+        foreach (var button in buttons)
+        {
+            if (button.Content is not FrameworkElement content) continue;
+            content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            widest = Math.Max(widest, content.DesiredSize.Width + button.Padding.Left + button.Padding.Right + 4);
+        }
+        var stacked = ActualWidth < widest * 3 + _actions.ColumnSpacing * 2;
+        for (var index = 0; index < buttons.Length; index++)
+        {
+            Grid.SetRow(buttons[index], stacked ? index : 0);
+            Grid.SetColumn(buttons[index], stacked ? 0 : index);
+            Grid.SetColumnSpan(buttons[index], stacked ? 3 : 1);
+        }
+    }
 
     private void LoadDraft(ActivityLabelDefinition? label)
     {
@@ -191,6 +239,7 @@ public sealed class ActivityLabelsEditor : UserControl
     {
         if (_application is null || _busy) return;
         _busy = true;
+        BusyChanged?.Invoke(true);
         IsEnabled = false;
         try
         {
@@ -208,6 +257,6 @@ public sealed class ActivityLabelsEditor : UserControl
             // Interop or persistence errors must not be presented as a successful edit.
             _status.Text = T("Labels.SaveError");
         }
-        finally { _busy = false; IsEnabled = true; }
+        finally { _busy = false; IsEnabled = true; BusyChanged?.Invoke(false); }
     }
 }

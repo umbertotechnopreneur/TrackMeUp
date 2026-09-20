@@ -31,7 +31,6 @@ public sealed partial class MainWindow
         if (_dashboardSurfaceClosed) return;
         _featureAccessState = access;
         PlayerLabelFeatureGate.Access = access;
-        _optionsControl?.ApplyFeatureAccess(access);
         UpdateDebugFeatureMenu();
     }
 

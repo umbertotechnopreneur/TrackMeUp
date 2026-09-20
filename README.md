@@ -14,6 +14,11 @@ No TrackMeUp account needed. Screenshots and AI analysis are separate options.
 
 *Actual app preview with sample data, shown in Italian.*
 
+> [!TIP]
+> **Hardcore users: a full CLI interface, in the MeUp tradition — Premium only.** TrackMeUp Premium gives you an interactive command center, one-shot commands and JSON output for activity tracking, search, reports, screenshots, data archives and AI operations. The Free edition does not include CLI access.
+>
+> Start with `trackmeup.exe -cli --help` in PowerShell 7, or try `trackmeup.exe -cli search query --text "project" --json`. See the [CLI guide and examples](docs/CLI_EXAMPLES.md) for commands and confirmations. For a source build, use the executable’s full path; celestial views and window controls stay in the desktop UI.
+
 ## Get TrackMeUp
 
 TrackMeUp is in development and has no public download yet. Build from source to try it.
@@ -226,7 +231,7 @@ Resize and arrange them into your own desktop collage. Optional **window snappin
 
 ## Using the terminal
 
-See the [practical CLI examples](docs/CLI_EXAMPLES.md) for checking status, controlling tracking, taking screenshots, previewing cleanup, and using the app in scripts.
+The entire CLI is Premium, including help, version and the interactive shell. Free has no CLI commands. See the [practical CLI examples](docs/CLI_EXAMPLES.md) for search, reports, screenshot maintenance, archives, AI operations and scripting. The current license integration starts in Free; developers can use the desktop Debug Premium simulation described in [Premium access](docs/PREMIUM_FEATURES.md).
 
 Once the package is installed, try:
 
@@ -253,8 +258,8 @@ Use `trackmeup.exe -cli --help` to see all commands. These shortcuts are handy f
 | `--ai-off` | `ai disable` | Disable AI analysis. |
 | `--capture` | `screenshot capture` | Capture a privacy-checked screenshot. |
 | `--doctor` | `doctor` | Run read-only diagnostics. |
-| `--help` | `help` | Show help without connecting to the runtime. |
-| `--version` | `version` | Show CLI and protocol versions without connecting to the runtime. |
+| `--help` | `help` | Show help after the runtime verifies Premium access. |
+| `--version` | `version` | Show CLI and protocol versions after the Premium check. |
 
 You can add these options to a command or shortcut:
 

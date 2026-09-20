@@ -1,8 +1,9 @@
 # TrackMeUp CLI: product and implementation notes
 
-The CLI lets you check your workday, control tracking, inspect screenshots, and
-manage settings from PowerShell 7. It uses the same app services as the desktop
-UI, so privacy rules and data stay consistent.
+The Premium CLI lets you search history, query reports, control tracking, inspect
+screenshots, transfer data and manage AI operations from PowerShell 7. It uses the
+same app services as the desktop UI. Free has no CLI access, including help,
+version and the interactive shell.
 
 This guide replaces the original rollout plan with a shorter overview. For
 ready-to-use commands, output formats, and exit codes, see
@@ -14,9 +15,10 @@ ready-to-use commands, output formats, and exit codes, see
 - Run `trackmeup.exe -cli` for the interactive command center.
 - Run `trackmeup.exe -cli <command>` for a single action or a script.
 
-Use PowerShell 7 with `pwsh -NoProfile`. Help and version work without connecting
-to the tracker. Other commands connect to the shared runtime and may start it
-with the saved startup settings if it is absent.
+Use PowerShell 7 with `pwsh -NoProfile`. Every command connects to the shared
+runtime to verify Premium, including help and version. Connecting may start the
+runtime with its saved startup settings if it is absent. Free returns
+`cli.premium.required` and exit code `11`; failed access verification blocks execution.
 
 Closing a one-shot command does not stop tracking. Use `tracking pause` when
 you want to pause the shared tracker.
@@ -27,20 +29,34 @@ you want to pause the shared tracker.
 | --- | --- |
 | See current activity | `status`, `status --watch`, `session last`, `session today` |
 | Control tracking | `tracking start`, `tracking pause`, `tracking toggle` |
-| Check device readings | `system snapshot` |
-| Work with screenshots | `screenshot capture`, `screenshot latest`, `screenshot open-folder` |
-| Manage AI | `ai status`, `ai enable`, `ai disable`, `ai configure`, `ai key set`, `ai analyze` |
+| Search local history | `search status`, `search query` with filters and pagination |
+| Read activity reports | `report --from ... --to ... --timezone ... [--view ...]` |
+| Read or convert city times | `world-clock list`, `world-clock cities`, `world-clock convert` |
+| Check device readings | `system snapshot`, `hardware snapshot` |
+| Work with screenshots | `screenshot capture`, `screenshot latest`, `screenshot open-folder`, `screenshots gallery`, `screenshots delete`, `screenshots migrate` |
+| Transfer data | `data export`, `data import preview`, `data import run` |
+| Manage AI | `ai status`, `ai enable`, `ai disable`, `ai configure`, `ai key set`, `ai analyze`, `ai models`, `ai test`, `ai pricing`, `ai reprocess ...` |
 | Control saved data | `privacy ...`, `retention status`, `retention preview`, `retention run` |
 | Adjust settings | `config ...`, `plugins ...`, `startup ...` |
 | Get help or diagnose a problem | `--help`, `--version`, `runtime health`, `doctor`, `about` |
+| Inspect support and access state | `logs open`, `logs open-folder`, `access status` |
+| Reset local data | `reset preview`, `reset run --yes --confirm DELETE-ALL-DATA` |
 
 Command and option names stay in English. Prompts, descriptions, and messages
 follow the selected app language. A leading slash is optional: `/status` and
 `status` select the same command. `settings` aliases `config`; `diagnostics`
-aliases `doctor`.
+aliases `doctor`; `screenshots` aliases `screenshot`.
 
 This is a capability overview, not a promise that every desktop control has an
 identical CLI command. Check command help for the available options.
+
+Celestial views, maps, window placement and native share dialogs are outside the
+CLI scope. World clocks return city/time data. Hardware reads do not enable
+advanced telemetry or install prerequisites.
+
+The runtime currently starts Free because the commercial license source is not
+connected. Development testing can use the existing runtime-owned Debug simulation
+from the desktop menu. The CLI cannot grant itself access. See [Premium access](PREMIUM_FEATURES.md).
 
 ## Clear terminal output
 
@@ -65,6 +81,15 @@ Interactive and one-shot commands must use the same router and validation.
   capturing or sending data. `--keep` retains a screenshot; it does not turn AI off.
 - Preview cleanup before deleting data. Destructive commands require their
   documented confirmation; a preview does not freeze the later deletion set.
+- Screenshot deletion and migration preview by default; `--yes` executes after
+  a fresh service read. Export previews the request, not filesystem availability
+  or record counts; confirmed export can replace the destination archive.
+- Import and historical AI processing require a runtime-issued preview plan ID.
+  Expired plans are not silently replaced. AI connection tests, reprocessing start
+  and resume require `--yes` because they can contact the AI provider and incur cost.
+- Reset requires `--yes --confirm DELETE-ALL-DATA` in both scripted and interactive
+  commands. Preview describes scope without stopping tracking. `app.reset.accepted`
+  confirms acceptance only: the runtime owner deletes and relaunches after responding.
 - Keep private paths, window context, screenshot content, keys, and raw requests
   out of diagnostics. Stop cancelled work consistently without creating another
   tracker.
@@ -110,8 +135,9 @@ Verify the behavior affected by the change:
 - Desktop and CLI tracking changes affect one runtime and the same saved data.
 - Invalid commands, privacy blocks, unavailable AI, cost limits, timeouts, and
   cancellation return the documented result and exit code.
-- Rich, plain, and JSON output remain readable and safe to consume; help and
-  version do not open a XAML window or start tracking.
+- Rich, plain, and JSON output remain readable and safe to consume. Free, unavailable
+  access state and a downgrade during watch or shell must block further data reads.
+  Help and version also require the runtime connection and Premium access.
 - Secret prompts hide input; output and logs contain no keys or private payloads.
 - UTF-8 and all ten app languages work, including both Portuguese variants.
 - An installed MSIX exposes the execution alias; portable use points to the

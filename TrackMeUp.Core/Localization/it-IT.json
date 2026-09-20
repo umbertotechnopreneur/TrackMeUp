@@ -1,4 +1,5 @@
 {
+  "Cli.Title": "Interfaccia a riga di comando",
   "Premium.Badge": "PREMIUM",
   "Premium.Required": "Questa funzione richiede Premium.",
   "Premium.Loading": "Verifica del profilo…",
@@ -8,6 +9,9 @@
   "Premium.DebugSwitchPremium": "Debug: profilo Free → simula Premium",
   "Premium.DebugSwitchFree": "Debug: profilo Premium → simula Free",
   "Labels.Title": "Label",
+  "Labels.Manage": "Gestisci etichette",
+  "Labels.Description": "Organizza le tue attività per progetto o contesto con nomi, icone e colori.",
+  "Labels.Existing": "Etichette salvate",
   "Labels.None": "Nessuna label",
   "Labels.Name": "Nome label (1–20 caratteri)",
   "Labels.New": "Nuova label",

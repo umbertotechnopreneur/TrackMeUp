@@ -100,6 +100,23 @@ pwsh -NoProfile -Command 'dotnet build ./TrackMeUp/TrackMeUp.csproj -p:Platform=
 That command builds the app's default `Debug` configuration. Use x64 or ARM64
 explicitly; WinUI is not built as AnyCPU. Run solution tests separately.
 
+### Run Debug without MSIX packaging
+
+From the repository root, compile and launch with the Debug symbol and unpackaged
+deployment initialization:
+
+```powershell
+pwsh -NoProfile -Command 'dotnet run --project ./TrackMeUp/TrackMeUp.csproj --configuration Debug -p:Platform=x64 -p:TrackMeUpDistributionMode=Unpackaged --runtime win-x64 --no-launch-profile'
+```
+
+For ARM64, use `-p:Platform=ARM64 --runtime win-arm64`. This is a local development
+run, not a distribution package. The custom `Debug-Unpackaged` configuration currently
+defines `DEBUG_UNPACKAGED` instead of `DEBUG` in the app; use the explicit command
+above when you need Debug-only features such as Premium simulation. Unpackaged runs
+do not provide the MSIX identity required by Windows screenshot OCR. Property
+evaluation confirms the command selects `DEBUG` and `WindowsPackageType=None`;
+this is not evidence of a successful UI launch on your machine.
+
 ## Before submitting C# changes
 
 Run the formatter and then its read-only verification:
