@@ -12,6 +12,7 @@ data/
 /TrackMeUp.Core/Data/*
 !/TrackMeUp.Core/Data/sky-catalog.json
 !/TrackMeUp.Core/Data/sky-palette.json
+!/TrackMeUp.Core/Data/important-dates.json
 /screenshots/
 .env
 .env.*

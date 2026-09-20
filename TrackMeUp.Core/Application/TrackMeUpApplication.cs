@@ -2236,7 +2236,8 @@ public sealed partial class TrackMeUpApplication : ITrackMeUpApplication
                 Satellites = await CelestialSatelliteService.GetPositionsAsync(snapshot, cancellationToken).ConfigureAwait(false)
             };
         var zone = TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZoneId);
-        var spaceWeather = await CelestialSpaceWeatherService.GetAsync(snapshot.InstantUtc, zone, snapshot.Latitude, snapshot.Longitude, cancellationToken).ConfigureAwait(false);
+        var spaceWeather = await CelestialSpaceWeatherService.GetAsync(snapshot.InstantUtc, zone, snapshot.Latitude, snapshot.Longitude,
+            _settingsSnapshot.Value.HideSpaceWeatherByLocation, cancellationToken).ConfigureAwait(false);
         snapshot = snapshot with
         {
             SpaceWeather = spaceWeather.Snapshot,

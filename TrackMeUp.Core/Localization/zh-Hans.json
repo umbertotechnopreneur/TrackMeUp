@@ -1,4 +1,6 @@
 {
+  "WorldClock.Options.SpaceWeather.HideByLocation": "按位置隐藏 NOAA 事件",
+  "WorldClock.Options.SpaceWeather.HideByLocation.Help": "根据所选城市的磁纬度和黑暗条件，筛选时钟和日程中的地磁事件。关闭后将不受位置限制地显示这些事件。其他 NOAA 警报不变。这并不保证能够看见极光。",
   "WorldClock.FreeLimit": "Free 最多支持 3 个时钟。请移除一个时钟或购买 Premium 后再添加（最多 12 个）。",
   "Premium.UpgradeTitle": "购买 Premium",
   "Labels.FreeLimit": "Free 版最多可创建 3 个标签。请删除一个标签或升级到 Premium 后再添加。",

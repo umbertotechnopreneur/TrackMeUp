@@ -306,6 +306,17 @@
                               </Button>
                               <controls:PremiumBadge x:Name="AddClockPremiumBadge" Grid.Column="1" HorizontalAlignment="Left" />
                             </Grid>
+                            <ToggleSwitch
+                                x:Name="HideSpaceWeatherByLocationSwitch"
+                                Header="Hide NOAA events by location"
+                                Tag="WorldClock.Options.SpaceWeather.HideByLocation"
+                                Toggled="HideSpaceWeatherByLocationSwitch_Toggled" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Tag="WorldClock.Options.SpaceWeather.HideByLocation.Help"
+                                Text="Filters NOAA geomagnetic events using each selected city's magnetic latitude and darkness. Turn off to see them regardless of location; this does not guarantee aurora visibility. Other space-weather alerts are unchanged."
+                                TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </Grid>

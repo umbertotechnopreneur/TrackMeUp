@@ -129,7 +129,12 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(previewHost.ElementsAfterSelf(), element => HasName(element, "PreviewTitleText"));
         Assert.Equal("{ThemeResource SearchQueryBackdropBrush}", query.Attribute("Background")?.Value);
         Assert.Equal("{ThemeResource SearchResultsBackdropBrush}", results.Attribute("Background")?.Value);
-        Assert.Equal(4, window.Descendants().Count(element => element.Name.LocalName == "AcrylicBrush"));
+        Assert.Equal(2, window.Descendants().Count(element => element.Name.LocalName == "AcrylicBrush"));
+        var resultBrushes = window.Descendants().Where(element =>
+            element.Name.LocalName == "SolidColorBrush" && KeyValue(element) == "SearchResultsBackdropBrush").ToArray();
+        Assert.Equal(2, resultBrushes.Length);
+        Assert.All(resultBrushes, brush => Assert.Equal("Transparent", brush.Attribute("Color")?.Value));
+        Assert.Equal("Transparent", window.Descendants().Single(element => HasName(element, "SearchResultsList")).Attribute("Background")?.Value);
         Assert.Contains(highContrast.Elements(), element => KeyValue(element) == "SearchQueryBackdropBrush"
             && element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
         Assert.Contains(highContrast.Elements(), element => KeyValue(element) == "SearchResultsBackdropBrush"

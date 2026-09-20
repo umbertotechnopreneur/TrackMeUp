@@ -1,5 +1,11 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## NOAA location filter and search material (2026-09-21)
+
+- [ ] Run the new SpaceWeatherLocationFilterTests and the updated search surface checks after explicit approval. Verify persisted on/off state, low latitude, polar day/night, unchanged non-geomagnetic alerts, expired alerts, and significant forecasts in the 48-hour window.
+- [ ] In world-clock options, verify the localized NOAA location switch and help in all ten languages, error rollback, and immediate refresh of clocks and an already-open agenda. In Search, check the transparent results pane over the window material, selection, keyboard focus, disabled transparency and high contrast. The owner authorized commit, push and CI; no local build or tests were run.
+- [ ] Verify clean-checkout CI with the newly included important-date catalog. The current file includes the existing birthday entry; no catalog contents were changed.
+
 - [ ] Verify export localization in a future authorized build: all nine buttons declare visible text, with small colored icons only for Generate summary, Save preferences and Export. ReportExportLocalizationContractTests covers string content/tagged captions, the limited icon set and all ten locales but has not been run. The owner requested source changes only; no build or restart. Manually check hidden tabs, busy-state actions and high-contrast icons when verification is authorized.
 
 - [ ] Visually verify the fixed-width player label selector in the next Debug build: switching between short/long/no label must not move Manage labels. Source change only; no new build or tests run for this adjustment.

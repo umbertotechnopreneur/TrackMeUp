@@ -1,4 +1,6 @@
 {
+  "WorldClock.Options.SpaceWeather.HideByLocation": "위치에 따라 NOAA 이벤트 숨기기",
+  "WorldClock.Options.SpaceWeather.HideByLocation.Help": "선택한 도시의 자기 위도와 어두운 정도를 기준으로 시계와 일정의 지자기 이벤트를 필터링합니다. 끄면 위치와 관계없이 표시합니다. 다른 NOAA 알림은 변경되지 않습니다. 오로라 관측을 보장하지는 않습니다.",
   "WorldClock.FreeLimit": "Free는 시계를 최대 3개까지 지원합니다. 다른 시계를 추가하려면 하나를 삭제하거나 Premium을 구매하세요(최대 12개).",
   "Premium.UpgradeTitle": "Premium 구매",
   "Labels.FreeLimit": "Free에서는 라벨을 최대 3개까지 만들 수 있습니다. 다른 라벨을 추가하려면 기존 라벨을 삭제하거나 Premium으로 전환하세요.",

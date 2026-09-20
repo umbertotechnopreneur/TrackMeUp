@@ -73,6 +73,7 @@ public static class SettingsCatalog
         Integer("window.main.opacity_percent", "Player window opacity from 25 through 100 percent."),
         Boolean("window.main.show_in_taskbar", "Show the player window in the Windows taskbar."),
         Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
+        Boolean("world_clocks.space_weather.hide_by_location", "Hide NOAA geomagnetic events unlikely to be visible from the selected city, using magnetic latitude and darkness."),
         Integer("window.world_clocks.opacity_percent", "World-clock window opacity from 25 through 100 percent."),
         Boolean("window.world_clocks.show_in_taskbar", "Show the world-clock window in the Windows taskbar."),
         Boolean("window.world_map.show_in_taskbar", "Show the world-map window in the Windows taskbar."),
@@ -156,6 +157,7 @@ public static class SettingsCatalog
             "window.main.opacity_percent" => settings.MainWindowOpacityPercent,
             "window.main.show_in_taskbar" => settings.MainWindowShowInTaskbar,
             "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
+            "world_clocks.space_weather.hide_by_location" => settings.HideSpaceWeatherByLocation,
             "window.world_clocks.opacity_percent" => settings.WorldClockWindowOpacityPercent,
             "window.world_clocks.show_in_taskbar" => settings.WorldClockWindowShowInTaskbar,
             "window.world_map.show_in_taskbar" => settings.WorldMapWindowShowInTaskbar,
@@ -282,6 +284,7 @@ public static class SettingsCatalog
                 case "window.main.opacity_percent" when TryInteger(value, 25, 100, out var mainOpacity): current = current with { MainWindowOpacityPercent = mainOpacity }; break;
                 case "window.main.show_in_taskbar" when TryBoolean(value, out var mainShowInTaskbar): current = current with { MainWindowShowInTaskbar = mainShowInTaskbar }; break;
                 case "world_clocks.weather.enabled" when TryBoolean(value, out var worldClockWeatherEnabled): current = current with { WorldClockWeatherEnabled = worldClockWeatherEnabled }; break;
+                case "world_clocks.space_weather.hide_by_location" when TryBoolean(value, out var hideSpaceWeatherByLocation): current = current with { HideSpaceWeatherByLocation = hideSpaceWeatherByLocation }; break;
                 case "window.world_clocks.opacity_percent" when TryInteger(value, 25, 100, out var worldClockOpacity): current = current with { WorldClockWindowOpacityPercent = worldClockOpacity }; break;
                 case "window.world_clocks.show_in_taskbar" when TryBoolean(value, out var worldClockShowInTaskbar): current = current with { WorldClockWindowShowInTaskbar = worldClockShowInTaskbar }; break;
                 case "window.world_map.show_in_taskbar" when TryBoolean(value, out var worldMapShowInTaskbar): current = current with { WorldMapWindowShowInTaskbar = worldMapShowInTaskbar }; break;

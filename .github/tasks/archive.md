@@ -1,5 +1,11 @@
 # Task Archive
 
+## 2026-09-21 — NOAA location preference and transparent search results
+
+- Added the explicit Git ignore exception for the embedded important-date catalog required by Core. The local catalog is now visible to Git; no unrelated data directory is unignored.
+- Added a persisted, default-on world-clock preference for the existing NOAA geomagnetic location/darkness filter, with explanatory text in ten languages. Clocks and the astronomical agenda share the choice; disabling it preserves alert validity, significant-storm thresholds and forecast time bounds. Other NOAA alert types are unchanged.
+- Removed the extra results-pane Acrylic layer in Search so the window material remains visible. Kept system high-contrast colors and native item interaction states. Added focused regression scenarios, not executed locally. Formatting and syntax checks passed; the owner requested commit and push with test execution delegated to CI. Runtime visual validation remains pending.
+
 ## 2026-09-21 — Reconcile PR #42 with main
 
 - Resolved 37 conflicts on the existing branch. Main commit `f545db5` has the same Git tree as branch ancestor `2f2e865`; the conflicts came from the earlier squash merge. Preserved all subsequent branch changes and removed stale task entries reintroduced by automatic merging.

@@ -1,4 +1,6 @@
 {
+  "WorldClock.Options.SpaceWeather.HideByLocation": "Ẩn sự kiện NOAA theo vị trí",
+  "WorldClock.Options.SpaceWeather.HideByLocation.Help": "Lọc sự kiện địa từ trong đồng hồ và lịch theo vĩ độ từ và độ tối của thành phố đã chọn. Tắt để hiển thị bất kể vị trí. Các cảnh báo NOAA khác không thay đổi. Không đảm bảo có thể nhìn thấy cực quang.",
   "WorldClock.FreeLimit": "Free hỗ trợ tối đa 3 đồng hồ. Xóa một đồng hồ hoặc mua Premium để thêm đồng hồ khác (tối đa 12).",
   "Premium.UpgradeTitle": "Mua Premium",
   "Labels.FreeLimit": "Bản Free cho phép tạo tối đa 3 nhãn. Xóa một nhãn hoặc chuyển sang Premium để thêm nhãn khác.",

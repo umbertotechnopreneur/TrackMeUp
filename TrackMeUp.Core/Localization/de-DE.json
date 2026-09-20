@@ -1,4 +1,6 @@
 {
+  "WorldClock.Options.SpaceWeather.HideByLocation": "NOAA-Ereignisse nach Standort ausblenden",
+  "WorldClock.Options.SpaceWeather.HideByLocation.Help": "Filtert geomagnetische Ereignisse in Uhren und Agenda anhand der magnetischen Breite und Dunkelheit der gewählten Stadt. Deaktivieren, um sie unabhängig vom Standort anzuzeigen. Andere NOAA-Warnungen bleiben unverändert. Die Sichtbarkeit von Polarlichtern ist nicht garantiert.",
   "WorldClock.FreeLimit": "Free unterstützt bis zu 3 Uhren. Entferne eine Uhr oder kaufe Premium, um eine weitere hinzuzufügen (bis zu 12).",
   "Premium.UpgradeTitle": "Premium kaufen",
   "Labels.FreeLimit": "Mit Free kannst du bis zu 3 Labels erstellen. Lösche ein Label oder wechsle zu Premium, um ein weiteres hinzuzufügen.",

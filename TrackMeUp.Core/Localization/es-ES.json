@@ -1,4 +1,6 @@
 {
+  "WorldClock.Options.SpaceWeather.HideByLocation": "Ocultar eventos NOAA según la ubicación",
+  "WorldClock.Options.SpaceWeather.HideByLocation.Help": "Filtra los eventos geomagnéticos en los relojes y la agenda según la latitud magnética y la oscuridad de la ciudad seleccionada. Desactiva para mostrarlos sin importar la ubicación. Las demás alertas NOAA no cambian. No garantiza que las auroras sean visibles.",
   "WorldClock.FreeLimit": "Free admite hasta 3 relojes. Elimina un reloj o compra Premium para añadir otro (hasta 12).",
   "Premium.UpgradeTitle": "Comprar Premium",
   "Labels.FreeLimit": "Free permite crear hasta 3 etiquetas. Elimina una etiqueta o cambia a Premium para añadir otra.",

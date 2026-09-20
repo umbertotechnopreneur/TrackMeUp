@@ -15,14 +15,14 @@
                 <ResourceDictionary.ThemeDictionaries>
                     <ResourceDictionary x:Key="Light">
                         <AcrylicBrush x:Key="SearchQueryBackdropBrush" TintColor="#FFF7FAFC" TintOpacity="0.12" TintLuminosityOpacity="0.35" FallbackColor="#FFF1F4F7" />
-                        <AcrylicBrush x:Key="SearchResultsBackdropBrush" TintColor="#FFF7FAFC" TintOpacity="0.05" TintLuminosityOpacity="0.16" FallbackColor="#FFEEF2F5" />
+                        <SolidColorBrush x:Key="SearchResultsBackdropBrush" Color="Transparent" />
                         <StaticResource x:Key="TextControlBackground" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SearchQueryBackdropBrush" />
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <AcrylicBrush x:Key="SearchQueryBackdropBrush" TintColor="#FF151A20" TintOpacity="0.15" TintLuminosityOpacity="0.30" FallbackColor="#FF20262E" />
-                        <AcrylicBrush x:Key="SearchResultsBackdropBrush" TintColor="#FF151A20" TintOpacity="0.08" TintLuminosityOpacity="0.18" FallbackColor="#FF191F26" />
+                        <SolidColorBrush x:Key="SearchResultsBackdropBrush" Color="Transparent" />
                         <StaticResource x:Key="TextControlBackground" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SearchQueryBackdropBrush" />
@@ -130,6 +130,7 @@
                         TextWrapping="WrapWholeWords" />
                     <ListView
                         x:Name="SearchResultsList"
+                        Background="Transparent"
                         Grid.Row="1"
                         HorizontalContentAlignment="Stretch"
                         ItemsSource="{Binding Results, Mode=OneWay}"

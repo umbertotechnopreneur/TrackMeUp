@@ -1,5 +1,8 @@
 # Development scenario checklist
 
+- [ ] Toggle **Hide NOAA events by location** in world-clock options. It starts enabled, persists across restart and applies to each clock and the agenda's selected city without a new NOAA request when cached. Check low latitude, polar day/night, a fixed reference instant, invalid/expired alerts and save failure rollback. Off bypasses only geographic/darkness restrictions; insignificant or out-of-window forecasts remain hidden and other NOAA alert types remain unchanged. Verify the explanatory text and accessible label in all ten languages.
+- [ ] In Search, verify the results pane shows the window material without a white panel in light/dark themes. Selection, hover and keyboard focus must remain clear. High contrast must use the system window color; with transparency disabled, use the window's supported fallback.
+
 - [ ] In the export window, only Generate summary, Save preferences and Export use colored action icons, always alongside visible localized text. Close, Cancel and quick date filters stay text-only. Verify wrapped captions, accessible names/tooltips and system colors in high contrast; an icon must not replace a command's caption.
 
 - [ ] Open all three export tabs in each UI language. Check visible captions on Today/7 days/This month, Refresh preview, Generate summary, Save preferences, Cancel, Close and Export. Verify field headers and checkbox labels, including initially collapsed pages and the busy-state Cancel button. Tagged text buttons must declare string content for the shared localizer; icon-only commands must retain their visual content.

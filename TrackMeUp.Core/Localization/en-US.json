@@ -1,4 +1,6 @@
 {
+  "WorldClock.Options.SpaceWeather.HideByLocation": "Hide NOAA events by location",
+  "WorldClock.Options.SpaceWeather.HideByLocation.Help": "Filters geomagnetic events in clocks and the agenda using the selected city's magnetic latitude and darkness. Turn off to show them regardless of location. Other NOAA alerts stay unchanged. This is not a guarantee of aurora visibility.",
   "WorldClock.FreeLimit": "Free supports up to 3 clocks. Remove a clock or get Premium to add another (up to 12).",
   "Premium.UpgradeTitle": "Get Premium",
   "Labels.FreeLimit": "Free lets you create up to 3 labels. Delete a label or switch to Premium to add another.",

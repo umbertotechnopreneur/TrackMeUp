@@ -32,6 +32,7 @@ internal static class CelestialSpaceWeatherService
         TimeZoneInfo zone,
         double latitude,
         double longitude,
+        bool hideByLocation,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(zone);
@@ -45,10 +46,10 @@ internal static class CelestialSpaceWeatherService
         var localPayload = payload with
         {
             ActiveAlerts = Array.AsReadOnly(payload.ActiveAlerts
-            .Where(alert => IsRelevantAlert(alert, instant, latitude, longitude)).ToArray())
+            .Where(alert => IsRelevantAlert(alert, instant, latitude, longitude, hideByLocation)).ToArray())
         };
         var snapshot = new SpaceWeatherSnapshot(payload.RetrievedUtc, payload.KpForecast, localPayload.ActiveAlerts);
-        return new SpaceWeatherProjection(snapshot, BuildAgenda(localPayload, instant, zone, latitude, longitude));
+        return new SpaceWeatherProjection(snapshot, BuildAgenda(localPayload, instant, zone, latitude, longitude, hideByLocation));
     }
 
     /// <summary>Returns the highest-severity current condition eligible for the selected city's compact annotation.</summary>
@@ -56,6 +57,7 @@ internal static class CelestialSpaceWeatherService
         DateTimeOffset instantUtc,
         double latitude,
         double longitude,
+        bool hideByLocation,
         CancellationToken cancellationToken)
     {
         AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
@@ -66,7 +68,7 @@ internal static class CelestialSpaceWeatherService
 
         var payload = await GetPayloadAsync(cancellationToken).ConfigureAwait(false);
         return payload.ActiveAlerts
-            .Where(alert => IsRelevantAlert(alert, instant, latitude, longitude))
+            .Where(alert => IsRelevantAlert(alert, instant, latitude, longitude, hideByLocation))
             .Where(alert => alert.NoaaScale is not null || alert.Kind == SpaceWeatherEventKind.HighEnergyElectronFlux)
             .OrderByDescending(alert => alert.NoaaScale ?? 0)
             .ThenByDescending(alert => alert.IssuedUtc)
@@ -150,16 +152,12 @@ internal static class CelestialSpaceWeatherService
         return new SpaceWeatherAlert(row.ProductId, issued, validFrom, validTo, kind, scale, kp, BuildSummary(kind, scale, kp));
     }
 
-    private static IReadOnlyList<CelestialAgendaEvent> BuildAgenda(SpaceWeatherPayload payload, DateTimeOffset instant, TimeZoneInfo zone, double latitude, double longitude)
+    private static IReadOnlyList<CelestialAgendaEvent> BuildAgenda(SpaceWeatherPayload payload, DateTimeOffset instant, TimeZoneInfo zone, double latitude, double longitude, bool hideByLocation)
     {
         var events = new List<CelestialAgendaEvent>();
         var forecastEnd = instant.AddHours(48);
         var significantForecasts = payload.KpForecast
-            .Where(period => string.Equals(period.Status, "predicted", StringComparison.OrdinalIgnoreCase)
-                && period.StartUtc.AddHours(3) > instant && period.StartUtc < forecastEnd
-                && AuroraVisibilityPolicy.IsLatitudeEligible(latitude, longitude, period.KpIndex)
-                && AuroraVisibilityPolicy.HasDarkness(period.StartUtc < instant ? instant : period.StartUtc,
-                    period.StartUtc.AddHours(3), latitude, longitude))
+            .Where(period => IsRelevantForecast(period, instant, latitude, longitude, hideByLocation))
             .OrderBy(period => period.StartUtc)
             .ToArray();
 
@@ -187,16 +185,30 @@ internal static class CelestialSpaceWeatherService
         return Array.AsReadOnly(events.OrderBy(item => item.StartUtc).ThenBy(item => item.SpaceWeatherKind).ToArray());
     }
 
-    private static bool IsRelevantAlert(SpaceWeatherAlert alert, DateTimeOffset instant, double latitude, double longitude)
+    /// <summary>Preserves forecast validity and storm significance; only geographic and darkness checks are optional.</summary>
+    internal static bool IsRelevantForecast(SpaceWeatherKpForecast period, DateTimeOffset instant, double latitude, double longitude, bool hideByLocation)
     {
+        AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
+        return string.Equals(period.Status, "predicted", StringComparison.OrdinalIgnoreCase)
+            && period.StartUtc.AddHours(3) > instant && period.StartUtc < instant.AddHours(48)
+            && double.IsFinite(period.KpIndex) && period.KpIndex is >= 5 and <= 9
+            && (!hideByLocation || (AuroraVisibilityPolicy.IsLatitudeEligible(latitude, longitude, period.KpIndex)
+                && AuroraVisibilityPolicy.HasDarkness(period.StartUtc < instant ? instant : period.StartUtc,
+                    period.StartUtc.AddHours(3), latitude, longitude)));
+    }
+
+    /// <summary>Never revives expired alerts; the location preference only affects geomagnetic conditions.</summary>
+    internal static bool IsRelevantAlert(SpaceWeatherAlert alert, DateTimeOffset instant, double latitude, double longitude, bool hideByLocation)
+    {
+        AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
         // Recheck cached validity at the requested instant; an old 'Active Warning: YES' must not persist forever.
         if (alert.IssuedUtc > instant || alert.ValidFromUtc > instant
             || (alert.ValidToUtc is { } end ? end <= instant : alert.IssuedUtc.AddHours(24) <= instant)) return false;
         if (alert.Kind != SpaceWeatherEventKind.GeomagneticStorm) return true;
         var kp = alert.KpIndex ?? (alert.NoaaScale is { } scale ? scale + 4d : 0d);
-        return double.IsFinite(kp) && kp is >= 0 and <= 9
-            && AuroraVisibilityPolicy.IsLatitudeEligible(latitude, longitude, kp)
-            && AuroraVisibilityPolicy.IsDark(instant, latitude, longitude);
+        return double.IsFinite(kp) && kp is >= 5 and <= 9
+            && (!hideByLocation || (AuroraVisibilityPolicy.IsLatitudeEligible(latitude, longitude, kp)
+                && AuroraVisibilityPolicy.IsDark(instant, latitude, longitude)));
     }
 
     private static IEnumerable<SpaceWeatherKpForecast[]> GroupConsecutiveForecasts(IReadOnlyList<SpaceWeatherKpForecast> periods)
