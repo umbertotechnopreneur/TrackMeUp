@@ -307,7 +307,6 @@ Detailed scenarios live in [the development checklist](docs/DEVELOPMENT_CHECKLIS
 - [Asset licensing and provenance](ASSET_LICENSING.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Trademark and brand policy](TRADEMARKS.md)
-- [Publication checklist](PUBLICATION_CHECKLIST.md)
 
 You can also open About in the app to find logs, report a problem, visit the project website, or check third-party licenses.
 

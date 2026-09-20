@@ -1,5 +1,17 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Data transfer visual polish (2026-09-21)
+
+- [ ] Visually check smaller colored tab headers, consistent content spacing and thin maintenance Acrylic, including high contrast, reduced transparency and 200% text scaling. Archive actions are unchanged.
+
+## Portable archive schema migration (2026-09-21)
+
+- [ ] Manually preview and import a schema-9 archive into the current installed build. Confirm the plan completes without altering the source archive, and an unsupported or corrupted archive still fails before any destination data changes. Automated coverage was added; no tests run.
+
+## Labels and player cost visibility (2026-09-21)
+
+- [ ] Validate the new label editor and player selector at compact width, 200% scaling and in light/dark/high-contrast themes. Check creation, rename, icon/color, duplicate names, delete-active, no label, restart and persistence failure. Check the accumulated AI cost toggle in the main settings and estimate/provider wording. Local x64 Debug compilation passed with zero warnings/errors; interactive acceptance pending. No tests run or installation performed.
+
 ## Close-time crash investigation (2026-09-20)
 
 - [ ] Verify the close-time crash under debugger after approval. The saved 0.0.27 minidump resolves DispatcherQueue::DeferInvokeCallback but omits the stowed exception memory, so the original failing call is not established. Corrected late celestial loading-indicator updates and asynchronous toast dismissal during shutdown. Local Debug 0.0.30 installer compiled and signature-verified; formatting passed, no tests run. Verify closure before claiming the observed crash fixed.

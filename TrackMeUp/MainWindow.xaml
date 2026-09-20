@@ -766,12 +766,11 @@
                                         TextWrapping="Wrap" />
                                 </Grid>
                             </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6">
+                            <controls:ActivityLabelSelector x:Name="PlayerLabelSelector" HorizontalAlignment="Right" />
                             <StackPanel
                                 x:Name="AiMonthlySpendPanel"
-                                Grid.Column="2"
-                                Margin="8,0,0,0"
                                 HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
                                 Spacing="1"
                                 Visibility="Collapsed">
                                 <TextBlock
@@ -792,6 +791,7 @@
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Text="" />
+                            </StackPanel>
                             </StackPanel>
                             </Grid>
                         </Grid>

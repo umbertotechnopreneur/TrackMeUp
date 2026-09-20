@@ -61,7 +61,7 @@
                         </VisualState>
                         <VisualState x:Name="WideSchedule">
                             <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="920" />
+                                <AdaptiveTrigger MinWindowWidth="720" />
                             </VisualState.StateTriggers>
                             <VisualState.Setters>
                                 <Setter Target="HeaderIntervalColumn.Width" Value="Auto" />

@@ -50,6 +50,11 @@ public sealed partial class OptionsControl : UserControl
     {
         InitializeComponent();
         RegisterAutoSaveHandlers();
+        LabelsEditor.SettingsSaved += settings =>
+        {
+            ApplySettings(settings);
+            SettingsSaved?.Invoke(settings);
+        };
     }
 
     /// <summary>Occurs when the host should restore the player panel.</summary>
@@ -453,6 +458,7 @@ public sealed partial class OptionsControl : UserControl
             AiDailyLimitBox.Value = settings.OpenAiDailyLimit;
             _updatingAiDailyLimit = false;
             ApplyLanguage(settings.UiLanguage);
+            if (_application is not null) LabelsEditor.ApplySettings(_application, settings);
             _requestedThinkingEffort = settings.AiReasoningEffort;
             SelectModel(settings.Model);
             ScreenshotFolderBox.Text = settings.ScreenshotDirectory;

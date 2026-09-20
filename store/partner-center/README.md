@@ -1,7 +1,7 @@
 # Partner Center metadata
 
-Save the exact metadata returned by Partner Center for TrackMeUp in this folder.
+The optional local path `store/partner-center/metadata.json` is reserved by the listing configuration. Raw account and submission exports are not public repository content; this file is ignored by Git.
 
-After linking the app to the Store for the first time, fetch the current submission with the Microsoft Store Developer CLI and save the response as `metadata.json`. Don't guess the file format or create it by hand. Keep it in Git and review changes alongside [`listing.json`](../listing.json).
+Keep public listing text in [listing.json](../listing.json). Keep submission procedures and internal account records in the owner's private MeUp notes. Never save credentials, client secrets or access tokens in documentation.
 
-The file can include Store IDs and submission details. It must not include Partner Center credentials, client secrets, access tokens, or unrelated private data.
+The current [Store listing workflow](../../.github/workflows/store-listing.yml) validates repository files only. It does not sign in to Partner Center or publish a submission.

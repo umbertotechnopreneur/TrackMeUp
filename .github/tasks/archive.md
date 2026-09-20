@@ -1,5 +1,23 @@
 # Task Archive
 
+## 2026-09-21 — Data transfer appearance
+
+- Added compact localized tab headers with blue export, green import and violet installation icons, theme/high-contrast brushes and uniform content spacing. Archive commands and preview behavior are unchanged.
+- Maintenance reuses the existing thin desktop GlassBackdrop; returning to the player or settings restores their regular desktop Acrylic. System accessibility/transparency policy remains handled by the shared backdrop.
+- x64 Debug compilation passed with zero warnings/errors; C# formatting, scoped diff and XAML structure checks passed. No tests or data operations run, no installation or commit; visual acceptance remains pending.
+
+## 2026-09-21 — Separate public documentation from internal planning
+
+- Move the historical screenshot proposal and publication checklist to the owner's private MeUp notes. Split Store account procedures from public listing and validation guidance.
+- Remove stale links, record the private-note policy and ignore the reserved local Partner Center metadata export.
+- Inspect the documentation diff and moved-note links. No builds, tests, commits, pushes or branches were created.
+
+## 2026-09-21 — Saved labels and player cost visibility
+
+- Added saved label definitions with editable names, 16 icons and eight colors. Core validates create/update/delete/select commands through the existing serialized settings facade. Renaming the active label updates the selection; deleting it clears the selection without rewriting historical activity. Existing taskbar one-off text labels remain supported.
+- Added a searchable icon/color picker to main settings and an optional label dropdown to the right of the player timer. Exposed the monthly AI cost toggle in main settings with an explanation of provider amounts versus local estimates; estimates have an explicit player caption. Added strings in all ten locales and scenario checks.
+- Local x64 Debug compilation passed with zero warnings/errors. No tests, installation, packaging, commit or push for this change; visual acceptance remains in todo.
+
 ## 2026-09-20 — Shutdown lifecycle corrections
 
 - Celestial windows invalidate pending rendering ownership before cancellation and no longer update the loading indicator after closure.

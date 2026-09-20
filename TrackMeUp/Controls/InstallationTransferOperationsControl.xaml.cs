@@ -44,9 +44,12 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         UiLocalization.Apply(this, _strings);
         ApplyAppearanceOptions();
         ApplyProfiles(_profiles, _selectedProfile?.InstallationId);
-        ExportSection.Header = _strings.Translate("Operations.InstallationTransfer.Export.Title");
-        ImportSection.Header = _strings.Translate("Operations.InstallationTransfer.Import.Title");
-        InstallationsSection.Header = _strings.Translate("Operations.InstallationTransfer.Installations.Title");
+        ExportHeaderText.Text = _strings.Translate("Operations.InstallationTransfer.Export.Title");
+        AutomationProperties.SetName(ExportSection, ExportHeaderText.Text);
+        ImportHeaderText.Text = _strings.Translate("Operations.InstallationTransfer.Import.Title");
+        AutomationProperties.SetName(ImportSection, ImportHeaderText.Text);
+        InstallationsHeaderText.Text = _strings.Translate("Operations.InstallationTransfer.Installations.Title");
+        AutomationProperties.SetName(InstallationsSection, InstallationsHeaderText.Text);
         AutomationProperties.SetName(InstallationsList, T("Operations.InstallationTransfer.Installations.List", "Known installations"));
         AutomationProperties.SetName(ImportInstallationsList, T("Operations.InstallationTransfer.Import.Installations", "Installations in this archive"));
         if (_importPlan is { } plan)

@@ -437,7 +437,13 @@ public partial class App : Microsoft.UI.Xaml.Application
     private async void MainWindow_ScreenshotsRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
 
-    private void MainWindow_ExitRequested(object? sender, EventArgs eventArgs) => _window?.Close();
+    private async void MainWindow_ExitRequested(object? sender, EventArgs eventArgs)
+    {
+        if (_window is not null)
+        {
+            await _window.RequestCloseAsync();
+        }
+    }
 
     private async void MainWindow_SensorsRequested(object? sender, EventArgs eventArgs) =>
         await ShowSensorsWindowAsync(StartOrConnectRuntime());

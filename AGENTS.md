@@ -12,15 +12,20 @@ These instructions apply to all changes in this repository.
 - Keep technical detail in the relevant reference guides. Preserve exact commands, UI labels, privacy facts, limitations, and the distinction between implemented, tested, and planned features. Do not promise unlimited capacity or untested compatibility.
 - Preserve third-party quotations, license text, and historical records; these writing preferences apply to original project copy.
 
-## Distribution and purchase messaging
+## Distribution and build defaults
 
 - The commercial edition supports Windows 11 on x64 and ARM64 only. Distribute it only as MSIX.
 - Linux and macOS are source-only: users must compile and adapt the source themselves. Do not provide compiled binaries, installers, or commercial support for these platforms, and do not imply that every project can run there unchanged.
 - When a build is explicitly requested, default to a local development/debug build using the Debug configuration. A generic build or release request does not authorize a Microsoft Store package. Produce a Store version only when the owner explicitly asks for one; never upload or publish it without explicit authorization.
 - Keep development/debug artifacts separate from Store release artifacts. These rules do not authorize running builds, changing release pipelines, creating tags, or publishing on their own.
 - Windows distribution is MSIX-only. Do not propose or add portable ZIP, standalone EXE, or MSI distribution unless the owner explicitly changes this decision. This preference does not authorize packaging or workflow changes.
-- When helping with publication or Store listing copy, include this owner-approved Italian purchase notice verbatim: "Acquisto una tantum. Include tutte le funzioni Pro della versione 1 e gli aggiornamenti 1.x. Le future versioni principali possono richiedere un upgrade separato."
-- Treat this notice as approved customer-facing copy, not evidence that purchases or licensing are already implemented. Use a faithful English translation in English repository documentation; preserve the approved Italian wording for Italian publication.
+
+## Private business notes
+
+- Keep pricing, commercial strategy, launch plans, future product proposals, OAuth verification preparation, Store account procedures and owner checkpoints in the owner's Obsidian vault under `40_Business/MeUp/`, organized by product. Do not create or mirror these notes in public repositories.
+- Keep current user and contributor documentation, public privacy policies and terms, licenses, attribution, build instructions, technical validation records and files required by code or CI in the repository. Split documents that mix public technical guidance with internal planning.
+- For publication or Store listing work, first read `40_Business/MeUp/Business decisions.md` and the relevant product notes. The owner-approved purchase notice is preserved there; proposals and approved wording are not evidence of implemented licensing.
+- Keep raw Store account exports outside Git. Do not add credentials, private data or machine-specific vault paths to repository files.
 
 ## Shared delivery workflow
 

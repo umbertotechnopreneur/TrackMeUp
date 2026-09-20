@@ -140,7 +140,8 @@ public sealed record AppSettings(
     string HardwareSamplingProfile = "normal",
     bool WorldMapWindowShowInTaskbar = true,
     bool LunarPhaseWindowShowInTaskbar = true,
-    bool WindowSnappingEnabled = true);
+    bool WindowSnappingEnabled = true,
+    IReadOnlyList<TrackMeUp.Application.ActivityLabelDefinition>? ActivityLabels = null);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

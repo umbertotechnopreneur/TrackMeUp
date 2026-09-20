@@ -201,6 +201,11 @@ public sealed partial class MainWindow : Window
         _currentWorkArea = CurrentWorkArea();
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += AppWindow_Closing;
+        PlayerLabelSelector.SettingsSaved += settings =>
+        {
+            _optionsControl?.ApplyExternalSettings(settings);
+            ApplySettings(settings);
+        };
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
@@ -531,6 +536,7 @@ public sealed partial class MainWindow : Window
         }
 
         AiMonthlySpendText.Text = _strings.Format("AiPricing.UsdShort", cost.Value);
+        AiMonthlySpendLabel.Text = T(overview.ActualCostCurrentMonthUsd is null ? "Labels.EstimatedCost" : "Main.AiMonthlySpend");
         AiMonthlySpendRangeText.Text = _strings.Format(
             "AiPricing.DateRange",
             overview.CurrentMonthStart,
@@ -782,7 +788,7 @@ public sealed partial class MainWindow : Window
         ShowPlayer();
     }
 
-    private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();
+    private async void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => await RequestCloseAsync();
 
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
@@ -1394,6 +1400,9 @@ public sealed partial class MainWindow : Window
     /// <summary>Shows one top-level panel and measures the visible XAML content before resizing.</summary>
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
+        SystemBackdrop = surface == MainWindowSurface.Operations
+            ? new GlassBackdrop()
+            : new DesktopAcrylicBackdrop();
         PlayerPanel.Visibility = Visibility.Collapsed;
         PlayerBackgroundSurface.Visibility = Visibility.Collapsed;
         WorldClockButton.Visibility = Visibility.Collapsed;
@@ -1417,6 +1426,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Restores the player panel.</summary>
     private void ShowPlayer()
     {
+        SystemBackdrop = new DesktopAcrylicBackdrop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         PlayerBackgroundSurface.Visibility = Visibility.Visible;
@@ -1999,6 +2009,7 @@ public sealed partial class MainWindow : Window
         var positionChangedByUser = _hasAppliedSettings
             && !string.Equals(_position, settings.FlyoutPosition, StringComparison.Ordinal);
         _strings = new LocalizationService(settings.UiLanguage);
+        PlayerLabelSelector.ApplySettings(_application, settings);
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         _hasAppliedSettings = true;
@@ -2362,6 +2373,17 @@ public sealed partial class MainWindow : Window
         }
 
         args.Cancel = true;
+        await RequestCloseAsync();
+    }
+
+    /// <summary>Asks the user before an interactive close suspends tracking and exits the application.</summary>
+    internal async Task RequestCloseAsync()
+    {
+        if (_allowClose || _dashboardSurfaceClosed)
+        {
+            return;
+        }
+
         if (_closeConfirmationInProgress)
         {
             return;
