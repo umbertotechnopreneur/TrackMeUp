@@ -1,5 +1,10 @@
 # Task Archive
 
+## 2026-09-21 — Reconcile PR #42 with main
+
+- Resolved 37 conflicts on the existing branch. Main commit `f545db5` has the same Git tree as branch ancestor `2f2e865`; the conflicts came from the earlier squash merge. Preserved all subsequent branch changes and removed stale task entries reintroduced by automatic merging.
+- Verified that the resolved index exactly matched the pre-merge tree before adding this record. No application code or version metadata changed in this merge. No local build, tests, installation or restart was performed; required PR checks remain separate.
+
 ## 2026-09-21 — Restrained export action icons
 
 - Added colored icons alongside localized captions for Generate summary, Save preferences and Export. Secondary commands remain text-only. The icons use system colors in high contrast and are excluded from the accessibility tree; the owning buttons retain localized names and tooltips.
