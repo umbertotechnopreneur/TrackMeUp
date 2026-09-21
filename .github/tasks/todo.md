@@ -1,5 +1,25 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Nuclearize Acrylic confirmation (2026-09-21)
+
+- [ ] Verify both illustrated Nuclearize confirmations in light/dark/high contrast, with transparency disabled, small windows, keyboard navigation and 200% text scaling. Cancel/Escape must stop either step; Enter must default to Cancel. Use only isolated synthetic data for any approved reset test. Build and runtime verification remain pending owner authorization.
+
+## AI summary guide and export Acrylic (2026-09-21)
+
+- [ ] Visually verify localized More information in all ten languages, GitHub launch through the application facade, failure feedback and Acrylic on all three export pages. Publish docs/AI_REPORT_SUMMARY.md with the matching source only after owner-authorized Git delivery; the main-branch link needs that file online. Check light/dark/high contrast and disabled transparency. Source review, syntax and formatting only; no build, tests, provider request or app restart.
+
+## Wider export previews (2026-09-21)
+
+- [ ] Visually verify the shared 40% controls / 60% preview split in Export, File contents and AI summary. The controls column is 20% narrower than the previous equal split. Check wrapped captions and the existing stacked layout below 740 logical pixels. No build or tests run.
+
+## Preserve the export preview table (2026-09-21)
+
+- [ ] Visually verify that period/filter changes and manual refresh keep the selected export table, including rapid changes and error recovery. Excluding that table selects Summary. Source review and formatting only; no build or tests run, and the running app has not been updated.
+
+## Player label stack beside the timer (2026-09-21)
+
+- [ ] Visually verify the label selector above the right-aligned Manage labels button, with the group vertically centered beside the timer and capture controls. Check narrow windows, all UI languages, 100–200% text scaling and optional AI spend; the group must move below when it cannot fit. Source review and formatting only; no build or tests run.
+
 ## Release runtime catalog contract (2026-09-21)
 
 - [ ] Confirm the new PR #42 CI run passes after the configuration-aware runtime catalog test fix. All five RuntimeOperationCatalogTests passed in both Debug and Release x64 with analyzers enabled; the compiled Release catalog and client exclude Debug simulation.

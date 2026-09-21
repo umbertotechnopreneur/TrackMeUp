@@ -1594,14 +1594,22 @@ public sealed partial class MainWindow : Window
         PlayerSecondaryColumn.Width = columns ? new GridLength(1d, GridUnitType.Star) : new GridLength(0d);
         PlayerLayout.ColumnSpacing = columns ? 24d : 0d;
         // The header occupies half the player in the two-column layout.
-        // Labels always start at the left below the timer; optional cost details wrap onto their own row.
         var headerWidth = columns ? (PlayerLayout.Width - PlayerLayout.ColumnSpacing) / 2d : PlayerLayout.Width;
         PlayerLabelAndCostPanel.MaxWidth = headerWidth;
-        var stackCost = headerWidth < 620d;
-        Grid.SetColumnSpan(PlayerLabelActionsPanel, stackCost ? 2 : 1);
-        Grid.SetRow(AiMonthlySpendPanel, stackCost ? 1 : 0);
-        Grid.SetColumn(AiMonthlySpendPanel, stackCost ? 0 : 1);
-        Grid.SetColumnSpan(AiMonthlySpendPanel, stackCost ? 2 : 1);
+        var unconstrained = new Size(double.PositiveInfinity, double.PositiveInfinity);
+        CaptureActionsPanel.Measure(unconstrained);
+        ElapsedText.Measure(unconstrained);
+        TrackingStateText.Measure(unconstrained);
+        PlayerLabelAndCostPanel.Measure(unconstrained);
+        // Keep the right-aligned label stack beside the timer unless localized text or scaling needs more room.
+        var requiredWidth = CaptureActionsPanel.DesiredSize.Width
+            + Math.Max(ElapsedText.DesiredSize.Width, TrackingStateText.DesiredSize.Width)
+            + PlayerLabelAndCostPanel.DesiredSize.Width + PlayerControlsGrid.ColumnSpacing * 2d;
+        var stackLabels = headerWidth < requiredWidth;
+        Grid.SetRow(PlayerLabelAndCostPanel, stackLabels ? 1 : 0);
+        Grid.SetColumn(PlayerLabelAndCostPanel, stackLabels ? 0 : 2);
+        Grid.SetColumnSpan(PlayerLabelAndCostPanel, stackLabels ? 3 : 1);
+        PlayerLabelAndCostPanel.Margin = new Thickness(0d, stackLabels ? 8d : 0d, 0d, 0d);
         Grid.SetRow(PlayerActivity, columns ? 0 : 2);
         Grid.SetColumn(PlayerActivity, columns ? 1 : 0);
         Grid.SetRowSpan(PlayerActivity, columns ? 2 : 1);

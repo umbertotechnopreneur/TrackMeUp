@@ -28,6 +28,7 @@ internal sealed partial class ReportExportWindow : Window
     private CancellationTokenSource? _previewCancellation;
     private ReportExportSetup? _setup;
     private ReportExportPreview? _preview;
+    private string? _selectedPreviewTableName;
     private bool _applying = true;
     private bool _busy;
     private bool _closed;
@@ -207,7 +208,10 @@ internal sealed partial class ReportExportWindow : Window
             var time = TimeSpan.FromSeconds(_preview.ActiveSeconds);
             MetricsText.Text = _strings.Format("Export.Metrics", (int)time.TotalHours, time.Minutes, _preview.CaptureCount, _preview.DescriptionCount);
             SheetsCombo.ItemsSource = _preview.Tables.Select(table => T("Export.Table." + table.Name)).ToArray();
-            SheetsCombo.SelectedIndex = 0;
+            // Retain the table identity across refreshes, including cancelled requests and localized captions.
+            // If its content was excluded, select the first available table (Summary).
+            var selectedTableIndex = _preview.Tables.ToList().FindIndex(table => table.Name == _selectedPreviewTableName);
+            SheetsCombo.SelectedIndex = selectedTableIndex >= 0 ? selectedTableIndex : 0;
             StatusBar.IsOpen = false;
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
@@ -224,6 +228,7 @@ internal sealed partial class ReportExportWindow : Window
         PreviewRows.Children.Clear();
         if (_preview is null || SheetsCombo.SelectedIndex < 0) return;
         var table = _preview.Tables[SheetsCombo.SelectedIndex];
+        _selectedPreviewTableName = table.Name;
         AddPreviewRow(table.Columns, true);
         foreach (var row in table.Rows) AddPreviewRow(row, false);
         RowsText.Text = _strings.Format("Export.Rows", table.Rows.Count, table.RowCount);
@@ -269,7 +274,7 @@ internal sealed partial class ReportExportWindow : Window
     private void BodyGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         var stacked = e.NewSize.Width < 740;
-        PreviewColumn.Width = new GridLength(stacked ? 0 : 1, stacked ? GridUnitType.Pixel : GridUnitType.Star);
+        PreviewColumn.Width = new GridLength(stacked ? 0 : 3, stacked ? GridUnitType.Pixel : GridUnitType.Star);
         Grid.SetColumn(PreviewPanel, stacked ? 0 : 1); Grid.SetRow(PreviewPanel, stacked ? 1 : 0);
     }
 
@@ -297,6 +302,17 @@ internal sealed partial class ReportExportWindow : Window
         var result = await _application.SaveReportExportPreferencesAsync(CollectOptions(), token);
         ShowStatus(result.Succeeded ? "Export.PresetSaved" : result.MessageKey, result.Succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Error);
     });
+
+    private async void SummaryInfo_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var result = await _application.OpenProductLinkAsync("report-summary", _lifetime.Token);
+            if (!result.Succeeded) ShowStatus(result.MessageKey, InfoBarSeverity.Error);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception) { ShowStatus("ProductLinkUnavailable", InfoBarSeverity.Error); }
+    }
 
     private async void Generate_Click(object sender, RoutedEventArgs e) => await RunAsync(async token =>
     {

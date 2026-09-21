@@ -61,6 +61,7 @@
   "Export.WholePeriod": "Gesamter Zeitraum",
   "Export.Detailed": "Ausführliche Zusammenfassung",
   "Export.AiNotice": "Verwendet Ihren konfigurierten KI-Anbieter und Schlüssel. Nur ausgewählte Texte werden gesendet, keine Bilder. Kostenschätzung nicht verfügbar; Gebühren können anfallen.",
+  "Export.MoreInformation": "Weitere Informationen",
   "Export.Generate": "Zusammenfassung erstellen",
   "Export.Preview": "Dateivorschau",
   "Export.Sheets.Header": "Enthaltene Tabellen",

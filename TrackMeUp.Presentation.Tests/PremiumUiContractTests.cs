@@ -30,8 +30,11 @@ public sealed class PremiumUiContractTests
     {
         var document = XDocument.Load(PathFor("TrackMeUp", "MainWindow.xaml"));
         var actions = document.Descendants().Single(element => Name(element) == "PlayerLabelActionsPanel");
-        Assert.Contains(actions.Descendants(), element => Name(element) == "ManageLabelsButton");
-        Assert.Contains(actions.Descendants(), element => Name(element) == "PlayerLabelFeatureGate" && element.Attribute("HorizontalAlignment")?.Value == "Left");
+        Assert.Equal("Right", actions.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Center", actions.Attribute("VerticalAlignment")?.Value);
+        Assert.Contains(actions.Descendants(), element => Name(element) == "ManageLabelsButton"
+            && element.Attribute("Grid.Row")?.Value == "1" && element.Attribute("HorizontalAlignment")?.Value == "Right");
+        Assert.Contains(actions.Descendants(), element => Name(element) == "PlayerLabelFeatureGate" && element.Attribute("HorizontalAlignment")?.Value == "Right");
         Assert.DoesNotContain(actions.Descendants(), element => element.Name.LocalName == "PremiumBadge");
         Assert.DoesNotContain(document.Descendants(), element => Name(element) == "ActivityMenu");
         foreach (var name in new[] { "QuickSearchMenuItem", "QuickActivityCalendarMenuItem", "QuickScreenshotGalleryMenuItem" })

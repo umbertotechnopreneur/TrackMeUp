@@ -61,6 +61,7 @@
   "Export.WholePeriod": "Whole period",
   "Export.Detailed": "Detailed summary",
   "Export.AiNotice": "Uses your configured AI provider and key. Only selected texts are sent, without images. A cost estimate is unavailable; provider charges may apply.",
+  "Export.MoreInformation": "More information",
   "Export.Generate": "Generate summary",
   "Export.Preview": "File preview",
   "Export.Sheets.Header": "Included tables",

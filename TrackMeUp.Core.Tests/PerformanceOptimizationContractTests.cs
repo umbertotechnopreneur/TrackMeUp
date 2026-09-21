@@ -30,7 +30,11 @@ public sealed class PerformanceOptimizationContractTests
     [Fact]
     public void HardwareTelemetry_HasOneRuntimeOwnerAndNoLegacyReaders()
     {
-        var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.cs"));
+        // Runtime ownership spans the facade's partial files after responsibility-based extraction.
+        var source = string.Join(Environment.NewLine,
+            Directory.GetFiles(RepositoryFile("TrackMeUp.Core", "Application"), "TrackMeUpApplication*.cs")
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .Select(File.ReadAllText));
 
         Assert.Contains("IHardwareTelemetryService", source, StringComparison.Ordinal);
         Assert.Contains("_snapshot.CaptureAsync", source, StringComparison.Ordinal);

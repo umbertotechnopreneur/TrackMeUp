@@ -61,6 +61,7 @@
   "Export.WholePeriod": "整个时间段",
   "Export.Detailed": "详细摘要",
   "Export.AiNotice": "使用已配置的 AI 提供商和密钥。仅发送所选文本，不发送图像。暂无费用估算；提供商可能收费。",
+  "Export.MoreInformation": "更多信息",
   "Export.Generate": "生成摘要",
   "Export.Preview": "文件预览",
   "Export.Sheets.Header": "包含的表格",

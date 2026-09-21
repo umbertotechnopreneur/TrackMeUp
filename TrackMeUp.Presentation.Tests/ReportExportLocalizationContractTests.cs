@@ -18,7 +18,9 @@ public sealed class ReportExportLocalizationContractTests
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "ReportExportWindow.xaml"));
         var buttons = window.Descendants().Where(element => element.Name.LocalName == "Button").ToArray();
-        Assert.Equal(9, buttons.Length);
+        Assert.Equal(10, buttons.Length);
+        Assert.Single(buttons, button => button.Attribute("Tag")?.Value == "Export.MoreInformation"
+            && button.Attribute("Click")?.Value == "SummaryInfo_Click");
         Assert.All(buttons, button =>
         {
             Assert.False(string.IsNullOrWhiteSpace(button.Attribute("Tag")?.Value));

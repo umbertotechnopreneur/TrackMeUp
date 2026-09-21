@@ -557,6 +557,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         var source = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
         var optionsSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockOptionsControl.xaml.cs"));
         var applicationSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.cs"));
+        var productSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.Product.cs"));
         var status = options.Descendants().Single(element => HasName(element, "WeatherStatusText"));
         var attribution = window.Descendants().Single(element => HasName(element, "WeatherAttributionButton"));
         var attributionText = window.Descendants().Single(element => HasName(element, "WeatherAttributionText"));
@@ -612,7 +613,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Equal(2, source.Split("ShowFailure(\"About.LinkFailed\")", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("ShowFailure(\"ProductLinkUnavailable\")", source, StringComparison.Ordinal);
         Assert.Contains("https://openweathermap.org/", applicationSource, StringComparison.Ordinal);
-        Assert.Contains("\"openweather\" => OpenWeatherUrl", applicationSource, StringComparison.Ordinal);
+        Assert.Contains("\"openweather\" => OpenWeatherUrl", productSource, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.SetName(WeatherAttributionButton, weatherAttribution);", source, StringComparison.Ordinal);
         Assert.Contains("ToolTipService.SetToolTip(WeatherAttributionButton, weatherAttribution);", source, StringComparison.Ordinal);
 

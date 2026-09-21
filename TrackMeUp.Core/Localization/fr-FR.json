@@ -61,6 +61,7 @@
   "Export.WholePeriod": "Période entière",
   "Export.Detailed": "Résumé détaillé",
   "Export.AiNotice": "Utilise votre fournisseur d’IA et votre clé. Seuls les textes sélectionnés sont envoyés, sans images. Estimation indisponible ; des frais peuvent s’appliquer.",
+  "Export.MoreInformation": "Plus d’informations",
   "Export.Generate": "Générer le résumé",
   "Export.Preview": "Aperçu du fichier",
   "Export.Sheets.Header": "Tableaux inclus",

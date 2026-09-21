@@ -35,6 +35,13 @@ internal sealed class MicaDialogService
         return await RunContentDialogSessionAsync(owner, request, ContentDialogButton.Close) == ContentDialogResult.Primary;
     }
 
+    /// <summary>Shows the illustrated reset confirmation while preserving queued ownership and safe dismissal.</summary>
+    internal async Task<bool> ConfirmAtomicResetAsync(Window owner, DialogRequest request)
+    {
+        ValidateDialogRequest(request, requiresCloseButton: true);
+        return await RunContentDialogSessionAsync(owner, request, ContentDialogButton.Close, atomicReset: true) == ContentDialogResult.Primary;
+    }
+
     /// <summary>Runs one facade request only after its queued modal Mica progress surface is visible.</summary>
     internal async Task<OperationResult<T>> RunWithProgressAsync<T>(
         ITrackMeUpApplication application,
@@ -275,7 +282,8 @@ internal sealed class MicaDialogService
     private async Task<ContentDialogResult> RunContentDialogSessionAsync(
         Window owner,
         DialogRequest request,
-        ContentDialogButton defaultButton)
+        ContentDialogButton defaultButton,
+        bool atomicReset = false)
     {
         ValidateOwnerThread(owner);
         using var ownerLifetime = new CancellationTokenSource();
@@ -302,7 +310,14 @@ internal sealed class MicaDialogService
                 throw new InvalidOperationException("Content dialogs require a loaded owner XamlRoot.");
             }
 
-            dialog = CreateContentDialog(xamlRoot, ownerContent, request, defaultButton);
+            dialog = atomicReset
+                ? new AtomicResetDialog(request)
+                {
+                    XamlRoot = xamlRoot,
+                    RequestedTheme = ownerContent.ActualTheme,
+                    Language = ownerContent.Language
+                }
+                : CreateContentDialog(xamlRoot, ownerContent, request, defaultButton);
             _activeContentDialog = dialog;
             try
             {

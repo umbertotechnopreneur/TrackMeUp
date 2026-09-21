@@ -474,7 +474,11 @@ public sealed class WinUiOperationsSurfaceContractTests
 
         Assert.Equal("AtomicNukeButton_Click", button.Attribute("Click")?.Value);
         Assert.Contains(surface.Descendants(), element => element.Attribute("Tag")?.Value == "Operations.AtomicNuke.Description");
-        Assert.Equal(2, CountOccurrences(source, "Dialogs.ConfirmAsync("));
+        Assert.Equal(2, CountOccurrences(source, "Dialogs.ConfirmAtomicResetAsync("));
+        var dialog = XDocument.Load(RepositoryFile("TrackMeUp", "AtomicResetDialog.xaml"));
+        Assert.Equal("Close", dialog.Root!.Attribute("DefaultButton")?.Value);
+        var dialogService = File.ReadAllText(RepositoryFile("TrackMeUp", "MicaDialogService.cs"));
+        Assert.Contains("RunContentDialogSessionAsync(owner, request, ContentDialogButton.Close, atomicReset: true)", dialogService, StringComparison.Ordinal);
         Assert.Equal(2, CountOccurrences(source, "DialogRequest.Confirmation("));
         Assert.Contains("new AtomicResetRequest(firstConfirmation, finalConfirmation)", source, StringComparison.Ordinal);
         Assert.Contains("PrepareAtomicResetAsync", source, StringComparison.Ordinal);
