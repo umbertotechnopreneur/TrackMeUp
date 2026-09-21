@@ -32,8 +32,8 @@ PACKAGED_TRANSFORMATION = (
 CITY_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 REPARSE_POINT_ATTRIBUTE = 0x400
-ARTWORK_AUTHOR = "TrackMeUp"
-ARTWORK_LICENSE = "TrackMeUp project artwork - public publication authorized"
+ARTWORK_AUTHOR = "WorkTrail"
+ARTWORK_LICENSE = "WorkTrail project artwork - public publication authorized"
 ARTWORK_PROVENANCE = "Assets/WorldClocks/PROVENANCE.md"
 ARTWORK_RELEASE_STATUS = (
     "Owner-authorized for public publication on 2026-08-30; "
@@ -640,7 +640,7 @@ def update_database(
                 )
 
         metadata = {
-            "image_source": "TrackMeUp Urban Wash project-generated artwork",
+            "image_source": "WorkTrail Urban Wash project-generated artwork",
             "image_transform": transformation,
             "image_provenance": ARTWORK_PROVENANCE,
             "image_release_status": ARTWORK_RELEASE_STATUS,
@@ -737,7 +737,7 @@ def write_attribution_files(
         "City coordinates, population, and IANA time zones are derived from GeoNames `cities500`,",
         "licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).",
         "",
-        "The seasonal skyline images are TrackMeUp-directed Urban Wash watercolor artwork.",
+        "The seasonal skyline images are WorkTrail-directed Urban Wash watercolor artwork.",
         "Their exact generation, intermediate WebP, and packaged PNG manifests are stored in",
         "[`SOURCE-MANIFEST.json`](SOURCE-MANIFEST.json),",
         "[`RUNTIME-ASSET-MANIFEST.json`](RUNTIME-ASSET-MANIFEST.json),",
@@ -787,7 +787,7 @@ def write_packaged_provenance(
         "",
         "## Publication authorization",
         "",
-        "The images are reserved TrackMeUp project artwork and are outside the repository MIT grant.",
+        "The images are reserved WorkTrail project artwork and are outside the repository MIT grant.",
         "On 2026-08-30 the project owner authorized public publication of the complete generated",
         "asset set and accepted the applicable ImageGen service terms in that context. This",
         "authorization does not place the artwork under the repository MIT license. The checksums",
@@ -893,7 +893,7 @@ def verify_staged_product(
         if {row[0] for row in connection.execute("SELECT id FROM city")} != set(names):
             raise RuntimeError("Staged SQLite city IDs do not match the generation manifest.")
         expected_metadata = {
-            "image_source": "TrackMeUp Urban Wash project-generated artwork",
+            "image_source": "WorkTrail Urban Wash project-generated artwork",
             "image_transform": packaged_manifest["transformation"],
             "image_provenance": ARTWORK_PROVENANCE,
             "image_release_status": ARTWORK_RELEASE_STATUS,
@@ -1111,7 +1111,7 @@ def promote(
     validate_only: bool = False,
 ) -> None:
     repository_root = Path(__file__).resolve().parent.parent
-    expected_lexical_root = repository_root / "TrackMeUp" / "Assets" / "WorldClocks"
+    expected_lexical_root = repository_root / "WorkTrail" / "Assets" / "WorldClocks"
     if is_reparse_point(expected_lexical_root):
         raise RuntimeError(f"Product directory must not be a reparse point: {expected_lexical_root}")
     expected_product_root = expected_lexical_root.resolve(strict=True)
@@ -1194,7 +1194,7 @@ def promote(
                 "productRoot": str(product_root),
                 "cityCount": len(names),
                 "assetCount": len(assets),
-                "imageSource": "TrackMeUp Urban Wash project-generated artwork",
+                "imageSource": "WorkTrail Urban Wash project-generated artwork",
                 "perTargetRollback": True,
                 "crashAtomic": False,
                 "cleanupWarning": cleanup_warning,
@@ -1228,7 +1228,7 @@ def main() -> None:
     parser.add_argument(
         "--product-root",
         type=Path,
-        default=repository_root / "TrackMeUp" / "Assets" / "WorldClocks",
+        default=repository_root / "WorkTrail" / "Assets" / "WorldClocks",
     )
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()

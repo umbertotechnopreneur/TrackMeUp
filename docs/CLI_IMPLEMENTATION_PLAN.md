@@ -1,4 +1,4 @@
-# TrackMeUp CLI: product and implementation notes
+# WorkTrail CLI: product and implementation notes
 
 The Premium CLI lets you search history, query reports, control tracking, inspect
 screenshots, transfer data and manage AI operations from PowerShell 7. It uses the
@@ -12,8 +12,8 @@ ready-to-use commands, output formats, and exit codes, see
 
 ## Two ways to work
 
-- Run `trackmeup.exe -cli` for the interactive command center.
-- Run `trackmeup.exe -cli <command>` for a single action or a script.
+- Run `worktrail.exe -cli` for the interactive command center.
+- Run `worktrail.exe -cli <command>` for a single action or a script.
 
 Use PowerShell 7 with `pwsh -NoProfile`. Every command connects to the shared
 runtime to verify Premium, including help and version. Connecting may start the
@@ -100,7 +100,7 @@ See [Privacy](PRIVACY.md) for storage, sharing, and deletion behavior.
 
 ## Shared implementation
 
-`ITrackMeUpApplication` is the entry point for app behavior. WinUI and CLI code
+`IWorkTrailApplication` is the entry point for app behavior. WinUI and CLI code
 collect input, call it, and display results. Storage, HTTP, environment access,
 capture, Windows integration, and business validation belong in Core services.
 
@@ -121,11 +121,11 @@ Do not duplicate business models or validation in CLI presentation code.
 
 Current entry points:
 
-- [Application contracts](../TrackMeUp.Core/Application/Contracts.cs)
-- [CLI router](../TrackMeUp.Cli/CliRouter.cs)
-- [CLI output](../TrackMeUp.Cli/CliOutput.cs)
-- [Runtime host](../TrackMeUp.Core/Runtime/RuntimeHost.cs)
-- [Public settings](../TrackMeUp.Core/Application/SettingsCatalog.cs)
+- [Application contracts](../WorkTrail.Core/Application/Contracts.cs)
+- [CLI router](../WorkTrail.Cli/CliRouter.cs)
+- [CLI output](../WorkTrail.Cli/CliOutput.cs)
+- [Runtime host](../WorkTrail.Core/Runtime/RuntimeHost.cs)
+- [Public settings](../WorkTrail.Core/Application/SettingsCatalog.cs)
 
 ## Acceptance checks for CLI changes
 

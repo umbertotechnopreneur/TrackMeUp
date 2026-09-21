@@ -2,12 +2,12 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build TrackMeUp (Unpackaged x64)",
+      "label": "build WorkTrail (Unpackaged x64)",
       "type": "shell",
       "command": "C:\\Program Files\\dotnet\\dotnet.exe",
       "args": [
         "build",
-        "${workspaceFolder}\\TrackMeUp\\TrackMeUp.csproj",
+        "${workspaceFolder}\\WorkTrail\\WorkTrail.csproj",
         "-c",
         "Debug-Unpackaged",
         "-p:Platform=x64"

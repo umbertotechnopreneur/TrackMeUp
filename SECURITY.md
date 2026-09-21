@@ -7,7 +7,7 @@ I consider security fixes for:
 - the default branch;
 - the latest published release (when available).
 
-TrackMeUp is still in development, so behavior can change between versions.
+WorkTrail is still in development, so behavior can change between versions.
 
 ## How to reach me
 
@@ -15,7 +15,7 @@ If you think you've found a vulnerability, please report it privately. Don't ope
 
 Email **hello@umbertogiacobbi.biz** with the subject:
 
-`TrackMeUp security report`
+`WorkTrail security report`
 
 Include what you can:
 

@@ -12,7 +12,7 @@ param([Parameter(Mandatory)][string]$Destination)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$allowedRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'TrackMeUp.Hardware/obj'))
+$allowedRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'WorkTrail.Hardware/obj'))
 $resolvedDestination = [IO.Path]::GetFullPath($Destination)
 if (-not $resolvedDestination.StartsWith($allowedRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'PawnIO installer cache must remain inside the hardware project obj directory.'
@@ -23,7 +23,7 @@ for ($ancestor = $resolvedDestination; -not [string]::IsNullOrEmpty($ancestor); 
         throw 'PawnIO installer cache cannot pass through a symbolic link or junction.'
     }
 }
-$distribution = Get-Content -LiteralPath (Join-Path $repositoryRoot 'TrackMeUp.Hardware/PawnIO/distribution.json') -Raw | ConvertFrom-Json
+$distribution = Get-Content -LiteralPath (Join-Path $repositoryRoot 'WorkTrail.Hardware/PawnIO/distribution.json') -Raw | ConvertFrom-Json
 if ($distribution.sha256 -cnotmatch '^[0-9A-F]{64}$' -or
     $distribution.url -cne "https://github.com/namazso/PawnIO.Setup/releases/download/$($distribution.version)/PawnIO_setup.exe") {
     throw 'Invalid pinned PawnIO distribution.'

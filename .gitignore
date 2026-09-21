@@ -4,15 +4,15 @@ obj/
 artifacts/
 .vs/
 out/
-TrackMeUp/AppPackages/
+WorkTrail/AppPackages/
 
 # Local activity data, screenshots, and developer configuration
 data/
-!/TrackMeUp.Core/Data/
-/TrackMeUp.Core/Data/*
-!/TrackMeUp.Core/Data/sky-catalog.json
-!/TrackMeUp.Core/Data/sky-palette.json
-!/TrackMeUp.Core/Data/important-dates.json
+!/WorkTrail.Core/Data/
+/WorkTrail.Core/Data/*
+!/WorkTrail.Core/Data/sky-catalog.json
+!/WorkTrail.Core/Data/sky-palette.json
+!/WorkTrail.Core/Data/important-dates.json
 /screenshots/
 .env
 .env.*
@@ -23,7 +23,7 @@ appsettings.local.json
 *.user
 *.suo
 *.cache
-TrackMeUp/BuildInfo.json
+WorkTrail/BuildInfo.json
 
 # OS and editor noise
 Thumbs.db

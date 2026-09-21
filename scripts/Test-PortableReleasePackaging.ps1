@@ -84,19 +84,19 @@ function New-SyntheticPublish {
 
     $directory = Join-Path $fixtureRoot $Name
     [void][IO.Directory]::CreateDirectory((Join-Path $directory 'empty-directory'))
-    foreach ($file in @('TrackMeUp.dll', 'TrackMeUp.deps.json', 'hostpolicy.dll', 'System.Private.CoreLib.dll',
+    foreach ($file in @('WorkTrail.dll', 'WorkTrail.deps.json', 'hostpolicy.dll', 'System.Private.CoreLib.dll',
         'Microsoft.ui.xaml.dll', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.Windows.ApplicationModel.Resources.dll',
-        'TrackMeUp.pri', '.hidden-payload')) {
+        'WorkTrail.pri', '.hidden-payload')) {
         [IO.File]::WriteAllText((Join-Path $directory $file), "Synthetic payload: $file", $utf8)
     }
-    foreach ($file in @('TrackMeUp.exe', 'hostfxr.dll', 'coreclr.dll')) {
+    foreach ($file in @('WorkTrail.exe', 'hostfxr.dll', 'coreclr.dll')) {
         Write-SyntheticPe -Path (Join-Path $directory $file) -Platform $Platform
     }
     $buildInfo = @{ schemaVersion = 1; semVer = '1.2.3'; packageVersion = '1.2.3.0'; platform = $Platform
         configuration = 'Release-Unpackaged'; runtimeIdentifier = "win-$($Platform.ToLowerInvariant())"
         gitCommit = ('1' * 40); gitDirty = $false }
     [IO.File]::WriteAllText((Join-Path $directory 'BuildInfo.json'), ($buildInfo | ConvertTo-Json), $utf8)
-    [IO.File]::WriteAllText((Join-Path $directory 'TrackMeUp.runtimeconfig.json'),
+    [IO.File]::WriteAllText((Join-Path $directory 'WorkTrail.runtimeconfig.json'),
         '{"runtimeOptions":{"tfm":"net10.0","includedFrameworks":[{"name":"Microsoft.NETCore.App","version":"10.0.0"}]}}', $utf8)
     return $directory
 }
@@ -114,7 +114,7 @@ foreach ($platform in @('x64', 'ARM64')) {
     $output = Join-Path $fixtureRoot "$platform-output"
     $result = Invoke-Archive -Source $source -Output $output -Platform $platform
     Assert-PortableTest ($result.ExitCode -eq 0) "$platform packaging failed: $($result.Output)"
-    $zipPath = Join-Path $output "TrackMeUp-1.2.3-$platform-portable-unsigned.zip"
+    $zipPath = Join-Path $output "WorkTrail-1.2.3-$platform-portable-unsigned.zip"
     $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash
     Assert-PortableTest ((Get-Content -LiteralPath "$zipPath.sha256" -Raw).Trim() -ceq "$zipHash  $([IO.Path]::GetFileName($zipPath))") "$platform archive checksum differs."
     $archive = [IO.Compression.ZipFile]::OpenRead($zipPath)
@@ -122,8 +122,8 @@ foreach ($platform in @('x64', 'ARM64')) {
         $release = Read-ZipText -Archive $archive -Name 'release.json' | ConvertFrom-Json
         Assert-PortableTest ($release.format -ceq 'portable' -and $release.signing -ceq 'unsigned' -and
             $release.platform -ceq $platform -and $release.version -ceq '1.2.3' -and
-            $release.entryPoint -ceq 'TrackMeUp.exe' -and $release.gitCommit -ceq ('1' * 40)) "$platform release metadata differs."
-        Assert-PortableTest ($null -ne $archive.GetEntry('TrackMeUp.exe') -and $null -eq $archive.GetEntry('Install.ps1')) "$platform archive is not directly extractable."
+            $release.entryPoint -ceq 'WorkTrail.exe' -and $release.gitCommit -ceq ('1' * 40)) "$platform release metadata differs."
+        Assert-PortableTest ($null -ne $archive.GetEntry('WorkTrail.exe') -and $null -eq $archive.GetEntry('Install.ps1')) "$platform archive is not directly extractable."
         Assert-PortableTest ($null -ne $archive.GetEntry('empty-directory/')) "$platform omitted an empty publish directory."
         $readme = Read-ZipText -Archive $archive -Name 'README.txt'
         Assert-PortableTest ($readme -like '*LocalAppData*' -and
@@ -185,17 +185,17 @@ foreach ($file in @('hostfxr.dll', 'coreclr.dll', 'Microsoft.WindowsAppRuntime.d
     [IO.File]::Delete((Join-Path $source $file))
     Assert-Rejected -Name $name -Source $source -Message 'Missing or empty required portable publish file'
 }
-foreach ($file in @('TrackMeUp.exe', 'hostfxr.dll', 'coreclr.dll')) {
+foreach ($file in @('WorkTrail.exe', 'hostfxr.dll', 'coreclr.dll')) {
     $name = "wrong-machine-$file"
     $source = New-SyntheticPublish -Name $name
     Write-SyntheticPe -Path (Join-Path $source $file) -Platform 'ARM64'
     Assert-Rejected -Name $name -Source $source -Message 'Portable binary architecture does not match'
 }
 $source = New-SyntheticPublish -Name 'invalid-pe'
-[IO.File]::WriteAllText((Join-Path $source 'TrackMeUp.exe'), 'Not an executable.', $utf8)
+[IO.File]::WriteAllText((Join-Path $source 'WorkTrail.exe'), 'Not an executable.', $utf8)
 Assert-Rejected -Name 'invalid-pe' -Source $source -Message 'Invalid PE file'
 $source = New-SyntheticPublish -Name 'framework-dependent'
-[IO.File]::WriteAllText((Join-Path $source 'TrackMeUp.runtimeconfig.json'),
+[IO.File]::WriteAllText((Join-Path $source 'WorkTrail.runtimeconfig.json'),
     '{"runtimeOptions":{"framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}', $utf8)
 Assert-Rejected -Name 'framework-dependent' -Source $source -Message 'must describe a self-contained .NET application'
 $source = New-SyntheticPublish -Name 'reserved-file'
@@ -219,7 +219,7 @@ foreach ($case in @(
     @{ Name = 'publish-outside-artifacts'; Output = $outside; Message = 'Unpackaged publish output escaped' },
     @{ Name = 'publish-existing-output'; Output = $existing; Message = 'Unpackaged publish output directory must be empty' }
 )) {
-    $result = Invoke-TestScript -Path (Join-Path $PSScriptRoot 'TrackMeUp.ps1') -Arguments @(
+    $result = Invoke-TestScript -Path (Join-Path $PSScriptRoot 'WorkTrail.ps1') -Arguments @(
         '-Action', 'PublishUnpackaged', '-ReleaseVersion', '1.2.3', '-PublishOutputPath', $case.Output)
     Assert-PortableTest ($result.ExitCode -ne 0 -and $result.Output -like "*$($case.Message)*") "$($case.Name) failed for the wrong reason: $($result.Output)"
     Assert-PortableTest (-not (Test-Path -LiteralPath $outside)) 'Publish rejection wrote outside artifacts.'

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="WorkTrail.Controls.ActivityWeekHeatmap"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer x:Name="HeatmapViewport" SizeChanged="Heatmap_SizeChanged"
+                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                  VerticalContentAlignment="Stretch">
+        <Grid x:Name="CellsGrid" RowSpacing="1" ColumnSpacing="1" />
+    </ScrollViewer>
+</UserControl>

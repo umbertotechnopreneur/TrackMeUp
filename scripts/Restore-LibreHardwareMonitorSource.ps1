@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $revision = '3d331e3370efb858411f19511373eff65a218701'
 $expectedHash = '5A83EE3F504A85EFB6AFEE4112447E60CACA1B7EC2E2D71F4651570B8B9B4230'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$allowedRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'TrackMeUp.Hardware/LibreHardwareMonitor/obj'))
+$allowedRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'WorkTrail.Hardware/LibreHardwareMonitor/obj'))
 $resolvedDestination = [IO.Path]::GetFullPath($Destination)
 if (-not $resolvedDestination.StartsWith($allowedRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'LibreHardwareMonitor sources must remain inside the dedicated project obj directory.'
@@ -22,8 +22,11 @@ if (-not $resolvedDestination.StartsWith($allowedRoot + [IO.Path]::DirectorySepa
 
 $sourceRoot = Join-Path $resolvedDestination "LibreHardwareMonitor-$revision"
 $markerPath = Join-Path $resolvedDestination 'verified-v5.sha256'
+$sensorPath = Join-Path $sourceRoot 'LibreHardwareMonitorLib/Hardware/Sensor.cs'
 if ((Test-Path -LiteralPath $markerPath) -and
     (Test-Path -LiteralPath (Join-Path $sourceRoot 'LibreHardwareMonitorLib/Hardware/Computer.cs')) -and
+    (Test-Path -LiteralPath $sensorPath) -and
+    ([IO.File]::ReadAllText($sensorPath).Contains('WorkTrailUpdateSequence')) -and
     ([IO.File]::ReadAllText($markerPath).Trim() -ceq $expectedHash)) {
     return
 }
@@ -59,7 +62,7 @@ finally { $archive.Dispose() }
 $pawnIoPath = Join-Path $sourceRoot 'LibreHardwareMonitorLib/PawnIo/PawnIo.cs'
 $pawnIoSource = [IO.File]::ReadAllText($pawnIoPath).Replace("`r`n", "`n")
 $patches = @(
-    @{ Before = "public class PawnIo`n{"; After = "public class PawnIo`n{`n    // TrackMeUp: low-level access requires explicit advanced-mode opt-in.`n    public static bool IsDriverAccessEnabled { get; set; }" },
+    @{ Before = "public class PawnIo`n{"; After = "public class PawnIo`n{`n    // WorkTrail: low-level access requires explicit advanced-mode opt-in.`n    public static bool IsDriverAccessEnabled { get; set; }" },
     @{ Before = '        SafeFileHandle handle = PInvoke.CreateFile'; After = "        if (!IsDriverAccessEnabled) return new PawnIo(null);`n        SafeFileHandle handle = PInvoke.CreateFile" },
     @{ Before = '        return new long[outLength];'; After = '        throw new InvalidOperationException("PawnIO module unavailable or hardware read failed.");' },
     @{ Before = "            returnSize = 0;`n            return 0;"; After = "            returnSize = 0;`n            return unchecked((int)0x80070006);" }
@@ -72,11 +75,10 @@ foreach ($patch in $patches) {
 }
 [IO.File]::WriteAllText($pawnIoPath, $pawnIoSource, [Text.UTF8Encoding]::new($false))
 
-$sensorPath = Join-Path $sourceRoot 'LibreHardwareMonitorLib/Hardware/Sensor.cs'
 $sensorSource = [IO.File]::ReadAllText($sensorPath)
 $sensorPatches = @(
-    @{ Before = '    public virtual float? Value'; After = "    // TrackMeUp: distinguish a new assignment from a cached value after failed polling.`n    public long TrackMeUpUpdateSequence { get; private set; }`n`n    public virtual float? Value" },
-    @{ Before = '            _currentValue = value;'; After = "            TrackMeUpUpdateSequence++;`n            _currentValue = value;" }
+    @{ Before = '    public virtual float? Value'; After = "    // WorkTrail: distinguish a new assignment from a cached value after failed polling.`n    public long WorkTrailUpdateSequence { get; private set; }`n`n    public virtual float? Value" },
+    @{ Before = '            _currentValue = value;'; After = "            WorkTrailUpdateSequence++;`n            _currentValue = value;" }
 )
 foreach ($patch in $sensorPatches) {
     if ($sensorSource.Split([string[]]@($patch.Before), [StringSplitOptions]::None).Count -ne 2) {
@@ -90,7 +92,7 @@ $cpuGroupPath = Join-Path $sourceRoot 'LibreHardwareMonitorLib/Hardware/Cpu/CpuG
 $cpuGroupSource = [IO.File]::ReadAllText($cpuGroupPath)
 $cpuBefore = '            switch (threads[0].Vendor)'
 $cpuAfter = @'
-            // TrackMeUp: AMD low-level constructors require PawnIO; retain library CPU load without it.
+            // WorkTrail: AMD low-level constructors require PawnIO; retain library CPU load without it.
             if (threads[0].Vendor == Vendor.AMD && !LibreHardwareMonitor.PawnIo.PawnIo.IsDriverAccessEnabled)
             {
                 _hardware.Add(new GenericCpu(index++, coreThreads, settings));
@@ -109,7 +111,7 @@ $nvidiaPatches = @(
     @{
         Before = '        // Power.'
         After = @'
-        // TrackMeUp: reserve every native utilization index, including domains absent on this GPU.
+        // WorkTrail: reserve every native utilization index, including domains absent on this GPU.
         // Memory, power and D3D loads must have distinct identifiers or the snapshot is invalid.
         int memoryLoadIndex = Enum.GetValues<NvApi.NvUtilizationDomain>().Max(domain => (int)domain) + 1;
         int powerLoadIndex = memoryLoadIndex + 1;

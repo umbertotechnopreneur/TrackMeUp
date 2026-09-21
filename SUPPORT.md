@@ -1,4 +1,4 @@
-# Need a hand with TrackMeUp?
+# Need a hand with WorkTrail?
 
 Open a [GitHub issue](https://github.com/umbertotechnopreneur/TrackMeUp/issues) if you've found a bug, spotted a confusing bit of documentation, or need help building or testing the app. You can suggest a feature there too.
 

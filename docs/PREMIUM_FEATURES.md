@@ -16,7 +16,7 @@ Supply the runtime snapshot and UI language from the owning view. `FeatureGate` 
 
 For windows that allow Free users to configure or preview a Premium action, place one localized `PremiumBadge` in the title bar, not in the body. Keep the action enabled so it can open the standard upgrade dialog. This applies to screenshot scheduling, advanced report export and archive transfer. Archive previews and installation identity edits remain Free. The Add clock button has a badge beside it; the fourth Free addition opens the upgrade dialog.
 
-`TrackMeUpApplication.PatchSettingsAsync` checks `FeatureAccessPolicy` before validation and persistence. Both CLI settings commands and IPC calls reach this boundary. Hiding or disabling controls is presentation, not enforcement. Register new protected settings in the catalog; operations outside the settings path must use the same policy at their application boundary.
+`WorkTrailApplication.PatchSettingsAsync` checks `FeatureAccessPolicy` before validation and persistence. Both CLI settings commands and IPC calls reach this boundary. Hiding or disabling controls is presentation, not enforcement. Register new protected settings in the catalog; operations outside the settings path must use the same policy at their application boundary.
 
 Creation quotas are checked inside the serialized mutation boundary against the complete validated settings change. Free can create three labels, rename/delete/select saved labels and use one-off taskbar text. Free cannot create a fourth label or clock. Downgrade preserves existing over-limit catalogs, active labels and recorded history; editing or reducing a catalog remains allowed, but further growth is blocked. Concurrent and IPC requests use the same guards.
 

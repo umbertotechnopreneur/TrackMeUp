@@ -82,11 +82,11 @@ jobs:
           global-json-file: global.json
 
       - name: Restore Release solution
-        run: dotnet restore .\TrackMeUp.slnx -p:Configuration=Release-Unpackaged -p:Platform=${{ matrix.platform }}
+        run: dotnet restore .\WorkTrail.slnx -p:Configuration=Release-Unpackaged -p:Platform=${{ matrix.platform }}
 
       - name: Build Release solution
-        run: dotnet build .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=${{ matrix.platform }} --no-restore -p:ContinuousIntegrationBuild=true -p:EnableNETAnalyzers=true -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
+        run: dotnet build .\WorkTrail.slnx --configuration Release-Unpackaged -p:Platform=${{ matrix.platform }} --no-restore -p:ContinuousIntegrationBuild=true -p:EnableNETAnalyzers=true -p:EnforceCodeStyleInBuild=true -p:TreatWarningsAsErrors=true
 
       - name: Test Release solution
         if: matrix.platform == 'x64'
-        run: dotnet test .\TrackMeUp.slnx --configuration Release-Unpackaged -p:Platform=x64 --no-build --no-restore -m:1
+        run: dotnet test .\WorkTrail.slnx --configuration Release-Unpackaged -p:Platform=x64 --no-build --no-restore -m:1

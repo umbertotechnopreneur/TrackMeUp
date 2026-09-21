@@ -1,7 +1,7 @@
 # Seasonal cities README strip provenance
 
 - Date: 2026-09-17.
-- Asset: `trackmeup-seasonal-cities-strip.png`.
+- Asset: `worktrail-seasonal-cities-strip.png`.
 - Method: Codex built-in image generation; selected output copied without modification.
 - Human direction: the project owner requested a full-width README strip accompanying an informal introduction to performance, resource use, and the summer/winter artwork for 300 cities.
 - Visual direction: the project's existing seasonal architectural watercolor style; no image files or third-party references were supplied to the generator.

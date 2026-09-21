@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: MIT
+
+using Microsoft.UI.Xaml.Controls;
+
+namespace WorkTrail.Controls;
+
+/// <summary>Displays the clean selected screenshot surface and its empty/loading states.</summary>
+public sealed partial class ScreenshotGalleryViewControl : UserControl
+{
+    /// <summary>Creates the gallery view control.</summary>
+    public ScreenshotGalleryViewControl() => InitializeComponent();
+
+    /// <summary>Gets the gallery surface that hosts pointer interactions.</summary>
+    public Grid Surface => GallerySurface;
+
+    /// <summary>Gets the single-image zoomable screenshot viewer.</summary>
+    public ScreenshotImageViewerControl Viewer => ImageViewer;
+
+    /// <summary>Gets the empty-state panel.</summary>
+    public Grid EmptyPanel => EmptyGalleryPanel;
+
+    /// <summary>Gets the empty-state message text element.</summary>
+    public TextBlock EmptyText => EmptyGalleryText;
+
+    /// <summary>Gets the loading indicator.</summary>
+    public ProgressRing LoadingRing => GalleryProgressRing;
+}

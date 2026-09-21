@@ -2,8 +2,8 @@
 
 This record accompanies these TrackMeUp privacy banners:
 
-- `output/trackmeup-atomic-privacy-banner-v2-dark-erasure-wave-2400x800.png`;
-- `output/trackmeup-atomic-privacy-banner-v3-light-radial-reset-2400x800.png`.
+- `output/worktrail-atomic-privacy-banner-v2-dark-erasure-wave-2400x800.png`;
+- `output/worktrail-atomic-privacy-banner-v3-light-radial-reset-2400x800.png`.
 
 Repository history first records both files in commit `b91f3d7` on 2026-08-10
 (`docs: add atomic privacy banners`).

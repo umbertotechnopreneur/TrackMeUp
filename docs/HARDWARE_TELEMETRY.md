@@ -85,7 +85,7 @@ application builds remain supported.
 ## Advanced sensors
 
 Some readings need the optional PawnIO driver and administrator consent. Standard
-mode leaves driver access off, even if TrackMeUp was started as administrator.
+mode leaves driver access off, even if WorkTrail was started as administrator.
 The app never changes fan speed, voltage, clocks, or power limits.
 
 The advanced-sensor action installs the bundled [official signed PawnIO
@@ -111,13 +111,13 @@ LibreHardwareMonitor 0.9.6 is pinned to commit
 `3d331e3370efb858411f19511373eff65a218701`. Its archive SHA-256 is
 `5A83EE3F504A85EFB6AFEE4112447E60CACA1B7EC2E2D71F4651570B8B9B4230`.
 The build downloads and verifies this archive under
-`TrackMeUp.Hardware/LibreHardwareMonitor/obj/upstream`; subsequent builds reuse
+`WorkTrail.Hardware/LibreHardwareMonitor/obj/upstream`; subsequent builds reuse
 that cache. No source download occurs at runtime. A checksum or patch mismatch
 fails the build.
 
 The small audited source changes separate RAM usage from upstream SPD probing,
 make driver access opt-in, preserve CPU load without PawnIO and identify fresh
-sensor assignments. The [integration notice](../TrackMeUp.Hardware/LibreHardwareMonitor/NOTICE.md)
+sensor assignments. The [integration notice](../WorkTrail.Hardware/LibreHardwareMonitor/NOTICE.md)
 records the changes and licenses. The helper includes upstream license notices,
 modified upstream sources and the patch script under `HardwareLicenses`.
 
@@ -126,9 +126,9 @@ modified upstream sources and the patch script under `HardwareLicenses`.
 Run these commands from the repository root in PowerShell 7:
 
 ```powershell
-dotnet build .\TrackMeUp.Hardware\TrackMeUp.Hardware.csproj -c Release -p:Platform=x64
-dotnet test .\TrackMeUp.Core.Tests\TrackMeUp.Core.Tests.csproj -p:Platform=x64 --filter "FullyQualifiedName~HardwareTelemetry"
-pwsh -NoProfile -File .\scripts\Test-HardwareTelemetry.ps1 -HelperPath .\TrackMeUp.Hardware\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\TrackMeUp.Hardware.exe
+dotnet build .\WorkTrail.Hardware\WorkTrail.Hardware.csproj -c Release -p:Platform=x64
+dotnet test .\WorkTrail.Core.Tests\WorkTrail.Core.Tests.csproj -p:Platform=x64 --filter "FullyQualifiedName~HardwareTelemetry"
+pwsh -NoProfile -File .\scripts\Test-HardwareTelemetry.ps1 -HelperPath .\WorkTrail.Hardware\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\WorkTrail.Hardware.exe
 ```
 
 The smoke test uses ordinary privileges, reads three bounded snapshots and checks

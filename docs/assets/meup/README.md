@@ -1,6 +1,6 @@
 # MeUp visual style
 
-MailMeUp, PromptMeUp, and TrackMeUp share one presentation style. Keep their names and existing app icons. The family artwork connects the products without replacing their individual identities.
+MailMeUp, PromptMeUp, and WorkTrail share one presentation style. Keep their names and existing app icons. The family artwork connects the products without replacing their individual identities.
 
 ## Use the same structure
 
@@ -10,6 +10,8 @@ MailMeUp, PromptMeUp, and TrackMeUp share one presentation style. Keep their nam
 - Use plain English and the maintainer's first-person singular voice. Sign off with: "Built by Umberto Giacobbi, with help from contributors."
 - Link the three products under "More from MeUp" using the same descriptions in each repository.
 
+For PromptMeUp, use: "Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help."
+
 ## Visual system
 
 Use an ink navy background (`#101526`), warm ivory objects, fine connecting lines, and restrained depth. Give illustrations generous margins. Keep words in Markdown so they stay readable and accessible; don't bake marketing copy into artwork.
@@ -18,13 +20,13 @@ Use an ink navy background (`#101526`), warm ivory objects, fine connecting line
 | --- | --- | --- |
 | MailMeUp | Mint `#71DEB7` | Inboxes and calendars connected to one conversation |
 | PromptMeUp | Amber `#F6C453` | A request, a command, and the choice to run it |
-| TrackMeUp | Lilac `#AF9BFF` | Past activity, search, and time |
+| WorkTrail | Lilac `#AF9BFF` | Past activity, search, and time |
 
 This repository uses Lilac `#AF9BFF`. These colors describe documentation artwork, not a change to the app's interface theme.
 
 ## Asset and provenance
 
-- File: `trackmeup-family-v1.png`.
+- File: `worktrail-family-v1.png`.
 - Created: September 20, 2026, with the built-in image generation tool.
 - Format: PNG, 2172 × 724 pixels, 3:1 landscape.
 - Purpose: conceptual product illustration in the README's MeUp family section. It is not a screenshot, logo, or replacement app icon.
@@ -40,7 +42,7 @@ Use case: stylized-concept. Create one landscape 3:1 editorial product illustrat
 
 ## Footer mark
 
-- File: `trackmeup-mark-v1.png`.
+- File: `worktrail-mark-v1.png`.
 - Created: September 21, 2026, with the built-in image generation tool.
 - Format: transparent PNG, 1254 × 1254 pixels.
 - Purpose: compact README footer branding. It is not a replacement app icon, product logo, or screenshot.
