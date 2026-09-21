@@ -367,6 +367,32 @@ function Get-WorkTrailRuntimeIdentifier {
     return "win-$($TargetPlatform.ToLowerInvariant())"
 }
 
+function Get-WorkTrailPackageConfiguration {
+    # Packaging uses the MSIX configurations even when the general utility defaults to unpackaged builds.
+    switch ($Configuration) {
+        'Debug' { return 'Debug' }
+        'Release' { return 'Release' }
+        'Debug-Unpackaged' { return 'Debug' }
+        'Release-Unpackaged' { return 'Release' }
+        default { throw "Unsupported MSIX package configuration: $Configuration" }
+    }
+}
+
+function Get-WorkTrailPackagePublisher {
+    $manifestPath = Join-Path $script:RepositoryRoot 'WorkTrail\Package.appxmanifest'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw "Package manifest not found: $manifestPath"
+    }
+
+    [xml]$manifest = Get-Content -LiteralPath $manifestPath -Raw
+    $publisher = $manifest.Package.Identity.Publisher
+    if ([string]::IsNullOrWhiteSpace($publisher)) {
+        throw "Package manifest has no Identity Publisher: $manifestPath"
+    }
+
+    return $publisher
+}
+
 function Invoke-NativeCommand {
     param(
         [Parameter(Mandatory)][string]$FilePath,
@@ -969,64 +995,28 @@ function Invoke-WorkTrailUnpackagedPublish {
 }
 
 function Resolve-WorkTrailPackageCertificate {
-    $certificate = $null
-    $isLocalTestCertificate = [string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)
-    if (-not [string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)) {
-        $normalizedThumbprint = $PackageCertificateThumbprint.Replace(' ', '').ToUpperInvariant()
-        $certificate = Get-ChildItem Cert:\CurrentUser\My -ErrorAction Stop |
-            Where-Object { $_.Thumbprint -eq $normalizedThumbprint -and $_.HasPrivateKey } |
-            Sort-Object NotAfter -Descending |
-            Select-Object -First 1
-
-        if ($null -eq $certificate) {
-            throw "Package certificate with thumbprint '$PackageCertificateThumbprint' was not found in Cert:\CurrentUser\My or has no private key."
-        }
-    }
-    else {
-        $certificate = Get-ChildItem Cert:\CurrentUser\My -ErrorAction Stop |
-            Where-Object {
-                $_.Subject -eq 'CN=umber' -and
-                $_.FriendlyName -eq 'WorkTrail Test Signing' -and
-                $_.HasPrivateKey -and
-                $_.NotAfter -gt (Get-Date)
-            } |
-            Sort-Object NotAfter -Descending |
-            Select-Object -First 1
-
-        if ($null -eq $certificate) {
-            $certificate = New-SelfSignedCertificate `
-                -Type Custom `
-                -Subject 'CN=umber' `
-                -FriendlyName 'WorkTrail Test Signing' `
-                -CertStoreLocation 'Cert:\CurrentUser\My' `
-                -KeyAlgorithm RSA `
-                -KeyLength 3072 `
-                -HashAlgorithm SHA256 `
-                -KeyUsage DigitalSignature `
-                -KeyExportPolicy Exportable `
-                -NotAfter (Get-Date).AddYears(3) `
-                -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')
-        }
+    if ([string]::IsNullOrWhiteSpace($PackageCertificateThumbprint)) {
+        $publisher = Get-WorkTrailPackagePublisher
+        throw "Signed MSIX packaging requires PackageCertificateThumbprint. Its certificate Subject must exactly match the manifest Publisher '$publisher'."
     }
 
-    $certificateDirectory = Join-Path $script:RepositoryRoot 'artifacts\certificates'
-    [System.IO.Directory]::CreateDirectory($certificateDirectory) | Out-Null
-    $publicCertificatePath = Join-Path $certificateDirectory 'WorkTrail-Test-Signing.cer'
-    Export-Certificate -Cert $certificate -FilePath $publicCertificatePath -Force | Out-Null
+    $normalizedThumbprint = $PackageCertificateThumbprint.Replace(' ', '').ToUpperInvariant()
+    $certificate = Get-ChildItem Cert:\CurrentUser\My -ErrorAction Stop |
+        Where-Object { $_.Thumbprint -eq $normalizedThumbprint -and $_.HasPrivateKey } |
+        Sort-Object NotAfter -Descending |
+        Select-Object -First 1
 
-    $trustStores = @('Cert:\CurrentUser\TrustedPeople')
-    if ($isLocalTestCertificate) {
-        # AppX sideload verification checks the self-signed root chain; TrustedPeople alone is insufficient here.
-        $trustStores += 'Cert:\CurrentUser\Root'
+    if ($null -eq $certificate) {
+        throw "Package certificate with thumbprint '$PackageCertificateThumbprint' was not found in Cert:\CurrentUser\My or has no private key."
     }
 
-    foreach ($trustStore in $trustStores) {
-        $trustedCertificate = Get-ChildItem $trustStore -ErrorAction Stop |
-            Where-Object { $_.Thumbprint -eq $certificate.Thumbprint } |
-            Select-Object -First 1
-        if ($null -eq $trustedCertificate) {
-            Import-Certificate -FilePath $publicCertificatePath -CertStoreLocation $trustStore | Out-Null
-        }
+    if ($certificate.NotAfter -le (Get-Date)) {
+        throw "Package certificate '$($certificate.Thumbprint)' is expired."
+    }
+
+    $publisher = Get-WorkTrailPackagePublisher
+    if ($certificate.Subject -cne $publisher) {
+        throw "Package certificate Subject '$($certificate.Subject)' must exactly match the manifest Publisher '$publisher'."
     }
 
     Write-Host "Using package signing certificate $($certificate.Thumbprint) ($($certificate.Subject))." -ForegroundColor DarkCyan
@@ -1074,6 +1064,11 @@ function Assert-WorkTrailPackageIntegrity {
             throw "MSIX package architecture does not match requested platform '$Platform': $($PackageFile.FullName)"
         }
 
+        $expectedPublisher = Get-WorkTrailPackagePublisher
+        if ($identity.Publisher -cne $expectedPublisher) {
+            throw "MSIX manifest publisher does not match the tracked manifest publisher '$expectedPublisher': $($PackageFile.FullName)"
+        }
+
         if ($identity.Version -ne $packageBuildInfo.packageVersion -or
             (-not [string]::IsNullOrEmpty($ReleaseVersion) -and $identity.Version -ne "$ReleaseVersion.0")) {
             throw "MSIX manifest/build information does not match the requested package version: $($PackageFile.FullName)"
@@ -1086,6 +1081,7 @@ function Assert-WorkTrailPackageIntegrity {
 
 function Invoke-WorkTrailMsixPackage {
     $packageDirectory = Get-WorkTrailPackageOutputDirectory
+    $packageConfiguration = Get-WorkTrailPackageConfiguration
     if (Test-Path -LiteralPath $packageDirectory) {
         if (@(Get-ChildItem -LiteralPath $packageDirectory -Force).Count -gt 0) {
             throw "Package output directory must be empty: $packageDirectory"
@@ -1101,7 +1097,7 @@ function Invoke-WorkTrailMsixPackage {
         # Re-evaluate NuGet imports after restore so fresh checkouts load package build targets.
         '/restore',
         '/t:Clean,Publish',
-        '/p:Configuration=Release',
+        "/p:Configuration=$packageConfiguration",
         "/p:Platform=$Platform",
         "/p:RuntimeIdentifier=$runtime",
         '/p:GenerateAppxPackageOnBuild=true',
@@ -1142,10 +1138,11 @@ function Get-WorkTrailPackageOutputDirectory {
     }
 
     $artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $script:RepositoryRoot 'artifacts'))
+    $packageConfiguration = Get-WorkTrailPackageConfiguration
+    $channel = if ($packageConfiguration -eq 'Debug') { 'debug' } else { 'store' }
     $versionDirectory = if ([string]::IsNullOrEmpty($ReleaseVersion)) { 'local' } else { $ReleaseVersion }
     $candidate = if ([string]::IsNullOrWhiteSpace($PackageOutputPath)) {
-        $invocationDirectory = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), [Guid]::NewGuid().ToString('N')
-        Join-Path $artifactsRoot "packages\$versionDirectory\$Platform\$invocationDirectory"
+        Join-Path $artifactsRoot "msix\$channel\$versionDirectory\$($Platform.ToLowerInvariant())"
     }
     else {
         Resolve-WorkTrailPath -Path $PackageOutputPath

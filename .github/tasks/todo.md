@@ -1,5 +1,9 @@
 # WorkTrail performance and footprint optimization handoff
 
+## MSIX packaging contract (2026-09-22)
+
+- [ ] On an owner-authorized package run, verify `scripts/package-msix.ps1` for Debug x64 and ARM64 using an explicit, unexpired certificate whose Subject exactly matches `WorkTrail/Package.appxmanifest`. No build, package, install, or trust-store change was performed while aligning the script.
+
 ## AI prompt alignment (2026-09-21)
 
 - [ ] Owner visual verification: screenshot analysis uses the app language, detailed output uses readable bullets, and report summaries honor brief/detailed selection. No live provider requests were made during implementation.
