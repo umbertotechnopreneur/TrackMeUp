@@ -23,27 +23,6 @@
                 <RowDefinition Height="48" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <VisualStateManager.VisualStateGroups>
-                <VisualStateGroup>
-                    <VisualState x:Name="NarrowPlayer">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="0" />
-                        </VisualState.StateTriggers>
-                        <VisualState.Setters>
-                            <Setter Target="AiMonthlySpendPanel.(Grid.Row)" Value="1" />
-                            <Setter Target="AiMonthlySpendPanel.(Grid.Column)" Value="0" />
-                            <Setter Target="AiMonthlySpendPanel.(Grid.ColumnSpan)" Value="3" />
-                            <Setter Target="AiMonthlySpendPanel.Margin" Value="0,8,0,0" />
-                            <Setter Target="AiMonthlySpendPanel.HorizontalAlignment" Value="Left" />
-                        </VisualState.Setters>
-                    </VisualState>
-                    <VisualState x:Name="WidePlayer">
-                        <VisualState.StateTriggers>
-                            <AdaptiveTrigger MinWindowWidth="480" />
-                        </VisualState.StateTriggers>
-                    </VisualState>
-                </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
             <!-- A background brush paints the arranged bounds without contributing the bitmap's natural size. -->
             <Border
                 x:Name="PlayerBackgroundSurface"
@@ -762,24 +741,20 @@
                                         TextWrapping="Wrap" />
                                 </Grid>
                             </StackPanel>
-                            <Grid x:Name="PlayerLabelAndCostPanel" Grid.Row="1" Grid.ColumnSpan="3" Margin="0,8,0,0" ColumnSpacing="12" RowSpacing="6">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                            <Grid x:Name="PlayerLabelAndCostPanel" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" RowSpacing="6">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <Grid x:Name="PlayerLabelActionsPanel" ColumnSpacing="8" VerticalAlignment="Top">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <controls:FeatureGate x:Name="PlayerLabelFeatureGate" Feature="ActivityLabels" ShowTitle="False" ShowHint="False" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                <Grid x:Name="PlayerLabelActionsPanel" RowSpacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <controls:FeatureGate x:Name="PlayerLabelFeatureGate" Feature="ActivityLabels" ShowTitle="False" ShowHint="False" HorizontalAlignment="Right" VerticalAlignment="Center">
                                         <controls:ActivityLabelSelector x:Name="PlayerLabelSelector" />
                                     </controls:FeatureGate>
-                                    <Button x:Name="ManageLabelsButton" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    <Button x:Name="ManageLabelsButton" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Center"
                                             Padding="8,4" FontSize="12" Click="ManageLabelsButton_Click">
                                         <Grid ColumnSpacing="6">
                                             <Grid.ColumnDefinitions>
@@ -793,7 +768,7 @@
                                 </Grid>
                             <StackPanel
                                 x:Name="AiMonthlySpendPanel"
-                                Grid.Column="1"
+                                Grid.Row="1"
                                 HorizontalAlignment="Right"
                                 Spacing="1"
                                 Visibility="Collapsed">

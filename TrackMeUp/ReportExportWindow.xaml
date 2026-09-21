@@ -2,7 +2,7 @@
 <Window x:Class="TrackMeUp.ReportExportWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="using:TrackMeUp.Controls" Title="TrackMeUp">
-    <Window.SystemBackdrop><MicaBackdrop /></Window.SystemBackdrop>
+    <Window.SystemBackdrop><DesktopAcrylicBackdrop /></Window.SystemBackdrop>
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded" KeyDown="RootGrid_KeyDown">
         <Grid.Resources>
             <ResourceDictionary>
@@ -43,7 +43,7 @@
             </NavigationView.MenuItems>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
                 <Grid x:Name="BodyGrid" Margin="24,8,24,24" ColumnSpacing="28" RowSpacing="24" SizeChanged="BodyGrid_SizeChanged">
-                    <Grid.ColumnDefinitions><ColumnDefinition x:Name="EditorColumn" Width="*" /><ColumnDefinition x:Name="PreviewColumn" Width="*" /></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition x:Name="EditorColumn" Width="2*" /><ColumnDefinition x:Name="PreviewColumn" Width="3*" /></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <StackPanel x:Name="EditorPanel" Spacing="20">
                         <StackPanel x:Name="ExportPage" Spacing="20">
@@ -89,6 +89,7 @@
                             <CheckBox x:Name="SummaryTitlesCheck" Tag="Export.Titles" Click="SummaryOptionsChanged" />
                             <TextBlock x:Name="ProviderText" TextWrapping="Wrap" />
                             <TextBlock Tag="Export.AiNotice" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button Tag="Export.MoreInformation" Content="More information" Click="SummaryInfo_Click" />
                             <Button x:Name="GenerateButton" Tag="Export.Generate" Click="Generate_Click">
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

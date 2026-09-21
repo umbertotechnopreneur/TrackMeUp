@@ -1247,30 +1247,40 @@ function Invoke-TrackMeUpInstallerCreation {
 }
 
 function Invoke-TrackMeUpBuildInfo {
-    $statePath = if ([string]::IsNullOrWhiteSpace($VersionStatePath)) { Join-Path $script:RepositoryRoot 'TrackMeUp\build-version.json' } else { Resolve-TrackMeUpPath -Path $VersionStatePath }
-    $buildInfoPath = if ([string]::IsNullOrWhiteSpace($OutputPath)) { Join-Path $script:RepositoryRoot 'TrackMeUp\BuildInfo.json' } else { Resolve-TrackMeUpPath -Path $OutputPath }
+    $runtime = if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) { Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform } else { $RuntimeIdentifier }
+    $metadataDirectory = if ([string]::IsNullOrEmpty($ReleaseVersion)) {
+        Join-Path $script:RepositoryRoot "artifacts\build-metadata\$Configuration\$Platform\$runtime"
+    }
+    else {
+        Join-Path $script:RepositoryRoot "artifacts\build-metadata\release\$ReleaseVersion\$Platform"
+    }
+    $statePath = if ([string]::IsNullOrWhiteSpace($VersionStatePath)) { Join-Path $script:RepositoryRoot 'artifacts\build-state\build-version.json' } else { Resolve-TrackMeUpPath -Path $VersionStatePath }
+    $stateSeedPath = Join-Path $script:RepositoryRoot 'TrackMeUp\build-version.json'
+    $buildInfoPath = if ([string]::IsNullOrWhiteSpace($OutputPath)) { Join-Path $metadataDirectory 'BuildInfo.json' } else { Resolve-TrackMeUpPath -Path $OutputPath }
     $manifestPath = if ([string]::IsNullOrWhiteSpace($PackageManifestPath)) { Join-Path $script:RepositoryRoot 'TrackMeUp\Package.appxmanifest' } else { Resolve-TrackMeUpPath -Path $PackageManifestPath }
     $manifestOutputPath = if (-not [string]::IsNullOrWhiteSpace($PackageManifestOutputPath)) {
         Resolve-TrackMeUpPath -Path $PackageManifestOutputPath
     }
-    elseif (-not [string]::IsNullOrEmpty($ReleaseVersion)) {
-        Join-Path $script:RepositoryRoot "TrackMeUp\obj\release\$ReleaseVersion\$Platform\Package.appxmanifest"
-    }
     else {
-        $manifestPath
+        Join-Path $metadataDirectory 'Package.appxmanifest'
     }
-    $runtime = if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) { Get-TrackMeUpRuntimeIdentifier -TargetPlatform $Platform } else { $RuntimeIdentifier }
 
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
         throw "Package manifest not found: $manifestPath"
     }
 
     if ([string]::IsNullOrEmpty($ReleaseVersion)) {
-        if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
-            throw "Build version state not found: $statePath"
+        $stateReadPath = if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+            $statePath
+        }
+        elseif (Test-Path -LiteralPath $stateSeedPath -PathType Leaf) {
+            $stateSeedPath
+        }
+        else {
+            throw "Build version state not found in artifacts or source: $statePath; $stateSeedPath"
         }
 
-        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+        $state = Get-Content -LiteralPath $stateReadPath -Raw | ConvertFrom-Json
         if ($state.semVer -notmatch '^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)$') {
             throw "Invalid SemVer in build version state: '$($state.semVer)'"
         }

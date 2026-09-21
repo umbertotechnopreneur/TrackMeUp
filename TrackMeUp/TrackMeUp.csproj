@@ -25,14 +25,16 @@
     <TrackMeUpDistributionMode Condition="'$(TrackMeUpDistributionMode)' == ''">MSIX</TrackMeUpDistributionMode>
     <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'Unpackaged'">None</WindowsPackageType>
     <WindowsPackageType Condition="'$(TrackMeUpDistributionMode)' == 'MSIX'">MSIX</WindowsPackageType>
-    <TrackMeUpBuildInfoPath>$(MSBuildProjectDirectory)\BuildInfo.json</TrackMeUpBuildInfoPath>
-    <TrackMeUpManifestOutputPath>$(MSBuildProjectDirectory)\Package.appxmanifest</TrackMeUpManifestOutputPath>
-    <TrackMeUpReleaseMetadataPath Condition="'$(TrackMeUpReleaseVersion)' != ''">$(MSBuildProjectDirectory)\obj\release\$(TrackMeUpReleaseVersion)\$(Platform)</TrackMeUpReleaseMetadataPath>
+    <TrackMeUpGeneratedMetadataPath>$(MSBuildProjectDirectory)\..\artifacts\build-metadata\$(Configuration)\$(Platform)\$(RuntimeIdentifier)</TrackMeUpGeneratedMetadataPath>
+    <TrackMeUpVersionStatePath>$(MSBuildProjectDirectory)\..\artifacts\build-state\build-version.json</TrackMeUpVersionStatePath>
+    <TrackMeUpBuildInfoPath>$(TrackMeUpGeneratedMetadataPath)\BuildInfo.json</TrackMeUpBuildInfoPath>
+    <TrackMeUpManifestOutputPath>$(TrackMeUpGeneratedMetadataPath)\Package.appxmanifest</TrackMeUpManifestOutputPath>
+    <TrackMeUpReleaseMetadataPath Condition="'$(TrackMeUpReleaseVersion)' != ''">$(MSBuildProjectDirectory)\..\artifacts\build-metadata\release\$(TrackMeUpReleaseVersion)\$(Platform)</TrackMeUpReleaseMetadataPath>
     <TrackMeUpBuildInfoPath Condition="'$(TrackMeUpReleaseVersion)' != ''">$(TrackMeUpReleaseMetadataPath)\BuildInfo.json</TrackMeUpBuildInfoPath>
     <TrackMeUpManifestOutputPath Condition="'$(TrackMeUpReleaseVersion)' != ''">$(TrackMeUpReleaseMetadataPath)\Package.appxmanifest</TrackMeUpManifestOutputPath>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TrackMeUpReleaseVersion)' != '' and '$(WindowsPackageType)' == 'MSIX'">
+  <ItemGroup Condition="'$(WindowsPackageType)' == 'MSIX'">
     <AppxManifest Include="$(TrackMeUpManifestOutputPath)" />
   </ItemGroup>
 
@@ -72,7 +74,7 @@
 
   <Target Name="GenerateTrackMeUpBuildInformation" BeforeTargets="PrepareForBuild">
     <!-- Environment transport keeps the release version out of shell interpolation. -->
-    <Exec EnvironmentVariables="TRACKMEUP_RELEASE_VERSION=$(TrackMeUpReleaseVersion)" Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\TrackMeUp.ps1&quot; -Action BuildInfo -VersionStatePath &quot;$(MSBuildProjectDirectory)\build-version.json&quot; -OutputPath &quot;$(TrackMeUpBuildInfoPath)&quot; -PackageManifestPath &quot;$(MSBuildProjectDirectory)\Package.appxmanifest&quot; -PackageManifestOutputPath &quot;$(TrackMeUpManifestOutputPath)&quot; -Configuration &quot;$(Configuration)&quot; -Platform &quot;$(Platform)&quot; -RuntimeIdentifier &quot;$(RuntimeIdentifier)&quot;" />
+    <Exec EnvironmentVariables="TRACKMEUP_RELEASE_VERSION=$(TrackMeUpReleaseVersion)" Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\..\scripts\TrackMeUp.ps1&quot; -Action BuildInfo -VersionStatePath &quot;$(TrackMeUpVersionStatePath)&quot; -OutputPath &quot;$(TrackMeUpBuildInfoPath)&quot; -PackageManifestPath &quot;$(MSBuildProjectDirectory)\Package.appxmanifest&quot; -PackageManifestOutputPath &quot;$(TrackMeUpManifestOutputPath)&quot; -Configuration &quot;$(Configuration)&quot; -Platform &quot;$(Platform)&quot; -RuntimeIdentifier &quot;$(RuntimeIdentifier)&quot;" />
   </Target>
 
   <ItemGroup>

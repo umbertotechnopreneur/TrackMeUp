@@ -5,6 +5,40 @@
 - Added a custom Acrylic ContentDialog with generated digital-file cloud artwork adapted from the owner's reference. Theme-specific veils protect localized warning text; high contrast hides the artwork and uses system colors. Both confirmations retain the shared modal queue, owner lifetime handling and Cancel default. Reset behavior is unchanged.
 - Source review and C# formatting only; no build, tests or live reset. Visual acceptance is tracked in todo.
 
+## 2026-09-21 — Split application facade responsibilities
+
+- Split the system/hardware telemetry operations, capture worker, runtime lifecycle, runtime events, and public product metadata/link operations from `TrackMeUpApplication.cs` into focused partial-class files. Method signatures, dependencies, error handling and runtime behavior are unchanged; the move makes the facade easier to navigate before Store publication.
+- Split the CLI health readout and interactive shell from `CliRouter.cs` into `CliRouter.Interactive.cs`. The same facade calls, commands, exit codes and interactive flow remain in place.
+- C# whitespace formatting and verification passed. No build or tests were run because they were not authorized.
+
+## 2026-09-21 — Record the weekly feature freeze
+
+- Added the September 21–27 feature freeze to AGENTS.md to prepare TrackMeUp for Microsoft Store publication: maintenance and UI polish of existing features only. New-feature requests require a reminder and deferral unless the owner explicitly overrides the freeze after the reminder. Existing execution and delivery approvals remain in effect.
+
+## 2026-09-21 — Plain-language AI summary guide
+
+- Rewrote the AI summary guide for everyday readers, explaining screenshot text, sharing choices, size limits and costs without transport terminology. Preserved the final Code references section unchanged. Documentation only; no build or tests.
+
+## 2026-09-21 — Explain AI summary input and use export Acrylic
+
+- Added More information in ten languages and an allowlisted application-facade link to the GitHub AI summary guide. The guide documents selected text, exact deduplication, local capture limits, the 160,000-character source JSON guard, request overhead, grouping/detail behavior, sensitive-text limits and usage accounting with code references.
+- Changed the shared export window backdrop to Desktop Acrylic. Source review, syntax and formatting only; no build, tests, provider request, app restart or publication. Online link and visual acceptance remain in todo.
+
+## 2026-09-21 — Wider export previews
+
+- Changed the shared export layout from equal columns to 40% controls and 60% preview across all three pages. The controls column is 20% narrower at the same window width; resizing preserves the new proportions and the existing narrow-window stack.
+- Source review and formatting only; no build, tests or app restart.
+
+## 2026-09-21 — Preserve the export preview table
+
+- Remember the preview table by its stable name when refreshing export data. Period and filter changes no longer reset Days or Captures to the single-row Summary. The selection survives loading, cancellation and errors; excluding the selected table chooses Summary.
+- Source review and formatting only; no build, tests or app restart. Visual acceptance remains in todo.
+
+## 2026-09-21 — Player label stack beside the timer
+
+- Moved the label selector and Manage labels into a right-aligned vertical stack beside the timer and capture controls. The group is vertically centered; optional AI spend appears below it. Layout measures the controls and moves the group below the timer when space is insufficient.
+- Removed the superseded AI-spend adaptive setters. Source review and formatting only; no build or tests run. Visual acceptance remains in todo.
+
 ## 2026-09-21 — Release-aware runtime catalog checks
 
 - Fixed the source-based runtime catalog test to exclude simple DEBUG-only blocks when comparing with the compiled Release catalog. More complex conditional directives fail explicitly instead of being silently filtered. Added a compiled-catalog and client-API check that simulation is present only in Debug. Application code and release entitlement behavior are unchanged.

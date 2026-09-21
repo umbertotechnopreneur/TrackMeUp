@@ -61,6 +61,7 @@
   "Export.WholePeriod": "Toàn bộ khoảng thời gian",
   "Export.Detailed": "Tóm tắt chi tiết",
   "Export.AiNotice": "Dùng nhà cung cấp AI và khóa đã cấu hình. Chỉ gửi văn bản đã chọn, không gửi ảnh. Chưa có ước tính chi phí; nhà cung cấp có thể tính phí.",
+  "Export.MoreInformation": "Thông tin thêm",
   "Export.Generate": "Tạo bản tóm tắt",
   "Export.Preview": "Xem trước tệp",
   "Export.Sheets.Header": "Các bảng được bao gồm",

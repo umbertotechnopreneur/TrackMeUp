@@ -61,6 +61,7 @@
   "Export.WholePeriod": "Intero periodo",
   "Export.Detailed": "Riepilogo dettagliato",
   "Export.AiNotice": "Usa il provider AI e la chiave configurati. Invia solo i testi selezionati, senza immagini. La stima non è disponibile; il provider può applicare costi.",
+  "Export.MoreInformation": "Più informazioni",
   "Export.Generate": "Genera riepilogo",
   "Export.Preview": "Anteprima del file",
   "Export.Sheets.Header": "Tabelle incluse",

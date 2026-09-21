@@ -2,6 +2,13 @@
 
 These instructions apply to all changes in this repository.
 
+## Feature freeze: September 21–27, 2026
+
+- Through September 27, 2026 inclusive, focus on maintenance and stability to prepare TrackMeUp for publication on the Microsoft Store. Do not add new features during this period.
+- Bug fixes, reliability and performance improvements, documentation corrections, and UI polish of existing features are in scope. UI polish must not introduce new capabilities or workflows.
+- If the owner requests a new feature, remind them of this week's feature freeze before starting implementation and suggest deferring the idea. A new-feature request alone does not lift the freeze; proceed only if the owner explicitly makes an exception or ends the freeze after the reminder.
+- Existing approval rules for tests, builds, Git delivery, installation and publication still apply.
+
 ## Product writing and author voice
 
 - Keep MailMeUp, PromptMeUp, and TrackMeUp visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
@@ -70,8 +77,8 @@ These instructions apply to all changes in this repository.
 - Avoid PowerShell quoting errors: prefer `pwsh -NoProfile -File <script.ps1>` for scripts and `pwsh -NoProfile -Command '<single-quoted command>'` for short commands; pass arguments as arrays or explicit parameters, do not build nested shell strings, and escape embedded quotes for the receiving command instead of relying on PowerShell interpolation.
 - Start every first-party C# source file with `// SPDX-License-Identifier: MIT`; preserve original notices in generated or third-party files.
 - Commit exclusions include `.env`, `bin/`, `obj/`, `artifacts/`, and `.vs/`.
-- Ignore automatic version metadata changes in `TrackMeUp/build-version.json` and version-only updates in `TrackMeUp/Package.appxmanifest`: do not inspect, restore, report, stage, or commit them unless the user explicitly asks to manage the application version.
 - Run build on supported Windows SDK targets only: x64 and ARM64.
+- Generated MSIX payloads, manifests, build information, and local build state must be written under artifacts/, which is ignored. Tracked package-manifest templates and release-version inputs are source files and local scripts must not overwrite them.
 - Prefer parser checks and dry runs before executing potentially destructive PowerShell scripts.
 - If this task generated build or test output, clean it once after its last use and before handoff with the relevant `dotnet clean` (x64 by default). Commit or push alone does not require cleanup; preserve unrelated artifacts. When producing an installer, preserve the newly validated installer and remove older generated packages only after resolving and verifying their paths under this repository's `artifacts/` directory.
 
