@@ -291,7 +291,6 @@ pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAs
 
 Want to help? Start with [the contributor guide](CONTRIBUTING.md). The [Windows setup guide](docs/DEVELOPMENT.md) walks you through getting a fresh copy, installing what you need, building and testing on x64, and fixing common setup problems. Use the [manual checks](docs/VALIDATION.md) to check how your changes look and behave.
 
-Detailed scenarios live in [the development checklist](docs/DEVELOPMENT_CHECKLIST.md). They are checks to run when authorized, not a record of passing results.
 
 ## More about the project
 

@@ -14,7 +14,8 @@ public sealed record HardwareSnapshotViewState(
     string CollectedAt,
     string DriverStatus,
     IReadOnlyList<HardwareSummaryRow> Summary,
-    IReadOnlyList<string> Details);
+    IReadOnlyList<string> Details,
+    bool HasData = false);
 
 /// <summary>Formats captured sensor DTOs without querying hardware or estimating missing measurements.</summary>
 public static class HardwareSnapshotProjection
@@ -27,30 +28,41 @@ public static class HardwareSnapshotProjection
     {
         ArgumentNullException.ThrowIfNull(culture);
         ArgumentNullException.ThrowIfNull(translate);
-        var missing = translate("Common.NotAvailable");
         var rows = new List<HardwareSummaryRow>();
         foreach (var category in new[] { "Cpu", "Gpu", "Memory", "Storage", "Battery", "Network" })
         {
             var devices = snapshot?.Devices.Where(device => IsCategory(device.Kind, category)).ToArray() ?? [];
+            if (!devices.Any(device => device.Sensors.Any(sensor => sensor.Value.HasValue)))
+            {
+                continue;
+            }
+
+            var missing = translate("Common.NotAvailable");
             var values = devices.Select(device => $"{device.Name}: {Summarize(device, culture, missing)}");
             rows.Add(new HardwareSummaryRow(
                 translate("Hardware.Category." + category),
-                devices.Length == 0 ? missing : string.Join("\n", values)));
+                string.Join("\n", values)));
         }
 
         if (snapshot is null)
         {
-            // Historical captures without telemetry keep an explicit not-collected state; no live read is substituted.
-            return new HardwareSnapshotViewState(translate("Hardware.NotCollected"), missing, missing, rows, []);
+            // Historical captures without telemetry never receive a live read or a placeholder hardware section.
+            return new HardwareSnapshotViewState(string.Empty, string.Empty, string.Empty, rows, []);
         }
 
         var details = new List<string>();
         foreach (var device in snapshot.Devices)
         {
-            details.Add($"{device.Name} · {device.Kind} · {string.Format(culture, translate("Hardware.DeviceUpdated"), device.SampledAt.ToLocalTime().ToString("G", culture))}");
-            foreach (var sensor in device.Sensors)
+            var sensors = device.Sensors.Where(sensor => sensor.Value.HasValue).ToArray();
+            if (sensors.Length == 0)
             {
-                details.Add($"  {sensor.Name} · {sensor.Kind}: {FormatSensor(sensor, culture, missing)}");
+                continue;
+            }
+
+            details.Add($"{device.Name} · {device.Kind} · {string.Format(culture, translate("Hardware.DeviceUpdated"), device.SampledAt.ToLocalTime().ToString("G", culture))}");
+            foreach (var sensor in sensors)
+            {
+                details.Add($"  {sensor.Name} · {sensor.Kind}: {FormatSensor(sensor, culture, translate("Common.NotAvailable"))}");
             }
         }
 
@@ -65,7 +77,8 @@ public static class HardwareSnapshotProjection
             string.Format(culture, translate("Hardware.CollectedAt"), snapshot.Timestamp.ToLocalTime().ToString("G", culture)),
             $"{translate("Hardware.Advanced.Label")}: {TranslateStatus(snapshot.DriverStatus, translate)}",
             rows,
-            details);
+            details,
+            details.Count > 0);
     }
 
     private static bool IsCategory(string kind, string category) => category == "Gpu"
@@ -89,6 +102,14 @@ public static class HardwareSnapshotProjection
                 : sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
             .ThenBy(sensor => sensor.Id, StringComparer.Ordinal)
             .Take(kind is "Data" or "Throughput" or "Energy" ? 2 : 1)).ToArray();
+        if (sensors.Length == 0)
+        {
+            sensors = device.Sensors
+                .Where(sensor => sensor.Value.HasValue)
+                .OrderBy(sensor => sensor.Id, StringComparer.Ordinal)
+                .Take(2)
+                .ToArray();
+        }
         return sensors.Length == 0
             ? missing
             : string.Join(" · ", sensors.Select(sensor => $"{sensor.Name} {FormatSensor(sensor, culture, missing)}"));

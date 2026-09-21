@@ -1,5 +1,11 @@
 # Task Archive
 
+## 2026-09-21 — Align AI prompts with captured context
+
+- Screenshot prompts use the resolved app language and omit empty hardware sections. Device context remains independent of hardware availability. Compact analysis omits sensors; balanced and detailed analysis use smaller bounded summaries with available measurements only.
+- Detailed output uses bullets supported by the viewer. Prompts distinguish observations from inferred intent, duration, completion and productivity.
+- Report summaries use per-request output budgets of 2,000/6,000 tokens across all three providers, recorded in usage metadata, independently of the screenshot detail preference.
+
 ## 2026-09-21 — Restore imports after the application split
 
 - Restored file-scoped service and logging imports in the extracted application partials. The missing imports prevented the CI lint and both Release builds from resolving telemetry types; they also affected service helpers and logging extension methods. No runtime behavior changed. The correction is checked by the PR's authorized CI.

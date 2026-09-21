@@ -36,21 +36,22 @@ public sealed class HardwareSnapshotProjectionTests
         Assert.Contains("43000 mWh", battery.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("Temperature", battery.Value, StringComparison.Ordinal);
         Assert.Contains(state.Hardware.Details, line => line.Contains(sampledAt.ToLocalTime().ToString("G", strings.Culture), StringComparison.Ordinal));
-        Assert.Contains(state.Hardware.Details, line => line.Contains("Temperature", StringComparison.Ordinal) && line.Contains(strings.Translate("Common.NotAvailable"), StringComparison.Ordinal));
+        Assert.DoesNotContain(state.Hardware.Details, line => line.Contains("Temperature", StringComparison.Ordinal));
         Assert.Equal(strings.Translate("Hardware.Status.Partial"), state.Hardware.Status);
         Assert.Equal("--", state.CpuUsage);
     }
 
     [Fact]
-    public void Projection_DistinguishesAbsentBatteryFromAnUncollectedHistoricalSnapshot()
+    public void Projection_HidesHardwareWhenNoMeasurementsExist()
     {
         var strings = new LocalizationService("en-US");
         var collected = HardwareSnapshotProjection.Create(new SystemSnapshot(DateTimeOffset.UtcNow, "ready", []), strings.Culture, strings.Translate);
         var historical = HardwareSnapshotProjection.Create(null, strings.Culture, strings.Translate);
 
-        Assert.Equal("Available", collected.Status);
-        Assert.Equal(strings.Translate("Hardware.NotCollected"), historical.Status);
-        Assert.Equal(strings.Translate("Common.NotAvailable"), collected.Summary.Single(row => row.Label == "Battery").Value);
+        Assert.False(collected.HasData);
+        Assert.False(historical.HasData);
+        Assert.Empty(collected.Summary);
+        Assert.Empty(historical.Summary);
         Assert.Empty(historical.Details);
     }
 

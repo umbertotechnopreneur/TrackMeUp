@@ -89,14 +89,16 @@
                             <CheckBox x:Name="SummaryTitlesCheck" Tag="Export.Titles" Click="SummaryOptionsChanged" />
                             <TextBlock x:Name="ProviderText" TextWrapping="Wrap" />
                             <TextBlock Tag="Export.AiNotice" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Button Tag="Export.MoreInformation" Content="More information" Click="SummaryInfo_Click" />
-                            <Button x:Name="GenerateButton" Tag="Export.Generate" Click="Generate_Click">
-                                <Grid ColumnSpacing="8">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xE70F;" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource SummaryActionIconBrush}" AutomationProperties.AccessibilityView="Raw" />
-                                    <TextBlock Grid.Column="1" Tag="Export.Generate" Text="Generate summary" TextWrapping="Wrap" />
-                                </Grid>
-                            </Button>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Tag="Export.MoreInformation" Content="More information" Click="SummaryInfo_Click" />
+                                <Button x:Name="GenerateButton" Tag="Export.Generate" Click="Generate_Click">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <FontIcon Glyph="&#xE70F;" FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{ThemeResource SummaryActionIconBrush}" AutomationProperties.AccessibilityView="Raw" />
+                                        <TextBlock Grid.Column="1" Tag="Export.Generate" Text="Generate summary" TextWrapping="Wrap" />
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                     <StackPanel x:Name="PreviewPanel" Grid.Column="1" Spacing="14">

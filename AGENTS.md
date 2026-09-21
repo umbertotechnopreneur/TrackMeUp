@@ -85,7 +85,7 @@ These instructions apply to all changes in this repository.
 ## Code and UI guidance
 
 - Add XML documentation to public/protected methods and brief inline comments for critical I/O, process/OS interop, and external-call paths. Explain failure behavior and any fallback in service/monitoring logic and exception/guard clauses.
-- Keep UI strings separate from business logic. When behavior changes, include at least one unit/integration scenario checklist entry in `docs/DEVELOPMENT_CHECKLIST.md`. Keep detailed checks out of the product README.
+- Keep UI strings separate from business logic. Keep detailed checks out of the product README.
 - For Screenshot UI work, use reusable components and keep data/business logic in models/services. Avoid duplicate large titles and card wrappers around controls; emphasize a translucent Mica/Acrylic look.
 - Track active work in `.github/tasks/todo.md` and completed work in `.github/tasks/archive.md`.
 

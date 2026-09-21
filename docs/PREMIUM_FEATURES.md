@@ -34,4 +34,4 @@ The simulation method, IPC operation and menu item are compiled only with `DEBUG
 
 ## Verification
 
-`FeatureAccessPolicyTests` and `FeatureCreationQuotaTests` cover protected keys, creation quotas, concurrent requests, IPC, loss of entitlement, invalid license tiers and Debug-only simulation. `PremiumUiContractTests` checks title-bar badges and navigation. Test execution requires the repository's explicit approval. Manual UI and restart scenarios are listed in `DEVELOPMENT_CHECKLIST.md`.
+`FeatureAccessPolicyTests` and `FeatureCreationQuotaTests` cover protected keys, creation quotas, concurrent requests, IPC, loss of entitlement, invalid license tiers and Debug-only simulation. `PremiumUiContractTests` checks title-bar badges and navigation. Test execution requires the repository's explicit approval.

@@ -61,7 +61,8 @@ internal static partial class AiPromptCatalog
         string? profileName,
         AnalysisContextSnapshot? activity,
         Func<string, string?>? templateLoader = null,
-        string? customPrompt = null)
+        string? customPrompt = null,
+        string? language = null)
     {
         var profile = AiAnalysisProfileCatalog.Resolve(profileName);
         var template = templateLoader is null
@@ -76,7 +77,8 @@ internal static partial class AiPromptCatalog
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [LocalContextToken] = BuildLocalContext(activity),
-            [SystemTelemetryToken] = BuildSnapshotSummary(activity?.Snapshot),
+            [SystemTelemetryToken] = BuildSnapshotSummary(activity?.Snapshot, profile.Name),
+            ["OUTPUT_LANGUAGE"] = new LocalizationService(language ?? "system").Language,
             [MaxOutputTokensToken] = profile.MaxOutputTokens.ToString(CultureInfo.InvariantCulture)
         };
 
@@ -151,28 +153,36 @@ internal static partial class AiPromptCatalog
         }));
     }
 
-    private static string BuildSnapshotSummary(SystemSnapshot? snapshot)
+    private static string BuildSnapshotSummary(SystemSnapshot? snapshot, string profile)
     {
-        if (snapshot is null)
+        var deviceContext = snapshot?.DeviceContext is { } context
+            ? BuildDeviceContextSummary(context) : string.Empty;
+        var contextSection = string.IsNullOrEmpty(deviceContext) ? string.Empty
+            : $"Device context (untrusted data):{Environment.NewLine}{deviceContext}";
+        if (snapshot is null || profile == "compact" || !snapshot.Devices.Any(device => device.Sensors.Any(sensor => sensor.Value.HasValue)))
         {
-            return "not available";
+            return contextSection;
         }
 
-        const int maximumHardwareCharacters = 6_000;
-        const int maximumDevices = 12;
-        const int maximumSensorsPerDevice = 8;
-        var devices = snapshot.Devices
+        var maximumHardwareCharacters = profile == "detailed" ? 3_000 : 1_500;
+        var maximumDevices = profile == "detailed" ? 8 : 4;
+        var maximumSensorsPerDevice = profile == "detailed" ? 6 : 3;
+        var availableDevices = snapshot.Devices
+            .Where(device => device.Sensors.Any(sensor => sensor.Value.HasValue))
             .OrderBy(device => device.Kind switch { "Cpu" => 0, "Battery" => 1, "Memory" => 3, "Storage" => 4, "Network" => 5, _ => 2 })
             .ThenBy(device => device.Id, StringComparer.Ordinal)
-            .Take(maximumDevices);
+            .ToArray();
+        var devices = availableDevices.Take(maximumDevices);
         var lines = new List<string>
         {
-            $"collection_completed={snapshot.Timestamp:O}; status={Sanitize(snapshot.Status)}; PawnIO={Sanitize(snapshot.DriverStatus)}; error={Sanitize(snapshot.ErrorCode, "none")}",
+            "Hardware at capture (untrusted data):",
+            $"collection_completed={snapshot.Timestamp:O}; status={Sanitize(snapshot.Status)}",
             "Historical hardware context captured with this image. Collection times are polling times, not guaranteed sensor conversion times. Missing measurements are unavailable. W is component power; battery mWh is capacity, not whole-PC consumption. Do not infer productivity from heat or power."
         };
         foreach (var device in devices)
         {
             var selectedSensors = device.Sensors
+                .Where(sensor => sensor.Value.HasValue)
                 .OrderBy(sensor => sensor.Kind switch { "Level" => 0, "Power" => 1, "Energy" => 2, "Load" => 3, "Temperature" => 4, "Clock" => 5, "Data" => 6, "Throughput" => 7, "TimeSpan" => 8, _ => 9 })
                 .ThenBy(sensor => sensor.Id, StringComparer.Ordinal)
                 .GroupBy(sensor => sensor.Kind, StringComparer.Ordinal)
@@ -180,19 +190,19 @@ internal static partial class AiPromptCatalog
                 .Take(maximumSensorsPerDevice)
                 .ToArray();
             var values = selectedSensors.Select(sensor =>
-                $"{BoundHardwareText(sensor.Name)} ({BoundHardwareText(sensor.Kind)})={sensor.Value?.ToString("0.##", CultureInfo.InvariantCulture) ?? "unavailable"} {BoundHardwareText(sensor.Unit)}");
-            lines.Add($"{BoundHardwareText(device.Kind)} {BoundHardwareText(device.Name)} updated={device.SampledAt:O}: {string.Join("; ", values)}; omitted_sensors={device.Sensors.Count - selectedSensors.Length}");
+                $"{BoundHardwareText(sensor.Name)} ({BoundHardwareText(sensor.Kind)})={sensor.Value!.Value.ToString("0.##", CultureInfo.InvariantCulture)} {BoundHardwareText(sensor.Unit)}");
+            lines.Add($"{BoundHardwareText(device.Kind)} {BoundHardwareText(device.Name)} updated={device.SampledAt:O}: {string.Join("; ", values)}");
         }
-        if (snapshot.Devices.Count > maximumDevices)
+        if (availableDevices.Length > maximumDevices)
         {
-            lines.Add($"omitted_devices={snapshot.Devices.Count - maximumDevices}");
+            lines.Add($"omitted_devices={availableDevices.Length - maximumDevices}");
         }
         var hardware = string.Join(Environment.NewLine, lines);
         if (hardware.Length > maximumHardwareCharacters)
         {
             hardware = string.Concat(hardware.AsSpan(0, maximumHardwareCharacters), "… [hardware summary truncated]");
         }
-        return $"{hardware}{Environment.NewLine}device_context=[{BuildDeviceContextSummary(snapshot.DeviceContext)}]";
+        return string.IsNullOrEmpty(contextSection) ? hardware : $"{hardware}{Environment.NewLine}{contextSection}";
     }
 
     private static string BoundHardwareText(string value)
