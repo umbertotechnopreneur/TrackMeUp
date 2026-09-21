@@ -241,7 +241,6 @@ public sealed class WorldClockService : IDisposable
     public async Task<WorldClockSnapshot> BuildCurrentSnapshotAsync(
         IReadOnlyList<string>? cityIds,
         bool weatherEnabled,
-        bool hideSpaceWeatherByLocation,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -261,7 +260,7 @@ public sealed class WorldClockService : IDisposable
                     "no-clocks",
                     0,
                     0,
-                    providerConfiguration.IsConfigured)), hideSpaceWeatherByLocation, cancellationToken).ConfigureAwait(false);
+                    providerConfiguration.IsConfigured)), cancellationToken).ConfigureAwait(false);
         }
 
         if (!weatherEnabled)
@@ -277,7 +276,7 @@ public sealed class WorldClockService : IDisposable
                     "user-disabled",
                     selection.Count,
                     0,
-                    providerConfiguration.IsConfigured)), hideSpaceWeatherByLocation, cancellationToken).ConfigureAwait(false);
+                    providerConfiguration.IsConfigured)), cancellationToken).ConfigureAwait(false);
         }
 
         var locations = selection.Select(cityId =>
@@ -298,7 +297,7 @@ public sealed class WorldClockService : IDisposable
             cities,
             instantUtc,
             snapshotWeather.Observations,
-            snapshotWeather.Status), hideSpaceWeatherByLocation, cancellationToken).ConfigureAwait(false);
+            snapshotWeather.Status), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Invalidates observations that were loaded with the previous provider configuration.</summary>
@@ -312,17 +311,14 @@ public sealed class WorldClockService : IDisposable
 
     private static async Task<WorldClockSnapshot> AttachCurrentSpaceWeatherAsync(
         WorldClockSnapshot snapshot,
-        bool hideSpaceWeatherByLocation,
         CancellationToken cancellationToken)
     {
-        var locations = snapshot.Map.Cities.ToDictionary(city => city.CityId);
         var clocks = new List<WorldClockItem>(snapshot.Clocks.Count);
         foreach (var clock in snapshot.Clocks)
         {
-            var location = locations[clock.CityId];
-            // Reuse the shared NOAA cache; the saved preference controls local eligibility, never alert validity.
+            // Reuse the shared NOAA cache so every selected city receives the same current global condition.
             var alert = await CelestialSpaceWeatherService.GetCurrentSignificantAlertAsync(
-                snapshot.InstantUtc, location.Latitude, location.Longitude, hideSpaceWeatherByLocation, cancellationToken).ConfigureAwait(false);
+                snapshot.InstantUtc, cancellationToken).ConfigureAwait(false);
             clocks.Add(clock with { SpaceWeatherAlert = alert });
         }
 

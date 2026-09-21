@@ -1,5 +1,10 @@
 # Task Archive
 
+## 2026-09-21 — Show global NOAA space weather
+
+- Removed the city latitude, longitude and darkness filter from NOAA forecasts and alerts. The celestial agenda and world clocks now show every valid, significant global condition in the 48-hour window; coordinates remain in use only for local astronomy and weather. Removed the obsolete setting, option and policy.
+- Reworded customer-facing tier labels as “piano Free” and localized equivalents. Formatter verification and 114 focused Core tests passed; generated test output was cleaned.
+
 ## 2026-09-21 — Separate private design explorations
 
 - Archived unused UI mockups and the world-clock pilot outside Git. Retained shipped artwork and its build sources; clarified the repository boundary. Documentation/reference checks only; no build or tests.

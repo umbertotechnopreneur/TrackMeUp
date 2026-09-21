@@ -26,17 +26,13 @@ internal static class CelestialSpaceWeatherService
     private static DateTimeOffset? _lastRefreshAttemptUtc;
     private static SpaceWeatherPayload _payload = SpaceWeatherPayload.Empty;
 
-    /// <summary>Returns a cached feed and converts significant forecast or active conditions into city-local agenda events.</summary>
+    /// <summary>Returns a cached feed and converts significant global forecast or active conditions into city-local agenda events.</summary>
     internal static async Task<SpaceWeatherProjection> GetAsync(
         DateTimeOffset instantUtc,
         TimeZoneInfo zone,
-        double latitude,
-        double longitude,
-        bool hideByLocation,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(zone);
-        AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
         cancellationToken.ThrowIfCancellationRequested();
         var instant = instantUtc.ToUniversalTime();
         if ((instant - DateTimeOffset.UtcNow).Duration() > RelevantInstantWindow)
@@ -46,21 +42,17 @@ internal static class CelestialSpaceWeatherService
         var localPayload = payload with
         {
             ActiveAlerts = Array.AsReadOnly(payload.ActiveAlerts
-            .Where(alert => IsRelevantAlert(alert, instant, latitude, longitude, hideByLocation)).ToArray())
+            .Where(alert => IsRelevantAlert(alert, instant)).ToArray())
         };
         var snapshot = new SpaceWeatherSnapshot(payload.RetrievedUtc, payload.KpForecast, localPayload.ActiveAlerts);
-        return new SpaceWeatherProjection(snapshot, BuildAgenda(localPayload, instant, zone, latitude, longitude, hideByLocation));
+        return new SpaceWeatherProjection(snapshot, BuildAgenda(localPayload, instant, zone));
     }
 
-    /// <summary>Returns the highest-severity current condition eligible for the selected city's compact annotation.</summary>
+    /// <summary>Returns the highest-severity current global condition for the compact annotation.</summary>
     internal static async Task<SpaceWeatherAlert?> GetCurrentSignificantAlertAsync(
         DateTimeOffset instantUtc,
-        double latitude,
-        double longitude,
-        bool hideByLocation,
         CancellationToken cancellationToken)
     {
-        AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
         cancellationToken.ThrowIfCancellationRequested();
         var instant = instantUtc.ToUniversalTime();
         if ((instant - DateTimeOffset.UtcNow).Duration() > RelevantInstantWindow)
@@ -68,7 +60,7 @@ internal static class CelestialSpaceWeatherService
 
         var payload = await GetPayloadAsync(cancellationToken).ConfigureAwait(false);
         return payload.ActiveAlerts
-            .Where(alert => IsRelevantAlert(alert, instant, latitude, longitude, hideByLocation))
+            .Where(alert => IsRelevantAlert(alert, instant))
             .Where(alert => alert.NoaaScale is not null || alert.Kind == SpaceWeatherEventKind.HighEnergyElectronFlux)
             .OrderByDescending(alert => alert.NoaaScale ?? 0)
             .ThenByDescending(alert => alert.IssuedUtc)
@@ -152,12 +144,12 @@ internal static class CelestialSpaceWeatherService
         return new SpaceWeatherAlert(row.ProductId, issued, validFrom, validTo, kind, scale, kp, BuildSummary(kind, scale, kp));
     }
 
-    private static IReadOnlyList<CelestialAgendaEvent> BuildAgenda(SpaceWeatherPayload payload, DateTimeOffset instant, TimeZoneInfo zone, double latitude, double longitude, bool hideByLocation)
+    private static IReadOnlyList<CelestialAgendaEvent> BuildAgenda(SpaceWeatherPayload payload, DateTimeOffset instant, TimeZoneInfo zone)
     {
         var events = new List<CelestialAgendaEvent>();
         var forecastEnd = instant.AddHours(48);
         var significantForecasts = payload.KpForecast
-            .Where(period => IsRelevantForecast(period, instant, latitude, longitude, hideByLocation))
+            .Where(period => IsRelevantForecast(period, instant))
             .OrderBy(period => period.StartUtc)
             .ToArray();
 
@@ -185,30 +177,22 @@ internal static class CelestialSpaceWeatherService
         return Array.AsReadOnly(events.OrderBy(item => item.StartUtc).ThenBy(item => item.SpaceWeatherKind).ToArray());
     }
 
-    /// <summary>Preserves forecast validity and storm significance; only geographic and darkness checks are optional.</summary>
-    internal static bool IsRelevantForecast(SpaceWeatherKpForecast period, DateTimeOffset instant, double latitude, double longitude, bool hideByLocation)
+    /// <summary>Preserves forecast validity and storm significance without filtering by a city location.</summary>
+    internal static bool IsRelevantForecast(SpaceWeatherKpForecast period, DateTimeOffset instant)
     {
-        AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
         return string.Equals(period.Status, "predicted", StringComparison.OrdinalIgnoreCase)
             && period.StartUtc.AddHours(3) > instant && period.StartUtc < instant.AddHours(48)
-            && double.IsFinite(period.KpIndex) && period.KpIndex is >= 5 and <= 9
-            && (!hideByLocation || (AuroraVisibilityPolicy.IsLatitudeEligible(latitude, longitude, period.KpIndex)
-                && AuroraVisibilityPolicy.HasDarkness(period.StartUtc < instant ? instant : period.StartUtc,
-                    period.StartUtc.AddHours(3), latitude, longitude)));
+            && double.IsFinite(period.KpIndex) && period.KpIndex is >= 5 and <= 9;
     }
 
-    /// <summary>Never revives expired alerts; the location preference only affects geomagnetic conditions.</summary>
-    internal static bool IsRelevantAlert(SpaceWeatherAlert alert, DateTimeOffset instant, double latitude, double longitude, bool hideByLocation)
+    /// <summary>Never revives expired alerts and does not filter current NOAA conditions by city location.</summary>
+    internal static bool IsRelevantAlert(SpaceWeatherAlert alert, DateTimeOffset instant)
     {
-        AuroraVisibilityPolicy.ValidateCoordinates(latitude, longitude);
         // Recheck cached validity at the requested instant; an old 'Active Warning: YES' must not persist forever.
         if (alert.IssuedUtc > instant || alert.ValidFromUtc > instant
             || (alert.ValidToUtc is { } end ? end <= instant : alert.IssuedUtc.AddHours(24) <= instant)) return false;
-        if (alert.Kind != SpaceWeatherEventKind.GeomagneticStorm) return true;
-        var kp = alert.KpIndex ?? (alert.NoaaScale is { } scale ? scale + 4d : 0d);
-        return double.IsFinite(kp) && kp is >= 5 and <= 9
-            && (!hideByLocation || (AuroraVisibilityPolicy.IsLatitudeEligible(latitude, longitude, kp)
-                && AuroraVisibilityPolicy.IsDark(instant, latitude, longitude)));
+        return alert.Kind != SpaceWeatherEventKind.GeomagneticStorm
+            || (alert.KpIndex ?? (alert.NoaaScale is { } scale ? scale + 4d : 0d)) is >= 5 and <= 9;
     }
 
     private static IEnumerable<SpaceWeatherKpForecast[]> GroupConsecutiveForecasts(IReadOnlyList<SpaceWeatherKpForecast> periods)
