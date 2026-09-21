@@ -24,8 +24,8 @@ declaration date:
 - the Atomic Nuke privacy banners under `atomic-nuke/output/`;
 - the Recall Timeline source and generated outputs under `recall-timeline/`;
 - `TrackMeUp/Assets/TrackMeUpSnapshotPlaceholder.png`;
-- the text-prompt-generated world-clock watercolor pilot recorded under
-  `design/world-clocks/watercolor/pilot-v1/`;
+- the text-prompt-generated world-clock watercolor pilot, now archived privately
+  as design exploration rather than a shipped asset;
 - the manifest-defined selected Urban Wash city masters and their deterministic WebP
   derivatives under `design/world-clocks/watercolor/` and
   `TrackMeUp/Assets/WorldClocks/Skylines/`; and

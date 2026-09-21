@@ -1,5 +1,9 @@
 # Task Archive
 
+## 2026-09-21 — Separate private design explorations
+
+- Archived unused UI mockups and the world-clock pilot outside Git. Retained shipped artwork and its build sources; clarified the repository boundary. Documentation/reference checks only; no build or tests.
+
 ## 2026-09-21 — Align AI prompts with captured context
 
 - Screenshot prompts use the resolved app language and omit empty hardware sections. Device context remains independent of hardware availability. Compact analysis omits sensors; balanced and detailed analysis use smaller bounded summaries with available measurements only.

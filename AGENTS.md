@@ -29,6 +29,8 @@ These instructions apply to all changes in this repository.
 
 ## Private business notes
 
+- Keep UI mockups, design explorations, product roadmaps and internal product decisions in the owner's Obsidian product notes, not in this repository. Retain shipped assets, real screenshots, asset provenance and documentation needed to use, build or contribute to the software.
+
 - Keep pricing, commercial strategy, launch plans, future product proposals, OAuth verification preparation, Store account procedures and owner checkpoints in the owner's Obsidian vault under `40_Business/MeUp/`, organized by product. Do not create or mirror these notes in public repositories.
 - Keep current user and contributor documentation, public privacy policies and terms, licenses, attribution, build instructions, technical validation records and files required by code or CI in the repository. Split documents that mix public technical guidance with internal planning.
 - For publication or Store listing work, first read `40_Business/MeUp/Business decisions.md` and the relevant product notes. The owner-approved purchase notice is preserved there; proposals and approved wording are not evidence of implemented licensing.
