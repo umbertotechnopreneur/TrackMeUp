@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+using TrackMeUp.Services;
+
 namespace TrackMeUp.Application;
 
 /// <summary>Owns runtime disposal, cancellation and serialized application work.</summary>

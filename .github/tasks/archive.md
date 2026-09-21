@@ -1,5 +1,9 @@
 # Task Archive
 
+## 2026-09-21 — Restore imports after the application split
+
+- Restored file-scoped service and logging imports in the extracted application partials. The missing imports prevented the CI lint and both Release builds from resolving telemetry types; they also affected service helpers and logging extension methods. No runtime behavior changed. The correction is checked by the PR's authorized CI.
+
 ## 2026-09-21 — Illustrated Nuclearize confirmation
 
 - Added a custom Acrylic ContentDialog with generated digital-file cloud artwork adapted from the owner's reference. Theme-specific veils protect localized warning text; high contrast hides the artwork and uses system colors. Both confirmations retain the shared modal queue, owner lifetime handling and Cancel default. Reset behavior is unchanged.

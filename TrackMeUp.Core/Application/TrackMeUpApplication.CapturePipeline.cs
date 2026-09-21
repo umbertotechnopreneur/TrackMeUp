@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+using Microsoft.Extensions.Logging;
+using TrackMeUp.Services;
+
 namespace TrackMeUp.Application;
 
 /// <summary>Coordinates bounded desktop capture work and its optional hardware context.</summary>

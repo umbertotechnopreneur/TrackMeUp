@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+using Microsoft.Extensions.Logging;
+using TrackMeUp.Services;
+
 namespace TrackMeUp.Application;
 
 /// <summary>Provides system and hardware telemetry through the shared runtime facade.</summary>

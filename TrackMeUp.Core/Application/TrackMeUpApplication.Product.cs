@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace TrackMeUp.Application;
 
