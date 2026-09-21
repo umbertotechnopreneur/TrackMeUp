@@ -82,6 +82,8 @@ internal sealed class RuntimeRequestDispatcher
                     Read<UpdateInstallationProfileRequest>(request.Payload)
                         ?? throw new InvalidDataException("An installation profile update payload is required."),
                     cancellationToken)),
+                RuntimeOperation.ArchiveProgressV1 => ToResponse(request, await _application.GetDataArchiveProgressAsync(
+                    Read<DataArchiveProgressRequest>(request.Payload) ?? throw new InvalidDataException("An archive progress identity is required."), cancellationToken)),
                 RuntimeOperation.ArchiveExportV1 => ToResponse(request, await _application.ExportDataArchiveAsync(
                     Read<DataArchiveExportRequest>(request.Payload)
                         ?? throw new InvalidDataException("An archive export payload is required."),
@@ -118,6 +120,15 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.AiKeySet => ToResponse(request, await _application.SetAiKeyAsync(ReadString(request.Payload, "keyVariable"), ReadString(request.Payload, "secret"), cancellationToken)),
                 RuntimeOperation.AiAnalyze => ToResponse(request, await _application.AnalyzeCurrentActivityAsync(Read<AnalyzeCurrentActivityRequest>(request.Payload) ?? new AnalyzeCurrentActivityRequest(), cancellationToken)),
                 RuntimeOperation.ReportQueryV1 => await DispatchReportQueryAsync(request, cancellationToken),
+                RuntimeOperation.ReportExportSetupV1 => ToResponse(request, await _application.GetReportExportSetupAsync(cancellationToken)),
+                RuntimeOperation.ReportExportPreviewV1 => ToResponse(request, await _application.PreviewReportExportAsync(
+                    Read<ReportExportOptions>(request.Payload) ?? throw new InvalidDataException("Export options are required."), cancellationToken)),
+                RuntimeOperation.ReportExportPreferencesV1 => ToResponse(request, await _application.SaveReportExportPreferencesAsync(
+                    Read<ReportExportOptions>(request.Payload) ?? throw new InvalidDataException("Export options are required."), cancellationToken)),
+                RuntimeOperation.ReportExportWriteV1 => ToResponse(request, await _application.ExportReportAsync(
+                    Read<ReportExportRequest>(request.Payload) ?? throw new InvalidDataException("An export request is required."), cancellationToken)),
+                RuntimeOperation.ReportExportSummaryV1 => ToResponse(request, await _application.GenerateReportSummaryAsync(
+                    Read<ReportSummaryRequest>(request.Payload) ?? throw new InvalidDataException("A summary request is required."), cancellationToken)),
                 RuntimeOperation.UiOpen => ToResponse(request, await _application.OpenUserInterfaceAsync(cancellationToken)),
                 RuntimeOperation.PrivacyList => ToResponse(request, await _application.GetPrivacyRulesAsync(cancellationToken)),
                 RuntimeOperation.PrivacyAdd => ToResponse(request, await _application.AddPrivacyRuleAsync(ReadString(request.Payload, "type"), ReadString(request.Payload, "value"), cancellationToken)),
@@ -134,6 +145,11 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.PluginsEnable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), true, cancellationToken)),
                 RuntimeOperation.PluginsDisable => ToResponse(request, await _application.SetPluginEnabledAsync(ReadString(request.Payload, "id"), false, cancellationToken)),
                 RuntimeOperation.SettingsGet => ToResponse(request, await _application.GetSettingsAsync(cancellationToken)),
+                RuntimeOperation.FeatureAccessGetV1 => ToResponse(request, await _application.GetFeatureAccessAsync(cancellationToken)),
+#if DEBUG
+                RuntimeOperation.DebugFeatureSimulateV1 => ToResponse(request, await _application.SimulateFeatureAccessAsync(
+                    Read<ProductTier?>(request.Payload) ?? throw new ArgumentException("An access tier is required."), cancellationToken)),
+#endif
                 RuntimeOperation.QuickSetupApplyV1 => ToResponse(request, await _application.ApplyQuickSetupProfileAsync(
                     Read<QuickSetupProfileRequest>(request.Payload) ?? new QuickSetupProfileRequest(string.Empty, false),
                     cancellationToken)),

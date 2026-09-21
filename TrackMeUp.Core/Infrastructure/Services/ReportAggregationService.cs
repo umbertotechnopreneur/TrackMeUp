@@ -28,7 +28,8 @@ public sealed class ReportAggregationService
     internal OperationResult<ReportSnapshot> Build(
         ReportQuery query,
         int applicationLimit,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? installationId = null)
     {
         if (query is null)
         {
@@ -108,8 +109,8 @@ public sealed class ReportAggregationService
         _store.VisitReportData(
             fromUtc,
             toUtc,
-            aggregation.AddSample,
-            aiUsage.Add,
+            sample => { if (installationId is null || sample.InstallationId == installationId) aggregation.AddSample(sample); },
+            usage => { if (installationId is null) aiUsage.Add(usage); },
             cancellationToken);
 
         var snapshot = aggregation.BuildSnapshot(

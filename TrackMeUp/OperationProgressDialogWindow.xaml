@@ -33,9 +33,10 @@
                 TextTrimming="CharacterEllipsis" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="28,20,28,28" RowSpacing="24">
+        <Grid Grid.Row="1" Padding="28,20,28,28" RowSpacing="14">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <ScrollViewer
@@ -50,9 +51,14 @@
                     LineHeight="22"
                     TextWrapping="WrapWholeWords" />
             </ScrollViewer>
+            <StackPanel Grid.Row="1" Spacing="6">
+                <TextBlock x:Name="PhaseText" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                <TextBlock x:Name="CountText" TextWrapping="Wrap" />
+                <TextBlock x:Name="ElapsedText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
             <ProgressBar
                 x:Name="OperationProgress"
-                Grid.Row="1"
+                Grid.Row="2"
                 HorizontalAlignment="Stretch"
                 IsIndeterminate="True" />
         </Grid>

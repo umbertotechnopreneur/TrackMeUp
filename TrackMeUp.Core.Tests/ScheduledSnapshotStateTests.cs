@@ -16,6 +16,11 @@ namespace TrackMeUp.Core.Tests;
 [Collection(ProcessEnvironmentCollection.Name)]
 public sealed class ScheduledSnapshotStateTests
 {
+    private sealed class PremiumLicense : IFeatureLicenseSource
+    {
+        /// <inheritdoc />
+        public ProductTier Tier => ProductTier.Premium;
+    }
     private const string TestApiKeyVariable = "TRACKMEUP_OPENAI_APIKEY";
 
     /// <summary>Verifies that an empty active-hours schedule suppresses the capture countdown.</summary>
@@ -41,7 +46,7 @@ public sealed class ScheduledSnapshotStateTests
                 new FakeHardwareTelemetryService(),
                 new OpenAiAnalysisService(store, new ScreenCaptureService(utilities.GetAppVersion())),
                 new StartupService(),
-                new BuildInformationService());
+                new BuildInformationService(), featureLicenseSource: new PremiumLicense());
 
             var started = await application.StartTrackingAsync(new StartTrackingRequest(), CancellationToken.None);
             var enabled = await application.PatchSettingsAsync(

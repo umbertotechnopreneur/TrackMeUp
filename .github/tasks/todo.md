@@ -1,4 +1,91 @@
 # TrackMeUp performance and footprint optimization handoff
+
+## Release runtime catalog contract (2026-09-21)
+
+- [ ] Confirm the new PR #42 CI run passes after the configuration-aware runtime catalog test fix. All five RuntimeOperationCatalogTests passed in both Debug and Release x64 with analyzers enabled; the compiled Release catalog and client exclude Debug simulation.
+
+## Archive operation feedback and regression corrections (2026-09-21)
+
+- [ ] Visually verify native archive export, preview and import with synthetic data: localized phases, real per-phase file counts and elapsed time must update while the dialog remains responsive. Check remote-runtime polling, failures, shutdown, light/dark/high contrast and text scaling. No installation or app restart is part of this change.
+
+## NOAA location filter and search material (2026-09-21)
+
+- [ ] Run the new SpaceWeatherLocationFilterTests and the updated search surface checks after explicit approval. Verify persisted on/off state, low latitude, polar day/night, unchanged non-geomagnetic alerts, expired alerts, and significant forecasts in the 48-hour window.
+- [ ] In world-clock options, verify the localized NOAA location switch and help in all ten languages, error rollback, and immediate refresh of clocks and an already-open agenda. In Search, check the transparent results pane over the window material, selection, keyboard focus, disabled transparency and high contrast. The owner authorized commit, push and CI; no local build or tests were run.
+- [ ] Verify clean-checkout CI with the newly included important-date catalog. The current file includes the existing birthday entry; no catalog contents were changed.
+
+- [ ] Verify export localization in a future authorized build: all nine buttons declare visible text, with small colored icons only for Generate summary, Save preferences and Export. ReportExportLocalizationContractTests covers string content/tagged captions, the limited icon set and all ten locales but has not been run. The owner requested source changes only; no build or restart. Manually check hidden tabs, busy-state actions and high-contrast icons when verification is authorized.
+
+- [ ] Visually verify the fixed-width player label selector in the next Debug build: switching between short/long/no label must not move Manage labels. Source change only; no new build or tests run for this adjustment.
+
+## Free-tier limits, import comparison and UI refinements (2026-09-21)
+
+- [ ] Visually accept the implemented Free creation limits (three labels and clocks), upgrade dialogs and Premium title-bar badges for screenshot scheduling, report export and archive transfer. Existing over-limit catalogs and active labels must remain intact; check stale dialogs after a profile change.
+- [ ] Visually accept left-aligned label controls, colored action icons, borderless appearance choices, simplified OCR/AI settings and the matching world-clock menu. Verify responsive clock details with no manual density command, plus light/dark/high contrast, keyboard navigation and 200% text scaling.
+- [ ] Obtain approval to rerun only the affected tests: FeatureCreationQuotaTests, WorldClockServiceTests.Conversion_RejectsInvalidAndAmbiguousCivilTimes, all four DataArchiveServiceTests.PreviewImport_ExistingSnapshot_ComparesContentInsteadOfJsonFormatting cases, and the four corrected UI contracts. The first run passed 241 of 252 checks; eleven failed because of incomplete fixtures or stale expectations, now corrected and compile-checked but not rerun. Keep synthetic archive capture rows present so JSON comparisons exercise actual records. Debug x64 unpackaged build and formatter verification passed; the updated development EXE is running. Do not import the owner's archive or alter real settings in tests.
+
+## Activity export (2026-09-21)
+
+- [ ] Visually accept More → Export activity in the local Debug unpackaged app: responsive navigation and footer, date/device filters, field selection, preview, Excel/CSV/JSON files and editable AI summaries. Check Free → Export opens the upgrade dialog and simulated Premium can write files. The 93 focused Core checks and four presentation boundary checks passed after correcting the isolated screenshot fixture and rerunning only the eight affected export tests with approval. Real-provider requests, opening the workbook in Excel and commercial Store purchase integration remain unverified or pending; use synthetic data for manual checks.
+
+## CLI operational refresh (2026-09-21)
+
+- [ ] Validate the Premium CLI in an installed app with synthetic data: Free/Premium transitions, interactive and watch downgrade, report/search date ranges, expired import/reprocessing plans and failure reporting. Check screenshot maintenance and export/import previews before confirming synthetic writes. Reset requires a disposable test profile and separate owner approval. Local x64 Debug CLI compilation, formatting verification and all 163 CLI tests passed. Commercial entitlement integration remains pending; current production default is Free.
+
+## Premium feature policy and Debug simulation (2026-09-21)
+
+- [ ] Validate Free/Premium switching through the Debug main menu: Free supports three labels and clocks, blocks further creation with the upgrade dialog and preserves existing catalogs/selection after downgrade. Save-protected windows keep a title-bar badge and editable previews. Restart resets simulation. Connect a verified commercial license source before shipping Premium purchases; the current production default is explicitly Free.
+
+## Main-menu shortcuts and responsive label management (2026-09-21)
+
+- [ ] Visually validate Search, Activity history and Screenshot gallery at the top level of More, with no redundant History and insights submenu. Check the left-aligned label selector without a Premium badge, Manage labels beside it, and wrapping below the timer at narrow widths.
+- [ ] Validate Settings → Manage labels: only title, product description and action remain in settings. Check the resizable Mica dialog at 340 px width, short heights, 100–200% text/display scaling, all UI languages, light/dark/high contrast and keyboard-only navigation. Actions must stack when their captions no longer fit; content must scroll vertically, never horizontally. Verify save/delete, appearance, persistence errors and closing during a pending save. Existing entitlement rules remain unchanged. Automated tests require approval.
+
+## Focused onboarding and deferred sensors entry point (2026-09-21)
+
+- [ ] Visually accept the streamlined Quick Setup window: selected-profile panel, four keyboard-reachable cards, Start with Windows and the single confirmation action at 100–200% scaling, light/dark/high-contrast. Confirm the player has no Sensors command while its existing sensors window remains available to future work. No tests run.
+
+## Data transfer visual polish (2026-09-21)
+
+- [ ] Visually check smaller colored tab headers, consistent content spacing and thin maintenance Acrylic, including high contrast, reduced transparency and 200% text scaling. Archive actions are unchanged.
+
+## Portable archive schema migration (2026-09-21)
+
+- [ ] Manually preview and import a schema-9 archive into the current installed build. Confirm the plan completes without altering the source archive, and an unsupported or corrupted archive still fails before any destination data changes. Automated coverage was added; no tests run.
+
+## Labels and player cost visibility (2026-09-21)
+
+- [ ] Validate the new label editor and player selector at compact width, 200% scaling and in light/dark/high-contrast themes. Check creation, rename, icon/color, duplicate names, delete-active, no label, restart and persistence failure. Check the accumulated AI cost toggle in the main settings and estimate/provider wording. Local x64 Debug compilation passed with zero warnings/errors; interactive acceptance pending. No tests run or installation performed.
+
+## Close-time crash investigation (2026-09-20)
+
+- [ ] Verify the close-time crash under debugger after approval. The saved 0.0.27 minidump resolves DispatcherQueue::DeferInvokeCallback but omits the stowed exception memory, so the original failing call is not established. Corrected late celestial loading-indicator updates and asynchronous toast dismissal during shutdown. Local Debug 0.0.30 installer compiled and signature-verified; formatting passed, no tests run. Verify closure before claiming the observed crash fixed.
+
+## Agenda current-time marker (2026-09-20)
+
+- [ ] Visually accept the current/reference-time marker and active-interval borders in the next installed build. x64 Debug compilation passed with zero warnings/errors; formatting passed. Existing live minute refresh and localized Now/reference labels are reused. No tests run; installed app unchanged during crash diagnosis.
+
+## City-local aurora and two-line weather (2026-09-20)
+
+- [ ] Visually accept city-local aurora filtering, separate weather/advisory rows and moonset artwork in local Debug 0.0.27.0. x64 compilation, formatting and package-signature verification passed; no test suites run.
+
+- [ ] Confirm Moonrise/Moonset thumbnails differ at timeline size on Acrylic; the distinct moonset-v1.png is included in local Debug 0.0.27.0.
+## Celestial catalog validation (2026-09-20)
+
+- [ ] Complete visual acceptance of Local Sky and Astronomical Agenda in Debug 0.0.26.0. Both installed views now load populated content after removing the magnitude-eight cutoff; finite-coordinate, identity, and reference validation remains enabled.
+
+## Compact Acrylic search (2026-09-20)
+
+- [ ] Complete Search visual checks in Debug 0.0.26.0: installed empty opening confirmed at 640 × 156 DIP (1280 × 312 physical pixels at 200%). Check expansion with matches, collapse when cleared/empty, busy/error status, result resizing, and thin Acrylic with another window focused. No test suites were run.
+
+## Ten-pixel monitor snapping (2026-09-20)
+
+- [ ] Visually validate snapping in installed Debug 0.0.25.0: all four work-area edges and corners catch within ten physical pixels, including near-edge outward overshoot. At eleven pixels outside the starting monitor, free movement remains active for the rest of the drag. x64 compilation and formatting passed; updated test scenarios were compiled but not run, as requested.
+
+## Installed startup recovery (2026-09-20)
+
+- [ ] Complete user visual acceptance of Debug 0.0.24.0. Installation, cold launch, notification-area registration, and Start-menu restoration to the foreground passed; retain this branch without a PR until requested.
+
 ## Unified UI cleanup and report removal (2026-09-19)
 
 - [ ] Deliver the unified branch through one PR and required CI. Local x64 builds, formatting and the authorized test runs/rechecks passed after fixing two regressions. Validate the README maintenance/privacy/retention/toast and local-sky scenarios in the installed app before claiming visual verification. The user authorized push and PR creation; no additional local test run is authorized.
@@ -9,7 +96,7 @@
 
 ## Magnetic window snapping (2026-09-19)
 
-- [ ] Complete native-window visual checks after the authorized development MSIX update: adjacent/aligned app windows and monitor work-area edges at five physical pixels; no snapping at six pixels; smooth release without drift; negative monitor coordinates, different DPI scales, dragging from maximized, hidden/minimized peers and closing peers. Crossing the starting monitor's physical bounds must disable snapping for the rest of that drag, including re-entry, without forcing the window back; the next drag starts fresh. Confirm the Settings switch applies immediately, persists on restart and does not interfere with the shared disappearing title bar. Test suites and push/CI are not authorized.
+- [ ] Complete native-window visual checks after the development MSIX update: adjacent/aligned app windows and monitor work-area edges at ten physical pixels; no snapping at eleven pixels; smooth release without drift; negative monitor coordinates, different DPI scales, dragging from maximized, hidden/minimized peers and closing peers. Exceeding the starting monitor's physical bounds by more than ten pixels disables snapping for the rest of that drag, including re-entry; the next drag starts fresh. Confirm the Settings switch applies immediately, persists on restart and does not interfere with the shared disappearing title bar. Test suites and push/CI are not authorized.
 
 ## Fixed celestial sky and refresh (2026-09-19)
 
@@ -24,6 +111,10 @@
 
 - Automated validation: x64 WinUI build passed with zero warnings/errors; Core 770, Presentation 372 and CLI 96 tests passed. Shared phases, polar/DST cases, map illumination, IPC, independent restoration, conjunctions, meteor estimates, zodiac boundaries and the 24 interpolated sky palettes are covered. Required CI results are recorded on PR #39.
 - [ ] Complete the README visual scenarios for local sky, agenda and the separate Earth globe window: Acrylic/accent, disappearing title bars, resizing at 100–200% scaling and keyboard navigation. No installed-app visual validation has been performed in this task.
+
+## Activity calendar wording (2026-09-19)
+
+- [ ] Deliver the completed Italian "Uptime e attività" wording through a focused PR after explicit approval to create a branch and push with required CI.
 
 ## Restore installed advanced sensors at startup (2026-09-19)
 

@@ -362,6 +362,10 @@
                     FontWeight="Light"
                     TextAlignment="Center" />
                 <Grid HorizontalAlignment="Stretch" ColumnSpacing="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -473,6 +477,33 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         TextAlignment="Center"
                         TextWrapping="Wrap" />
+                    <Grid
+                        x:Name="SpaceWeatherAlertPanel"
+                        Grid.Row="1"
+                        Grid.ColumnSpan="2"
+                        Margin="0,5,0,0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        ColumnSpacing="3"
+                        Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            x:Name="SpaceWeatherAlertIcon"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                            Text="✦" />
+                        <TextBlock
+                            x:Name="SpaceWeatherAlertText"
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextTrimming="CharacterEllipsis" />
+                    </Grid>
                 </Grid>
             </StackPanel>
             <Grid x:Name="CompactFooter" Grid.Row="7" Grid.ColumnSpan="2" Margin="0,8,0,0" ColumnSpacing="12" Visibility="Collapsed">

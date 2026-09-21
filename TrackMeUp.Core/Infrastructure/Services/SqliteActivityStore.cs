@@ -2114,7 +2114,7 @@ internal sealed class SqliteActivityStore
             FROM ai_request_usage
             WHERE occurred_utc_ticks >= $from
               AND occurred_utc_ticks < $to
-              AND request_kind IN ('screen_analysis', 'ocr_refinement');
+              AND request_kind IN ('screen_analysis', 'ocr_refinement', 'report_summary');
             """;
         command.Parameters.AddWithValue("$from", fromUtc.UtcDateTime.Ticks);
         command.Parameters.AddWithValue("$to", toUtc.UtcDateTime.Ticks);
@@ -2995,26 +2995,8 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
-            if (version == LegacySchemaVersion)
-            {
-                ValidateSchemaV7(connection);
-                MigrateSchemaV7ToV8(connection);
-                version = ReadSchemaVersion(connection);
-            }
-
-            if (version == PreviousSchemaVersion)
-            {
-                ValidateSchemaV8(connection);
-                MigrateSchemaV8ToV9(connection);
-                version = ReadSchemaVersion(connection);
-            }
-
-            if (version == 9)
-            {
-                ValidateSchemaV9(connection);
-                MigrateSchemaV9ToV10(connection);
-                version = ReadSchemaVersion(connection);
-            }
+            UpgradeSupportedSchemaToCurrent(connection);
+            version = ReadSchemaVersion(connection);
 
             if (version != SchemaVersion)
             {
@@ -3040,6 +3022,56 @@ internal sealed class SqliteActivityStore
         using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA user_version;";
         return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// Upgrades a validated portable archive database to the current local schema.
+    /// Unsupported, unversioned, or future schemas fail before any import merge can begin.
+    /// </summary>
+    internal static void UpgradeArchiveDatabaseSchema(string databasePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false
+        }.ToString());
+        connection.Open();
+
+        UpgradeSupportedSchemaToCurrent(connection);
+        var version = ReadSchemaVersion(connection);
+        if (version != SchemaVersion)
+        {
+            throw new InvalidDataException(
+                $"Unsupported archive database schema version {version}; expected {SchemaVersion}.");
+        }
+
+        ValidateSchema(connection);
+    }
+
+    private static void UpgradeSupportedSchemaToCurrent(SqliteConnection connection)
+    {
+        var version = ReadSchemaVersion(connection);
+        if (version == LegacySchemaVersion)
+        {
+            ValidateSchemaV7(connection);
+            MigrateSchemaV7ToV8(connection);
+            version = ReadSchemaVersion(connection);
+        }
+
+        if (version == PreviousSchemaVersion)
+        {
+            ValidateSchemaV8(connection);
+            MigrateSchemaV8ToV9(connection);
+            version = ReadSchemaVersion(connection);
+        }
+
+        if (version == 9)
+        {
+            ValidateSchemaV9(connection);
+            MigrateSchemaV9ToV10(connection);
+        }
     }
 
     private static void CreateSchema(SqliteConnection connection)

@@ -73,6 +73,7 @@ public static class SettingsCatalog
         Integer("window.main.opacity_percent", "Player window opacity from 25 through 100 percent."),
         Boolean("window.main.show_in_taskbar", "Show the player window in the Windows taskbar."),
         Boolean("world_clocks.weather.enabled", "Show source-backed current weather in the live world-clock projection."),
+        Boolean("world_clocks.space_weather.hide_by_location", "Hide NOAA geomagnetic events unlikely to be visible from the selected city, using magnetic latitude and darkness."),
         Integer("window.world_clocks.opacity_percent", "World-clock window opacity from 25 through 100 percent."),
         Boolean("window.world_clocks.show_in_taskbar", "Show the world-clock window in the Windows taskbar."),
         Boolean("window.world_map.show_in_taskbar", "Show the world-map window in the Windows taskbar."),
@@ -80,6 +81,9 @@ public static class SettingsCatalog
         Boolean("taskbar.widget.visible", "Show the compact control in the Windows taskbar."),
         Choice("taskbar.widget.position", "Taskbar control anchor.", TaskbarAnchors),
         Text("activity.span_label", "Short local activity label, limited to 20 characters."),
+        Text("activity.label.save", "Create or update a label using an Id, Name, Icon and Color JSON object; empty Id creates a label.", "json"),
+        Text("activity.label.delete", "Delete a label by ID; deleting the selected label clears selection."),
+        Text("activity.label.select", "Select a saved label by ID; empty clears selection."),
         Text("active_hours.monday.active", "Informational Monday active period in HH:mm-HH:mm format.", "time_range"),
         Text("active_hours.monday.breaks", "Informational Monday breaks, comma-separated HH:mm-HH:mm ranges.", "time_ranges"),
         Text("active_hours.tuesday.active", "Informational Tuesday active period in HH:mm-HH:mm format.", "time_range"),
@@ -153,6 +157,7 @@ public static class SettingsCatalog
             "window.main.opacity_percent" => settings.MainWindowOpacityPercent,
             "window.main.show_in_taskbar" => settings.MainWindowShowInTaskbar,
             "world_clocks.weather.enabled" => settings.WorldClockWeatherEnabled,
+            "world_clocks.space_weather.hide_by_location" => settings.HideSpaceWeatherByLocation,
             "window.world_clocks.opacity_percent" => settings.WorldClockWindowOpacityPercent,
             "window.world_clocks.show_in_taskbar" => settings.WorldClockWindowShowInTaskbar,
             "window.world_map.show_in_taskbar" => settings.WorldMapWindowShowInTaskbar,
@@ -160,6 +165,9 @@ public static class SettingsCatalog
             "taskbar.widget.visible" => settings.TaskbarWidgetVisible,
             "taskbar.widget.position" => settings.TaskbarWidgetPosition,
             "activity.span_label" => settings.SpanLabel,
+            "activity.label.save" => settings.ActivityLabels ?? [],
+            "activity.label.delete" => string.Empty,
+            "activity.label.select" => (settings.ActivityLabels ?? []).FirstOrDefault(label => label.Name == settings.SpanLabel)?.Id ?? string.Empty,
             "startup.enabled" => settings.StartWithWindows,
             "tracking.start_on_launch" => settings.StartTrackingOnLaunch,
             "retention.screenshots_days" => settings.ScreenshotRetentionDays,
@@ -276,6 +284,7 @@ public static class SettingsCatalog
                 case "window.main.opacity_percent" when TryInteger(value, 25, 100, out var mainOpacity): current = current with { MainWindowOpacityPercent = mainOpacity }; break;
                 case "window.main.show_in_taskbar" when TryBoolean(value, out var mainShowInTaskbar): current = current with { MainWindowShowInTaskbar = mainShowInTaskbar }; break;
                 case "world_clocks.weather.enabled" when TryBoolean(value, out var worldClockWeatherEnabled): current = current with { WorldClockWeatherEnabled = worldClockWeatherEnabled }; break;
+                case "world_clocks.space_weather.hide_by_location" when TryBoolean(value, out var hideSpaceWeatherByLocation): current = current with { HideSpaceWeatherByLocation = hideSpaceWeatherByLocation }; break;
                 case "window.world_clocks.opacity_percent" when TryInteger(value, 25, 100, out var worldClockOpacity): current = current with { WorldClockWindowOpacityPercent = worldClockOpacity }; break;
                 case "window.world_clocks.show_in_taskbar" when TryBoolean(value, out var worldClockShowInTaskbar): current = current with { WorldClockWindowShowInTaskbar = worldClockShowInTaskbar }; break;
                 case "window.world_map.show_in_taskbar" when TryBoolean(value, out var worldMapShowInTaskbar): current = current with { WorldMapWindowShowInTaskbar = worldMapShowInTaskbar }; break;
@@ -283,6 +292,10 @@ public static class SettingsCatalog
                 case "taskbar.widget.visible" when TryBoolean(value, out var taskbarVisible): current = current with { TaskbarWidgetVisible = taskbarVisible }; break;
                 case "taskbar.widget.position" when Canonical(TaskbarAnchors, value) is { } taskbarPosition: current = current with { TaskbarWidgetPosition = taskbarPosition }; break;
                 case "activity.span_label" when value is not null && value.Length <= 20: current = current with { SpanLabel = value }; break;
+                case "activity.label.save" when ActivityLabelCatalog.TrySave(current, value, out var savedLabels): current = savedLabels; break;
+                case "activity.label.delete" when ActivityLabelCatalog.TryDelete(current, value, out var deletedLabels): current = deletedLabels; break;
+                case "activity.label.select" when value == "": current = current with { SpanLabel = "" }; break;
+                case "activity.label.select" when (current.ActivityLabels ?? []).FirstOrDefault(label => label.Id == value) is { } selectedLabel: current = current with { SpanLabel = selectedLabel.Name }; break;
                 case "startup.enabled" when TryBoolean(value, out var startup): current = current with { StartWithWindows = startup }; break;
                 case "tracking.start_on_launch" when TryBoolean(value, out var startOnLaunch): current = current with { StartTrackingOnLaunch = startOnLaunch }; break;
                 case "retention.screenshots_days" when TryInteger(value, 0, 3650, out var screenshotDays): current = current with { ScreenshotRetentionDays = screenshotDays }; break;
@@ -313,6 +326,7 @@ public static class SettingsCatalog
     /// <summary>Validates contract choices and normalizes other persisted settings before application use.</summary>
     public static AppSettings NormalizePersisted(AppSettings settings, string defaultScreenshotDirectory)
     {
+        ActivityLabelCatalog.Validate(settings.ActivityLabels);
         WindowStateService.ValidateOpenStates(settings.WindowOpenStates);
         WindowStateService.ValidateOcrTextSource(settings.OcrTextWindowSource);
         var provider = Canonical(Providers, settings.AiProvider) ?? "openai";

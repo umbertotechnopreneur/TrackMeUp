@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "dates": [
+    { "id": "birthday", "month": 7, "day": 10 },
+    { "id": "christmas", "month": 12, "day": 25 },
+    { "id": "new-year", "month": 1, "day": 1 }
+  ]
+}

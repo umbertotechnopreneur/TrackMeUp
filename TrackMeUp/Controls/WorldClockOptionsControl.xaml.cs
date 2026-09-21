@@ -75,6 +75,7 @@ public sealed partial class WorldClockOptionsControl : UserControl
         _application = application ?? throw new ArgumentNullException(nameof(application));
         ArgumentNullException.ThrowIfNull(settings);
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
+        AddClockPremiumBadge.Text = _strings.Translate("Premium.Badge");
         _lifetimeToken = lifetimeToken;
         UiLocalization.Apply(this, _strings);
         ApplyLocalizedPresentation();
@@ -93,6 +94,7 @@ public sealed partial class WorldClockOptionsControl : UserControl
         try
         {
             WeatherEnabledSwitch.IsOn = settings.WorldClockWeatherEnabled;
+            HideSpaceWeatherByLocationSwitch.IsOn = settings.HideSpaceWeatherByLocation;
             _worldClockOpacityPercent = settings.WorldClockWindowOpacityPercent;
             _pendingWorldClockOpacityPercent = _worldClockOpacityPercent;
             _worldClockShowInTaskbar = settings.WorldClockWindowShowInTaskbar;
@@ -185,6 +187,50 @@ public sealed partial class WorldClockOptionsControl : UserControl
         {
             SetBusy(false);
         }
+    }
+
+    private async void HideSpaceWeatherByLocationSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_updatingControls || _application is null || _busy) return;
+        var requested = HideSpaceWeatherByLocationSwitch.IsOn;
+        SetBusy(true);
+        try
+        {
+            var result = await _application.PatchSettingsAsync(new SettingsPatch(new Dictionary<string, string?>
+            {
+                ["world_clocks.space_weather.hide_by_location"] = requested ? "true" : "false"
+            }), _lifetimeToken);
+            if (result.Succeeded && result.Value is not null)
+            {
+                SettingsSaved?.Invoke(result.Value);
+                RefreshRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            // A failed save restores the persisted choice instead of displaying an unapplied filter.
+            RestoreSpaceWeatherToggle(!requested);
+            WarningRequested?.Invoke("Options.SaveError");
+        }
+        catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
+        {
+            // Closing the surface cancels its pending mutation; no detached controls are updated.
+        }
+        catch (Exception)
+        {
+            RestoreSpaceWeatherToggle(!requested);
+            WarningRequested?.Invoke("Options.SaveError");
+        }
+        finally
+        {
+            if (!_lifetimeToken.IsCancellationRequested) SetBusy(false);
+        }
+    }
+
+    private void RestoreSpaceWeatherToggle(bool value)
+    {
+        _updatingControls = true;
+        try { HideSpaceWeatherByLocationSwitch.IsOn = value; }
+        finally { _updatingControls = false; }
     }
 
     private async void SaveWeatherKeyButton_Click(object sender, RoutedEventArgs e)
@@ -585,6 +631,7 @@ public sealed partial class WorldClockOptionsControl : UserControl
         BusyIndicator.IsActive = busy;
         BusyIndicator.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         WeatherEnabledSwitch.IsEnabled = !busy;
+        HideSpaceWeatherByLocationSwitch.IsEnabled = !busy;
         WeatherApiKeyBox.IsEnabled = !busy;
         WeatherProviderLinkButton.IsEnabled = !busy;
         SaveWeatherKeyButton.IsEnabled = !busy;
@@ -614,6 +661,12 @@ public sealed partial class WorldClockOptionsControl : UserControl
 
     private void ApplyLocalizedPresentation()
     {
+        var filterLabel = T("WorldClock.Options.SpaceWeather.HideByLocation");
+        HideSpaceWeatherByLocationSwitch.Header = filterLabel;
+        HideSpaceWeatherByLocationSwitch.OnContent = WeatherEnabledSwitch.OnContent;
+        HideSpaceWeatherByLocationSwitch.OffContent = WeatherEnabledSwitch.OffContent;
+        UiLocalization.SetAccessibleLabel(HideSpaceWeatherByLocationSwitch, filterLabel);
+        ToolTipService.SetToolTip(HideSpaceWeatherByLocationSwitch, T("WorldClock.Options.SpaceWeather.HideByLocation.Help"));
         SetWeatherKeyPresence(_weatherKeyConfigured);
         SetSaveWeatherKeyAction(_weatherKeyConfigured
             ? "WorldClock.Options.Weather.KeyAction.Change"

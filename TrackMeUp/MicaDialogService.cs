@@ -42,7 +42,8 @@ internal sealed class MicaDialogService
         ElementTheme theme,
         string title,
         string description,
-        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation)
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        Guid? archiveOperationId = null)
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(operation);
@@ -68,7 +69,7 @@ internal sealed class MicaDialogService
                 async cancellationToken =>
                 {
                     operationResult = await operation(application, cancellationToken);
-                });
+                }, archiveOperationId);
             await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
             return operationResult ?? throw new InvalidOperationException("The progress operation returned no result.");
         });
@@ -91,6 +92,35 @@ internal sealed class MicaDialogService
         await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
         {
             var dialog = new AiPricingDialogWindow(application, overview, theme, strings, ownerAppWindow, ownerHandle);
+            await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
+    }
+
+    /// <summary>Shows the label editor in a queued Mica window and returns its latest saved settings.</summary>
+    internal async Task<AppSettings?> ShowActivityLabelsAsync(
+        ITrackMeUpApplication application,
+        Window owner,
+        AppSettings settings,
+        FeatureAccessSnapshot? access,
+        ElementTheme theme,
+        LocalizationService strings)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(strings);
+        return await RunModalSessionAsync<AppSettings?>(owner, null, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new ActivityLabelsDialogWindow(application, settings, access, theme, strings, ownerAppWindow, ownerHandle);
+            return await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
+        });
+    }
+
+    /// <summary>Shows the export workspace without requiring an entitlement until a file is written.</summary>
+    internal async Task ShowReportExportAsync(ITrackMeUpApplication application, Window owner, ElementTheme theme, LocalizationService strings)
+    {
+        await RunModalSessionAsync(owner, async (ownerAppWindow, ownerHandle) =>
+        {
+            var dialog = new ReportExportWindow(application, theme, strings, ownerAppWindow, ownerHandle);
             await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
         });
     }

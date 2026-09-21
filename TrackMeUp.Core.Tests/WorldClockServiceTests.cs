@@ -173,7 +173,7 @@ public sealed class WorldClockServiceTests
             provider,
             TimeProvider.System);
 
-        var snapshot = await service.BuildCurrentSnapshotAsync([], weatherEnabled: true, CancellationToken.None);
+        var snapshot = await service.BuildCurrentSnapshotAsync([], weatherEnabled: true, hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Empty(snapshot.Clocks);
         Assert.Equal(0, provider.CallCount);
@@ -235,7 +235,7 @@ public sealed class WorldClockServiceTests
         var service = new WorldClockService(catalogPath);
 
         var exception = Assert.Throws<WorldClockConversionException>(() => service.BuildSnapshotForLocalTime(
-            WorldClockSelection.Defaults,
+            ["paris"],
             new WorldClockConversionRequest(
                 "paris",
                 new DateTime(year, month, day, hour, minute, 0, DateTimeKind.Unspecified))));
@@ -644,17 +644,17 @@ public sealed class WorldClockServiceTests
         var first = await service.BuildCurrentSnapshotAsync(
             ["london", "paris"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
         timeProvider.Advance(TimeSpan.FromMinutes(11));
         var cached = await service.BuildCurrentSnapshotAsync(
             ["london", "paris"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
         timeProvider.Advance(TimeSpan.FromMinutes(2));
         var refreshed = await service.BuildCurrentSnapshotAsync(
             ["london", "paris"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Equal(4, provider.CallCount);
         Assert.Equal("available", first.WeatherStatus.State);
@@ -679,12 +679,12 @@ public sealed class WorldClockServiceTests
             timeProvider.GetUtcNow()));
         var service = new WorldClockService(catalogPath, provider, timeProvider);
 
-        _ = await service.BuildCurrentSnapshotAsync(["london"], true, CancellationToken.None);
-        _ = await service.BuildCurrentSnapshotAsync(["london"], true, CancellationToken.None);
+        _ = await service.BuildCurrentSnapshotAsync(["london"], true, hideSpaceWeatherByLocation: true, CancellationToken.None);
+        _ = await service.BuildCurrentSnapshotAsync(["london"], true, hideSpaceWeatherByLocation: true, CancellationToken.None);
         Assert.Equal(1, provider.CallCount);
 
         service.InvalidateCurrentWeatherConfiguration();
-        _ = await service.BuildCurrentSnapshotAsync(["london"], true, CancellationToken.None);
+        _ = await service.BuildCurrentSnapshotAsync(["london"], true, hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Equal(2, provider.CallCount);
     }
@@ -893,7 +893,7 @@ public sealed class WorldClockServiceTests
         var snapshot = await service.BuildCurrentSnapshotAsync(
             ["london", "paris"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Equal(
             new DateTimeOffset(2026, 8, 30, 12, 0, 2, TimeSpan.Zero),
@@ -926,7 +926,7 @@ public sealed class WorldClockServiceTests
         var snapshot = await service.BuildCurrentSnapshotAsync(
             ["london"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Null(snapshot.Clocks[0].Weather);
         Assert.Equal("unavailable", snapshot.WeatherStatus.State);
@@ -974,7 +974,7 @@ public sealed class WorldClockServiceTests
         var snapshot = await service.BuildCurrentSnapshotAsync(
             ["london"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Single(snapshot.Clocks);
         Assert.Null(snapshot.Clocks[0].Weather);
@@ -994,7 +994,7 @@ public sealed class WorldClockServiceTests
         var snapshot = await service.BuildCurrentSnapshotAsync(
             ["london", "paris"],
             false,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Equal(0, provider.CallCount);
         Assert.Equal("disabled", snapshot.WeatherStatus.State);
@@ -1021,7 +1021,7 @@ public sealed class WorldClockServiceTests
         var missingKey = await missingKeyService.BuildCurrentSnapshotAsync(
             ["london"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Single(missingKey.Clocks);
         Assert.Equal(0, handler.CallCount);
@@ -1035,7 +1035,7 @@ public sealed class WorldClockServiceTests
         var invalidKey = await invalidKeyService.BuildCurrentSnapshotAsync(
             ["london"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Equal(0, handler.CallCount);
         Assert.Equal("configuration-required", invalidKey.WeatherStatus.State);
@@ -1047,7 +1047,7 @@ public sealed class WorldClockServiceTests
         var failed = await failingService.BuildCurrentSnapshotAsync(
             ["london"],
             true,
-            CancellationToken.None);
+            hideSpaceWeatherByLocation: true, CancellationToken.None);
 
         Assert.Single(failed.Clocks);
         Assert.Null(failed.Clocks[0].Weather);

@@ -39,8 +39,9 @@ internal static class CelestialSkyCatalog
                 || !stars.Add(star.Id) || !double.IsFinite(star.RightAscensionDegrees)
                 || star.RightAscensionDegrees is < 0 or >= 360
                 || !double.IsFinite(star.DeclinationDegrees) || star.DeclinationDegrees is < -90 or > 90
-                || star.Magnitude is { } magnitude && (!double.IsFinite(magnitude) || magnitude is < -2 or > 8))
+                || star.Magnitude is { } magnitude && !double.IsFinite(magnitude))
                 throw new InvalidDataException("The sky catalog contains an invalid or duplicate star.");
+            // Apparent magnitude is not a visibility cutoff: valid catalog stars can be fainter than magnitude eight.
         }
 
         var figures = new HashSet<string>(StringComparer.Ordinal);

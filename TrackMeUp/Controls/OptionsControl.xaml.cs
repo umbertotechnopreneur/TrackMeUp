@@ -67,6 +67,11 @@ public sealed partial class OptionsControl : UserControl
     /// <summary>Occurs when the user requests the dedicated search-index progress window.</summary>
     public event EventHandler? SearchIndexingRequested;
 
+    /// <summary>Occurs when the user requests the dedicated label-management dialog.</summary>
+    public event EventHandler? ManageLabelsRequested;
+
+    private void ManageLabels_Click(object sender, RoutedEventArgs e) => ManageLabelsRequested?.Invoke(this, EventArgs.Empty);
+
     /// <summary>Occurs when the user requests one focused local-data or operations surface.</summary>
     internal event Action<OperationsSection>? OperationsSectionRequested;
 

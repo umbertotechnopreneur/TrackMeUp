@@ -84,6 +84,8 @@ internal enum RuntimeOperation
     ArchiveImportPreviewV1,
     [RuntimeOperationWireName("archive.import.merge.v1")]
     ArchiveImportMergeV1,
+    [RuntimeOperationWireName("archive.progress.v1")]
+    ArchiveProgressV1,
     [RuntimeOperationWireName("screenshot.delete")]
     ScreenshotDelete,
     [RuntimeOperationWireName("screenshot.analysis.delete.v1")]
@@ -132,6 +134,16 @@ internal enum RuntimeOperation
     AiAnalyze,
     [RuntimeOperationWireName("report.query.v1")]
     ReportQueryV1,
+    [RuntimeOperationWireName("report.export.setup.v1")]
+    ReportExportSetupV1,
+    [RuntimeOperationWireName("report.export.preview.v1")]
+    ReportExportPreviewV1,
+    [RuntimeOperationWireName("report.export.preferences.v1")]
+    ReportExportPreferencesV1,
+    [RuntimeOperationWireName("report.export.write.v1")]
+    ReportExportWriteV1,
+    [RuntimeOperationWireName("report.export.summary.v1")]
+    ReportExportSummaryV1,
     [RuntimeOperationWireName("ui.open")]
     UiOpen,
     [RuntimeOperationWireName("privacy.list")]
@@ -160,6 +172,12 @@ internal enum RuntimeOperation
     PluginsDisable,
     [RuntimeOperationWireName("settings.get")]
     SettingsGet,
+    [RuntimeOperationWireName("features.access.get.v1")]
+    FeatureAccessGetV1,
+#if DEBUG
+    [RuntimeOperationWireName("debug.features.simulate.v1")]
+    DebugFeatureSimulateV1,
+#endif
     [RuntimeOperationWireName("quick_setup.apply.v1")]
     QuickSetupApplyV1,
     [RuntimeOperationWireName("settings.patch")]

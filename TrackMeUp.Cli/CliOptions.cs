@@ -99,6 +99,7 @@ public static class ExitCodeMapper
     public static int Map(string code) => code switch
     {
         "operation.cancelled" => 130,
+        "cli.premium.required" => 11,
         "command.invalid" or "command.arguments.invalid" => 2,
         var value when value.Contains("validation", StringComparison.Ordinal) || value.EndsWith(".invalid", StringComparison.Ordinal) || value.EndsWith(".required", StringComparison.Ordinal) => 3,
         "runtime.unavailable" => 4,

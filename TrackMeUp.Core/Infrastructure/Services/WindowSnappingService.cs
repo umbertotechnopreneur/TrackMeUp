@@ -57,7 +57,7 @@ internal sealed class WindowSnappingService
 
     private static WindowSnapRectangle ReadFrame(IntPtr handle)
     {
-        // DWM bounds exclude invisible resize borders: the five-pixel threshold refers to visible edges.
+        // DWM bounds exclude invisible resize borders: the ten-pixel threshold refers to visible edges.
         Marshal.ThrowExceptionForHR(DwmGetWindowAttribute(handle, 9, out NativeRectangle frame, Marshal.SizeOf<NativeRectangle>()));
         return frame.ToRectangle();
     }
@@ -215,7 +215,7 @@ internal sealed class WindowSnappingService
             };
             if (_session is { IsSuppressed: true })
             {
-                // Once the user leaves the monitor, neither peers nor DWM frames participate again in this drag.
+                // Once the user exceeds the monitor's snap margin, peers and DWM frames no longer participate in this drag.
                 _preservePosition = true;
                 Marshal.StructureToPtr(raw, rectanglePointer, false);
                 return true;

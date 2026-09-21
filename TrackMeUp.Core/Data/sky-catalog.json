@@ -584,6 +584,111 @@
       "rightAscensionDegrees": 236.014661,
       "declinationDegrees": 77.794493,
       "magnitude": 4.274
+    },
+    {
+      "id": "proxima-cen",
+      "name": "Proxima Centauri",
+      "rightAscensionDegrees": 217.4292,
+      "declinationDegrees": -62.6795,
+      "magnitude": 11.13
+    },
+    {
+      "id": "alf-cen",
+      "name": "Rigil Kentaurus",
+      "rightAscensionDegrees": 219.902058,
+      "declinationDegrees": -60.833993,
+      "magnitude": -0.01
+    },
+    {
+      "id": "menkent",
+      "name": "Menkent",
+      "rightAscensionDegrees": 211.670609,
+      "declinationDegrees": -36.369954,
+      "magnitude": 2.06
+    },
+    {
+      "id": "sirius",
+      "name": "Sirius",
+      "rightAscensionDegrees": 101.287155,
+      "declinationDegrees": -16.716116,
+      "magnitude": -1.46
+    },
+    {
+      "id": "wezen",
+      "name": "Wezen",
+      "rightAscensionDegrees": 107.097858,
+      "declinationDegrees": -26.393199,
+      "magnitude": 1.83
+    },
+    {
+      "id": "adhara",
+      "name": "Adhara",
+      "rightAscensionDegrees": 104.656453,
+      "declinationDegrees": -28.972084,
+      "magnitude": 1.5
+    },
+    {
+      "id": "vega",
+      "name": "Vega",
+      "rightAscensionDegrees": 279.234735,
+      "declinationDegrees": 38.783689,
+      "magnitude": 0.03
+    },
+    {
+      "id": "sulafat",
+      "name": "Sulafat",
+      "rightAscensionDegrees": 284.735925,
+      "declinationDegrees": 32.689558,
+      "magnitude": 3.24
+    },
+    {
+      "id": "sheliak",
+      "name": "Sheliak",
+      "rightAscensionDegrees": 282.519989,
+      "declinationDegrees": 33.362676,
+      "magnitude": 3.45
+    },
+    {
+      "id": "deneb",
+      "name": "Deneb",
+      "rightAscensionDegrees": 310.357979,
+      "declinationDegrees": 45.280338,
+      "magnitude": 1.25
+    },
+    {
+      "id": "sadr",
+      "name": "Sadr",
+      "rightAscensionDegrees": 305.557083,
+      "declinationDegrees": 40.256679,
+      "magnitude": 2.23
+    },
+    {
+      "id": "albireo",
+      "name": "Albireo",
+      "rightAscensionDegrees": 292.680332,
+      "declinationDegrees": 27.959681,
+      "magnitude": 3.05
+    },
+    {
+      "id": "altair",
+      "name": "Altair",
+      "rightAscensionDegrees": 297.695827,
+      "declinationDegrees": 8.868322,
+      "magnitude": 0.76
+    },
+    {
+      "id": "tarazed",
+      "name": "Tarazed",
+      "rightAscensionDegrees": 296.565098,
+      "declinationDegrees": 10.613271,
+      "magnitude": 2.72
+    },
+    {
+      "id": "alshain",
+      "name": "Alshain",
+      "rightAscensionDegrees": 298.828192,
+      "declinationDegrees": 6.406763,
+      "magnitude": 3.71
     }
   ],
   "constellations": [
@@ -727,6 +832,47 @@
           "bet-cru",
           "del-cru"
         ]
+      ]
+    },
+    {
+      "id": "Centaurus",
+      "zodiacSign": null,
+      "segments": [
+        ["menkent", "alf-cen"],
+        ["alf-cen", "proxima-cen"]
+      ]
+    },
+    {
+      "id": "CanisMajor",
+      "zodiacSign": null,
+      "segments": [
+        ["sirius", "adhara"],
+        ["sirius", "wezen"]
+      ]
+    },
+    {
+      "id": "Lyra",
+      "zodiacSign": null,
+      "segments": [
+        ["vega", "sheliak"],
+        ["sheliak", "sulafat"],
+        ["sulafat", "vega"]
+      ]
+    },
+    {
+      "id": "Cygnus",
+      "zodiacSign": null,
+      "segments": [
+        ["deneb", "sadr"],
+        ["sadr", "albireo"]
+      ]
+    },
+    {
+      "id": "Aquila",
+      "zodiacSign": null,
+      "segments": [
+        ["altair", "tarazed"],
+        ["altair", "alshain"]
       ]
     },
     {

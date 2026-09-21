@@ -54,7 +54,8 @@ internal sealed class OperationsSectionContext
         Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
         string title,
         string description,
-        bool showSuccess = true)
+        bool showSuccess = true,
+        Guid? archiveOperationId = null)
     {
         ArgumentNullException.ThrowIfNull(operation);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
@@ -68,7 +69,7 @@ internal sealed class OperationsSectionContext
                     : throw new InvalidOperationException("Progress dialogs require framework-element owner content."),
                 title,
                 description,
-                operation),
+                operation, archiveOperationId),
             showSuccess,
             showInlineProgress: false);
     }
@@ -113,6 +114,12 @@ internal sealed class OperationsSectionContext
                         ResultMessage(result.MessageKey, succeeded: true),
                         InfoBarSeverity.Success);
                 }
+            }
+            else if (result.Code == "feature.premium_required")
+            {
+                await Dialogs.ShowInformativeAsync(OwnerWindow,
+                    DialogRequest.Informative(Translate("Premium.UpgradeTitle"),
+                        Translate("Premium.Required"), Translate("Dialog.Ok")));
             }
             else
             {

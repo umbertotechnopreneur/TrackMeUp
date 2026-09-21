@@ -29,6 +29,7 @@ internal sealed partial class CelestialWindow : Window
     private bool _closed;
     private RenderRequestKey? _pendingRender;
     private RenderRequestKey? _displayedRender;
+    private CelestialSnapshot? _skySnapshot;
 
     /// <summary>Creates a sky, agenda, or Earth globe window over the application facade.</summary>
     internal CelestialWindow(ITrackMeUpApplication application, MicaDialogService dialogs, AppSettings settings, string windowKey)
@@ -85,6 +86,15 @@ internal sealed partial class CelestialWindow : Window
         AboveHorizonText.Text = T("Celestial.Sky.AboveHorizon");
         UiLocalization.SetAccessibleLabel(PreviousBodiesButton, T("Celestial.Sky.PreviousBodies"));
         UiLocalization.SetAccessibleLabel(NextBodiesButton, T("Celestial.Sky.NextBodies"));
+        var isLocalSky = _windowKey == WindowStateKeys.LocalSky;
+        PlanetsVisibilitySwitch.Visibility = isLocalSky ? Visibility.Visible : Visibility.Collapsed;
+        ConstellationsVisibilitySwitch.Visibility = isLocalSky ? Visibility.Visible : Visibility.Collapsed;
+        PlanetsVisibilitySwitch.Header = T("Celestial.Sky.ShowPlanets");
+        ConstellationsVisibilitySwitch.Header = T("Celestial.Sky.ShowConstellations");
+        UiLocalization.SetAccessibleLabel(PlanetsVisibilitySwitch, T("Celestial.Sky.ShowPlanets"));
+        UiLocalization.SetAccessibleLabel(ConstellationsVisibilitySwitch, T("Celestial.Sky.ShowConstellations"));
+        ToolTipService.SetToolTip(PlanetsVisibilitySwitch, T("Celestial.Sky.ShowPlanets"));
+        ToolTipService.SetToolTip(ConstellationsVisibilitySwitch, T("Celestial.Sky.ShowConstellations"));
         ZodiacNoteText.Text = T("Celestial.Zodiac.Note");
         _controller.ApplySettings(settings);
     }
@@ -129,6 +139,18 @@ internal sealed partial class CelestialWindow : Window
         {
             RefreshProjection();
         }
+    }
+
+    private void SkyVisibilitySwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_windowKey != WindowStateKeys.LocalSky || _skySnapshot is null)
+        {
+            return;
+        }
+
+        SkyControl.ShowPlanets = PlanetsVisibilitySwitch.IsOn;
+        SkyControl.ShowConstellations = ConstellationsVisibilitySwitch.IsOn;
+        RenderBodies(_skySnapshot);
     }
 
     private async void RefreshProjection()
@@ -224,6 +246,9 @@ internal sealed partial class CelestialWindow : Window
 
                 if (_windowKey == WindowStateKeys.LocalSky)
                 {
+                    _skySnapshot = result.Value;
+                    SkyControl.ShowPlanets = PlanetsVisibilitySwitch.IsOn;
+                    SkyControl.ShowConstellations = ConstellationsVisibilitySwitch.IsOn;
                     SkyControl.Apply(result.Value, _strings);
                     SkyControl.Visibility = Visibility.Visible;
                     RenderBodies(result.Value);
@@ -246,7 +271,7 @@ internal sealed partial class CelestialWindow : Window
         }
         catch (Exception exception)
         {
-            if (!cancellation.IsCancellationRequested)
+            if (!_closed && !cancellation.IsCancellationRequested)
             {
                 ShowFailure("Celestial.Unavailable", exception);
             }
@@ -257,8 +282,12 @@ internal sealed partial class CelestialWindow : Window
             {
                 _projectionCancellation = null;
                 _pendingRender = null;
-                LoadingIndicator.IsActive = false;
-                LoadingIndicator.Visibility = Visibility.Collapsed;
+                // Cancellation may finish after Closed. The detached XAML tree must not be touched.
+                if (!_closed)
+                {
+                    LoadingIndicator.IsActive = false;
+                    LoadingIndicator.Visibility = Visibility.Collapsed;
+                }
             }
         }
     }
@@ -292,7 +321,8 @@ internal sealed partial class CelestialWindow : Window
     private void RenderBodies(CelestialSnapshot snapshot)
     {
         BodyItems.Children.Clear();
-        foreach (var body in snapshot.Bodies.Where(body => body.IsAboveHorizon))
+        foreach (var body in snapshot.Bodies.Where(body => body.IsAboveHorizon
+            && (PlanetsVisibilitySwitch.IsOn || !IsPlanet(body.Kind))))
         {
             var name = T($"CelestialBody{body.Kind}");
             var label = new TextBlock
@@ -388,8 +418,13 @@ internal sealed partial class CelestialWindow : Window
     {
         AgendaRows.Children.Clear();
         DateOnly? previousDate = null;
+        var referenceIndex = snapshot.AgendaReferenceIndex;
+        var rowIndex = 0;
+        var referenceLabel = T(_controller.IsLive ? "WorldClock.Now" : "WorldClock.ReferenceInstant");
         foreach (var item in snapshot.Agenda)
         {
+            if (rowIndex++ == referenceIndex)
+                AgendaRows.Children.Add(CreateAgendaReferenceMarker(snapshot, referenceLabel));
             var date = DateOnly.FromDateTime(item.StartLocal.DateTime);
             if (date != previousDate)
             {
@@ -425,9 +460,9 @@ internal sealed partial class CelestialWindow : Window
             {
                 CornerRadius = new CornerRadius(18),
                 Background = ThemeBrush("CardBackgroundFillColorDefaultBrush"),
-                BorderBrush = ThemeBrush("DividerStrokeColorDefaultBrush"),
-                BorderThickness = new Thickness(1),
-                Opacity = 0.45d,
+                BorderBrush = ThemeBrush(item.IsAtReferenceInstant ? "AccentTextFillColorPrimaryBrush" : "DividerStrokeColorDefaultBrush"),
+                BorderThickness = new Thickness(item.IsAtReferenceInstant ? 2 : 1),
+                Opacity = item.IsAtReferenceInstant ? 1d : 0.45d,
                 IsHitTestVisible = false
             };
             Grid.SetColumn(surface, 1);
@@ -483,6 +518,38 @@ internal sealed partial class CelestialWindow : Window
                     Source = new BitmapImage(new Uri("ms-appx:///Assets/Celestial/Artwork/meteor-shower-v1.png"))
                 };
             }
+            else if (item.Kind is CelestialEventKind.Moonrise or CelestialEventKind.Moonset)
+            {
+                illustration = new Image
+                {
+                    Width = 60,
+                    Height = 60,
+                    Stretch = Stretch.Uniform,
+                    Source = new BitmapImage(new Uri(item.Kind == CelestialEventKind.Moonset
+                        ? "ms-appx:///Assets/Celestial/Artwork/moonset-v1.png"
+                        : "ms-appx:///Assets/Celestial/Artwork/moon-horizon-v1.png"))
+                };
+            }
+            else if (item.Kind == CelestialEventKind.ImportantDate)
+            {
+                illustration = new Image
+                {
+                    Width = 60,
+                    Height = 60,
+                    Stretch = Stretch.Uniform,
+                    Source = ImportantDateArtwork(item.ImportantDateId ?? throw new InvalidDataException("An important date must identify its catalog entry."))
+                };
+            }
+            else if (item.Kind == CelestialEventKind.SpaceWeather)
+            {
+                illustration = new Image
+                {
+                    Width = 60,
+                    Height = 60,
+                    Stretch = Stretch.Uniform,
+                    Source = SpaceWeatherArtwork(item.SpaceWeatherKind ?? throw new InvalidDataException("A space-weather event must identify its condition."))
+                };
+            }
             else
             {
                 illustration = new CelestialArtworkControl
@@ -504,6 +571,15 @@ internal sealed partial class CelestialWindow : Window
             Grid.SetColumn(illustration, 1);
             row.Children.Add(illustration);
             var details = new StackPanel { Spacing = 7, Margin = new Thickness(0, 12, 12, 12), VerticalAlignment = VerticalAlignment.Center };
+            if (item.IsAtReferenceInstant)
+                details.Children.Add(new TextBlock
+                {
+                    Text = referenceLabel,
+                    FontSize = 12,
+                    FontWeight = FontWeights.SemiBold,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = ThemeBrush("AccentTextFillColorPrimaryBrush")
+                });
             details.Children.Add(new TextBlock
             {
                 Text = EventTitle(item),
@@ -545,10 +621,24 @@ internal sealed partial class CelestialWindow : Window
                     Foreground = ThemeBrush("TextFillColorSecondaryBrush")
                 });
             }
+            else if (item.Kind == CelestialEventKind.SpaceWeather)
+            {
+                details.Children.Add(new TextBlock
+                {
+                    Text = SpaceWeatherDetail(item),
+                    FontWeight = FontWeights.Light,
+                    FontSize = 11,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = ThemeBrush("TextFillColorSecondaryBrush")
+                });
+            }
             Grid.SetColumn(details, 2);
             row.Children.Add(details);
             AgendaRows.Children.Add(row);
         }
+
+        if (referenceIndex == snapshot.Agenda.Count)
+            AgendaRows.Children.Add(CreateAgendaReferenceMarker(snapshot, referenceLabel));
 
         if (snapshot.Agenda.Count == 0)
         {
@@ -557,13 +647,78 @@ internal sealed partial class CelestialWindow : Window
         }
     }
 
+    private FrameworkElement CreateAgendaReferenceMarker(CelestialSnapshot snapshot, string label)
+    {
+        var marker = new Grid { ColumnSpacing = 10, Margin = new Thickness(0, 6, 0, 6) };
+        marker.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        marker.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        marker.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+        marker.Children.Add(new Ellipse
+        {
+            Width = 12,
+            Height = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Fill = ThemeBrush("AccentTextFillColorPrimaryBrush")
+        });
+        var text = new TextBlock
+        {
+            Text = $"{label} · {snapshot.LocalTime.ToString("g", _strings.Culture)}",
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeBrush("AccentTextFillColorPrimaryBrush"),
+            TextWrapping = TextWrapping.Wrap
+        };
+        Grid.SetColumn(text, 1);
+        marker.Children.Add(text);
+        var line = new Border
+        {
+            Height = 2,
+            MinWidth = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = ThemeBrush("AccentTextFillColorPrimaryBrush")
+        };
+        Grid.SetColumn(line, 2);
+        marker.Children.Add(line);
+        return marker;
+    }
+
     private string EventTitle(CelestialAgendaEvent item) => item.Kind switch
     {
         CelestialEventKind.MoonPlanetConjunction => _strings.Format("Celestial.Agenda.ConjunctionTitle",
             T($"CelestialBody{item.RelatedBody ?? throw new InvalidDataException("A conjunction must identify its related planet.")}")),
         CelestialEventKind.MeteorShower => T($"CelestialMeteor{item.MeteorShowerId ?? throw new InvalidDataException("A meteor shower must identify its catalog entry.")}"),
+        CelestialEventKind.ImportantDate => T($"CelestialImportantDate{item.ImportantDateId ?? throw new InvalidDataException("An important date must identify its catalog entry.")}"),
+        CelestialEventKind.SpaceWeather => T($"CelestialSpaceWeather{item.SpaceWeatherKind ?? throw new InvalidDataException("A space-weather event must identify its condition.")}"),
         _ => T($"CelestialEvent{item.Kind}")
     };
+
+    private string SpaceWeatherDetail(CelestialAgendaEvent item)
+    {
+        var source = T("Celestial.SpaceWeather.Source");
+        var intensity = item.NoaaScale is { } scale ? $"G{scale}" : item.KpIndex is { } kp ? $"Kp {kp:0.0}" : null;
+        var description = T($"Celestial.SpaceWeather.{item.SpaceWeatherKind ?? throw new InvalidDataException("A space-weather event must identify its condition.")}");
+        return intensity is null ? $"{description} · {source}" : $"{description} · {intensity} · {source}";
+    }
+
+    private static BitmapImage SpaceWeatherArtwork(SpaceWeatherEventKind kind) => new(new Uri(kind switch
+    {
+        SpaceWeatherEventKind.GeomagneticStorm => "ms-appx:///Assets/Celestial/Artwork/geomagnetic-storm-v1.png",
+        SpaceWeatherEventKind.SolarRadiationStorm or SpaceWeatherEventKind.HighEnergyElectronFlux => "ms-appx:///Assets/Celestial/Artwork/solar-radiation-storm-v1.png",
+        SpaceWeatherEventKind.RadioBlackout => "ms-appx:///Assets/Celestial/Artwork/solar-flare-radio-blackout-v1.png",
+        _ => throw new InvalidDataException("The space-weather condition has no approved artwork.")
+    }));
+
+    private static BitmapImage ImportantDateArtwork(string id) => new(new Uri(id switch
+    {
+        "birthday" => "ms-appx:///Assets/Celestial/Artwork/birthday-v1.png",
+        "christmas" => "ms-appx:///Assets/Celestial/Artwork/christmas-v1.png",
+        "new-year" => "ms-appx:///Assets/Celestial/Artwork/new-year-v1.png",
+        _ => throw new InvalidDataException("The important date has no approved artwork.")
+    }));
+
+    private static bool IsPlanet(CelestialBodyKind kind) => kind is CelestialBodyKind.Mercury or CelestialBodyKind.Venus
+        or CelestialBodyKind.Mars or CelestialBodyKind.Jupiter or CelestialBodyKind.Saturn
+        or CelestialBodyKind.Uranus or CelestialBodyKind.Neptune;
 
     private void RenderZodiac(CelestialZodiacSnapshot zodiac)
     {
@@ -673,6 +828,7 @@ internal sealed partial class CelestialWindow : Window
     private void ClearRenderedContent()
     {
         _displayedRender = null;
+        _skySnapshot = null;
         SkyControl.Visibility = Visibility.Collapsed;
         AgendaScroll.Visibility = Visibility.Collapsed;
         EarthControl.Visibility = Visibility.Collapsed;
@@ -687,6 +843,9 @@ internal sealed partial class CelestialWindow : Window
         Closed -= CelestialWindow_Closed;
         _resizeTimer.Stop();
         _resizeTimer.Tick -= ResizeTimer_Tick;
+        // Invalidate the render owner before cancellation can resume an awaiting UI continuation.
+        _projectionCancellation = null;
+        _pendingRender = null;
         _lifetimeCancellation.Cancel();
         _lifetimeCancellation.Dispose();
     }

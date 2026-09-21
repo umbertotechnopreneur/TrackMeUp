@@ -4,9 +4,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:TrackMeUp.Controls"
+    xmlns:local="using:TrackMeUp"
     Title="Search snapshots">
     <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
+        <local:GlassBackdrop />
     </Window.SystemBackdrop>
     <Grid x:Name="RootGrid" Background="Transparent" Loaded="RootGrid_Loaded" SizeChanged="RootGrid_SizeChanged">
         <Grid.Resources>
@@ -14,14 +15,14 @@
                 <ResourceDictionary.ThemeDictionaries>
                     <ResourceDictionary x:Key="Light">
                         <AcrylicBrush x:Key="SearchQueryBackdropBrush" TintColor="#FFF7FAFC" TintOpacity="0.12" TintLuminosityOpacity="0.35" FallbackColor="#FFF1F4F7" />
-                        <AcrylicBrush x:Key="SearchResultsBackdropBrush" TintColor="#FFF7FAFC" TintOpacity="0.05" TintLuminosityOpacity="0.16" FallbackColor="#FFEEF2F5" />
+                        <SolidColorBrush x:Key="SearchResultsBackdropBrush" Color="Transparent" />
                         <StaticResource x:Key="TextControlBackground" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SearchQueryBackdropBrush" />
                     </ResourceDictionary>
                     <ResourceDictionary x:Key="Dark">
                         <AcrylicBrush x:Key="SearchQueryBackdropBrush" TintColor="#FF151A20" TintOpacity="0.15" TintLuminosityOpacity="0.30" FallbackColor="#FF20262E" />
-                        <AcrylicBrush x:Key="SearchResultsBackdropBrush" TintColor="#FF151A20" TintOpacity="0.08" TintLuminosityOpacity="0.18" FallbackColor="#FF191F26" />
+                        <SolidColorBrush x:Key="SearchResultsBackdropBrush" Color="Transparent" />
                         <StaticResource x:Key="TextControlBackground" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundPointerOver" ResourceKey="SearchQueryBackdropBrush" />
                         <StaticResource x:Key="TextControlBackgroundFocused" ResourceKey="SearchQueryBackdropBrush" />
@@ -90,6 +91,7 @@
             Margin="24,0,24,8"
             IsClosable="True"
             IsOpen="False"
+            Closed="SearchInfoBar_Closed"
             Severity="Error" />
 
         <Grid x:Name="SearchStatusRow" Grid.Row="3" Margin="24,0,24,12" MinHeight="24" Visibility="Collapsed">
@@ -128,6 +130,7 @@
                         TextWrapping="WrapWholeWords" />
                     <ListView
                         x:Name="SearchResultsList"
+                        Background="Transparent"
                         Grid.Row="1"
                         HorizontalContentAlignment="Stretch"
                         ItemsSource="{Binding Results, Mode=OneWay}"

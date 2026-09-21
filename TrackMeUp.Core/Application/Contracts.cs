@@ -210,7 +210,8 @@ public sealed record DataArchiveExportRequest(
     string DestinationPath,
     DateOnly? From = null,
     DateOnly? ToInclusive = null,
-    bool IncludeScreenshots = true);
+    bool IncludeScreenshots = true,
+    Guid OperationId = default);
 
 /// <summary>Summarizes one successfully written portable TrackMeUp archive.</summary>
 public sealed record DataArchiveExportResult(
@@ -227,7 +228,7 @@ public sealed record DataArchiveExportResult(
     long ScreenshotBytes);
 
 /// <summary>Requests a validated, non-mutating preview of one portable TrackMeUp archive.</summary>
-public sealed record DataArchiveImportPreviewRequest(string ArchivePath);
+public sealed record DataArchiveImportPreviewRequest(string ArchivePath, Guid OperationId = default);
 
 /// <summary>Describes one installation contained in a portable archive.</summary>
 public sealed record DataArchiveInstallationSummary(
@@ -255,7 +256,7 @@ public sealed record DataArchiveImportPlan(
     bool AlreadyImported);
 
 /// <summary>Requests the confirmed merge of a previously previewed archive plan.</summary>
-public sealed record DataArchiveImportRequest(Guid PlanId);
+public sealed record DataArchiveImportRequest(Guid PlanId, Guid OperationId = default);
 
 /// <summary>Reports inserted and idempotently skipped records after one atomic archive merge.</summary>
 public sealed record DataArchiveImportResult(
@@ -581,7 +582,7 @@ public sealed record WorldClockCitySummary(
     bool IsCapital);
 
 /// <summary>Contains the locally distributed city catalog and current selection limit.</summary>
-public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> Cities, int MaximumClocks);
+public sealed record WorldClockCityCatalog(IReadOnlyList<WorldClockCitySummary> Cities, int MaximumClocks, string? AddDeniedMessageKey = null);
 
 /// <summary>Contains the persisted world-clock identifiers after a successful selection mutation.</summary>
 public sealed record WorldClockSelectionState(IReadOnlyList<string> CityIds, int MaximumClocks);
@@ -634,7 +635,8 @@ public sealed record WorldClockItem(
     string SkylineAssetPath,
     string SkylineSeason,
     WorldClockAtmosphere Atmosphere,
-    WorldClockWeather? Weather);
+    WorldClockWeather? Weather,
+    SpaceWeatherAlert? SpaceWeatherAlert = null);
 
 /// <summary>Identifies one geographic point used by the world day/night projection.</summary>
 public sealed record WorldClockMapCoordinate(double Latitude, double Longitude);
@@ -670,6 +672,9 @@ public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, stri
 /// <summary>Exposes every frontend capability through UI-independent requests and result DTOs.</summary>
 public interface ITrackMeUpApplication : IAsyncDisposable
 {
+    /// <summary>Reads transient archive progress without waiting for a running import or export.</summary>
+    Task<OperationResult<DataArchiveProgress?>> GetDataArchiveProgressAsync(DataArchiveProgressRequest request, CancellationToken cancellationToken);
+
     /// <summary>Registers local native drag handling on the window's UI thread; the returned registration must be disposed on that thread.</summary>
     IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure);
 
@@ -744,6 +749,21 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets a privacy-safe aggregate report for an inclusive local-date range.</summary>
     Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Gets local export preferences and known installations without requiring Premium.</summary>
+    Task<OperationResult<ReportExportSetup>> GetReportExportSetupAsync(CancellationToken cancellationToken);
+
+    /// <summary>Builds bounded local export previews without requiring Premium or calling an AI provider.</summary>
+    Task<OperationResult<ReportExportPreview>> PreviewReportExportAsync(ReportExportOptions options, CancellationToken cancellationToken);
+
+    /// <summary>Saves field preferences; dates and generated summaries are not persisted.</summary>
+    Task<OperationResult<bool>> SaveReportExportPreferencesAsync(ReportExportOptions options, CancellationToken cancellationToken);
+
+    /// <summary>Checks the runtime entitlement and atomically writes a selected analytical export.</summary>
+    Task<OperationResult<ReportExportResult>> ExportReportAsync(ReportExportRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Explicitly sends selected saved text to the configured AI provider and returns an editable summary.</summary>
+    Task<OperationResult<ReportSummaryResult>> GenerateReportSummaryAsync(ReportSummaryRequest request, CancellationToken cancellationToken);
 
     /// <summary>Captures a current system snapshot.</summary>
     Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken);
@@ -924,6 +944,13 @@ public interface ITrackMeUpApplication : IAsyncDisposable
 
     /// <summary>Gets typed application settings.</summary>
     Task<OperationResult<AppSettings>> GetSettingsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Gets the runtime-owned feature entitlement snapshot.</summary>
+    Task<OperationResult<FeatureAccessSnapshot>> GetFeatureAccessAsync(CancellationToken cancellationToken);
+#if DEBUG
+    /// <summary>Simulates an access tier in runtime memory for debugging; absent in Release.</summary>
+    Task<OperationResult<FeatureAccessSnapshot>> SimulateFeatureAccessAsync(ProductTier tier, CancellationToken cancellationToken);
+#endif
 
     /// <summary>Applies one complete Quick Setup profile as a single validated settings transaction.</summary>
     Task<OperationResult<AppSettings>> ApplyQuickSetupProfileAsync(QuickSetupProfileRequest request, CancellationToken cancellationToken);

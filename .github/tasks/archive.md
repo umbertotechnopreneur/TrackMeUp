@@ -1,6 +1,161 @@
 # Task Archive
 
+## 2026-09-21 — Release-aware runtime catalog checks
+
+- Fixed the source-based runtime catalog test to exclude simple DEBUG-only blocks when comparing with the compiled Release catalog. More complex conditional directives fail explicitly instead of being silently filtered. Added a compiled-catalog and client-API check that simulation is present only in Debug. Application code and release entitlement behavior are unchanged.
+- All five targeted tests passed once in Debug x64 and once in Release x64, with code analyzers and warnings-as-errors enabled. Formatting and verification passed. Reports remain under `artifacts/test-results/runtime-catalog-configurations`. The owner authorized commit and push to PR #42 with CI; the full suite was not repeated locally.
+
+## 2026-09-21 — Archive progress and full-suite corrections
+
+- Added per-operation archive progress through the shared facade and runtime protocol. Export, validation and import report real phases and file counts; the modal dialog polls independently of the mutation lock and shows elapsed time. Unknown totals remain indeterminate. Progress snapshots contain no local paths and are removed when operations finish. All ten locales include the new captions.
+- Fixed the incomplete CLI facade fake, stale search/menu/astronomy contract expectations, the screenshot-schedule license fixture and missing menu tooltips. Added archive progress lifecycle, service and UI/localization regression checks.
+- Debug x64 solution build passed with zero warnings and errors. Final results: Core 871, CLI 163, Presentation 380, Search 71 and OCR 26 passed (1,511 total). The full run exposed three remaining source-contract expectations; after correction, the owner authorized a Presentation-only rerun, which passed all 380. Formatting and verification passed. Reports are retained under `artifacts/test-results/archive-progress-full` and `artifacts/test-results/archive-progress-presentation`.
+- The owner authorized commit and push to PR #42 with a new CI run. No installer, installation or app restart was performed. Live visual acceptance and remote-runtime UI observation remain pending.
+
+## 2026-09-21 — NOAA location preference and transparent search results
+
+- Added the explicit Git ignore exception for the embedded important-date catalog required by Core. The local catalog is now visible to Git; no unrelated data directory is unignored.
+- Added a persisted, default-on world-clock preference for the existing NOAA geomagnetic location/darkness filter, with explanatory text in ten languages. Clocks and the astronomical agenda share the choice; disabling it preserves alert validity, significant-storm thresholds and forecast time bounds. Other NOAA alert types are unchanged.
+- Removed the extra results-pane Acrylic layer in Search so the window material remains visible. Kept system high-contrast colors and native item interaction states. Added focused regression scenarios, not executed locally. Formatting and syntax checks passed; the owner requested commit and push with test execution delegated to CI. Runtime visual validation remains pending.
+
+## 2026-09-21 — Reconcile PR #42 with main
+
+- Resolved 37 conflicts on the existing branch. Main commit `f545db5` has the same Git tree as branch ancestor `2f2e865`; the conflicts came from the earlier squash merge. Preserved all subsequent branch changes and removed stale task entries reintroduced by automatic merging.
+- Verified that the resolved index exactly matched the pre-merge tree before adding this record. No application code or version metadata changed in this merge. No local build, tests, installation or restart was performed; required PR checks remain separate.
+
+## 2026-09-21 — Restrained export action icons
+
+- Added colored icons alongside localized captions for Generate summary, Save preferences and Export. Secondary commands remain text-only. The icons use system colors in high contrast and are excluded from the accessibility tree; the owning buttons retain localized names and tooltips.
+- Updated the unexecuted localization regression checks to accept both string content and tagged text children, and to keep icons limited to those three actions. Source changes only; no build, tests or app restart.
+
+## 2026-09-21 — Export button caption initialization
+
+- Added explicit string content to all nine export-window text buttons. The shared localizer previously treated null content as a visual-only command and assigned an accessible label without a visible caption. Existing localization keys and icon-only command behavior remain unchanged.
+- Added regression coverage for text-button content and caption/header availability across ten locales. Source-only change at the owner's request: tests, compilation and app restart were not performed. C# formatting and verification passed; runtime acceptance remains in todo.
+
+## 2026-09-21 — Stable player label selector width
+
+- Changed the selector from a content-dependent maximum width to a fixed 155 logical pixels. Existing full-name tooltips remain available. Build and visual acceptance are pending; no tests were run for this adjustment.
+
+## 2026-09-21 — Free quotas and Premium action surfaces
+
+- Implemented serialized Core guards for three Free labels and clocks, screenshot schedule saves and archive export/import execution. Free archive previews remain available. Downgrade preserves existing catalogs and selection; guarded actions use the standard upgrade notice, not a new Store purchase integration.
+- Added shared title-bar Premium badges to schedule/report export and the archive page, plus a badge beside Add clock. Removed the label badges, redundant history submenu, manual clock-density command and obsolete localized strings. Added left-aligned label management, colored editor action icons, borderless appearance choices, and the main-menu style for celestial actions.
+- Changed snapshot conflict detection to compare JSON content while preserving scalar conflicts and rejecting malformed JSON. The owner's archive was inspected only; no import or data mutation was used for verification.
+- Debug x64 unpackaged app build passed with zero warnings/errors; C# formatting and verification passed. Replaced the running MSIX process with the updated local Debug EXE with owner approval. The first focused test run passed 241/252 checks; corrected incomplete fixtures and stale UI contracts compile without warnings, but their repeat execution awaits approval. Remaining automated and manual verification is tracked in todo.
+
+## 2026-09-21 — Activity export workspace
+
+- Added a native three-section Mica export window with date/device filters, saved field preferences, bounded previews and Excel, zipped CSV and typed JSON output. Free users can configure and preview everything; the shared application facade checks Premium before writing. The upgrade message does not implement a Store purchase flow.
+- Added optional editable AI summaries from selected saved text, with explicit generation, shared cancellation, provider usage accounting and daily limits. Ordinary previews and exports do not contact an AI provider. Sensitive fields are opt-in; measured activity counters remain separate from screenshot descriptions.
+- Added atomic destination writes, CSV formula protection, long-text continuation sheets for Excel, localized controls in all ten languages, IPC operations and technical export guidance.
+- The authorized focused checks passed: 85 Core checks on the initial run, the eight affected export checks after fixing their isolated screenshot fixture and receiving approval to rerun them, and four presentation boundary checks. No real-provider calls, installed-app changes, Store packages, commits or pushes were performed. Manual UI and real Excel acceptance remain in todo; preserve the owner's requested unpackaged Debug app for testing.
+- Final x64 Debug unpackaged compilation passed with zero warnings/errors, and the repository C# formatter verification passed. The unpackaged executable is a local development artifact, not a commercial distribution package.
+
+## 2026-09-21 — Premium CLI operational refresh
+
+- Added search with filters/pagination, date-range reports, clock-only queries/conversion, hardware readings, screenshot gallery/deletion/migration, archive export/import, AI model/price/connection/reprocessing operations, log opening, access status and double-confirmed reset. All operations use the existing shared facade; celestial and window-only functions remain outside CLI scope.
+- Added default previews and explicit confirmation for maintenance. Import/reprocessing use runtime-owned expiring plans; reset reports acceptance separately from asynchronous deletion/relaunch. Export preview describes the request and explicitly warns that confirmed export can replace its destination archive.
+- Classified the entire CLI as Premium, including help, version, diagnostics and shell. The router fails closed on unavailable access, denies Free with exit code 11 and rechecks access during shell/watch use. The CLI cannot grant itself Premium; the existing unlicensed production default and desktop Debug simulation remain explicit.
+- Updated all ten CLI help locales, feature titles, the visible README callout, command reference, Premium guide and scenario checklist. Documented the evaluated Debug unpackaged launch command and the custom configuration's missing DEBUG symbol.
+- x64 Debug CLI/test compilation and formatting verification passed; the authorized CLI suite passed 163/163 tests. No installed-app smoke test, personal-data mutation, provider request, reset, MSIX package, commit or push was performed. Installed runtime acceptance remains in todo.
+
+## 2026-09-21 — Menu placement and label-management dialog
+
+- Moved the three quick actions from the player body to the top level of the More menu, preserving its existing navigation hubs. Reduced the Premium badge and selector corner radius, aligned the badge to the left of the selector and added a narrow-header second row.
+- Replaced the inline settings editor with its title, a localized product description and Manage labels. Added a resizable Mica dialog using the shared modal queue, existing facade-backed editor, separate window placement and a scrollable body. Editor actions adapt to translated caption widths and stack when needed. Existing feature-access rules are unchanged; interactive acceptance remains in todo.md.
+- Verification: repository C# formatter and Verify passed; the four changed/new XAML files parsed and the three new keys are present in all ten locale catalogs. No automated tests, build or installation performed for this change.
+
+## 2026-09-21 — Central feature access and Debug profiles
+
+- Added the shared feature catalog, runtime-owned license policy, and reusable `FeatureGate` title/badge/access container. Saved labels are the first Premium feature; the badge remains visible in both profiles. Settings mutations are checked inside Core for direct, CLI and IPC callers, including saved-label selection through the taskbar text setting.
+- Added a Debug-only main-menu switch between Free and Premium. Its override is runtime-local and is not persisted; downgrade clears a selected saved label while retaining definitions/history. Dashboard events distribute access state to views. Commercial licensing remains an explicit integration boundary with an unlicensed Free default; Store purchase/entitlement integration is not included.
+- Debug x64 app compilation and a local compilation without the DEBUG symbol passed with zero warnings/errors. Static assembly metadata confirmed the non-DEBUG Core has no simulation method, override field or debug IPC operation. FeatureAccessPolicyTests compiled without execution; scenarios and extension guidance are in DEVELOPMENT_CHECKLIST.md and PREMIUM_FEATURES.md. Visual acceptance and approved test execution remain pending.
+
+## 2026-09-21 — Data transfer appearance
+
+- Added compact localized tab headers with blue export, green import and violet installation icons, theme/high-contrast brushes and uniform content spacing. Archive commands and preview behavior are unchanged.
+- Maintenance reuses the existing thin desktop GlassBackdrop; returning to the player or settings restores their regular desktop Acrylic. System accessibility/transparency policy remains handled by the shared backdrop.
+- x64 Debug compilation passed with zero warnings/errors; C# formatting, scoped diff and XAML structure checks passed. No tests or data operations run, no installation or commit; visual acceptance remains pending.
+
+## 2026-09-21 — Separate public documentation from internal planning
+
+- Move the historical screenshot proposal and publication checklist to the owner's private MeUp notes. Split Store account procedures from public listing and validation guidance.
+- Remove stale links, record the private-note policy and ignore the reserved local Partner Center metadata export.
+- Inspect the documentation diff and moved-note links. No builds, tests, commits, pushes or branches were created.
+
+## 2026-09-21 — Saved labels and player cost visibility
+
+- Added saved label definitions with editable names, 16 icons and eight colors. Core validates create/update/delete/select commands through the existing serialized settings facade. Renaming the active label updates the selection; deleting it clears the selection without rewriting historical activity. Existing taskbar one-off text labels remain supported.
+- Added a searchable icon/color picker to main settings and an optional label dropdown to the right of the player timer. Exposed the monthly AI cost toggle in main settings with an explanation of provider amounts versus local estimates; estimates have an explicit player caption. Added strings in all ten locales and scenario checks.
+- Local x64 Debug compilation passed with zero warnings/errors. No tests, installation, packaging, commit or push for this change; visual acceptance remains in todo.
+
+## 2026-09-20 — Shutdown lifecycle corrections
+
+- Celestial windows invalidate pending rendering ownership before cancellation and no longer update the loading indicator after closure.
+- Shutdown toast dismissal stops timers and completes synchronously, without starting a fade or queueing a dismissal callback. Ordinary dismissal remains animated; unload invalidates pending animation completions.
+- Built and signature-verified local x64 Debug 0.0.30; formatting passed and build outputs cleaned. No tests run. These defects are corrected in code, but their relationship to the observed 0.0.27 crash remains unproven because the minidump omits the original stowed exception. Keep debugger reproduction pending.
+
+## 2026-09-20 — Agenda current-time position
+
+- Added an accent marker with localized Now/reference label and city-local timestamp between chronological agenda events. Highlighted ongoing intervals with a border and text label; instantaneous events are not treated as ongoing. Core supplies interval state and marker position.
+- Reused the existing live minute refresh and localization keys. x64 Debug build completed with zero warnings/errors; formatter verification passed. No tests run, no installation performed, visual acceptance pending.
+
+## 2026-09-20 — Finish the product README structure
+
+- Put an actual activity preview, source setup, and essential limitations directly after the product description. Move the world-clock preview into the extras section.
+- Preserve the detailed contributor scenarios and celestial implementation notes in docs/DEVELOPMENT_CHECKLIST.md and docs/CELESTIAL_DESKTOP.md, with links from the README and validation guide. Update the repository rule for future scenario entries.
+- Documentation only; no builds, tests, commits, pushes, or branches were created.
+
+## 2026-09-20 — Apply the shared MeUp presentation
+
+- Shorten the README headline, keep the product purpose first, and add the shared product links and author signature.
+- Add the coordinated concept illustration and its exact generation prompt, provenance, and visual style guide. Present sky, local weather, space weather, and world clocks together as optional desktop extras, using the existing real screenshots.
+- Changes remain local. No build, test, formatter, linter, commit, push, or branch creation was performed for this update.
+
+## 2026-09-20 — City-local aurora and two-line weather
+
+- Moved current advisories onto individual world-clock items. Aurora eligibility uses approximate magnetic latitude from both coordinates, Kp and local darkness; agenda forecasts use the same geographic gate and bounded darkness samples. Expired advisories are excluded.
+- Weather conditions and optional space-weather advisories occupy separate rows, removing the former 132-pixel advisory limit.
+- Built, signed and installed local Debug 0.0.27.0 (package status Ok), including the distinct moonset artwork. x64 compilation, formatting and signature verification passed. Cleaned build outputs and superseded task-generated 0.0.24–0.0.26 package directories, retaining the new installer. No test suites were run; visual acceptance remains pending.
+
+## 2026-09-20 — Distinct moonset artwork
+
+- Generated moonset-v1.png with built-in ImageGen using the existing lunar-horizon illustration as a style reference. Preserved original RGBA pixels and recorded prompt/hash in the artwork provenance.
+- Moonset now selects the new image; Moonrise retains the original asset. Installation/visual acceptance of the new asset remains pending.
+
+## 2026-09-20 — Compact search and restore celestial views
+
+- Search now opens compact, expands for results and uses the shared thin GlassBackdrop. Lowered its native minimum size so saved expanded bounds no longer dictate an empty opening.
+- Removed the visibility-based magnitude-eight validation cutoff: the embedded Proxima Centauri entry at magnitude 11.13 is a valid catalog entry. This previously blocked both celestial views.
+- Built, signed, and installed local Debug 0.0.26.0. Confirmed compact Search dimensions and populated Local Sky/Agenda through the installed UI. Formatting passed; no test suites were run. Retained the installer and cleaned build outputs.
+
+## 2026-09-20 — Increase window snapping distance
+
+- Increased snapping from five to ten physical pixels. Near-edge overshoot no longer immediately suppresses snapping; free movement for the remainder of the drag begins beyond ten pixels outside the starting monitor. Updated boundary/corner scenarios and README behavior.
+- Compiled Core and its test project successfully without running tests; formatted and verified C# sources. Built, verified the signature, and installed x64 Debug 0.0.25.0. User visual checks remain in todo.md.
+
+## 2026-09-20 — Remove the public roadmap
+
+- Remove ROADMAP.md and its README link. Update the feature request checklist to refer only to existing issues. Changes remain local; no tests or CI were run.
+
+## 2026-09-20 — Repair installed application startup
+
+- Restored 28 missing celestial/weather translations in each of eight catalogs. The installed app failed during LocalizationService initialization before constructing its main window; strict catalog validation remains enabled.
+- Verified all ten catalogs contain the same 1,195 keys and matching format placeholders. Built, signed, and installed local x64 Debug 0.0.24.0; cold launch creates a usable main window, minimizing registers the notification-area icon, and a subsequent Start-menu activation restores the same process with a visible foreground window. No test suites, push, or PR were run.
+
+
+## 2026-09-20 — Clarify product documentation and author voice
+
+- Put activity tracking and search in the first README headline. Simplify product copy and use the solo maintainer's voice in contributor, support, security, privacy, and roadmap documentation.
+- Save the product writing preferences in AGENTS.md, including plain English, concrete benefits, and first-person singular author wording.
+- Documentation changes only. No builds, tests, formatters, linters, or CI were run. Preserve unrelated work in progress.
+
 This archive tracks completed development tasks for reference, historical alignment, and auditing.
+## [2026-09-19] Install the unified UI development MSIX
+
+- [x] At the user's request, build and install a signed local x64 MSIX from `2f2e865`, preserving existing source edits and using the already trusted development certificate. No test suites or CI were run. Update the existing package identity with `ForceUpdateFromAnyVersion` because the two working copies used independent development version counters.
+- [x] Verify the package signature, matching source commit and absence of report assets. Windows reports the installed package as `Ok`; all six checked executable/assembly/build-information hashes match the MSIX, and the installed application is running with a main window. Preserve the MSIX and dependencies under `artifacts/packages/local/x64/ui-cleanup-2f2e865/` and clean Release outputs once. Full visual scenario checks remain pending.
 ## [2026-09-19] Unify desktop UI fixes and retire activity reports
 
 - [x] Combine maintenance/settings and celestial changes on the single existing `codex/clarify-advanced-sensors` branch. Clarify screenshot/AI wording, remove App/PC diagnostics, add responsive privacy actions and accents, load retention criteria automatically on one wrapping row, preserve results across language/theme changes, and give the complete toast frame an opaque theme surface.
@@ -63,6 +218,12 @@ This archive tracks completed development tasks for reference, historical alignm
 - [x] Replace duplicate approximate solar/lunar calculations with one Core Astronomy Engine model and bounded caches, shared by existing clocks/Moon/maps and new views. Add source-attributed stars, computed events, offline Earth texture rendering, passive UI DTOs and versioned operations on the existing runtime.
 - [x] Add computed Moon/planet conjunctions, a source-attributed eight-shower meteor catalog with explicitly approximate peaks, and informational tropical zodiac sectors. Create twelve individual transparent zodiac PNGs, planetary/event artwork and a transparent landscape; record generation prompts and provenance. Render dawn/day/dusk/night with 24 smoothly interpolated palettes driven by actual solar elevation.
 - [x] Validate x64 WinUI compilation (zero warnings/errors), 770 Core tests, 372 Presentation tests and 96 CLI tests. All ten localization catalogs have matching keys/placeholders. CI results are recorded on PR #39; installed visual checks remain tracked in todo.md.
+
+## [2026-09-19] Simplify the Italian activity calendar wording
+
+- [x] Replace the recorded-activity label with the user-requested "Uptime e attività", shared by the calendar subtitle and day status. Delivery is tracked in `todo.md`; no behavior changed.
+
+---
 
 ## [2026-09-19] Create a local installer and update the installed app
 

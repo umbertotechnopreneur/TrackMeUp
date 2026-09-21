@@ -28,16 +28,6 @@ public sealed class WorldClockWindowLayoutStateTests
             state.ShowSurface((WorldClockWindowSurface)int.MaxValue));
     }
 
-    [Fact]
-    public void TogglePresentationMode_SwitchesDensityWithoutChangingTheActiveSurface()
-    {
-        var state = new WorldClockWindowLayoutState();
-
-        Assert.Equal(WorldClockPresentationMode.Compact, state.TogglePresentationMode());
-        Assert.Equal(WorldClockWindowSurface.Clocks, state.Surface);
-        Assert.Equal(WorldClockPresentationMode.Expanded, state.TogglePresentationMode());
-    }
-
     [Theory]
     [InlineData("2026-08-30T12:34:00.0000000+00:00", 60.1d)]
     [InlineData("2026-08-30T12:34:15.2500000+00:00", 44.85d)]
@@ -99,20 +89,17 @@ public sealed class WorldClockWindowLayoutStateTests
             WorldClockWindowLayoutState.CalculateColumnsLayout(clockCount, 800d));
 
     [Theory]
-    [InlineData(1, WorldClockPresentationMode.Compact, 480, 280, 480, 240)]
-    [InlineData(2, WorldClockPresentationMode.Compact, 960, 280, 480, 240)]
-    [InlineData(3, WorldClockPresentationMode.Compact, 1120, 280, 480, 240)]
-    [InlineData(1, WorldClockPresentationMode.Expanded, 480, 680, 480, 240)]
-    [InlineData(2, WorldClockPresentationMode.Expanded, 780, 680, 480, 240)]
-    public void CalculateWindowSizing_UsesTheCityCountAndPresentationMode(
+    [InlineData(1, 480, 680, 480, 240)]
+    [InlineData(2, 780, 680, 480, 240)]
+    [InlineData(3, 1120, 680, 480, 240)]
+    public void CalculateWindowSizing_UsesTheCityCount(
         int clockCount,
-        WorldClockPresentationMode presentationMode,
         int preferredWidth,
         int preferredHeight,
         int minimumWidth,
         int minimumHeight)
     {
-        var sizing = WorldClockWindowLayoutState.CalculateWindowSizing(clockCount, presentationMode);
+        var sizing = WorldClockWindowLayoutState.CalculateWindowSizing(clockCount);
 
         Assert.Equal(preferredWidth, sizing.PreferredLogicalWidth);
         Assert.Equal(preferredHeight, sizing.PreferredLogicalHeight);

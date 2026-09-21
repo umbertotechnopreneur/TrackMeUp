@@ -8,8 +8,29 @@
     d:DesignHeight="760"
     d:DesignWidth="560"
     mc:Ignorable="d">
-    <Grid>
-        <StackPanel x:Name="SectionBody" Spacing="16">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="TransferExportBrush" Color="#246CB4" />
+                    <SolidColorBrush x:Key="TransferImportBrush" Color="#16784B" />
+                    <SolidColorBrush x:Key="TransferIdentityBrush" Color="#8551AA" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="TransferExportBrush" Color="#80BFFF" />
+                    <SolidColorBrush x:Key="TransferImportBrush" Color="#75D8AA" />
+                    <SolidColorBrush x:Key="TransferIdentityBrush" Color="#D1A6EB" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="TransferExportBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="TransferImportBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                    <StaticResource x:Key="TransferIdentityBrush" ResourceKey="SystemColorWindowTextColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid HorizontalAlignment="Stretch" MaxWidth="820">
+        <StackPanel x:Name="SectionBody" Spacing="20">
             <StackPanel Spacing="4">
                 <TextBlock
                     Tag="Operations.InstallationTransfer.Title"
@@ -23,8 +44,16 @@
                     TextWrapping="Wrap" />
             </StackPanel>
             <Pivot x:Name="TransferSections" SelectionChanged="TransferSections_SelectionChanged">
-                <PivotItem x:Name="ExportSection" Header="Export">
-                    <StackPanel Spacing="10">
+                <PivotItem x:Name="ExportSection">
+                    <PivotItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE898;" FontFamily="Segoe Fluent Icons" FontSize="17"
+                                          VerticalAlignment="Center" Foreground="{ThemeResource TransferExportBrush}"
+                                          AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock x:Name="ExportHeaderText" Text="Export" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                    </PivotItem.Header>
+                    <StackPanel Spacing="14" Padding="0,12,0,0">
                         <StackPanel Spacing="3">
                             <TextBlock
                                 Tag="Operations.InstallationTransfer.Export.Description"
@@ -53,8 +82,16 @@
                         </StackPanel>
                     </StackPanel>
                 </PivotItem>
-                <PivotItem x:Name="ImportSection" Header="Import">
-                    <StackPanel Spacing="16">
+                <PivotItem x:Name="ImportSection">
+                    <PivotItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE896;" FontFamily="Segoe Fluent Icons" FontSize="17"
+                                          VerticalAlignment="Center" Foreground="{ThemeResource TransferImportBrush}"
+                                          AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock x:Name="ImportHeaderText" Text="Import" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                    </PivotItem.Header>
+                    <StackPanel Spacing="14" Padding="0,12,0,0">
                         <TextBlock
                             Tag="Operations.InstallationTransfer.Import.Description"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -166,8 +203,16 @@
                             AutomationProperties.LiveSetting="Polite" />
                     </StackPanel>
                 </PivotItem>
-                <PivotItem x:Name="InstallationsSection" Header="Installations">
-                    <StackPanel Spacing="10">
+                <PivotItem x:Name="InstallationsSection">
+                    <PivotItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE977;" FontFamily="Segoe Fluent Icons" FontSize="17"
+                                          VerticalAlignment="Center" Foreground="{ThemeResource TransferIdentityBrush}"
+                                          AutomationProperties.AccessibilityView="Raw" />
+                                <TextBlock x:Name="InstallationsHeaderText" Text="Installations" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                    </PivotItem.Header>
+                    <StackPanel Spacing="14" Padding="0,12,0,0">
                         <StackPanel Spacing="3">
                             <TextBlock
                                 Tag="Operations.InstallationTransfer.Installations.Description"

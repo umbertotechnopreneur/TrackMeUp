@@ -55,7 +55,9 @@ public sealed class CelestialServiceTests
         Assert.DoesNotContain(snapshot.Agenda, item => item.Kind is CelestialEventKind.Sunrise or CelestialEventKind.Sunset
             or CelestialEventKind.CivilDawn or CelestialEventKind.CivilDusk
             or CelestialEventKind.MorningBlueHour or CelestialEventKind.EveningBlueHour);
-        Assert.Equal(5, snapshot.Agenda.Count(item => item.Kind is not CelestialEventKind.MoonPlanetConjunction and not CelestialEventKind.MeteorShower));
+        Assert.Equal(5, snapshot.Agenda.Count(item => item.Kind is not CelestialEventKind.MoonPlanetConjunction
+            and not CelestialEventKind.MeteorShower and not CelestialEventKind.ImportantDate));
+        Assert.Equal(3, snapshot.Agenda.Count(item => item.Kind == CelestialEventKind.ImportantDate));
         var clock = LocalAstronomy.Calculate(90, 0, TimeZoneInfo.Utc, snapshot.InstantUtc);
         Assert.Null(clock.Sunrise);
         Assert.Null(clock.Sunset);

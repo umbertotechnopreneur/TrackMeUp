@@ -21,6 +21,34 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class DataArchiveServiceTests
 {
+    /// <summary>Real archive work emits ordered phase snapshots and honest per-phase counters.</summary>
+    [Fact]
+    public void ExportPreviewImport_ReportRealPhasesAndCounts()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var source = new LocalStore(Path.Combine(root, "source"));
+            var path = Path.Combine(root, "progress.tmuarchive");
+            var reports = new List<DataArchiveProgress>();
+            new DataArchiveService(source).Export(new(path, IncludeScreenshots: false), CancellationToken.None, reports.Add);
+            Assert.Equal(DataArchivePhase.PreparingDatabase, reports[0].Phase);
+            Assert.Contains(reports, item => item.Phase == DataArchivePhase.WritingArchive && item.CompletedItems == 1 && item.TotalItems == 1);
+            Assert.Equal(DataArchivePhase.Finalizing, reports[^1].Phase);
+            var importer = CreateImporter(root);
+            reports.Clear();
+            var plan = importer.PreviewImport(new(path), CancellationToken.None, reports.Add);
+            Assert.Equal(DataArchivePhase.VerifyingArchive, reports[0].Phase);
+            Assert.Contains(reports, item => item.Phase == DataArchivePhase.VerifyingArchive && item.TotalItems > 0 && item.CompletedItems == item.TotalItems);
+            reports.Clear();
+            importer.Import(plan.PlanId, CancellationToken.None, reports.Add);
+            Assert.Contains(reports, item => item.Phase == DataArchivePhase.MergingData);
+            Assert.Equal(DataArchivePhase.Finalizing, reports[^1].Phase);
+            Assert.All(reports, item => Assert.True(item.TotalItems is null || item.CompletedItems <= item.TotalItems));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     /// <summary>Retries a real SQLite lock and publishes a valid archive after the writer releases it.</summary>
     [Fact]
     public void Export_TransientDatabaseLock_RetriesAndProducesImportableArchive()
@@ -48,6 +76,28 @@ public sealed class DataArchiveServiceTests
             Assert.Single(preview.Installations);
             Assert.Equal(1, importer.Import(preview.PlanId, CancellationToken.None).AddedInstallationCount);
             Assert.Empty(Directory.EnumerateFiles(root, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>Upgrades a supported earlier archive schema inside isolated import staging before previewing it.</summary>
+    [Fact]
+    public void PreviewImport_SupportedPreviousSchema_UpgradesAndPreparesThePlan()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var archivePath = CreateMinimalArchive(root);
+            DowngradeArchiveDatabaseToV9(archivePath, root);
+
+            var preview = CreateImporter(root).PreviewImport(
+                new DataArchiveImportPreviewRequest(archivePath),
+                CancellationToken.None);
+
+            Assert.Single(preview.Installations);
         }
         finally
         {
@@ -577,6 +627,93 @@ public sealed class DataArchiveServiceTests
         }
     }
 
+    /// <summary>Round-tripping existing OCR ignores JSON presentation but still rejects changed data at the same revision.</summary>
+    [Theory]
+    [InlineData("compact", false)]
+    [InlineData("reordered", false)]
+    [InlineData("ocr", true)]
+    [InlineData("extracted", true)]
+    public void PreviewImport_ExistingSnapshot_ComparesContentInsteadOfJsonFormatting(string mutation, bool conflict)
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var store = new LocalStore(Path.Combine(root, "source"));
+            var screenshotRoot = Path.Combine(root, "screenshots");
+            store.SaveSettings(store.LoadSettings() with { ScreenshotDirectory = screenshotRoot });
+            var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            var captureId = Guid.NewGuid().ToString("N");
+            var dayDirectory = ScreenshotStorageLayout.GetDayDirectory(screenshotRoot, capturedAt);
+            Directory.CreateDirectory(dayDirectory);
+            var screenshot = Path.Combine(dayDirectory, $"{captureId}_1.0.0_manual_monitor-1.webp");
+            File.WriteAllBytes(screenshot, [1, 2, 3]);
+            File.SetLastWriteTimeUtc(screenshot, capturedAt.UtcDateTime);
+            store.UpsertScreenshotIntervalTelemetry(captureId, [screenshot],
+                new ScreenshotIntervalTelemetry(capturedAt.AddMinutes(-5), capturedAt, 12, 4));
+            store.UpsertScreenshotTextSnapshot(captureId, new ScreenshotTextSnapshot(screenshot,
+                new OcrRawSnapshot(ScreenshotTextExtractionStatus.Succeeded, "Archive text\nCafé Ω", "en-US", null, capturedAt, "test-ocr", 100, 100, [])));
+            AppendAnalysis(store, captureId, capturedAt, screenshot, 1);
+            var archivePath = Path.Combine(root, "same-history.tmuarchive");
+            var service = new DataArchiveService(store);
+            service.Export(new DataArchiveExportRequest(archivePath, IncludeScreenshots: false), CancellationToken.None);
+            var archiveHash = SHA256.HashData(File.ReadAllBytes(archivePath));
+            var snapshotDirectory = Path.Combine(root, "archive-check");
+            Directory.CreateDirectory(snapshotDirectory);
+            using (var archive = ZipFile.OpenRead(archivePath))
+                archive.GetEntry("data.sqlite3")!.ExtractToFile(Path.Combine(snapshotDirectory, SqliteActivityStore.DatabaseFileName));
+            // A missing capture would be pruned on export, making both accepted and rejected cases meaningless.
+            Assert.Equal(1, ReadCount(snapshotDirectory, "screenshot_captures"));
+            Assert.Equal(1, ReadCount(snapshotDirectory, "screenshot_text_snapshots"));
+
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = store.ActivityDatabasePath,
+                Mode = SqliteOpenMode.ReadWrite,
+                Pooling = false
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT snapshot_json FROM screenshot_text_snapshots;";
+            var json = JsonNode.Parse((string)command.ExecuteScalar()!)!.AsObject();
+            if (mutation == "reordered")
+            {
+                var reordered = new JsonObject();
+                foreach (var property in json.Reverse()) reordered.Add(property.Key, property.Value?.DeepClone());
+                json = reordered;
+            }
+            if (mutation == "ocr") json["ocr"]!["rawText"] = "Actually different OCR";
+            command.CommandText = mutation == "extracted"
+                ? "UPDATE screenshot_text_snapshots SET extracted_utc_ticks = extracted_utc_ticks + 1;"
+                : "UPDATE screenshot_text_snapshots SET snapshot_json = $json;";
+            if (mutation != "extracted") command.Parameters.AddWithValue("$json", json.ToJsonString());
+            command.ExecuteNonQuery();
+            command.Parameters.Clear();
+            command.CommandText = "SELECT snapshot_json FROM screenshot_text_snapshots;";
+            var before = (string)command.ExecuteScalar()!;
+
+            if (conflict)
+            {
+                var error = Assert.Throws<InvalidDataException>(() => service.PreviewImport(new(archivePath), CancellationToken.None));
+                Assert.Contains("conflicting screenshot_text_snapshots revision", error.Message);
+            }
+            else
+            {
+                var preview = service.PreviewImport(new(archivePath), CancellationToken.None);
+                Assert.False(preview.AlreadyImported);
+                service.Import(preview.PlanId, CancellationToken.None);
+                Assert.True(service.PreviewImport(new(archivePath), CancellationToken.None).AlreadyImported);
+            }
+            Assert.Equal(before, command.ExecuteScalar());
+            Assert.Equal(1, ReadCount(Path.Combine(root, "source"), "screenshot_text_snapshots"));
+            Assert.Equal(archiveHash, SHA256.HashData(File.ReadAllBytes(archivePath)));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static SqliteConnection LockDatabaseForExport(LocalStore store)
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder
@@ -651,6 +788,63 @@ public sealed class DataArchiveServiceTests
         var targetDirectory = Path.Combine(root, "import-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(targetDirectory);
         return new DataArchiveService(new LocalStore(targetDirectory));
+    }
+
+    private static void DowngradeArchiveDatabaseToV9(string archivePath, string root)
+    {
+        var databasePath = Path.Combine(root, "archive-v9.sqlite3");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Update))
+        {
+            var databaseEntry = archive.GetEntry("data.sqlite3")
+                ?? throw new InvalidOperationException("The test archive database is missing.");
+            using (var source = databaseEntry.Open())
+            using (var destination = File.Create(databasePath))
+            {
+                source.CopyTo(destination);
+            }
+
+            using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = databasePath,
+                Mode = SqliteOpenMode.ReadWrite,
+                Pooling = false
+            }.ToString()))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "DROP TABLE capture_hardware_snapshots; PRAGMA user_version = 9;";
+                command.ExecuteNonQuery();
+            }
+
+            var content = File.ReadAllBytes(databasePath);
+            databaseEntry.Delete();
+            var replacementDatabase = archive.CreateEntry("data.sqlite3");
+            using (var destination = replacementDatabase.Open())
+            {
+                destination.Write(content);
+            }
+
+            var manifestEntry = archive.GetEntry("manifest.json")
+                ?? throw new InvalidOperationException("The test archive manifest is missing.");
+            JsonObject manifest;
+            using (var stream = manifestEntry.Open())
+            {
+                manifest = JsonNode.Parse(stream)?.AsObject()
+                    ?? throw new InvalidOperationException("The test archive manifest is invalid.");
+            }
+
+            var databaseManifest = manifest["entries"]?.AsArray()
+                .Select(entry => entry?.AsObject())
+                .Single(entry => entry?["path"]?.GetValue<string>() == "data.sqlite3")
+                ?? throw new InvalidOperationException("The test archive database manifest is missing.");
+            databaseManifest["length"] = content.LongLength;
+            databaseManifest["sha256"] = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
+            manifestEntry.Delete();
+            var replacementManifest = archive.CreateEntry("manifest.json");
+            using var manifestStream = replacementManifest.Open();
+            JsonSerializer.Serialize(manifestStream, manifest);
+        }
+        File.Delete(databasePath);
     }
 
     private static void AddDeclaredUnexpectedEntry(string archivePath, string entryName, byte[] content)

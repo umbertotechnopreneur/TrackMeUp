@@ -26,7 +26,7 @@ public sealed class SearchSurfaceContractTests
         var f3Shortcut = mainWindow.Descendants().Single(element =>
             element.Name.LocalName == "KeyboardAccelerator" && element.Attribute("Key")?.Value == "F3");
 
-        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
+        Assert.Contains(window.Descendants(), element => element.Name.LocalName == "GlassBackdrop");
         Assert.Equal("MainKeyboardAccelerator_Invoked", f3Shortcut.Attribute("Invoked")?.Value);
         Assert.Equal("48", queryBox.Attribute("MinHeight")?.Value);
         Assert.Equal("Center", queryBox.Attribute("VerticalContentAlignment")?.Value);
@@ -48,12 +48,14 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(footer.Descendants(), element => HasName(element, "SearchAvailabilityText"));
         Assert.Contains(footer.Descendants(), element => HasName(element, "TextReadingStatusText"));
         Assert.DoesNotContain("IsAlwaysOnTop", windowSource, StringComparison.Ordinal);
-        Assert.Contains("presenter.IsResizable = true;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("presenter.IsResizable = hasResults;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMinimizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("presenter.IsMaximizable = false;", windowSource, StringComparison.Ordinal);
         Assert.Contains("RootGrid.RequestedTheme = ElementTheme.Light;", windowSource, StringComparison.Ordinal);
-        Assert.Contains("LogicalWindowWidth = 1040", windowSource, StringComparison.Ordinal);
-        Assert.Contains("LogicalWindowHeight = 720", windowSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowWidth = 640", windowSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowHeight = 156", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_placement.ResizeForContent(RootGrid, _expandedWidth, _expandedHeight)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_placement.ResizeForContent(RootGrid, LogicalWindowWidth, height)", windowSource, StringComparison.Ordinal);
         Assert.Contains("_placement.RestoreOrCenterAsync", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ResizeAndCenterOnCursorDisplay(", windowSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ResizeForCurrentState", windowSource, StringComparison.Ordinal);
@@ -129,7 +131,12 @@ public sealed class SearchSurfaceContractTests
         Assert.Contains(previewHost.ElementsAfterSelf(), element => HasName(element, "PreviewTitleText"));
         Assert.Equal("{ThemeResource SearchQueryBackdropBrush}", query.Attribute("Background")?.Value);
         Assert.Equal("{ThemeResource SearchResultsBackdropBrush}", results.Attribute("Background")?.Value);
-        Assert.Equal(4, window.Descendants().Count(element => element.Name.LocalName == "AcrylicBrush"));
+        Assert.Equal(2, window.Descendants().Count(element => element.Name.LocalName == "AcrylicBrush"));
+        var resultBrushes = window.Descendants().Where(element =>
+            element.Name.LocalName == "SolidColorBrush" && KeyValue(element) == "SearchResultsBackdropBrush").ToArray();
+        Assert.Equal(2, resultBrushes.Length);
+        Assert.All(resultBrushes, brush => Assert.Equal("Transparent", brush.Attribute("Color")?.Value));
+        Assert.Equal("Transparent", window.Descendants().Single(element => HasName(element, "SearchResultsList")).Attribute("Background")?.Value);
         Assert.Contains(highContrast.Elements(), element => KeyValue(element) == "SearchQueryBackdropBrush"
             && element.Attribute("ResourceKey")?.Value == "SystemColorWindowColorBrush");
         Assert.Contains(highContrast.Elements(), element => KeyValue(element) == "SearchResultsBackdropBrush"

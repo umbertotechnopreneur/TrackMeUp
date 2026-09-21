@@ -196,9 +196,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.ExitRequested += MainWindow_ExitRequested;
             _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
             _window.Closed += MainWindow_Closed;
-            var restoreHiddenMain = initialSettings.Value.WindowOpenStates is { } openStates
-                && openStates.TryGetValue(WindowStateKeys.Main, out var wasMainOpen) && !wasMainOpen;
-            if (options.StartWithWindows || restoreHiddenMain)
+            if (options.StartWithWindows)
             {
                 try
                 {
@@ -439,7 +437,13 @@ public partial class App : Microsoft.UI.Xaml.Application
     private async void MainWindow_ScreenshotsRequested(object? sender, ScreenshotPreviewRequestedEventArgs eventArgs)
         => await ShowScreenshotWindowAsync(StartOrConnectRuntime(), null, eventArgs.ScreenshotPath, eventArgs.CapturedAt);
 
-    private void MainWindow_ExitRequested(object? sender, EventArgs eventArgs) => _window?.Close();
+    private async void MainWindow_ExitRequested(object? sender, EventArgs eventArgs)
+    {
+        if (_window is not null)
+        {
+            await _window.RequestCloseAsync();
+        }
+    }
 
     private async void MainWindow_SensorsRequested(object? sender, EventArgs eventArgs) =>
         await ShowSensorsWindowAsync(StartOrConnectRuntime());

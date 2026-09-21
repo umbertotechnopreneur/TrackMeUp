@@ -14,16 +14,6 @@ public enum WorldClockWindowSurface
     Options
 }
 
-/// <summary>Identifies the information density used by the world-clock comparison surface.</summary>
-public enum WorldClockPresentationMode
-{
-    /// <summary>Shows solar and lunar detail alongside each city.</summary>
-    Expanded,
-
-    /// <summary>Shows a short on-demand comparison widget.</summary>
-    Compact
-}
-
 /// <summary>Describes the width projection for an equal-column world-clock surface.</summary>
 public sealed record WorldClockColumnsLayout(double MinimumWidth, double Width);
 
@@ -70,9 +60,6 @@ public sealed class WorldClockWindowLayoutState
     /// <summary>Gets the currently active top-level surface.</summary>
     public WorldClockWindowSurface Surface { get; private set; } = WorldClockWindowSurface.Clocks;
 
-    /// <summary>Gets the active density for the clock comparison.</summary>
-    public WorldClockPresentationMode PresentationMode { get; private set; } = WorldClockPresentationMode.Expanded;
-
     /// <summary>Shows one top-level surface without resetting the current clock projection.</summary>
     /// <param name="surface">Surface to make current.</param>
     public void ShowSurface(WorldClockWindowSurface surface)
@@ -83,16 +70,6 @@ public sealed class WorldClockWindowLayoutState
         }
 
         Surface = surface;
-    }
-
-    /// <summary>Switches between the detailed comparison and the compact widget without changing the selected cities.</summary>
-    /// <returns>The newly active presentation mode.</returns>
-    public WorldClockPresentationMode TogglePresentationMode()
-    {
-        PresentationMode = PresentationMode == WorldClockPresentationMode.Expanded
-            ? WorldClockPresentationMode.Compact
-            : WorldClockPresentationMode.Expanded;
-        return PresentationMode;
     }
 
     /// <summary>Returns the remaining delay until the displayed snapshot's next UTC minute, refreshing immediately when overdue.</summary>
@@ -156,30 +133,21 @@ public sealed class WorldClockWindowLayoutState
     }
 
     /// <summary>Calculates content-led bounds so a small city set stays compact without restricting manual resize.</summary>
-    public static WorldClockWindowSizing CalculateWindowSizing(
-        int clockCount,
-        WorldClockPresentationMode presentationMode)
+    public static WorldClockWindowSizing CalculateWindowSizing(int clockCount)
     {
         if (clockCount is < 1 or > 12)
         {
             throw new ArgumentOutOfRangeException(nameof(clockCount), clockCount, "World clocks support one through twelve columns.");
         }
 
-        if (!Enum.IsDefined(presentationMode))
+        var preferredWidth = clockCount switch
         {
-            throw new ArgumentOutOfRangeException(nameof(presentationMode));
-        }
-
-        var preferredWidth = (presentationMode, clockCount) switch
-        {
-            (_, 1) => 480,
-            (WorldClockPresentationMode.Compact, 2) => 960,
-            (WorldClockPresentationMode.Expanded, 2) => 780,
+            1 => 480,
+            2 => 780,
             _ => 1120
         };
         var minimum = WindowStateService.GetMinimumSize(WindowStateKeys.WorldClocks);
-        var preferredHeight = presentationMode == WorldClockPresentationMode.Compact ? 280 : 680;
-        return new(preferredWidth, preferredHeight,
+        return new(preferredWidth, 680,
             minimum.Width, minimum.Height);
     }
 
@@ -205,7 +173,7 @@ public sealed class WorldClockWindowLayoutState
     /// <summary>Returns a pending sizing change, deferring it while options are visible.</summary>
     public WorldClockWindowResizeRequest? GetWindowResizeRequest(int clockCount)
     {
-        var sizing = CalculateWindowSizing(clockCount, PresentationMode);
+        var sizing = CalculateWindowSizing(clockCount);
         return Surface == WorldClockWindowSurface.Options || sizing == _appliedWindowSizing
             ? null
             : new(sizing, ResizeToPreferred: !_preserveRestoredSize);
@@ -228,16 +196,10 @@ public sealed class WorldClockWindowLayoutState
 
     /// <summary>Discloses detail only when its measured height fits; the explicit compact choice never reveals the arc.</summary>
     public static WorldClockDetailLevel CalculateDetailLevel(
-        WorldClockPresentationMode presentationMode,
         double viewportHeight,
         double expandedContentHeight,
         double summaryContentHeight)
     {
-        if (!Enum.IsDefined(presentationMode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(presentationMode));
-        }
-
         ArgumentOutOfRangeException.ThrowIfNegative(viewportHeight);
         ArgumentOutOfRangeException.ThrowIfNegative(expandedContentHeight);
         ArgumentOutOfRangeException.ThrowIfNegative(summaryContentHeight);
@@ -246,7 +208,7 @@ public sealed class WorldClockWindowLayoutState
             throw new ArgumentException("Viewport and measured content heights must be finite.");
         }
 
-        return presentationMode == WorldClockPresentationMode.Expanded && viewportHeight >= expandedContentHeight
+        return viewportHeight >= expandedContentHeight
             ? WorldClockDetailLevel.Expanded
             : viewportHeight >= summaryContentHeight ? WorldClockDetailLevel.Summary : WorldClockDetailLevel.Essential;
     }

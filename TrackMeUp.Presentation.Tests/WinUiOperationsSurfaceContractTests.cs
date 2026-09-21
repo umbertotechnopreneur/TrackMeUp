@@ -171,9 +171,10 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("FileTypeChoices.Add", source, StringComparison.Ordinal);
         Assert.Contains("FileTypeFilter.Add(ArchiveExtension)", source, StringComparison.Ordinal);
         Assert.Contains("WinRT.Interop.InitializeWithWindow.Initialize", source, StringComparison.Ordinal);
-        Assert.Contains("new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true)", source, StringComparison.Ordinal);
-        Assert.Contains("new DataArchiveImportPreviewRequest(archivePath)", source, StringComparison.Ordinal);
-        Assert.Contains("new DataArchiveImportRequest(plan.PlanId)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true, OperationId: operationId)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveImportPreviewRequest(archivePath, operationId)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveImportRequest(plan.PlanId, operationId)", source, StringComparison.Ordinal);
+        Assert.Equal(3, source.Split("archiveOperationId: operationId", StringSplitOptions.None).Length - 1);
         Assert.Contains("plan.AlreadyImported", source, StringComparison.Ordinal);
         Assert.Contains("imported.AddedInstallationCount", source, StringComparison.Ordinal);
         Assert.Contains("imported.SkippedScreenshotFileCount", source, StringComparison.Ordinal);
@@ -229,7 +230,8 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("ResultMessage(result.MessageKey", contextSource, StringComparison.Ordinal);
         Assert.Contains("_tryTranslate(messageKey)", contextSource, StringComparison.Ordinal);
         Assert.Contains("key => _strings.TryTranslate(key, out var value) ? value : null", pluginSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("result.Code", contextSource, StringComparison.Ordinal);
+        Assert.Contains("result.Code == \"feature.premium_required\"", contextSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Translate(result.Code)", contextSource, StringComparison.Ordinal);
         Assert.Contains("ResultMessage(result.MessageKey", operationsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("result.Code", operationsSource, StringComparison.Ordinal);
         Assert.Contains("Context.ResultMessage(result.MessageKey", pluginSource, StringComparison.Ordinal);

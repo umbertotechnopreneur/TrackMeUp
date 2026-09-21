@@ -34,35 +34,14 @@ public static class CliBootstrap
 
             var output = new CliOutput(options);
             var commandArguments = CliCommandCatalog.Normalize(options.CommandArguments);
-            if (!CliCommandCatalog.TryExpandShortcut(commandArguments, out commandArguments))
-            {
-                output.WriteResult(OperationResult<object>.Failure("command.arguments.invalid", "CommandInvalid", new ValidationIssue("shortcut", "ambiguous", "CommandInvalid")));
-                return 2;
-            }
-
-            if (CliCommandCatalog.TryGetHelpTopic(commandArguments, out var helpTopic))
-            {
-                if (output.WriteHelp(helpTopic))
-                {
-                    return 0;
-                }
-
-                output.WriteResult(OperationResult<object>.Failure("command.invalid", "CommandInvalid", new ValidationIssue("command", "unknown", "CommandInvalid")));
-                return 2;
-            }
-
-            if (commandArguments.Count == 1 && (commandArguments[0] == "--version" || commandArguments[0].Equals("version", StringComparison.OrdinalIgnoreCase)))
-            {
-                output.WriteResult(CreateVersionResult());
-                return 0;
-            }
 
             if (options.Format == CliFormat.Rich && !IsPowerShell7Parent())
             {
                 output.WriteDiagnostic(output.Text("diagnostic.pwsh"));
             }
 
-            var application = await RuntimeConnector.ConnectAsync(executablePath, options.TimeoutSeconds, cancellation.Token);
+            // Even help/version require the runtime-owned Premium decision before CLI dispatch.
+            await using var application = await RuntimeConnector.ConnectAsync(executablePath, options.TimeoutSeconds, cancellation.Token);
             if (application is null)
             {
                 output.WriteResult(OperationResult<object>.Failure("runtime.unavailable", "RuntimeUnavailable"));

@@ -44,9 +44,12 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         UiLocalization.Apply(this, _strings);
         ApplyAppearanceOptions();
         ApplyProfiles(_profiles, _selectedProfile?.InstallationId);
-        ExportSection.Header = _strings.Translate("Operations.InstallationTransfer.Export.Title");
-        ImportSection.Header = _strings.Translate("Operations.InstallationTransfer.Import.Title");
-        InstallationsSection.Header = _strings.Translate("Operations.InstallationTransfer.Installations.Title");
+        ExportHeaderText.Text = _strings.Translate("Operations.InstallationTransfer.Export.Title");
+        AutomationProperties.SetName(ExportSection, ExportHeaderText.Text);
+        ImportHeaderText.Text = _strings.Translate("Operations.InstallationTransfer.Import.Title");
+        AutomationProperties.SetName(ImportSection, ImportHeaderText.Text);
+        InstallationsHeaderText.Text = _strings.Translate("Operations.InstallationTransfer.Installations.Title");
+        AutomationProperties.SetName(InstallationsSection, InstallationsHeaderText.Text);
         AutomationProperties.SetName(InstallationsList, T("Operations.InstallationTransfer.Installations.List", "Known installations"));
         AutomationProperties.SetName(ImportInstallationsList, T("Operations.InstallationTransfer.Import.Installations", "Installations in this archive"));
         if (_importPlan is { } plan)
@@ -95,12 +98,13 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     private Task<OperationResult<T>?> ExecuteWithProgressAsync<T>(
         string operationName,
         Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
-        bool showSuccess = true) =>
+        bool showSuccess = true,
+        Guid? archiveOperationId = null) =>
         Context.ExecuteWithProgressAsync(
             operation,
             _strings.Translate($"Operations.InstallationTransfer.Progress.{operationName}.Title"),
             _strings.Translate($"Operations.InstallationTransfer.Progress.{operationName}.Description"),
-            showSuccess);
+            showSuccess, archiveOperationId);
 
     private void InstallationsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -168,6 +172,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     internal async Task StartExportAsync()
     {
         TransferSections.SelectedItem = ExportSection;
+        if (!await EnsureArchiveAccessAsync())
+        {
+            return;
+        }
         var destinationPath = await PickExportPathAsync();
         if (destinationPath is null)
         {
@@ -177,9 +185,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         ExportResultPanel.Visibility = Visibility.Collapsed;
         ExportResultSummaryText.Text = string.Empty;
         ExportResultPathText.Text = string.Empty;
+        var operationId = Guid.NewGuid();
         var result = await ExecuteWithProgressAsync("Export", (application, token) => application.ExportDataArchiveAsync(
-            new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true),
-            token));
+            new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true, OperationId: operationId),
+            token), archiveOperationId: operationId);
         if (result is { Succeeded: true, Value: { } export })
         {
             ExportResultSummaryText.Text = Format(
@@ -198,6 +207,23 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         }
     }
 
+    private async Task<bool> EnsureArchiveAccessAsync()
+    {
+        var result = await Context.ExecuteAsync((application, token) => application.GetFeatureAccessAsync(token), showSuccess: false);
+        if (result is not { Succeeded: true, Value: { } access })
+        {
+            return false;
+        }
+        if (FeatureCatalog.IsAllowed(ProductFeature.DataTransfer, access))
+        {
+            return true;
+        }
+        await Context.Dialogs.ShowInformativeAsync(Context.OwnerWindow,
+            DialogRequest.Informative(_strings.Translate("Premium.UpgradeTitle"),
+                _strings.Translate("Premium.Required"), _strings.Translate("Dialog.Ok")));
+        return false;
+    }
+
     private async void PreviewImportButton_Click(object sender, RoutedEventArgs e) => await StartImportPreviewAsync();
 
     /// <summary>Collects an archive path and delegates validation and preview to the application facade.</summary>
@@ -211,9 +237,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         }
 
         ClearImportPreview();
+        var operationId = Guid.NewGuid();
         var result = await ExecuteWithProgressAsync("Preview",
-            (application, token) => application.PreviewDataArchiveImportAsync(new DataArchiveImportPreviewRequest(archivePath), token),
-            showSuccess: false);
+            (application, token) => application.PreviewDataArchiveImportAsync(new DataArchiveImportPreviewRequest(archivePath, operationId), token),
+            showSuccess: false, archiveOperationId: operationId);
         if (result is { Succeeded: true, Value: { } plan })
         {
             _importPlan = plan;
@@ -224,6 +251,11 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
     private async void MergeImportButton_Click(object sender, RoutedEventArgs e)
     {
         if (_importPlan is not { } plan || plan.AlreadyImported || _confirmationOpen)
+        {
+            return;
+        }
+
+        if (!await EnsureArchiveAccessAsync())
         {
             return;
         }
@@ -270,8 +302,10 @@ public sealed partial class InstallationTransferOperationsControl : UserControl
         // Import plans are consumed by the facade; a failed attempt requires a fresh archive preview.
         _importPlan = null;
         MergeImportButton.IsEnabled = false;
+        var operationId = Guid.NewGuid();
         var result = await ExecuteWithProgressAsync("Import",
-            (application, token) => application.ImportDataArchiveAsync(new DataArchiveImportRequest(plan.PlanId), token));
+            (application, token) => application.ImportDataArchiveAsync(new DataArchiveImportRequest(plan.PlanId, operationId), token),
+            archiveOperationId: operationId);
         if (result is { Succeeded: true, Value: { } imported })
         {
             ImportResultText.Text = Format(

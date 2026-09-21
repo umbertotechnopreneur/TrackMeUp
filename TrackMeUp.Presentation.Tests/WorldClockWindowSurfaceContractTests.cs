@@ -224,7 +224,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.DoesNotContain("ToggleMenuFlyoutItem", source, StringComparison.Ordinal);
         Assert.Contains("SystemBackdrop = new GlassBackdrop();", source, StringComparison.Ordinal);
         Assert.Contains("_titleBar = new CustomTitleBarController(", source, StringComparison.Ordinal);
-        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, PresentationModeButton, OptionsButton]", source, StringComparison.Ordinal);
+        Assert.Contains("() => [HeaderBackButton, ReferenceInstantButton, WorldMapButton, LunarPhaseButton, OptionsButton]", source, StringComparison.Ordinal);
         Assert.Contains("TitleBarLogo.Visibility = optionsVisible ? Visibility.Collapsed : Visibility.Visible;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("InputNonClientPointerSource", source, StringComparison.Ordinal);
         Assert.Contains("_window.ExtendsContentIntoTitleBar = true;", titleBarSource, StringComparison.Ordinal);
@@ -656,27 +656,21 @@ public sealed class WorldClockWindowSurfaceContractTests
     }
 
     [Fact]
-    public void CompactWidget_UsesAnAccessibleTitleBarToggleAndKeepsTheAtmosphericCityLayers()
+    public void ResponsiveClocks_HaveNoManualDensityToggleAndKeepTheAtmosphericCityLayers()
     {
         var window = XDocument.Load(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml"));
         var column = XDocument.Load(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml"));
         var windowSource = File.ReadAllText(RepositoryFile("TrackMeUp", "WorldClockWindow.xaml.cs"));
         var columnSource = File.ReadAllText(RepositoryFile("TrackMeUp", "Controls", "WorldClockColumnControl.xaml.cs"));
         var localizationDirectory = RepositoryFile("TrackMeUp.Core", "Localization");
-        var presentationButton = window.Descendants().Single(element => HasName(element, "PresentationModeButton"));
+        Assert.DoesNotContain(window.Descendants(), element => HasName(element, "PresentationModeButton"));
         var compactDaylight = column.Descendants().Single(element => HasName(element, "CompactDaylightDurationText"));
         var compactTimeZone = column.Descendants().Single(element => HasName(element, "CompactTimeZoneText"));
 
-        Assert.Equal("PresentationModeButton_Click", presentationButton.Attribute("Click")?.Value);
-        Assert.Equal("True", presentationButton.Attribute("IsTabStop")?.Value);
-        Assert.Equal("True", presentationButton.Attribute("AllowFocusOnInteraction")?.Value);
-        Assert.Equal("WorldClock.Layout.Compact", presentationButton.Attribute("Tag")?.Value);
-        Assert.Equal("Switch to compact layout", AttributeValue(presentationButton, "AutomationProperties.Name"));
-        Assert.Equal(AttributeValue(presentationButton, "AutomationProperties.Name"), AttributeValue(presentationButton, "ToolTipService.ToolTip"));
         Assert.Equal("Collapsed", compactDaylight.Attribute("Visibility")?.Value);
         Assert.Equal("Collapsed", compactTimeZone.Attribute("Visibility")?.Value);
-        Assert.Contains("column.SetPresentationMode(presentationMode);", windowSource, StringComparison.Ordinal);
-        Assert.Contains("UpdateClockColumnsLayout(snapshot.Clocks.Count, ClockColumnsScroller.ActualWidth);", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetPresentationMode", windowSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TogglePresentationMode", windowSource, StringComparison.Ordinal);
         Assert.Contains("_placement.ResizeForContent(", windowSource, StringComparison.Ordinal);
         Assert.Contains("SolarArcPanel.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;", columnSource, StringComparison.Ordinal);
         Assert.Contains("CompactDaylightDurationText.Visibility = detail == WorldClockDetailLevel.Summary", columnSource, StringComparison.Ordinal);
@@ -690,8 +684,7 @@ public sealed class WorldClockWindowSurfaceContractTests
             using var document = JsonDocument.Parse(File.ReadAllText(catalog));
             foreach (var key in new[] { "WorldClock.Layout.Compact", "WorldClock.Layout.Expanded" })
             {
-                Assert.True(document.RootElement.TryGetProperty(key, out var value), $"{catalog}: {key}");
-                Assert.False(string.IsNullOrWhiteSpace(value.GetString()), $"{catalog}: {key}");
+                Assert.False(document.RootElement.TryGetProperty(key, out _), $"Obsolete command key: {catalog}: {key}");
             }
         }
     }
@@ -826,7 +819,6 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("UiLocalization.SetAccessibleLabel(HeaderBackButton, T(\"WorldClock.Options.Back\"));", windowSource, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.SetAccessibleLabel(WorldMapButton, T(\"Celestial.Windows\"));", windowSource, StringComparison.Ordinal);
         Assert.Contains("UiLocalization.SetAccessibleLabel(LunarPhaseButton, T(\"WorldClock.MoonPhase.Open\"));", windowSource, StringComparison.Ordinal);
-        Assert.Contains("UiLocalization.SetAccessibleLabel(PresentationModeButton, T(key));", windowSource, StringComparison.Ordinal);
         var localizationSource = File.ReadAllText(RepositoryFile("TrackMeUp", "UiLocalization.cs"));
         Assert.Contains("AutomationProperties.SetName(element, label);", localizationSource, StringComparison.Ordinal);
         Assert.Contains("ToolTipService.SetToolTip(element, label);", localizationSource, StringComparison.Ordinal);

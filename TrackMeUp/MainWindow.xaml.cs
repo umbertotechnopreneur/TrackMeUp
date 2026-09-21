@@ -201,6 +201,12 @@ public sealed partial class MainWindow : Window
         _currentWorkArea = CurrentWorkArea();
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += AppWindow_Closing;
+        InitializeFeatureAccessMenu();
+        PlayerLabelSelector.SettingsSaved += settings =>
+        {
+            _optionsControl?.ApplyExternalSettings(settings);
+            ApplySettings(settings);
+        };
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
@@ -407,6 +413,9 @@ public sealed partial class MainWindow : Window
         MoreButton.IsEnabled = isReady;
         TitleBarMoreButton.IsEnabled = isReady;
         TitleBarSearchButton.IsEnabled = isReady;
+        QuickSearchMenuItem.IsEnabled = isReady;
+        QuickActivityCalendarMenuItem.IsEnabled = isReady;
+        QuickScreenshotGalleryMenuItem.IsEnabled = isReady;
         SensorsButton.IsEnabled = isReady;
         ScreenshotPreviewButton.IsEnabled = isReady;
         CaptureMenu.IsEnabled = isReady;
@@ -531,6 +540,7 @@ public sealed partial class MainWindow : Window
         }
 
         AiMonthlySpendText.Text = _strings.Format("AiPricing.UsdShort", cost.Value);
+        AiMonthlySpendLabel.Text = T(overview.ActualCostCurrentMonthUsd is null ? "Labels.EstimatedCost" : "Main.AiMonthlySpend");
         AiMonthlySpendRangeText.Text = _strings.Format(
             "AiPricing.DateRange",
             overview.CurrentMonthStart,
@@ -731,6 +741,8 @@ public sealed partial class MainWindow : Window
         var saveResult = await _application.PatchSettingsAsync(patch, CancellationToken.None);
         if (!saveResult.Succeeded || saveResult.Value is null)
         {
+            await _dialogs.ShowInformativeAsync(sender as Window ?? this, DialogRequest.Informative(
+                T(saveResult.Code == "feature.premium_required" ? "Premium.UpgradeTitle" : "Schedule.WindowTitle"), T(saveResult.MessageKey), T("Dialog.Ok")));
             return;
         }
 
@@ -782,7 +794,7 @@ public sealed partial class MainWindow : Window
         ShowPlayer();
     }
 
-    private void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => Close();
+    private async void TitleBarCloseButton_Click(object sender, RoutedEventArgs e) => await RequestCloseAsync();
 
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
@@ -807,6 +819,8 @@ public sealed partial class MainWindow : Window
     private async void MoreMenu_Opened(object sender, object e)
     {
         ApplyMainMenuLabels();
+        await RefreshFeatureAccessAsync();
+        if (_dashboardSurfaceClosed) return;
         var settingsTask = _application.GetSettingsAsync(CancellationToken.None);
         var aiStateTask = AiState.LoadAsync(CancellationToken.None);
         await Task.WhenAll(settingsTask, aiStateTask);
@@ -883,6 +897,7 @@ public sealed partial class MainWindow : Window
         options.AiConnectionTestRequested += OptionsControl_AiConnectionTestRequested;
         options.OperationsSectionRequested += OptionsControl_OperationsSectionRequested;
         options.SearchIndexingRequested += OptionsControl_SearchIndexingRequested;
+        options.ManageLabelsRequested += OptionsControl_ManageLabelsRequested;
         var initialization = options.InitializeAsync(_application, AiState, _lifecycle.Token);
         _optionsInitializationTask = CompleteOptionsInitializationAsync(options, initialization);
         return _optionsInitializationTask;
@@ -904,6 +919,7 @@ public sealed partial class MainWindow : Window
                 options.AiConnectionTestRequested -= OptionsControl_AiConnectionTestRequested;
                 options.OperationsSectionRequested -= OptionsControl_OperationsSectionRequested;
                 options.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
+                options.ManageLabelsRequested -= OptionsControl_ManageLabelsRequested;
                 OptionsHost.Content = null;
                 _optionsControl = null;
                 _optionsInitializationTask = null;
@@ -1045,6 +1061,14 @@ public sealed partial class MainWindow : Window
     /// <summary>Opens the installation-transfer surface and starts a local archive export.</summary>
     private async void ExportDataMenuItem_Click(object sender, RoutedEventArgs e) =>
         await ShowDataTransferAsync(startExport: true);
+
+    private async void ReportExportMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        MoreButton.Flyout.Hide();
+        try { await _dialogs.ShowReportExportAsync(_application, this, RootGrid.RequestedTheme, _strings); }
+        catch (Exception) when (_dashboardSurfaceClosed) { }
+        catch (Exception) { await ShowLazySurfaceFailureAsync(); }
+    }
 
     /// <summary>Opens the installation-transfer surface and starts an archive import preview.</summary>
     private async void ImportDataMenuItem_Click(object sender, RoutedEventArgs e) =>
@@ -1244,15 +1268,16 @@ public sealed partial class MainWindow : Window
     /// <summary>Localizes the logical menu groups and commands without coupling them to one AI vendor.</summary>
     private void ApplyMainMenuLabels()
     {
-        ActivityMenu.Text = T("Main.Menu.Activity");
         CaptureMenu.Text = T("Main.Menu.Capture");
         SettingsMenu.Text = T("Main.Menu.Settings");
         ExportDataMenuItem.Text = T("Main.Menu.DataTransfer.Export");
+        ReportExportMenuItem.Text = T("Export.Title");
+        UiLocalization.SetAccessibleLabel(ReportExportMenuItem, T("Export.Title"));
         ImportDataMenuItem.Text = T("Main.Menu.DataTransfer.Import");
         AiProviderMenu.Text = T("Main.Menu.AiProvider");
-        SearchMenuItem.Text = T("Search.Title");
-        ActivityCalendarMenuItem.Text = T("ActivityCalendar.MenuTitle");
-        ScreenshotsMenuItem.Text = T("Screenshots.Caption");
+        QuickSearchMenuItem.Text = T("Search.Title");
+        QuickActivityCalendarMenuItem.Text = T("ActivityCalendar.MenuTitle");
+        QuickScreenshotGalleryMenuItem.Text = T("Screenshots.Caption");
         ScheduleMenuItem.Text = T("Schedule.Snapshots");
         ScreenshotsMenuToggle.Text = T("MenuToggleScreenshot");
         QuickSetupMenuItem.Text = T("QuickSetup.MenuTitle");
@@ -1263,10 +1288,10 @@ public sealed partial class MainWindow : Window
         MinimizeToTrayMenuItem.Text = T("Main.Menu.MinimizeToTray");
         AboutMenuItem.Text = T("MenuTitleAbout");
 
-        ApplyMenuAccessibility(ActivityMenu, "Main.Menu.Activity", "Main.Menu.Activity.Tooltip");
-        ApplyMenuAccessibility(SearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
-        ApplyMenuAccessibility(ActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
-        ApplyMenuAccessibility(ScreenshotsMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
+        ApplyMenuAccessibility(QuickSearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
+        ApplyMenuAccessibility(ReportExportMenuItem, "Export.Title", "Export.Title");
+        ApplyMenuAccessibility(QuickActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
+        ApplyMenuAccessibility(QuickScreenshotGalleryMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
         ApplyMenuAccessibility(CaptureMenu, "Main.Menu.Capture", "Main.Menu.Capture.Tooltip");
         ApplyMenuAccessibility(ScheduleMenuItem, "Schedule.Snapshots", "Main.Menu.Schedule.Tooltip");
         ApplyMenuAccessibility(ScreenshotsMenuToggle, "MenuToggleScreenshot", "Main.Menu.ScreenshotToggle.Tooltip");
@@ -1341,6 +1366,37 @@ public sealed partial class MainWindow : Window
     /// <summary>Returns from options to the player panel.</summary>
     private void OptionsControl_BackRequested(object? sender, EventArgs e) => ShowPlayer();
 
+    private bool _labelsDialogOpen;
+
+    private void ManageLabelsButton_Click(object sender, RoutedEventArgs e) =>
+        OptionsControl_ManageLabelsRequested(sender, EventArgs.Empty);
+
+    private async void OptionsControl_ManageLabelsRequested(object? sender, EventArgs e)
+    {
+        if (_labelsDialogOpen) return;
+        _labelsDialogOpen = true;
+        try
+        {
+            var settings = await _application.GetSettingsAsync(_lifecycle.Token);
+            if (_dashboardSurfaceClosed) return;
+            if (!settings.Succeeded || settings.Value is null)
+                throw new InvalidOperationException("Label settings could not be loaded.");
+            var saved = await _dialogs.ShowActivityLabelsAsync(
+                _application, this, settings.Value, _featureAccessState, RootGrid.RequestedTheme, _strings);
+            if (_dashboardSurfaceClosed || saved is null) return;
+            _optionsControl?.ApplyExternalSettings(saved);
+            ApplySettings(saved);
+        }
+        catch (OperationCanceledException) when (_lifecycle.IsCancellationRequested) { }
+        catch (Exception)
+        {
+            // A failed load or modal session must not acknowledge a successful edit.
+            if (!_dashboardSurfaceClosed)
+                await _dialogs.ShowInformativeAsync(this, DialogRequest.Informative(T("Labels.Title"), T("Labels.SaveError"), T("Dialog.Ok")));
+        }
+        finally { _labelsDialogOpen = false; }
+    }
+
     /// <summary>Opens one operational detail requested from the settings overview.</summary>
     private void OptionsControl_OperationsSectionRequested(OperationsSection section) => _ = ShowOperationsSectionAsync(section);
 
@@ -1382,6 +1438,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Re-measures the operations surface after its landing or detail view changes.</summary>
     private void OperationsControl_LayoutChanged(object? sender, EventArgs e)
     {
+        UpdateTitlePremiumBadge();
         if (_layoutState.Surface == MainWindowSurface.Operations)
         {
             ResizeForCurrentLayout(animate: true);
@@ -1391,9 +1448,19 @@ public sealed partial class MainWindow : Window
     private void OperationsControl_AtomicResetPrepared(object? sender, AtomicResetPreparedEventArgs e) =>
         AtomicResetPrepared?.Invoke(this, e);
 
+    private void UpdateTitlePremiumBadge()
+    {
+        TitlePremiumBadge.Text = T("Premium.Badge");
+        TitlePremiumBadge.Visibility = _layoutState.Surface == MainWindowSurface.Operations
+            && _operationsControl?.IsArchivePageVisible == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     /// <summary>Shows one top-level panel and measures the visible XAML content before resizing.</summary>
     private void ShowPanel(FrameworkElement panel, MainWindowSurface surface)
     {
+        SystemBackdrop = surface == MainWindowSurface.Operations
+            ? new GlassBackdrop()
+            : new DesktopAcrylicBackdrop();
         PlayerPanel.Visibility = Visibility.Collapsed;
         PlayerBackgroundSurface.Visibility = Visibility.Collapsed;
         WorldClockButton.Visibility = Visibility.Collapsed;
@@ -1402,6 +1469,7 @@ public sealed partial class MainWindow : Window
         OperationsPanel.Visibility = Visibility.Collapsed;
         panel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(surface);
+        UpdateTitlePremiumBadge();
         TitleBarBackButton.Visibility = Visibility.Visible;
         TitleBarLogo.Visibility = Visibility.Collapsed;
         TitleBarTitleText.Text = T(surface == MainWindowSurface.Options
@@ -1417,13 +1485,16 @@ public sealed partial class MainWindow : Window
     /// <summary>Restores the player panel.</summary>
     private void ShowPlayer()
     {
+        SystemBackdrop = new DesktopAcrylicBackdrop();
         OptionsPanel.Visibility = Visibility.Collapsed;
         OperationsPanel.Visibility = Visibility.Collapsed;
         PlayerBackgroundSurface.Visibility = Visibility.Visible;
         PlayerPanel.Visibility = Visibility.Visible;
         _layoutState.ShowSurface(MainWindowSurface.Player);
+        UpdateTitlePremiumBadge();
         WorldClockButton.Visibility = Visibility.Visible;
-        SensorsButton.Visibility = Visibility.Visible;
+        // Keep the sensors surface available for future use, but do not expose its player command yet.
+        SensorsButton.Visibility = Visibility.Collapsed;
         TitleBarBackButton.Visibility = Visibility.Collapsed;
         TitleBarLogo.Visibility = Visibility.Visible;
         TitleBarTitleText.Text = "TRACK ME UP";
@@ -1522,6 +1593,15 @@ public sealed partial class MainWindow : Window
         var columns = MainPlayerResponsiveLayout.UsesColumns(width);
         PlayerSecondaryColumn.Width = columns ? new GridLength(1d, GridUnitType.Star) : new GridLength(0d);
         PlayerLayout.ColumnSpacing = columns ? 24d : 0d;
+        // The header occupies half the player in the two-column layout.
+        // Labels always start at the left below the timer; optional cost details wrap onto their own row.
+        var headerWidth = columns ? (PlayerLayout.Width - PlayerLayout.ColumnSpacing) / 2d : PlayerLayout.Width;
+        PlayerLabelAndCostPanel.MaxWidth = headerWidth;
+        var stackCost = headerWidth < 620d;
+        Grid.SetColumnSpan(PlayerLabelActionsPanel, stackCost ? 2 : 1);
+        Grid.SetRow(AiMonthlySpendPanel, stackCost ? 1 : 0);
+        Grid.SetColumn(AiMonthlySpendPanel, stackCost ? 0 : 1);
+        Grid.SetColumnSpan(AiMonthlySpendPanel, stackCost ? 2 : 1);
         Grid.SetRow(PlayerActivity, columns ? 0 : 2);
         Grid.SetColumn(PlayerActivity, columns ? 1 : 0);
         Grid.SetRowSpan(PlayerActivity, columns ? 2 : 1);
@@ -1568,6 +1648,8 @@ public sealed partial class MainWindow : Window
     /// <summary>Renders current dashboard values without making application calls.</summary>
     private void UpdatePlayer(DashboardState state)
     {
+        ApplyFeatureAccess(state.FeatureAccess);
+        PlayerLabelSelector.ApplyActiveLabel(state.SpanLabel);
         _isTracking = state.IsTracking;
         UpdateActiveHoursAvailability(state.IsWithinActiveHours);
         var currentContext = state.CurrentContext is "STATE_READY"
@@ -1999,6 +2081,12 @@ public sealed partial class MainWindow : Window
         var positionChangedByUser = _hasAppliedSettings
             && !string.Equals(_position, settings.FlyoutPosition, StringComparison.Ordinal);
         _strings = new LocalizationService(settings.UiLanguage);
+        PlayerLabelSelector.ApplySettings(_application, settings);
+        PlayerLabelFeatureGate.UiLanguage = settings.UiLanguage;
+        UpdateTitlePremiumBadge();
+        AutomationProperties.SetName(ManageLabelsButton, T("Labels.Manage"));
+        ToolTipService.SetToolTip(ManageLabelsButton, T("Labels.Manage"));
+        UpdateDebugFeatureMenu();
         _theme = settings.Theme;
         _position = settings.FlyoutPosition;
         _hasAppliedSettings = true;
@@ -2362,6 +2450,17 @@ public sealed partial class MainWindow : Window
         }
 
         args.Cancel = true;
+        await RequestCloseAsync();
+    }
+
+    /// <summary>Asks the user before an interactive close suspends tracking and exits the application.</summary>
+    internal async Task RequestCloseAsync()
+    {
+        if (_allowClose || _dashboardSurfaceClosed)
+        {
+            return;
+        }
+
         if (_closeConfirmationInProgress)
         {
             return;
@@ -2516,6 +2615,7 @@ public sealed partial class MainWindow : Window
             _optionsControl.AiConnectionTestRequested -= OptionsControl_AiConnectionTestRequested;
             _optionsControl.OperationsSectionRequested -= OptionsControl_OperationsSectionRequested;
             _optionsControl.SearchIndexingRequested -= OptionsControl_SearchIndexingRequested;
+            _optionsControl.ManageLabelsRequested -= OptionsControl_ManageLabelsRequested;
         }
 
         if (_operationsControl is not null)

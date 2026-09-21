@@ -18,8 +18,8 @@ namespace TrackMeUp;
 /// <summary>Displays a light Acrylic surface for local screenshot search.</summary>
 public sealed partial class SearchWindow : Window
 {
-    private const int LogicalWindowWidth = 1040;
-    private const int LogicalWindowHeight = 720;
+    private const int LogicalWindowWidth = 640;
+    private const int LogicalWindowHeight = 156;
     private const int PreviewDecodePixelWidth = 1600;
     private const double StackedPreviewWidth = 760d;
     private const int LogicalScreenMargin = 22;
@@ -39,6 +39,10 @@ public sealed partial class SearchWindow : Window
     private bool _hasExecutedQuery;
     private bool _closing;
     private int _activeSearchOperationCount;
+    private bool _placementReady;
+    private bool _expanded;
+    private int _expandedWidth = 1040;
+    private int _expandedHeight = 720;
 
     /// <summary>Creates the fixed-light floating local-search window in the requested language.</summary>
     public SearchWindow(ITrackMeUpApplication application, string language, SearchAvailability availability)
@@ -145,6 +149,8 @@ public sealed partial class SearchWindow : Window
             return;
         }
 
+        _placementReady = true;
+        UpdateWindowSize();
         ConfigureQueryInput();
         FocusQuery();
     }
@@ -291,6 +297,38 @@ public sealed partial class SearchWindow : Window
         SearchActivityProgressRing.IsActive = isSearching;
         SearchStatusRow.Visibility = isSearching || EmptyStatePanel.Visibility == Visibility.Visible
             ? Visibility.Visible : Visibility.Collapsed;
+        UpdateWindowSize();
+    }
+
+    private void SearchInfoBar_Closed(InfoBar sender, InfoBarClosedEventArgs args) => UpdateWindowSize();
+
+    /// <summary>Keeps an empty search compact and remembers user-adjusted result dimensions within this window.</summary>
+    private void UpdateWindowSize()
+    {
+        if (!_placementReady || _closing) return;
+        var hasResults = _viewModel.Results.Count > 0;
+        if (_expanded && !hasResults)
+        {
+            var scale = RootGrid.XamlRoot.RasterizationScale;
+            _expandedWidth = Math.Max(LogicalWindowWidth, (int)Math.Ceiling(_appWindow.Size.Width / scale));
+            _expandedHeight = Math.Max(420, (int)Math.Ceiling(_appWindow.Size.Height / scale));
+        }
+
+        if (_appWindow.Presenter is OverlappedPresenter presenter) presenter.IsResizable = hasResults;
+        if (hasResults)
+        {
+            if (!_expanded) _placement.ResizeForContent(RootGrid, _expandedWidth, _expandedHeight);
+        }
+        else
+        {
+            // Saved result bounds must not make a newly opened empty search occupy the entire screen.
+            var height = LogicalWindowHeight
+                + (SearchStatusRow.Visibility == Visibility.Visible ? 36 : 0)
+                + (SearchInfoBar.IsOpen ? 80 : 0);
+            _placement.ResizeForContent(RootGrid, LogicalWindowWidth, height);
+        }
+
+        _expanded = hasResults;
     }
 
     private void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -484,7 +522,7 @@ public sealed partial class SearchWindow : Window
     {
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsResizable = true;
+            presenter.IsResizable = false;
             presenter.IsMinimizable = false;
             presenter.IsMaximizable = false;
         }
