@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 using Microsoft.UI;
+using System.Diagnostics;
+using System.Globalization;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -10,11 +12,11 @@ using TrackMeUp.Services;
 
 namespace TrackMeUp;
 
-/// <summary>Shows one facade operation behind a non-dismissible, indeterminate Mica progress surface.</summary>
+/// <summary>Shows an owned operation with optional phase progress read from the shared facade.</summary>
 internal sealed partial class OperationProgressDialogWindow : Window
 {
     private const int LogicalWidth = 520;
-    private const int LogicalHeight = 240;
+    private const int LogicalHeight = 340;
     private const int LogicalScreenMargin = 24;
     private readonly Func<CancellationToken, Task> _operation;
     private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -25,6 +27,12 @@ internal sealed partial class OperationProgressDialogWindow : Window
     private bool _loaded;
     private bool _allowClose;
     private bool _closed;
+    private readonly ITrackMeUpApplication _application;
+    private readonly Guid? _archiveOperationId;
+    private readonly LocalizationService _strings;
+    private readonly DispatcherQueueTimer _progressTimer;
+    private readonly Stopwatch _elapsed = new();
+    private bool _readingProgress;
 
     /// <summary>Creates an owned progress surface whose supplied operation uses the shared application facade.</summary>
     internal OperationProgressDialogWindow(
@@ -35,7 +43,8 @@ internal sealed partial class OperationProgressDialogWindow : Window
         string language,
         AppWindow ownerAppWindow,
         IntPtr ownerHandle,
-        Func<CancellationToken, Task> operation)
+        Func<CancellationToken, Task> operation,
+        Guid? archiveOperationId = null)
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(ownerAppWindow);
@@ -43,6 +52,9 @@ internal sealed partial class OperationProgressDialogWindow : Window
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
         _operation = operation ?? throw new ArgumentNullException(nameof(operation));
+        _application = application;
+        _archiveOperationId = archiveOperationId;
+        _strings = new LocalizationService(language);
         if (ownerHandle == IntPtr.Zero)
         {
             throw new ArgumentException("The progress window requires a valid owner handle.", nameof(ownerHandle));
@@ -57,6 +69,11 @@ internal sealed partial class OperationProgressDialogWindow : Window
         AutomationProperties.SetName(RootGrid, title);
         AutomationProperties.SetName(DescriptionText, description);
         AutomationProperties.SetName(OperationProgress, title);
+        PhaseText.Text = _strings.Translate("Archive.Progress.Waiting");
+        PhaseText.Visibility = archiveOperationId.HasValue ? Visibility.Visible : Visibility.Collapsed;
+        _progressTimer = DispatcherQueue.CreateTimer();
+        _progressTimer.Interval = TimeSpan.FromSeconds(1);
+        _progressTimer.Tick += ProgressTimer_Tick;
         WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(WindowHandle));
         _titleBar = new CustomTitleBarController(
@@ -159,6 +176,8 @@ internal sealed partial class OperationProgressDialogWindow : Window
         }
         await visibleFrame.Task.WaitAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        _elapsed.Start();
+        _progressTimer.Start();
         await _operation(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -180,12 +199,53 @@ internal sealed partial class OperationProgressDialogWindow : Window
         Close();
     }
 
+    private async void ProgressTimer_Tick(DispatcherQueueTimer sender, object args)
+    {
+        if (_closed) return;
+        ElapsedText.Text = _strings.Format("Archive.Progress.Elapsed", _elapsed.Elapsed.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture));
+        if (_archiveOperationId is not { } id || _readingProgress) return;
+        _readingProgress = true;
+        try
+        {
+            var result = await _application.GetDataArchiveProgressAsync(new DataArchiveProgressRequest(id), _lifecycle.Token);
+            if (_closed) return;
+            if (!result.Succeeded) throw new InvalidOperationException("Archive progress is unavailable.");
+            if (result.Value is not { } progress) return;
+            PhaseText.Text = _strings.Translate($"Archive.Progress.{progress.Phase}");
+            AutomationProperties.SetName(PhaseText, PhaseText.Text);
+            var hasTotal = progress.TotalItems is > 0;
+            OperationProgress.IsIndeterminate = !hasTotal;
+            if (hasTotal) OperationProgress.Value = 100d * progress.CompletedItems / progress.TotalItems!.Value;
+            CountText.Text = hasTotal
+                ? _strings.Format("Archive.Progress.Items", progress.CompletedItems, progress.TotalItems)
+                : progress.CompletedItems > 0 ? _strings.Format("Archive.Progress.Processed", progress.CompletedItems) : string.Empty;
+        }
+        catch (OperationCanceledException) when (_closed || _lifecycle.Token.IsCancellationRequested)
+        {
+            // Closing the modal surface cancels polling; it must not render into the detached tree.
+        }
+        catch (Exception)
+        {
+            // Progress reads are independent: a reporting failure must not cancel a durable import.
+            if (!_closed)
+            {
+                PhaseText.Text = _strings.Translate("Archive.Progress.Unavailable");
+                CountText.Text = string.Empty;
+                OperationProgress.IsIndeterminate = true;
+            }
+        }
+        finally { _readingProgress = false; }
+    }
+
     private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args) =>
         args.Cancel = !_allowClose;
 
     private void OperationProgressDialogWindow_Closed(object sender, WindowEventArgs args)
     {
         _closed = true;
+        _progressTimer.Stop();
+        _progressTimer.Tick -= ProgressTimer_Tick;
+        _elapsed.Stop();
         _appWindow.Closing -= AppWindow_Closing;
         Closed -= OperationProgressDialogWindow_Closed;
         _lifecycle.Cancel();

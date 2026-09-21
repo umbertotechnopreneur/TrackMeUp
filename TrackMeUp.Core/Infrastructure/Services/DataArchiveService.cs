@@ -110,7 +110,7 @@ internal sealed class DataArchiveService
         RecoverInterruptedImport();
     }
 
-    internal DataArchiveExportResult Export(DataArchiveExportRequest request, CancellationToken cancellationToken)
+    internal DataArchiveExportResult Export(DataArchiveExportRequest request, CancellationToken cancellationToken, Action<DataArchiveProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
@@ -125,6 +125,7 @@ internal sealed class DataArchiveService
         Directory.CreateDirectory(workDirectory);
         try
         {
+            progress?.Invoke(new(DataArchivePhase.PreparingDatabase));
             CreateConsistentDatabaseSnapshot(snapshotPath, cancellationToken);
             SanitizeArchiveDatabase(snapshotPath, fromUtcTicks, toUtcTicks, cancellationToken);
 
@@ -135,8 +136,9 @@ internal sealed class DataArchiveService
             EnsureDatabaseContainsNoAbsoluteScreenshotPaths(snapshotPath, cancellationToken);
 
             var databaseSummary = ReadDatabaseSummary(snapshotPath, cancellationToken);
+            progress?.Invoke(new(DataArchivePhase.ScanningScreenshots));
             var screenshotEntries = request.IncludeScreenshots
-                ? BuildScreenshotEntries(snapshotPath, screenshotRoot, cancellationToken)
+                ? BuildScreenshotEntries(snapshotPath, screenshotRoot, progress, cancellationToken)
                 : Array.Empty<ArchiveSourceEntry>();
             var entryManifest = new List<ArchiveEntryManifest>(screenshotEntries.Count + 1)
             {
@@ -162,7 +164,8 @@ internal sealed class DataArchiveService
                 ?? throw new InvalidDataException("The archive destination has no parent directory.");
             // The temporary archive shares the destination directory so final publication stays atomic.
             Directory.CreateDirectory(parent);
-            WriteArchive(temporaryArchivePath, snapshotPath, screenshotEntries, manifest, cancellationToken);
+            WriteArchive(temporaryArchivePath, snapshotPath, screenshotEntries, manifest, progress, cancellationToken);
+            progress?.Invoke(new(DataArchivePhase.Finalizing));
             File.Move(temporaryArchivePath, destination, overwrite: true);
             return new DataArchiveExportResult(
                 archiveId,
@@ -186,13 +189,14 @@ internal sealed class DataArchiveService
 
     internal DataArchiveImportPlan PreviewImport(
         DataArchiveImportPreviewRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Action<DataArchiveProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var archivePath = ValidateArchivePath(request.ArchivePath, mustExist: true);
-        var validation = ValidateAndExtractArchiveDatabase(archivePath, cancellationToken);
+        var validation = ValidateAndExtractArchiveDatabase(archivePath, progress, cancellationToken);
         try
         {
+            progress?.Invoke(new(DataArchivePhase.CheckingData));
             RewriteDatabasePathsForImport(validation.DatabasePath, CurrentScreenshotRoot(), cancellationToken);
             PreflightDatabaseMerge(validation.DatabasePath, validation.Manifest, validation.Fingerprint, cancellationToken);
             PreflightScreenshotMerge(validation.ArchivePath, validation.Manifest, cancellationToken);
@@ -214,7 +218,7 @@ internal sealed class DataArchiveService
         }
     }
 
-    internal DataArchiveImportResult Import(Guid planId, CancellationToken cancellationToken)
+    internal DataArchiveImportResult Import(Guid planId, CancellationToken cancellationToken, Action<DataArchiveProgress>? progress = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!_pendingPlans.TryRemove(planId, out var pending)
@@ -223,7 +227,7 @@ internal sealed class DataArchiveService
             throw new InvalidOperationException("The archive import plan is missing or expired.");
         }
 
-        var validation = ValidateAndExtractArchiveDatabase(pending.ArchivePath, cancellationToken);
+        var validation = ValidateAndExtractArchiveDatabase(pending.ArchivePath, progress, cancellationToken);
         var mergeCommitted = false;
         try
         {
@@ -234,10 +238,11 @@ internal sealed class DataArchiveService
             }
 
             var screenshotRoot = CurrentScreenshotRoot();
+            progress?.Invoke(new(DataArchivePhase.CheckingData));
             RewriteDatabasePathsForImport(validation.DatabasePath, screenshotRoot, cancellationToken);
             PreflightDatabaseMerge(validation.DatabasePath, validation.Manifest, validation.Fingerprint, cancellationToken);
             var screenshotPlan = PreflightScreenshotMerge(validation.ArchivePath, validation.Manifest, cancellationToken);
-            var staging = StageScreenshotFiles(validation.ArchivePath, screenshotPlan, planId, cancellationToken);
+            var staging = StageScreenshotFiles(validation.ArchivePath, screenshotPlan, planId, progress, cancellationToken);
             try
             {
                 var result = MergeDatabaseAndFiles(
@@ -246,7 +251,7 @@ internal sealed class DataArchiveService
                     validation.Fingerprint,
                     screenshotPlan,
                     staging,
-                    cancellationToken);
+                    progress, cancellationToken);
                 mergeCommitted = true;
                 CleanupImportResource(() => _deleteFile(_journalPath), mergeCommitted, "recovery journal");
                 return result;
@@ -535,7 +540,7 @@ internal sealed class DataArchiveService
     private IReadOnlyList<ArchiveSourceEntry> BuildScreenshotEntries(
         string archiveDatabasePath,
         string screenshotRoot,
-        CancellationToken cancellationToken)
+        Action<DataArchiveProgress>? progress, CancellationToken cancellationToken)
     {
         using var connection = OpenDatabase(archiveDatabasePath, readOnly: true);
         var captureIds = ReadStringSet(connection, "SELECT capture_id FROM screenshot_captures;");
@@ -559,6 +564,7 @@ internal sealed class DataArchiveService
 
             var manifest = BuildEntryManifest(archivePath, sourcePath, MaximumScreenshotBytes, cancellationToken);
             entries.Add(new ArchiveSourceEntry(sourcePath, manifest));
+            progress?.Invoke(new(DataArchivePhase.ScanningScreenshots, entries.Count));
         }
 
         return entries.OrderBy(entry => entry.Manifest.Path, StringComparer.Ordinal).ToArray();
@@ -569,7 +575,7 @@ internal sealed class DataArchiveService
         string databasePath,
         IReadOnlyList<ArchiveSourceEntry> screenshotEntries,
         DataArchiveManifest manifest,
-        CancellationToken cancellationToken)
+        Action<DataArchiveProgress>? progress, CancellationToken cancellationToken)
     {
         using var stream = new FileStream(
             archivePath,
@@ -585,7 +591,11 @@ internal sealed class DataArchiveService
             JsonSerializer.Serialize(destination, manifest, _json);
         }
 
+        var total = screenshotEntries.Count + 1;
+        var completed = 0;
+        progress?.Invoke(new(DataArchivePhase.WritingArchive, completed, total));
         AddFileToArchive(archive, DatabaseEntryName, databasePath, CompressionLevel.Optimal, cancellationToken);
+        progress?.Invoke(new(DataArchivePhase.WritingArchive, ++completed, total));
         foreach (var screenshot in screenshotEntries)
         {
             AddFileToArchive(
@@ -594,16 +604,19 @@ internal sealed class DataArchiveService
                 screenshot.SourcePath,
                 CompressionLevel.NoCompression,
                 cancellationToken);
+            progress?.Invoke(new(DataArchivePhase.WritingArchive, ++completed, total));
         }
 
+        progress?.Invoke(new(DataArchivePhase.Finalizing));
         archive.Dispose();
         stream.Flush(flushToDisk: true);
     }
 
     private ArchiveValidation ValidateAndExtractArchiveDatabase(
         string archivePath,
-        CancellationToken cancellationToken)
+        Action<DataArchiveProgress>? progress, CancellationToken cancellationToken)
     {
+        progress?.Invoke(new(DataArchivePhase.VerifyingArchive));
         var fingerprint = ComputeSha256(archivePath, long.MaxValue, cancellationToken);
         var workDirectory = Path.Combine(Path.GetTempPath(), "TrackMeUp.Import." + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(workDirectory);
@@ -657,6 +670,8 @@ internal sealed class DataArchiveService
             }
 
             ValidateManifest(manifest, entries.Keys);
+            var verified = 0;
+            progress?.Invoke(new(DataArchivePhase.VerifyingArchive, verified, manifest.Entries.Count));
             foreach (var expected in manifest.Entries)
             {
                 var entry = entries[expected.Path];
@@ -680,9 +695,11 @@ internal sealed class DataArchiveService
                 {
                     throw new InvalidDataException("An archive entry hash does not match its manifest.");
                 }
+                progress?.Invoke(new(DataArchivePhase.VerifyingArchive, ++verified, manifest.Entries.Count));
             }
 
             var databasePath = Path.Combine(workDirectory, DatabaseEntryName);
+            progress?.Invoke(new(DataArchivePhase.CheckingData));
             var databaseManifest = manifest.Entries.Single(entry => entry.Path == DatabaseEntryName);
             ExtractEntry(entries[DatabaseEntryName], databasePath, databaseManifest.Length, cancellationToken);
             if (new FileInfo(databasePath).Length != databaseManifest.Length)
@@ -963,13 +980,15 @@ internal sealed class DataArchiveService
         string archivePath,
         IReadOnlyList<ScreenshotImportEntry> plan,
         Guid planId,
-        CancellationToken cancellationToken)
+        Action<DataArchiveProgress>? progress, CancellationToken cancellationToken)
     {
         var staged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         using var archive = ZipFile.OpenRead(archivePath);
         var entries = archive.Entries.ToDictionary(entry => entry.FullName, StringComparer.OrdinalIgnoreCase);
         try
         {
+            var total = plan.Count(item => !item.AlreadyExists);
+            progress?.Invoke(new(DataArchivePhase.CopyingScreenshots, 0, total));
             foreach (var item in plan.Where(item => !item.AlreadyExists))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -995,6 +1014,7 @@ internal sealed class DataArchiveService
                 }
 
                 staged.Add(item.DestinationPath, stagingPath);
+                progress?.Invoke(new(DataArchivePhase.CopyingScreenshots, staged.Count, total));
             }
 
             return staged;
@@ -1016,8 +1036,9 @@ internal sealed class DataArchiveService
         string fingerprint,
         IReadOnlyList<ScreenshotImportEntry> screenshotPlan,
         IReadOnlyDictionary<string, string> staging,
-        CancellationToken cancellationToken)
+        Action<DataArchiveProgress>? progress, CancellationToken cancellationToken)
     {
+        progress?.Invoke(new(DataArchivePhase.MergingData));
         var newScreenshots = screenshotPlan.Where(item => !item.AlreadyExists).ToArray();
         if (newScreenshots.Length > 0)
         {
@@ -1055,6 +1076,8 @@ internal sealed class DataArchiveService
                     connection, transaction, "capture_hardware_snapshots", ["capture_id"], CaptureHardwareSnapshotColumns, cancellationToken);
                 RebuildSqliteAiSearch(connection, transaction);
 
+                var published = 0;
+                progress?.Invoke(new(DataArchivePhase.PublishingScreenshots, published, newScreenshots.Length));
                 foreach (var item in newScreenshots)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -1064,6 +1087,7 @@ internal sealed class DataArchiveService
                     }
 
                     File.Move(staging[item.DestinationPath], item.DestinationPath);
+                    progress?.Invoke(new(DataArchivePhase.PublishingScreenshots, ++published, newScreenshots.Length));
                 }
 
                 ExecuteNonQuery(connection, transaction, """
@@ -1074,6 +1098,7 @@ internal sealed class DataArchiveService
                     ("$archiveId", manifest.ArchiveId.ToString("N")),
                     ("$fingerprint", fingerprint),
                     ("$importedAt", DateTimeOffset.UtcNow.UtcDateTime.Ticks));
+                progress?.Invoke(new(DataArchivePhase.Finalizing));
                 // Data, import ledger and the derived-index invalidation become durable together.
                 // Marker failures roll back the import; after COMMIT only in-memory invalidation remains.
                 _ = SqliteActivityStore.MarkSearchSourceRebuild(connection, transaction, "archive-import");

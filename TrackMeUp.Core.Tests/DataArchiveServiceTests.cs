@@ -21,6 +21,34 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class DataArchiveServiceTests
 {
+    /// <summary>Real archive work emits ordered phase snapshots and honest per-phase counters.</summary>
+    [Fact]
+    public void ExportPreviewImport_ReportRealPhasesAndCounts()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var source = new LocalStore(Path.Combine(root, "source"));
+            var path = Path.Combine(root, "progress.tmuarchive");
+            var reports = new List<DataArchiveProgress>();
+            new DataArchiveService(source).Export(new(path, IncludeScreenshots: false), CancellationToken.None, reports.Add);
+            Assert.Equal(DataArchivePhase.PreparingDatabase, reports[0].Phase);
+            Assert.Contains(reports, item => item.Phase == DataArchivePhase.WritingArchive && item.CompletedItems == 1 && item.TotalItems == 1);
+            Assert.Equal(DataArchivePhase.Finalizing, reports[^1].Phase);
+            var importer = CreateImporter(root);
+            reports.Clear();
+            var plan = importer.PreviewImport(new(path), CancellationToken.None, reports.Add);
+            Assert.Equal(DataArchivePhase.VerifyingArchive, reports[0].Phase);
+            Assert.Contains(reports, item => item.Phase == DataArchivePhase.VerifyingArchive && item.TotalItems > 0 && item.CompletedItems == item.TotalItems);
+            reports.Clear();
+            importer.Import(plan.PlanId, CancellationToken.None, reports.Add);
+            Assert.Contains(reports, item => item.Phase == DataArchivePhase.MergingData);
+            Assert.Equal(DataArchivePhase.Finalizing, reports[^1].Phase);
+            Assert.All(reports, item => Assert.True(item.TotalItems is null || item.CompletedItems <= item.TotalItems));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     /// <summary>Retries a real SQLite lock and publishes a valid archive after the writer releases it.</summary>
     [Fact]
     public void Export_TransientDatabaseLock_RetriesAndProducesImportableArchive()

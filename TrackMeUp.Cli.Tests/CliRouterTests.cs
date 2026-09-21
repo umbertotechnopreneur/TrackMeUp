@@ -311,6 +311,8 @@ public sealed class CliRouterTests
 
     private sealed class RecordingApplication : ITrackMeUpApplication
     {
+        /// <inheritdoc />
+        public Task<OperationResult<DataArchiveProgress?>> GetDataArchiveProgressAsync(DataArchiveProgressRequest request, CancellationToken cancellationToken) => Unsupported<DataArchiveProgress?>();
         public IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure) =>
             throw new NotSupportedException("The CLI does not register native windows.");
 
@@ -422,6 +424,16 @@ public sealed class CliRouterTests
         public Task<OperationResult<SearchAvailability>> GetSearchAvailabilityAsync(CancellationToken cancellationToken) => Unsupported<SearchAvailability>();
         public Task<OperationResult<int>> RebuildSearchIndexAsync(CancellationToken cancellationToken) => Unsupported<int>();
         public Task<OperationResult<ReportSnapshot>> GetReportAsync(ReportQuery query, CancellationToken cancellationToken) => Unsupported<ReportSnapshot>();
+        /// <inheritdoc />
+        public Task<OperationResult<ReportExportSetup>> GetReportExportSetupAsync(CancellationToken cancellationToken) => Unsupported<ReportExportSetup>();
+        /// <inheritdoc />
+        public Task<OperationResult<ReportExportPreview>> PreviewReportExportAsync(ReportExportOptions options, CancellationToken cancellationToken) => Unsupported<ReportExportPreview>();
+        /// <inheritdoc />
+        public Task<OperationResult<bool>> SaveReportExportPreferencesAsync(ReportExportOptions options, CancellationToken cancellationToken) => Unsupported<bool>();
+        /// <inheritdoc />
+        public Task<OperationResult<ReportExportResult>> ExportReportAsync(ReportExportRequest request, CancellationToken cancellationToken) => Unsupported<ReportExportResult>();
+        /// <inheritdoc />
+        public Task<OperationResult<ReportSummaryResult>> GenerateReportSummaryAsync(ReportSummaryRequest request, CancellationToken cancellationToken) => Unsupported<ReportSummaryResult>();
         public Task<OperationResult<SystemSnapshot>> CaptureHardwareSnapshotAsync(CancellationToken cancellationToken) => CaptureSystemSnapshotAsync(cancellationToken);
 
         public Task<OperationResult<SystemSnapshot>> CaptureSystemSnapshotAsync(CancellationToken cancellationToken) => Unsupported<SystemSnapshot>();

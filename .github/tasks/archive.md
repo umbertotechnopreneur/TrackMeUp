@@ -1,5 +1,12 @@
 # Task Archive
 
+## 2026-09-21 — Archive progress and full-suite corrections
+
+- Added per-operation archive progress through the shared facade and runtime protocol. Export, validation and import report real phases and file counts; the modal dialog polls independently of the mutation lock and shows elapsed time. Unknown totals remain indeterminate. Progress snapshots contain no local paths and are removed when operations finish. All ten locales include the new captions.
+- Fixed the incomplete CLI facade fake, stale search/menu/astronomy contract expectations, the screenshot-schedule license fixture and missing menu tooltips. Added archive progress lifecycle, service and UI/localization regression checks.
+- Debug x64 solution build passed with zero warnings and errors. Final results: Core 871, CLI 163, Presentation 380, Search 71 and OCR 26 passed (1,511 total). The full run exposed three remaining source-contract expectations; after correction, the owner authorized a Presentation-only rerun, which passed all 380. Formatting and verification passed. Reports are retained under `artifacts/test-results/archive-progress-full` and `artifacts/test-results/archive-progress-presentation`.
+- The owner authorized commit and push to PR #42 with a new CI run. No installer, installation or app restart was performed. Live visual acceptance and remote-runtime UI observation remain pending.
+
 ## 2026-09-21 — NOAA location preference and transparent search results
 
 - Added the explicit Git ignore exception for the embedded important-date catalog required by Core. The local catalog is now visible to Git; no unrelated data directory is unignored.

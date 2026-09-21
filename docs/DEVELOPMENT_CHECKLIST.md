@@ -1,5 +1,7 @@
 # Development scenario checklist
 
+- [ ] Export, preview and import a synthetic `.tmuarchive` with multiple screenshots through both the local facade and the shared runtime. Verify real phase changes, processed/total file counts where known, elapsed time and an indeterminate bar where totals are unknown. Progress reads must not wait for the archive mutation lock, expose paths or alter data. Concurrent operation IDs must stay isolated and disappear on completion/failure. Close during a pending read: no detached UI updates. A progress-read failure must be explicit without interrupting the archive operation. Check all ten languages, text scaling and high contrast.
+
 - [ ] Toggle **Hide NOAA events by location** in world-clock options. It starts enabled, persists across restart and applies to each clock and the agenda's selected city without a new NOAA request when cached. Check low latitude, polar day/night, a fixed reference instant, invalid/expired alerts and save failure rollback. Off bypasses only geographic/darkness restrictions; insignificant or out-of-window forecasts remain hidden and other NOAA alert types remain unchanged. Verify the explanatory text and accessible label in all ten languages.
 - [ ] In Search, verify the results pane shows the window material without a white panel in light/dark themes. Selection, hover and keyboard focus must remain clear. High contrast must use the system window color; with transparency disabled, use the window's supported fallback.
 

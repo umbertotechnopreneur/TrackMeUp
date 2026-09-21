@@ -42,7 +42,8 @@ internal sealed class MicaDialogService
         ElementTheme theme,
         string title,
         string description,
-        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation)
+        Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
+        Guid? archiveOperationId = null)
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(operation);
@@ -68,7 +69,7 @@ internal sealed class MicaDialogService
                 async cancellationToken =>
                 {
                     operationResult = await operation(application, cancellationToken);
-                });
+                }, archiveOperationId);
             await ShowDialogWindowAsync(dialog, dialog.WindowHandle, dialog.ShowAsync, dialog.DisposePlacement);
             return operationResult ?? throw new InvalidOperationException("The progress operation returned no result.");
         });

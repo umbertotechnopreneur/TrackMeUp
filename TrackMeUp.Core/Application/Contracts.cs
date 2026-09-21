@@ -210,7 +210,8 @@ public sealed record DataArchiveExportRequest(
     string DestinationPath,
     DateOnly? From = null,
     DateOnly? ToInclusive = null,
-    bool IncludeScreenshots = true);
+    bool IncludeScreenshots = true,
+    Guid OperationId = default);
 
 /// <summary>Summarizes one successfully written portable TrackMeUp archive.</summary>
 public sealed record DataArchiveExportResult(
@@ -227,7 +228,7 @@ public sealed record DataArchiveExportResult(
     long ScreenshotBytes);
 
 /// <summary>Requests a validated, non-mutating preview of one portable TrackMeUp archive.</summary>
-public sealed record DataArchiveImportPreviewRequest(string ArchivePath);
+public sealed record DataArchiveImportPreviewRequest(string ArchivePath, Guid OperationId = default);
 
 /// <summary>Describes one installation contained in a portable archive.</summary>
 public sealed record DataArchiveInstallationSummary(
@@ -255,7 +256,7 @@ public sealed record DataArchiveImportPlan(
     bool AlreadyImported);
 
 /// <summary>Requests the confirmed merge of a previously previewed archive plan.</summary>
-public sealed record DataArchiveImportRequest(Guid PlanId);
+public sealed record DataArchiveImportRequest(Guid PlanId, Guid OperationId = default);
 
 /// <summary>Reports inserted and idempotently skipped records after one atomic archive merge.</summary>
 public sealed record DataArchiveImportResult(
@@ -671,6 +672,9 @@ public sealed record RuntimeStateChangedEventArgs(DashboardState Dashboard, stri
 /// <summary>Exposes every frontend capability through UI-independent requests and result DTOs.</summary>
 public interface ITrackMeUpApplication : IAsyncDisposable
 {
+    /// <summary>Reads transient archive progress without waiting for a running import or export.</summary>
+    Task<OperationResult<DataArchiveProgress?>> GetDataArchiveProgressAsync(DataArchiveProgressRequest request, CancellationToken cancellationToken);
+
     /// <summary>Registers local native drag handling on the window's UI thread; the returned registration must be disposed on that thread.</summary>
     IWindowSnappingRegistration RegisterWindowSnapping(long windowHandle, Action<Exception> reportFailure);
 

@@ -1289,6 +1289,7 @@ public sealed partial class MainWindow : Window
         AboutMenuItem.Text = T("MenuTitleAbout");
 
         ApplyMenuAccessibility(QuickSearchMenuItem, "Search.Title", "Main.Menu.Search.Tooltip");
+        ApplyMenuAccessibility(ReportExportMenuItem, "Export.Title", "Export.Title");
         ApplyMenuAccessibility(QuickActivityCalendarMenuItem, "ActivityCalendar.MenuTitle", "Main.Menu.ActivityCalendar.Tooltip");
         ApplyMenuAccessibility(QuickScreenshotGalleryMenuItem, "Screenshots.Caption", "Main.Menu.Screenshots.Tooltip");
         ApplyMenuAccessibility(CaptureMenu, "Main.Menu.Capture", "Main.Menu.Capture.Tooltip");

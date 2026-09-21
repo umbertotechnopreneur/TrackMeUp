@@ -145,6 +145,7 @@ public sealed partial class TrackMeUpApplication : ITrackMeUpApplication
     private readonly OpenAiPricingRefreshService? _pricingRefresh;
     private readonly AiScreenshotReprocessingService _screenshotReprocessing;
     private readonly DataArchiveService _archives;
+    private readonly DataArchiveProgressRegistry _archiveProgress = new();
     private readonly WorldClockApplicationService _worldClockOperations;
     private readonly CelestialMapService _celestialMap = new();
     private readonly ILogger<TrackMeUpApplication> _logger;
@@ -1345,8 +1346,9 @@ public sealed partial class TrackMeUpApplication : ITrackMeUpApplication
 
             try
             {
+                using var progress = _archiveProgress.Begin(request.OperationId);
                 var result = await Task.Run(
-                    () => _archives.Export(request, cancellationToken),
+                    () => _archives.Export(request, cancellationToken, progress.Report),
                     cancellationToken).ConfigureAwait(false);
                 _logger.LogInformation(
                     "Private data archive exported. Installations={InstallationCount} ActivitySamples={ActivitySampleCount} Screenshots={ScreenshotCount}",
@@ -1378,8 +1380,9 @@ public sealed partial class TrackMeUpApplication : ITrackMeUpApplication
     {
         try
         {
+            using var progress = _archiveProgress.Begin(request.OperationId);
             var plan = await Task.Run(
-                () => _archives.PreviewImport(request, cancellationToken),
+                () => _archives.PreviewImport(request, cancellationToken, progress.Report),
                 cancellationToken).ConfigureAwait(false);
             return OperationResult<DataArchiveImportPlan>.Success(
                 "archive.import.previewed",
@@ -1420,13 +1423,15 @@ public sealed partial class TrackMeUpApplication : ITrackMeUpApplication
 
             try
             {
+                using var progress = _archiveProgress.Begin(request.OperationId);
                 var result = await Task.Run(
-                    () => _archives.Import(request.PlanId, cancellationToken),
+                    () => _archives.Import(request.PlanId, cancellationToken, progress.Report),
                     cancellationToken).ConfigureAwait(false);
                 try
                 {
                     // The merge is already durable at this point. Rebuild the derived index without
                     // allowing late caller cancellation to misreport the committed import as canceled.
+                    progress.Report(new DataArchiveProgress(DataArchivePhase.RebuildingIndex));
                     _ = await _search.RebuildAsync(CancellationToken.None).ConfigureAwait(false);
                 }
                 catch (Exception exception)

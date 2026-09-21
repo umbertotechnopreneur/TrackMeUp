@@ -319,7 +319,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(MenuGlyph(player, "AiPricingMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE8C7");
         Assert.Contains(MenuGlyph(player, "MinimizeToTrayMenuItem"), element => element.Attribute("Glyph")?.Value == "\uE921");
         Assert.Equal(
-            ["Main.Menu.Activity", "Search.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.DataTransfer.Export", "Main.Menu.DataTransfer.Import", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
+            ["Search.Title", "ActivityCalendar.MenuTitle", "Screenshots.Caption", "Export.Title", "Main.Menu.Capture", "Schedule.Snapshots", "MenuToggleScreenshot", "Main.Menu.Settings", "QuickSetup.MenuTitle", "MenuTitleOptions", "Main.Menu.Operations", "Main.Menu.DataTransfer.Export", "Main.Menu.DataTransfer.Import", "Main.Menu.AiProvider", "MenuToggleOpenAi", "AiPricing.MenuTitle", "Main.Menu.MinimizeToTray", "MenuTitleAbout"],
             menuTags);
         Assert.Contains(player.Descendants().Single(element => HasName(element, "ExportDataMenuItem")).Ancestors(), element => HasName(element, "SettingsMenu"));
         Assert.Contains(player.Descendants().Single(element => HasName(element, "ImportDataMenuItem")).Ancestors(), element => HasName(element, "SettingsMenu"));

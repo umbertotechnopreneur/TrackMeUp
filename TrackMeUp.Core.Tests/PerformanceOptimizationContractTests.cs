@@ -14,7 +14,7 @@ public sealed class PerformanceOptimizationContractTests
     public void RuntimeApplication_UsesSnapshotAfterConstructionAndPersistsBeforeReplacingIt()
     {
         var source = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Application", "TrackMeUpApplication.cs"));
-        var applicationStart = source.IndexOf("public sealed class TrackMeUpApplication", StringComparison.Ordinal);
+        var applicationStart = source.IndexOf("public sealed partial class TrackMeUpApplication", StringComparison.Ordinal);
         Assert.True(applicationStart >= 0);
         var applicationSource = source[applicationStart..];
 

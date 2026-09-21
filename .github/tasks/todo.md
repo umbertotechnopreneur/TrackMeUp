@@ -1,5 +1,9 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Archive operation feedback and regression corrections (2026-09-21)
+
+- [ ] Visually verify native archive export, preview and import with synthetic data: localized phases, real per-phase file counts and elapsed time must update while the dialog remains responsive. Check remote-runtime polling, failures, shutdown, light/dark/high contrast and text scaling. No installation or app restart is part of this change.
+
 ## NOAA location filter and search material (2026-09-21)
 
 - [ ] Run the new SpaceWeatherLocationFilterTests and the updated search surface checks after explicit approval. Verify persisted on/off state, low latitude, polar day/night, unchanged non-geomagnetic alerts, expired alerts, and significant forecasts in the 48-hour window.

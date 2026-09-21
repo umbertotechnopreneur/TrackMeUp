@@ -54,7 +54,8 @@ internal sealed class OperationsSectionContext
         Func<ITrackMeUpApplication, CancellationToken, Task<OperationResult<T>>> operation,
         string title,
         string description,
-        bool showSuccess = true)
+        bool showSuccess = true,
+        Guid? archiveOperationId = null)
     {
         ArgumentNullException.ThrowIfNull(operation);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
@@ -68,7 +69,7 @@ internal sealed class OperationsSectionContext
                     : throw new InvalidOperationException("Progress dialogs require framework-element owner content."),
                 title,
                 description,
-                operation),
+                operation, archiveOperationId),
             showSuccess,
             showInlineProgress: false);
     }

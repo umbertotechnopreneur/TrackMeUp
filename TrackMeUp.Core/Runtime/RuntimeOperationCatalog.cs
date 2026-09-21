@@ -84,6 +84,8 @@ internal enum RuntimeOperation
     ArchiveImportPreviewV1,
     [RuntimeOperationWireName("archive.import.merge.v1")]
     ArchiveImportMergeV1,
+    [RuntimeOperationWireName("archive.progress.v1")]
+    ArchiveProgressV1,
     [RuntimeOperationWireName("screenshot.delete")]
     ScreenshotDelete,
     [RuntimeOperationWireName("screenshot.analysis.delete.v1")]

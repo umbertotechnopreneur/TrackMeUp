@@ -171,9 +171,10 @@ public sealed class WinUiOperationsSurfaceContractTests
         Assert.Contains("FileTypeChoices.Add", source, StringComparison.Ordinal);
         Assert.Contains("FileTypeFilter.Add(ArchiveExtension)", source, StringComparison.Ordinal);
         Assert.Contains("WinRT.Interop.InitializeWithWindow.Initialize", source, StringComparison.Ordinal);
-        Assert.Contains("new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true)", source, StringComparison.Ordinal);
-        Assert.Contains("new DataArchiveImportPreviewRequest(archivePath)", source, StringComparison.Ordinal);
-        Assert.Contains("new DataArchiveImportRequest(plan.PlanId)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveExportRequest(destinationPath, IncludeScreenshots: true, OperationId: operationId)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveImportPreviewRequest(archivePath, operationId)", source, StringComparison.Ordinal);
+        Assert.Contains("new DataArchiveImportRequest(plan.PlanId, operationId)", source, StringComparison.Ordinal);
+        Assert.Equal(3, source.Split("archiveOperationId: operationId", StringSplitOptions.None).Length - 1);
         Assert.Contains("plan.AlreadyImported", source, StringComparison.Ordinal);
         Assert.Contains("imported.AddedInstallationCount", source, StringComparison.Ordinal);
         Assert.Contains("imported.SkippedScreenshotFileCount", source, StringComparison.Ordinal);

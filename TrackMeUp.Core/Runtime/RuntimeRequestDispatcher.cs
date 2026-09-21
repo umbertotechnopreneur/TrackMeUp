@@ -82,6 +82,8 @@ internal sealed class RuntimeRequestDispatcher
                     Read<UpdateInstallationProfileRequest>(request.Payload)
                         ?? throw new InvalidDataException("An installation profile update payload is required."),
                     cancellationToken)),
+                RuntimeOperation.ArchiveProgressV1 => ToResponse(request, await _application.GetDataArchiveProgressAsync(
+                    Read<DataArchiveProgressRequest>(request.Payload) ?? throw new InvalidDataException("An archive progress identity is required."), cancellationToken)),
                 RuntimeOperation.ArchiveExportV1 => ToResponse(request, await _application.ExportDataArchiveAsync(
                     Read<DataArchiveExportRequest>(request.Payload)
                         ?? throw new InvalidDataException("An archive export payload is required."),

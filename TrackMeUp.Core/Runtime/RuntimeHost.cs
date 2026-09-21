@@ -347,6 +347,9 @@ public sealed class RuntimeClient : ITrackMeUpApplication
         CancellationToken cancellationToken) =>
         SendAsync<InstallationProfile>(RuntimeOperation.InstallationsUpdateV1, request, cancellationToken);
     /// <inheritdoc />
+    public Task<OperationResult<DataArchiveProgress?>> GetDataArchiveProgressAsync(DataArchiveProgressRequest request, CancellationToken cancellationToken) =>
+        SendAsync<DataArchiveProgress?>(RuntimeOperation.ArchiveProgressV1, request, cancellationToken);
+    /// <inheritdoc />
     public Task<OperationResult<DataArchiveExportResult>> ExportDataArchiveAsync(
         DataArchiveExportRequest request,
         CancellationToken cancellationToken) =>
