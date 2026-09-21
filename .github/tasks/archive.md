@@ -1,5 +1,9 @@
 # Task Archive
 
+## 2026-09-21 — Promote and clarify the interface-language picker
+
+- Moved the interface-language setting out of advanced options. System remains the default; supported languages are ordered by English name and display a country flag, English name and native name. Changing the persisted language remains a restart-required setting.
+
 ## 2026-09-21 — Show global NOAA space weather
 
 - Removed the city latitude, longitude and darkness filter from NOAA forecasts and alerts. The celestial agenda and world clocks now show every valid, significant global condition in the 48-hour window; coordinates remain in use only for local astronomy and weather. Removed the obsolete setting, option and policy.

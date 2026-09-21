@@ -1050,17 +1050,18 @@ public sealed class WinUiSurfaceContractTests
         var languagePicker = options.Descendants().Single(element => element.Attributes().Any(attribute => attribute.Name.LocalName == "Name" && attribute.Value == "LanguageBox"));
         var searchLanguagePicker = options.Descendants().Single(element => HasName(element, "SearchLanguageBox"));
         var ocrLanguagePicker = options.Descendants().Single(element => HasName(element, "OcrLanguageBox"));
-        string?[] uiAndSearchChoices = ["system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-Hans", "vi-VN", "ko-KR", "pt-PT", "pt-BR"];
+        string?[] uiChoices = ["system", "zh-Hans", "en-US", "fr-FR", "de-DE", "it-IT", "ko-KR", "pt-BR", "pt-PT", "es-ES", "vi-VN"];
+        string?[] searchChoices = ["system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-Hans", "vi-VN", "ko-KR", "pt-PT", "pt-BR"];
         string?[] ocrChoices = ["system", "en-US", "it-IT", "fr-FR", "de-DE", "es-ES", "zh-CN", "ko-KR", "pt-PT", "pt-BR"];
 
         Assert.Equal("Options.Language", languagePicker.Attribute("Tag")?.Value);
         Assert.Equal(
-            uiAndSearchChoices,
+            uiChoices,
             languagePicker.Descendants()
                 .Where(element => element.Name.LocalName == "ComboBoxItem")
                 .Select(element => element.Attribute("Tag")?.Value));
         Assert.Equal(
-            uiAndSearchChoices,
+            searchChoices,
             searchLanguagePicker.Descendants()
                 .Where(element => element.Name.LocalName == "ComboBoxItem")
                 .Select(element => element.Attribute("Tag")?.Value));
@@ -1069,6 +1070,8 @@ public sealed class WinUiSurfaceContractTests
             ocrLanguagePicker.Descendants()
                 .Where(element => element.Name.LocalName == "ComboBoxItem")
                 .Select(element => element.Attribute("Tag")?.Value));
+        Assert.Equal("🌐 System", languagePicker.Descendants().Single(element => element.Name.LocalName == "ComboBoxItem" && element.Attribute("Tag")?.Value == "system").Attribute("Content")?.Value);
+        Assert.Equal("🇮🇹 Italian · Italiano", languagePicker.Descendants().Single(element => element.Name.LocalName == "ComboBoxItem" && element.Attribute("Tag")?.Value == "it-IT").Attribute("Content")?.Value);
     }
 
     [Fact]

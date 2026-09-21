@@ -84,6 +84,7 @@ public sealed partial class OptionsControl : UserControl
         {
             _strings = new LocalizationService(language);
             UiLocalization.Apply(this, _strings);
+            ApplyLanguagePickerPresentation();
             if (SelectedModel() is { } selectedModel)
             {
                 PopulateThinkingEfforts(selectedModel, SelectedTag(AiReasoningEffortBox, _requestedThinkingEffort));
@@ -133,6 +134,45 @@ public sealed partial class OptionsControl : UserControl
         {
             _suppressAutoSave = wasSuppressingAutoSave;
         }
+    }
+
+    /// <summary>Shows every UI-language choice with a flag, its English name, and its native name.</summary>
+    private void ApplyLanguagePickerPresentation()
+    {
+        var displays = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["system"] = $"🌐 System{SystemLanguageSuffix()}",
+            ["zh-Hans"] = "🇨🇳 Chinese (Simplified) · 简体中文",
+            ["en-US"] = "🇺🇸 English (United States)",
+            ["fr-FR"] = "🇫🇷 French · Français",
+            ["de-DE"] = "🇩🇪 German · Deutsch",
+            ["it-IT"] = "🇮🇹 Italian · Italiano",
+            ["ko-KR"] = "🇰🇷 Korean · 한국어",
+            ["pt-BR"] = "🇧🇷 Portuguese (Brazil) · Português (Brasil)",
+            ["pt-PT"] = "🇵🇹 Portuguese (Portugal) · Português (Portugal)",
+            ["es-ES"] = "🇪🇸 Spanish · Español",
+            ["vi-VN"] = "🇻🇳 Vietnamese · Tiếng Việt"
+        };
+
+        foreach (var item in LanguageBox.Items.OfType<ComboBoxItem>())
+        {
+            var language = item.Tag?.ToString() ?? throw new InvalidOperationException("Language selection item is missing its language tag.");
+            if (!displays.TryGetValue(language, out var display))
+            {
+                throw new InvalidOperationException($"Unsupported UI language '{language}' in the language picker.");
+            }
+
+            item.Content = display;
+            AutomationProperties.SetName(item, display);
+        }
+
+        AutomationProperties.SetName(LanguageBox, T("Options.Language.Header"));
+    }
+
+    private string SystemLanguageSuffix()
+    {
+        var localized = T("Options.Language.system");
+        return string.Equals(localized, "System", StringComparison.OrdinalIgnoreCase) ? string.Empty : $" · {localized}";
     }
 
     /// <summary>Attaches the shared application facade and loads persisted settings into controls.</summary>
