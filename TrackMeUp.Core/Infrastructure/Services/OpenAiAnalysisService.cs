@@ -261,7 +261,8 @@ public sealed class OpenAiAnalysisService : IAiAnalysisService
             var prompt = AiPromptCatalog.RenderScreenshotAnalysis(
                 settings.AiOutputDetail,
                 context,
-                customPrompt: settings.AiCustomPrompt);
+                customPrompt: settings.AiCustomPrompt,
+                language: settings.UiLanguage);
             var decoder = _decoder ?? AIDecoderFactory.Create(settings);
             var attemptId = Guid.NewGuid().ToString("N");
             var attemptedAt = DateTimeOffset.UtcNow;

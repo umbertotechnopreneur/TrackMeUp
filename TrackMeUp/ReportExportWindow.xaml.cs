@@ -87,7 +87,7 @@ internal sealed partial class ReportExportWindow : Window
     /// <summary>Shows the configured export surface through the shared window queue.</summary>
     internal Task<bool> ShowAsync()
     {
-        WindowInteropService.MakeTopmostWithoutActivation(WindowHandle);
+        // The native owner keeps this modal surface above TrackMeUp without placing it above other apps.
         Activate();
         return _completion.Task;
     }

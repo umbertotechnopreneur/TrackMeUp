@@ -11,6 +11,53 @@ namespace TrackMeUp.Core.Tests;
 
 public sealed class AiPromptAndPayloadTests
 {
+    [Theory]
+    [InlineData("compact")]
+    [InlineData("balanced")]
+    [InlineData("detailed")]
+    public void MissingHardware_PreservesDeviceContextAndRequestedLanguage(string profile)
+    {
+        var snapshot = new SystemSnapshot(DateTimeOffset.UtcNow, "disabled", [], DeviceContext: new(
+            new("Europe/Rome", "windows", "available"),
+            new("it-IT", "windows", "available"),
+            new("it-IT", "windows", "available"),
+            new(null, null, null, "windows", "disabled_by_setting")));
+        var context = new AnalysisContextSnapshot("App", "Task", "Window", "active", null, snapshot);
+        var prompt = AiPromptCatalog.RenderScreenshotAnalysis(profile, context, language: "it-IT");
+        Assert.Contains("in it-IT", prompt);
+        Assert.Contains("Europe/Rome", prompt);
+        Assert.DoesNotContain("Hardware at capture", prompt);
+        Assert.DoesNotContain("{{", prompt);
+        var empty = AiPromptCatalog.RenderScreenshotAnalysis(profile, null, _ => "{{SYSTEM_TELEMETRY}}");
+        Assert.Empty(empty);
+    }
+
+    [Fact]
+    public void CompactPrompt_OmitsSensorReadings()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var snapshot = new SystemSnapshot(now, "ready", [new("/cpu/0", "CPU", "Cpu", now,
+            [new("/cpu/0/load", "CPU Total", "Load", "%", 0)])]);
+        var context = new AnalysisContextSnapshot("App", "Task", "Window", "active", null, snapshot);
+        Assert.Empty(AiPromptCatalog.RenderScreenshotAnalysis("compact", context, _ => "{{SYSTEM_TELEMETRY}}"));
+        Assert.Contains("=0 %", AiPromptCatalog.RenderScreenshotAnalysis("balanced", context, _ => "{{SYSTEM_TELEMETRY}}"));
+    }
+
+    [Theory]
+    [InlineData(2000)]
+    [InlineData(6000)]
+    public void SummaryBudget_OverridesScreenshotProfileForEveryProvider(int budget)
+    {
+        var settings = new AppSettings(AiOutputDetail: "compact");
+        var options = new AiProviderRequestOptions(ReasoningEffort: "none", MaxOutputTokens: budget);
+        using var openAi = JsonDocument.Parse(OpenAiDecoder.SerializePayload("summary", [], settings, options));
+        using var router = JsonDocument.Parse(OpenRouterDecoder.SerializePayload("summary", [], settings, options));
+        using var anthropic = JsonDocument.Parse(AnthropicDecoder.SerializePayload("summary", [], settings, options));
+        Assert.Equal(budget, openAi.RootElement.GetProperty("max_output_tokens").GetInt32());
+        Assert.Equal(budget, router.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal(budget, anthropic.RootElement.GetProperty("max_tokens").GetInt32());
+    }
+
     [Fact]
     public void PromptRenderer_UsesHistoricalBatteryReadingsAndPreservesPowerCapacityDistinction()
     {
@@ -27,15 +74,15 @@ public sealed class AiPromptAndPayloadTests
         ]);
         var context = new AnalysisContextSnapshot("App", "Task", "Window", "active", null, snapshot);
 
-        var prompt = AiPromptCatalog.RenderScreenshotAnalysis("compact", context, _ => "{{SYSTEM_TELEMETRY}}");
+        var prompt = AiPromptCatalog.RenderScreenshotAnalysis("detailed", context, _ => "{{SYSTEM_TELEMETRY}}");
 
         Assert.Contains($"collection_completed={timestamp:O}", prompt, StringComparison.Ordinal);
         Assert.Contains($"updated={sampledAt:O}", prompt, StringComparison.Ordinal);
         Assert.Contains("Discharge Rate (Power)=8.4 W", prompt, StringComparison.Ordinal);
         Assert.Contains("Remaining Capacity (Energy)=43000 mWh", prompt, StringComparison.Ordinal);
-        Assert.Contains("Temperature (Temperature)=unavailable °C", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Temperature (Temperature)", prompt, StringComparison.Ordinal);
         Assert.Contains("battery mWh is capacity", prompt, StringComparison.Ordinal);
-        Assert.Contains("device_context=[not available]", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Device context", prompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -49,12 +96,12 @@ public sealed class AiPromptAndPayloadTests
         var snapshot = new SystemSnapshot(timestamp, "ready", devices);
         var context = new AnalysisContextSnapshot("App", "Task", "Window", "active", null, snapshot);
 
-        var prompt = AiPromptCatalog.RenderScreenshotAnalysis("compact", context, _ => "{{SYSTEM_TELEMETRY}}");
+        var prompt = AiPromptCatalog.RenderScreenshotAnalysis("detailed", context, _ => "{{SYSTEM_TELEMETRY}}");
 
-        Assert.True(prompt.Length < 6_200);
-        Assert.Contains("omitted_sensors=98", prompt, StringComparison.Ordinal);
+        Assert.True(prompt.Length < 3_100);
+        Assert.Contains("[hardware summary truncated]", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain(new string('T', 97), prompt, StringComparison.Ordinal);
-        Assert.Contains("device_context=[not available]", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Device context", prompt, StringComparison.Ordinal);
     }
 
     [Theory]

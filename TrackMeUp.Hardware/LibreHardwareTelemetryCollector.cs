@@ -2,6 +2,8 @@
 
 using LibreHardwareMonitor.Hardware;
 using LibreHardwareMonitor.PawnIo;
+using System.Management;
+using System.Runtime.InteropServices;
 using TrackMeUp.Services;
 
 namespace TrackMeUp.Hardware;
@@ -53,8 +55,18 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
 
         var devices = new List<HardwareDeviceSnapshot>();
         var hadError = false;
+        var physicalNetworkAdapterIds = ReadPhysicalNetworkAdapterIds();
         foreach (var hardware in _computer.Hardware)
         {
+            if (hardware.HardwareType == HardwareType.Network
+                && (physicalNetworkAdapterIds is null || !IsPhysicalNetworkAdapter(hardware, physicalNetworkAdapterIds)))
+            {
+                // LibreHardwareMonitor exposes Windows filter and virtual adapters as network hardware.
+                // Keep only adapters confirmed by Windows as physical, and hide all network entries if
+                // that confirmation is unavailable rather than presenting virtual hardware as genuine.
+                hadError |= physicalNetworkAdapterIds is null;
+                continue;
+            }
             if (_deviceCache.TryGetValue(hardware, out var cached)
                 && !profile.IsSampleDue(hardware.HardwareType.ToString(), cached.SampledAt, DateTimeOffset.UtcNow))
             {
@@ -120,6 +132,41 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
     {
         hardware.Update();
         foreach (var child in hardware.SubHardware) Update(child);
+    }
+
+    /// <summary>Reads the GUIDs of adapters Windows identifies as physical, excluding NDIS filters and virtual adapters.</summary>
+    private static HashSet<string>? ReadPhysicalNetworkAdapterIds()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(new ManagementScope(@"\\.\root\cimv2"),
+                new ObjectQuery("SELECT GUID FROM Win32_NetworkAdapter WHERE PhysicalAdapter = TRUE"),
+                new System.Management.EnumerationOptions { ReturnImmediately = true, Rewindable = false, Timeout = TimeSpan.FromSeconds(3) });
+            using var results = searcher.Get();
+            var adapterIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (ManagementBaseObject row in results)
+            {
+                using (row)
+                {
+                    if (Guid.TryParse(row["GUID"] as string, out var adapterId)) adapterIds.Add(adapterId.ToString("D"));
+                }
+            }
+            return adapterIds;
+        }
+        catch (Exception exception) when (exception is ManagementException or COMException or UnauthorizedAccessException or TimeoutException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsPhysicalNetworkAdapter(IHardware hardware, ISet<string> physicalAdapterIds)
+    {
+        const string networkIdentifierPrefix = "/nic/";
+        var identifier = hardware.Identifier.ToString();
+        if (!identifier.StartsWith(networkIdentifierPrefix, StringComparison.OrdinalIgnoreCase)) return false;
+        var encodedAdapterId = identifier[networkIdentifierPrefix.Length..];
+        return Guid.TryParse(Uri.UnescapeDataString(encodedAdapterId), out var adapterId)
+            && physicalAdapterIds.Contains(adapterId.ToString("D"));
     }
 
     private static string Unit(SensorType type) => type switch

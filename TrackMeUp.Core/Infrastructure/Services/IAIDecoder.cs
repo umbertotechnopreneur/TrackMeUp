@@ -9,7 +9,8 @@ namespace TrackMeUp.Services;
 /// <summary>Overrides request-shaping details for a single provider call without changing persisted settings.</summary>
 public sealed record AiProviderRequestOptions(
     bool OmitOutputTokenLimitWhenSupported = false,
-    string? ReasoningEffort = null);
+    string? ReasoningEffort = null,
+    int? MaxOutputTokens = null);
 
 /// <summary>
 /// Contract for provider adapters that can enrich productivity analysis from context and screenshots.

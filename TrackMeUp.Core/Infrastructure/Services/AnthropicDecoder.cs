@@ -135,8 +135,9 @@ public sealed class AnthropicDecoder : IAIDecoder
         AppSettings settings,
         AiProviderRequestOptions? requestOptions = null)
     {
-        _ = requestOptions; // The Messages API requires max_tokens, so the selected detail profile remains authoritative.
         var profile = AiAnalysisProfileCatalog.Resolve(settings.AiOutputDetail);
+        if (requestOptions?.MaxOutputTokens is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(requestOptions), "The output token budget must be positive.");
         var content = new List<object>
         {
             new Dictionary<string, object?>
@@ -163,7 +164,7 @@ public sealed class AnthropicDecoder : IAIDecoder
         var payload = new Dictionary<string, object?>
         {
             ["model"] = settings.Model,
-            ["max_tokens"] = profile.MaxOutputTokens,
+            ["max_tokens"] = requestOptions?.MaxOutputTokens ?? profile.MaxOutputTokens,
             ["messages"] = new[]
             {
                 new Dictionary<string, object?>

@@ -1,5 +1,24 @@
 # Task Archive
 
+## 2026-09-21 — Promote and clarify the interface-language picker
+
+- Moved the interface-language setting out of advanced options. System remains the default; supported languages are ordered by English name and display a country flag, English name and native name. Changing the persisted language remains a restart-required setting.
+
+## 2026-09-21 — Show global NOAA space weather
+
+- Removed the city latitude, longitude and darkness filter from NOAA forecasts and alerts. The celestial agenda and world clocks now show every valid, significant global condition in the 48-hour window; coordinates remain in use only for local astronomy and weather. Removed the obsolete setting, option and policy.
+- Reworded customer-facing tier labels as “piano Free” and localized equivalents. Formatter verification and 114 focused Core tests passed; generated test output was cleaned.
+
+## 2026-09-21 — Separate private design explorations
+
+- Archived unused UI mockups and the world-clock pilot outside Git. Retained shipped artwork and its build sources; clarified the repository boundary. Documentation/reference checks only; no build or tests.
+
+## 2026-09-21 — Align AI prompts with captured context
+
+- Screenshot prompts use the resolved app language and omit empty hardware sections. Device context remains independent of hardware availability. Compact analysis omits sensors; balanced and detailed analysis use smaller bounded summaries with available measurements only.
+- Detailed output uses bullets supported by the viewer. Prompts distinguish observations from inferred intent, duration, completion and productivity.
+- Report summaries use per-request output budgets of 2,000/6,000 tokens across all three providers, recorded in usage metadata, independently of the screenshot detail preference.
+
 ## 2026-09-21 — Restore imports after the application split
 
 - Restored file-scoped service and logging imports in the extracted application partials. The missing imports prevented the CI lint and both Release builds from resolving telemetry types; they also affected service helpers and logging extension methods. No runtime behavior changed. The correction is checked by the PR's authorized CI.

@@ -237,7 +237,7 @@
                 </Grid>
             </StackPanel>
 
-            <StackPanel Spacing="8">
+            <StackPanel x:Name="HardwareSection" Spacing="8">
                 <TextBlock Style="{StaticResource ScreenshotDetailSectionTitleStyle}" Tag="Hardware.CaptureTitle" Text="Hardware at capture" />
                 <TextBlock x:Name="HardwareStatusText" Style="{StaticResource ScreenshotDetailValueStyle}" Text="--" />
                 <TextBlock x:Name="HardwareCollectedAtText" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />

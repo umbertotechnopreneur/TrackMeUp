@@ -141,8 +141,7 @@ public sealed record AppSettings(
     bool WorldMapWindowShowInTaskbar = true,
     bool LunarPhaseWindowShowInTaskbar = true,
     bool WindowSnappingEnabled = true,
-    IReadOnlyList<TrackMeUp.Application.ActivityLabelDefinition>? ActivityLabels = null,
-    bool HideSpaceWeatherByLocation = true);
+    IReadOnlyList<TrackMeUp.Application.ActivityLabelDefinition>? ActivityLabels = null);
 
 public sealed record AiAnalysis(
     DateTimeOffset Timestamp,

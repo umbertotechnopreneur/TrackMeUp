@@ -128,6 +128,8 @@ public sealed class OpenAiDecoder : IAIDecoder
         AiProviderRequestOptions? requestOptions = null)
     {
         var profile = AiAnalysisProfileCatalog.Resolve(settings.AiOutputDetail);
+        if (requestOptions?.MaxOutputTokens is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(requestOptions), "The output token budget must be positive.");
         var content = new List<object>
         {
             new Dictionary<string, object?>
@@ -166,7 +168,7 @@ public sealed class OpenAiDecoder : IAIDecoder
 
         if (requestOptions?.OmitOutputTokenLimitWhenSupported != true)
         {
-            payload["max_output_tokens"] = profile.MaxOutputTokens;
+            payload["max_output_tokens"] = requestOptions?.MaxOutputTokens ?? profile.MaxOutputTokens;
         }
 
         var reasoningEffort = AiAnalysisProfileCatalog.ResolveReasoningEffort(

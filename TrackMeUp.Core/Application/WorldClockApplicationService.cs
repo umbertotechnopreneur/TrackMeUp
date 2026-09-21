@@ -40,7 +40,6 @@ internal sealed class WorldClockApplicationService : IDisposable
         var snapshot = await _worldClocks.BuildCurrentSnapshotAsync(
             settings.WorldClockCityIds,
             settings.WorldClockWeatherEnabled,
-            settings.HideSpaceWeatherByLocation,
             cancellationToken).ConfigureAwait(false);
         return OperationResult<WorldClockSnapshot>.Success(
             "world_clocks.loaded",

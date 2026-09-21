@@ -29,6 +29,8 @@ These instructions apply to all changes in this repository.
 
 ## Private business notes
 
+- Keep UI mockups, design explorations, product roadmaps and internal product decisions in the owner's Obsidian product notes, not in this repository. Retain shipped assets, real screenshots, asset provenance and documentation needed to use, build or contribute to the software.
+
 - Keep pricing, commercial strategy, launch plans, future product proposals, OAuth verification preparation, Store account procedures and owner checkpoints in the owner's Obsidian vault under `40_Business/MeUp/`, organized by product. Do not create or mirror these notes in public repositories.
 - Keep current user and contributor documentation, public privacy policies and terms, licenses, attribution, build instructions, technical validation records and files required by code or CI in the repository. Split documents that mix public technical guidance with internal planning.
 - For publication or Store listing work, first read `40_Business/MeUp/Business decisions.md` and the relevant product notes. The owner-approved purchase notice is preserved there; proposals and approved wording are not evidence of implemented licensing.
@@ -85,7 +87,7 @@ These instructions apply to all changes in this repository.
 ## Code and UI guidance
 
 - Add XML documentation to public/protected methods and brief inline comments for critical I/O, process/OS interop, and external-call paths. Explain failure behavior and any fallback in service/monitoring logic and exception/guard clauses.
-- Keep UI strings separate from business logic. When behavior changes, include at least one unit/integration scenario checklist entry in `docs/DEVELOPMENT_CHECKLIST.md`. Keep detailed checks out of the product README.
+- Keep UI strings separate from business logic. Keep detailed checks out of the product README.
 - For Screenshot UI work, use reusable components and keep data/business logic in models/services. Avoid duplicate large titles and card wrappers around controls; emphasize a translucent Mica/Acrylic look.
 - Track active work in `.github/tasks/todo.md` and completed work in `.github/tasks/archive.md`.
 

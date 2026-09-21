@@ -111,6 +111,26 @@
                         <ToggleSwitch x:Name="ShowAiMonthlySpendSwitch" Tag="Options.AiMonthlySpendVisibility" Header="Show monthly AI spend in the player" OffContent="Hidden" OnContent="Visible" />
                         <TextBlock Tag="Labels.CostHint" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
+                    <StackPanel Spacing="6" Margin="0,0,0,20">
+                        <ComboBox
+                            x:Name="LanguageBox"
+                            Tag="Options.Language"
+                            HorizontalAlignment="Stretch"
+                            Header="Interface language"
+                            AutomationProperties.Name="Interface language">
+                            <ComboBoxItem Content="🌐 System" Tag="system" />
+                            <ComboBoxItem Content="🇨🇳 Chinese (Simplified) · 简体中文" Tag="zh-Hans" />
+                            <ComboBoxItem Content="🇺🇸 English (United States)" Tag="en-US" />
+                            <ComboBoxItem Content="🇫🇷 French · Français" Tag="fr-FR" />
+                            <ComboBoxItem Content="🇩🇪 German · Deutsch" Tag="de-DE" />
+                            <ComboBoxItem Content="🇮🇹 Italian · Italiano" Tag="it-IT" />
+                            <ComboBoxItem Content="🇰🇷 Korean · 한국어" Tag="ko-KR" />
+                            <ComboBoxItem Content="🇧🇷 Portuguese (Brazil) · Português (Brasil)" Tag="pt-BR" />
+                            <ComboBoxItem Content="🇵🇹 Portuguese (Portugal) · Português (Portugal)" Tag="pt-PT" />
+                            <ComboBoxItem Content="🇪🇸 Spanish · Español" Tag="es-ES" />
+                            <ComboBoxItem Content="🇻🇳 Vietnamese · Tiếng Việt" Tag="vi-VN" />
+                        </ComboBox>
+                    </StackPanel>
                     <Rectangle
                         Width="34"
                         Height="2"
@@ -608,20 +628,6 @@
 
                     <StackPanel x:Name="GeneralAdvancedPanel" Margin="0,8,0,0" Spacing="10" Visibility="Collapsed">
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                        <ComboBox x:Name="LanguageBox" Tag="Options.Language" HorizontalAlignment="Stretch" Header="Interface language">
-                            <ComboBoxItem Content="System" Tag="system" />
-                            <ComboBoxItem Content="English (United States)" Tag="en-US" />
-                            <ComboBoxItem Content="Italiano" Tag="it-IT" />
-                            <ComboBoxItem Content="Français" Tag="fr-FR" />
-                            <ComboBoxItem Content="Deutsch" Tag="de-DE" />
-                            <ComboBoxItem Content="Español" Tag="es-ES" />
-                            <ComboBoxItem Content="简体中文" Tag="zh-Hans" />
-                            <ComboBoxItem Content="Tiếng Việt" Tag="vi-VN" />
-                            <ComboBoxItem Content="한국어" Tag="ko-KR" />
-                            <ComboBoxItem Content="Português (Portugal)" Tag="pt-PT" />
-                            <ComboBoxItem Content="Português (Brasil)" Tag="pt-BR" />
-                        </ComboBox>
-
                         <Border Height="1" Margin="0,4,0,0" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
                         <StackPanel Spacing="2">
                             <TextBlock Tag="Options.Section.Startup" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Startup" />
