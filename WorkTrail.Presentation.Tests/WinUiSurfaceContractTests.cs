@@ -292,7 +292,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "ProgressBar");
         Assert.DoesNotContain(pendingSnapshotPanel.Descendants(), element => element.Name.LocalName == "FontIcon" && element.Attribute("Glyph")?.Value == "\uE74D");
         Assert.Contains("TakeScreenshotButton.IsEnabled = false;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("TakeScreenshotButton.IsEnabled = _screenshotStorageReady && enableCapture;", mainSource, StringComparison.Ordinal);
+        Assert.Contains("TakeScreenshotButton.IsEnabled = _workspaceUiReady && enableCapture;", mainSource, StringComparison.Ordinal);
         Assert.Contains("HidePendingSnapshotDeleteUi(enableCapture: true);", mainSource, StringComparison.Ordinal);
         Assert.Contains("HidePendingSnapshotDeleteUi(enableCapture: false);", mainSource, StringComparison.Ordinal);
         Assert.Contains("FormatPendingSnapshotCountdown(remaining)", mainSource, StringComparison.Ordinal);
@@ -799,48 +799,6 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("StartupActivationPolicy.Apply(", appSource, StringComparison.Ordinal);
         Assert.Contains("AppInstance.GetCurrent().GetActivatedEventArgs()?.Kind", appSource, StringComparison.Ordinal);
         Assert.Contains("ExtendedActivationKind.StartupTask", appSource, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ScreenshotStorageMigration_BlocksTrackingAndUsesANonDismissibleProgressWindow()
-    {
-        var mainSource = File.ReadAllText(RepositoryFile("WorkTrail", "MainWindow.xaml.cs"));
-        var appSource = File.ReadAllText(RepositoryFile("WorkTrail", "App.xaml.cs"));
-        var dialog = XDocument.Load(RepositoryFile("WorkTrail", "ScreenshotStorageMigrationDialogWindow.xaml"));
-        var dialogSource = File.ReadAllText(RepositoryFile("WorkTrail", "ScreenshotStorageMigrationDialogWindow.xaml.cs"));
-        var initializationStart = mainSource.IndexOf(
-            "private async Task InitializeAsync(LaunchOptions options, CancellationToken cancellationToken)",
-            StringComparison.Ordinal);
-        var initializationEnd = mainSource.IndexOf(
-            "private async Task<string?> ReconcileWindowsStartupAsync(",
-            initializationStart,
-            StringComparison.Ordinal);
-        Assert.True(initializationStart >= 0 && initializationEnd > initializationStart, "MainWindow initialization source contract was not found.");
-        var initialization = mainSource[initializationStart..initializationEnd];
-
-        Assert.True(
-            initialization.IndexOf("await _lifecycle.WaitUntilLoadedAsync(cancellationToken);", StringComparison.Ordinal)
-            < initialization.IndexOf("EnsureScreenshotStorageMigratedAsync", StringComparison.Ordinal));
-        Assert.True(
-            initialization.IndexOf("EnsureScreenshotStorageMigratedAsync", StringComparison.Ordinal)
-            < initialization.IndexOf("_viewModel.InitializeAsync", StringComparison.Ordinal));
-        Assert.True(
-            initialization.IndexOf("_viewModel.InitializeAsync", StringComparison.Ordinal)
-            < initialization.IndexOf("_dashboardRefreshReady = true;", StringComparison.Ordinal));
-        Assert.Contains("SetScreenshotStorageReady(false);", mainSource, StringComparison.Ordinal);
-        Assert.Contains("SetScreenshotStorageReady(true);", initialization, StringComparison.Ordinal);
-        Assert.Contains("if (!_screenshotStorageReady)", mainSource, StringComparison.Ordinal);
-        Assert.Contains("TrackingButton.IsEnabled = isReady;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("TitleBarMoreButton.IsEnabled = isReady;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("CaptureMenu.IsEnabled = isReady;", mainSource, StringComparison.Ordinal);
-        Assert.Contains("SetStartupEnabledAsync", mainSource, StringComparison.Ordinal);
-        Assert.Contains("MigrateScreenshotStorageAsync", appSource, StringComparison.Ordinal);
-        Assert.Contains("GetScreenshotStorageMigrationStatusAsync", mainSource, StringComparison.Ordinal);
-        Assert.Contains("StartBackgroundRuntimeAsync", appSource, StringComparison.Ordinal);
-        Assert.Contains(dialog.Descendants(), element => HasName(element, "MigrationProgressRing") && element.Name.LocalName == "ProgressRing");
-        Assert.DoesNotContain(dialog.Descendants(), element => element.Name.LocalName is "Button" or "HyperlinkButton");
-        Assert.Contains("args.Cancel = !_allowClose;", dialogSource, StringComparison.Ordinal);
-        Assert.Contains("_application.MigrateScreenshotStorageAsync", dialogSource, StringComparison.Ordinal);
     }
 
     [Fact]

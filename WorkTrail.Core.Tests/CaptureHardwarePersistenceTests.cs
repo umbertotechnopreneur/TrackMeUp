@@ -12,7 +12,7 @@ using Xunit;
 
 namespace WorkTrail.Core.Tests;
 
-/// <summary>Verifies durable capture-time hardware evidence across migration and artifact lifecycle.</summary>
+/// <summary>Verifies durable capture-time hardware evidence across the artifact lifecycle.</summary>
 public sealed class CaptureHardwarePersistenceTests
 {
     /// <summary>One snapshot survives reopening and is shared by all retained monitor images without AI.</summary>
@@ -94,21 +94,6 @@ public sealed class CaptureHardwarePersistenceTests
         Assert.Equal(2, fixture.Store.DeleteScreenshotIntervalTelemetry(fixture.Paths[1]));
         Assert.Null(fixture.Store.LoadCaptureHardwareSnapshot(fixture.CaptureId));
         Assert.Equal(0, fixture.Store.DeleteScreenshotIntervalTelemetry(fixture.Paths[1]));
-    }
-
-    /// <summary>Version-nine migration preserves captures and never fabricates old sensor readings.</summary>
-    [Fact]
-    public void VersionNineMigration_PreservesCaptureWithAbsentHistoricalHardware()
-    {
-        using var fixture = new CaptureFixture();
-        fixture.Execute("DROP TABLE capture_hardware_snapshots; PRAGMA user_version = 9;");
-
-        var migrated = new LocalStore(fixture.Directory);
-        Assert.Null(migrated.LoadCaptureHardwareSnapshot(fixture.CaptureId));
-        Assert.Equal(10L, fixture.Scalar("PRAGMA user_version;"));
-        Assert.Equal(2L, fixture.Scalar("SELECT COUNT(*) FROM screenshot_interval_telemetry;"));
-        migrated.UpsertCaptureHardwareSnapshot(fixture.CaptureId, Snapshot(fixture.CapturedAt));
-        Assert.NotNull(new LocalStore(fixture.Directory).LoadCaptureHardwareSnapshot(fixture.CaptureId));
     }
 
     /// <summary>Malformed persisted readings are rejected rather than substituted with empty telemetry.</summary>

@@ -160,11 +160,6 @@ public sealed partial class CliRouter
                     });
                 }
                 return await WriteAsync(_application.DeleteScreenshotAsync(item.Path, cancellationToken));
-            case "migrate":
-                if (!TryParseOptions(arguments, 2, ["--yes"], [], out var migration)) return InvalidArguments();
-                var status = await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken);
-                if (!status.Succeeded || status.Value is null || !Confirmed(migration)) return WriteResult(status);
-                return await WriteAsync(_application.MigrateScreenshotStorageAsync(cancellationToken));
             default:
                 return InvalidArguments();
         }

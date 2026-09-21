@@ -75,8 +75,6 @@ internal sealed class RuntimeRequestDispatcher
                 RuntimeOperation.ScreenshotGallery => ToResponse(request, await DispatchScreenshotGalleryAsync(request, cancellationToken)),
                 RuntimeOperation.ScreenshotGalleryLatest => ToResponse(request, await _application.GetLatestScreenshotGalleryAsync(cancellationToken)),
                 RuntimeOperation.ScreenshotImageGetV1 => ToResponse(request, await DispatchScreenshotImageAsync(request, cancellationToken)),
-                RuntimeOperation.ScreenshotStorageMigrationStatusV1 => ToResponse(request, await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)),
-                RuntimeOperation.ScreenshotStorageMigrationRunV1 => ToResponse(request, await _application.MigrateScreenshotStorageAsync(cancellationToken)),
                 RuntimeOperation.InstallationsListV1 => ToResponse(request, await _application.GetInstallationProfilesAsync(cancellationToken)),
                 RuntimeOperation.InstallationsUpdateV1 => ToResponse(request, await _application.UpdateInstallationProfileAsync(
                     Read<UpdateInstallationProfileRequest>(request.Payload)

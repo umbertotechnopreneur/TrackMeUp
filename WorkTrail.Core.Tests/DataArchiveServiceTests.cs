@@ -83,28 +83,6 @@ public sealed class DataArchiveServiceTests
         }
     }
 
-    /// <summary>Upgrades a supported earlier archive schema inside isolated import staging before previewing it.</summary>
-    [Fact]
-    public void PreviewImport_SupportedPreviousSchema_UpgradesAndPreparesThePlan()
-    {
-        var root = CreateTemporaryDirectory();
-        try
-        {
-            var archivePath = CreateMinimalArchive(root);
-            DowngradeArchiveDatabaseToV9(archivePath, root);
-
-            var preview = CreateImporter(root).PreviewImport(
-                new DataArchiveImportPreviewRequest(archivePath),
-                CancellationToken.None);
-
-            Assert.Single(preview.Installations);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
-
     /// <summary>Bounds lock retries and observes cancellation without overwriting an existing archive.</summary>
     [Theory]
     [InlineData(false)]
@@ -788,63 +766,6 @@ public sealed class DataArchiveServiceTests
         var targetDirectory = Path.Combine(root, "import-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(targetDirectory);
         return new DataArchiveService(new LocalStore(targetDirectory));
-    }
-
-    private static void DowngradeArchiveDatabaseToV9(string archivePath, string root)
-    {
-        var databasePath = Path.Combine(root, "archive-v9.sqlite3");
-        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Update))
-        {
-            var databaseEntry = archive.GetEntry("data.sqlite3")
-                ?? throw new InvalidOperationException("The test archive database is missing.");
-            using (var source = databaseEntry.Open())
-            using (var destination = File.Create(databasePath))
-            {
-                source.CopyTo(destination);
-            }
-
-            using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-            {
-                DataSource = databasePath,
-                Mode = SqliteOpenMode.ReadWrite,
-                Pooling = false
-            }.ToString()))
-            {
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = "DROP TABLE capture_hardware_snapshots; PRAGMA user_version = 9;";
-                command.ExecuteNonQuery();
-            }
-
-            var content = File.ReadAllBytes(databasePath);
-            databaseEntry.Delete();
-            var replacementDatabase = archive.CreateEntry("data.sqlite3");
-            using (var destination = replacementDatabase.Open())
-            {
-                destination.Write(content);
-            }
-
-            var manifestEntry = archive.GetEntry("manifest.json")
-                ?? throw new InvalidOperationException("The test archive manifest is missing.");
-            JsonObject manifest;
-            using (var stream = manifestEntry.Open())
-            {
-                manifest = JsonNode.Parse(stream)?.AsObject()
-                    ?? throw new InvalidOperationException("The test archive manifest is invalid.");
-            }
-
-            var databaseManifest = manifest["entries"]?.AsArray()
-                .Select(entry => entry?.AsObject())
-                .Single(entry => entry?["path"]?.GetValue<string>() == "data.sqlite3")
-                ?? throw new InvalidOperationException("The test archive database manifest is missing.");
-            databaseManifest["length"] = content.LongLength;
-            databaseManifest["sha256"] = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
-            manifestEntry.Delete();
-            var replacementManifest = archive.CreateEntry("manifest.json");
-            using var manifestStream = replacementManifest.Open();
-            JsonSerializer.Serialize(manifestStream, manifest);
-        }
-        File.Delete(databasePath);
     }
 
     private static void AddDeclaredUnexpectedEntry(string archivePath, string entryName, byte[] content)

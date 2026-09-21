@@ -82,7 +82,6 @@ public sealed class WindowChromeLifecycleContractTests
         "AiConnectionTestDialogWindow",
         "AiPricingDialogWindow",
         "AiScreenshotReprocessingDialogWindow",
-        "ScreenshotStorageMigrationDialogWindow",
         "WorldClockCityPickerDialogWindow"
     ];
 
@@ -163,7 +162,6 @@ public sealed class WindowChromeLifecycleContractTests
         Assert.Contains("await _lifecycle.WaitUntilLoadedAsync(cancellationToken);", main, StringComparison.Ordinal);
         Assert.Contains("_viewModel.InitializeAsync(options, cancellationToken)", main, StringComparison.Ordinal);
         Assert.Contains("_application.GetSettingsAsync(cancellationToken)", main, StringComparison.Ordinal);
-        Assert.Contains("_application.GetScreenshotStorageMigrationStatusAsync(cancellationToken)", main, StringComparison.Ordinal);
         Assert.Contains("_lifecycle.Cancel();", main, StringComparison.Ordinal);
         Assert.Contains("_lifecycle.Dispose();", main, StringComparison.Ordinal);
     }
@@ -223,7 +221,6 @@ public sealed class WindowChromeLifecycleContractTests
         {
             "ActivityCalendarDialogWindow",
             "AiPricingDialogWindow",
-            "ScreenshotStorageMigrationDialogWindow",
             "WorldClockCityPickerDialogWindow"
         };
 

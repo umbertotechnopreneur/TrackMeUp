@@ -46,7 +46,6 @@ public sealed class LocalSearchService : ILocalSearchService
         var rootPath = SearchValidation.ValidateOptions(options);
         _options = options;
         IndexPath = Path.Combine(rootPath, IndexDirectoryName);
-        RemoveSupersededIndexes(rootPath);
 
         LanguageAnalyzerCatalog? analyzers = null;
         FSDirectory? directory = null;
@@ -355,23 +354,6 @@ public sealed class LocalSearchService : ILocalSearchService
             [SourceRevisionCommitKey] = sourceRevision.ToString(CultureInfo.InvariantCulture),
         });
         writer.Commit();
-    }
-
-    private static void RemoveSupersededIndexes(string rootPath)
-    {
-        // Explicit migration: old derived indexes are discarded, never read as a compatibility fallback.
-        foreach (var name in new[] { "lucene-v2", "lucene-v3", "suggestions-v1", "suggestions-v1.revision", "suggestions-v1.revision.tmp" })
-        {
-            var path = Path.GetFullPath(Path.Combine(rootPath, name));
-            var prefix = Path.GetFullPath(rootPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("The obsolete index path escaped its root.");
-            if (!File.Exists(path) && !System.IO.Directory.Exists(path)) continue;
-            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Derived index migration does not follow links.");
-            if (System.IO.Directory.Exists(path)) System.IO.Directory.Delete(path, recursive: true);
-            else File.Delete(path);
-        }
     }
 
     private void CommitWrite(Action mutation, long sourceRevision)

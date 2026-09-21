@@ -84,29 +84,7 @@ public static class WorkTrailApplicationFactory
             IndexRootPath = store.SearchIndexRootDirectory,
             SynonymSets = SearchSynonymConfiguration.Load(Path.Combine(AppContext.BaseDirectory, "search-synonyms.json"))
         };
-        try
-        {
-            return new LocalSearchService(options);
-        }
-        catch (InvalidDataException)
-        {
-            var root = Path.GetFullPath(options.IndexRootPath)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var indexPath = Path.GetFullPath(Path.Combine(root, LocalSearchService.IndexDirectoryName));
-            var requiredPrefix = root + Path.DirectorySeparatorChar;
-            if (!indexPath.StartsWith(requiredPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("The derived search index path escaped its configured root.");
-            }
-
-            // A schema-mismatched Lucene directory contains derived data only and is rebuilt from SQLite and screenshots.
-            if (Directory.Exists(indexPath))
-            {
-                Directory.Delete(indexPath, recursive: true);
-            }
-
-            return new LocalSearchService(options);
-        }
+        return new LocalSearchService(options);
     }
 }
 
@@ -286,7 +264,7 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
             RuntimeProtocol.ProtocolVersion,
             installationFingerprint,
             true,
-            ["tracking", "tracking.health.v1", "sessions", "system", "screenshots", "screenshots.image.v1", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.analysis.delete.v1", "screenshots.storage-migration.v1", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
+            ["tracking", "tracking.health.v1", "sessions", "system", "screenshots", "screenshots.image.v1", "screenshots.save", "screenshots.share", "screenshots.delete", "screenshots.analysis.delete.v1", "screenshots.analyze", "screenshots.reprocess.v1", "installations.v1", "archive.v1", "ocr", "search", "search.rebuild.v1", "notifications", "window.state", "ai", "ai.models", "ai.pricing", "ai.pricing.overview", "reports", "reports.query.v1", "privacy", "retention", "app.atomic-reset.v1", "plugins", "settings", "quick-setup", "startup", "links", "observability", "diagnostics.logs"],
             _tracking.RuntimeHealth,
             _observability);
         return Task.FromResult(OperationResult<RuntimeHealth>.Success("runtime.healthy", "RuntimeHealthy", health));
@@ -1140,60 +1118,6 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
                 "ScreenshotImageReadFailed");
         }
     }
-
-    /// <inheritdoc />
-    public async Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var status = await Task.Run(
-                () => _store.GetScreenshotStorageMigrationStatus(cancellationToken),
-                cancellationToken).ConfigureAwait(false);
-            return OperationResult<ScreenshotStorageMigrationStatus>.Success(
-                "screenshot.storage_migration.inspected",
-                "ScreenshotStorageMigrationInspected",
-                status);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Screenshot storage migration inspection failed. ExceptionType={ExceptionType}", exception.GetType().Name);
-            return OperationResult<ScreenshotStorageMigrationStatus>.Failure(
-                "screenshot.storage_migration.inspect_failed",
-                "ScreenshotStorageMigrationFailed");
-        }
-    }
-
-    /// <inheritdoc />
-    public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) =>
-        MutateVisualStateAsync(async () =>
-        {
-            try
-            {
-                var result = await Task.Run(
-                    () => _store.MigrateScreenshotStorage(cancellationToken),
-                    cancellationToken).ConfigureAwait(false);
-                _logger.LogInformation("Screenshot storage migration completed. MovedArtifactCount={MovedArtifactCount}", result.MovedArtifactCount);
-                return OperationResult<ScreenshotStorageMigrationResult>.Success(
-                    "screenshot.storage_migration.completed",
-                    "ScreenshotStorageMigrationCompleted",
-                    result);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Screenshot storage migration failed. ExceptionType={ExceptionType}", exception.GetType().Name);
-                return OperationResult<ScreenshotStorageMigrationResult>.Failure(
-                    "screenshot.storage_migration.failed",
-                    "ScreenshotStorageMigrationFailed");
-            }
-        }, cancellationToken);
 
     /// <inheritdoc />
     public async Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(

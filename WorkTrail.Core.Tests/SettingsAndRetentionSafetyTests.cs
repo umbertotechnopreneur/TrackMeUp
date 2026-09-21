@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
@@ -17,52 +16,6 @@ namespace WorkTrail.Core.Tests;
 
 public sealed class SettingsAndRetentionSafetyTests
 {
-    /// <summary>Retires report preferences atomically while preserving other settings and existing user files.</summary>
-    [Fact]
-    public void RemovedReportSettings_AreRetiredWithoutChangingOtherWindowsOrFiles()
-    {
-        var dataDirectory = Path.Combine(Path.GetTempPath(), "WorkTrail.Tests", Guid.NewGuid().ToString("N"));
-        try
-        {
-            var store = new LocalStore(dataDirectory);
-            var original = store.LoadSettings();
-            var settingsPath = Path.Combine(dataDirectory, "appsettings.json");
-            var reportPath = Path.Combine(dataDirectory, "saved-report.html");
-            File.WriteAllText(reportPath, "Existing user report");
-            var document = JsonNode.Parse(File.ReadAllText(settingsPath))!.AsObject();
-            document["dailyDigestEnabled"] = true;
-            document["dailyDigestDirectory"] = dataDirectory;
-            document["lastDailyDigestDate"] = "2026-09-19";
-            document["windowOpenStates"] = new JsonObject { ["reports"] = true, ["activity-calendar"] = true };
-            document["windowStates"] = new JsonObject
-            {
-                ["reports"] = new JsonObject { ["x"] = 0, ["y"] = 0, ["width"] = 800, ["height"] = 600 }
-            };
-            File.WriteAllText(settingsPath, document.ToJsonString());
-
-            var restored = store.LoadSettings();
-
-            Assert.Equal(original.InstallationId, restored.InstallationId);
-            Assert.Equal(original.ScreenshotDirectory, restored.ScreenshotDirectory);
-            Assert.True(restored.WindowOpenStates![WindowStateKeys.ActivityCalendar]);
-            Assert.False(restored.WindowOpenStates.ContainsKey("reports"));
-            Assert.False(restored.WindowStates!.ContainsKey("reports"));
-            var persisted = JsonNode.Parse(File.ReadAllText(settingsPath))!.AsObject();
-            Assert.False(persisted.ContainsKey("dailyDigestEnabled"));
-            Assert.False(persisted.ContainsKey("dailyDigestDirectory"));
-            Assert.False(persisted.ContainsKey("lastDailyDigestDate"));
-            Assert.Equal("Existing user report", File.ReadAllText(reportPath));
-
-            persisted["windowOpenStates"]!["unsupported-window"] = true;
-            File.WriteAllText(settingsPath, persisted.ToJsonString());
-            Assert.Throws<ArgumentException>(() => store.LoadSettings());
-        }
-        finally
-        {
-            if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, recursive: true);
-        }
-    }
-
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]

@@ -906,7 +906,7 @@ public sealed class ReportAggregationTests
             }
 
             var exception = Assert.Throws<InvalidOperationException>(() => new LocalStore(dataDirectory));
-            Assert.Contains("schema does not match", exception.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("unsupported activity database schema", exception.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {

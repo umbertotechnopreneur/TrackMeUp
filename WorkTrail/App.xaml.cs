@@ -1051,14 +1051,6 @@ public partial class App : Microsoft.UI.Xaml.Application
                 _logger.LogWarning("Background Windows startup registration reconciliation failed. Code={Code}", startup.Code);
             }
 
-            var migration = await application.MigrateScreenshotStorageAsync(CancellationToken.None);
-            if (!migration.Succeeded)
-            {
-                // A headless process cannot ask for recovery; fail paused so captures never mix old and new layouts.
-                _logger.LogError("Background screenshot storage migration failed. Code={Code}", migration.Code);
-                return;
-            }
-
             if (TrackingStartupPolicy.ShouldStart(options, settings.Value))
             {
                 var started = await application.StartTrackingAsync(

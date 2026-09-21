@@ -33,7 +33,7 @@ you want to pause the shared tracker.
 | Read activity reports | `report --from ... --to ... --timezone ... [--view ...]` |
 | Read or convert city times | `world-clock list`, `world-clock cities`, `world-clock convert` |
 | Check device readings | `system snapshot`, `hardware snapshot` |
-| Work with screenshots | `screenshot capture`, `screenshot latest`, `screenshot open-folder`, `screenshots gallery`, `screenshots delete`, `screenshots migrate` |
+| Work with screenshots | `screenshot capture`, `screenshot latest`, `screenshot open-folder`, `screenshots gallery`, `screenshots delete` |
 | Transfer data | `data export`, `data import preview`, `data import run` |
 | Manage AI | `ai status`, `ai enable`, `ai disable`, `ai configure`, `ai key set`, `ai analyze`, `ai models`, `ai test`, `ai pricing`, `ai reprocess ...` |
 | Control saved data | `privacy ...`, `retention status`, `retention preview`, `retention run` |
@@ -81,7 +81,7 @@ Interactive and one-shot commands must use the same router and validation.
   capturing or sending data. `--keep` retains a screenshot; it does not turn AI off.
 - Preview cleanup before deleting data. Destructive commands require their
   documented confirmation; a preview does not freeze the later deletion set.
-- Screenshot deletion and migration preview by default; `--yes` executes after
+- Screenshot deletion previews by default; `--yes` executes after
   a fresh service read. Export previews the request, not filesystem availability
   or record counts; confirmed export can replace the destination archive.
 - Import and historical AI processing require a runtime-issued preview plan ID.

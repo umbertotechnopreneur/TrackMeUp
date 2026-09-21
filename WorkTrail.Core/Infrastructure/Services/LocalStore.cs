@@ -51,17 +51,13 @@ public sealed class LocalStore
         }
 
         _settingsPath = Path.Combine(resolvedDataDirectory, "appsettings.json");
-        var settingsExisted = File.Exists(_settingsPath);
         var settingsFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(_settingsPath.ToUpperInvariant())))[..32];
         _settingsBootstrapMutexName = $"Local\\WorkTrail.Settings.{settingsFingerprint}";
         var settings = LoadSettings();
         var activityPath = Path.Combine(resolvedDataDirectory, SqliteActivityStore.DatabaseFileName);
         var activityExisted = File.Exists(activityPath);
         _activity = new SqliteActivityStore(activityPath);
-        var initialScreenshotRoot = settingsExisted || dataDirectory is null
-            ? settings.ScreenshotDirectory
-            : Path.Combine(resolvedDataDirectory, "screenshots");
-        InitializeInstallationMetadata(settings, activityExisted, initialScreenshotRoot);
+        InitializeInstallationMetadata(settings, activityExisted);
     }
 
     /// <summary>
@@ -125,10 +121,7 @@ public sealed class LocalStore
         string origin) =>
         _activity.RegisterScreenshotCapture(captureId, installationId, capturedAt, origin);
 
-    private void InitializeInstallationMetadata(
-        AppSettings settings,
-        bool activityDatabaseExisted,
-        string initialScreenshotRoot)
+    private void InitializeInstallationMetadata(AppSettings settings, bool activityDatabaseExisted)
     {
         var observedAt = DateTimeOffset.UtcNow;
         var firstSeenAt = activityDatabaseExisted
@@ -142,215 +135,7 @@ public sealed class LocalStore
             UpdatedAt = firstSeenAt > observedAt ? firstSeenAt : observedAt
         };
         _activity.EnsureCurrentInstallationProfile(profile);
-        if (_activity.IsScreenshotCaptureBackfillComplete())
-        {
-            return;
-        }
-
-        if (!activityDatabaseExisted)
-        {
-            _activity.BackfillLocalScreenshotCaptures(
-                settings.InstallationId,
-                Array.Empty<ScreenshotCaptureRegistration>());
-            return;
-        }
-
-        var root = ScreenshotStorageLayout.NormalizeRoot(initialScreenshotRoot);
-        var artifacts = ScreenshotStorageLayout.EnumerateOwnedArtifacts(root)
-            .Select(path =>
-            {
-                var fileName = Path.GetFileName(path);
-                var artifactIdentity = ScreenshotIdentity(fileName);
-                var captureId = TryGetCaptureId(artifactIdentity)
-                    ?? throw new InvalidDataException($"Screenshot artifact has no valid capture identity: {fileName}");
-                return new
-                {
-                    ArtifactIdentity = artifactIdentity,
-                    CaptureId = captureId,
-                    Origin = GetCaptureOrigin(fileName)
-                };
-            })
-            .GroupBy(artifact => artifact.ArtifactIdentity, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Aggregate((left, right) =>
-                string.Equals(left.CaptureId, right.CaptureId, StringComparison.Ordinal)
-                && string.Equals(left.Origin, right.Origin, StringComparison.Ordinal)
-                    ? left
-                    : throw new InvalidDataException("Screenshot artifact variants contain conflicting provenance.")))
-            .ToArray();
-        var captureTimestamps = _activity.LoadScreenshotCaptureTimestampsFromTelemetry();
-        var registrations = artifacts
-            .GroupBy(artifact => artifact.CaptureId, StringComparer.Ordinal)
-            .Select(group =>
-            {
-                var origins = group
-                    .Select(artifact => artifact.Origin)
-                    .Distinct(StringComparer.Ordinal)
-                    .ToArray();
-                if (origins.Length != 1)
-                {
-                    throw new InvalidDataException(
-                        $"Screenshot capture has conflicting origins: {group.Key}");
-                }
-
-                if (!captureTimestamps.TryGetValue(group.Key, out var capturedAt))
-                {
-                    throw new InvalidDataException(
-                        $"Screenshot capture has no persisted telemetry timestamp: {group.Key}");
-                }
-
-                return new ScreenshotCaptureRegistration(
-                    group.Key,
-                    capturedAt.ToUniversalTime(),
-                    origins[0]);
-            })
-            .ToArray();
-        _activity.BackfillLocalScreenshotCaptures(settings.InstallationId, registrations);
     }
-
-    /// <summary>Inspects owned screenshot artifacts and durable references outside the current calendar layout.</summary>
-    internal ScreenshotStorageMigrationStatus GetScreenshotStorageMigrationStatus(CancellationToken cancellationToken)
-    {
-        _screenshotProjectionGate.Wait(cancellationToken);
-        try
-        {
-            var plan = BuildScreenshotStorageMigrationPlan(cancellationToken);
-            return new ScreenshotStorageMigrationStatus(plan.PathRemaps.Count > 0, plan.Moves.Count);
-        }
-        finally
-        {
-            _screenshotProjectionGate.Release();
-        }
-    }
-
-    /// <summary>Moves owned artifacts into the current layout and remaps every durable absolute-path reference.</summary>
-    internal ScreenshotStorageMigrationResult MigrateScreenshotStorage(CancellationToken cancellationToken)
-    {
-        _screenshotProjectionGate.Wait(cancellationToken);
-        try
-        {
-            var plan = BuildScreenshotStorageMigrationPlan(cancellationToken);
-            var moves = plan.Moves;
-            var completedMoves = new List<ScreenshotStorageMove>(moves.Count);
-            try
-            {
-                foreach (var move in moves)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var destinationDirectory = Path.GetDirectoryName(move.DestinationPath)
-                        ?? throw new InvalidDataException("A screenshot migration destination has no parent directory.");
-                    // Every move is preflighted and non-overwriting; any storage failure aborts the complete migration.
-                    Directory.CreateDirectory(destinationDirectory);
-                    File.Move(move.SourcePath, move.DestinationPath);
-                    completedMoves.Add(move);
-                }
-
-                _activity.RemapScreenshotPaths(plan.PathRemaps);
-                return new ScreenshotStorageMigrationResult(completedMoves.Count);
-            }
-            catch (Exception migrationException)
-            {
-                var rollbackFailures = new List<Exception>();
-                foreach (var move in completedMoves.AsEnumerable().Reverse())
-                {
-                    try
-                    {
-                        if (File.Exists(move.DestinationPath) && !File.Exists(move.SourcePath))
-                        {
-                            var sourceDirectory = Path.GetDirectoryName(move.SourcePath)
-                                ?? throw new InvalidDataException("A screenshot rollback source has no parent directory.");
-                            Directory.CreateDirectory(sourceDirectory);
-                            File.Move(move.DestinationPath, move.SourcePath);
-                        }
-                    }
-                    catch (Exception rollbackException)
-                    {
-                        rollbackFailures.Add(rollbackException);
-                    }
-                }
-
-                if (rollbackFailures.Count > 0)
-                {
-                    throw new AggregateException(
-                        "Screenshot storage migration failed and could not be rolled back completely.",
-                        new[] { migrationException }.Concat(rollbackFailures));
-                }
-
-                throw;
-            }
-        }
-        finally
-        {
-            _screenshotProjectionGate.Release();
-        }
-    }
-
-    private ScreenshotStorageMigrationPlan BuildScreenshotStorageMigrationPlan(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var root = ScreenshotStorageLayout.NormalizeRoot(LoadSettings().ScreenshotDirectory);
-        var references = _activity.LoadScreenshotPathReferences(cancellationToken);
-        var moves = ScreenshotStorageLayout.BuildMigrationPlan(root);
-        var pathRemaps = moves.ToDictionary(
-            move => Path.GetFullPath(move.SourcePath),
-            move => Path.GetFullPath(move.DestinationPath),
-            StringComparer.OrdinalIgnoreCase);
-        var daysByCapture = new Dictionary<string, DateOnly>(StringComparer.Ordinal);
-        var canonicalPaths = ScreenshotStorageLayout.EnumerateOwnedArtifacts(root)
-            .Select(path => pathRemaps.TryGetValue(path, out var destination) ? destination : path)
-            .Concat(references.Keys);
-        foreach (var path in canonicalPaths)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!ScreenshotStorageLayout.TryGetDay(root, path, out var day))
-            {
-                // The explicit migration accepts only the former flat root, never foreign roots or unknown nesting.
-                if (!string.Equals(Path.GetDirectoryName(path), root, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidDataException("A screenshot reference uses an unsupported directory layout.");
-                }
-
-                continue;
-            }
-
-            var captureId = TryGetCaptureId(ScreenshotIdentity(Path.GetFileName(path)))
-                ?? throw new InvalidDataException("A screenshot reference has no valid capture identity.");
-            if (daysByCapture.TryGetValue(captureId, out var existingDay) && existingDay != day)
-            {
-                throw new InvalidDataException("A screenshot capture is split across canonical day directories.");
-            }
-
-            daysByCapture[captureId] = day;
-        }
-
-        foreach (var (path, capturedAt) in references)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (ScreenshotStorageLayout.TryGetDay(root, path, out _))
-            {
-                continue;
-            }
-
-            var captureId = TryGetCaptureId(ScreenshotIdentity(Path.GetFileName(path)))
-                ?? throw new InvalidDataException("A screenshot reference has no valid capture identity.");
-            if (!daysByCapture.TryGetValue(captureId, out var day))
-            {
-                // Missing raw images still have OCR records. Preserve them using the capture's durable
-                // timestamp only when no canonical sibling supplies its original storage day.
-                day = capturedAt is { } timestamp
-                    ? DateOnly.FromDateTime(timestamp.ToLocalTime().DateTime)
-                    : throw new InvalidDataException("A missing screenshot reference has no registered capture timestamp.");
-                daysByCapture[captureId] = day;
-            }
-
-            pathRemaps[path] = Path.Combine(ScreenshotStorageLayout.GetDayDirectory(root, day), Path.GetFileName(path));
-        }
-
-        return new ScreenshotStorageMigrationPlan(moves, pathRemaps);
-    }
-
-    private sealed record ScreenshotStorageMigrationPlan(
-        IReadOnlyList<ScreenshotStorageMove> Moves,
-        IReadOnlyDictionary<string, string> PathRemaps);
 
     /// <summary>Persists raw local OCR and optional AI refinement for one owned screenshot source.</summary>
     internal void UpsertScreenshotTextSnapshot(string captureId, ScreenshotTextSnapshot snapshot)
@@ -746,49 +531,41 @@ public sealed class LocalStore
     public AppSettings LoadSettings() => WithSettingsMutex(() =>
     {
         var settings = new AppSettings();
-        var retiredReportSettings = false;
         if (File.Exists(_settingsPath))
         {
             var document = JsonSerializer.Deserialize<JsonObject>(File.ReadAllText(_settingsPath), _json)
                 ?? throw new InvalidOperationException("The WorkTrail settings file must contain a JSON object.");
-            retiredReportSettings = RemoveRetiredReportSettings(document);
+            RejectRetiredReportSettings(document);
             settings = document.Deserialize<AppSettings>(_json)
                 ?? throw new InvalidOperationException("The WorkTrail settings file must contain a JSON object.");
         }
 
         var normalized = SettingsCatalog.NormalizePersisted(settings, _utilities.GetDefaultScreenshotDirectory());
-        var payload = EnsureInstallationId(normalized);
-        if (retiredReportSettings)
-        {
-            // Commit the explicit report-settings migration only after validation; I/O failures propagate.
-            WriteSettingsFile(payload);
-        }
-
-        return payload;
+        return EnsureInstallationId(normalized);
     });
 
-    /// <summary>Retires the removed report feature's persisted preferences and window state.</summary>
-    private static bool RemoveRetiredReportSettings(JsonObject settings)
+    /// <summary>Rejects persisted settings that require a removed report-feature migration.</summary>
+    private static void RejectRetiredReportSettings(JsonObject settings)
     {
-        var changed = false;
-        foreach (var property in settings.ToArray())
+        foreach (var property in settings)
         {
             if (property.Key.Equals("dailyDigestEnabled", StringComparison.OrdinalIgnoreCase)
                 || property.Key.Equals("dailyDigestDirectory", StringComparison.OrdinalIgnoreCase)
                 || property.Key.Equals("lastDailyDigestDate", StringComparison.OrdinalIgnoreCase))
             {
-                changed |= settings.Remove(property.Key);
+                throw new InvalidOperationException(
+                    $"The WorkTrail settings file contains unsupported retired report setting '{property.Key}'.");
             }
-            else if ((property.Key.Equals("windowStates", StringComparison.OrdinalIgnoreCase)
+
+            if ((property.Key.Equals("windowStates", StringComparison.OrdinalIgnoreCase)
                     || property.Key.Equals("windowOpenStates", StringComparison.OrdinalIgnoreCase))
-                && property.Value is JsonObject windows)
+                && property.Value is JsonObject windows
+                && windows.Any(window => window.Key.Equals("reports", StringComparison.OrdinalIgnoreCase)))
             {
-                // Only the retired key is migrated. Other unsupported window keys still fail validation.
-                changed |= windows.Remove("reports");
+                throw new InvalidOperationException(
+                    "The WorkTrail settings file contains unsupported retired report window state.");
             }
         }
-
-        return changed;
     }
 
     /// <summary>

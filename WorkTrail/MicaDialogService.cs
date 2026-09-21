@@ -206,36 +206,6 @@ internal sealed class MicaDialogService
         });
     }
 
-    /// <summary>Shows the non-dismissible screenshot-storage migration progress surface.</summary>
-    internal async Task<OperationResult<ScreenshotStorageMigrationResult>> ShowScreenshotStorageMigrationAsync(
-        IWorkTrailApplication application,
-        Window owner,
-        ElementTheme theme,
-        LocalizationService strings)
-    {
-        ArgumentNullException.ThrowIfNull(application);
-        ArgumentNullException.ThrowIfNull(strings);
-        return await RunModalSessionAsync(
-            owner,
-            OperationResult<ScreenshotStorageMigrationResult>.Failure(
-                "operation.cancelled",
-                "ScreenshotStorageMigrationFailed"),
-            async (ownerAppWindow, ownerHandle) =>
-            {
-                var dialog = new ScreenshotStorageMigrationDialogWindow(
-                    application,
-                    theme,
-                    strings,
-                    ownerAppWindow,
-                    ownerHandle);
-                return await ShowDialogWindowAsync(
-                    dialog,
-                    dialog.WindowHandle,
-                    dialog.ShowAsync,
-                    dialog.DisposePlacement);
-            });
-    }
-
     /// <summary>Shows the dedicated topmost acrylic surface for a bounded AI provider connection check.</summary>
     internal async Task ShowAiConnectionTestAsync(IWorkTrailApplication application, Window owner, ElementTheme theme)
     {
@@ -266,9 +236,6 @@ internal sealed class MicaDialogService
         {
             case OperationProgressDialogWindow progressWindow:
                 progressWindow.CloseForShutdown();
-                break;
-            case ScreenshotStorageMigrationDialogWindow migrationWindow:
-                migrationWindow.CloseForShutdown();
                 break;
             case WorldClockCityPickerDialogWindow pickerWindow:
                 pickerWindow.CloseForShutdown();

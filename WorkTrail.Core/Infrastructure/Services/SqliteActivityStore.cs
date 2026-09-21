@@ -15,14 +15,12 @@ internal sealed class SqliteActivityStore
     internal const string DatabaseFileName = "activity.sqlite3";
     /// <summary>Defines the current persisted SQLite contract, shared with portable archive validation.</summary>
     internal const int SchemaVersion = 10;
-    private const int PreviousSchemaVersion = 8;
-    private const int LegacySchemaVersion = 7;
     private const long FixedEstimatedRowBytes = 96;
-    private const string LegacyActivitySampleIdentityNamespace = "worktrail.activity-sample.v1";
-    private const string ScreenshotCaptureBackfillMarker = "installation.capture_backfill.v1";
-    private static readonly SchemaColumn[] ExpectedActivityColumnsV7 =
+
+    private static readonly SchemaColumn[] ExpectedActivityColumns =
     [
         new("id", "INTEGER", false, 1),
+        new("sample_id", "TEXT", true, 0),
         new("timestamp_utc_ticks", "INTEGER", true, 0),
         new("start_utc_ticks", "INTEGER", true, 0),
         new("timestamp_offset_minutes", "INTEGER", true, 0),
@@ -37,13 +35,6 @@ internal sealed class SqliteActivityStore
         new("mouse_clicks", "INTEGER", true, 0),
         new("attributes_json", "TEXT", false, 0),
         new("estimated_bytes", "INTEGER", true, 0)
-    ];
-
-    private static readonly SchemaColumn[] ExpectedActivityColumns =
-    [
-        new("id", "INTEGER", false, 1),
-        new("sample_id", "TEXT", true, 0),
-        .. ExpectedActivityColumnsV7[1..]
     ];
 
     private static readonly SchemaColumn[] ExpectedInstallationProfileColumns =
@@ -185,15 +176,10 @@ internal sealed class SqliteActivityStore
         new("source_retrieved_utc_ticks", "INTEGER", true, 0)
     ];
 
-    private static readonly HashSet<string> ExpectedActivityIndexesV7 =
-    [
-        "ix_activity_samples_start",
-        "ix_activity_samples_timestamp"
-    ];
-
     private static readonly HashSet<string> ExpectedActivityIndexes =
     [
-        .. ExpectedActivityIndexesV7,
+        "ix_activity_samples_start",
+        "ix_activity_samples_timestamp",
         "sqlite_autoindex_activity_samples_1"
     ];
 
@@ -217,15 +203,10 @@ internal sealed class SqliteActivityStore
         "ix_screenshot_text_snapshots_capture"
     ];
 
-    private static readonly HashSet<string> ExpectedScreenshotIntervalTelemetryIndexesV6 =
-    [
-        "sqlite_autoindex_screenshot_interval_telemetry_1",
-        "ix_screenshot_interval_telemetry_capture"
-    ];
-
     private static readonly HashSet<string> ExpectedScreenshotIntervalTelemetryIndexes =
     [
-        .. ExpectedScreenshotIntervalTelemetryIndexesV6,
+        "sqlite_autoindex_screenshot_interval_telemetry_1",
+        "ix_screenshot_interval_telemetry_capture",
         "ix_screenshot_interval_telemetry_captured"
     ];
 
@@ -253,7 +234,7 @@ internal sealed class SqliteActivityStore
         "sqlite_autoindex_ai_model_pricing_1"
     ];
 
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV6 =
+    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
     [
         "activity_samples",
         "ix_activity_samples_start",
@@ -273,35 +254,20 @@ internal sealed class SqliteActivityStore
         "ix_screenshot_text_snapshots_capture",
         "ai_model_pricing",
         "screenshot_interval_telemetry",
-        "ix_screenshot_interval_telemetry_capture"
-    ];
-
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV7 =
-    [
-        .. ExpectedApplicationSchemaObjectsV6,
+        "ix_screenshot_interval_telemetry_capture",
         "ix_screenshot_interval_telemetry_captured",
         "ai_analysis_artifacts",
         "ix_ai_analysis_artifacts_capture",
         "ai_reprocess_jobs",
         "ux_ai_reprocess_jobs_active_slot",
         "ai_reprocess_job_items",
-        "ix_ai_reprocess_job_items_next"
-    ];
-
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV8 =
-    [
-        .. ExpectedApplicationSchemaObjectsV7,
+        "ix_ai_reprocess_job_items_next",
         "installation_profiles",
         "screenshot_captures",
         "ix_screenshot_captures_installation",
         "ix_screenshot_captures_captured",
         "archive_imports",
-        "store_metadata"
-    ];
-
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjectsV9 =
-    [
-        .. ExpectedApplicationSchemaObjectsV8,
+        "store_metadata",
         "search_change_log",
         "tr_search_activity_insert",
         "tr_search_activity_update",
@@ -323,12 +289,7 @@ internal sealed class SqliteActivityStore
         "tr_search_analysis_artifact_delete",
         "tr_search_profile_insert",
         "tr_search_profile_update",
-        "tr_search_profile_delete"
-    ];
-
-    private static readonly HashSet<string> ExpectedApplicationSchemaObjects =
-    [
-        .. ExpectedApplicationSchemaObjectsV9,
+        "tr_search_profile_delete",
         "capture_hardware_snapshots",
         "ix_capture_hardware_snapshots_sampled"
     ];
@@ -504,17 +465,10 @@ internal sealed class SqliteActivityStore
                 FROM screenshot_captures
                 WHERE installation_id = $installationId
 
-                UNION ALL
-
-                SELECT MIN(telemetry.captured_utc_ticks) AS history_utc_ticks
-                FROM screenshot_interval_telemetry AS telemetry
-                WHERE NOT EXISTS (SELECT 1 FROM screenshot_captures)
             )
             WHERE history_utc_ticks IS NOT NULL;
             """;
         command.Parameters.AddWithValue("$installationId", parsedInstallationId.ToString("N"));
-        // A freshly migrated v7 store has no capture-provenance rows yet, so its legacy telemetry belongs
-        // to the sole local installation and participates until the strict provenance backfill commits.
         var value = command.ExecuteScalar();
         return value is null or DBNull
             ? null
@@ -684,131 +638,6 @@ internal sealed class SqliteActivityStore
         }
 
         return result;
-    }
-
-    /// <summary>Reports whether the one-time retained screenshot provenance backfill has committed.</summary>
-    internal bool IsScreenshotCaptureBackfillComplete()
-    {
-        using var connection = OpenConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT value FROM store_metadata WHERE key = $key;";
-        command.Parameters.AddWithValue("$key", ScreenshotCaptureBackfillMarker);
-        return command.ExecuteScalar() is string;
-    }
-
-    /// <summary>
-    /// Loads the single durable telemetry timestamp for each capture and rejects ambiguous historical rows.
-    /// </summary>
-    internal IReadOnlyDictionary<string, DateTimeOffset> LoadScreenshotCaptureTimestampsFromTelemetry()
-    {
-        using var connection = OpenConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT capture_id, MIN(captured_utc_ticks), MAX(captured_utc_ticks)
-            FROM screenshot_interval_telemetry
-            GROUP BY capture_id
-            ORDER BY capture_id;
-            """;
-        var result = new Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            var storedCaptureId = reader.GetString(0);
-            if (!Guid.TryParseExact(storedCaptureId, "N", out var parsedCaptureId)
-                || !string.Equals(storedCaptureId, parsedCaptureId.ToString("N"), StringComparison.Ordinal))
-            {
-                throw new InvalidDataException("Screenshot telemetry contains an invalid capture identifier.");
-            }
-
-            var minimumCapturedTicks = reader.GetInt64(1);
-            var maximumCapturedTicks = reader.GetInt64(2);
-            if (minimumCapturedTicks != maximumCapturedTicks)
-            {
-                throw new InvalidDataException(
-                    $"Screenshot telemetry contains conflicting capture timestamps for '{storedCaptureId}'.");
-            }
-
-            result.Add(storedCaptureId, new DateTimeOffset(minimumCapturedTicks, TimeSpan.Zero));
-        }
-
-        return result;
-    }
-
-    /// <summary>Performs the strict one-installation screenshot provenance backfill exactly once.</summary>
-    internal void BackfillLocalScreenshotCaptures(
-        string installationId,
-        IReadOnlyList<ScreenshotCaptureRegistration> captures)
-    {
-        ArgumentNullException.ThrowIfNull(captures);
-        if (!Guid.TryParseExact(installationId, "N", out var parsedInstallation))
-        {
-            throw new InvalidDataException("The current installation identity is invalid.");
-        }
-
-        using var connection = OpenConnection();
-        using var transaction = connection.BeginTransaction();
-        using (var check = connection.CreateCommand())
-        {
-            check.Transaction = transaction;
-            check.CommandText = "SELECT value FROM store_metadata WHERE key = $key;";
-            check.Parameters.AddWithValue("$key", ScreenshotCaptureBackfillMarker);
-            if (check.ExecuteScalar() is string)
-            {
-                transaction.Commit();
-                return;
-            }
-        }
-
-        using (var distinctInstallations = connection.CreateCommand())
-        {
-            distinctInstallations.Transaction = transaction;
-            distinctInstallations.CommandText = """
-                SELECT installation_id FROM activity_samples
-                UNION
-                SELECT installation_id FROM ai_analysis_results;
-                """;
-            using var reader = distinctInstallations.ExecuteReader();
-            while (reader.Read())
-            {
-                if (!string.Equals(reader.GetString(0), parsedInstallation.ToString("N"), StringComparison.Ordinal))
-                {
-                    throw new InvalidDataException("Local history contains more than the current installation and cannot be backfilled automatically.");
-                }
-            }
-        }
-
-        var normalized = captures
-            .Select(capture => capture.Validate())
-            .GroupBy(capture => capture.CaptureId, StringComparer.Ordinal)
-            .Select(group => group.Aggregate((left, right) => left == right
-                ? left
-                : throw new InvalidDataException("Retained screenshot capture provenance is inconsistent.")))
-            .ToArray();
-        foreach (var capture in normalized)
-        {
-            using var insert = connection.CreateCommand();
-            insert.Transaction = transaction;
-            insert.CommandText = """
-                INSERT INTO screenshot_captures (capture_id, installation_id, captured_utc_ticks, origin)
-                VALUES ($captureId, $installationId, $capturedAt, $origin);
-                """;
-            insert.Parameters.AddWithValue("$captureId", capture.CaptureId);
-            insert.Parameters.AddWithValue("$installationId", parsedInstallation.ToString("N"));
-            insert.Parameters.AddWithValue("$capturedAt", capture.CapturedAt.UtcDateTime.Ticks);
-            insert.Parameters.AddWithValue("$origin", capture.Origin);
-            insert.ExecuteNonQuery();
-        }
-
-        using (var mark = connection.CreateCommand())
-        {
-            mark.Transaction = transaction;
-            mark.CommandText = "INSERT INTO store_metadata (key, value) VALUES ($key, $value);";
-            mark.Parameters.AddWithValue("$key", ScreenshotCaptureBackfillMarker);
-            mark.Parameters.AddWithValue("$value", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
-            mark.ExecuteNonQuery();
-        }
-
-        transaction.Commit();
     }
 
     private static InstallationProfile? LoadInstallationProfile(
@@ -2224,191 +2053,6 @@ internal sealed class SqliteActivityStore
         return analyses;
     }
 
-    /// <summary>Loads validated durable screenshot references, including images no longer present on disk.</summary>
-    internal IReadOnlyDictionary<string, DateTimeOffset?> LoadScreenshotPathReferences(CancellationToken cancellationToken)
-    {
-        var references = new Dictionary<string, DateTimeOffset?>(StringComparer.OrdinalIgnoreCase);
-        using var connection = OpenConnection();
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = """
-                SELECT result.correlation_id, result.screenshot_paths, capture.captured_utc_ticks
-                FROM ai_analysis_results AS result
-                LEFT JOIN screenshot_captures AS capture ON capture.capture_id = result.correlation_id
-                WHERE result.screenshot_paths IS NOT NULL;
-                """;
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var captureId = reader.GetString(0);
-                var capturedAt = reader.IsDBNull(2) ? (DateTimeOffset?)null : new DateTimeOffset(reader.GetInt64(2), TimeSpan.Zero);
-                foreach (var path in EnumerateScreenshotPaths(reader.GetString(1)))
-                {
-                    AddReference(path, captureId, capturedAt);
-                }
-            }
-        }
-
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = """
-                SELECT snapshot.artifact_identity, snapshot.capture_id, snapshot.source_path,
-                       snapshot.snapshot_json, capture.captured_utc_ticks
-                FROM screenshot_text_snapshots AS snapshot
-                LEFT JOIN screenshot_captures AS capture ON capture.capture_id = snapshot.capture_id;
-                """;
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var sourcePath = reader.GetString(2);
-                var snapshot = JsonSerializer.Deserialize<ScreenshotTextSnapshot>(reader.GetString(3), _json)
-                    ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
-                // Validate duplicated metadata before any filesystem move; inconsistent rows must not be repaired by guessing.
-                if (!string.Equals(ArtifactIdentityFromScreenshotPath(sourcePath), reader.GetString(0), StringComparison.OrdinalIgnoreCase)
-                    || !Path.IsPathFullyQualified(snapshot.SourceScreenshotPath)
-                    || !string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(snapshot.SourceScreenshotPath), StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidDataException("Persisted screenshot text snapshot paths or identities do not match.");
-                }
-
-                var capturedAt = reader.IsDBNull(4) ? (DateTimeOffset?)null : new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero);
-                AddReference(sourcePath, reader.GetString(1), capturedAt);
-            }
-        }
-
-        return references;
-
-        void AddReference(string path, string captureId, DateTimeOffset? capturedAt)
-        {
-            var identity = ArtifactIdentityFromScreenshotPath(path);
-            if (!Guid.TryParseExact(captureId, "N", out var parsedCaptureId)
-                || !string.Equals(captureId, parsedCaptureId.ToString("N"), StringComparison.Ordinal)
-                || !identity.StartsWith(captureId + "_", StringComparison.Ordinal))
-            {
-                throw new InvalidDataException("A screenshot reference does not match its registered capture identity.");
-            }
-
-            var fullPath = Path.GetFullPath(path);
-            if (references.TryGetValue(fullPath, out var existingTimestamp) && existingTimestamp != capturedAt)
-            {
-                throw new InvalidDataException("A screenshot reference has conflicting capture timestamps.");
-            }
-
-            references[fullPath] = capturedAt;
-        }
-    }
-
-    /// <summary>Remaps screenshot paths in every durable record that stores an absolute artifact location.</summary>
-    internal void RemapScreenshotPaths(IReadOnlyDictionary<string, string> pathMappings)
-    {
-        ArgumentNullException.ThrowIfNull(pathMappings);
-        var normalizedMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (sourcePath, destinationPath) in pathMappings)
-        {
-            var source = Path.GetFullPath(sourcePath);
-            var destination = Path.GetFullPath(destinationPath);
-            if (!string.Equals(source, destination, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedMappings[source] = destination;
-            }
-        }
-
-        if (normalizedMappings.Count == 0)
-        {
-            return;
-        }
-
-        using var connection = OpenConnection();
-        using var transaction = connection.BeginTransaction();
-        var analysisUpdates = new List<(string CorrelationId, string ScreenshotPaths)>();
-        using (var selectAnalyses = connection.CreateCommand())
-        {
-            selectAnalyses.Transaction = transaction;
-            selectAnalyses.CommandText = "SELECT correlation_id, screenshot_paths FROM ai_analysis_results WHERE screenshot_paths IS NOT NULL;";
-            using var reader = selectAnalyses.ExecuteReader();
-            while (reader.Read())
-            {
-                var persisted = reader.GetString(1);
-                var remapped = EnumerateScreenshotPaths(persisted)
-                    .Select(path => RemapPath(path, normalizedMappings))
-                    .ToArray();
-                var serialized = string.Join(';', remapped);
-                if (!string.Equals(persisted, serialized, StringComparison.Ordinal))
-                {
-                    analysisUpdates.Add((reader.GetString(0), serialized));
-                }
-            }
-        }
-
-        foreach (var update in analysisUpdates)
-        {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = "UPDATE ai_analysis_results SET screenshot_paths = $paths WHERE correlation_id = $correlationId;";
-            command.Parameters.AddWithValue("$paths", update.ScreenshotPaths);
-            command.Parameters.AddWithValue("$correlationId", update.CorrelationId);
-            command.ExecuteNonQuery();
-        }
-
-        var snapshotUpdates = new List<(string ArtifactIdentity, string SourcePath, string SnapshotJson)>();
-        using (var selectSnapshots = connection.CreateCommand())
-        {
-            selectSnapshots.Transaction = transaction;
-            selectSnapshots.CommandText = "SELECT artifact_identity, source_path, snapshot_json FROM screenshot_text_snapshots;";
-            using var reader = selectSnapshots.ExecuteReader();
-            while (reader.Read())
-            {
-                var artifactIdentity = reader.GetString(0);
-                var sourcePath = Path.GetFullPath(reader.GetString(1));
-                var snapshot = JsonSerializer.Deserialize<ScreenshotTextSnapshot>(reader.GetString(2), _json)
-                    ?? throw new InvalidDataException("Persisted screenshot text snapshot is invalid.");
-                var snapshotSourcePath = Path.GetFullPath(snapshot.SourceScreenshotPath);
-                if (!string.Equals(sourcePath, snapshotSourcePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidDataException("Persisted screenshot text snapshot paths do not match.");
-                }
-
-                var remappedSourcePath = RemapPath(sourcePath, normalizedMappings);
-                if (!string.Equals(sourcePath, remappedSourcePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    snapshotUpdates.Add((
-                        artifactIdentity,
-                        remappedSourcePath,
-                        JsonSerializer.Serialize(snapshot with { SourceScreenshotPath = remappedSourcePath }, _json)));
-                }
-            }
-        }
-
-        foreach (var update in snapshotUpdates)
-        {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = """
-                UPDATE screenshot_text_snapshots
-                SET source_path = $sourcePath,
-                    snapshot_json = $snapshot
-                WHERE artifact_identity = $identity;
-                """;
-            command.Parameters.AddWithValue("$sourcePath", update.SourcePath);
-            command.Parameters.AddWithValue("$snapshot", update.SnapshotJson);
-            command.Parameters.AddWithValue("$identity", update.ArtifactIdentity);
-            command.ExecuteNonQuery();
-        }
-
-        // SQLite changes commit only after every duplicated path representation has been rewritten consistently.
-        transaction.Commit();
-    }
-
-    private static string RemapPath(string path, IReadOnlyDictionary<string, string> normalizedMappings)
-    {
-        var normalizedPath = Path.GetFullPath(path);
-        return normalizedMappings.TryGetValue(normalizedPath, out var destinationPath)
-            ? destinationPath
-            : path;
-    }
-
     /// <summary>Removes one screenshot artifact from its AI analysis, deleting the result only when no artifacts remain.</summary>
     internal int DeleteAiAnalysesReferencingScreenshot(string screenshotPath)
     {
@@ -2995,9 +2639,6 @@ internal sealed class SqliteActivityStore
                 version = ReadSchemaVersion(connection);
             }
 
-            UpgradeSupportedSchemaToCurrent(connection);
-            version = ReadSchemaVersion(connection);
-
             if (version != SchemaVersion)
             {
                 throw new InvalidOperationException($"Unsupported activity database schema version {version}; expected {SchemaVersion}.");
@@ -3024,22 +2665,18 @@ internal sealed class SqliteActivityStore
         return Convert.ToInt32(command.ExecuteScalar());
     }
 
-    /// <summary>
-    /// Upgrades a validated portable archive database to the current local schema.
-    /// Unsupported, unversioned, or future schemas fail before any import merge can begin.
-    /// </summary>
-    internal static void UpgradeArchiveDatabaseSchema(string databasePath)
+    /// <summary>Validates a portable archive database against the only supported current schema.</summary>
+    internal static void ValidateArchiveDatabaseSchema(string databasePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = databasePath,
-            Mode = SqliteOpenMode.ReadWrite,
+            Mode = SqliteOpenMode.ReadOnly,
             Pooling = false
         }.ToString());
         connection.Open();
 
-        UpgradeSupportedSchemaToCurrent(connection);
         var version = ReadSchemaVersion(connection);
         if (version != SchemaVersion)
         {
@@ -3048,30 +2685,6 @@ internal sealed class SqliteActivityStore
         }
 
         ValidateSchema(connection);
-    }
-
-    private static void UpgradeSupportedSchemaToCurrent(SqliteConnection connection)
-    {
-        var version = ReadSchemaVersion(connection);
-        if (version == LegacySchemaVersion)
-        {
-            ValidateSchemaV7(connection);
-            MigrateSchemaV7ToV8(connection);
-            version = ReadSchemaVersion(connection);
-        }
-
-        if (version == PreviousSchemaVersion)
-        {
-            ValidateSchemaV8(connection);
-            MigrateSchemaV8ToV9(connection);
-            version = ReadSchemaVersion(connection);
-        }
-
-        if (version == 9)
-        {
-            ValidateSchemaV9(connection);
-            MigrateSchemaV9ToV10(connection);
-        }
     }
 
     private static void CreateSchema(SqliteConnection connection)
@@ -3084,36 +2697,6 @@ internal sealed class SqliteActivityStore
             + SearchRevisionSchemaSql
             + CaptureHardwareSnapshotSchemaSql
             + $"PRAGMA user_version = {SchemaVersion};";
-        command.ExecuteNonQuery();
-        transaction.Commit();
-    }
-
-    private static void MigrateSchemaV7ToV8(SqliteConnection connection)
-    {
-        connection.CreateFunction<string, long, string>(
-            "worktrail_legacy_sample_id",
-            CreateLegacyActivitySampleId,
-            isDeterministic: true);
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            DROP INDEX ix_activity_samples_start;
-            DROP INDEX ix_activity_samples_timestamp;
-            ALTER TABLE activity_samples RENAME TO activity_samples_v7;
-            """ + ActivitySchemaSql + """
-            INSERT INTO activity_samples (
-                id, sample_id, timestamp_utc_ticks, start_utc_ticks, timestamp_offset_minutes, duration_seconds,
-                state, process_name, application, context, window_title, installation_id, key_presses,
-                mouse_clicks, attributes_json, estimated_bytes)
-            SELECT
-                id, worktrail_legacy_sample_id(installation_id, id), timestamp_utc_ticks, start_utc_ticks, timestamp_offset_minutes,
-                duration_seconds, state, process_name, application, context, window_title, installation_id,
-                key_presses, mouse_clicks, attributes_json, estimated_bytes
-            FROM activity_samples_v7
-            ORDER BY id;
-            DROP TABLE activity_samples_v7;
-            """ + InstallationArchiveSchemaSql + $"PRAGMA user_version = {PreviousSchemaVersion};";
         command.ExecuteNonQuery();
         transaction.Commit();
     }
@@ -3140,65 +2723,21 @@ internal sealed class SqliteActivityStore
         return reader.Read() ? ReadSample(reader) : null;
     }
 
-    private static void MigrateSchemaV8ToV9(SqliteConnection connection)
+    private static void ValidateSchema(SqliteConnection connection)
     {
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = SearchRevisionSchemaSql + """
-            INSERT INTO search_change_log (kind, entity_id, operation)
-            VALUES ('rebuild', 'schema-v9', 'upsert');
-            """ + "PRAGMA user_version = 9;";
-        command.ExecuteNonQuery();
-        transaction.Commit();
-    }
-
-    private static void MigrateSchemaV9ToV10(SqliteConnection connection)
-    {
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        // Existing captures remain explicitly without hardware evidence; no current reading
-        // or inferred value can reconstruct a historical measurement.
-        command.CommandText = CaptureHardwareSnapshotSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
-        command.ExecuteNonQuery();
-        transaction.Commit();
-    }
-
-    private static string CreateLegacyActivitySampleId(string installationId, long legacyId)
-    {
-        if (!Guid.TryParseExact(installationId, "N", out var parsedInstallationId) || legacyId <= 0)
-        {
-            throw new InvalidDataException("A legacy activity sample has invalid identity components.");
-        }
-
-        var identityMaterial = string.Concat(
-            LegacyActivitySampleIdentityNamespace,
-            "\0",
-            parsedInstallationId.ToString("N"),
-            "\0",
-            legacyId.ToString(CultureInfo.InvariantCulture));
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identityMaterial))).ToLowerInvariant();
-    }
-
-    private static void ValidateSchemaV7(SqliteConnection connection)
-    {
-        ValidateBaseSchema(connection, ActivitySchemaSqlV7, ExpectedActivityColumnsV7, ExpectedActivityIndexesV7);
+        ValidateBaseSchema(connection, ActivitySchemaSql, ExpectedActivityColumns, ExpectedActivityIndexes);
         ValidateScreenshotTextSchema(connection);
         ValidateScreenshotIntervalTelemetrySchema(connection);
         ValidateAiReprocessingSchema(connection);
+        ValidateInstallationArchiveSchema(connection);
+        ValidateSearchRevisionSchema(connection);
         ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
         if (!ReadColumns(connection, "ai_model_pricing").SequenceEqual(ExpectedAiModelPricingColumns)
-            || !ReadIndexes(connection, "ai_model_pricing").SetEquals(ExpectedAiModelPricingIndexes)
-            || !ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjectsV7))
+            || !ReadIndexes(connection, "ai_model_pricing").SetEquals(ExpectedAiModelPricingIndexes))
         {
-            throw new InvalidOperationException("The activity database does not match schema version 7.");
+            throw new InvalidOperationException("The AI pricing schema does not match the supported schema.");
         }
-    }
 
-    private static void ValidateSchema(SqliteConnection connection)
-    {
-        ValidateSchemaV9(connection, validateObjects: false);
         ValidateCreateStatement(connection, "capture_hardware_snapshots", CaptureHardwareSnapshotSchemaSql);
         if (!ReadColumns(connection, "capture_hardware_snapshots").SequenceEqual(ExpectedCaptureHardwareSnapshotColumns)
             || !ReadIndexes(connection, "capture_hardware_snapshots").SetEquals([
@@ -3209,51 +2748,6 @@ internal sealed class SqliteActivityStore
         if (!ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjects))
         {
             throw new InvalidOperationException("The activity database contains unsupported schema objects.");
-        }
-    }
-
-    private static void ValidateSchemaV9(SqliteConnection connection, bool validateObjects = true)
-    {
-        ValidateBaseSchema(connection, ActivitySchemaSql, ExpectedActivityColumns, ExpectedActivityIndexes);
-        ValidateScreenshotTextSchema(connection);
-        ValidateScreenshotIntervalTelemetrySchema(connection);
-        ValidateAiReprocessingSchema(connection);
-        ValidateInstallationArchiveSchema(connection);
-        ValidateSearchRevisionSchema(connection);
-        ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
-
-        var actualAiModelPricingColumns = ReadColumns(connection, "ai_model_pricing");
-        if (!actualAiModelPricingColumns.SequenceEqual(ExpectedAiModelPricingColumns))
-        {
-            throw new InvalidOperationException("The AI pricing schema does not match the supported schema.");
-        }
-
-        var aiModelPricingIndexes = ReadIndexes(connection, "ai_model_pricing");
-        if (!aiModelPricingIndexes.SetEquals(ExpectedAiModelPricingIndexes))
-        {
-            throw new InvalidOperationException("The AI pricing indexes do not match the supported schema.");
-        }
-
-        var schemaObjects = ReadApplicationSchemaObjects(connection);
-        if (validateObjects && !schemaObjects.SetEquals(ExpectedApplicationSchemaObjectsV9))
-        {
-            throw new InvalidOperationException("The activity database contains unsupported schema objects.");
-        }
-    }
-
-    private static void ValidateSchemaV8(SqliteConnection connection)
-    {
-        ValidateBaseSchema(connection, ActivitySchemaSql, ExpectedActivityColumns, ExpectedActivityIndexes);
-        ValidateScreenshotTextSchema(connection);
-        ValidateScreenshotIntervalTelemetrySchema(connection);
-        ValidateAiReprocessingSchema(connection);
-        ValidateInstallationArchiveSchema(connection);
-        ValidateCreateStatement(connection, "ai_model_pricing", AiPricingSchemaSql);
-        if (!ReadColumns(connection, "ai_model_pricing").SequenceEqual(ExpectedAiModelPricingColumns)
-            || !ReadIndexes(connection, "ai_model_pricing").SetEquals(ExpectedAiModelPricingIndexes)
-            || !ReadApplicationSchemaObjects(connection).SetEquals(ExpectedApplicationSchemaObjectsV8))
-        {
-            throw new InvalidOperationException("The activity database does not match schema version 8.");
         }
     }
 
@@ -3755,28 +3249,6 @@ internal sealed class SqliteActivityStore
             + (attributesJson is null ? 0 : Encoding.UTF8.GetByteCount(attributesJson));
     }
 
-    private const string ActivitySchemaSqlV7 = """
-        CREATE TABLE activity_samples (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp_utc_ticks INTEGER NOT NULL,
-            start_utc_ticks INTEGER NOT NULL,
-            timestamp_offset_minutes INTEGER NOT NULL,
-            duration_seconds INTEGER NOT NULL CHECK (duration_seconds > 0),
-            state TEXT NOT NULL,
-            process_name TEXT NOT NULL,
-            application TEXT NOT NULL,
-            context TEXT NOT NULL,
-            window_title TEXT NOT NULL,
-            installation_id TEXT NOT NULL,
-            key_presses INTEGER NOT NULL CHECK (key_presses >= 0),
-            mouse_clicks INTEGER NOT NULL CHECK (mouse_clicks >= 0),
-            attributes_json TEXT NULL,
-            estimated_bytes INTEGER NOT NULL CHECK (estimated_bytes > 0)
-        );
-        CREATE INDEX ix_activity_samples_start ON activity_samples (start_utc_ticks, timestamp_utc_ticks);
-        CREATE INDEX ix_activity_samples_timestamp ON activity_samples (timestamp_utc_ticks);
-        """;
-
     private const string ActivitySchemaSql = """
         CREATE TABLE activity_samples (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4101,7 +3573,7 @@ internal sealed record ScreenshotCaptureProvenance(
 /// <summary>One ordered durable mutation of the authoritative local search sources.</summary>
 internal sealed record SearchSourceChange(long Revision, string Kind, string EntityId, string Operation);
 
-/// <summary>Contains one local screenshot provenance row prepared for the one-time database backfill.</summary>
+/// <summary>Contains the immutable acquisition facts for one local screenshot capture.</summary>
 internal sealed record ScreenshotCaptureRegistration(
     string CaptureId,
     DateTimeOffset CapturedAt,

@@ -268,30 +268,6 @@ public sealed class CliOperationsTests
         Assert.Single(spy.Calls);
     }
 
-    /// <summary>Migration inspects state and runs only after explicit confirmation.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Migration_InspectsBeforeConfirmationAndExecution(bool confirmed)
-    {
-        var (router, spy) = Create();
-        spy.Return(nameof(IWorkTrailApplication.GetScreenshotStorageMigrationStatusAsync), new ScreenshotStorageMigrationStatus(true, 4));
-        spy.Return(nameof(IWorkTrailApplication.MigrateScreenshotStorageAsync), new ScreenshotStorageMigrationResult(4));
-        Assert.Equal(0, await router.RunAsync(confirmed ? ["screenshots", "migrate", "--yes"] : ["screenshots", "migrate"], CancellationToken.None));
-        Assert.Equal(confirmed ? 2 : 1, spy.Calls.Count);
-        Assert.Equal(nameof(IWorkTrailApplication.GetScreenshotStorageMigrationStatusAsync), spy.Calls[0].Method);
-    }
-
-    /// <summary>A failed migration preview prevents execution even with confirmation.</summary>
-    [Fact]
-    public async Task Migration_FailedInspectionPreventsMutation()
-    {
-        var (router, spy) = Create();
-        spy.ExpectFailure(nameof(IWorkTrailApplication.GetScreenshotStorageMigrationStatusAsync));
-        Assert.Equal(4, await router.RunAsync(["screenshots", "migrate", "--yes"], CancellationToken.None));
-        Assert.Single(spy.Calls);
-    }
-
     /// <summary>Export forwards the selected range only after confirmation.</summary>
     [Theory]
     [InlineData(false)]

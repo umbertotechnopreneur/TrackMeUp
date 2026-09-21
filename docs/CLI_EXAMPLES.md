@@ -39,7 +39,6 @@ without requesting installation. Unavailable readings are not reported as zero.
 
 ```powershell
 pwsh -NoProfile -Command '& worktrail.exe -cli screenshots gallery --date 2026-09-21 --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& worktrail.exe -cli screenshots migrate --json; exit $LASTEXITCODE'
 ```
 
 Omit `--date` to read the latest gallery. `screenshots` aliases `screenshot`.
@@ -51,10 +50,6 @@ deletion. The item must belong to that date's gallery. The preview identifies th
 image and indicates that associated analysis is removed too. Review it, then
 repeat with `--yes`. Core resolves owned artifacts; the CLI never deletes
 arbitrary paths. Preview does not reserve the file or freeze state.
-
-`screenshots migrate` reports whether migration is required and the artifact count.
-Review it, then repeat with `--yes`. A confirmed invocation checks status again
-before requesting migration.
 
 ## Export and import private data
 

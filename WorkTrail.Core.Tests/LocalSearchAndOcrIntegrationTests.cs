@@ -720,63 +720,6 @@ public sealed class LocalSearchAndOcrIntegrationTests
         }
     }
 
-    [Fact]
-    public void ActivitySchema_VersionEightMigratesOnceAndSchedulesOneSearchRebuild()
-    {
-        var dataDirectory = CreateDataDirectory();
-        try
-        {
-            _ = new LocalStore(dataDirectory);
-            var databasePath = Path.Combine(dataDirectory, "activity.sqlite3");
-            using (var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False"))
-            {
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = """
-                    DROP TRIGGER tr_search_activity_insert;
-                    DROP TRIGGER tr_search_activity_update;
-                    DROP TRIGGER tr_search_activity_delete;
-                    DROP TRIGGER tr_search_capture_insert;
-                    DROP TRIGGER tr_search_capture_update;
-                    DROP TRIGGER tr_search_capture_delete;
-                    DROP TRIGGER tr_search_text_insert;
-                    DROP TRIGGER tr_search_text_update;
-                    DROP TRIGGER tr_search_text_delete;
-                    DROP TRIGGER tr_search_telemetry_insert;
-                    DROP TRIGGER tr_search_telemetry_update;
-                    DROP TRIGGER tr_search_telemetry_delete;
-                    DROP TRIGGER tr_search_analysis_insert;
-                    DROP TRIGGER tr_search_analysis_update;
-                    DROP TRIGGER tr_search_analysis_delete;
-                    DROP TRIGGER tr_search_analysis_artifact_insert;
-                    DROP TRIGGER tr_search_analysis_artifact_update;
-                    DROP TRIGGER tr_search_analysis_artifact_delete;
-                    DROP TRIGGER tr_search_profile_insert;
-                    DROP TRIGGER tr_search_profile_update;
-                    DROP TRIGGER tr_search_profile_delete;
-                    DROP TABLE search_change_log;
-                    DROP TABLE capture_hardware_snapshots;
-                    PRAGMA user_version = 8;
-                    """;
-                command.ExecuteNonQuery();
-            }
-
-            var migrated = new LocalStore(dataDirectory);
-            Assert.Equal(1, migrated.GetSearchSourceRevision());
-            var change = Assert.Single(migrated.LoadSearchSourceChanges(0, 10));
-            Assert.Equal("rebuild", change.Kind);
-            Assert.Equal("schema-v9", change.EntityId);
-
-            var reopened = new LocalStore(dataDirectory);
-            Assert.Equal(1, reopened.GetSearchSourceRevision());
-            Assert.Single(reopened.LoadSearchSourceChanges(0, 10));
-        }
-        finally
-        {
-            DeleteDataDirectory(dataDirectory);
-        }
-    }
-
     private static LocalStore CreateStore(string dataDirectory)
     {
         var store = new LocalStore(dataDirectory);

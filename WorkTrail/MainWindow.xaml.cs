@@ -82,7 +82,7 @@ public sealed partial class MainWindow : Window
     private int _lastSessionRefreshInProgress;
     private DateTimeOffset _nextLastSessionRefreshAt = DateTimeOffset.MinValue;
     private bool _startupAiWarningShown;
-    private bool _screenshotStorageReady;
+    private bool _workspaceUiReady;
     private readonly TaskCompletionSource _workspaceReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _notificationDrainInProgress;
     private DateTimeOffset _nextAiSpendRefreshAt = DateTimeOffset.MinValue;
@@ -164,7 +164,7 @@ public sealed partial class MainWindow : Window
         _viewModel = new MainViewModel(application);
         AiState = new AiApplicationState(application);
         InitializeComponent();
-        SetScreenshotStorageReady(false);
+        SetWorkspaceUiReady(false);
         UiLocalization.Apply(RootGrid, _strings);
         ApplyMainAccessibility();
         AiState.PropertyChanged += AiState_PropertyChanged;
@@ -274,13 +274,6 @@ public sealed partial class MainWindow : Window
     {
         await _lifecycle.WaitUntilLoadedAsync(cancellationToken);
         var startupRegistrationFailureCode = await ReconcileWindowsStartupAsync(options, cancellationToken);
-        if (!await EnsureScreenshotStorageMigratedAsync(cancellationToken))
-        {
-            // Tracking and periodic refresh stay stopped until the explicit storage migration succeeds.
-            _workspaceReady.TrySetCanceled();
-            return;
-        }
-
         var initialization = await _viewModel.InitializeAsync(options, cancellationToken);
         if (initialization.Succeeded && initialization.Value is not null)
         {
@@ -294,7 +287,7 @@ public sealed partial class MainWindow : Window
             await RefreshDashboardAsync(cancellationToken);
         }
 
-        SetScreenshotStorageReady(true);
+        SetWorkspaceUiReady(true);
         _dashboardRefreshReady = true;
         UpdateDashboardSubscriptionForVisibility();
         if (startupRegistrationFailureCode is not null)
@@ -329,7 +322,7 @@ public sealed partial class MainWindow : Window
         System.Diagnostics.Debug.WriteLine($"Main-window initialization failed: {exception}");
         _ = DispatcherQueue.TryEnqueue(() =>
         {
-            SetScreenshotStorageReady(false);
+            SetWorkspaceUiReady(false);
             _ = ShowLazySurfaceFailureAsync();
         });
     }
@@ -362,53 +355,9 @@ public sealed partial class MainWindow : Window
         return startupResult.Succeeded ? null : startupResult.Code;
     }
 
-    private async Task<bool> EnsureScreenshotStorageMigratedAsync(CancellationToken cancellationToken)
+    private void SetWorkspaceUiReady(bool isReady)
     {
-        var status = await _application.GetScreenshotStorageMigrationStatusAsync(cancellationToken);
-        if (!status.Succeeded || status.Value is null)
-        {
-            await ShowScreenshotStorageMigrationFailureAsync(status.Code);
-            return false;
-        }
-
-        OperationResult<ScreenshotStorageMigrationResult> migration;
-        if (status.Value.Required)
-        {
-            migration = await _dialogs.ShowScreenshotStorageMigrationAsync(
-                _application,
-                this,
-                RootGrid.RequestedTheme,
-                _strings);
-            cancellationToken.ThrowIfCancellationRequested();
-        }
-        else
-        {
-            // An idempotent silent run repairs metadata after a process interruption even when every file was already moved.
-            migration = await _application.MigrateScreenshotStorageAsync(cancellationToken);
-        }
-
-        if (migration.Succeeded)
-        {
-            return true;
-        }
-
-        await ShowScreenshotStorageMigrationFailureAsync(migration.Code);
-        return false;
-    }
-
-    private async Task ShowScreenshotStorageMigrationFailureAsync(string code)
-    {
-        await _dialogs.ShowInformativeAsync(
-            this,
-            DialogRequest.Informative(
-                T("Dialog.DataMigration.Failed.Title"),
-                _strings.Format("Dialog.DataMigration.Failed.Message", code),
-                T("Dialog.Ok")));
-    }
-
-    private void SetScreenshotStorageReady(bool isReady)
-    {
-        _screenshotStorageReady = isReady;
+        _workspaceUiReady = isReady;
         TrackingButton.IsEnabled = isReady;
         MoreButton.IsEnabled = isReady;
         TitleBarMoreButton.IsEnabled = isReady;
@@ -661,7 +610,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Captures a screenshot manually when the user clicks the "Take snapshot" button.</summary>
     private async void TakeScreenshotButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!_screenshotStorageReady || !TakeScreenshotButton.IsEnabled)
+        if (!_workspaceUiReady || !TakeScreenshotButton.IsEnabled)
         {
             return;
         }
@@ -689,7 +638,7 @@ public sealed partial class MainWindow : Window
 
     private async Task OpenScheduleWindowAsync()
     {
-        if (!_screenshotStorageReady)
+        if (!_workspaceUiReady)
         {
             return;
         }
@@ -799,7 +748,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Forwards the play/pause action to the player view model.</summary>
     private async void TrackingButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!_screenshotStorageReady)
+        if (!_workspaceUiReady)
         {
             return;
         }
@@ -1012,7 +961,7 @@ public sealed partial class MainWindow : Window
     private void MainKeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        if (!_screenshotStorageReady)
+        if (!_workspaceUiReady)
         {
             return;
         }
@@ -1240,7 +1189,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Forwards the screenshot-capture toggle to the validated settings application service.</summary>
     private async void ScreenshotsMenuToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (!_screenshotStorageReady || _updatingMenuState)
+        if (!_workspaceUiReady || _updatingMenuState)
         {
             return;
         }
@@ -1761,7 +1710,7 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetHelpText(DeleteSnapshotButton, accessibleStatus);
         AutomationProperties.SetName(DeleteSnapshotButton, deleteLabel);
         ToolTipService.SetToolTip(DeleteSnapshotButton, deleteLabel);
-        DeleteSnapshotButton.IsEnabled = _screenshotStorageReady;
+        DeleteSnapshotButton.IsEnabled = _workspaceUiReady;
         DeleteSnapshotButton.Visibility = Visibility.Visible;
         TakeScreenshotButton.IsEnabled = false;
         SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: true);
@@ -1771,7 +1720,7 @@ public sealed partial class MainWindow : Window
     {
         SetPlayerSectionVisibility(MainWindowLayoutSection.PendingSnapshot, PendingSnapshotPanel, isVisible: false);
         DeleteSnapshotButton.Visibility = Visibility.Collapsed;
-        TakeScreenshotButton.IsEnabled = _screenshotStorageReady && enableCapture;
+        TakeScreenshotButton.IsEnabled = _workspaceUiReady && enableCapture;
         AutomationProperties.SetName(PendingSnapshotPanel, string.Empty);
         AutomationProperties.SetHelpText(DeleteSnapshotButton, string.Empty);
     }
@@ -2310,7 +2259,7 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
-    /// <summary>Waits for storage and initial application state before restoring dependent work surfaces.</summary>
+    /// <summary>Waits for initial application state before restoring dependent work surfaces.</summary>
     internal Task WaitForWorkspaceReadyAsync() => _workspaceReady.Task;
 
     /// <summary>Restores passive tools after their main-window owner is ready.</summary>

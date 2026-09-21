@@ -38,7 +38,7 @@ and reset checks only with disposable data.
 - Trigger information, warning, and error messages that need acknowledgement. Each must appear over its app window as a native Windows message box, with the Windows-localized **OK** action and appropriate icon.
 - Trigger schedule replacement, retention deletion, installation merge, both atomic-reset gates, and application close. Each must use the native **OK/Cancel** layout with **Cancel** selected by default; pressing Escape, closing the message, or choosing Cancel must leave state unchanged.
 - While one message is open, trigger another prompt. Messages must appear one at a time, and the app must become usable again after each message closes or fails to open.
-- Confirm that rich surfaces—city picker, pricing, activity calendar, AI connection test, screenshot reprocessing, and storage migration—remain dedicated accessible windows rather than being reduced to a system message.
+- Confirm that rich surfaces—city picker, pricing, activity calendar, AI connection test, and screenshot reprocessing—remain dedicated accessible windows rather than being reduced to a system message.
 
 ## Screen captures and AI
 

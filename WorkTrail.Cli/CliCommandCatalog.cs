@@ -23,7 +23,7 @@ internal static class CliCommandCatalog
         new("tracking", "command.tracking", ["/tracking start [--safe-mode]", "/tracking pause", "/tracking toggle"], ["detail.sharedRuntime"], []),
         new("session", "command.session", ["/session last", "/session today"], [], []),
         new("system", "command.system", ["/system snapshot [--watch] [--interval <1-60>]"], ["detail.jsonSnapshot"], []),
-        new("screenshot", "command.screenshot", ["/screenshot capture [--mode <all-screens|active-window>] [--keep]", "/screenshot latest", "/screenshot open-folder", "/screenshots gallery [--date <yyyy-MM-dd>]", "/screenshots delete --date <yyyy-MM-dd> --path <absolute-path> [--yes]", "/screenshots migrate [--yes]"], ["detail.screenshot", "detail.previewDefault"], ["screenshots"]),
+        new("screenshot", "command.screenshot", ["/screenshot capture [--mode <all-screens|active-window>] [--keep]", "/screenshot latest", "/screenshot open-folder", "/screenshots gallery [--date <yyyy-MM-dd>]", "/screenshots delete --date <yyyy-MM-dd> --path <absolute-path> [--yes]"], ["detail.screenshot", "detail.previewDefault"], ["screenshots"]),
         new("search", "command.search", ["/search status", "/search query [--text <text>] [--kind <kind>] [--from <ISO-offset-timestamp>] [--to <ISO-offset-timestamp>] [--limit <n>] [--offset <n>] [--query-language <tag>] [--include-text]"], ["detail.search"], []),
         new("report", "command.report", ["/report --from <yyyy-MM-dd> --to <yyyy-MM-dd> --timezone <id> [--view <calendar|hour-of-week|trend|applications>]"], [], []),
         new("world-clock", "command.worldClock", ["/world-clock list", "/world-clock cities", "/world-clock convert --city <id> --local-time <yyyy-MM-ddTHH:mm:ss>"], [], []),

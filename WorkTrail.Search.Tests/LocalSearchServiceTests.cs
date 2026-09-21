@@ -62,9 +62,9 @@ public sealed class LocalSearchServiceTests
         Assert.Empty((await harness.Service.SearchAsync(new SearchRequest { Text = "originalmarker" })).Hits);
     }
 
-    /// <summary>The explicit v4 migration removes the old derived suggestion index and writes only source documents.</summary>
+    /// <summary>The current v4 index leaves obsolete derived indexes untouched and writes only source documents.</summary>
     [Fact]
-    public async Task SourceOnlySchema_DiscardsOldDerivedIndexAndContainsNoSuggestionDocuments()
+    public async Task SourceOnlySchema_PreservesOldDerivedIndexAndContainsNoSuggestionDocuments()
     {
         var root = SearchHarness.CreateRoot();
         try
@@ -75,7 +75,7 @@ public sealed class LocalSearchServiceTests
             await using var service = new LocalSearchService(new SearchOptions { IndexRootPath = root });
             await service.RebuildAsync([CreateDocument("one"), CreateDocument("two")], 1);
 
-            Assert.False(Directory.Exists(oldIndex));
+            Assert.True(Directory.Exists(oldIndex));
             Assert.Equal(4, LocalSearchService.IndexSchemaVersion);
             using var directory = FSDirectory.Open(new DirectoryInfo(service.IndexPath));
             using var reader = DirectoryReader.Open(directory);

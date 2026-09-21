@@ -193,7 +193,6 @@ public sealed class RuntimeClient : IWorkTrailApplication
     private static readonly TimeSpan ReportQueryTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotAnalysisTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ScreenshotReprocessPreviewTimeout = TimeSpan.FromMinutes(2);
-    private static readonly TimeSpan ScreenshotStorageMigrationTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DataArchiveTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan StartupMutationTimeout = TimeSpan.FromMinutes(2);
@@ -332,12 +331,6 @@ public sealed class RuntimeClient : IWorkTrailApplication
     /// <inheritdoc />
     public Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(ScreenshotImageRequest request, CancellationToken cancellationToken) =>
         SendAsync<ScreenshotImageContent>(RuntimeOperation.ScreenshotImageGetV1, request, cancellationToken, ScreenshotImageTimeout);
-    /// <inheritdoc />
-    public Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken) =>
-        SendAsync<ScreenshotStorageMigrationStatus>(RuntimeOperation.ScreenshotStorageMigrationStatusV1, null, cancellationToken, ScreenshotStorageMigrationTimeout);
-    /// <inheritdoc />
-    public Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken) =>
-        SendAsync<ScreenshotStorageMigrationResult>(RuntimeOperation.ScreenshotStorageMigrationRunV1, null, cancellationToken, ScreenshotStorageMigrationTimeout);
     /// <inheritdoc />
     public Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(CancellationToken cancellationToken) =>
         SendAsync<IReadOnlyList<InstallationProfile>>(RuntimeOperation.InstallationsListV1, null, cancellationToken);

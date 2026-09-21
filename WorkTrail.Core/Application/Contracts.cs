@@ -180,12 +180,6 @@ public sealed record ScreenshotImageContent(
     string ArtifactIdentity,
     byte[] Content);
 
-/// <summary>Reports whether owned screenshot artifacts still need the current calendar directory layout.</summary>
-public sealed record ScreenshotStorageMigrationStatus(bool Required, int ArtifactCount);
-
-/// <summary>Reports the number of owned screenshot artifacts moved by one completed layout migration.</summary>
-public sealed record ScreenshotStorageMigrationResult(int MovedArtifactCount);
-
 /// <summary>Contains the durable identity and user-selected appearance of one WorkTrail installation.</summary>
 public sealed record InstallationProfile(
     string InstallationId,
@@ -803,12 +797,6 @@ public interface IWorkTrailApplication : IAsyncDisposable
 
     /// <summary>Reads one retained screenshot after validating ownership and storage containment.</summary>
     Task<OperationResult<ScreenshotImageContent>> GetScreenshotImageAsync(ScreenshotImageRequest request, CancellationToken cancellationToken);
-
-    /// <summary>Inspects screenshot storage without moving files.</summary>
-    Task<OperationResult<ScreenshotStorageMigrationStatus>> GetScreenshotStorageMigrationStatusAsync(CancellationToken cancellationToken);
-
-    /// <summary>Migrates owned screenshot artifacts and their durable path references to the current layout.</summary>
-    Task<OperationResult<ScreenshotStorageMigrationResult>> MigrateScreenshotStorageAsync(CancellationToken cancellationToken);
 
     /// <summary>Lists every local or imported installation profile used to identify activity provenance.</summary>
     Task<OperationResult<IReadOnlyList<InstallationProfile>>> GetInstallationProfilesAsync(CancellationToken cancellationToken);

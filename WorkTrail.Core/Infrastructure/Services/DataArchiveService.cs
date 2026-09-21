@@ -707,9 +707,8 @@ internal sealed class DataArchiveService
                 throw new InvalidDataException("The extracted archive database length is invalid.");
             }
 
-            // Portable archives may have been exported immediately before a supported local schema upgrade.
-            // Upgrade only the isolated extraction; archive bytes and the destination database remain untouched.
-            SqliteActivityStore.UpgradeArchiveDatabaseSchema(databasePath);
+            // Archives carry the same current database contract as the local store.
+            SqliteActivityStore.ValidateArchiveDatabaseSchema(databasePath);
             EnsureDatabaseContainsNoAbsoluteScreenshotPaths(databasePath, cancellationToken);
             var summary = ReadDatabaseSummary(databasePath, cancellationToken);
             ValidateManifestSummary(manifest, summary);

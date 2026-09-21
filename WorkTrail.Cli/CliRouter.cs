@@ -162,7 +162,7 @@ public sealed partial class CliRouter(IWorkTrailApplication application, CliOutp
 
     private async Task<int> ScreenshotAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
-        if (arguments.ElementAtOrDefault(1)?.ToLowerInvariant() is "gallery" or "delete" or "migrate")
+        if (arguments.ElementAtOrDefault(1)?.ToLowerInvariant() is "gallery" or "delete")
         {
             return await ScreenshotMaintenanceAsync(arguments, cancellationToken);
         }
