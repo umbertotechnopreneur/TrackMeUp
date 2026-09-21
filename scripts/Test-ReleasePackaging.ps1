@@ -14,9 +14,9 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $fixtureRoot = Join-Path $repositoryRoot "artifacts/release-tests/$([Guid]::NewGuid().ToString('N'))"
 [void][IO.Directory]::CreateDirectory($fixtureRoot)
-$entryPoint = Join-Path $PSScriptRoot 'TrackMeUp.ps1'
+$entryPoint = Join-Path $PSScriptRoot 'WorkTrail.ps1'
 $archiveScript = Join-Path $PSScriptRoot 'New-ReleaseArchive.ps1'
-$installScript = Join-Path $PSScriptRoot 'Install-TrackMeUpRelease.ps1'
+$installScript = Join-Path $PSScriptRoot 'Install-WorkTrailRelease.ps1'
 $utf8 = [Text.UTF8Encoding]::new($false)
 $script:passed = 0
 
@@ -37,7 +37,7 @@ function Invoke-TestScript {
         [void]$start.ArgumentList.Add($argument)
     }
     # Each fixture controls its own version; an enclosing build must not affect this test.
-    [void]$start.Environment.Remove('TRACKMEUP_RELEASE_VERSION')
+    [void]$start.Environment.Remove('WORKTRAIL_RELEASE_VERSION')
     foreach ($key in $Environment.Keys) { $start.Environment[$key] = $Environment[$key] }
     $process = [Diagnostics.Process]::Start($start)
     try {
@@ -72,7 +72,7 @@ function New-SyntheticPackage {
         '<Dependencies><PackageDependency Name="Microsoft.WindowsAppRuntime.Test" Publisher="CN=Microsoft Corporation" MinVersion="1.0.0.0" /></Dependencies>'
     }
     else { '<Dependencies />' }
-    $manifest = '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"><Identity Name="TrackMeUp.ReleaseTest" Publisher="CN=ReleaseTest" Version="{0}" ProcessorArchitecture="{1}" />{2}</Package>' -f $PackageVersion, $Architecture, $dependency
+    $manifest = '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"><Identity Name="WorkTrail.ReleaseTest" Publisher="CN=ReleaseTest" Version="{0}" ProcessorArchitecture="{1}" />{2}</Package>' -f $PackageVersion, $Architecture, $dependency
     $buildInfo = @{ semVer = $BuildVersion; packageVersion = "$BuildVersion.0"; platform = $Architecture; gitCommit = ('1' * 40); gitDirty = $false } | ConvertTo-Json
     $archive = [IO.Compression.ZipFile]::Open($packagePath, [IO.Compression.ZipArchiveMode]::Create)
     try {
@@ -87,7 +87,7 @@ function New-SyntheticPackage {
 
 $sourceManifest = Join-Path $fixtureRoot 'Source.appxmanifest'
 $statePath = Join-Path $fixtureRoot 'version-state.json'
-[IO.File]::WriteAllText($sourceManifest, '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"><Identity Name="TrackMeUp.ReleaseTest" Publisher="CN=ReleaseTest" Version="9.8.7.6" /></Package>', $utf8)
+[IO.File]::WriteAllText($sourceManifest, '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"><Identity Name="WorkTrail.ReleaseTest" Publisher="CN=ReleaseTest" Version="9.8.7.6" /></Package>', $utf8)
 [IO.File]::WriteAllText($statePath, '{"semVer":"9.8.7"}', $utf8)
 $sourceManifestHash = (Get-FileHash -LiteralPath $sourceManifest -Algorithm SHA256).Hash
 $stateHash = (Get-FileHash -LiteralPath $statePath -Algorithm SHA256).Hash
@@ -99,7 +99,7 @@ foreach ($platform in @('x64', 'ARM64')) {
         '-PackageManifestOutputPath', $manifestPath, '-OutputPath', $buildInfoPath, '-Platform', $platform, '-Configuration', 'Release')
     $environment = @{}
     if ($platform -eq 'x64') { $arguments += @('-ReleaseVersion', '1.2.3') }
-    else { $environment.TRACKMEUP_RELEASE_VERSION = '1.2.3' }
+    else { $environment.WORKTRAIL_RELEASE_VERSION = '1.2.3' }
     $result = Invoke-TestScript -Path $entryPoint -Arguments $arguments -Environment $environment
     Assert-ReleaseTest ($result.ExitCode -eq 0) "$platform release metadata failed: $($result.Output)"
     $info = Get-Content -LiteralPath $buildInfoPath -Raw | ConvertFrom-Json
@@ -140,7 +140,7 @@ foreach ($case in @(
 
 $installDirectory = Join-Path $fixtureRoot 'unsigned-install'
 [void][IO.Directory]::CreateDirectory($installDirectory)
-$unsignedPackage = Join-Path $installDirectory 'TrackMeUp-1.2.3-x64-unsigned.msix'
+$unsignedPackage = Join-Path $installDirectory 'WorkTrail-1.2.3-x64-unsigned.msix'
 Copy-Item -LiteralPath (Join-Path $fixtureRoot 'missing-framework/Synthetic.msix') -Destination $unsignedPackage
 $release = [ordered]@{
     schemaVersion = 1; version = '1.2.3'; packageVersion = '1.2.3.0'; platform = 'x64'; signing = 'unsigned'

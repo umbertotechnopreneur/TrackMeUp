@@ -118,7 +118,7 @@ foreach ($requirement in $package.Manifest.SelectNodes('/*[local-name()="Package
     $selectedDependencies += $dependency
 }
 
-$archiveName = "TrackMeUp-$Version-$Platform-unsigned"
+$archiveName = "WorkTrail-$Version-$Platform-unsigned"
 $stage = Join-Path $outputRoot $archiveName
 [void][IO.Directory]::CreateDirectory((Join-Path $stage 'Dependencies'))
 $packageName = "$archiveName.msix"
@@ -141,12 +141,12 @@ $release = [ordered]@{
 }
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $stage 'release.json'), ($release | ConvertTo-Json -Depth 5) + "`n", $utf8)
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Install-TrackMeUpRelease.ps1') -Destination (Join-Path $stage 'Install.ps1')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Install-WorkTrailRelease.ps1') -Destination (Join-Path $stage 'Install.ps1')
 foreach ($notice in @('LICENSE', 'TRADEMARKS.md', 'THIRD_PARTY_NOTICES.md')) {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot $notice) -Destination (Join-Path $stage $notice)
 }
 $instructions = @"
-TrackMeUp $Version - $Platform - UNSIGNED BUILD
+WorkTrail $Version - $Platform - UNSIGNED BUILD
 
 This is a preparation artifact, not an installable public release.
 The application package must be signed before installation. Install.ps1 refuses unsigned builds.
@@ -159,7 +159,7 @@ Package version: $Version.0
 
 After the release has been signed and its metadata/checksums regenerated, install from PowerShell 7:
 pwsh -NoProfile -File ./Install.ps1
-Use -ForceApplicationShutdown only when ready to close an existing TrackMeUp instance.
+Use -ForceApplicationShutdown only when ready to close an existing WorkTrail instance.
 On x64, Install.ps1 also installs the included PawnIO advanced-sensor component if needed.
 Accept the Windows administrator prompt. If setup requests a restart, restart Windows.
 Direct MSIX users can install the same component from Sensors options.

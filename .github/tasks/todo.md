@@ -1,4 +1,12 @@
-# TrackMeUp performance and footprint optimization handoff
+# WorkTrail performance and footprint optimization handoff
+
+## MSIX packaging contract (2026-09-22)
+
+- [ ] On an owner-authorized package run, verify `scripts/package-msix.ps1` for Debug x64 and ARM64 using an explicit, unexpired certificate whose Subject exactly matches `WorkTrail/Package.appxmanifest`. No build, package, install, or trust-store change was performed while aligning the script.
+
+## AI prompt alignment (2026-09-21)
+
+- [ ] Owner visual verification: screenshot analysis uses the app language, detailed output uses readable bullets, and report summaries honor brief/detailed selection. No live provider requests were made during implementation.
 
 ## AI prompt alignment (2026-09-21)
 
@@ -173,7 +181,7 @@
 
 ## Mission
 
-Reduce TrackMeUp startup cost, steady-state CPU/I/O, memory pressure, search refresh cost,
+Reduce WorkTrail startup cost, steady-state CPU/I/O, memory pressure, search refresh cost,
 and package footprint without changing product behavior or creating a second tracking
 runtime. Work in small, independently verifiable commits on the existing `main` branch.
 
@@ -220,7 +228,7 @@ following constraints are especially relevant to this work:
 - invoke PowerShell only as `pwsh -NoProfile`;
 - keep WinUI views, code-behind, Spectre commands, prompts, and renderers passive;
 - place behavior, persistence, capture, environment access, HTTP, retention, startup,
-  and OS interop behind `ITrackMeUpApplication` and TrackMeUp.Core services;
+  and OS interop behind `IWorkTrailApplication` and WorkTrail.Core services;
 - use the existing hashed-installation mutex and same-user named-pipe protocol; never
   create a second tracking runtime;
 - fail fast for invalid input, unsupported state, and persistence/interop failures;
@@ -228,8 +236,8 @@ following constraints are especially relevant to this work:
 - keep shared user-facing AI wording vendor-agnostic (`AI provider` / `provider AI`);
 - every icon-only WinUI control must retain matching localized tooltip and accessible name;
 - do not inspect, restore, stage, report, or commit automatic changes to
-  `TrackMeUp/build-version.json` or version-only changes to
-  `TrackMeUp/Package.appxmanifest`;
+  `WorkTrail/build-version.json` or version-only changes to
+  `WorkTrail/Package.appxmanifest`;
 - do not commit generated `bin/`, `obj/`, `.vs/`, or `artifacts/` content;
 - after each successful commit and push, run the relevant x64 `dotnet clean` and remove
   stale test build outputs;
@@ -326,17 +334,17 @@ Suggested commit if durable helpers are added: `Add performance measurement seam
 
 ### Current evidence
 
-- `TrackMeUp/MainWindow.xaml.cs` owns a one-second refresh timer without top-level
+- `WorkTrail/MainWindow.xaml.cs` owns a one-second refresh timer without top-level
   single-flight coordination.
-- `TrackMeUp.Taskbar/TaskbarWidgetWindow.xaml.cs` owns a second one-second timer and guards
+- `WorkTrail.Taskbar/TaskbarWidgetWindow.xaml.cs` owns a second one-second timer and guards
   only its own refresh with `_refreshInProgress`.
-- `TrackMeUp.Presentation/ViewModels.cs` subscribes to `RuntimeStateChanged`, but
-  `RuntimeClient.RuntimeStateChanged` in `TrackMeUp.Core/Runtime/RuntimeHost.cs` has no
+- `WorkTrail.Presentation/ViewModels.cs` subscribes to `RuntimeStateChanged`, but
+  `RuntimeClient.RuntimeStateChanged` in `WorkTrail.Core/Runtime/RuntimeHost.cs` has no
   effective add/remove behavior.
-- `TrackMeUp.Core/Application/TrackMeUpApplication.cs` enriches a dashboard and loads settings.
-- `TrackMeUp/Services/TrackingDomainService.cs` also loads settings while building dashboard
+- `WorkTrail.Core/Application/WorkTrailApplication.cs` enriches a dashboard and loads settings.
+- `WorkTrail/Services/TrackingDomainService.cs` also loads settings while building dashboard
   state.
-- `TrackMeUp/Services/LocalStore.cs` takes a named mutex and reads/deserializes the settings
+- `WorkTrail/Services/LocalStore.cs` takes a named mutex and reads/deserializes the settings
   file on every `LoadSettings()` call.
 
 Confirm the exact baseline; with both surfaces active it may reach two dashboard acquisitions
@@ -426,7 +434,7 @@ Implementation:
 2. Create Operations detail controls on their own first use where practical.
 3. Use private `EnsureOptionsAsync`/`EnsureOperationsAsync` methods and change initialization
    APIs from `async void` to `Task` or `Task<Result>` except true event handlers.
-4. Keep UI passive: load data/provider state only through `ITrackMeUpApplication`.
+4. Keep UI passive: load data/provider state only through `IWorkTrailApplication`.
 5. Model not-started/loading/ready/failed explicitly. Concurrent navigation awaits one task.
 6. Surface failures and allow explicit deterministic retry; never keep a half-initialized UI.
 7. Wire events once after creation and unwire once during Main disposal.
@@ -610,13 +618,13 @@ Suggested separate commits:
 This is maintainability work, not an assumed performance fix. Begin only after measured
 behavior phases stabilize.
 
-1. Move linked `TrackMeUp/Services` production files physically into TrackMeUp.Core without
+1. Move linked `WorkTrail/Services` production files physically into WorkTrail.Core without
    behavior, namespace, or public-contract changes in the move commit.
 2. Then remove linked-file project exclusions and verify dependencies.
 3. Split persistence behind one schema/connection owner into activity, screenshot, AI,
    archive, search-revision, and installation/profile repositories.
 4. Split application orchestration into use-case services while preserving
-   `ITrackMeUpApplication` as the only UI/CLI facade.
+   `IWorkTrailApplication` as the only UI/CLI facade.
 5. Extract Main code-behind behavior into presentation coordinators/view models; leave the
    window with binding, rendering, navigation, and facade invocation.
 6. Preserve archive transactions, runtime ownership, mutex/pipe, reset/import atomicity.
@@ -635,25 +643,25 @@ tests and architectures pass, and metrics do not regress beyond noise.
 ### Focused checks while diagnosing
 
 ```powershell
-dotnet test .\TrackMeUp.Core.Tests\TrackMeUp.Core.Tests.csproj -p:Platform=x64
-dotnet test .\TrackMeUp.Presentation.Tests\TrackMeUp.Presentation.Tests.csproj -p:Platform=x64
-dotnet test .\TrackMeUp.Search.Tests\TrackMeUp.Search.Tests.csproj -p:Platform=x64
-dotnet test .\TrackMeUp.Cli.Tests\TrackMeUp.Cli.Tests.csproj -p:Platform=x64
+dotnet test .\WorkTrail.Core.Tests\WorkTrail.Core.Tests.csproj -p:Platform=x64
+dotnet test .\WorkTrail.Presentation.Tests\WorkTrail.Presentation.Tests.csproj -p:Platform=x64
+dotnet test .\WorkTrail.Search.Tests\WorkTrail.Search.Tests.csproj -p:Platform=x64
+dotnet test .\WorkTrail.Cli.Tests\WorkTrail.Cli.Tests.csproj -p:Platform=x64
 ```
 
 ### Every completed product-code phase
 
 ```powershell
-dotnet restore .\TrackMeUp.slnx -p:Platform=x64
-dotnet test .\TrackMeUp.slnx -p:Platform=x64 --no-restore
-dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=x64 --no-restore
+dotnet restore .\WorkTrail.slnx -p:Platform=x64
+dotnet test .\WorkTrail.slnx -p:Platform=x64 --no-restore
+dotnet build .\WorkTrail\WorkTrail.csproj -p:Platform=x64 --no-restore
 git diff --check
 ```
 
 ### Final/WinUI/assets/project-structure gate
 
 ```powershell
-dotnet build .\TrackMeUp\TrackMeUp.csproj -p:Platform=ARM64
+dotnet build .\WorkTrail\WorkTrail.csproj -p:Platform=ARM64
 ```
 
 If the host cannot execute a target, record exact command/error; never claim it passed.
@@ -661,7 +669,7 @@ If the host cannot execute a target, record exact command/error; never claim it 
 ### Reports gate when report source/dependencies/distribution change
 
 ```powershell
-Set-Location .\TrackMeUp.Reports.Web
+Set-Location .\WorkTrail.Reports.Web
 npm ci
 npm run build
 Set-Location ..
@@ -688,7 +696,7 @@ Stage explicit intended paths and review `git diff --cached`. After push:
 git fetch origin
 git rev-parse HEAD
 git rev-parse origin/main
-dotnet clean .\TrackMeUp.slnx -p:Platform=x64
+dotnet clean .\WorkTrail.slnx -p:Platform=x64
 ```
 
 Resolve every cleanup target under this repository before removing stale test outputs. Keep

@@ -1,7 +1,7 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-Enables TrackMeUp's automatic C# whitespace formatting before local commits.
+Enables WorkTrail's automatic C# whitespace formatting before local commits.
 #>
 [CmdletBinding()]
 param()

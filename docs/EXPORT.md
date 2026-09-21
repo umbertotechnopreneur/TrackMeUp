@@ -10,7 +10,7 @@ You can configure the report, preview your data and save field preferences in Fr
 - **CSV (.zip):** one UTF-8 CSV with BOM per selected table. Choose a comma or semicolon delimiter. Quotes and multiline text are escaped. Formula-like text receives a leading apostrophe so spreadsheets treat it as text; JSON retains the original selected text without that CSV-specific transformation.
 - **JSON (.json):** schema version 1, creation timestamp, inclusive date range, time zone and selected tables. Missing values stay `null`. Column identifiers are stable English names in all formats; dates use ISO notation and duration columns explicitly use seconds.
 
-The files are analytical exports, not importable TrackMeUp archives. The existing installation archive transfer remains a separate operation.
+The files are analytical exports, not importable WorkTrail archives. The existing installation archive transfer remains a separate operation.
 
 ## Understand what is included
 
@@ -35,10 +35,10 @@ The result is editable and may be grouped by day, application or the whole perio
 Use PowerShell 7 from the repository root:
 
 ```powershell
-dotnet build .\TrackMeUp\TrackMeUp.csproj -c Debug -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -p:TrackMeUpDistributionMode=Unpackaged -p:GenerateAppxPackageOnBuild=false -p:AppxPackageSigningEnabled=false
-& .\TrackMeUp\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\TrackMeUp.exe
+dotnet build .\WorkTrail\WorkTrail.csproj -c Debug -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -p:WorkTrailDistributionMode=Unpackaged -p:GenerateAppxPackageOnBuild=false -p:AppxPackageSigningEnabled=false
+& .\WorkTrail\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WorkTrail.exe
 ```
 
-Close another running TrackMeUp instance before trying the new build so the shared runtime serves the current code. Keep the executable together with its output folder. This local development launch is not a standalone distribution; commercial Windows releases remain MSIX-only.
+Close another running WorkTrail instance before trying the new build so the shared runtime serves the current code. Keep the executable together with its output folder. This local development launch is not a standalone distribution; commercial Windows releases remain MSIX-only.
 
 In Debug, the player's More menu can simulate Free or Premium. This simulation is runtime-local and resets when the app exits. It is not an implemented Store license.

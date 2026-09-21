@@ -13,7 +13,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $resolvedHelperPath = [IO.Path]::GetFullPath($HelperPath)
 if (-not (Test-Path -LiteralPath $resolvedHelperPath -PathType Leaf)) { throw 'Hardware helper executable is missing.' }
-$pipeName = 'TrackMeUp.Hardware.' + [Guid]::NewGuid().ToString('N')
+$pipeName = 'WorkTrail.Hardware.' + [Guid]::NewGuid().ToString('N')
 $pipe = [IO.Pipes.NamedPipeServerStream]::new($pipeName, [IO.Pipes.PipeDirection]::InOut, 1,
     [IO.Pipes.PipeTransmissionMode]::Byte, [IO.Pipes.PipeOptions]::Asynchronous -bor [IO.Pipes.PipeOptions]::CurrentUserOnly)
 $child = $null

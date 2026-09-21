@@ -10,7 +10,7 @@ on:
       - 'scripts/**/*.psd1'
       - '.github/workflows/release.yml'
       - '.github/workflows/powershell-scripts-lint.yml'
-      - 'TrackMeUp/TrackMeUp.csproj'
+      - 'WorkTrail/WorkTrail.csproj'
   pull_request:
     branches:
       - main
@@ -20,7 +20,7 @@ on:
       - 'scripts/**/*.psd1'
       - '.github/workflows/release.yml'
       - '.github/workflows/powershell-scripts-lint.yml'
-      - 'TrackMeUp/TrackMeUp.csproj'
+      - 'WorkTrail/WorkTrail.csproj'
 
 jobs:
   parse:

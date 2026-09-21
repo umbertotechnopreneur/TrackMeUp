@@ -1,0 +1,75 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug-Unpackaged" />
+    <BuildType Name="Release-Unpackaged" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="WorkTrail/WorkTrail.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Deploy />
+  </Project>
+  <Project Path="WorkTrail.Core/WorkTrail.Core.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Hardware/WorkTrail.Hardware.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Hardware/LibreHardwareMonitor/LibreHardwareMonitor.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Cli/WorkTrail.Cli.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Presentation/WorkTrail.Presentation.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Search/WorkTrail.Search.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Taskbar/WorkTrail.Taskbar.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Project Path="WorkTrail.Ocr/WorkTrail.Ocr.csproj">
+    <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+    <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+  </Project>
+  <Folder Name="/Tests/">
+    <Project Path="WorkTrail.Search.Tests/WorkTrail.Search.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
+    <Project Path="WorkTrail.Core.Tests/WorkTrail.Core.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
+    <Project Path="WorkTrail.Hardware.Tests/WorkTrail.Hardware.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
+    <Project Path="WorkTrail.Ocr.Tests/WorkTrail.Ocr.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
+    <Project Path="WorkTrail.Presentation.Tests/WorkTrail.Presentation.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
+    <Project Path="WorkTrail.Cli.Tests/WorkTrail.Cli.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
+  </Folder>
+</Solution>

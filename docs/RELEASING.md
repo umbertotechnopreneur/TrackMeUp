@@ -1,6 +1,6 @@
 # Preparing a GitHub release
 
-TrackMeUp produces native **x64** and **ARM64** MSIX packages and portable ZIPs.
+WorkTrail produces native **x64** and **ARM64** MSIX packages and portable ZIPs.
 The `release packages` workflow prepares all four artifacts from the same commit
 and version. Until a distribution signing identity is configured, application
 binaries are **unsigned**. MSIX packages require signing before installation;
@@ -40,13 +40,13 @@ The workflow uses fresh output folders and separate checkouts for each
 architecture. Existing validated archives must not be overwritten silently.
 
 Release builds generate their manifest and `BuildInfo.json` under
-`TrackMeUp/obj/release/<version>/<platform>/`; they do not advance the local build
+`WorkTrail/obj/release/<version>/<platform>/`; they do not advance the local build
 counter or rewrite the tracked package manifest. Normal local builds retain their
 automatic version increment.
 
 ## Archive contents and dependencies
 
-Each `artifacts/releases/<version>/<platform>/TrackMeUp-<version>-<platform>-unsigned.zip`
+Each `artifacts/releases/<version>/<platform>/WorkTrail-<version>-<platform>-unsigned.zip`
 contains:
 
 - the unsigned application MSIX, including its .NET runtime;
@@ -75,29 +75,29 @@ or older than the bundled version. Errors are reported explicitly even though
 the app has already been installed, and a required Windows restart is reported.
 Direct MSIX installation can complete the same prerequisite from Sensors options
 using **Install and activate advanced sensors**. MSIX itself cannot install drivers.
-PawnIO is shared with other applications and is not removed with TrackMeUp.
+PawnIO is shared with other applications and is not removed with WorkTrail.
 ARM64 does not bundle or install PawnIO because advanced collection is unsupported.
 
 ## Portable archives
 
-Each `artifacts/releases/<version>/<platform>/portable/TrackMeUp-<version>-<platform>-portable-unsigned.zip`
+Each `artifacts/releases/<version>/<platform>/portable/WorkTrail-<version>-<platform>-portable-unsigned.zip`
 contains the complete `Release-Unpackaged` publish output, including .NET and Windows
 App SDK, build/release metadata, notices, and payload checksums.
 An adjacent `.zip.sha256` verifies the archive. The archive writer rejects missing
 runtimes, mismatched version/architecture metadata, and an existing output directory.
 
-Extract the entire ZIP and run `TrackMeUp.exe`. Keep the executable with all DLLs,
+Extract the entire ZIP and run `WorkTrail.exe`. Keep the executable with all DLLs,
 resources, and subfolders; copying only the EXE is not a supported deployment.
 Basic portable startup requires no MSIX registration, certificate import, runtime
 installer, or administrator access. On x64, the optional advanced-sensor action
 installs the bundled PawnIO driver with administrator consent when needed, then
 starts the elevated sensor collector. This system driver remains installed after
 the portable folder is removed; subsequent sessions reuse it.
-Use `./TrackMeUp.exe --version` for the CLI; portable ZIPs do not register an execution alias.
+Use `./WorkTrail.exe --version` for the CLI; portable ZIPs do not register an execution alias.
 Unsigned executables may show a Windows security prompt.
 
 Portable describes deployment, not a separate data-storage mode: settings and history
-remain under `%LOCALAPPDATA%\TrackMeUp`.
+remain under `%LOCALAPPDATA%\WorkTrail`.
 
 ### Portable startup and feature limitations
 
@@ -111,7 +111,7 @@ limits OCR, while the main player can open without it. The application does not
 substitute another OCR engine. For implementation details, see
 `ScreenshotTextExtractionCoordinator.AttachAsync`.
 
-For `v1.0.900`, the extracted x64 portable passed `TrackMeUp.exe --version` with exit
+For `v1.0.900`, the extracted x64 portable passed `WorkTrail.exe --version` with exit
 code zero and reported `1.0.900` on the development workstation. This exercises the
 WinUI application bootstrap and CLI route, not full player initialization.
 It does **not** establish full UI startup on a clean machine without preinstalled

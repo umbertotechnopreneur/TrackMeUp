@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="WorkTrail.Controls.PremiumBadge"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             IsTabStop="False" VerticalAlignment="Center">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="BadgeFill" Color="#D1B4D5" />
+                    <SolidColorBrush x:Key="BadgeForeground" Color="#2D2330" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <StaticResource x:Key="BadgeFill" ResourceKey="SystemColorHighlightColorBrush" />
+                    <StaticResource x:Key="BadgeForeground" ResourceKey="SystemColorHighlightTextColorBrush" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border Padding="7,3" CornerRadius="3" Background="{ThemeResource BadgeFill}">
+        <TextBlock x:Name="Caption" Text="PREMIUM" FontSize="10" Foreground="{ThemeResource BadgeForeground}" />
+    </Border>
+</UserControl>

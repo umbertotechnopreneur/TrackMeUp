@@ -2,13 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "TrackMeUp (Unpackaged x64)",
+      "name": "WorkTrail (Unpackaged x64)",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build TrackMeUp (Unpackaged x64)",
-      "program": "${workspaceFolder}\\TrackMeUp\\bin\\x64\\Debug-Unpackaged\\net10.0-windows10.0.19041.0\\win-x64\\TrackMeUp.exe",
+      "preLaunchTask": "build WorkTrail (Unpackaged x64)",
+      "program": "${workspaceFolder}\\WorkTrail\\bin\\x64\\Debug-Unpackaged\\net10.0-windows10.0.19041.0\\win-x64\\WorkTrail.exe",
       "args": [],
-      "cwd": "${workspaceFolder}\\TrackMeUp",
+      "cwd": "${workspaceFolder}\\WorkTrail",
       "stopAtEntry": false,
       "console": "internalConsole"
     }

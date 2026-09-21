@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="WorkTrail.LunarPhaseWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WorkTrail"
+    xmlns:controls="using:WorkTrail.Controls"
+    Title="Moon phase">
+    <Window.SystemBackdrop>
+        <local:GlassBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid" Background="Transparent" SizeChanged="RootGrid_SizeChanged">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="TitleBarDragRegion" Background="{ThemeResource WorkTrailTitleBarOverlayBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TitleBarLeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TitleBarRightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <Image
+                x:Name="TitleBarLogo"
+                Grid.Column="1"
+                Margin="16,0,10,0"
+                Style="{StaticResource WorkTrailTitleBarLogoStyle}" />
+            <TextBlock
+                x:Name="TitleBarText"
+                Grid.Column="2"
+                Margin="0,0,12,0"
+                CharacterSpacing="70"
+                Style="{StaticResource WorkTrailTitleBarLabelStyle}"
+                TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <Grid x:Name="MoonContent" Grid.Row="1" Margin="20,0,20,24" Background="Transparent"
+              Visibility="Collapsed" SizeChanged="MoonContent_SizeChanged">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <controls:CelestialPhaseControl
+                x:Name="MoonPhaseControl"
+                IsDaylight="False"
+                AutomationProperties.AccessibilityView="Raw" />
+            <TextBlock
+                x:Name="PhaseSummaryText"
+                Grid.Row="1"
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                FontFamily="Segoe UI Variable Display"
+                FontSize="22"
+                FontWeight="Light"
+                TextAlignment="Center"
+                TextTrimming="CharacterEllipsis"
+                ToolTipService.ToolTip="{Binding Text, ElementName=PhaseSummaryText}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                x:Name="ReferenceInstantText"
+                Grid.Row="2"
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                FontFamily="Segoe UI Variable Text"
+                FontSize="12"
+                TextAlignment="Center"
+                TextTrimming="CharacterEllipsis"
+                TextWrapping="Wrap" />
+        </Grid>
+        <ProgressRing
+            x:Name="LoadingIndicator"
+            Grid.Row="1"
+            Width="36"
+            Height="36"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="Loading world clocks"
+            IsActive="True" />
+        <controls:TimedInfoBar
+            x:Name="LunarPhaseNotificationBanner"
+            Grid.Row="1"
+            Margin="16"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            Canvas.ZIndex="100" />
+    </Grid>
+</Window>

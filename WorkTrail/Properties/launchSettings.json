@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "WorkTrail (MSIX)": {
+      "commandName": "MsixPackage"
+    },
+    "WorkTrail (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

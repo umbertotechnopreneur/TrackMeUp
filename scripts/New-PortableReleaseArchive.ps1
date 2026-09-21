@@ -64,10 +64,10 @@ foreach ($name in $generatedNames) {
     }
 }
 foreach ($requiredFile in @(
-    'TrackMeUp.exe', 'TrackMeUp.dll', 'TrackMeUp.deps.json', 'TrackMeUp.runtimeconfig.json', 'BuildInfo.json',
+    'WorkTrail.exe', 'WorkTrail.dll', 'WorkTrail.deps.json', 'WorkTrail.runtimeconfig.json', 'BuildInfo.json',
     'hostfxr.dll', 'hostpolicy.dll', 'coreclr.dll', 'System.Private.CoreLib.dll',
     'Microsoft.ui.xaml.dll', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.Windows.ApplicationModel.Resources.dll',
-    'TrackMeUp.pri'
+    'WorkTrail.pri'
 )) {
     $requiredPath = Join-Path $publishRoot $requiredFile
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf) -or (Get-Item -LiteralPath $requiredPath).Length -eq 0) {
@@ -89,7 +89,7 @@ if ($buildInfo.semVer -cne $Version -or $buildInfo.packageVersion -cne "$Version
     $buildInfo.gitCommit -cnotmatch '^[0-9a-f]{40}$' -or $buildInfo.gitDirty -isnot [bool]) {
     throw 'Portable build information does not match the release version, platform, configuration, or source commit.'
 }
-$runtimeConfig = Get-Content -LiteralPath (Join-Path $publishRoot 'TrackMeUp.runtimeconfig.json') -Raw | ConvertFrom-Json -AsHashtable
+$runtimeConfig = Get-Content -LiteralPath (Join-Path $publishRoot 'WorkTrail.runtimeconfig.json') -Raw | ConvertFrom-Json -AsHashtable
 $runtimeOptions = $runtimeConfig.runtimeOptions
 if ($null -eq $runtimeOptions -or $runtimeOptions.ContainsKey('framework') -or $runtimeOptions.ContainsKey('frameworks') -or
     -not $runtimeOptions.ContainsKey('includedFrameworks') -or
@@ -115,9 +115,9 @@ function Assert-PortableArchitecture {
     }
     finally { $reader.Dispose() }
 }
-foreach ($binary in @('TrackMeUp.exe', 'hostfxr.dll', 'coreclr.dll')) { Assert-PortableArchitecture -FileName $binary }
+foreach ($binary in @('WorkTrail.exe', 'hostfxr.dll', 'coreclr.dll')) { Assert-PortableArchitecture -FileName $binary }
 
-$archiveName = "TrackMeUp-$Version-$Platform-portable-unsigned.zip"
+$archiveName = "WorkTrail-$Version-$Platform-portable-unsigned.zip"
 $zipPath = Join-Path $outputRoot $archiveName
 $utf8 = [Text.UTF8Encoding]::new($false)
 $hashLines = [Collections.Generic.List[string]]::new()
@@ -130,14 +130,14 @@ $release = [ordered]@{
     runtimeIdentifier = $buildInfo.runtimeIdentifier
     configuration = $buildInfo.configuration
     signing = 'unsigned'
-    entryPoint = 'TrackMeUp.exe'
+    entryPoint = 'WorkTrail.exe'
     gitCommit = $buildInfo.gitCommit
     gitDirty = $buildInfo.gitDirty
 }
 $instructions = @"
-TrackMeUp $Version - $Platform - PORTABLE UNSIGNED BUILD
+WorkTrail $Version - $Platform - PORTABLE UNSIGNED BUILD
 
-Extract the entire ZIP into a folder and run TrackMeUp.exe from that folder.
+Extract the entire ZIP into a folder and run WorkTrail.exe from that folder.
 Keep all DLLs, resources, and subfolders beside the executable; do not copy only the EXE.
 Use the archive matching your Windows architecture ($Platform).
 Basic startup needs no MSIX installation, administrator access, or certificate import.
@@ -155,8 +155,8 @@ This feature limitation does not by itself prevent basic application startup.
 
 Portable describes application deployment, not a portable user profile.
 Settings, screenshots, history, and other application data use the normal LocalAppData
-storage (or the data location already configured in TrackMeUp), outside this folder.
-Close TrackMeUp before moving or deleting the extracted folder. Deleting it does not
+storage (or the data location already configured in WorkTrail), outside this folder.
+Close WorkTrail before moving or deleting the extracted folder. Deleting it does not
 delete application data. Startup integration remains an explicit application setting.
 
 Source commit: $($buildInfo.gitCommit)

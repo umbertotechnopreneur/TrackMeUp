@@ -25,8 +25,8 @@ Policy: excluded activity produces no stored sample or input aggregates; disabli
 Commands (run through PowerShell 7 with `-NoProfile`):
 
 ```text
-dotnet test TrackMeUp.slnx -c Release-Unpackaged -p:Platform=x64 --no-restore -warnaserror
-dotnet build TrackMeUp/TrackMeUp.csproj -c Release-Unpackaged -p:Platform=x64 --no-restore -warnaserror
+dotnet test WorkTrail.slnx -c Release-Unpackaged -p:Platform=x64 --no-restore -warnaserror
+dotnet build WorkTrail/WorkTrail.csproj -c Release-Unpackaged -p:Platform=x64 --no-restore -warnaserror
 ```
 
 Manual follow-up: validate the multi-monitor visual behavior on Windows using only synthetic content. Automated capture-policy tests use synthetic rectangles/metadata, not real desktop pixels. Enumeration checks cannot make Windows desktop composition atomic; the privacy policy documents that race and conservative blocking. No installer generation or application installation was performed for this remediation. Human review remains required before merging the PR.

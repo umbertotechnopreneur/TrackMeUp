@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 
 $expectedHeader = '// SPDX-License-Identifier: MIT'
 $protectedThirdPartyHeaders = @{
-    'TrackMeUp.Hardware/LibreHardwareMonitor/MemoryGroup.cs' = '// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.'
+    'WorkTrail.Hardware/LibreHardwareMonitor/MemoryGroup.cs' = '// This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.'
 }
 $repositoryRoot = (& git rev-parse --show-toplevel).Trim()
 

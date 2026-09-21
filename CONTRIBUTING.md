@@ -1,8 +1,8 @@
-# Contributing to TrackMeUp
+# Contributing to WorkTrail
 
 Want to fix a bug, improve a guide, or suggest something new? You're welcome to help.
 
-TrackMeUp is an open-source Windows app that keeps your history on your PC by default. It's still in development. Start with a small change and show how you checked it; that makes review easier for everyone.
+WorkTrail is an open-source Windows app that keeps your history on your PC by default. It's still in development. Start with a small change and show how you checked it; that makes review easier for everyone.
 
 ## Before you start
 
@@ -46,22 +46,22 @@ checks run the same verification and won't rewrite commits you've pushed.
 To restore packages, build, and run tests:
 
 ```powershell
-pwsh -NoProfile -Command "dotnet restore .\TrackMeUp.slnx"
-pwsh -NoProfile -Command "dotnet build .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
-pwsh -NoProfile -Command "dotnet test .\TrackMeUp.slnx -p:Platform=x64 -warnaserror"
+pwsh -NoProfile -Command "dotnet restore .\WorkTrail.slnx"
+pwsh -NoProfile -Command "dotnet build .\WorkTrail.slnx -p:Platform=x64 -warnaserror"
+pwsh -NoProfile -Command "dotnet test .\WorkTrail.slnx -p:Platform=x64 -warnaserror"
 ```
 
 Or use the repository script:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Preflight
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Build -Platform x64 -WarnAsError
-pwsh -NoProfile -File .\scripts\TrackMeUp.ps1 -Action Test -Platform x64 -WarnAsError
+pwsh -NoProfile -File .\scripts\WorkTrail.ps1 -Action Preflight
+pwsh -NoProfile -File .\scripts\WorkTrail.ps1 -Action Build -Platform x64 -WarnAsError
+pwsh -NoProfile -File .\scripts\WorkTrail.ps1 -Action Test -Platform x64 -WarnAsError
 ```
 
 ## A few development rules
 
-- Keep app behavior in `TrackMeUp.Core` services. The UI and CLI should collect input, display results, and call `ITrackMeUpApplication`.
+- Keep app behavior in `WorkTrail.Core` services. The UI and CLI should collect input, display results, and call `IWorkTrailApplication`.
 - Report invalid input and unsupported states clearly. Don't silently try another path unless that behavior is documented.
 - Remove replaced contracts instead of adding compatibility code, unless compatibility was explicitly requested.
 - Use the existing shared tracker, mutex, and named pipe. Don't start a second tracker.
@@ -97,7 +97,7 @@ license-incompatible content.
 
 Record third-party code, assets, and generated material in
 `THIRD_PARTY_NOTICES.md` or companion provenance records. A proposed
-TrackMeUp mark or Brand Asset must include provenance and be explicitly
+WorkTrail mark or Brand Asset must include provenance and be explicitly
 accepted under separate written terms. Accepting an ordinary MIT-licensed
 contribution does not grant rights to the existing marks or assets described
 in [`TRADEMARKS.md`](TRADEMARKS.md).

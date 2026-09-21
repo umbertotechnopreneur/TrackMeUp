@@ -1,18 +1,18 @@
-# TrackMeUp architecture
+# WorkTrail architecture
 
-TrackMeUp is a Windows app that stores your history on your PC by default.
+WorkTrail is a Windows app that stores your history on your PC by default.
 Each installation runs one tracker, so the desktop app and CLI share the same
 activity, settings, and privacy choices. Search, text recognition (OCR), and
 the activity calendar work with local data; AI analysis is optional.
 
 The contributor details below explain how shared services keep that experience
-consistent through `ITrackMeUpApplication`.
+consistent through `IWorkTrailApplication`.
 
 ## How the pieces fit together
 
 ```mermaid
 flowchart LR
-    WinUI[WinUI desktop app] --> Facade[ITrackMeUpApplication]
+    WinUI[WinUI desktop app] --> Facade[IWorkTrailApplication]
     CLI[Spectre CLI] --> Facade
     Taskbar[Taskbar integration] --> Facade
     Facade --> Runtime[Single installation runtime]
@@ -34,29 +34,29 @@ the installation ID, so their Windows object names don't expose the ID itself.
 
 | Project | What belongs here |
 | --- | --- |
-| `TrackMeUp/` | Windows, controls, app startup, and wiring services into the WinUI app. |
-| `TrackMeUp.Core/` | Shared app interface and data types, tracker ownership, storage, screenshots, cleanup, activity aggregation, Windows and network calls, and translations. |
-| `TrackMeUp.Presentation/` | Data and view models used by the UI, without depending on a particular UI framework. |
-| `TrackMeUp.Cli/` | Spectre.Console commands and output, using the shared app interface. |
-| `TrackMeUp.Taskbar/` | Taskbar features that call Core services. |
-| `TrackMeUp.Search/` | The local search index, query checks, text analysis, and results. |
-| `TrackMeUp.Ocr/` | Reading text from screenshots with Windows OCR on the PC. |
-| `TrackMeUp.*.Tests/` | Tests for Core, the UI models, CLI, search, and OCR, including checks for previously fixed bugs. |
+| `WorkTrail/` | Windows, controls, app startup, and wiring services into the WinUI app. |
+| `WorkTrail.Core/` | Shared app interface and data types, tracker ownership, storage, screenshots, cleanup, activity aggregation, Windows and network calls, and translations. |
+| `WorkTrail.Presentation/` | Data and view models used by the UI, without depending on a particular UI framework. |
+| `WorkTrail.Cli/` | Spectre.Console commands and output, using the shared app interface. |
+| `WorkTrail.Taskbar/` | Taskbar features that call Core services. |
+| `WorkTrail.Search/` | The local search index, query checks, text analysis, and results. |
+| `WorkTrail.Ocr/` | Reading text from screenshots with Windows OCR on the PC. |
+| `WorkTrail.*.Tests/` | Tests for Core, the UI models, CLI, search, and OCR, including checks for previously fixed bugs. |
 
 ## Where app behavior belongs
 
-The UI and CLI call `ITrackMeUpApplication` to do work. Views, code-behind,
+The UI and CLI call `IWorkTrailApplication` to do work. Views, code-behind,
 controls, dialogs, commands, prompts, and renderers collect input and display
 data transfer objects (DTOs). They don't access storage, environment variables,
 HTTP, capture, cleanup, startup, or Windows APIs directly.
 
-`TrackMeUpApplication` brings the Core services together. It handles changes
+`WorkTrailApplication` brings the Core services together. It handles changes
 one at a time, so the desktop app and CLI can't make conflicting updates through
 separate stores or trackers.
 
 ### Keeping the implementation manageable
 
-`ITrackMeUpApplication` remains the public way to use app behavior. Internally,
+`IWorkTrailApplication` remains the public way to use app behavior. Internally,
 smaller classes handle related pieces of work:
 
 - `WorldClockApplicationService` handles clock queries, city selection rules,
@@ -100,7 +100,7 @@ See the [privacy guide](PRIVACY.md) for what is saved and what can leave the PC.
 - Report invalid input, unsupported states, missing required settings, and
   storage or Windows API failures clearly.
 - Ask for confirmation before destructive actions. Check that every target
-  path belongs to TrackMeUp.
+  path belongs to WorkTrail.
 - Secrets never travel through CLI arguments, settings, history, IPC
   diagnostics, or test snapshots.
 - Don't start another tracker if the UI fails.
@@ -108,7 +108,7 @@ See the [privacy guide](PRIVACY.md) for what is saved and what can leave the PC.
 
 ## Adding a feature
 
-1. Add or update the DTOs and methods in `ITrackMeUpApplication`.
+1. Add or update the DTOs and methods in `IWorkTrailApplication`.
 2. Put behavior and I/O in a Core application or infrastructure service.
 3. Keep WinUI and CLI code limited to input and display, and localize visible text.
 4. Add focused tests for the Core or presentation contracts you changed.

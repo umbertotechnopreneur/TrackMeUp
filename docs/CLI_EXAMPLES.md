@@ -1,7 +1,7 @@
 # CLI examples
 
-Search history, query reports and control TrackMeUp Premium from PowerShell 7. These
-examples use the installed `trackmeup.exe` command and preserve its exit code.
+Search history, query reports and control WorkTrail Premium from PowerShell 7. These
+examples use the installed `worktrail.exe` command and preserve its exit code.
 For an unpackaged build, replace it with the quoted executable path after `&`.
 
 The entire CLI requires Premium: Free includes no commands, help, version or interactive shell. Every invocation verifies access through the shared runtime and can start it with its saved startup settings when absent. Free returns `cli.premium.required` and exit code `11`; unavailable access verification blocks the command. The expected results below describe the output; they are not output captured from a user's installation.
@@ -11,13 +11,13 @@ The commercial license source is not connected yet, so the current production de
 ## Search, reports, clocks and hardware
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli search status --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli search query --text "project notes" --limit 20 --offset 0 --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli search query --from 2026-09-01T00:00:00+07:00 --to 2026-10-01T00:00:00+07:00 --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli report --from 2026-09-01 --to 2026-09-21 --timezone UTC --view applications --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli world-clock list --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli world-clock cities --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli hardware snapshot --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli search status --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli search query --text "project notes" --limit 20 --offset 0 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli search query --from 2026-09-01T00:00:00+07:00 --to 2026-10-01T00:00:00+07:00 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli report --from 2026-09-01 --to 2026-09-21 --timezone UTC --view applications --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli world-clock list --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli world-clock cities --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli hardware snapshot --json; exit $LASTEXITCODE'
 ```
 
 Search requires text or a filter. `--from` includes its timestamp and `--to`
@@ -38,8 +38,7 @@ without requesting installation. Unavailable readings are not reported as zero.
 ## Screenshot gallery and maintenance
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli screenshots gallery --date 2026-09-21 --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli screenshots migrate --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli screenshots gallery --date 2026-09-21 --json; exit $LASTEXITCODE'
 ```
 
 Omit `--date` to read the latest gallery. `screenshots` aliases `screenshot`.
@@ -52,17 +51,13 @@ image and indicates that associated analysis is removed too. Review it, then
 repeat with `--yes`. Core resolves owned artifacts; the CLI never deletes
 arbitrary paths. Preview does not reserve the file or freeze state.
 
-`screenshots migrate` reports whether migration is required and the artifact count.
-Review it, then repeat with `--yes`. A confirmed invocation checks status again
-before requesting migration.
-
 ## Export and import private data
 
 Export defaults to a request preview. It does not validate filesystem availability,
 count records or reserve the exported data set. Use an absolute `.tmuarchive` path:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli data export --destination "C:\Backups\workday.tmuarchive" --from 2026-09-01 --to 2026-09-21 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli data export --destination "C:\Backups\workday.tmuarchive" --from 2026-09-01 --to 2026-09-21 --json; exit $LASTEXITCODE'
 ```
 
 Review the request, then repeat with `--yes`. **Confirmed export replaces an
@@ -71,7 +66,7 @@ both for an inclusive local-date range. `--no-screenshots` excludes image files.
 The archive remains private activity data, not an anonymized report.
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli data import preview --path "C:\Backups\workday.tmuarchive" --json --timeout 120; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli data import preview --path "C:\Backups\workday.tmuarchive" --json --timeout 120; exit $LASTEXITCODE'
 ```
 
 Review `value.planId`, `expiresAt`, counts and `alreadyImported`. Then run
@@ -85,9 +80,9 @@ retrying a write.
 ## AI diagnostics and historical reprocessing
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli ai models --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli ai pricing --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli ai reprocess preview --date 2026-09-21 --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli ai models --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli ai pricing --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli ai reprocess preview --date 2026-09-21 --json; exit $LASTEXITCODE'
 ```
 
 `ai models` reads the validated model catalog. `ai pricing` reads the service's
@@ -98,7 +93,7 @@ connection check to the configured AI provider and can incur cost.
 Reprocessing preview sends no analysis requests. Review eligibility, blocked
 items, remaining allowance, estimated cost, `canStart`, `expiresAt` and `planId`.
 
-| Action | Command after `trackmeup.exe -cli` |
+| Action | Command after `worktrail.exe -cli` |
 | --- | --- |
 | Queue the reviewed plan | `ai reprocess start --plan <planId> --yes --json` |
 | Read progress | `ai reprocess status --job <jobId> --json` |
@@ -113,9 +108,9 @@ not itself pause the background job.
 ## Logs, feature access and reset
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli logs open-folder --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli access status --json; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli reset preview --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli logs open-folder --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli access status --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli reset preview --json; exit $LASTEXITCODE'
 ```
 
 `logs open` opens the latest application log; `logs open-folder` opens its folder.
@@ -124,7 +119,7 @@ Debug simulation state. It requires Premium and cannot change entitlement.
 
 Reset preview describes scope and the screenshot directory without stopping
 tracking or preparing deletion. Reset deletes all local app data and app-owned
-screenshots, disables startup and relaunches TrackMeUp. API keys remain in their
+screenshots, disables startup and relaunches WorkTrail. API keys remain in their
 environment variables. Back up data you want to retain before confirming.
 
 The destructive syntax is `reset run --yes --confirm DELETE-ALL-DATA`. Both flags
@@ -142,9 +137,9 @@ retrying.
 Read the current dashboard, runtime health, and combined diagnostics:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli status --format rich; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli runtime health --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli doctor --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli status --format rich; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli runtime health --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli doctor --format plain; exit $LASTEXITCODE'
 ```
 
 `status` shows tracking and current activity. `runtime health` checks the shared
@@ -155,7 +150,7 @@ and exit code `10`.
 For a dashboard refreshed every five seconds:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli status --watch --interval 5 --format rich; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli status --watch --interval 5 --format rich; exit $LASTEXITCODE'
 ```
 
 Press Ctrl+C to stop watching. Intervals must be integers from `1` through `60`, and `--interval` requires `--watch`. JSON supports a single snapshot, so it cannot be combined with `--watch`.
@@ -165,9 +160,9 @@ Press Ctrl+C to stop watching. Intervals must be integers from `1` through `60`,
 Choose the command for the state change you want; these commands act on the shared runtime:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli tracking start --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli tracking pause --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli tracking toggle --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli tracking start --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli tracking pause --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli tracking toggle --format plain; exit $LASTEXITCODE'
 ```
 
 Each successful command returns the resulting dashboard state. `toggle` switches from the current state, so use `start` or `pause` when a script needs a specific outcome. `--start`, `--pause`, and `--toggle` are equivalent shortcuts after `-cli`.
@@ -175,7 +170,7 @@ Each successful command returns the resulting dashboard state. `toggle` switches
 ## Check AI setup
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli ai status --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli ai status --format plain; exit $LASTEXITCODE'
 ```
 
 See whether AI is on, which provider and model are selected, and whether the key
@@ -188,7 +183,7 @@ Screenshot capture follows the current AI provider setting. For a local-only exa
 
 ```powershell
 pwsh -NoProfile -Command '
-    $providerJson = & trackmeup.exe -cli ai status --json
+    $providerJson = & worktrail.exe -cli ai status --json
     $providerExit = $LASTEXITCODE
     if ($providerExit -ne 0) {
         $providerJson
@@ -198,7 +193,7 @@ pwsh -NoProfile -Command '
     if ($provider.value.enabled) {
         throw "Disable AI provider features before running this local-only capture."
     }
-    & trackmeup.exe -cli screenshot capture --mode active-window --keep --format plain
+    & worktrail.exe -cli screenshot capture --mode active-window --keep --format plain
     exit $LASTEXITCODE
 '
 ```
@@ -208,7 +203,7 @@ Use a window containing synthetic content for a trial capture. The command retur
 Inspect the latest retained screenshot's details:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli screenshot latest --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli screenshot latest --format plain; exit $LASTEXITCODE'
 ```
 
 ## Preview retention before deciding on deletion
@@ -216,8 +211,8 @@ pwsh -NoProfile -Command '& trackmeup.exe -cli screenshot latest --format plain;
 Read the configured retention periods, then inspect the candidates:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli retention status --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli retention preview --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli retention status --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli retention preview --json; exit $LASTEXITCODE'
 ```
 
 The preview deletes nothing. Read its fields as follows:
@@ -233,7 +228,7 @@ Review both retention periods before running cleanup.
 Use command help before confirming deletion with `retention run --yes`:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli retention --help --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli retention --help --format plain; exit $LASTEXITCODE'
 ```
 
 Calling `retention run` without confirmation fails with `retention.confirmation.required` and exit code `3`. A preview does not freeze the candidate set; a confirmed run evaluates retention again.
@@ -252,7 +247,7 @@ Calling `retention run` without confirmation fails with `retention.confirmation.
 For Italian plain-text status with a longer timeout:
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli status --format plain --language it-IT --timeout 15; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli status --format plain --language it-IT --timeout 15; exit $LASTEXITCODE'
 ```
 
 Supported locale choices are `system`, `en-US`, `it-IT`, `fr-FR`, `de-DE`, `es-ES`, `zh-Hans`, `vi-VN`, `ko-KR`, `pt-PT`, and `pt-BR`. Use the full supported tags; values such as `en` or `pt` are rejected.
@@ -261,7 +256,7 @@ For automation, check the process result before parsing successful output:
 
 ```powershell
 pwsh -NoProfile -Command '
-    $json = & trackmeup.exe -cli status --json --language en-US --timeout 15
+    $json = & worktrail.exe -cli status --json --language en-US --timeout 15
     $cliExit = $LASTEXITCODE
     if ($cliExit -ne 0) {
         $json
@@ -296,9 +291,9 @@ The JSON envelope has stable field names: `succeeded`, `code`, `messageKey`, `va
 ## Discover additional commands
 
 ```powershell
-pwsh -NoProfile -Command '& trackmeup.exe -cli --help --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli /ai --help --format plain; exit $LASTEXITCODE'
-pwsh -NoProfile -Command '& trackmeup.exe -cli --version --json; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli --help --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli /ai --help --format plain; exit $LASTEXITCODE'
+pwsh -NoProfile -Command '& worktrail.exe -cli --version --json; exit $LASTEXITCODE'
 ```
 
 The leading slash is optional: `/status` and `status` select the same command. Omitting a command opens the interactive command center when rich output and interactive input are available.

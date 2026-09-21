@@ -25,10 +25,10 @@ and reset checks only with disposable data.
 
 ## World clocks
 
-- With clean settings, open the detached **World clocks** window and confirm that current weather is on by default. Without `TRACKMEUP_OPENWEATHER_API_KEY`, the clocks and astronomy must remain visible while the weather state says setup is required; it must not claim that the user disabled weather and it must not send a provider request.
+- With clean settings, open the detached **World clocks** window and confirm that current weather is on by default. Without `WORKTRAIL_OPENWEATHER_API_KEY`, the clocks and astronomy must remain visible while the weather state says setup is required; it must not claim that the user disabled weather and it must not send a provider request.
 - Reach the icon-only three-dot options action by keyboard. Its localized tooltip and accessible name must be identical. Activating it must show one full options layer over the clock canvas in the same window; the localized icon-only Back action must return to the clocks and restore focus to the opener.
 - In options, turn weather off and on, change always-on-top, add or remove a city, and change the reference city. Saved choices must survive a refresh, the window must keep between one and four clocks, and icon-only actions must have matching localized tooltips and accessible names.
-- Enter an invalid weather key and confirm that it is rejected without being retained. Enter a plausible key and confirm that it is written only to the fixed Windows user/process environment variable, the password field is cleared, the success state is localized, and the live projection refreshes without restarting TrackMeUp. The key must not appear in settings, logs, history, exception text, command lines, or IPC diagnostics.
+- Enter an invalid weather key and confirm that it is rejected without being retained. Enter a plausible key and confirm that it is written only to the fixed Windows user/process environment variable, the password field is cleared, the success state is localized, and the live projection refreshes without restarting WorkTrail. The key must not appear in settings, logs, history, exception text, command lines, or IPC diagnostics.
 - Repeat clocks and options in light, dark, High Contrast, and with Windows transparency effects disabled. Desktop Acrylic must remain visible through transparent theme-aware content or yield to the readable Windows fallback; no opaque full-window veil may hide it.
 - Inspect the city image stack through dawn, day, sunset, and night plus clear, cloud, rain, fog, snow, mixed-precipitation, and lightning states. Astronomical, cloud, and lightning backdrops must remain behind the skyline; the scene fade and celestial body must remain above it; rain, fog, snow, and mixed-precipitation foreground layers must remain in front without flattening the compositing order.
 - Change to a historical or future reference instant and confirm that current weather is not requested, weather layers disappear, and the linked OpenWeather attribution appears only when provider observations are actually shown.
@@ -38,7 +38,7 @@ and reset checks only with disposable data.
 - Trigger information, warning, and error messages that need acknowledgement. Each must appear over its app window as a native Windows message box, with the Windows-localized **OK** action and appropriate icon.
 - Trigger schedule replacement, retention deletion, installation merge, both atomic-reset gates, and application close. Each must use the native **OK/Cancel** layout with **Cancel** selected by default; pressing Escape, closing the message, or choosing Cancel must leave state unchanged.
 - While one message is open, trigger another prompt. Messages must appear one at a time, and the app must become usable again after each message closes or fails to open.
-- Confirm that rich surfaces—city picker, pricing, activity calendar, AI connection test, screenshot reprocessing, and storage migration—remain dedicated accessible windows rather than being reduced to a system message.
+- Confirm that rich surfaces—city picker, pricing, activity calendar, AI connection test, and screenshot reprocessing—remain dedicated accessible windows rather than being reduced to a system message.
 
 ## Screen captures and AI
 
@@ -95,10 +95,10 @@ and reset checks only with disposable data.
 ## Atomic nuke
 
 > [!WARNING]
-> Run the final deletion path only with disposable TrackMeUp data.
+> Run the final deletion path only with disposable WorkTrail data.
 
 - In Tools and diagnostics, scroll to the final Atomic nuke section. Confirm that its warning copy and destructive action remain visible and keyboard accessible.
 - Cancel the first warning and verify that nothing changes.
 - Repeat by accepting the first warning and cancelling the final warning. Verify again that nothing changes.
-- Accept both warnings and confirm that TrackMeUp closes, removes its database, retained screenshots, settings, logs, search indexes, and metadata, disables its startup entry, and relaunches with default settings.
-- When screenshots were stored in a custom directory, confirm that TrackMeUp-owned captures are removed while unrelated files in that directory remain intact.
+- Accept both warnings and confirm that WorkTrail closes, removes its database, retained screenshots, settings, logs, search indexes, and metadata, disables its startup entry, and relaunches with default settings.
+- When screenshots were stored in a custom directory, confirm that WorkTrail-owned captures are removed while unrelated files in that directory remain intact.

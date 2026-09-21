@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible TrackMeUp problem without sharing private activity data.
+description: Report a reproducible WorkTrail problem without sharing private activity data.
 title: "[Bug]: "
 labels:
   - bug
@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve TrackMeUp. Remove API keys, personal screenshots, private paths, window titles, and confidential activity data before submitting. Report vulnerabilities privately through the security policy.
+        Thanks for helping improve WorkTrail. Remove API keys, personal screenshots, private paths, window titles, and confidential activity data before submitting. Report vulnerabilities privately through the security policy.
 
   - type: input
     id: version
