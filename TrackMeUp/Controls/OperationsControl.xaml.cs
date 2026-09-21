@@ -171,7 +171,7 @@ public sealed partial class OperationsControl : UserControl
             return;
         }
 
-        var firstConfirmation = await Dialogs.ConfirmAsync(
+        var firstConfirmation = await Dialogs.ConfirmAtomicResetAsync(
             OwnerWindow,
             DialogRequest.Confirmation(
                 _strings.Translate("Operations.AtomicNuke.First.Title"),
@@ -183,7 +183,7 @@ public sealed partial class OperationsControl : UserControl
             return;
         }
 
-        var finalConfirmation = await Dialogs.ConfirmAsync(
+        var finalConfirmation = await Dialogs.ConfirmAtomicResetAsync(
             OwnerWindow,
             DialogRequest.Confirmation(
                 _strings.Translate("Operations.AtomicNuke.Second.Title"),

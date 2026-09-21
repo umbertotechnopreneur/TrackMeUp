@@ -1,5 +1,10 @@
 # Task Archive
 
+## 2026-09-21 — Illustrated Nuclearize confirmation
+
+- Added a custom Acrylic ContentDialog with generated digital-file cloud artwork adapted from the owner's reference. Theme-specific veils protect localized warning text; high contrast hides the artwork and uses system colors. Both confirmations retain the shared modal queue, owner lifetime handling and Cancel default. Reset behavior is unchanged.
+- Source review and C# formatting only; no build, tests or live reset. Visual acceptance is tracked in todo.
+
 ## 2026-09-21 — Release-aware runtime catalog checks
 
 - Fixed the source-based runtime catalog test to exclude simple DEBUG-only blocks when comparing with the compiled Release catalog. More complex conditional directives fail explicitly instead of being silently filtered. Added a compiled-catalog and client-API check that simulation is present only in Debug. Application code and release entitlement behavior are unchanged.

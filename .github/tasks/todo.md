@@ -1,5 +1,9 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Nuclearize Acrylic confirmation (2026-09-21)
+
+- [ ] Verify both illustrated Nuclearize confirmations in light/dark/high contrast, with transparency disabled, small windows, keyboard navigation and 200% text scaling. Cancel/Escape must stop either step; Enter must default to Cancel. Use only isolated synthetic data for any approved reset test. Build and runtime verification remain pending owner authorization.
+
 ## Release runtime catalog contract (2026-09-21)
 
 - [ ] Confirm the new PR #42 CI run passes after the configuration-aware runtime catalog test fix. All five RuntimeOperationCatalogTests passed in both Debug and Release x64 with analyzers enabled; the compiled Release catalog and client exclude Debug simulation.
