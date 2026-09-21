@@ -4,6 +4,10 @@
 
 - [ ] Owner visual verification: screenshot analysis uses the app language, detailed output uses readable bullets, and report summaries honor brief/detailed selection. No live provider requests were made during implementation.
 
+## AI prompt alignment (2026-09-21)
+
+- [ ] Owner visual verification: screenshot analysis uses the app language, detailed output uses readable bullets, and report summaries honor brief/detailed selection. No live provider requests were made during implementation.
+
 ## Nuclearize Acrylic confirmation (2026-09-21)
 
 - [ ] Verify both illustrated Nuclearize confirmations in light/dark/high contrast, with transparency disabled, small windows, keyboard navigation and 200% text scaling. Cancel/Escape must stop either step; Enter must default to Cancel. Use only isolated synthetic data for any approved reset test. Build and runtime verification remain pending owner authorization.
