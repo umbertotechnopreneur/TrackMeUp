@@ -1,5 +1,9 @@
 # TrackMeUp performance and footprint optimization handoff
 
+## Release runtime catalog contract (2026-09-21)
+
+- [ ] Confirm the new PR #42 CI run passes after the configuration-aware runtime catalog test fix. All five RuntimeOperationCatalogTests passed in both Debug and Release x64 with analyzers enabled; the compiled Release catalog and client exclude Debug simulation.
+
 ## Archive operation feedback and regression corrections (2026-09-21)
 
 - [ ] Visually verify native archive export, preview and import with synthetic data: localized phases, real per-phase file counts and elapsed time must update while the dialog remains responsive. Check remote-runtime polling, failures, shutdown, light/dark/high contrast and text scaling. No installation or app restart is part of this change.

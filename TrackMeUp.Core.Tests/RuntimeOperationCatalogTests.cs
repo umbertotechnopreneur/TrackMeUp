@@ -57,8 +57,8 @@ public sealed class RuntimeOperationCatalogTests
     [Fact]
     public void HostAndClient_ReferenceTheCompleteSharedTypedCatalog()
     {
-        var hostAndClientSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs"));
-        var dispatcherSource = File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeRequestDispatcher.cs"));
+        var hostAndClientSource = SourceForCurrentConfiguration(File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeHost.cs")));
+        var dispatcherSource = SourceForCurrentConfiguration(File.ReadAllText(RepositoryFile("TrackMeUp.Core", "Runtime", "RuntimeRequestDispatcher.cs")));
         var dispatchStart = dispatcherSource.IndexOf("return operation switch", StringComparison.Ordinal);
         var dispatchEnd = dispatcherSource.IndexOf("catch (OperationCanceledException)", dispatchStart, StringComparison.Ordinal);
         var clientStart = hostAndClientSource.IndexOf("public sealed class RuntimeClient", StringComparison.Ordinal);
@@ -110,6 +110,36 @@ public sealed class RuntimeOperationCatalogTests
         Assert.Contains("new RuntimePipeServer", hostSource, StringComparison.Ordinal);
         Assert.DoesNotContain("NamedPipeServerStream", hostSource, StringComparison.Ordinal);
         Assert.DoesNotContain("return operation switch", hostSource, StringComparison.Ordinal);
+    }
+
+    /// <summary>Guards the compiled wire catalog and client API against exposing simulation in Release.</summary>
+    [Fact]
+    public void DebugSimulation_IsAvailableOnlyInDebugBuilds()
+    {
+        var registered = RuntimeOperationCatalog.TryResolve("debug.features.simulate.v1", out _);
+        var clientMethod = typeof(RuntimeClient).GetMethod("SimulateFeatureAccessAsync");
+#if DEBUG
+        Assert.True(registered);
+        Assert.NotNull(clientMethod);
+#else
+        Assert.False(registered);
+        Assert.Null(clientMethod);
+#endif
+    }
+
+    private static string SourceForCurrentConfiguration(string source)
+    {
+#if !DEBUG
+        // These source contracts contain simple DEBUG-only blocks. Reject more complex
+        // directives rather than guessing their meaning or hiding unrelated operations.
+        source = Regex.Replace(source, @"(?ms)^#if DEBUG\r?\n(?<body>.*?)^#endif[ \t]*(?:\r?\n|$)", match =>
+        {
+            Assert.DoesNotMatch(@"(?m)^\s*#(?:if|elif|else|endif)\b", match.Groups["body"].Value);
+            return string.Empty;
+        });
+#endif
+        Assert.DoesNotMatch(@"(?m)^\s*#(?:if|elif|else|endif)\b", Regex.Replace(source, @"(?m)^#(?:if DEBUG|endif)[ \t]*\r?$", string.Empty));
+        return source;
     }
 
     private static string RepositoryFile(params string[] segments)

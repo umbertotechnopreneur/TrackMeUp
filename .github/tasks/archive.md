@@ -1,5 +1,10 @@
 # Task Archive
 
+## 2026-09-21 — Release-aware runtime catalog checks
+
+- Fixed the source-based runtime catalog test to exclude simple DEBUG-only blocks when comparing with the compiled Release catalog. More complex conditional directives fail explicitly instead of being silently filtered. Added a compiled-catalog and client-API check that simulation is present only in Debug. Application code and release entitlement behavior are unchanged.
+- All five targeted tests passed once in Debug x64 and once in Release x64, with code analyzers and warnings-as-errors enabled. Formatting and verification passed. Reports remain under `artifacts/test-results/runtime-catalog-configurations`. The owner authorized commit and push to PR #42 with CI; the full suite was not repeated locally.
+
 ## 2026-09-21 — Archive progress and full-suite corrections
 
 - Added per-operation archive progress through the shared facade and runtime protocol. Export, validation and import report real phases and file counts; the modal dialog polls independently of the mutation lock and shows elapsed time. Unknown totals remain indeterminate. Progress snapshots contain no local paths and are removed when operations finish. All ten locales include the new captions.
