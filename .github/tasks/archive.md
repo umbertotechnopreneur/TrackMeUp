@@ -3,6 +3,7 @@
 ## 2026-09-21 — Restore imports after the application split
 
 - Restored file-scoped service and logging imports in the extracted application partials. The missing imports prevented the CI lint and both Release builds from resolving telemetry types; they also affected service helpers and logging extension methods. No runtime behavior changed. The correction is checked by the PR's authorized CI.
+- Wrapped product-link failures in the completed task required by the method signature. Updated the hardware-ownership source contract to inspect all facade partials, preserving its assertions after the capture method moved to the telemetry file.
 
 ## 2026-09-21 — Illustrated Nuclearize confirmation
 
