@@ -55,7 +55,7 @@ public sealed partial class TrackMeUpApplication
                 System.ComponentModel.Win32Exception)
         {
             _logger.LogWarning("Product link could not be opened. Link={Link} ExceptionType={ExceptionType}", linkKey, exception.GetType().Name);
-            return OperationResult<bool>.Failure("product.link.unavailable", "ProductLinkUnavailable");
+            return Task.FromResult(OperationResult<bool>.Failure("product.link.unavailable", "ProductLinkUnavailable"));
         }
     }
 }
