@@ -59,7 +59,7 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
         foreach (var hardware in _computer.Hardware)
         {
             if (hardware.HardwareType == HardwareType.Network
-                && (physicalNetworkAdapterIds is null || !IsPhysicalNetworkAdapter(hardware, physicalNetworkAdapterIds)))
+                && !IsPhysicalNetworkAdapter(hardware.Identifier.ToString(), physicalNetworkAdapterIds))
             {
                 // LibreHardwareMonitor exposes Windows filter and virtual adapters as network hardware.
                 // Keep only adapters confirmed by Windows as physical, and hide all network entries if
@@ -139,8 +139,8 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher(new ManagementScope(@"\\.\root\cimv2"),
-                new ObjectQuery("SELECT GUID FROM Win32_NetworkAdapter WHERE PhysicalAdapter = TRUE"),
+            using var searcher = new ManagementObjectSearcher(new ManagementScope(@"\\.\root\StandardCimv2"),
+                new ObjectQuery("SELECT InterfaceGuid FROM MSFT_NetAdapter WHERE HardwareInterface = TRUE AND Virtual = FALSE"),
                 new System.Management.EnumerationOptions { ReturnImmediately = true, Rewindable = false, Timeout = TimeSpan.FromSeconds(3) });
             using var results = searcher.Get();
             var adapterIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -148,7 +148,7 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
             {
                 using (row)
                 {
-                    if (Guid.TryParse(row["GUID"] as string, out var adapterId)) adapterIds.Add(adapterId.ToString("D"));
+                    if (Guid.TryParse(row["InterfaceGuid"] as string, out var adapterId)) adapterIds.Add(adapterId.ToString("D"));
                 }
             }
             return adapterIds;
@@ -159,12 +159,13 @@ internal sealed class LibreHardwareTelemetryCollector : IDisposable
         }
     }
 
-    private static bool IsPhysicalNetworkAdapter(IHardware hardware, ISet<string> physicalAdapterIds)
+    /// <summary>Matches a LibreHardwareMonitor network identifier only when Windows confirmed its physical adapter GUID.</summary>
+    internal static bool IsPhysicalNetworkAdapter(string hardwareIdentifier, ISet<string>? physicalAdapterIds)
     {
+        if (physicalAdapterIds is null) return false;
         const string networkIdentifierPrefix = "/nic/";
-        var identifier = hardware.Identifier.ToString();
-        if (!identifier.StartsWith(networkIdentifierPrefix, StringComparison.OrdinalIgnoreCase)) return false;
-        var encodedAdapterId = identifier[networkIdentifierPrefix.Length..];
+        if (!hardwareIdentifier.StartsWith(networkIdentifierPrefix, StringComparison.OrdinalIgnoreCase)) return false;
+        var encodedAdapterId = hardwareIdentifier[networkIdentifierPrefix.Length..];
         return Guid.TryParse(Uri.UnescapeDataString(encodedAdapterId), out var adapterId)
             && physicalAdapterIds.Contains(adapterId.ToString("D"));
     }

@@ -55,6 +55,10 @@
       <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
       <BuildType Solution="Release-Unpackaged|*" Project="Release" />
     </Project>
+    <Project Path="WorkTrail.Hardware.Tests/WorkTrail.Hardware.Tests.csproj">
+      <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
+      <BuildType Solution="Release-Unpackaged|*" Project="Release" />
+    </Project>
     <Project Path="WorkTrail.Ocr.Tests/WorkTrail.Ocr.Tests.csproj">
       <BuildType Solution="Debug-Unpackaged|*" Project="Debug" />
       <BuildType Solution="Release-Unpackaged|*" Project="Release" />
