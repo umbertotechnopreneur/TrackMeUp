@@ -162,45 +162,56 @@ public sealed partial class OperationsControl : UserControl
 
     private async void AtomicNukeButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_operationInProgress)
+        try
         {
+            if (_operationInProgress)
+            {
+                ShowStatus(
+                    _strings.Translate("Operations.Status.InProgress.Title"),
+                    _strings.Translate("Operations.Status.InProgress.Message"),
+                    InfoBarSeverity.Warning);
+                return;
+            }
+
+            var firstConfirmation = await Dialogs.ConfirmAtomicResetAsync(
+                OwnerWindow,
+                DialogRequest.Confirmation(
+                    _strings.Translate("Operations.AtomicNuke.First.Title"),
+                    _strings.Translate("Operations.AtomicNuke.First.Message"),
+                    _strings.Translate("Dialog.Ok"),
+                    _strings.Translate("Dialog.Cancel")));
+            if (!firstConfirmation)
+            {
+                return;
+            }
+
+            var finalConfirmation = await Dialogs.ConfirmAtomicResetAsync(
+                OwnerWindow,
+                DialogRequest.Confirmation(
+                    _strings.Translate("Operations.AtomicNuke.Second.Title"),
+                    _strings.Translate("Operations.AtomicNuke.Second.Message"),
+                    _strings.Translate("Dialog.Ok"),
+                    _strings.Translate("Dialog.Cancel")));
+            if (!finalConfirmation)
+            {
+                return;
+            }
+
+            var result = await ExecuteAsync((application, token) => application.PrepareAtomicResetAsync(
+                new AtomicResetRequest(firstConfirmation, finalConfirmation),
+                token));
+            if (result is { Succeeded: true, Value: { } plan })
+            {
+                AtomicResetPrepared?.Invoke(this, new AtomicResetPreparedEventArgs(plan));
+            }
+        }
+        catch (Exception)
+        {
+            // A confirmation-host failure must leave the app running and never prepare a reset.
             ShowStatus(
-                _strings.Translate("Operations.Status.InProgress.Title"),
-                _strings.Translate("Operations.Status.InProgress.Message"),
-                InfoBarSeverity.Warning);
-            return;
-        }
-
-        var firstConfirmation = await Dialogs.ConfirmAtomicResetAsync(
-            OwnerWindow,
-            DialogRequest.Confirmation(
-                _strings.Translate("Operations.AtomicNuke.First.Title"),
-                _strings.Translate("Operations.AtomicNuke.First.Message"),
-                _strings.Translate("Dialog.Ok"),
-                _strings.Translate("Dialog.Cancel")));
-        if (!firstConfirmation)
-        {
-            return;
-        }
-
-        var finalConfirmation = await Dialogs.ConfirmAtomicResetAsync(
-            OwnerWindow,
-            DialogRequest.Confirmation(
-                _strings.Translate("Operations.AtomicNuke.Second.Title"),
-                _strings.Translate("Operations.AtomicNuke.Second.Message"),
-                _strings.Translate("Dialog.Ok"),
-                _strings.Translate("Dialog.Cancel")));
-        if (!finalConfirmation)
-        {
-            return;
-        }
-
-        var result = await ExecuteAsync((application, token) => application.PrepareAtomicResetAsync(
-            new AtomicResetRequest(firstConfirmation, finalConfirmation),
-            token));
-        if (result is { Succeeded: true, Value: { } plan })
-        {
-            AtomicResetPrepared?.Invoke(this, new AtomicResetPreparedEventArgs(plan));
+                _strings.Translate("Operations.Status.RuntimeUnavailable.Title"),
+                _strings.Translate("Operations.Status.RuntimeUnavailable.Message"),
+                InfoBarSeverity.Error);
         }
     }
 

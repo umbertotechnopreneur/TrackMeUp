@@ -4,6 +4,10 @@ This is a compact historical index of durable WorkTrail milestones. It intention
 
 ## 2026-09-21
 
+### Reset confirmation reliability
+
+- Replaced the crash-prone illustrated reset confirmation with a dedicated, accessible red WinUI dialog and keep a confirmation-host failure inside the app without preparing a reset.
+
 ### Store preparation and product boundaries
 
 - Established the September 21–27 maintenance freeze for Store preparation. Reliability fixes and polish remain in scope; new features require an explicit exception.
