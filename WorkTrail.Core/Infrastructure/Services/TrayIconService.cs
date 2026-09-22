@@ -65,14 +65,33 @@ public sealed class TrayIconService : IDisposable
     /// <summary>Occurs after the user explicitly selects Close app in the notification-area context menu.</summary>
     public event EventHandler? ExitRequested;
 
-    /// <summary>Registers the notification-area icon if necessary, then hides the main window from the taskbar.</summary>
-    public void HideToNotificationArea(IntPtr windowHandle, string iconPath, string toolTip, TrayIconMenuLabels menuLabels)
+    /// <summary>Registers the notification-area icon without changing the main window's visibility.</summary>
+    public void ShowInNotificationArea(IntPtr windowHandle, string iconPath, string toolTip, TrayIconMenuLabels menuLabels)
     {
         ThrowIfDisposed();
         EnsureAttached(windowHandle, iconPath, toolTip, menuLabels);
+    }
+
+    /// <summary>Registers the notification-area icon if necessary, then hides the main window from the taskbar.</summary>
+    public void HideToNotificationArea(IntPtr windowHandle, string iconPath, string toolTip, TrayIconMenuLabels menuLabels)
+    {
+        ShowInNotificationArea(windowHandle, iconPath, toolTip, menuLabels);
 
         // Hiding the real top-level window removes its taskbar button while leaving its message queue available for the tray callback.
         _ = ShowWindow(_windowHandle, ShowWindowHide);
+    }
+
+    /// <summary>Restores and foregrounds the attached main window when it was hidden in the notification area.</summary>
+    public void ShowMainWindow()
+    {
+        ThrowIfDisposed();
+        if (_windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        RestoreMainWindowIfHidden();
+        _ = SetForegroundWindow(_windowHandle);
     }
 
     /// <summary>Removes the icon and releases the native subclass before the owning window is destroyed.</summary>
@@ -292,8 +311,7 @@ public sealed class TrayIconService : IDisposable
         }
 
         // Restoring the same native window preserves the active WinUI surface and places it in the foreground after a tray click.
-        _ = ShowWindow(_windowHandle, ShowWindowNormal);
-        _ = SetForegroundWindow(_windowHandle);
+        ShowMainWindow();
     }
 
     private void ShowContextMenu()
