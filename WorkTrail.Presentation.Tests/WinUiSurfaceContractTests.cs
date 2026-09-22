@@ -730,7 +730,9 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("UtcTimeText.Text = _strings.Format(\"Main.Time.Utc\", state.UtcTime);", source, StringComparison.Ordinal);
         Assert.Contains("new ScreenshotPreviewRequestedEventArgs(screenshotPath, capturedAt)", source, StringComparison.Ordinal);
         Assert.Contains("session?.ScreenshotCapturedAt is { } capturedAt", source, StringComparison.Ordinal);
-        Assert.Contains("ScreenshotStatusText.Text = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
+        Assert.Contains("var status = T(_screenshotsEnabled ? \"Screenshot.Status.On\" : \"Screenshot.Status.Off\");", source, StringComparison.Ordinal);
+        Assert.Contains("ScreenshotStatusText.Text = _dataDirectorySizeBytes is { } bytes", source, StringComparison.Ordinal);
+        Assert.Contains("? $\"{status} · {T(\"Sensors.UsedSpace\")}: {FormatDataDirectorySize(bytes)}\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ScreenshotStatusText.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.Contains("MainWindowLayoutState", source, StringComparison.Ordinal);
         Assert.Contains("RootGrid.Measure(new Size(CurrentLogicalWindowWidth, double.PositiveInfinity));", source, StringComparison.Ordinal);
@@ -1124,7 +1126,7 @@ public sealed class WinUiSurfaceContractTests
     }
 
     [Fact]
-    public void MainWindow_RemainsVisibleWhenTaskbarWidgetAttaches()
+    public void MainWindow_RemainsReachableWhenTaskbarWidgetAttaches()
     {
         var appSource = File.ReadAllText(RepositoryFile("WorkTrail", "App.xaml.cs"));
         var startUiStart = appSource.IndexOf("private async void StartUi", StringComparison.Ordinal);
@@ -1136,13 +1138,14 @@ public sealed class WinUiSurfaceContractTests
         Assert.True(applyWidgetStart >= 0 && applyWidgetEnd > applyWidgetStart, "Taskbar widget settings lifecycle contract was not found.");
         var startUiSource = appSource[startUiStart..startUiEnd];
         var applyWidgetSource = appSource[applyWidgetStart..applyWidgetEnd];
-        Assert.Contains("_window.Activate();", startUiSource, StringComparison.Ordinal);
+        Assert.Contains("_window.EnsureNotificationAreaIcon();", startUiSource, StringComparison.Ordinal);
+        Assert.Contains("_window.ShowFlyout();", startUiSource, StringComparison.Ordinal);
         Assert.Contains("await CompleteUiStartupAsync(application, options, initialSettings.Value);", startUiSource, StringComparison.Ordinal);
         Assert.Contains("private async Task CompleteUiStartupAsync", startUiSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetAwaiter().GetResult()", startUiSource, StringComparison.Ordinal);
         Assert.True(
-            startUiSource.IndexOf("_window.Activate();", StringComparison.Ordinal) < startUiSource.IndexOf("ApplyTaskbarWidgetSettings(settings);", StringComparison.Ordinal),
-            "MainWindow must activate before optional taskbar-widget initialization.");
+            startUiSource.LastIndexOf("_window.ShowFlyout();", StringComparison.Ordinal) < startUiSource.IndexOf("ApplyTaskbarWidgetSettings(settings);", StringComparison.Ordinal),
+            "MainWindow must remain reachable before optional taskbar-widget initialization.");
         Assert.Contains("if (!settings.TaskbarWidgetVisible)", applyWidgetSource, StringComparison.Ordinal);
         Assert.Contains("new TaskbarWidgetSurface", applyWidgetSource, StringComparison.Ordinal);
         Assert.Contains("taskbarWidgetSurface.Attach(settings.TaskbarWidgetPosition)", applyWidgetSource, StringComparison.Ordinal);
