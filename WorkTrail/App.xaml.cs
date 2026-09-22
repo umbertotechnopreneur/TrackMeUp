@@ -51,6 +51,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     private bool _worldMapWindowOpening;
     private bool _lunarPhaseWindowOpening;
     private bool _uiStarting;
+    private bool _showMainWindowWhenUiReady;
     private bool _quickSetupOwnerWasInteractive;
     private string _uiLanguage = "system";
     private int _shutdownStarted;
@@ -164,6 +165,9 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         if (_uiStarting)
         {
+            // A Start-menu activation can arrive while the original UI request is still loading settings.
+            // Preserve that explicit reveal so a sign-in launch cannot hide the player after the request.
+            _showMainWindowWhenUiReady = true;
             return;
         }
 
@@ -196,26 +200,29 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.ExitRequested += MainWindow_ExitRequested;
             _window.AtomicResetPrepared += MainWindow_AtomicResetPrepared;
             _window.Closed += MainWindow_Closed;
-            if (options.StartWithWindows)
+            var startHidden = options.StartWithWindows && !_showMainWindowWhenUiReady;
+            _showMainWindowWhenUiReady = false;
+            try
             {
-                try
+                _window.EnsureNotificationAreaIcon();
+                if (startHidden)
                 {
                     _window.StartMinimizedToNotificationArea();
                 }
-                catch (Exception exception)
+                else
                 {
-                    // If Explorer rejects the tray icon, keep the application reachable through its main window.
-                    _logger.LogError(exception, "Hidden startup could not initialize the notification-area icon.");
-                    var strings = new LocalizationService(options.Language ?? "system");
-                    _windowsNotifications.TryShow(
-                        strings.Translate("Tray.UnavailableTitle"),
-                        strings.Translate("Tray.UnavailableMessage"));
-                    _window.Activate();
+                    _window.ShowFlyout();
                 }
             }
-            else
+            catch (Exception exception)
             {
-                _window.Activate();
+                // If Explorer rejects the tray icon, keep the application reachable through its main window.
+                _logger.LogError(exception, "UI startup could not initialize the notification-area icon.");
+                var strings = new LocalizationService(options.Language ?? "system");
+                _windowsNotifications.TryShow(
+                    strings.Translate("Tray.UnavailableTitle"),
+                    strings.Translate("Tray.UnavailableMessage"));
+                _window.ShowFlyout();
             }
 
             await CompleteUiStartupAsync(application, options, initialSettings.Value);
