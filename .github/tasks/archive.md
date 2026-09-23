@@ -4,6 +4,12 @@ This is a compact historical index of durable WorkTrail milestones. It intention
 
 ## 2026-09-24
 
+### Locale checks after private Store listing removal
+
+- Made repository discovery use the solution file and checked the canonical locale catalog
+  against shipped localization files, keeping manifest and duplicate-property validation
+  independent of the private Store listing.
+
 ### Guided provider setup and About polish
 
 - Added reusable AI/OpenWeather credential sheets with masked examples, provider guides,
