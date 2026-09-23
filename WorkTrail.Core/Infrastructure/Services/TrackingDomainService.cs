@@ -18,6 +18,7 @@ public sealed class TrackingDomainService : IDisposable
     private readonly ActivityMonitorService _monitor;
     private readonly ActivityScoreService _activityScore = new();
     private readonly object _dashboardActivityCacheLock = new();
+    private readonly Task<long> _dataDirectorySizeTask;
     private ActivitySample? _latestSample;
     private DateTimeOffset? _trackingStartedAt;
     private DashboardActivityCache? _dashboardActivityCache;
@@ -36,6 +37,18 @@ public sealed class TrackingDomainService : IDisposable
         _monitor.SampleRecorded += HandleSampleRecorded;
         _monitor.SampleSuppressed += HandleSampleSuppressed;
         _monitor.RuntimeHealthChanged += HandleRuntimeHealthChanged;
+        // Directory enumeration can be slow for long screenshot histories, so it starts once on a background thread.
+        _dataDirectorySizeTask = Task.Run(() => CalculateDirectorySize(store.DataDirectory));
+        _ = _dataDirectorySizeTask.ContinueWith(
+            task => Trace.TraceWarning("WorkTrail data directory size calculation failed: {0}", task.Exception?.GetBaseException().Message),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        _ = _dataDirectorySizeTask.ContinueWith(
+            _ => DashboardStateChanged?.Invoke(LoadCurrentDashboardState()),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnRanToCompletion,
+            TaskScheduler.Default);
     }
 
     public event Action<DashboardState>? DashboardStateChanged;
@@ -136,8 +149,45 @@ public sealed class TrackingDomainService : IDisposable
             ActivityScore: _activityScore.GetState(settings.ScreenshotIntervalMinutes, utcNow),
             SpanLabel: settings.SpanLabel)
         {
-            CurrentApplicationIconPixels = sample?.State == "active" ? sample.ApplicationIconPixels : null
+            CurrentApplicationIconPixels = sample?.State == "active" ? sample.ApplicationIconPixels : null,
+            DataDirectorySizeBytes = _dataDirectorySizeTask.IsCompletedSuccessfully
+                ? _dataDirectorySizeTask.Result
+                : null
         };
+    }
+
+    private static long CalculateDirectorySize(string dataDirectory)
+    {
+        if (!Directory.Exists(dataDirectory))
+        {
+            return 0;
+        }
+
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = false,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+            ReturnSpecialDirectories = false,
+        };
+        long totalBytes = 0;
+        foreach (var path in Directory.EnumerateFiles(dataDirectory, "*", options))
+        {
+            try
+            {
+                totalBytes = checked(totalBytes + new FileInfo(path).Length);
+            }
+            catch (FileNotFoundException)
+            {
+                // Runtime-owned logs and temporary files may disappear while the snapshot is being measured.
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // A retention operation may remove a directory after it has been enumerated.
+            }
+        }
+
+        return totalBytes;
     }
 
     /// <summary>

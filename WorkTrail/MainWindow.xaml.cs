@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window
     private DateTimeOffset? _latestScreenshotCapturedAt;
     private CancellationTokenSource? _latestScreenshotLoadCancellation;
     private int _latestScreenshotLoadGeneration;
+    private long? _dataDirectorySizeBytes;
     private bool _screenshotsEnabled;
     private bool _isTracking;
     private const int PendingSnapshotDeleteSeconds = 30;
@@ -1608,6 +1609,8 @@ public sealed partial class MainWindow : Window
         ApplyFeatureAccess(state.FeatureAccess);
         PlayerLabelSelector.ApplyActiveLabel(state.SpanLabel);
         _isTracking = state.IsTracking;
+        _dataDirectorySizeBytes = state.DataDirectorySizeBytes;
+        UpdateScreenshotCaptureStatus();
         UpdateActiveHoursAvailability(state.IsWithinActiveHours);
         var currentContext = state.CurrentContext is "STATE_READY"
             ? T("StateReady")
@@ -2133,8 +2136,28 @@ public sealed partial class MainWindow : Window
         ApplySettings(settings);
     }
 
-    private void UpdateScreenshotCaptureStatus() =>
-        ScreenshotStatusText.Text = T(_screenshotsEnabled ? "Screenshot.Status.On" : "Screenshot.Status.Off");
+    private void UpdateScreenshotCaptureStatus()
+    {
+        var status = T(_screenshotsEnabled ? "Screenshot.Status.On" : "Screenshot.Status.Off");
+        ScreenshotStatusText.Text = _dataDirectorySizeBytes is { } bytes
+            ? $"{status} · {T("Sensors.UsedSpace")}: {FormatDataDirectorySize(bytes)}"
+            : status;
+    }
+
+    private string FormatDataDirectorySize(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        var value = (double)Math.Max(0, bytes);
+        var unit = 0;
+        while (value >= 1000d && unit < units.Length - 1)
+        {
+            value /= 1000d;
+            unit++;
+        }
+
+        var format = unit >= 3 ? "0.00" : "0.#";
+        return $"{value.ToString(format, _strings.Culture)} {units[unit]}";
+    }
 
     private void UpdateDetailsAccessibility()
     {
@@ -2256,6 +2279,7 @@ public sealed partial class MainWindow : Window
     /// <summary>Shows the player at its current user-controlled position.</summary>
     public void ShowFlyout()
     {
+        _trayIcon.ShowMainWindow();
         Activate();
     }
 
@@ -2287,6 +2311,19 @@ public sealed partial class MainWindow : Window
     {
         _allowClose = true;
         Close();
+    }
+
+    /// <summary>Registers the notification-area icon without changing the player's visibility.</summary>
+    internal void EnsureNotificationAreaIcon()
+    {
+        _trayIcon.ShowInNotificationArea(
+            WinRT.Interop.WindowNative.GetWindowHandle(this),
+            System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "WorkTrailIcon.ico"),
+            "WorkTrail",
+            new TrayIconMenuLabels(
+                T("Tray.ShowMainWindow"),
+                T("Tray.HideMainWindow"),
+                T("Tray.CloseApplication")));
     }
 
     /// <summary>Starts the Windows-sign-in instance in the notification area without first creating a taskbar button.</summary>

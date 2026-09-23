@@ -84,7 +84,19 @@ public static class WorkTrailApplicationFactory
             IndexRootPath = store.SearchIndexRootDirectory,
             SynonymSets = SearchSynonymConfiguration.Load(Path.Combine(AppContext.BaseDirectory, "search-synonyms.json"))
         };
-        return new LocalSearchService(options);
+        try
+        {
+            return new LocalSearchService(options);
+        }
+        catch (InvalidDataException)
+        {
+            // The constructor releases all Lucene handles before reporting an invalid derived index.
+            // Delete only the versioned index, mark the source projection stale, and retry once.
+            var indexPath = Path.Combine(options.IndexRootPath, LocalSearchService.IndexDirectoryName);
+            Directory.Delete(indexPath, recursive: true);
+            store.MarkSearchSourceRebuild("invalid-lucene-index");
+            return new LocalSearchService(options);
+        }
     }
 }
 

@@ -221,6 +221,9 @@ public sealed record DashboardState(
 
     /// <summary>Runtime-owned feature access, shared with subscribed frontends without persisting an entitlement.</summary>
     public WorkTrail.Application.FeatureAccessSnapshot? FeatureAccess { get; init; }
+
+    /// <summary>Completed background measurement of the local WorkTrail data directory.</summary>
+    public long? DataDirectorySizeBytes { get; init; }
 }
 
 /// <summary>Describes a retained manual screenshot that can be deleted before deferred analysis begins.</summary>

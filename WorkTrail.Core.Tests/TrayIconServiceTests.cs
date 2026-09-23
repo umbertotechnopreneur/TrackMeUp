@@ -13,6 +13,32 @@ namespace WorkTrail.Core.Tests;
 
 public sealed class TrayIconServiceTests
 {
+    /// <summary>Registration exposes the tray icon without changing an already visible player's state.</summary>
+    [Fact]
+    public void ShowInNotificationArea_RegistersIconWithoutHidingPlayer()
+    {
+        using var fixture = new TrayFixture();
+        _ = ShowWindow(fixture.Window, 4 /* SW_SHOWNOACTIVATE */);
+
+        fixture.ShowInNotificationArea();
+
+        Assert.True(fixture.Shell.IconPresent);
+        Assert.True(IsWindowVisible(fixture.Window));
+    }
+
+    /// <summary>An explicit UI activation restores a player that was previously hidden in the notification area.</summary>
+    [Fact]
+    public void ShowMainWindow_RestoresHiddenPlayer()
+    {
+        using var fixture = new TrayFixture();
+        fixture.Hide();
+
+        fixture.Service.ShowMainWindow();
+
+        Assert.True(IsWindowVisible(fixture.Window));
+        Assert.True(fixture.Shell.IconPresent);
+    }
+
     /// <summary>A taskbar rebuild restores the icon without changing the player's current visibility or duplicating owners.</summary>
     [Theory]
     [InlineData(false)]
@@ -190,6 +216,10 @@ public sealed class TrayIconServiceTests
 
         /// <summary>Exercises the public minimize command with complete localized labels.</summary>
         public void Hide() => Service.HideToNotificationArea(Window, _iconPath, "WorkTrail recovery test",
+            new TrayIconMenuLabels("Show", "Hide", "Exit"));
+
+        /// <summary>Exercises icon registration without changing the current window visibility.</summary>
+        public void ShowInNotificationArea() => Service.ShowInNotificationArea(Window, _iconPath, "WorkTrail recovery test",
             new TrayIconMenuLabels("Show", "Hide", "Exit"));
 
         /// <summary>Dispatches the real registered Windows message only to this test window.</summary>
