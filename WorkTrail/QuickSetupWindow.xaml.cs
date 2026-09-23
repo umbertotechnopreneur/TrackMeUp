@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using WorkTrail.Application;
+using WorkTrail.Controls;
 using WorkTrail.Services;
 
 namespace WorkTrail;
@@ -14,8 +15,8 @@ namespace WorkTrail;
 /// <summary>Collects one Quick Setup profile choice and delegates its atomic application to the shared facade.</summary>
 internal sealed partial class QuickSetupWindow : Window
 {
-    private const int LogicalWindowWidth = 860;
-    private const int LogicalWindowHeight = 650;
+    private const int LogicalWindowWidth = 1000;
+    private const int LogicalWindowHeight = 760;
     private const int LogicalScreenMargin = 24;
     private readonly IWorkTrailApplication _application;
     private readonly AppWindow _appWindow;
@@ -24,8 +25,11 @@ internal sealed partial class QuickSetupWindow : Window
     private readonly LocalizationService _strings;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly bool _firstRun;
+    private readonly string _providerName;
     private string _selectedProfileId;
     private bool _applying;
+    private bool _aiVerified;
+    private bool _applyAfterVerification;
 
     /// <summary>Occurs after the application layer persists a complete Quick Setup profile.</summary>
     internal event Action<AppSettings>? ProfileApplied;
@@ -42,6 +46,13 @@ internal sealed partial class QuickSetupWindow : Window
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(ownerAppWindow);
         _firstRun = firstRun;
+        _providerName = settings.AiProvider.ToLowerInvariant() switch
+        {
+            "openai" => "OpenAI",
+            "openrouter" => "OpenRouter",
+            "anthropic" => "Anthropic",
+            _ => throw new InvalidOperationException("The configured AI provider is unsupported.")
+        };
         _strings = new LocalizationService(settings.UiLanguage);
         _selectedProfileId = firstRun ? QuickSetupProfileIds.Complete : InferProfile(settings);
 
@@ -85,7 +96,9 @@ internal sealed partial class QuickSetupWindow : Window
     {
         UiLocalization.Apply(RootGrid, _strings);
         Title = T("QuickSetup.Title");
-        PrimaryButton.Content = T(_firstRun ? "QuickSetup.Start" : "QuickSetup.Apply");
+        PrimaryButton.Content = T(_firstRun ? "ProviderSetup.Continue" : "QuickSetup.Apply");
+        ApiSetupButton.Content = _providerName + " API";
+        if (_firstRun) WelcomeText.Text = T("ProviderSetup.Welcome");
         AutomationProperties.SetName(PrimaryButton, PrimaryButton.Content?.ToString() ?? T("QuickSetup.Apply"));
         AutomationProperties.SetName(CompleteProfileButton, T("QuickSetup.Profile.Complete.Accessible"));
         AutomationProperties.SetName(AssistedProfileButton, T("QuickSetup.Profile.Assisted.Accessible"));
@@ -132,6 +145,58 @@ internal sealed partial class QuickSetupWindow : Window
             return;
         }
 
+        if (_selectedProfileId is QuickSetupProfileIds.Complete or QuickSetupProfileIds.Assisted && !_aiVerified)
+        {
+            await ShowApiSetupAsync(applyAfterVerification: true);
+            return;
+        }
+
+        await ApplyProfileAsync();
+    }
+
+    private async void ApiSetupButton_Click(object sender, RoutedEventArgs e) =>
+        await ShowApiSetupAsync(applyAfterVerification: false);
+
+    private async Task ShowApiSetupAsync(bool applyAfterVerification)
+    {
+        _applyAfterVerification = applyAfterVerification;
+        _aiVerified = false;
+        var setup = new ProviderKeySetupControl();
+        setup.Dismissed += ApiSetup_Dismissed;
+        setup.WithoutAiRequested += ApiSetup_WithoutAiRequested;
+        ProfileSurface.Visibility = Visibility.Collapsed;
+        KeySetupHost.Content = setup;
+        KeySetupHost.Visibility = Visibility.Visible;
+        await setup.InitializeAsync(_application, _strings, weather: false, _lifetimeCancellation.Token);
+    }
+
+    private void ReturnToProfiles()
+    {
+        KeySetupHost.Content = null;
+        KeySetupHost.Visibility = Visibility.Collapsed;
+        ProfileSurface.Visibility = Visibility.Visible;
+        SelectedButton().Focus(FocusState.Programmatic);
+    }
+
+    private async void ApiSetup_Dismissed(bool verified)
+    {
+        _aiVerified = verified;
+        ReturnToProfiles();
+        if (verified && _applyAfterVerification) await ApplyProfileAsync();
+    }
+
+    private void ApiSetup_WithoutAiRequested()
+    {
+        _selectedProfileId = _selectedProfileId == QuickSetupProfileIds.Complete
+            ? QuickSetupProfileIds.LocalRecord : QuickSetupProfileIds.EssentialOffline;
+        _aiVerified = false;
+        UpdateSelection();
+        ReturnToProfiles();
+    }
+
+    private async Task ApplyProfileAsync()
+    {
+
         _applying = true;
         SetActionsEnabled(false);
         ApplyInfoBar.IsOpen = false;
@@ -145,13 +210,16 @@ internal sealed partial class QuickSetupWindow : Window
             if (!result.Succeeded || result.Value is null)
             {
                 ApplyInfoBar.Title = T("QuickSetup.Error.Title");
-                ApplyInfoBar.Message = result.Issues.Any(issue =>
+                ApplyInfoBar.Message = result.Code == "quick_setup.ai.verification_required"
+                    ? T("ProviderSetup.Error.VerificationRequired")
+                    : result.Issues.Any(issue =>
                         issue.Field == "ai.enabled" && issue.Code == "api_key_required")
                     ? T("QuickSetup.Error.AiKey")
                     : result.Issues.Any(issue => issue.Field == "startup.enabled")
                         ? T("QuickSetup.Error.Startup")
                         : T("QuickSetup.Error.Generic");
                 ApplyInfoBar.IsOpen = true;
+                if (result.Code == "quick_setup.ai.verification_required") _aiVerified = false;
                 return;
             }
 
@@ -180,6 +248,7 @@ internal sealed partial class QuickSetupWindow : Window
         EssentialOfflineProfileButton.IsEnabled = enabled;
         StartWithWindowsCheckBox.IsEnabled = enabled;
         PrimaryButton.IsEnabled = enabled;
+        ApiSetupButton.IsEnabled = enabled;
     }
 
     private ToggleButton SelectedButton() => _selectedProfileId switch

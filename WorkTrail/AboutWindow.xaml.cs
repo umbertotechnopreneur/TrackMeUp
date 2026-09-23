@@ -136,6 +136,12 @@ public sealed partial class AboutWindow : Window
     private async void RepositoryButton_Click(object sender, RoutedEventArgs e) =>
         await RunProductLinkActionAsync("repository");
 
+    private async void PrivacyButton_Click(object sender, RoutedEventArgs e) =>
+        await RunProductLinkActionAsync("privacy");
+
+    private async void TermsButton_Click(object sender, RoutedEventArgs e) =>
+        await RunProductLinkActionAsync("terms");
+
     private void LicensesButton_Click(object sender, RoutedEventArgs e) => ShowLicenses();
 
     /// <summary>Opens or focuses the licenses work surface, including during workspace restoration.</summary>
@@ -155,8 +161,10 @@ public sealed partial class AboutWindow : Window
     private async Task RunProductLinkActionAsync(string linkKey)
     {
         IssuesButton.IsEnabled = false;
-        RepositoryFooterButton.IsEnabled = false;
+        RepositoryButton.IsEnabled = false;
         CreatedByButton.IsEnabled = false;
+        PrivacyButton.IsEnabled = false;
+        TermsButton.IsEnabled = false;
         try
         {
             var result = await _application.OpenProductLinkAsync(linkKey, _lifetimeCancellation.Token);
@@ -184,8 +192,10 @@ public sealed partial class AboutWindow : Window
             if (!_lifetimeCancellation.IsCancellationRequested)
             {
                 IssuesButton.IsEnabled = true;
-                RepositoryFooterButton.IsEnabled = true;
+                RepositoryButton.IsEnabled = true;
                 CreatedByButton.IsEnabled = true;
+                PrivacyButton.IsEnabled = true;
+                TermsButton.IsEnabled = true;
             }
         }
     }

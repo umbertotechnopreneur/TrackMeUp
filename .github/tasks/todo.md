@@ -9,6 +9,11 @@ the action needs authorization. Remove the item when it is complete.
 
 ## Active now: startup and restored-data recovery
 
+- [ ] Visually accept the guided AI/OpenWeather key sheets and edge-to-edge About hero at
+  Windows scaling levels, including success, rejected key, offline/timeout, close during a
+  request, and returning to a profile without AI. The owner authorized this OOBE work as an
+  exception to the September freeze; package installation remains separately controlled.
+
 - [ ] A Start-menu launch must always restore, show, and activate the existing Main window,
   including when the process is already running, hidden, or minimized.
 - [ ] Register the notification-area icon for the application lifetime. Its primary action
@@ -40,6 +45,10 @@ the action needs authorization. Remove the item when it is complete.
   explicitly authorized and the linked document is ready to exist on the target branch.
 
 ## Automated verification after owner approval
+
+- [ ] Rerun only `QuickSetup_UsesFourAccessibleProfileControlsOnVisibleAcrylic` after owner
+  approval: its obsolete hidden-scrollbar expectation has been updated for the visible
+  automatic scrollbar. The initial targeted run passed its other checks.
 
 - [ ] Add or update focused coverage for single-instance activation, notification-area
   lifetime, startup recovery, rebuildable search-index state, and restored gallery paths.

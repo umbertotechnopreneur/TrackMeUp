@@ -323,7 +323,6 @@ You can also open About in the app to find logs, report a problem, visit the pro
 - <code>WorkTrail.*.Tests/</code> — automated test projects.
 - <code>scripts/WorkTrail.ps1</code> — script for builds, tests, and packaging.
 - <code>docs/</code> — privacy, testing, and development guides.
-- <code>store/</code> — Microsoft Store listing and submission files.
 
 ## License
 

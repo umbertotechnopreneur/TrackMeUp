@@ -39,5 +39,5 @@ __pycache__/
 # Local JavaScript dependencies
 node_modules/
 
-# Internal Store account export
-/store/partner-center/metadata.json
+# Store listing and account material stay in private product notes.
+/store/

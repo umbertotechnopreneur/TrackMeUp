@@ -1030,10 +1030,13 @@
                                 TextWrapping="Wrap" />
                             <Button
                                 Margin="0,8,0,0"
-                                Tag="Options.SaveApiKey"
+                                Tag="ProviderSetup.Verify"
                                 HorizontalAlignment="Stretch"
                                 Click="SetApiKeyButton_Click"
-                                Content="Set key for this PC" />
+                                Content="Test connection" />
+                            <TextBlock Margin="0,8,0,0" Tag="ProviderSetup.Ai.Cost"
+                                       Text="AI requests, including connection tests, may incur charges. Check prices and billing with your provider."
+                                       TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}" />
                         </StackPanel>
                     </Expander>
 

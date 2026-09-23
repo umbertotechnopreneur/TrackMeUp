@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -109,69 +108,12 @@ public sealed class OpenSourceLicenseContractTests
     }
 
     [Fact]
-    public void PublicLicenseAndStoreLocales_DeclareTheMitContract()
+    public void PublicLicense_DeclaresTheMitContract()
     {
         var license = File.ReadAllText(RepositoryFile("LICENSE"));
         Assert.Equal(
             CanonicalLicenseText.ReplaceLineEndings("\n").TrimEnd('\n'),
             license.ReplaceLineEndings("\n").TrimEnd('\n'));
-
-        var listingText = File.ReadAllText(RepositoryFile("store", "listing.json"));
-        using var listing = JsonDocument.Parse(listingText);
-        var locales = listing.RootElement.GetProperty("locales").EnumerateObject().ToArray();
-        var expectedLocales = new[]
-        {
-            "de-DE",
-            "en-US",
-            "es-ES",
-            "fr-FR",
-            "it-IT",
-            "ko-KR",
-            "pt-BR",
-            "pt-PT",
-            "vi-VN",
-            "zh-Hans"
-        };
-        var openSourceTerms = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["de-DE"] = "Open Source",
-            ["en-US"] = "open source",
-            ["es-ES"] = "código abierto",
-            ["fr-FR"] = "open source",
-            ["it-IT"] = "open source",
-            ["ko-KR"] = "오픈 소스",
-            ["pt-BR"] = "código aberto",
-            ["pt-PT"] = "código aberto",
-            ["vi-VN"] = "mã nguồn mở",
-            ["zh-Hans"] = "开源"
-        };
-        var obsoleteAbsoluteClaims = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["de-DE"] = "Ihre Daten bleiben auf diesem PC.",
-            ["en-US"] = "Your data stays on this PC.",
-            ["es-ES"] = "Tus datos permanecen en este PC.",
-            ["fr-FR"] = "Vos données restent sur ce PC.",
-            ["it-IT"] = "I tuoi dati restano su questo PC.",
-            ["ko-KR"] = "데이터는 이 PC에 남습니다.",
-            ["pt-BR"] = "Seus dados permanecem neste PC.",
-            ["pt-PT"] = "Os seus dados permanecem neste PC.",
-            ["vi-VN"] = "Dữ liệu của bạn ở lại trên PC này.",
-            ["zh-Hans"] = "你的数据保留在此电脑上。"
-        };
-
-        Assert.Equal(expectedLocales, locales.Select(locale => locale.Name).Order(StringComparer.Ordinal));
-        foreach (var locale in locales)
-        {
-            var description = Assert.IsType<string>(locale.Value.GetProperty("description").GetString());
-            Assert.Contains("MIT", description, StringComparison.Ordinal);
-            Assert.Contains(openSourceTerms[locale.Name], description, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain(obsoleteAbsoluteClaims[locale.Name], description, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains(
-                locale.Value.GetProperty("features").EnumerateArray(),
-                feature => feature.GetString()?.Contains("MIT", StringComparison.Ordinal) is true);
-        }
-
-        Assert.DoesNotContain("source-available", listingText, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string RepositoryFile(params string[] pathSegments)

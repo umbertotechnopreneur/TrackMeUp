@@ -423,8 +423,7 @@ function Write-Utf8Json {
 function Invoke-WorkTrailPreflight {
     $requiredFiles = @(
         (Join-Path $script:RepositoryRoot 'WorkTrail.slnx'),
-        (Join-Path $script:RepositoryRoot 'WorkTrail\WorkTrail.csproj'),
-        (Join-Path $script:RepositoryRoot 'store\listing.json')
+        (Join-Path $script:RepositoryRoot 'WorkTrail\WorkTrail.csproj')
     )
 
     $ok = Invoke-CommonPreflight `
@@ -619,7 +618,8 @@ function Assert-ValidUniqueJsonDocument {
 }
 
 function Invoke-WorkTrailStoreListingValidation {
-    $pathToValidate = if ([string]::IsNullOrWhiteSpace($ListingPath)) { Join-Path $script:RepositoryRoot 'store\listing.json' } else { Resolve-WorkTrailPath -Path $ListingPath }
+    Assert-Condition -Condition (-not [string]::IsNullOrWhiteSpace($ListingPath)) -Message 'Specify -ListingPath for the private Store listing outside this repository.'
+    $pathToValidate = Resolve-WorkTrailPath -Path $ListingPath
     $resolvedPath = (Resolve-Path -LiteralPath $pathToValidate).Path
     $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $resolvedPath) '..'))
     $raw = Get-Content -LiteralPath $resolvedPath -Raw
@@ -726,35 +726,49 @@ ASSETS = ROOT / "WorkTrail" / "Assets"
 REFERENCE = ROOT / "design" / "branding" / "worktrail-icon-reference.png"
 SCALES = (100, 125, 150, 200, 400)
 TARGET_SIZES = (16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256)
-REFERENCE_SIZE = (1536, 1024)
-MASTER_BOX = (165, 225, 735, 795)
-COMPACT_BOX = (1075, 395, 1305, 625)
-
-
-def _scaled_box(source, box):
-    width_ratio = source.width / REFERENCE_SIZE[0]
-    height_ratio = source.height / REFERENCE_SIZE[1]
-    return tuple(round(value * ratio) for value, ratio in zip(box, (width_ratio, height_ratio, width_ratio, height_ratio)))
-
-
-def _extract_icon(source, box):
-    icon = source.crop(_scaled_box(source, box)).convert("RGBA")
+def _extract_icon(source):
+    # The approved reference is an RGB image on black. Recover its alpha and
+    # un-matte antialiased edges before generating transparent Windows assets.
+    icon = source.convert("RGBA")
     pixels = icon.load()
     for y in range(icon.height):
         for x in range(icon.width):
-            red, green, blue, alpha = pixels[x, y]
-            if min(red, green, blue) >= 236:
-                pixels[x, y] = (red, green, blue, 0)
+            red, green, blue, _ = pixels[x, y]
+            strength = max(red, green, blue)
+            if strength <= 2:
+                pixels[x, y] = (0, 0, 0, 0)
+            else:
+                pixels[x, y] = (
+                    min(255, round(red * 255 / strength)),
+                    min(255, round(green * 255 / strength)),
+                    min(255, round(blue * 255 / strength)),
+                    strength,
+                )
 
     bounds = icon.getbbox()
-    return icon.crop(bounds) if bounds else icon
+    if not bounds:
+        raise ValueError("Approved WorkTrail artwork contains no visible icon")
+    return icon.crop(bounds)
+
+
+def _light_theme_icon(icon):
+    themed = icon.copy()
+    pixels = themed.load()
+    for y in range(themed.height):
+        for x in range(themed.width):
+            red, green, blue, alpha = pixels[x, y]
+            if alpha == 0:
+                continue
+            color = (110, 86, 210) if blue > red + 24 else (16, 21, 38)
+            pixels[x, y] = (*color, alpha)
+    return themed
 
 
 def _pixel_size(base_size, scale):
     return (base_size * scale + 50) // 100
 
 
-def _fit(icon, size, padding=0.06):
+def _fit(icon, size, padding=0.20):
     canvas = Image.new("RGBA", size, (0, 0, 0, 0))
     available_width = max(1, round(size[0] * (1 - padding * 2)))
     available_height = max(1, round(size[1] * (1 - padding * 2)))
@@ -766,7 +780,7 @@ def _fit(icon, size, padding=0.06):
 
 
 def _themed_canvas(size, icon, theme):
-    backgrounds = {"default": "#112235", "dark": "#314157", "light": "#F8F4ED"}
+    backgrounds = {"default": "#101526", "dark": "#222238", "light": "#F8F4ED"}
     canvas = Image.new("RGBA", size, backgrounds[theme])
     fitted = _fit(icon, size, 0.14)
     canvas.alpha_composite(fitted)
@@ -778,8 +792,15 @@ def _save(image, path):
 
 
 def _clear_previous_assets():
-    for path in ASSETS.glob("WorkTrail*.png"):
-        path.unlink()
+    for pattern in (
+        "WorkTrailSquare44Logo*.png",
+        "WorkTrailSquare150Logo*.png",
+        "WorkTrailStoreLogo*.png",
+        "WorkTrailWide310x150Logo*.png",
+        "WorkTrailSplashScreen*.png",
+    ):
+        for path in ASSETS.glob(pattern):
+            path.unlink()
     icon_file = ASSETS / "WorkTrailIcon.ico"
     if icon_file.exists():
         icon_file.unlink()
@@ -797,31 +818,32 @@ def _clear_previous_assets():
             path.unlink()
 
 
-def _write_square_assets(master, compact):
-    _save(_fit(compact, (44, 44)), ASSETS / "WorkTrailSquare44Logo.png")
+def _write_square_assets(master, compact, light_master, light_compact):
+    _save(_fit(compact, (44, 44), 0.08), ASSETS / "WorkTrailSquare44Logo.png")
     _save(_fit(master, (150, 150)), ASSETS / "WorkTrailSquare150Logo.png")
-    _save(_fit(master, (50, 50)), ASSETS / "WorkTrailStoreLogo.png")
+    _save(_themed_canvas((50, 50), master, "default"), ASSETS / "WorkTrailStoreLogo.png")
 
     for scale in SCALES:
-        _save(_fit(compact, (_pixel_size(44, scale),) * 2), ASSETS / f"WorkTrailSquare44Logo.scale-{scale}.png")
-        _save(_fit(compact, (_pixel_size(44, scale),) * 2), ASSETS / f"WorkTrailSquare44Logo.scale-{scale}_altform-colorful_theme-light.png")
-        _save(_fit(compact, (_pixel_size(44, scale),) * 2), ASSETS / f"WorkTrailSquare44Logo.scale-{scale}_altform-colorful_theme-dark.png")
+        _save(_fit(compact, (_pixel_size(44, scale),) * 2, 0.08), ASSETS / f"WorkTrailSquare44Logo.scale-{scale}.png")
+        _save(_fit(light_compact, (_pixel_size(44, scale),) * 2, 0.08), ASSETS / f"WorkTrailSquare44Logo.scale-{scale}_altform-colorful_theme-light.png")
+        _save(_fit(compact, (_pixel_size(44, scale),) * 2, 0.08), ASSETS / f"WorkTrailSquare44Logo.scale-{scale}_altform-colorful_theme-dark.png")
         _save(_fit(master, (_pixel_size(150, scale),) * 2), ASSETS / f"WorkTrailSquare150Logo.scale-{scale}.png")
-        _save(_fit(master, (_pixel_size(150, scale),) * 2), ASSETS / f"WorkTrailSquare150Logo.scale-{scale}_altform-colorful_theme-light.png")
+        _save(_fit(light_master, (_pixel_size(150, scale),) * 2), ASSETS / f"WorkTrailSquare150Logo.scale-{scale}_altform-colorful_theme-light.png")
         _save(_fit(master, (_pixel_size(150, scale),) * 2), ASSETS / f"WorkTrailSquare150Logo.scale-{scale}_altform-colorful_theme-dark.png")
-        _save(_fit(master, (_pixel_size(50, scale),) * 2), ASSETS / f"WorkTrailStoreLogo.scale-{scale}.png")
-        _save(_fit(master, (_pixel_size(50, scale),) * 2), ASSETS / f"WorkTrailStoreLogo.scale-{scale}_altform-colorful_theme-light.png")
-        _save(_fit(master, (_pixel_size(50, scale),) * 2), ASSETS / f"WorkTrailStoreLogo.scale-{scale}_altform-colorful_theme-dark.png")
+        store_size = (_pixel_size(50, scale),) * 2
+        _save(_themed_canvas(store_size, master, "default"), ASSETS / f"WorkTrailStoreLogo.scale-{scale}.png")
+        _save(_themed_canvas(store_size, light_master, "light"), ASSETS / f"WorkTrailStoreLogo.scale-{scale}_altform-colorful_theme-light.png")
+        _save(_themed_canvas(store_size, master, "dark"), ASSETS / f"WorkTrailStoreLogo.scale-{scale}_altform-colorful_theme-dark.png")
 
     for size in TARGET_SIZES:
         source = master if size == 256 else compact
-        icon = _fit(source, (size, size), 0.04)
+        icon = _fit(source, (size, size), 0.08)
         _save(icon, ASSETS / f"WorkTrailSquare44Logo.targetsize-{size}.png")
         _save(icon, ASSETS / f"WorkTrailSquare44Logo.targetsize-{size}_altform-unplated.png")
-        _save(icon, ASSETS / f"WorkTrailSquare44Logo.targetsize-{size}_altform-lightunplated.png")
+        _save(_fit(light_master if size == 256 else light_compact, (size, size), 0.08), ASSETS / f"WorkTrailSquare44Logo.targetsize-{size}_altform-lightunplated.png")
 
 
-def _write_wide_and_splash_assets(master):
+def _write_wide_and_splash_assets(master, light_master):
     _save(_themed_canvas((310, 150), master, "default"), ASSETS / "WorkTrailWide310x150Logo.png")
     _save(_themed_canvas((620, 300), master, "default"), ASSETS / "WorkTrailSplashScreen.png")
 
@@ -829,25 +851,25 @@ def _write_wide_and_splash_assets(master):
         wide_size = (_pixel_size(310, scale), _pixel_size(150, scale))
         splash_size = (_pixel_size(620, scale), _pixel_size(300, scale))
         _save(_themed_canvas(wide_size, master, "default"), ASSETS / f"WorkTrailWide310x150Logo.scale-{scale}.png")
-        _save(_themed_canvas(wide_size, master, "light"), ASSETS / f"WorkTrailWide310x150Logo.scale-{scale}_altform-colorful_theme-light.png")
+        _save(_themed_canvas(wide_size, light_master, "light"), ASSETS / f"WorkTrailWide310x150Logo.scale-{scale}_altform-colorful_theme-light.png")
         _save(_themed_canvas(wide_size, master, "dark"), ASSETS / f"WorkTrailWide310x150Logo.scale-{scale}_altform-colorful_theme-dark.png")
         _save(_themed_canvas(splash_size, master, "default"), ASSETS / f"WorkTrailSplashScreen.scale-{scale}.png")
-        _save(_themed_canvas(splash_size, master, "light"), ASSETS / f"WorkTrailSplashScreen.scale-{scale}_altform-colorful_theme-light.png")
+        _save(_themed_canvas(splash_size, light_master, "light"), ASSETS / f"WorkTrailSplashScreen.scale-{scale}_altform-colorful_theme-light.png")
         _save(_themed_canvas(splash_size, master, "dark"), ASSETS / f"WorkTrailSplashScreen.scale-{scale}_altform-colorful_theme-dark.png")
 
 
 def _write_template_compatibility_assets(master, compact):
-    _save(_fit(compact, (88, 88)), ASSETS / "Square44x44Logo.scale-200.png")
-    _save(_fit(compact, (24, 24)), ASSETS / "Square44x44Logo.targetsize-24_altform-unplated.png")
+    _save(_fit(compact, (88, 88), 0.08), ASSETS / "Square44x44Logo.scale-200.png")
+    _save(_fit(compact, (24, 24), 0.08), ASSETS / "Square44x44Logo.targetsize-24_altform-unplated.png")
     _save(_fit(master, (300, 300)), ASSETS / "Square150x150Logo.scale-200.png")
-    _save(_fit(master, (50, 50)), ASSETS / "StoreLogo.png")
+    _save(_themed_canvas((50, 50), master, "default"), ASSETS / "StoreLogo.png")
     _save(_themed_canvas((620, 300), master, "default"), ASSETS / "Wide310x150Logo.scale-200.png")
     _save(_themed_canvas((1240, 600), master, "default"), ASSETS / "SplashScreen.scale-200.png")
-    _save(_fit(compact, (48, 48)), ASSETS / "LockScreenLogo.scale-200.png")
+    _save(_fit(compact, (48, 48), 0.08), ASSETS / "LockScreenLogo.scale-200.png")
 
 
 def _write_ico(master, compact):
-    frames = [_fit(master if size == 256 else compact, (size, size), 0.04) for size in TARGET_SIZES]
+    frames = [_fit(master if size == 256 else compact, (size, size), 0.08) for size in TARGET_SIZES]
     frames[-1].save(ASSETS / "WorkTrailIcon.ico", format="ICO", sizes=[(size, size) for size in TARGET_SIZES], append_images=frames[:-1])
 
 
@@ -857,11 +879,13 @@ def main():
 
     ASSETS.mkdir(parents=True, exist_ok=True)
     source = Image.open(REFERENCE)
-    master = _extract_icon(source, MASTER_BOX)
-    compact = _extract_icon(source, COMPACT_BOX)
+    master = _extract_icon(source)
+    compact = master
+    light_master = _light_theme_icon(master)
+    light_compact = light_master
     _clear_previous_assets()
-    _write_square_assets(master, compact)
-    _write_wide_and_splash_assets(master)
+    _write_square_assets(master, compact, light_master, light_compact)
+    _write_wide_and_splash_assets(master, light_master)
     _write_template_compatibility_assets(master, compact)
     _write_ico(master, compact)
 

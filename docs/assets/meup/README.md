@@ -1,6 +1,6 @@
 # MeUp visual style
 
-MailMeUp, PromptMeUp, and WorkTrail share one presentation style. Keep their names and existing app icons. The family artwork connects the products without replacing their individual identities.
+MailMeUp, PromptMeUp, and WorkTrail share one presentation style. Each app keeps its own name and icon. The family artwork connects the products without replacing their individual identities.
 
 ## Use the same structure
 

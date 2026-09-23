@@ -175,19 +175,6 @@
                                     Style="{StaticResource BodyStrongTextBlockStyle}"
                                     Tag="WorldClock.Options.Weather.Setup"
                                     Text="Weather provider setup" />
-                                <PasswordBox
-                                    x:Name="WeatherApiKeyBox"
-                                    Header="OpenWeather API key"
-                                    PasswordRevealMode="Peek"
-                                    PlaceholderText=""
-                                    Tag="WorldClock.Options.Weather.ApiKey" />
-                                <TextBlock
-                                    x:Name="WeatherApiKeyStorageNote"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Tag="WorldClock.Options.Weather.ApiKey.Placeholder"
-                                    Text="Saved in Windows, not in WorkTrail settings"
-                                    TextWrapping="Wrap" />
                                 <HyperlinkButton
                                     x:Name="WeatherProviderLinkButton"
                                     Padding="0,2,0,2"
@@ -208,13 +195,6 @@
                                     Content="Set key for this PC"
                                     Style="{StaticResource AccentButtonStyle}"
                                     Tag="WorldClock.Options.Weather.SaveKey" />
-                                <TextBlock
-                                    x:Name="WeatherActionStatusText"
-                                    AutomationProperties.LiveSetting="Polite"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    TextWrapping="Wrap"
-                                    Visibility="Collapsed" />
                             </StackPanel>
 
                             <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />

@@ -186,7 +186,16 @@ public sealed partial class WorldClockWindow : Window
 
     private void OptionsButton_Click(object sender, RoutedEventArgs e) => ShowOptionsSurface();
 
-    private async void HeaderBackButton_Click(object sender, RoutedEventArgs e) => await ShowClocksSurfaceAsync();
+    private async void HeaderBackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (OptionsHost.Content is ProviderKeySetupControl)
+        {
+            OptionsHost.Content = _optionsControl;
+            return;
+        }
+
+        await ShowClocksSurfaceAsync();
+    }
 
     private void WorldMapButton_Click(object sender, RoutedEventArgs e) => WorldMapRequested?.Invoke(this, EventArgs.Empty);
 
@@ -257,6 +266,7 @@ public sealed partial class WorldClockWindow : Window
         options.SettingsSaved += OptionsControl_SettingsSaved;
         options.WarningRequested += OptionsControl_WarningRequested;
         options.ProviderLinkRequested += OptionsControl_ProviderLinkRequested;
+        options.KeySetupRequested += OptionsControl_KeySetupRequested;
         options.Initialize(
             _application,
             _settings,
@@ -274,13 +284,11 @@ public sealed partial class WorldClockWindow : Window
     {
         if (_isLive)
         {
-            var refreshed = await RefreshCurrentAsync();
-            _optionsControl?.CompleteWeatherKeyRefresh(refreshed);
+            await RefreshCurrentAsync();
             return;
         }
 
         _optionsControl?.ApplyState(_settings, _snapshot, _referenceCityId, IsAlwaysOnTop());
-        _optionsControl?.CompleteWeatherKeyRefresh(succeeded: true);
     }
 
     private async void OptionsControl_AddRequested(object? sender, EventArgs e) => await AddCityAsync();
@@ -319,6 +327,18 @@ public sealed partial class WorldClockWindow : Window
 
     private async void OptionsControl_ProviderLinkRequested(object? sender, EventArgs e) =>
         await OpenWeatherProviderLinkAsync();
+
+    private async void OptionsControl_KeySetupRequested(object? sender, EventArgs e)
+    {
+        var setup = new ProviderKeySetupControl();
+        setup.Dismissed += async verified =>
+        {
+            OptionsHost.Content = _optionsControl;
+            if (verified && _isLive) await RefreshCurrentAsync();
+        };
+        OptionsHost.Content = setup;
+        await setup.InitializeAsync(_application, _strings, weather: true, _lifetimeCancellation.Token);
+    }
 
     private bool IsAlwaysOnTop() =>
         _appWindow.Presenter is OverlappedPresenter presenter && presenter.IsAlwaysOnTop;
@@ -1292,6 +1312,7 @@ public sealed partial class WorldClockWindow : Window
             _optionsControl.SettingsSaved -= OptionsControl_SettingsSaved;
             _optionsControl.WarningRequested -= OptionsControl_WarningRequested;
             _optionsControl.ProviderLinkRequested -= OptionsControl_ProviderLinkRequested;
+            _optionsControl.KeySetupRequested -= OptionsControl_KeySetupRequested;
             OptionsHost.Content = null;
             _optionsControl = null;
         }

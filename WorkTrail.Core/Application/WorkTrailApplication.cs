@@ -103,6 +103,7 @@ public static class WorkTrailApplicationFactory
 /// <summary>Implements UI-independent use cases over the existing local infrastructure services.</summary>
 public sealed partial class WorkTrailApplication : IWorkTrailApplication
 {
+    private readonly AiConnectionVerification _aiConnectionVerification = new();
     private readonly WindowSnappingService _windowSnapping = new();
 
     /// <inheritdoc />
@@ -170,6 +171,8 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
     private const string ProductRepositoryUrl = "https://github.com/umbertotechnopreneur/WorkTrail";
     private const string ProductIssuesUrl = "https://github.com/umbertotechnopreneur/WorkTrail/issues";
     private const string ProductAuthorUrl = "https://umbertogiacobbi.biz/?utm_source=worktrail_app&utm_medium=referral&utm_campaign=worktrail&utm_content=about_author";
+    private const string ProductPrivacyUrl = "https://umbertogiacobbi.biz/privacy/";
+    private const string ProductTermsUrl = "https://umbertogiacobbi.biz/terms/";
     private const string OpenWeatherUrl = "https://openweathermap.org/";
     private bool _disposed;
 
@@ -1575,6 +1578,7 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
     public async Task<OperationResult<AiConnectionTestResult>> TestAiConnectionAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _aiConnectionVerification.Invalidate();
         var settings = _settingsSnapshot.Value;
         if (!TryValidateOpenAiConfiguration(settings, requireImageInput: false, out var validatedSettings, out var validationIssue))
         {
@@ -1590,6 +1594,15 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
                 new ValidationIssue("ai.key_variable", "required", "AiConnectionTestKeyMissing"));
         }
 
+        return await TestAiCredentialAsync(validatedSettings, apiKey!, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<OperationResult<AiConnectionTestResult>> TestAiCredentialAsync(
+        AppSettings validatedSettings, string apiKey, CancellationToken cancellationToken)
+    {
+        _aiConnectionVerification.Invalidate();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
         var stopwatch = Stopwatch.StartNew();
         try
         {
@@ -1600,8 +1613,11 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
                 validatedSettings,
                 apiKey!,
                 Guid.NewGuid().ToString("N"),
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                requestOptions: new AiProviderRequestOptions(MaxOutputTokens: 256),
+                cancellationToken: timeout.Token).ConfigureAwait(false);
             stopwatch.Stop();
+            timeout.Token.ThrowIfCancellationRequested();
+            _aiConnectionVerification.Record(validatedSettings, apiKey);
             _logger.LogInformation(
                 "AI connection test succeeded. Provider={Provider} Model={Model} LatencyMs={LatencyMs}",
                 validatedSettings.AiProvider,
@@ -1620,13 +1636,20 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
         {
             stopwatch.Stop();
             _logger.LogWarning("AI connection test failed. Provider={Provider} Model={Model} FailureCategory={FailureCategory} HttpStatus={HttpStatus}", validatedSettings.AiProvider, validatedSettings.Model, exception.Failure.FailureCode, exception.Failure.HttpStatusCode);
-            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.failed", "AiConnectionTestFailed");
+            var messageKey = exception.Failure.HttpStatusCode switch
+            {
+                401 => "ProviderSetup.Error.Authentication",
+                403 or 404 => "ProviderSetup.Error.Access",
+                429 => "ProviderSetup.Error.Limits",
+                _ => "ProviderSetup.Error.Unavailable"
+            };
+            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.failed", messageKey);
         }
         catch (Exception exception)
         {
             stopwatch.Stop();
             _logger.LogWarning("AI connection test failed unexpectedly. Provider={Provider} Model={Model} ExceptionType={ExceptionType}", validatedSettings.AiProvider, validatedSettings.Model, exception.GetType().Name);
-            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.failed", "AiConnectionTestFailed");
+            return OperationResult<AiConnectionTestResult>.Failure("ai.connection.failed", "ProviderSetup.Error.Unavailable");
         }
     }
 
@@ -1691,11 +1714,26 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
             return OperationResult<string>.Failure("ai.key.invalid", "AiKeyInvalid", new ValidationIssue("key", "invalid", "AiKeyInvalid"));
         }
 
-        // The secret is immediately delegated to the user environment store and never persisted or logged.
+        var settings = _settingsSnapshot.Value;
+        var candidate = settings with { AiApiKeyName = normalizedKeyVariable, OpenAiEnabled = false };
+        if (!AiApiKeyPolicy.LooksPlausible(candidate.AiProvider, normalizedKeyVariable, secretValue)
+            || !TryValidateOpenAiConfiguration(candidate, requireImageInput: false, out var validated, out _))
+        {
+            return OperationResult<string>.Failure("ai.key.invalid", "ProviderSetup.Error.Configuration");
+        }
+
+        // Verify the candidate before replacing a working credential. No activity or screenshots are sent.
+        var verification = await TestAiCredentialAsync(validated, secretValue, cancellationToken).ConfigureAwait(false);
+        if (!verification.Succeeded)
+        {
+            return OperationResult<string>.Failure(verification.Code, verification.MessageKey);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        // Only a verified credential reaches the user environment store; it is never put in settings or logs.
         _utilities.SetApiKey(normalizedKeyVariable, secretValue);
         secretValue = string.Empty;
-        var settings = _settingsSnapshot.Value;
-        PersistSettings(settings with { AiApiKeyName = normalizedKeyVariable });
+        PersistSettings(settings with { AiApiKeyName = normalizedKeyVariable, Model = validated.Model });
         await Task.CompletedTask;
         return OperationResult<string>.Success("ai.key.stored", "AiKeyStored", normalizedKeyVariable);
     }, cancellationToken);
@@ -2243,6 +2281,15 @@ public sealed partial class WorkTrailApplication : IWorkTrailApplication
         }
 
         current = validatedSettings;
+        if (current.OpenAiEnabled
+            && patch.Values.TryGetValue("quick_setup.completed", out var completed)
+            && string.Equals(completed, "true", StringComparison.OrdinalIgnoreCase)
+            && !_aiConnectionVerification.Matches(current, _store.LoadApiKey(current.AiApiKeyName)))
+        {
+            return OperationResult<AppSettings>.Failure(
+                "quick_setup.ai.verification_required", "ProviderSetup.Error.VerificationRequired",
+                new ValidationIssue("ai.enabled", "connection_required", "ProviderSetup.Error.VerificationRequired"));
+        }
         var startupChanged = current.StartWithWindows != settings.StartWithWindows;
         var startupNeedsRepair = current.StartWithWindows
             && !await _startup.IsEnabledAsync(cancellationToken).ConfigureAwait(false);

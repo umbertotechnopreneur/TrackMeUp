@@ -4,7 +4,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Xml.Linq;
 using WorkTrail.Services;
 using Xunit;
@@ -19,38 +18,17 @@ public sealed class StoreGlobalizationContractTests
     ];
 
     [Fact]
-    public void Listing_ContainsCompleteCanonicalVendorAgnosticLocaleSet()
+    public void UiLanguageCatalog_MatchesShippedLocalizationFiles()
     {
         Assert.Equal(RequiredLocales, ProductLanguageCatalog.UiLocales);
 
-        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepositoryRoot(), "store", "listing.json")));
-        var locales = document.RootElement.GetProperty("locales");
-        var localeNames = locales.EnumerateObject().Select(locale => locale.Name).ToArray();
+        var localizationDirectory = Path.Combine(RepositoryRoot(), "WorkTrail.Core", "Localization");
+        var locales = Directory.GetFiles(localizationDirectory, "*.json")
+            .Select(Path.GetFileNameWithoutExtension)
+            .OrderBy(locale => locale, StringComparer.Ordinal)
+            .ToArray();
 
-        Assert.Equal(RequiredLocales, localeNames);
-        foreach (var locale in locales.EnumerateObject())
-        {
-            var copy = locale.Value;
-            Assert.False(string.IsNullOrWhiteSpace(copy.GetProperty("displayName").GetString()));
-            Assert.False(string.IsNullOrWhiteSpace(copy.GetProperty("subtitle").GetString()));
-            Assert.False(string.IsNullOrWhiteSpace(copy.GetProperty("shortDescription").GetString()));
-            Assert.False(string.IsNullOrWhiteSpace(copy.GetProperty("description").GetString()));
-            Assert.NotEmpty(copy.GetProperty("features").EnumerateArray());
-
-            var serialized = copy.GetRawText();
-            Assert.DoesNotContain("OpenAI", serialized, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("OpenRouter", serialized, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("Anthropic", serialized, StringComparison.OrdinalIgnoreCase);
-        }
-
-        Assert.NotEqual(
-            locales.GetProperty("pt-PT").GetProperty("shortDescription").GetString(),
-            locales.GetProperty("pt-BR").GetProperty("shortDescription").GetString());
-
-        foreach (var screenshot in document.RootElement.GetProperty("screenshots").GetProperty("items").EnumerateArray())
-        {
-            Assert.Contains(screenshot.GetProperty("locale").GetString(), RequiredLocales);
-        }
+        Assert.Equal(RequiredLocales.OrderBy(locale => locale, StringComparer.Ordinal), locales);
     }
 
     [Fact]
@@ -127,7 +105,7 @@ public sealed class StoreGlobalizationContractTests
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "store", "listing.json")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WorkTrail.slnx")))
         {
             directory = directory.Parent;
         }

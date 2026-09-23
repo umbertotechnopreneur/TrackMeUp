@@ -2,6 +2,38 @@
 
 This is a compact historical index of durable WorkTrail milestones. It intentionally omits command transcripts, temporary artifact paths, repeated test counts, intermediate package versions, and superseded pre-rebrand naming. Older entries may predate the WorkTrail name.
 
+## 2026-09-24
+
+### Locale checks after private Store listing removal
+
+- Made repository discovery use the solution file and checked the canonical locale catalog
+  against shipped localization files, keeping manifest and duplicate-property validation
+  independent of the private Store listing.
+- Kept the public MIT contract and checks against automatic Store publication independent
+  of removed listing drafts and workflows.
+
+### Guided provider setup and About polish
+
+- Added reusable AI/OpenWeather credential sheets with masked examples, provider guides,
+  pricing links, localized validation feedback, and OK/Close outcomes without a step indicator.
+- Connected the AI sheet to Quick Setup and the weather sheet to world-clock options.
+  AI profiles require a successful check of the current provider configuration and credential;
+  rejected or rate-limited candidate keys do not replace the saved credential.
+- Made the About hero reach the content edges and replaced the unavailable Store invitation
+  with a short GitHub action. Visual acceptance and installer delivery remain separate.
+
+## 2026-09-23
+
+### App identity and Store notes
+
+- Replaced the generated Windows app identity assets with the owner-selected briefcase and trail mark, keeping small target-size icons legible and preserving the previous icon's provenance.
+- Moved Store listing drafts and screenshot planning into private MeUp notes, removed the repository listing workflow, and kept local listing validation available through an explicit path.
+- Restricted release CI to portable ZIPs for x64 and ARM64; Store MSIX packaging remains a local owner-controlled operation.
+
+### About links and alignment
+
+- Added allowlisted Privacy and Terms links to the About window and grouped the website, GitHub repository, and policy links on the left while retaining the centered Store/GitHub message.
+
 ## 2026-09-21
 
 ### Reset confirmation reliability

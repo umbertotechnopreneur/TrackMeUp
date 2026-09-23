@@ -36,9 +36,9 @@
                 Text="WORKTRAIL" />
         </Grid>
 
-        <Grid Grid.Row="1" Padding="28,12,28,24" RowSpacing="0">
+        <Grid Grid.Row="1" RowSpacing="0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="250" />
+                <RowDefinition Height="220" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -46,8 +46,8 @@
 
             <Border
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="12">
+                BorderThickness="0"
+                CornerRadius="0">
                 <Image
                     x:Name="HeroImage"
                     AutomationProperties.Name="WorkTrail"
@@ -59,10 +59,10 @@
             <Rectangle
                 Grid.Row="1"
                 Height="1"
-                Margin="0,20,0,20"
+                Margin="28,20,28,20"
                 Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-            <Grid Grid.Row="2" ColumnSpacing="28">
+            <Grid Grid.Row="2" Margin="28,0" ColumnSpacing="28">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.08*" />
                     <ColumnDefinition Width="1" />
@@ -179,14 +179,18 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="3" Margin="0,22,0,0" ColumnSpacing="16">
+            <Grid Grid.Row="3" Margin="28,22,28,24" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center" Spacing="1">
-                    <TextBlock Tag="About.CreatedBy" Opacity="0.62" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
+                <StackPanel
+                    x:Name="FooterDetailsPanel"
+                    VerticalAlignment="Center"
+                    Spacing="1">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Tag="About.CreatedBy" VerticalAlignment="Center" Opacity="0.62" Style="{StaticResource CaptionTextBlockStyle}" Text="Created by" />
                     <Button
                         x:Name="CreatedByButton"
                         Padding="0"
@@ -195,32 +199,49 @@
                         BorderThickness="0"
                         Click="WebsiteButton_Click"
                         Content="umbertogiacobbi.biz" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Button
+                            x:Name="RepositoryButton"
+                            Tag="About.Repository"
+                            Padding="0,5"
+                            HorizontalAlignment="Left"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="RepositoryButton_Click"
+                            Content="GitHub repository" />
+                        <Button
+                            x:Name="PrivacyButton"
+                            Tag="About.Privacy"
+                            Padding="0,5"
+                            HorizontalAlignment="Left"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="PrivacyButton_Click"
+                            Content="Privacy" />
+                        <Button
+                            x:Name="TermsButton"
+                            Tag="About.Terms"
+                            Padding="0,5"
+                            HorizontalAlignment="Left"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="TermsButton_Click"
+                            Content="Terms" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="8" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="10">
                         <FontIcon AutomationProperties.AccessibilityView="Raw" FontSize="21" Foreground="#FFFFD12E" Glyph="&#xE735;" />
-                        <TextBlock
+                        <Button
                             Tag="About.FavoriteMessage"
+                            Padding="0,5"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="RepositoryButton_Click"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="Like the app? Star it on GitHub,&#xA;or leave a review on the Microsoft Store!"
-                            TextWrapping="WrapWholeWords" />
+                            Content="Star on GitHub" />
                     </StackPanel>
-                    <Button
-                        x:Name="RepositoryFooterButton"
-                        Padding="12,7"
-                        HorizontalAlignment="Center"
-                        Click="RepositoryButton_Click"
-                        Content="GitHub repository"
-                        Tag="About.Repository">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon AutomationProperties.AccessibilityView="Raw" Glyph="&#xE8A7;" />
-                                    <TextBlock Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
                 </StackPanel>
                 <Button
                     x:Name="CloseButton"

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 
 using System;
 using System.IO;
@@ -238,7 +238,7 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains("await AddCityAsync();", source, StringComparison.Ordinal);
         Assert.Contains(options.Descendants(), element => HasName(element, "WeatherEnabledSwitch") && element.Attribute("Tag")?.Value == "WorldClock.Options.Weather");
         Assert.Contains(options.Descendants(), element => HasName(element, "WeatherEnabledSwitch") && element.Attribute("IsOn")?.Value == "True");
-        Assert.Contains(options.Descendants(), element => HasName(element, "WeatherApiKeyBox") && element.Name.LocalName == "PasswordBox");
+        Assert.Contains(options.Descendants(), element => HasName(element, "SaveWeatherKeyButton") && element.Name.LocalName == "Button");
         Assert.Contains(options.Descendants(), element => HasName(element, "AlwaysOnTopSwitch") && element.Attribute("Tag")?.Value == "WorldClock.Options.AlwaysOnTop");
         Assert.Contains(options.Descendants(), element => HasName(element, "CitiesHost"));
         Assert.Contains(options.Descendants(), element => HasName(element, "AddClockButton") && element.Attribute("Tag")?.Value == "WorldClock.Add");
@@ -247,8 +247,8 @@ public sealed class WorldClockWindowSurfaceContractTests
         Assert.Contains(options.Descendants(), element => element.Name.LocalName == "AdaptiveTrigger" && element.Attribute("MinWindowWidth")?.Value == "760");
         Assert.Contains("PatchSettingsAsync(", optionsSource, StringComparison.Ordinal);
         Assert.Contains("[\"world_clocks.weather.enabled\"]", optionsSource, StringComparison.Ordinal);
-        Assert.Contains("SetWorldClockWeatherKeyAsync(secret", optionsSource, StringComparison.Ordinal);
-        Assert.Contains("WeatherApiKeyBox.Password = string.Empty;", optionsSource, StringComparison.Ordinal);
+        Assert.Contains("KeySetupRequested?.Invoke", optionsSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("PasswordBox", options.ToString(), StringComparison.Ordinal);
         Assert.Contains("public event EventHandler? ProviderLinkRequested;", optionsSource, StringComparison.Ordinal);
         Assert.Contains("ProviderLinkRequested?.Invoke(this, EventArgs.Empty);", optionsSource, StringComparison.Ordinal);
         Assert.Contains("options.ProviderLinkRequested += OptionsControl_ProviderLinkRequested;", source, StringComparison.Ordinal);
@@ -345,44 +345,25 @@ public sealed class WorldClockWindowSurfaceContractTests
     [Fact]
     public void WeatherKeyConfiguration_UsesSafeMaskAndLocalizedValidationFeedback()
     {
-        var options = XDocument.Load(RepositoryFile("WorkTrail", "Controls", "WorldClockOptionsControl.xaml"));
-        var source = File.ReadAllText(RepositoryFile("WorkTrail", "Controls", "WorldClockOptionsControl.xaml.cs"));
-        var contracts = File.ReadAllText(RepositoryFile("WorkTrail.Core", "Application", "Contracts.cs"));
-        var keyBox = options.Descendants().Single(element => HasName(element, "WeatherApiKeyBox"));
-        var actionStatus = options.Descendants().Single(element => HasName(element, "WeatherActionStatusText"));
-        var catalogs = Directory.GetFiles(
-            RepositoryFile("WorkTrail.Core", "Localization"),
-            "*.json",
-            SearchOption.TopDirectoryOnly);
+        var options = XDocument.Load(RepositoryFile("WorkTrail", "Controls", "ProviderKeySetupControl.xaml"));
+        var source = File.ReadAllText(RepositoryFile("WorkTrail", "Controls", "ProviderKeySetupControl.xaml.cs"));
+        var keyBox = options.Descendants().Single(element => HasName(element, "KeyBox"));
+        var catalogs = Directory.GetFiles(RepositoryFile("WorkTrail.Core", "Localization"), "*.json");
         string[] feedbackKeys =
         [
-            "WorldClock.Options.Weather.ApiKey.ConfiguredHelp",
-            "WorldClock.Options.Weather.KeyValidating",
-            "WorldClock.Options.Weather.KeySaved",
-            "WorldClock.Options.Weather.KeySavedRateLimited",
-            "WorldClock.Options.Weather.KeyInvalid",
-            "WorldClock.Options.Weather.KeyRejected",
-            "WorldClock.Options.Weather.KeyValidationUnavailable",
-            "WorldClock.Options.Weather.KeySaveFailed"
+            "ProviderSetup.NotVerified", "ProviderSetup.Verifying", "ProviderSetup.Success",
+            "ProviderSetup.Error.Key", "ProviderSetup.Weather.Rejected", "ProviderSetup.Error.Limits",
+            "ProviderSetup.Error.Unavailable", "ProviderSetup.Weather.Activation", "ProviderSetup.Ai.Cost"
         ];
-
         Assert.Equal("PasswordBox", keyBox.Name.LocalName);
-        Assert.Equal("Peek", keyBox.Attribute("PasswordRevealMode")?.Value);
-        Assert.Equal(string.Empty, keyBox.Attribute("PlaceholderText")?.Value);
-        Assert.Equal("Polite", AttributeValue(actionStatus, "AutomationProperties.LiveSetting"));
-        Assert.Contains("private const string ConfiguredWeatherKeyMask = \"****************\";", source, StringComparison.Ordinal);
-        Assert.Contains("SetWeatherKeyPresence(status?.IsProviderConfigured == true);", source, StringComparison.Ordinal);
-        Assert.Contains("WeatherApiKeyBox.PlaceholderText = configured", source, StringComparison.Ordinal);
-        Assert.Contains("WeatherApiKeyBox.Password = string.Empty;", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("WeatherApiKeyBox.Password = ConfiguredWeatherKeyMask", source, StringComparison.Ordinal);
-        Assert.Contains("WorldClock.Options.Weather.KeyValidating", source, StringComparison.Ordinal);
+        Assert.Equal("Hidden", keyBox.Attribute("PasswordRevealMode")?.Value);
+        Assert.Null(keyBox.Attribute("Password"));
+        Assert.Contains("KeyBox.Password = string.Empty;", source, StringComparison.Ordinal);
+        Assert.Contains("SetWorldClockWeatherKeyAsync(secret", source, StringComparison.Ordinal);
         Assert.Contains("world_clocks.weather.key.rejected", source, StringComparison.Ordinal);
-        Assert.Contains("world_clocks.weather.key.validation_unavailable", source, StringComparison.Ordinal);
-        Assert.Contains("world_clocks.weather.key.stored_rate_limited", source, StringComparison.Ordinal);
-        Assert.Contains("SetWeatherKeyPresence(configured: true);", source, StringComparison.Ordinal);
-        Assert.Contains("SetSaveWeatherKeyAction(\"WorldClock.Options.Weather.KeyAction.Change\");", source, StringComparison.Ordinal);
-        Assert.Contains("bool IsProviderConfigured", contracts, StringComparison.Ordinal);
-
+        Assert.Contains("_verified ? \"Dialog.Ok\" : \"About.Close\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Environment.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
         Assert.All(catalogs, catalog =>
         {
             using var document = JsonDocument.Parse(File.ReadAllText(catalog));
