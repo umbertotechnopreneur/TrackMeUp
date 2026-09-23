@@ -86,7 +86,7 @@
   "Export.NoSources": "No text selected or no saved text available in this period.",
   "Export.AiNotReady": "Enable and configure your AI provider in Settings before generating a summary.",
   "Export.AiDailyLimit": "The daily AI request limit has been reached.",
-  "Export.SummaryTooLarge": "The selected text is too large for one summary. Shorten the period or deselect OCR.",
+  "Export.SummaryTooLarge": "Selected source data: {0} characters; limit: {1}. Shorten the period or deselect a text source.",
   "Export.SummaryIncomplete": "The provider returned an empty, incomplete or oversized summary. Try a shorter period.",
   "Export.Table.Summary": "Summary",
   "Export.Table.Days": "Days",

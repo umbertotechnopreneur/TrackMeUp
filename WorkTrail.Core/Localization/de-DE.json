@@ -86,7 +86,7 @@
   "Export.NoSources": "Kein Text ausgewählt oder in diesem Zeitraum gespeichert.",
   "Export.AiNotReady": "Aktivieren und konfigurieren Sie Ihren KI-Anbieter in den Einstellungen, bevor Sie eine Zusammenfassung erstellen.",
   "Export.AiDailyLimit": "Das tägliche KI-Anfragelimit wurde erreicht.",
-  "Export.SummaryTooLarge": "Zu viel Text für eine Zusammenfassung. Zeitraum verkürzen oder OCR abwählen.",
+  "Export.SummaryTooLarge": "Ausgewählte Quelldaten: {0} Zeichen; Limit: {1}. Zeitraum verkürzen oder eine Textquelle abwählen.",
   "Export.SummaryIncomplete": "Der Anbieter lieferte eine leere, unvollständige oder zu lange Zusammenfassung. Versuchen Sie einen kürzeren Zeitraum.",
   "Export.Table.Summary": "Zusammenfassung",
   "Export.Table.Days": "Tage",

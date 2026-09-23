@@ -198,7 +198,9 @@ internal sealed partial class ReportExportService(LocalStore store)
 
 internal sealed record ExportDocument(ReportExportOptions Options, ReportSnapshot Report, IReadOnlyList<ScreenshotGalleryItem> Captures, string? Summary);
 internal sealed record ExportTable(string Name, IReadOnlyList<string> Columns, Func<IEnumerable<object?[]>> Rows, int RowCount);
-internal sealed class ReportExportValidationException(string messageKey) : ArgumentException(messageKey)
+internal sealed class ReportExportValidationException(string messageKey, int? actualLength = null, int? limit = null) : ArgumentException(messageKey)
 {
     internal string MessageKey { get; } = messageKey;
+    internal int? ActualLength { get; } = actualLength;
+    internal int? Limit { get; } = limit;
 }

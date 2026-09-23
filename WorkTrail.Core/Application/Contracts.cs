@@ -7,7 +7,7 @@ using WorkTrail.Services;
 namespace WorkTrail.Application;
 
 /// <summary>Describes a validation error without coupling callers to a presentation technology.</summary>
-public sealed record ValidationIssue(string Field, string Code, string MessageKey);
+public sealed record ValidationIssue(string Field, string Code, string MessageKey, long? ActualLength = null, long? Limit = null);
 
 /// <summary>Provides the stable result contract returned by every mutating application operation.</summary>
 public sealed record OperationResult<T>(

@@ -86,7 +86,7 @@
   "Export.NoSources": "Nessun testo selezionato o nessun testo salvato disponibile nel periodo.",
   "Export.AiNotReady": "Abilita e configura il provider AI nelle Impostazioni prima di generare un riepilogo.",
   "Export.AiDailyLimit": "Hai raggiunto il limite giornaliero delle richieste AI.",
-  "Export.SummaryTooLarge": "Il testo selezionato è troppo lungo per un riepilogo. Riduci il periodo o deseleziona l’OCR.",
+  "Export.SummaryTooLarge": "Dati selezionati: {0} caratteri; limite: {1}. Riduci il periodo o deseleziona una fonte di testo.",
   "Export.SummaryIncomplete": "Il provider ha restituito un riepilogo vuoto, incompleto o troppo lungo. Prova un periodo più breve.",
   "Export.Table.Summary": "Riepilogo",
   "Export.Table.Days": "Giorni",

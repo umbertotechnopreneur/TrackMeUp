@@ -61,7 +61,13 @@ public sealed partial class WorkTrailApplication
         cancellationToken.ThrowIfCancellationRequested();
         try { return OperationResult<T>.Success("export.completed", "Export.Completed", await operation().ConfigureAwait(false)); }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-        catch (ReportExportValidationException exception) { return OperationResult<T>.Failure("export.invalid", exception.MessageKey); }
+        catch (ReportExportValidationException exception)
+        {
+            return exception.ActualLength is { } actualLength && exception.Limit is { } limit
+                ? OperationResult<T>.Failure("export.invalid", exception.MessageKey,
+                    new ValidationIssue("SummarySource", "export.summary_too_large", exception.MessageKey, actualLength, limit))
+                : OperationResult<T>.Failure("export.invalid", exception.MessageKey);
+        }
         catch (Exception exception)
         {
             // Paths, OCR, generated text and provider exception messages must not enter diagnostics or IPC errors.

@@ -637,6 +637,329 @@ CITY_UPDATES = json.loads(r'''[
     "geonameId": 3868626,
     "catalogName": "Valparaíso",
     "isCapital": false
+  },
+  {
+    "cityId": "surabaya",
+    "displayName": "Surabaya",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Tugu Pahlawan and its flame-shaped crown",
+      "a restrained Surabaya skyline, tropical trees and low civic buildings"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "pale tropical blue, warm stone, lush green, muted teal and soft ochre",
+    "summerCues": "lush wet-season tropical foliage and warm humid daylight without painted rain",
+    "winterPalette": "sun-warmed stone, subdued olive, muted teal, dry-season gold and pale blue",
+    "winterCues": "slightly drier tropical foliage and clear warm daylight; no cold cues or snow",
+    "geonameId": 1625822,
+    "catalogName": "Surabaya",
+    "isCapital": false
+  },
+  {
+    "cityId": "bekasi",
+    "displayName": "Bekasi",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Masjid Agung Al-Barkah with its central dome and minarets",
+      "a restrained Bekasi mid-rise skyline and tropical streetscape"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "pale blue, tropical leaf green, warm cream, muted teal and restrained gold",
+    "summerCues": "lush wet-season greenery and warm humid light without painted rain",
+    "winterPalette": "soft blue-gray, warm cream, subdued olive, pale terracotta and dry-season gold",
+    "winterCues": "slightly drier tropical foliage and gentle warm daylight; no cold cues or snow",
+    "geonameId": 1649378,
+    "catalogName": "Bekasi",
+    "isCapital": false
+  },
+  {
+    "cityId": "bandung",
+    "displayName": "Bandung",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Gedung Sate and its distinctive central roof finial",
+      "Bandung's restrained highland skyline, tropical gardens and low-rise roofs"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "pale highland blue, warm cream, lush green, muted terracotta and soft ochre",
+    "summerCues": "lush rainy-season gardens and soft warm highland daylight without painted rain",
+    "winterPalette": "cool highland blue, pale stone, subdued olive, muted terracotta and dry-season gold",
+    "winterCues": "slightly drier highland foliage and clear mild daylight; no snow or cold effects",
+    "geonameId": 1650357,
+    "catalogName": "Bandung",
+    "isCapital": false
+  },
+  {
+    "cityId": "medan",
+    "displayName": "Medan",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "the yellow Maimun Palace with its Malay-Islamic arches",
+      "the Great Mosque of Medan and a restrained tropical city skyline"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "warm palace yellow, pale tropical blue, lush green, cream and muted teal",
+    "summerCues": "full wet-season tropical foliage and warm humid light without painted rain",
+    "winterPalette": "soft ochre, warm cream, muted teal, subdued olive and pale blue-gray",
+    "winterCues": "slightly drier tropical foliage and clear warm daylight; no cold cues or snow",
+    "geonameId": 1214520,
+    "catalogName": "Medan",
+    "isCapital": false
+  },
+  {
+    "cityId": "depok",
+    "displayName": "Depok",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Masjid Dian Al-Mahri's gold-clad domes and slender minarets",
+      "Depok's restrained mid-rise skyline and tropical tree canopy"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "soft gold, pale tropical blue, lush green, warm cream and muted teal",
+    "summerCues": "lush wet-season greenery and humid tropical light without painted rain",
+    "winterPalette": "muted gold, warm cream, subdued olive, pale blue-gray and dry-season ochre",
+    "winterCues": "slightly drier tropical foliage and gentle warm daylight; no cold cues or snow",
+    "geonameId": 1645524,
+    "catalogName": "Depok",
+    "isCapital": false
+  },
+  {
+    "cityId": "tangerang",
+    "displayName": "Tangerang",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Al-Azhom Grand Mosque's broad blue dome and four minarets",
+      "a restrained Tangerang skyline with tropical trees and low civic buildings"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "pale blue, tropical green, warm cream, soft ochre and muted teal",
+    "summerCues": "lush wet-season tropical foliage and warm humid daylight without painted rain",
+    "winterPalette": "cool pale blue, warm stone, subdued olive, muted teal and dry-season gold",
+    "winterCues": "slightly drier foliage and clear warm daylight; no cold cues or snow",
+    "geonameId": 1625084,
+    "catalogName": "Tangerang",
+    "isCapital": false
+  },
+  {
+    "cityId": "palembang",
+    "displayName": "Palembang",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Ampera Bridge's distinctive twin towers and long span over the Musi River",
+      "Palembang's restrained riverside skyline and tropical vegetation"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "muted river blue, pale tropical blue, lush green, warm cream and soft vermilion",
+    "summerCues": "lush wet-season riverbank foliage and warm humid light without painted rain",
+    "winterPalette": "soft slate blue, warm cream, subdued olive, muted vermilion and dry-season ochre",
+    "winterCues": "slightly drier riverbank foliage and clear warm daylight; no cold cues or snow",
+    "geonameId": 1633070,
+    "catalogName": "Palembang",
+    "isCapital": false
+  },
+  {
+    "cityId": "semarang",
+    "displayName": "Semarang",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Lawang Sewu's twin corner towers and arcaded historic facade",
+      "Semarang's restrained urban skyline, tropical trees and low-rise roofs"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "warm ivory, muted terracotta, pale tropical blue, lush green and soft ochre",
+    "summerCues": "lush wet-season gardens and humid tropical daylight without painted rain",
+    "winterPalette": "cool ivory, subdued terracotta, slate blue, muted olive and dry-season gold",
+    "winterCues": "slightly drier foliage and clear warm daylight; no cold cues or snow",
+    "geonameId": 1627896,
+    "catalogName": "Semarang",
+    "isCapital": false
+  },
+  {
+    "cityId": "denpasar",
+    "displayName": "Denpasar",
+    "countryCode": "ID",
+    "countryName": "Indonesia",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Bajra Sandhi Monument's stepped form and central tower",
+      "Balinese split-gate stonework, tropical palms and a restrained Denpasar skyline"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "warm temple stone, pale tropical blue, lush green, muted ochre and soft teal",
+    "summerCues": "lush wet-season tropical gardens and warm humid daylight without painted rain",
+    "winterPalette": "warm temple stone, subdued olive, muted teal, dry-season ochre and pale blue",
+    "winterCues": "slightly drier tropical gardens and clear warm daylight; no cold cues or snow",
+    "geonameId": 1645528,
+    "catalogName": "Denpasar",
+    "isCapital": false
+  },
+  {
+    "cityId": "haiphong",
+    "displayName": "Haiphong",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "north",
+    "landmarks": [
+      "Haiphong Opera House's French neoclassical facade and domed roof",
+      "a restrained northern Vietnamese skyline and flame-flower trees"
+    ],
+    "seasonalMode": "mild-winter",
+    "summerPalette": "warm ivory, muted coral, pale river blue, leafy green and soft ochre",
+    "summerCues": "full subtropical foliage and warm humid daylight without painted rain",
+    "winterPalette": "cool ivory, slate blue, muted coral, damp stone and subdued gray-green",
+    "winterCues": "mild cool-season light, damp stone and sparse deciduous foliage; no snow",
+    "geonameId": 1581298,
+    "catalogName": "Haiphong",
+    "isCapital": false
+  },
+  {
+    "cityId": "can-tho",
+    "displayName": "Cần Thơ",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "Can Tho Bridge spanning the Hau River",
+      "a restrained Mekong Delta riverfront with tropical trees and low urban buildings"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "soft river blue, pale tropical blue, lush green, warm cream and muted teal",
+    "summerCues": "lush wet-season riverbank foliage and humid tropical light without painted rain",
+    "winterPalette": "muted river blue, warm cream, subdued olive, pale blue-gray and dry-season ochre",
+    "winterCues": "drier-season riverbank foliage and warm clear daylight; no cold cues or snow",
+    "geonameId": 1586203,
+    "catalogName": "Cần Thơ",
+    "isCapital": false
+  },
+  {
+    "cityId": "hue",
+    "displayName": "Huế",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "north",
+    "landmarks": [
+      "Ngo Mon Gate of the Imperial Citadel with its layered red-tiled roof",
+      "Thien Mu Pagoda above a restrained Perfume River riverfront"
+    ],
+    "seasonalMode": "mild-winter",
+    "summerPalette": "warm imperial ochre, muted brick red, river blue, leafy green and pale cream",
+    "summerCues": "full riverbank foliage and warm humid daylight without painted rain",
+    "winterPalette": "cool imperial ochre, slate river blue, muted brick, damp stone and gray-green",
+    "winterCues": "mild cooler-season light, damp stone and sparse deciduous foliage; no snow",
+    "geonameId": 1580240,
+    "catalogName": "Huế",
+    "isCapital": false
+  },
+  {
+    "cityId": "da-nang",
+    "displayName": "Da Nang",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "north",
+    "landmarks": [
+      "the Dragon Bridge crossing the Han River with its unmistakable long dragon form",
+      "Da Nang's restrained riverside skyline and distant Marble Mountains"
+    ],
+    "seasonalMode": "mild-winter",
+    "summerPalette": "soft river blue, pale coastal blue, muted coral, lush green and warm cream",
+    "summerCues": "full tropical riverbank foliage and warm coastal light without painted weather",
+    "winterPalette": "slate river blue, cool cream, subdued coral, muted olive and damp stone gray",
+    "winterCues": "mild cooler-season coastal light, damp stone and slightly sparser foliage; no snow",
+    "geonameId": 1583992,
+    "catalogName": "Da Nang",
+    "isCapital": false
+  },
+  {
+    "cityId": "bien-hoa",
+    "displayName": "Biên Hòa",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "a low bridge and riverfront along the Đồng Nai River",
+      "Biên Hòa's restrained mid-rise skyline and tropical riverbank vegetation"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "muted river blue, pale tropical blue, lush green, warm cream and soft ochre",
+    "summerCues": "lush wet-season riverside foliage and humid tropical light without painted rain",
+    "winterPalette": "soft slate blue, warm cream, subdued olive, pale terracotta and dry-season gold",
+    "winterCues": "drier-season riverbank foliage and gentle warm daylight; no cold cues or snow",
+    "geonameId": 1587923,
+    "catalogName": "Biên Hòa",
+    "isCapital": false
+  },
+  {
+    "cityId": "thanh-hoa",
+    "displayName": "Thanh Hóa",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "north",
+    "landmarks": [
+      "Ham Rong Bridge crossing the Ma River",
+      "Thanh Hóa's restrained northern Vietnamese city skyline and riverbank trees"
+    ],
+    "seasonalMode": "mild-winter",
+    "summerPalette": "soft river blue, warm cream, muted terracotta, lush green and pale ochre",
+    "summerCues": "full subtropical foliage and warm humid daylight without painted rain",
+    "winterPalette": "slate river blue, cool cream, muted terracotta, damp stone and gray-green",
+    "winterCues": "mild cool-season light, damp stone and sparse deciduous foliage; no snow",
+    "geonameId": 1566166,
+    "catalogName": "Thanh Hóa",
+    "isCapital": false
+  },
+  {
+    "cityId": "vinh",
+    "displayName": "Vinh",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "north",
+    "landmarks": [
+      "the surviving gate and low walls of Vinh Citadel",
+      "a restrained urban skyline with the Lam River plain and distant Quyet Mountain"
+    ],
+    "seasonalMode": "mild-winter",
+    "summerPalette": "warm cream, muted brick, pale blue, leafy green and soft ochre",
+    "summerCues": "full subtropical greenery and warm humid daylight without painted rain",
+    "winterPalette": "cool cream, slate blue, muted brick, damp stone and subdued gray-green",
+    "winterCues": "mild cool-season air, softer light and sparse deciduous foliage; no snow",
+    "geonameId": 1562798,
+    "catalogName": "Vinh",
+    "isCapital": false
+  },
+  {
+    "cityId": "thuan-an",
+    "displayName": "Thuận An",
+    "countryCode": "VN",
+    "countryName": "Vietnam",
+    "hemisphere": "equatorial",
+    "landmarks": [
+      "a restrained contemporary Thuận An mid-rise skyline beside a Saigon River tributary",
+      "tropical riverbank trees and low civic buildings"
+    ],
+    "seasonalMode": "wet-dry",
+    "summerPalette": "pale tropical blue, muted river blue, lush green, warm cream and soft ochre",
+    "summerCues": "lush wet-season riverbank foliage and warm humid daylight without painted rain",
+    "winterPalette": "soft blue-gray, muted river blue, warm cream, subdued olive and dry-season gold",
+    "winterCues": "drier-season tropical foliage and clear warm daylight; no cold cues or snow",
+    "geonameId": 12382296,
+    "catalogName": "Thuận An",
+    "isCapital": false
   }
 ]''')
 
@@ -678,9 +1001,21 @@ def update(manifest_path: Path, cities_zip: Path, master_root: Path, *, dry_run:
     existing_ids = {item["cityId"] for item in cities}
     existing_additional_ids = {item["cityId"] for item in additional}
     existing_reviewed_files = {item["fileName"] for item in reviewed}
-    duplicate_ids = update_ids & (existing_ids | existing_additional_ids)
-    if duplicate_ids:
-        raise ValueError(f"Catalog expansion contains existing ids: {sorted(duplicate_ids)}")
+    already_present_ids = update_ids & (existing_ids | existing_additional_ids)
+    for city_id in already_present_ids:
+        if city_id not in existing_ids or city_id not in existing_additional_ids:
+            raise ValueError(f"Catalog entry is only partially present: {city_id}")
+        missing_seasons = [
+            season for season in ("summer", "winter")
+            if f"{city_id}-{season}.png" not in existing_reviewed_files
+        ]
+        if missing_seasons:
+            raise ValueError(
+                f"Catalog entry is missing reviewed masters: {city_id} ({', '.join(missing_seasons)})"
+            )
+    pending_updates = [
+        item for item in CITY_UPDATES if item["cityId"] not in already_present_ids
+    ]
     if len(reviewed) != len(cities) * 2:
         raise ValueError("Existing reviewed-master count is not aligned with the city catalog.")
 
@@ -689,7 +1024,7 @@ def update(manifest_path: Path, cities_zip: Path, master_root: Path, *, dry_run:
     prompt_records: list[dict[str, object]] = []
     master_records: list[dict[str, str]] = []
 
-    for item in CITY_UPDATES:
+    for item in pending_updates:
         city_id = item["cityId"]
         geoname_id = item["geonameId"]
         row = geonames.get(geoname_id)
@@ -749,6 +1084,7 @@ def update(manifest_path: Path, cities_zip: Path, master_root: Path, *, dry_run:
         print(json.dumps({
             "cityCount": len(additions),
             "assetCount": len(master_records),
+            "alreadyPresentCount": len(already_present_ids),
             "valid": True,
         }, indent=2))
         return

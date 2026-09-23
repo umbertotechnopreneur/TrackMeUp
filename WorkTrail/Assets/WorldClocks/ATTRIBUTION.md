@@ -3,7 +3,7 @@
 City coordinates, population, and IANA time zones are derived from GeoNames `cities500`,
 licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-The seasonal skyline images are TrackMeUp-directed Urban Wash watercolor artwork.
+The seasonal skyline images are WorkTrail-directed Urban Wash watercolor artwork.
 Their exact generation, intermediate WebP, and packaged PNG manifests are stored in
 [`SOURCE-MANIFEST.json`](SOURCE-MANIFEST.json),
 [`RUNTIME-ASSET-MANIFEST.json`](RUNTIME-ASSET-MANIFEST.json),
@@ -58,6 +58,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Baku | winter | `Skylines/baku-winter.png` | `ce437f4665a87e6678183d0c70d26526ee06259a3ec8beccd66ee9c3ad96a412` |
 | Bamako | summer | `Skylines/bamako-summer.png` | `7e437a9c46b90e59d4fa411a2799014ad4528594e2a4866034702debccb4e3d3` |
 | Bamako | winter | `Skylines/bamako-winter.png` | `1221c59c3632484154b83351227bdbc23aa34762b37a976952c202bb55cc645a` |
+| Bandung | summer | `Skylines/bandung-summer.png` | `21f8598269259f4cec2ef9dac9a8b4d66face9d9f71d38f95477f22ba3f45a35` |
+| Bandung | winter | `Skylines/bandung-winter.png` | `f9eed49d616df84070ebb3879ef6faaa23c1bf0a1e7f401bc8284e9af3a38488` |
 | Bangkok | summer | `Skylines/bangkok-summer.png` | `a14487398a8309065a0d843259be87fbbcf441404f9b8d46123ec5d7eac356cf` |
 | Bangkok | winter | `Skylines/bangkok-winter.png` | `116352cb20039835fff99d2d9a4c9a6b19e4cec32db8b7b1a0cb18d004cd7c78` |
 | Barcelona | summer | `Skylines/barcelona-summer.png` | `5f2bac57e8d7c4a5ed6770e77a1c716773709c7cdc25ed349a85b225b879f9d3` |
@@ -66,6 +68,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Beijing | winter | `Skylines/beijing-winter.png` | `3d36f2ecbe1ed7cdd7f27c89d8a9a6addf99a4bc8bc2246abd68184148ae854d` |
 | Beirut | summer | `Skylines/beirut-summer.png` | `9b9358e8ded19c9a4d36c9dc5e6e206842122614184dac608d14c82eff553eef` |
 | Beirut | winter | `Skylines/beirut-winter.png` | `8f44ee7e0f9b9d01c8d8b77e534ebcd886090d40214f998630ea0b21239e1919` |
+| Bekasi | summer | `Skylines/bekasi-summer.png` | `7ba92564112c120031c95ea8c8651148fb8f91e253562a90f5602f87bf724da7` |
+| Bekasi | winter | `Skylines/bekasi-winter.png` | `2f317ee4dbf088a3127a446a906c746065f891aa7dca17b18b4efb1bdd191cbc` |
 | Belgrade | summer | `Skylines/belgrade-summer.png` | `6e349f1c30b5f8517c6b2d978b53f33e2d73e3e2febae939032a7897b3d78f1c` |
 | Belgrade | winter | `Skylines/belgrade-winter.png` | `e5cf89bef5734d7dd41ecde360731ab78a8c69c582a580d4711d7947c26e522c` |
 | Belém | summer | `Skylines/belem-summer.png` | `94311714062894fc433e4f16a1817278025a63bf52e64d1c46423159b1d35580` |
@@ -74,6 +78,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Berlin | winter | `Skylines/berlin-winter.png` | `688cbbfee0ba47103b836cdbab4d2572d99bccea635cccc25fe605858b11c071` |
 | Bern | summer | `Skylines/bern-summer.png` | `2d715b81beedecc2d83f815f274b310c420c96f7cc3a405f62fc5682b8e39ffa` |
 | Bern | winter | `Skylines/bern-winter.png` | `0345205a938a38dbbff9822a914a4d83cc0e83b4382c4f14f9d27f64f5dd3d90` |
+| Biên Hòa | summer | `Skylines/bien-hoa-summer.png` | `06f64ea7642a0296a8b16e39f7a44417ac10193345a1ca69dc796accaa9252b2` |
+| Biên Hòa | winter | `Skylines/bien-hoa-winter.png` | `83fbd7de8535ef451be4dbd8d8423183615b1e0dcd5dec7fb76772d628e22d0f` |
 | Bogotá | summer | `Skylines/bogota-summer.png` | `3f42432f65e5822e90cf04c05a82e410764eb22436559d2096db3650e8900b30` |
 | Bogotá | winter | `Skylines/bogota-winter.png` | `1c344282a7aab1b1fa7acf486e7b0692cc5c296b205edb31375a1791566b7c41` |
 | Bologna | summer | `Skylines/bologna-summer.png` | `5a915ef33f11647f9a205b1235fd8e15a52ab9a2a2651f4444e1acfc2cbdfb8d` |
@@ -124,6 +130,10 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Cusco | winter | `Skylines/cusco-winter.png` | `f52b0ecba1992d2cc1fac8ed450c2cc92f2a0370b33f9148c5a371e805a2974c` |
 | Córdoba | summer | `Skylines/cordoba-argentina-summer.png` | `8fe5d9ba6fc51f02f68d49bc8310afababfaf389cba6a3818e45527578342624` |
 | Córdoba | winter | `Skylines/cordoba-argentina-winter.png` | `c3ccbdaf255a7f50989afebce5232e448596d4a0ec644a867ed3e28cb206e4cc` |
+| Cần Thơ | summer | `Skylines/can-tho-summer.png` | `8d07ce2306bf3ddf247b81c6ec12c3316246fee7b6791ffdd41606f51ccfe11b` |
+| Cần Thơ | winter | `Skylines/can-tho-winter.png` | `c46fa12c9e7744bd5fdd994edee719f0179b44a95f5826d3dcc5feba6d9ba609` |
+| Da Nang | summer | `Skylines/da-nang-summer.png` | `2f1303102c38d521d616c347cb0ec0bf1ee7483a9b961a85824c90af747e385b` |
+| Da Nang | winter | `Skylines/da-nang-winter.png` | `68245f7214d0844639edb574c2a64d461b8312be015879ba15eb4753423c6946` |
 | Dakar | summer | `Skylines/dakar-summer.png` | `fdc2a8ea5d45c5588643909fa6258198925b415824d7ddc4998cad83c56eee4c` |
 | Dakar | winter | `Skylines/dakar-winter.png` | `959d16c1877c26a413d52483be8aa40c81d4ed87d610de9b39b3c85518c829e2` |
 | Dallas | summer | `Skylines/dallas-summer.png` | `d973cd0002c6f41644817f2545b45d134da11ec8efa6640416f0a06d5a0fc73c` |
@@ -132,6 +142,10 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Damascus | winter | `Skylines/damascus-winter.png` | `e730f3f42774baaa81e33cadc5f7969f451b3df52e3fbedc32a34448668f16f0` |
 | Darwin | summer | `Skylines/darwin-summer.png` | `6755eb1c01283ca136cc50dc8211b6ffc4cafbb1cbb76f2141686e3a5fb9eb6d` |
 | Darwin | winter | `Skylines/darwin-winter.png` | `15ffa0ba97fe866eb1b453a1e5b93bf9f38b7b8aaec32075738f5edf45031598` |
+| Denpasar | summer | `Skylines/denpasar-summer.png` | `d047f55befb61dddcd1d7789cc9a0e6d965b7379bb1d03af59fe4847a67e86d8` |
+| Denpasar | winter | `Skylines/denpasar-winter.png` | `6d61fd51fdc863436dbdd219b4b900c2150388f2af09ee019e17cdd0ad0d8d0b` |
+| Depok | summer | `Skylines/depok-summer.png` | `893116017806eeb96c9f40487e88cfa962b487e794a51fb68265254e54069272` |
+| Depok | winter | `Skylines/depok-winter.png` | `f6a3b9a0bae7bcea9842e45262d27e748e928a06550dc0086319659ccef4d693` |
 | Dhaka | summer | `Skylines/dhaka-summer.png` | `db3589005db3e7a275115fc5934bb840c063db1d1fb93f5294b936266c035c6b` |
 | Dhaka | winter | `Skylines/dhaka-winter.png` | `059ec0f3661d11cdc8c2ee791b69acd42132c615a98ceabce17ff6bfe68b38fd` |
 | Domegge di Cadore | summer | `Skylines/domegge-di-cadore-summer.png` | `9cd513f99c5cd05b2902547f265b19593547f19253d6e43878edd5df72225036` |
@@ -150,6 +164,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Gold Coast | winter | `Skylines/gold-coast-winter.png` | `8da13e5d1513b4323ad5cb56630d3ad51f65d0f867d432e98eb0c68d490fdc3a` |
 | Guatemala City | summer | `Skylines/guatemala-city-summer.png` | `e1cfa1b1b91483f5ec562b7b64414aff1a7f02bc491590b438528d8d5a43ed00` |
 | Guatemala City | winter | `Skylines/guatemala-city-winter.png` | `7613c5c217a4269dab2929ad5680a7a90b305482cd6298170f47b266193f5960` |
+| Haiphong | summer | `Skylines/haiphong-summer.png` | `643282f33a7fb2f7786be68e79cabd1c02862b5d4bf7e2cf46586ebc6f90da80` |
+| Haiphong | winter | `Skylines/haiphong-winter.png` | `302049bfdf459f491213e169d258aebb29519138fc9d25a1571ecfc729f5b583` |
 | Hanoi | summer | `Skylines/hanoi-summer.png` | `c6761da199bc2d0a9febd6e70eb10587448a30121e141af9f1eeee6f90eb0db4` |
 | Hanoi | winter | `Skylines/hanoi-winter.png` | `6dbe14fc61795e361ddd720fa42cc6317cb374250a7343f6b48e2ae0129c036c` |
 | Harare | summer | `Skylines/harare-summer.png` | `ee0be26bbe81bccf23284813762025f85870fa088368d77212fbe40ee59cb3c3` |
@@ -166,6 +182,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Hong Kong | winter | `Skylines/hong-kong-winter.png` | `0b687d8ade820daa1984001e3f835dcb78a17cc1597311be2b75b1a98a3b8e49` |
 | Houston | summer | `Skylines/houston-summer.png` | `9582a630903278dfa85e226a185e6d3e4f49c7c8b2a5ab1fd293996a03c7e522` |
 | Houston | winter | `Skylines/houston-winter.png` | `a9163a9eca63854ccf8519fff67fae59a81e173d9d2949dbc8adf1665839f7ec` |
+| Huế | summer | `Skylines/hue-summer.png` | `cd8e33d1a4914bd5b1f753f37b82b185c1562dd9422a290af812ff94745609f4` |
+| Huế | winter | `Skylines/hue-winter.png` | `4a0f90bee991d2f413b9a5fdbcb9de8329640ba9a21bb03a54b160e30b636620` |
 | Jakarta | summer | `Skylines/jakarta-summer.png` | `a89266f0e0153f05e7358509d18360fdcabd2cf480948bdb579d06f7a471d839` |
 | Jakarta | winter | `Skylines/jakarta-winter.png` | `55f8debf70c88182be2aec4992192cbfce6bf0c0c333f06babf7e0eff6defbd2` |
 | Kabul | summer | `Skylines/kabul-summer.png` | `292da53a56044591ca148f9b629e1add92f5f40e34a2632c13cb755945519533` |
@@ -226,6 +244,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Manila | winter | `Skylines/manila-winter.png` | `c79ec76fcce7fc4d659ea1d211a6154b7ee3054e719b04848808c9c05577cbe1` |
 | Maputo | summer | `Skylines/maputo-summer.png` | `4b154cff55de5f51f345ac5d1a0a3430814ee955ec75b353bdeddf2cca2a457d` |
 | Maputo | winter | `Skylines/maputo-winter.png` | `b3da76a1921a13b7ac6e720a9ac2978569888831e87baa9e6df69dc0845434d5` |
+| Medan | summer | `Skylines/medan-summer.png` | `d30ce199eed6614e41ac211d27fe69f4c1657449a3d201b3818df1b44f49b94d` |
+| Medan | winter | `Skylines/medan-winter.png` | `e48a6b8003906ce72c3254893c4d3a47dd7d9b99fffc2babaf01069c9237a2f3` |
 | Medellín | summer | `Skylines/medellin-summer.png` | `5f4879b3b88fd80003d14ea6eabc819ddce5f901e032bc5a8452bbef95e4f17d` |
 | Medellín | winter | `Skylines/medellin-winter.png` | `2d1ba5f9ca03bccfb59e29a3fd57de185e8bf3b6f4494b19807080ec00c258d0` |
 | Melbourne | summer | `Skylines/melbourne-summer.png` | `580afbfa40653713de3b6b57063569085cc3c205821340e7a8925a9c99acff0f` |
@@ -274,6 +294,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Ottawa | winter | `Skylines/ottawa-winter.png` | `269ad645642c0f70df63764c1bc6e64df1e08f84a5905279034e67ad92f3ba42` |
 | Ouagadougou | summer | `Skylines/ouagadougou-summer.png` | `436171a6612531c90e8c9ddd2db58bf630eb4287e6a84af5515651b023779b88` |
 | Ouagadougou | winter | `Skylines/ouagadougou-winter.png` | `db19f3aeb9fb3865dc1a0bde5153936541149b65bab2f83cdf677cd7a2a76944` |
+| Palembang | summer | `Skylines/palembang-summer.png` | `e5070491dd1e9c36afa317e269577ba086ba333965e883d0c967269c573f6581` |
+| Palembang | winter | `Skylines/palembang-winter.png` | `b4487f0fbd5ba1f258f5997637ee9cc4a1c0393b3ca62ee6c5d3e235bdfc2895` |
 | Paris | summer | `Skylines/paris-summer.png` | `333b04c5af8297cb12136b6dc59bb3a41a44213b2ff637704b4f31f16a3b5673` |
 | Paris | winter | `Skylines/paris-winter.png` | `5c66a553151cf6ca968a9b05591a05f5836026c01a7ebb602718e5b761109282` |
 | Perth | summer | `Skylines/perth-summer.png` | `58f6f304389c6868c93150ffa278fee35d13221f0593c4eccb33deeaca8b43bb` |
@@ -338,6 +360,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Santo Domingo | winter | `Skylines/santo-domingo-winter.png` | `246129d88f6f4e9835e5d678ccaab80e538ede9dbcde7262cc1e5ce47e7ff9e1` |
 | Sarajevo | summer | `Skylines/sarajevo-summer.png` | `25b2d75d73ec91b33ae1ca53c98424c06e82c60c288dbbeec2160bd8ef261034` |
 | Sarajevo | winter | `Skylines/sarajevo-winter.png` | `f1b9ba13f399ad01ac87804b06c31aae1efe0fddad3f9fb213dc0e3a3eb68973` |
+| Semarang | summer | `Skylines/semarang-summer.png` | `a69ec373019aec9331198e6551c8322cc906b7562305c4ada7fa1bbb889ca1ac` |
+| Semarang | winter | `Skylines/semarang-winter.png` | `785fd7d5426ef913158941103c31a3abd44d5e48b534a262d8f8037c5c1b87db` |
 | Seoul | summer | `Skylines/seoul-summer.png` | `b299692f5cbb482f38b039fabce0a18696f3ba38283c3b4c0c579ec9405bbc63` |
 | Seoul | winter | `Skylines/seoul-winter.png` | `65da9f52fc1ec292ac96d8fe2d0af8c61359c0f4d5c7a8b07d4489410d9fed9e` |
 | Seville | summer | `Skylines/seville-summer.png` | `55dd435008baab9e7ebf0c786f68f90f39cb4588cd36639c3bf458693ff3c088` |
@@ -352,6 +376,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Stockholm | winter | `Skylines/stockholm-winter.png` | `16494739c0b327db871ec9fb1954c1d52a34e3f73d1b4bdd9593d8140bdbdb1b` |
 | Sucre | summer | `Skylines/sucre-summer.png` | `be2e5be5f0f93b639ad41cef28404146de09b5bee3e39b909c906bb8031c577d` |
 | Sucre | winter | `Skylines/sucre-winter.png` | `8d082f2db74c11a8b90c43a1442d0e2e4174270aafce987432370378603a371b` |
+| Surabaya | summer | `Skylines/surabaya-summer.png` | `39ce3da327af6c472b5a39ba5a4447422cacaebf0649a530500c35ae3ec0c465` |
+| Surabaya | winter | `Skylines/surabaya-winter.png` | `20ea31fd8227e8c9565e2e24dfb72c2488d748c1a00231aa83efb779b9416862` |
 | Sydney | summer | `Skylines/sydney-summer.png` | `f182cb171201a3635c9a67c890cbdd5e86582f8c8327bd7fd40db3763e4c6c66` |
 | Sydney | winter | `Skylines/sydney-winter.png` | `40f029b0a47e7a7f2db45a2b2947c282b1d9384cb81aaf0d622a0916c128d6a9` |
 | São Paulo | summer | `Skylines/sao-paulo-summer.png` | `0755a042a19b0a544a167b7e1a98d2571448167dd46cba70392a10d8d0b7d63d` |
@@ -360,12 +386,18 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Taipei | winter | `Skylines/taipei-winter.png` | `48bb356d74a95080619733e879c195bba2598629e49da9752aa31f12a5306f57` |
 | Tallinn | summer | `Skylines/tallinn-summer.png` | `24eea47e3595a8e6545bdc44e129399c8d6c0a6f8b339392da6c77a59d1bbd3a` |
 | Tallinn | winter | `Skylines/tallinn-winter.png` | `4d8770d4d6ec5312a4cd80c933310eaf4deb8e2ad4f88652b8d8ed54ed047829` |
+| Tangerang | summer | `Skylines/tangerang-summer.png` | `8c036c6f572eb7b8fa7dd52143ad7bccd9190b542c8c726e2205a46fca1189da` |
+| Tangerang | winter | `Skylines/tangerang-winter.png` | `f0b564d2fd4f699e504b2b23cc63738900e72f7c613c2d1cadfc257afa86be4e` |
 | Tashkent | summer | `Skylines/tashkent-summer.png` | `79a851b8ae1b3a2ad91189c4b139ff094e3197eb027dc322ae2af02ce13a1083` |
 | Tashkent | winter | `Skylines/tashkent-winter.png` | `d958ad2182ff4e98ef6e03683d14052c66755e4aa460d9736eaf8090e2c8684f` |
 | Tbilisi | summer | `Skylines/tbilisi-summer.png` | `8c8c764b664273e71f8af686bd747be7151536f369c8a095086e5c5b7be4d1bb` |
 | Tbilisi | winter | `Skylines/tbilisi-winter.png` | `4dcfc3af43117c255b4bde8ba4e5cf1642c2247bf2154d68e6fd92713469ff46` |
 | Tehran | summer | `Skylines/tehran-summer.png` | `7b21444bbb60d2104e338aec0cbe73463d7ee3b69a57d2376a2422573cf294c2` |
 | Tehran | winter | `Skylines/tehran-winter.png` | `38738b3da0a4a16ce0c8da7bc79b6353b603405c6a5061ac247763972d1e53ac` |
+| Thanh Hóa | summer | `Skylines/thanh-hoa-summer.png` | `555c2d20146808db78e81efcc7bea29d388bbc1bf9b6c9437e21e71e70b742ba` |
+| Thanh Hóa | winter | `Skylines/thanh-hoa-winter.png` | `342e13901ac1bcf26a271c5311c27740ff6f3e979e684e05eee34325b0e6e09a` |
+| Thuận An | summer | `Skylines/thuan-an-summer.png` | `7ddf722ec6f8f1b5a8d198a6eb2357f8565e81f19a38d6dff2871ae8909aa7c1` |
+| Thuận An | winter | `Skylines/thuan-an-winter.png` | `41a2066c5e6336bd449ec752c9b3414c675b7ec8bf0a7ec84ee5d0870d4373f2` |
 | Tirana | summer | `Skylines/tirana-summer.png` | `5e1cf0d33ca289490aad2cd6f62d6b536d8662953a6e93f98c922d6ad0f6f513` |
 | Tirana | winter | `Skylines/tirana-winter.png` | `386882421c57b11f9c9097fa4e6a8fc4a458239de1e55f5e459478dba92bb25b` |
 | Tokyo | summer | `Skylines/tokyo-summer.png` | `7613651900b229ad3abf0191f3717efd3e2dba854387e04a25950fc57fc09d1c` |
@@ -388,6 +420,8 @@ Packaged transformation: Decoded the reviewed 1280x720 alpha WebP runtime deriva
 | Vienna | winter | `Skylines/vienna-winter.png` | `410e60a35adbd1a2c65704b3a1a2e24cb1db37867446d6076ccf24abd76d4e83` |
 | Vilnius | summer | `Skylines/vilnius-summer.png` | `562c6f06f94e6a43e915f754908d2bc1731cd1ecace884e46f9343feea978205` |
 | Vilnius | winter | `Skylines/vilnius-winter.png` | `f25fb973b5edb476f87329d9c6811a0c9c192f5d34271bc841179643b8467065` |
+| Vinh | summer | `Skylines/vinh-summer.png` | `7028b24184132e4e3fc32ece1d0d580f2a5f18ad782e6b5a704215d5719c1bff` |
+| Vinh | winter | `Skylines/vinh-winter.png` | `e07b55e1abf3af36124c6461aa9701fbdc183e7d2d04d4f3b7b259cb6fdc6b13` |
 | Warsaw | summer | `Skylines/warsaw-summer.png` | `59293d7a77ca9e5534005a27b8f8db4c50801cfe7d757c33d5548f2e39c064fe` |
 | Warsaw | winter | `Skylines/warsaw-winter.png` | `575473d01c4d4231c7d39766074f0331c089409addd948c1ed33d35b37329b4e` |
 | Yaoundé | summer | `Skylines/yaounde-summer.png` | `74bd6eb28ca787e5b5204a48758e666258597c14d254cdd3ef0215e1202f79a5` |

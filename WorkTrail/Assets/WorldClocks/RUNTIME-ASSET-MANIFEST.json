@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
   "sourceManifest": "generation-manifest-v1.json",
-  "sourceManifestSha256": "e278a120ee8c036eef06638395c53ad6bb3cba6bbb9360495dd54c9e9c202372",
+  "sourceManifestSha256": "71d39051f51ba6555879c3b882ae47d4dcf68074df7a05c420373b2a0e8c6136",
   "sourceManifestSchemaVersion": 1,
   "sourceMasterBinding": "generation-manifest-reviewed-sha256",
   "styleId": "urban-wash-v1",
-  "generatedAt": "2026-09-04T10:19:16.3995324+00:00",
+  "generatedAt": "2026-09-23T12:58:14.2504398+00:00",
   "transformation": "Scaled and center-cropped to 1280x720 alpha WebP with FFmpeg/libwebp quality 82, compression level 4",
   "toolchain": {
-    "ffmpeg": "ffmpeg version 8.1.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "ffmpeg": "ffmpeg version 9.0.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
     "encoder": "libwebp",
     "encoderDescription": "Encoder libwebp [libwebp WebP image]:"
   },
-  "expectedAssetCount": 378,
-  "generatedAssetCount": 378,
+  "expectedAssetCount": 412,
+  "generatedAssetCount": 412,
   "complete": true,
   "assets": [
     {
@@ -473,6 +473,30 @@
       "sha256": "271838811c932834462df7cba08fa7893a2662719906f265c14cf04aefb4caf5"
     },
     {
+      "cityId": "bandung",
+      "season": "summer",
+      "fileName": "bandung-summer.webp",
+      "sourceMasterFileName": "bandung-summer.png",
+      "sourceMasterSha256": "4ba32bda817b178c32550e4a1b03f6a1ebc2baf5b2937a5c241eb5e05eff33de",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 180678,
+      "sha256": "f97652c8482a2e6380af949d85a9f495fb1b36e9e8f2d0b37f5abda1bbf0af91"
+    },
+    {
+      "cityId": "bandung",
+      "season": "winter",
+      "fileName": "bandung-winter.webp",
+      "sourceMasterFileName": "bandung-winter.png",
+      "sourceMasterSha256": "e36bcbf3ebaafdc3dfbaeaf89c6556eff3c2c93639078b5a27850506ace4bbd1",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 183496,
+      "sha256": "5aa24befdabd2f30a075b90819fae93924396aceb35355db1d76231f3b93b050"
+    },
+    {
       "cityId": "bangkok",
       "season": "summer",
       "fileName": "bangkok-summer.webp",
@@ -569,6 +593,30 @@
       "sha256": "776c2188b9817f1f3e83775b7b4dfb6f111eda133acecc7796ecdc64a5aab2ab"
     },
     {
+      "cityId": "bekasi",
+      "season": "summer",
+      "fileName": "bekasi-summer.webp",
+      "sourceMasterFileName": "bekasi-summer.png",
+      "sourceMasterSha256": "603ffe03152f5f4e2c17ee49efd0b7318d1333eda85b183c1232f7e59754d642",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 187556,
+      "sha256": "c58e812c4575528e71b56005319e821a47d49e805f14dbdd45e7481da238fcde"
+    },
+    {
+      "cityId": "bekasi",
+      "season": "winter",
+      "fileName": "bekasi-winter.webp",
+      "sourceMasterFileName": "bekasi-winter.png",
+      "sourceMasterSha256": "7044644658cd28ab829ed36ed5259e2de45395ee48ebda530f23214a6aba291d",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 170898,
+      "sha256": "32b7882fe501c246a55cb63d51baf4bfae8afaf118fb716fc7aba9cdacd6895d"
+    },
+    {
       "cityId": "belem",
       "season": "summer",
       "fileName": "belem-summer.webp",
@@ -663,6 +711,30 @@
       "pixelFormat": "yuva420p",
       "bytes": 216208,
       "sha256": "42f52503fb550d5a574a49b892f818cb64f9fa69ed6cdd3f0e53b6e0895d28b0"
+    },
+    {
+      "cityId": "bien-hoa",
+      "season": "summer",
+      "fileName": "bien-hoa-summer.webp",
+      "sourceMasterFileName": "bien-hoa-summer.png",
+      "sourceMasterSha256": "b6bb2b47e7080aae230be528c8695f304088b1f00896577be45828f065e2df42",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 177198,
+      "sha256": "b453781612907784a32054fa0740a4675fcd8e14bf5338be2a165d4b12de8435"
+    },
+    {
+      "cityId": "bien-hoa",
+      "season": "winter",
+      "fileName": "bien-hoa-winter.webp",
+      "sourceMasterFileName": "bien-hoa-winter.png",
+      "sourceMasterSha256": "ea9a726b72fce11a1be18b6b0d0d378d6b5950426e2f045926c4431821e2e0a9",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 176082,
+      "sha256": "df1a99380853d700cb523a8c87956224e04d0308c7b45a49bb69acfe0e94467a"
     },
     {
       "cityId": "bogota",
@@ -1001,6 +1073,30 @@
       "sha256": "d213759ef2ebda9a0d6663984fa2b467555e042ba8c3fe2c087e069fa5afb7bc"
     },
     {
+      "cityId": "can-tho",
+      "season": "summer",
+      "fileName": "can-tho-summer.webp",
+      "sourceMasterFileName": "can-tho-summer.png",
+      "sourceMasterSha256": "c93c9740bfc9f838731fc285553732bce075fc8dbeadc704272c9d1369eecbb2",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 210144,
+      "sha256": "ed5155461626c1d7ea2cf5903c9eda8df41ebd55696b8f3a68ac0b94ac825d53"
+    },
+    {
+      "cityId": "can-tho",
+      "season": "winter",
+      "fileName": "can-tho-winter.webp",
+      "sourceMasterFileName": "can-tho-winter.png",
+      "sourceMasterSha256": "0143cddbb989de69b28ccb0e38ebbcef35fa4867554a3c4790d12693d87c657c",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 207778,
+      "sha256": "e2f612d5d8278c2007e3b02780dbebcbf84b85fe3cf257d155f8b7556d9b14de"
+    },
+    {
       "cityId": "canberra",
       "season": "summer",
       "fileName": "canberra-summer.webp",
@@ -1265,6 +1361,30 @@
       "sha256": "3ad8579bf5f508ef8cffa4d3b8295c6e41ef59e226628f5f6a37ed1fba93cfdb"
     },
     {
+      "cityId": "da-nang",
+      "season": "summer",
+      "fileName": "da-nang-summer.webp",
+      "sourceMasterFileName": "da-nang-summer.png",
+      "sourceMasterSha256": "84361cbd7317647cba0bca4560c14ce68f5275ffc1f58617450f711030cd6830",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 179290,
+      "sha256": "4291f4b480d50a37d087f1aab91f57ddcfee40317920c605e46fb5ae7766951d"
+    },
+    {
+      "cityId": "da-nang",
+      "season": "winter",
+      "fileName": "da-nang-winter.webp",
+      "sourceMasterFileName": "da-nang-winter.png",
+      "sourceMasterSha256": "71b6ea85f69ec4c455517dd2016ed84887aedc0141c2dbb311eab7d1cd73c52c",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 144604,
+      "sha256": "d3c2a0492b34c667540ccfb770ce312a33bc304c0cfb225a443c3e025ca1825d"
+    },
+    {
       "cityId": "dakar",
       "season": "summer",
       "fileName": "dakar-summer.webp",
@@ -1359,6 +1479,54 @@
       "pixelFormat": "yuva420p",
       "bytes": 220524,
       "sha256": "69099d76c2f0c905427e648d8ecdfbfd5ebd9107a99af31c111fc4e2366cfd33"
+    },
+    {
+      "cityId": "denpasar",
+      "season": "summer",
+      "fileName": "denpasar-summer.webp",
+      "sourceMasterFileName": "denpasar-summer.png",
+      "sourceMasterSha256": "68d89a68a8358a3054e53d717832510ce6860187e8ae9b08f8efa848e754e9d0",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 174008,
+      "sha256": "fabaf8d25242e12ed237e089de846c0e5acd280f1e1a187184cda6e7c975b993"
+    },
+    {
+      "cityId": "denpasar",
+      "season": "winter",
+      "fileName": "denpasar-winter.webp",
+      "sourceMasterFileName": "denpasar-winter.png",
+      "sourceMasterSha256": "09ca1e7602e0e529c5fd142cb6281b69fc2d58b73e7f0c75b2da339407f91488",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 179252,
+      "sha256": "1cb91128639298858dae24b279111be9baa8749fd991e5edd988c6e3e2239165"
+    },
+    {
+      "cityId": "depok",
+      "season": "summer",
+      "fileName": "depok-summer.webp",
+      "sourceMasterFileName": "depok-summer.png",
+      "sourceMasterSha256": "ec3d7c4a2ff00147a4ff146c7aa3336a896dbbf257d376839a41c554223c2c24",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 176404,
+      "sha256": "1e045a358ef1e05302e4ad852b29d04566724c07785bd216840c20e9db5d5c54"
+    },
+    {
+      "cityId": "depok",
+      "season": "winter",
+      "fileName": "depok-winter.webp",
+      "sourceMasterFileName": "depok-winter.png",
+      "sourceMasterSha256": "66b28840ecc80b85648f96af88121e8f5ac0867e4e9418ca40431d3e633e3c22",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 172406,
+      "sha256": "645ffe7f711a561e2fe30fb60c34f06fa14cb345e9c8f1f0e38445afec39814e"
     },
     {
       "cityId": "dhaka",
@@ -1577,6 +1745,30 @@
       "sha256": "b7e3774bf133c2c52a9a021356cfa9833ad7a41f380d292728a72da73b3205d9"
     },
     {
+      "cityId": "haiphong",
+      "season": "summer",
+      "fileName": "haiphong-summer.webp",
+      "sourceMasterFileName": "haiphong-summer.png",
+      "sourceMasterSha256": "d4e5648b4c7f5f501ba2bb87fd5acb0018f522f7b2410be43bae228c9396385a",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 189954,
+      "sha256": "00fca9bb9592ce0fc477fc9b519e5d0e83e142373ff46026adffee8a37a6c15e"
+    },
+    {
+      "cityId": "haiphong",
+      "season": "winter",
+      "fileName": "haiphong-winter.webp",
+      "sourceMasterFileName": "haiphong-winter.png",
+      "sourceMasterSha256": "e1a1581279d39d03f562ddfb016717f9ea1a19ed6cb66d0ed9d3f731ea409116",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 176904,
+      "sha256": "7577812518ca7de8c3628f55ee5e7ebd4f474008e2129164682be5988fa33d87"
+    },
+    {
       "cityId": "hanoi",
       "season": "summer",
       "fileName": "hanoi-summer.webp",
@@ -1767,6 +1959,30 @@
       "pixelFormat": "yuva420p",
       "bytes": 285394,
       "sha256": "d703850087c80643b8b0c22f0f093f42b19db3811e408350ebd295568a62a059"
+    },
+    {
+      "cityId": "hue",
+      "season": "summer",
+      "fileName": "hue-summer.webp",
+      "sourceMasterFileName": "hue-summer.png",
+      "sourceMasterSha256": "aa491cb21a40d335b43ff584cba9b97dce32405787ac00d96c797402d8f4cdd3",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 184734,
+      "sha256": "2eca15f3aeec4d70ed003f6b5c321f7c84d2d951428c007f4c07f2c06a72198a"
+    },
+    {
+      "cityId": "hue",
+      "season": "winter",
+      "fileName": "hue-winter.webp",
+      "sourceMasterFileName": "hue-winter.png",
+      "sourceMasterSha256": "c2636ea21b59c8b86262afd82acc9e058fe366d415d0354871dc636d4c55c8a7",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 179382,
+      "sha256": "49e3c8594252c3e3102aaee1b6e227f15e7f5f2189d2a4e8fb8611214f41df2e"
     },
     {
       "cityId": "jakarta",
@@ -2489,6 +2705,30 @@
       "sha256": "a8345245e4b6d6646d1d37bc23b01eaa1b74ed0e7c3ca32a84acce2d9ba46360"
     },
     {
+      "cityId": "medan",
+      "season": "summer",
+      "fileName": "medan-summer.webp",
+      "sourceMasterFileName": "medan-summer.png",
+      "sourceMasterSha256": "e35e07c4a0da142fdd02f1b1ddb61f42c4829301767c32bb09e5fb20aa70ab2d",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 181514,
+      "sha256": "ecb2309e0441e8e5187bd3a654f67ba9719683d1fc5c0e9b1ed995d15ea65481"
+    },
+    {
+      "cityId": "medan",
+      "season": "winter",
+      "fileName": "medan-winter.webp",
+      "sourceMasterFileName": "medan-winter.png",
+      "sourceMasterSha256": "b5a3b172d622d346112eb1c3ccc5868d5a106d6e7d69313c9c7f69fcf70beb0a",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 202472,
+      "sha256": "b38219d619568da6824c59a59e700e96b3a47affe9517da890b613f74d38fef2"
+    },
+    {
       "cityId": "medellin",
       "season": "summer",
       "fileName": "medellin-summer.webp",
@@ -3063,6 +3303,30 @@
       "pixelFormat": "yuva420p",
       "bytes": 185172,
       "sha256": "720eb433f7049bd51128fa7e93c5d2752764002e2f606d5aa0ef26b1f2a389b9"
+    },
+    {
+      "cityId": "palembang",
+      "season": "summer",
+      "fileName": "palembang-summer.webp",
+      "sourceMasterFileName": "palembang-summer.png",
+      "sourceMasterSha256": "6ac8850884ea2b8ee23e16f96554dfd940089de6633f6d801a4e3e3a7a792aa1",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 202756,
+      "sha256": "465295658f60d5687af13f6c43b43ff2d87fb30b0f58a8a7f1d1edf7fe0f9a97"
+    },
+    {
+      "cityId": "palembang",
+      "season": "winter",
+      "fileName": "palembang-winter.webp",
+      "sourceMasterFileName": "palembang-winter.png",
+      "sourceMasterSha256": "63206d47c24225eead96f91b795334ffd5ad5341929b2db9e36dcc2c7f4a15b7",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 180668,
+      "sha256": "bcde7412f061fd7d0c798def1548c6136432b42c1c5bfc8690c388519c95f969"
     },
     {
       "cityId": "paris",
@@ -3857,6 +4121,30 @@
       "sha256": "82135f294deb8a264b1355de1fbe212a59c7ddc0541224ddedb9e4ff7edda9c4"
     },
     {
+      "cityId": "semarang",
+      "season": "summer",
+      "fileName": "semarang-summer.webp",
+      "sourceMasterFileName": "semarang-summer.png",
+      "sourceMasterSha256": "b7b0400ecd15ffcc29b6bd49b4e84e0f05b58c1e3fe293400853442a581ad837",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 178040,
+      "sha256": "87fcbbade38d7c7675d84afdf9557308bc82d284487f3f53baf41112d8694af7"
+    },
+    {
+      "cityId": "semarang",
+      "season": "winter",
+      "fileName": "semarang-winter.webp",
+      "sourceMasterFileName": "semarang-winter.png",
+      "sourceMasterSha256": "96c748be0c21ed20bb49f56665c38b4027718665bf374917349919a3036ab3e1",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 176756,
+      "sha256": "05ff30930ed605bfc8e8c0b037982968301467879ea7df4b23e2b8dec0de44af"
+    },
+    {
       "cityId": "seoul",
       "season": "summer",
       "fileName": "seoul-summer.webp",
@@ -4025,6 +4313,30 @@
       "sha256": "df8be443e60660e5eb6e096ccb2620d76d45d830e2b55a3c0d300959814576c2"
     },
     {
+      "cityId": "surabaya",
+      "season": "summer",
+      "fileName": "surabaya-summer.webp",
+      "sourceMasterFileName": "surabaya-summer.png",
+      "sourceMasterSha256": "503dec9da4ce1e6f178ee113940ecd5c0798b3032d34caad83f706d0f66cb0ef",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 195946,
+      "sha256": "2c657ac43b8b66df9adc99719d8e75eed2bcd00703675bfea687591fd0ee0801"
+    },
+    {
+      "cityId": "surabaya",
+      "season": "winter",
+      "fileName": "surabaya-winter.webp",
+      "sourceMasterFileName": "surabaya-winter.png",
+      "sourceMasterSha256": "27f10c0ad66badf65721e1124819dca3ebbbd90da2915ee4ab06c4468262f7a1",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 172550,
+      "sha256": "70336e38c285555d916674753b37884c0a1acf4b201b88728623c9c96d81940d"
+    },
+    {
       "cityId": "sydney",
       "season": "summer",
       "fileName": "sydney-summer.webp",
@@ -4097,6 +4409,30 @@
       "sha256": "012d70d58d914616f8e021d52c72a57f0bcf88033339566948db229216988e2d"
     },
     {
+      "cityId": "tangerang",
+      "season": "summer",
+      "fileName": "tangerang-summer.webp",
+      "sourceMasterFileName": "tangerang-summer.png",
+      "sourceMasterSha256": "12e0bf30c240c94fa5790059d90738732eaad733b4448052b794077c5caf3cd9",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 181798,
+      "sha256": "cc5d1d7bc0e0e339abad0755918c1bcd968893308d2df025e384b0c199f1106d"
+    },
+    {
+      "cityId": "tangerang",
+      "season": "winter",
+      "fileName": "tangerang-winter.webp",
+      "sourceMasterFileName": "tangerang-winter.png",
+      "sourceMasterSha256": "43be3b1af5833b85072a4fac554e537b3cdd39b6b7810322e8e89f603cc4c8d6",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 185524,
+      "sha256": "e9183c6769d9c49fe122d487fe43ef83172450261973b1f7cd2a26804f4ab9e7"
+    },
+    {
       "cityId": "tashkent",
       "season": "summer",
       "fileName": "tashkent-summer.webp",
@@ -4167,6 +4503,54 @@
       "pixelFormat": "yuva420p",
       "bytes": 205378,
       "sha256": "27dea3b817bd86a2bbf8c139f467147ce2b3e3ab5eef64edc7e2f8e7e3498626"
+    },
+    {
+      "cityId": "thanh-hoa",
+      "season": "summer",
+      "fileName": "thanh-hoa-summer.webp",
+      "sourceMasterFileName": "thanh-hoa-summer.png",
+      "sourceMasterSha256": "5a6b2beb23708f46d0cb60aa7849597fed1de5e6943b3bc0d096497221c06e6f",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 177140,
+      "sha256": "d54c6d00bc5747013157a6c4f73116fdbff66db0e31b7512f0e4d27dc4bd23d6"
+    },
+    {
+      "cityId": "thanh-hoa",
+      "season": "winter",
+      "fileName": "thanh-hoa-winter.webp",
+      "sourceMasterFileName": "thanh-hoa-winter.png",
+      "sourceMasterSha256": "4b99bdcc7f761bf09cb95cfb850650d7adecb49612937e803574994d383f7886",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 173552,
+      "sha256": "5f382d9f8642664acbc2d1cd55a7d3832777c4741788c64b720ae96bcaf5ba67"
+    },
+    {
+      "cityId": "thuan-an",
+      "season": "summer",
+      "fileName": "thuan-an-summer.webp",
+      "sourceMasterFileName": "thuan-an-summer.png",
+      "sourceMasterSha256": "7d36c793a358099b8c0e083e998373a3ed55b8c9dbc7b98e1b84b156129ee54b",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 169600,
+      "sha256": "2e077c314d2be147665f3e9031f4ec10a635e0e8d8447edff8b0eb09757fc070"
+    },
+    {
+      "cityId": "thuan-an",
+      "season": "winter",
+      "fileName": "thuan-an-winter.webp",
+      "sourceMasterFileName": "thuan-an-winter.png",
+      "sourceMasterSha256": "0c6fa188cf3d4f7189da40888c22043710962bbd490ec8cbeb5b835f0eb1eea9",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 174318,
+      "sha256": "a44b7befd4018c3e1c7b63a66ba01397b49bc3435efc941fe264b7f417633542"
     },
     {
       "cityId": "tirana",
@@ -4431,6 +4815,30 @@
       "pixelFormat": "yuva420p",
       "bytes": 172316,
       "sha256": "b160f494206a89b4d1d7981606613be0f6b58e4920a6d93520cf675e4f10db1a"
+    },
+    {
+      "cityId": "vinh",
+      "season": "summer",
+      "fileName": "vinh-summer.webp",
+      "sourceMasterFileName": "vinh-summer.png",
+      "sourceMasterSha256": "e5ddcb57f9d3b10441255c884385da83d64310fe3f82822ce40c0d79fcd3b80d",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 168534,
+      "sha256": "988ee2859f31ba5a146a78bc5e292f626c497e70a3d1d54b856871dfeece0a21"
+    },
+    {
+      "cityId": "vinh",
+      "season": "winter",
+      "fileName": "vinh-winter.webp",
+      "sourceMasterFileName": "vinh-winter.png",
+      "sourceMasterSha256": "fb897a9b2c632221c40c433575af0c4ad86f7ae8e8e4225fd0320aaebc68e429",
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "yuva420p",
+      "bytes": 157852,
+      "sha256": "9b4f5a2e413384523ffd59e11fb4766b30e09ec1677ba8494df785267824a825"
     },
     {
       "cityId": "warsaw",

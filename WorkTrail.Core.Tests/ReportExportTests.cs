@@ -219,9 +219,18 @@ public sealed class ReportExportTests : IDisposable
         var prompt = ReportSummaryService.BuildPrompt(request, [Capture("A recorded edit")], out var count);
         Assert.Equal(1, count);
         Assert.Contains("A recorded edit", prompt);
+        Assert.Contains("description_excerpt", prompt);
+        Assert.DoesNotContain("description_markdown\":\"A recorded edit", prompt);
         Assert.DoesNotContain("PRIVATE-WINDOW-TITLE", prompt);
         Assert.DoesNotContain("synthetic-private-path", prompt);
-        Assert.Throws<ReportExportValidationException>(() => ReportSummaryService.BuildPrompt(request, [Capture(new string('x', 170000))], out _));
+        var completeRequest = request with { IncludeDescriptionExcerpt = false, IncludeCompleteDescription = true };
+        var completePrompt = ReportSummaryService.BuildPrompt(completeRequest, [Capture("A recorded edit")], out _);
+        Assert.Contains("description_markdown\":\"A recorded edit", completePrompt);
+        Assert.DoesNotContain("description_excerpt\":\"A recorded edit", completePrompt);
+        var tooLarge = Assert.Throws<ReportExportValidationException>(() =>
+            ReportSummaryService.BuildPrompt(completeRequest, [Capture(new string('x', 170000))], out _));
+        Assert.Equal(160000, tooLarge.Limit);
+        Assert.True(tooLarge.ActualLength > tooLarge.Limit);
         Assert.Throws<ReportExportValidationException>(() => ReportSummaryService.BuildPrompt(request, [Capture(null)], out _));
     }
 

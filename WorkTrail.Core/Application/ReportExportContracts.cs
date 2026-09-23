@@ -59,7 +59,8 @@ public sealed record ReportSummaryRequest(
     ReportExportOptions Options,
     ReportSummaryGrouping Grouping = ReportSummaryGrouping.Day,
     bool Detailed = false,
-    bool IncludeDescriptions = true,
+    bool IncludeDescriptionExcerpt = true,
+    bool IncludeCompleteDescription = false,
     bool IncludeOcr = false,
     bool IncludeWindowTitles = false);
 
