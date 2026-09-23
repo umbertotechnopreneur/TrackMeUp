@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "styleId": "urban-wash-v1",
-  "assetCountExpected": 378,
+  "assetCountExpected": 412,
   "promptBase": "Panoramic hand-painted architectural watercolor for a light WinUI world-clock column; exact 16:9 landscape; airy travel-sketch quality; restrained graphite underdrawing; broad translucent pigment masses; softly feathered edges; recognizable but not photographic. Keep the central area quiet for a large circular UI overlay, with the urban mass mostly in the lower 65% and the primary landmark on a lateral third. Real RGBA transparency outside the skyline; no sky, paper rectangle, checkerboard, border, text, people, vehicles, flags, logos, sun, moon, weather icon, signature, or watermark.",
   "seasonalModes": {
     "true-winter": "Distinct cold-season treatment; snow or frost only where climatologically plausible.",
@@ -2664,6 +2664,244 @@
       "winterPalette": "cool Pacific blue, rain-washed coral, muted ochre, gray-green and damp cream",
       "winterCues": "softer wetter southern-winter atmosphere, greener slopes and no snow",
       "uncertain": false
+    },
+    {
+      "cityId": "surabaya",
+      "displayName": "Surabaya",
+      "landmarks": [
+        "Tugu Pahlawan and its flame-shaped crown",
+        "a restrained Surabaya skyline, tropical trees and low civic buildings"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "pale tropical blue, warm stone, lush green, muted teal and soft ochre",
+      "summerCues": "lush wet-season tropical foliage and warm humid daylight without painted rain",
+      "winterPalette": "sun-warmed stone, subdued olive, muted teal, dry-season gold and pale blue",
+      "winterCues": "slightly drier tropical foliage and clear warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "bekasi",
+      "displayName": "Bekasi",
+      "landmarks": [
+        "Masjid Agung Al-Barkah with its central dome and minarets",
+        "a restrained Bekasi mid-rise skyline and tropical streetscape"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "pale blue, tropical leaf green, warm cream, muted teal and restrained gold",
+      "summerCues": "lush wet-season greenery and warm humid light without painted rain",
+      "winterPalette": "soft blue-gray, warm cream, subdued olive, pale terracotta and dry-season gold",
+      "winterCues": "slightly drier tropical foliage and gentle warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "bandung",
+      "displayName": "Bandung",
+      "landmarks": [
+        "Gedung Sate and its distinctive central roof finial",
+        "Bandung's restrained highland skyline, tropical gardens and low-rise roofs"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "pale highland blue, warm cream, lush green, muted terracotta and soft ochre",
+      "summerCues": "lush rainy-season gardens and soft warm highland daylight without painted rain",
+      "winterPalette": "cool highland blue, pale stone, subdued olive, muted terracotta and dry-season gold",
+      "winterCues": "slightly drier highland foliage and clear mild daylight; no snow or cold effects",
+      "uncertain": false
+    },
+    {
+      "cityId": "medan",
+      "displayName": "Medan",
+      "landmarks": [
+        "the yellow Maimun Palace with its Malay-Islamic arches",
+        "the Great Mosque of Medan and a restrained tropical city skyline"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "warm palace yellow, pale tropical blue, lush green, cream and muted teal",
+      "summerCues": "full wet-season tropical foliage and warm humid light without painted rain",
+      "winterPalette": "soft ochre, warm cream, muted teal, subdued olive and pale blue-gray",
+      "winterCues": "slightly drier tropical foliage and clear warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "depok",
+      "displayName": "Depok",
+      "landmarks": [
+        "Masjid Dian Al-Mahri's gold-clad domes and slender minarets",
+        "Depok's restrained mid-rise skyline and tropical tree canopy"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "soft gold, pale tropical blue, lush green, warm cream and muted teal",
+      "summerCues": "lush wet-season greenery and humid tropical light without painted rain",
+      "winterPalette": "muted gold, warm cream, subdued olive, pale blue-gray and dry-season ochre",
+      "winterCues": "slightly drier tropical foliage and gentle warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "tangerang",
+      "displayName": "Tangerang",
+      "landmarks": [
+        "Al-Azhom Grand Mosque's broad blue dome and four minarets",
+        "a restrained Tangerang skyline with tropical trees and low civic buildings"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "pale blue, tropical green, warm cream, soft ochre and muted teal",
+      "summerCues": "lush wet-season tropical foliage and warm humid daylight without painted rain",
+      "winterPalette": "cool pale blue, warm stone, subdued olive, muted teal and dry-season gold",
+      "winterCues": "slightly drier foliage and clear warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "palembang",
+      "displayName": "Palembang",
+      "landmarks": [
+        "Ampera Bridge's distinctive twin towers and long span over the Musi River",
+        "Palembang's restrained riverside skyline and tropical vegetation"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "muted river blue, pale tropical blue, lush green, warm cream and soft vermilion",
+      "summerCues": "lush wet-season riverbank foliage and warm humid light without painted rain",
+      "winterPalette": "soft slate blue, warm cream, subdued olive, muted vermilion and dry-season ochre",
+      "winterCues": "slightly drier riverbank foliage and clear warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "semarang",
+      "displayName": "Semarang",
+      "landmarks": [
+        "Lawang Sewu's twin corner towers and arcaded historic facade",
+        "Semarang's restrained urban skyline, tropical trees and low-rise roofs"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "warm ivory, muted terracotta, pale tropical blue, lush green and soft ochre",
+      "summerCues": "lush wet-season gardens and humid tropical daylight without painted rain",
+      "winterPalette": "cool ivory, subdued terracotta, slate blue, muted olive and dry-season gold",
+      "winterCues": "slightly drier foliage and clear warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "denpasar",
+      "displayName": "Denpasar",
+      "landmarks": [
+        "Bajra Sandhi Monument's stepped form and central tower",
+        "Balinese split-gate stonework, tropical palms and a restrained Denpasar skyline"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "warm temple stone, pale tropical blue, lush green, muted ochre and soft teal",
+      "summerCues": "lush wet-season tropical gardens and warm humid daylight without painted rain",
+      "winterPalette": "warm temple stone, subdued olive, muted teal, dry-season ochre and pale blue",
+      "winterCues": "slightly drier tropical gardens and clear warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "haiphong",
+      "displayName": "Haiphong",
+      "landmarks": [
+        "Haiphong Opera House's French neoclassical facade and domed roof",
+        "a restrained northern Vietnamese skyline and flame-flower trees"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm ivory, muted coral, pale river blue, leafy green and soft ochre",
+      "summerCues": "full subtropical foliage and warm humid daylight without painted rain",
+      "winterPalette": "cool ivory, slate blue, muted coral, damp stone and subdued gray-green",
+      "winterCues": "mild cool-season light, damp stone and sparse deciduous foliage; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "can-tho",
+      "displayName": "Cần Thơ",
+      "landmarks": [
+        "Can Tho Bridge spanning the Hau River",
+        "a restrained Mekong Delta riverfront with tropical trees and low urban buildings"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "soft river blue, pale tropical blue, lush green, warm cream and muted teal",
+      "summerCues": "lush wet-season riverbank foliage and humid tropical light without painted rain",
+      "winterPalette": "muted river blue, warm cream, subdued olive, pale blue-gray and dry-season ochre",
+      "winterCues": "drier-season riverbank foliage and warm clear daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "hue",
+      "displayName": "Huế",
+      "landmarks": [
+        "Ngo Mon Gate of the Imperial Citadel with its layered red-tiled roof",
+        "Thien Mu Pagoda above a restrained Perfume River riverfront"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm imperial ochre, muted brick red, river blue, leafy green and pale cream",
+      "summerCues": "full riverbank foliage and warm humid daylight without painted rain",
+      "winterPalette": "cool imperial ochre, slate river blue, muted brick, damp stone and gray-green",
+      "winterCues": "mild cooler-season light, damp stone and sparse deciduous foliage; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "da-nang",
+      "displayName": "Da Nang",
+      "landmarks": [
+        "the Dragon Bridge crossing the Han River with its unmistakable long dragon form",
+        "Da Nang's restrained riverside skyline and distant Marble Mountains"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "soft river blue, pale coastal blue, muted coral, lush green and warm cream",
+      "summerCues": "full tropical riverbank foliage and warm coastal light without painted weather",
+      "winterPalette": "slate river blue, cool cream, subdued coral, muted olive and damp stone gray",
+      "winterCues": "mild cooler-season coastal light, damp stone and slightly sparser foliage; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "bien-hoa",
+      "displayName": "Biên Hòa",
+      "landmarks": [
+        "a low bridge and riverfront along the Đồng Nai River",
+        "Biên Hòa's restrained mid-rise skyline and tropical riverbank vegetation"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "muted river blue, pale tropical blue, lush green, warm cream and soft ochre",
+      "summerCues": "lush wet-season riverside foliage and humid tropical light without painted rain",
+      "winterPalette": "soft slate blue, warm cream, subdued olive, pale terracotta and dry-season gold",
+      "winterCues": "drier-season riverbank foliage and gentle warm daylight; no cold cues or snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "thanh-hoa",
+      "displayName": "Thanh Hóa",
+      "landmarks": [
+        "Ham Rong Bridge crossing the Ma River",
+        "Thanh Hóa's restrained northern Vietnamese city skyline and riverbank trees"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "soft river blue, warm cream, muted terracotta, lush green and pale ochre",
+      "summerCues": "full subtropical foliage and warm humid daylight without painted rain",
+      "winterPalette": "slate river blue, cool cream, muted terracotta, damp stone and gray-green",
+      "winterCues": "mild cool-season light, damp stone and sparse deciduous foliage; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "vinh",
+      "displayName": "Vinh",
+      "landmarks": [
+        "the surviving gate and low walls of Vinh Citadel",
+        "a restrained urban skyline with the Lam River plain and distant Quyet Mountain"
+      ],
+      "seasonalMode": "mild-winter",
+      "summerPalette": "warm cream, muted brick, pale blue, leafy green and soft ochre",
+      "summerCues": "full subtropical greenery and warm humid daylight without painted rain",
+      "winterPalette": "cool cream, slate blue, muted brick, damp stone and subdued gray-green",
+      "winterCues": "mild cool-season air, softer light and sparse deciduous foliage; no snow",
+      "uncertain": false
+    },
+    {
+      "cityId": "thuan-an",
+      "displayName": "Thuận An",
+      "landmarks": [
+        "a restrained contemporary Thuận An mid-rise skyline beside a Saigon River tributary",
+        "tropical riverbank trees and low civic buildings"
+      ],
+      "seasonalMode": "wet-dry",
+      "summerPalette": "pale tropical blue, muted river blue, lush green, warm cream and soft ochre",
+      "summerCues": "lush wet-season riverbank foliage and warm humid daylight without painted rain",
+      "winterPalette": "soft blue-gray, muted river blue, warm cream, subdued olive and dry-season gold",
+      "winterCues": "drier-season tropical foliage and clear warm daylight; no cold cues or snow",
+      "uncertain": false
     }
   ],
   "additionalCatalogCities": [
@@ -3810,6 +4048,227 @@
       "timeZoneId": "America/Santiago",
       "isCapital": false,
       "hemisphere": "south"
+    },
+    {
+      "cityId": "surabaya",
+      "geonameId": 1625822,
+      "name": "Surabaya",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -7.24917,
+      "longitude": 112.75083,
+      "population": 3018022,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "bekasi",
+      "geonameId": 1649378,
+      "name": "Bekasi",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -6.2349,
+      "longitude": 106.9896,
+      "population": 2648272,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "bandung",
+      "geonameId": 1650357,
+      "name": "Bandung",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -6.92222,
+      "longitude": 107.60694,
+      "population": 2528163,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "medan",
+      "geonameId": 1214520,
+      "name": "Medan",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": 3.58333,
+      "longitude": 98.66667,
+      "population": 2486283,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "depok",
+      "geonameId": 1645524,
+      "name": "Depok",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -6.4,
+      "longitude": 106.81861,
+      "population": 2163635,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "tangerang",
+      "geonameId": 1625084,
+      "name": "Tangerang",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -6.17806,
+      "longitude": 106.63,
+      "population": 1927815,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "palembang",
+      "geonameId": 1633070,
+      "name": "Palembang",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -2.91673,
+      "longitude": 104.7458,
+      "population": 1801367,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "semarang",
+      "geonameId": 1627896,
+      "name": "Semarang",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -6.99306,
+      "longitude": 110.42083,
+      "population": 1694740,
+      "timeZoneId": "Asia/Jakarta",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "denpasar",
+      "geonameId": 1645528,
+      "name": "Denpasar",
+      "countryCode": "ID",
+      "countryName": "Indonesia",
+      "latitude": -8.65,
+      "longitude": 115.21667,
+      "population": 670210,
+      "timeZoneId": "Asia/Makassar",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "haiphong",
+      "geonameId": 1581298,
+      "name": "Haiphong",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 20.86481,
+      "longitude": 106.68345,
+      "population": 2625200,
+      "timeZoneId": "Asia/Bangkok",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "can-tho",
+      "geonameId": 1586203,
+      "name": "Cần Thơ",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 10.03711,
+      "longitude": 105.78825,
+      "population": 1507187,
+      "timeZoneId": "Asia/Ho_Chi_Minh",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "hue",
+      "geonameId": 1580240,
+      "name": "Huế",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 16.4619,
+      "longitude": 107.59546,
+      "population": 1380000,
+      "timeZoneId": "Asia/Bangkok",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "da-nang",
+      "geonameId": 1583992,
+      "name": "Da Nang",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 16.06778,
+      "longitude": 108.22083,
+      "population": 1276000,
+      "timeZoneId": "Asia/Ho_Chi_Minh",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "bien-hoa",
+      "geonameId": 1587923,
+      "name": "Biên Hòa",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 10.94469,
+      "longitude": 106.82432,
+      "population": 1272235,
+      "timeZoneId": "Asia/Ho_Chi_Minh",
+      "isCapital": false,
+      "hemisphere": "equatorial"
+    },
+    {
+      "cityId": "thanh-hoa",
+      "geonameId": 1566166,
+      "name": "Thanh Hóa",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 19.8,
+      "longitude": 105.76667,
+      "population": 850000,
+      "timeZoneId": "Asia/Bangkok",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "vinh",
+      "geonameId": 1562798,
+      "name": "Vinh",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 18.67337,
+      "longitude": 105.69232,
+      "population": 790000,
+      "timeZoneId": "Asia/Bangkok",
+      "isCapital": false,
+      "hemisphere": "north"
+    },
+    {
+      "cityId": "thuan-an",
+      "geonameId": 12382296,
+      "name": "Thuận An",
+      "countryCode": "VN",
+      "countryName": "Vietnam",
+      "latitude": 10.9239,
+      "longitude": 106.71428,
+      "population": 588616,
+      "timeZoneId": "Asia/Ho_Chi_Minh",
+      "isCapital": false,
+      "hemisphere": "equatorial"
     }
   ],
   "reviewedMasters": [
@@ -6080,6 +6539,210 @@
       "season": "winter",
       "fileName": "valparaiso-winter.png",
       "sha256": "961ff7ddada2d78b6113f5ca09f7781e4c59b1d394c7ff3db5f5aea600ea219e"
+    },
+    {
+      "cityId": "surabaya",
+      "season": "summer",
+      "fileName": "surabaya-summer.png",
+      "sha256": "503dec9da4ce1e6f178ee113940ecd5c0798b3032d34caad83f706d0f66cb0ef"
+    },
+    {
+      "cityId": "surabaya",
+      "season": "winter",
+      "fileName": "surabaya-winter.png",
+      "sha256": "27f10c0ad66badf65721e1124819dca3ebbbd90da2915ee4ab06c4468262f7a1"
+    },
+    {
+      "cityId": "bekasi",
+      "season": "summer",
+      "fileName": "bekasi-summer.png",
+      "sha256": "603ffe03152f5f4e2c17ee49efd0b7318d1333eda85b183c1232f7e59754d642"
+    },
+    {
+      "cityId": "bekasi",
+      "season": "winter",
+      "fileName": "bekasi-winter.png",
+      "sha256": "7044644658cd28ab829ed36ed5259e2de45395ee48ebda530f23214a6aba291d"
+    },
+    {
+      "cityId": "bandung",
+      "season": "summer",
+      "fileName": "bandung-summer.png",
+      "sha256": "4ba32bda817b178c32550e4a1b03f6a1ebc2baf5b2937a5c241eb5e05eff33de"
+    },
+    {
+      "cityId": "bandung",
+      "season": "winter",
+      "fileName": "bandung-winter.png",
+      "sha256": "e36bcbf3ebaafdc3dfbaeaf89c6556eff3c2c93639078b5a27850506ace4bbd1"
+    },
+    {
+      "cityId": "medan",
+      "season": "summer",
+      "fileName": "medan-summer.png",
+      "sha256": "e35e07c4a0da142fdd02f1b1ddb61f42c4829301767c32bb09e5fb20aa70ab2d"
+    },
+    {
+      "cityId": "medan",
+      "season": "winter",
+      "fileName": "medan-winter.png",
+      "sha256": "b5a3b172d622d346112eb1c3ccc5868d5a106d6e7d69313c9c7f69fcf70beb0a"
+    },
+    {
+      "cityId": "depok",
+      "season": "summer",
+      "fileName": "depok-summer.png",
+      "sha256": "ec3d7c4a2ff00147a4ff146c7aa3336a896dbbf257d376839a41c554223c2c24"
+    },
+    {
+      "cityId": "depok",
+      "season": "winter",
+      "fileName": "depok-winter.png",
+      "sha256": "66b28840ecc80b85648f96af88121e8f5ac0867e4e9418ca40431d3e633e3c22"
+    },
+    {
+      "cityId": "tangerang",
+      "season": "summer",
+      "fileName": "tangerang-summer.png",
+      "sha256": "12e0bf30c240c94fa5790059d90738732eaad733b4448052b794077c5caf3cd9"
+    },
+    {
+      "cityId": "tangerang",
+      "season": "winter",
+      "fileName": "tangerang-winter.png",
+      "sha256": "43be3b1af5833b85072a4fac554e537b3cdd39b6b7810322e8e89f603cc4c8d6"
+    },
+    {
+      "cityId": "palembang",
+      "season": "summer",
+      "fileName": "palembang-summer.png",
+      "sha256": "6ac8850884ea2b8ee23e16f96554dfd940089de6633f6d801a4e3e3a7a792aa1"
+    },
+    {
+      "cityId": "palembang",
+      "season": "winter",
+      "fileName": "palembang-winter.png",
+      "sha256": "63206d47c24225eead96f91b795334ffd5ad5341929b2db9e36dcc2c7f4a15b7"
+    },
+    {
+      "cityId": "semarang",
+      "season": "summer",
+      "fileName": "semarang-summer.png",
+      "sha256": "b7b0400ecd15ffcc29b6bd49b4e84e0f05b58c1e3fe293400853442a581ad837"
+    },
+    {
+      "cityId": "semarang",
+      "season": "winter",
+      "fileName": "semarang-winter.png",
+      "sha256": "96c748be0c21ed20bb49f56665c38b4027718665bf374917349919a3036ab3e1"
+    },
+    {
+      "cityId": "denpasar",
+      "season": "summer",
+      "fileName": "denpasar-summer.png",
+      "sha256": "68d89a68a8358a3054e53d717832510ce6860187e8ae9b08f8efa848e754e9d0"
+    },
+    {
+      "cityId": "denpasar",
+      "season": "winter",
+      "fileName": "denpasar-winter.png",
+      "sha256": "09ca1e7602e0e529c5fd142cb6281b69fc2d58b73e7f0c75b2da339407f91488"
+    },
+    {
+      "cityId": "haiphong",
+      "season": "summer",
+      "fileName": "haiphong-summer.png",
+      "sha256": "d4e5648b4c7f5f501ba2bb87fd5acb0018f522f7b2410be43bae228c9396385a"
+    },
+    {
+      "cityId": "haiphong",
+      "season": "winter",
+      "fileName": "haiphong-winter.png",
+      "sha256": "e1a1581279d39d03f562ddfb016717f9ea1a19ed6cb66d0ed9d3f731ea409116"
+    },
+    {
+      "cityId": "can-tho",
+      "season": "summer",
+      "fileName": "can-tho-summer.png",
+      "sha256": "c93c9740bfc9f838731fc285553732bce075fc8dbeadc704272c9d1369eecbb2"
+    },
+    {
+      "cityId": "can-tho",
+      "season": "winter",
+      "fileName": "can-tho-winter.png",
+      "sha256": "0143cddbb989de69b28ccb0e38ebbcef35fa4867554a3c4790d12693d87c657c"
+    },
+    {
+      "cityId": "hue",
+      "season": "summer",
+      "fileName": "hue-summer.png",
+      "sha256": "aa491cb21a40d335b43ff584cba9b97dce32405787ac00d96c797402d8f4cdd3"
+    },
+    {
+      "cityId": "hue",
+      "season": "winter",
+      "fileName": "hue-winter.png",
+      "sha256": "c2636ea21b59c8b86262afd82acc9e058fe366d415d0354871dc636d4c55c8a7"
+    },
+    {
+      "cityId": "da-nang",
+      "season": "summer",
+      "fileName": "da-nang-summer.png",
+      "sha256": "84361cbd7317647cba0bca4560c14ce68f5275ffc1f58617450f711030cd6830"
+    },
+    {
+      "cityId": "da-nang",
+      "season": "winter",
+      "fileName": "da-nang-winter.png",
+      "sha256": "71b6ea85f69ec4c455517dd2016ed84887aedc0141c2dbb311eab7d1cd73c52c"
+    },
+    {
+      "cityId": "bien-hoa",
+      "season": "summer",
+      "fileName": "bien-hoa-summer.png",
+      "sha256": "b6bb2b47e7080aae230be528c8695f304088b1f00896577be45828f065e2df42"
+    },
+    {
+      "cityId": "bien-hoa",
+      "season": "winter",
+      "fileName": "bien-hoa-winter.png",
+      "sha256": "ea9a726b72fce11a1be18b6b0d0d378d6b5950426e2f045926c4431821e2e0a9"
+    },
+    {
+      "cityId": "thanh-hoa",
+      "season": "summer",
+      "fileName": "thanh-hoa-summer.png",
+      "sha256": "5a6b2beb23708f46d0cb60aa7849597fed1de5e6943b3bc0d096497221c06e6f"
+    },
+    {
+      "cityId": "thanh-hoa",
+      "season": "winter",
+      "fileName": "thanh-hoa-winter.png",
+      "sha256": "4b99bdcc7f761bf09cb95cfb850650d7adecb49612937e803574994d383f7886"
+    },
+    {
+      "cityId": "vinh",
+      "season": "summer",
+      "fileName": "vinh-summer.png",
+      "sha256": "e5ddcb57f9d3b10441255c884385da83d64310fe3f82822ce40c0d79fcd3b80d"
+    },
+    {
+      "cityId": "vinh",
+      "season": "winter",
+      "fileName": "vinh-winter.png",
+      "sha256": "fb897a9b2c632221c40c433575af0c4ad86f7ae8e8e4225fd0320aaebc68e429"
+    },
+    {
+      "cityId": "thuan-an",
+      "season": "summer",
+      "fileName": "thuan-an-summer.png",
+      "sha256": "7d36c793a358099b8c0e083e998373a3ed55b8c9dbc7b98e1b84b156129ee54b"
+    },
+    {
+      "cityId": "thuan-an",
+      "season": "winter",
+      "fileName": "thuan-an-winter.png",
+      "sha256": "0c6fa188cf3d4f7189da40888c22043710962bbd490ec8cbeb5b835f0eb1eea9"
     }
   ]
 }
